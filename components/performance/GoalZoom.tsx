@@ -348,398 +348,362 @@ export function GoalZoom({
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.62fr_1fr]">
-        {/* ------------------------------- periods as blocks + focused drill */}
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
-              Period by period
-            </b>
-            <span className="min-w-0 truncate text-[11px] text-text-tertiary">
-              pick a block, then read it by group and by person
-            </span>
-            <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
-              {grans
-                .filter((g) => g.allowed)
-                .map((g) => (
-                  <button
-                    key={g.key}
-                    type="button"
-                    onClick={() => {
-                      setGran(g.key);
-                      setSelected(null);
-                      setOpenGroup(null);
-                    }}
-                    className={cn(
-                      "cursor-pointer border-r border-border-light px-3.5 py-1.5 text-[12px] font-semibold transition-colors last:border-r-0",
-                      gran === g.key
-                        ? "bg-[rgba(0,113,227,0.10)] text-blue-primary"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {g.label}
-                  </button>
-                ))}
-            </span>
-          </div>
-
-          {/* the blocks: one compact square per period, never a full-width list
-              (Suren: "don't use this entire space only once... one block, year
-              one, year two, year three") */}
-          <div
-            key={`${gran}-${fy}`}
-            className={cn(
-              "tab-panel mt-3 grid gap-2",
-              gran === "months"
-                ? "grid-cols-3 sm:grid-cols-4 xl:grid-cols-6"
-                : gran === "weeks"
-                  ? "grid-cols-2 sm:grid-cols-5"
-                  : "grid-cols-2 sm:grid-cols-5"
-            )}
-          >
-            {rows.map((r, i) => {
-              const active = (selected ?? rows.findIndex((x) => x.isNow)) === i;
-              return (
+      {/* --------------------- Suren's three boxes: org → groups → people.
+          The same period context flows left to right: pick a period in Box 1,
+          Box 2 shows every group inside it, pick a group and Box 3 shows its
+          people. Nothing navigates away; the three columns ARE the drill. */}
+      <Card className="mt-4 p-4">
+        <div className="flex items-center gap-3">
+          <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
+            Organization → group → person
+          </b>
+          <span className="min-w-0 truncate text-[11px] text-text-tertiary">
+            one period, three altitudes, side by side
+          </span>
+          <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
+            {grans
+              .filter((g) => g.allowed)
+              .map((g) => (
                 <button
-                  key={r.label}
+                  key={g.key}
                   type="button"
                   onClick={() => {
-                    setSelected(i);
+                    setGran(g.key);
+                    setSelected(null);
                     setOpenGroup(null);
                   }}
                   className={cn(
-                    "cursor-pointer rounded-xl border p-2.5 text-left transition-all",
-                    active
-                      ? "border-blue-primary bg-[rgba(0,113,227,0.05)] shadow-[0_6px_18px_-10px_rgba(0,60,120,0.35)]"
-                      : "border-border-light bg-white hover:border-blue-subtle"
+                    "cursor-pointer border-r border-border-light px-3.5 py-1.5 text-[12px] font-semibold transition-colors last:border-r-0",
+                    gran === g.key
+                      ? "bg-[rgba(0,113,227,0.10)] text-blue-primary"
+                      : "text-text-secondary hover:text-text-primary"
                   )}
                 >
-                  <span className="flex items-center gap-1.5">
-                    <b className="truncate text-[12px] text-text-primary">
-                      {gran === "weeks" ? r.label.replace("Week ", "") : r.label}
-                    </b>
-                    {r.isNow && (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary" title="current" />
-                    )}
-                  </span>
-                  <span className="mt-1 block text-[13px] font-extrabold tnum">
-                    {r.verified > 0 ? fmtAmount(goal.unit, r.verified) : "–"}
-                  </span>
-                  <span className="mt-1.5 flex h-1 w-full overflow-hidden rounded-full bg-surface">
-                    <span className="h-full bg-[#16A34A]" style={{ width: `${(r.verified / maxRow) * 100}%` }} />
-                    <span className="h-full bg-[#B45309]/60" style={{ width: `${(r.awaiting / maxRow) * 100}%` }} />
-                  </span>
-                  <span className="mt-1 block text-[9.5px] font-semibold tnum">
-                    {r.waitingCount > 0 ? (
-                      <span className="text-[color:#B45309]">
-                        {fmtAmount(goal.unit, r.awaiting)} waiting
-                      </span>
-                    ) : r.verified > 0 ? (
-                      <span className="text-[color:#16A34A]">all verified</span>
-                    ) : (
-                      <span className="text-text-tertiary">{r.ended ? "nothing logged" : "open"}</span>
-                    )}
-                  </span>
+                  {g.label}
                 </button>
+              ))}
+          </span>
+        </div>
+
+        {(() => {
+          const selIdx = selected ?? Math.max(0, rows.findIndex((x) => x.isNow));
+          const row = rows[selIdx] ?? rows[0];
+          const inPeriodGroups = state.groups
+            .map((g) => {
+              const people = new Set([g.head, ...g.members].map((n) => n.trim()));
+              return {
+                group: g,
+                verified: familyValue(state, goal, { range: row.range, people, verifiedOnly: true }),
+                awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
+              };
+            })
+            .sort((a, b) => b.verified - a.verified);
+          const maxG = Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
+          const selGroup =
+            inPeriodGroups.find((r2) => r2.group.id === openGroup) ?? inPeriodGroups[0] ?? null;
+          const groupPeople = selGroup
+            ? [...new Set([selGroup.group.head, ...selGroup.group.members].map((n) => n.trim()))]
+                .map((name) => ({
+                  name,
+                  verified: familyValue(state, goal, { range: row.range, person: name, verifiedOnly: true }),
+                  awaiting: familyValue(state, goal, { range: row.range, person: name, reportedOnly: true }),
+                }))
+                .sort((a, b) => b.verified - a.verified)
+            : [];
+          const maxP = Math.max(1, ...groupPeople.map((p) => p.verified));
+          const boxCls =
+            "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
+          const boxHead =
+            "flex items-center gap-2 border-b border-border-light bg-surface/60 px-3 py-2";
+          return (
+            <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
+              {/* -------- Box 1: the organization, period by period */}
+              <div className={boxCls}>
+                <div className={boxHead}>
+                  <b className="text-[12px] text-text-primary">1 · Organization</b>
+                  <span className="ml-auto text-[10.5px] text-text-tertiary">
+                    pick a period
+                  </span>
+                </div>
+                <div key={`${gran}-${fy}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                  {rows.map((r, i) => {
+                    const active = i === selIdx;
+                    return (
+                      <button
+                        key={r.label}
+                        type="button"
+                        onClick={() => {
+                          setSelected(i);
+                          setOpenGroup(null);
+                        }}
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                          active
+                            ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
+                            : "hover:bg-surface"
+                        )}
+                      >
+                        <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
+                          {gran === "weeks" ? r.label.replace("Week ", "") : r.label}
+                          {r.isNow && (
+                            <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-blue-primary align-middle" />
+                          )}
+                        </b>
+                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                          <span className="h-full bg-[#16A34A]" style={{ width: `${(r.verified / maxRow) * 100}%` }} />
+                          <span className="h-full bg-[#B45309]/60" style={{ width: `${(r.awaiting / maxRow) * 100}%` }} />
+                        </span>
+                        <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
+                          {r.verified > 0 ? fmtAmount(goal.unit, r.verified) : "–"}
+                        </b>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* -------- Box 2: every group inside the picked period */}
+              <div className={boxCls}>
+                <div className={boxHead}>
+                  <b className="text-[12px] text-text-primary">2 · Groups</b>
+                  <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-blue-primary">
+                    {row?.label}
+                  </span>
+                  <span className="ml-auto text-[10.5px] tnum text-text-tertiary">
+                    {row ? fmtAmount(goal.unit, row.verified) : ""}
+                    {row && row.awaiting > 0 ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting` : ""}
+                  </span>
+                </div>
+                <div key={`g-${gran}-${selIdx}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                  {inPeriodGroups.length === 0 ? (
+                    <p className="px-2 py-3 text-[12px] text-text-secondary">
+                      No groups yet. Once groups exist, this box lists every
+                      group&apos;s number for the picked period.
+                    </p>
+                  ) : (
+                    inPeriodGroups.map((r2) => {
+                      const active = selGroup?.group.id === r2.group.id;
+                      return (
+                        <button
+                          key={r2.group.id}
+                          type="button"
+                          onClick={() => setOpenGroup(r2.group.id)}
+                          className={cn(
+                            "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            active
+                              ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
+                              : "hover:bg-surface"
+                          )}
+                        >
+                          <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                          <span className="w-[120px] shrink-0 text-[11.5px] font-semibold leading-tight text-text-primary">
+                            {r2.group.name}
+                          </span>
+                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                            <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
+                          </span>
+                          <b className="w-[70px] shrink-0 text-right text-[11.5px] tnum">
+                            {r2.verified > 0 ? fmtAmount(goal.unit, r2.verified) : "–"}
+                          </b>
+                          {r2.awaiting > 0 && (
+                            <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                              +{fmtAmount(goal.unit, r2.awaiting)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* -------- Box 3: the picked group's people, same period */}
+              <div className={boxCls}>
+                <div className={boxHead}>
+                  <b className="text-[12px] text-text-primary">3 · People</b>
+                  {selGroup && (
+                    <span className="rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#B4318F]">
+                      {selGroup.group.name}
+                    </span>
+                  )}
+                  <span className="ml-auto text-[10.5px] tnum text-text-tertiary">
+                    {selGroup ? fmtAmount(goal.unit, selGroup.verified) : ""}
+                  </span>
+                </div>
+                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                  {!selGroup ? (
+                    <p className="px-2 py-3 text-[12px] text-text-secondary">
+                      Pick a group in box 2 and its people line up here for the
+                      same period.
+                    </p>
+                  ) : (
+                    groupPeople.map((p) => (
+                      <div key={p.name} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
+                        <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
+                        <span className="w-[128px] shrink-0 text-[11.5px] font-medium leading-tight text-text-primary">
+                          {p.name}
+                          {p.name === selGroup.group.head && (
+                            <span className="ml-1 rounded-full bg-[rgba(180,49,143,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#B4318F]">
+                              owner
+                            </span>
+                          )}
+                        </span>
+                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                          <span
+                            className="block h-full rounded-full bg-blue-primary/70"
+                            style={{ width: `${(p.verified / maxP) * 100}%` }}
+                          />
+                        </span>
+                        <b className="w-[70px] shrink-0 text-right text-[11.5px] tnum">
+                          {p.verified > 0 ? fmtAmount(goal.unit, p.verified) : "–"}
+                        </b>
+                        {p.awaiting > 0 && (
+                          <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                            +{fmtAmount(goal.unit, p.awaiting)}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        <p className="mt-2.5 text-[11px] text-text-tertiary">
+          The same view continues everywhere: whatever cadence box 1 is in,
+          boxes 2 and 3 read that exact period. Every number is verified only;
+          amber is still waiting.
+        </p>
+      </Card>
+
+      <div className="mt-4">
+      <Card className="overflow-hidden p-0">
+        <div className="flex items-center gap-2 border-b border-border-light px-4 py-2.5">
+          <b className="text-[14px] text-text-primary">
+            Waiting for verification
+          </b>
+          {waiting.length > 0 &&
+            pill(
+              "bg-[rgba(180,83,9,0.12)] text-[color:#B45309]",
+              String(waiting.length)
+            )}
+          <span className="ml-auto text-[10.5px] text-text-tertiary">
+            only the group owner can verify
+          </span>
+        </div>
+        {waiting.length === 0 ? (
+          <p className="px-4 py-3 text-[12px] text-text-secondary">
+            Nothing waiting. New claims land here with their evidence for
+            the group owner to check and lock.
+          </p>
+        ) : (
+          <div className="divide-y divide-border-light/70 px-4">
+            {waiting.map((a) => {
+              const ci = componentOf(a);
+              return (
+                <div key={a.id} className="py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
+                    <b className="text-[12.5px]">{a.person}</b>
+                    {ci >= 0 && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                        style={{
+                          background: `${COMPONENT_COLORS[ci % 3]}1A`,
+                          color: COMPONENT_COLORS[ci % 3],
+                        }}
+                      >
+                        {COMPONENT_ICONS[ci % 3]}{" "}
+                        {components[ci].name.replace("Booked ", "")}
+                      </span>
+                    )}
+                    <b className="text-[12.5px] tnum">
+                      {fmtAmount(goal.unit, a.amount)}
+                    </b>
+                    <span className="text-[10.5px] text-text-tertiary tnum">
+                      {a.date}
+                    </span>
+                    {amHead && canVerify(a.person) && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (run) {
+                            await run(
+                              { op: "verify-actual", actualId: a.id },
+                              "Verified and locked. It counts now"
+                            );
+                            return;
+                          }
+                          const res = await fetch("/api/performance", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              op: "verify-actual",
+                              actualId: a.id,
+                            }),
+                          });
+                          if (res.ok) router.refresh();
+                          else {
+                            const data = await res.json().catch(() => ({}));
+                            alert(data.error ?? "Could not verify");
+                          }
+                        }}
+                        className="ml-auto cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[11.5px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+                      >
+                        Verify ✓
+                      </button>
+                    )}
+                  </div>
+                  {a.customer && (
+                    <p className="mt-1 pl-8 text-[11px] text-text-secondary">
+                      {a.customer}
+                    </p>
+                  )}
+                  {a.evidence?.length ? (
+                    <div className="mt-1 flex flex-wrap gap-1.5 pl-8">
+                      {a.evidence.map((e) => (
+                        <a
+                          key={e.url}
+                          href={e.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary hover:bg-[rgba(0,113,227,0.14)]"
+                        >
+                          <Paperclip size={10} strokeWidth={2.4} /> {e.name}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 pl-8 text-[10.5px] text-[color:#B45309]">
+                      No evidence attached.
+                    </p>
+                  )}
+                </div>
               );
             })}
           </div>
-
-          {/* the focused period, read by group then by person, without leaving
-              (Suren: "I need to see the group, and I also need to see person,
-              but not lose focus") */}
-          {(() => {
-            const idx = selected ?? rows.findIndex((x) => x.isNow);
-            const row = rows[idx] ?? null;
-            if (!row) return null;
-            const inPeriodGroups = state.groups
-              .map((g) => {
-                const people = new Set([g.head, ...g.members].map((n) => n.trim()));
-                return {
-                  group: g,
-                  verified: familyValue(state, goal, { range: row.range, people, verifiedOnly: true }),
-                  awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
-                };
-              })
-              .sort((a, b) => b.verified - a.verified);
-            const maxG = Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
-            return (
-              <div key={`${gran}-${idx}`} className="tab-panel mt-4 rounded-xl border border-border-light bg-surface/40 p-3.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <b className="text-[12.5px] text-text-primary">
-                    {row.label}
-                    {row.sub ? <span className="ml-1.5 font-normal text-text-tertiary">{row.sub}</span> : null}
-                  </b>
-                  <span className="text-[11px] text-text-tertiary">by group, best first</span>
-                  <span className="ml-auto text-[12px] font-bold tnum">
-                    {fmtAmount(goal.unit, row.verified)}
-                    {row.awaiting > 0 && (
-                      <span className="ml-1.5 text-[11px] font-bold text-[color:#B45309]">
-                        +{fmtAmount(goal.unit, row.awaiting)} waiting
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {state.groups.length === 0 ? (
-                  <p className="mt-2 text-[12px] text-text-secondary">
-                    No groups yet. Once groups exist, this period fans out by
-                    group and every group opens into its people.
-                  </p>
-                ) : (
-                  <div className="mt-2.5 space-y-1.5">
-                    {inPeriodGroups.map((r2) => {
-                      const open = openGroup === r2.group.id;
-                      const groupPeople = [...new Set([r2.group.head, ...r2.group.members].map((n) => n.trim()))];
-                      return (
-                        <div key={r2.group.id} className={cn("rounded-lg", open && "bg-white shadow-[0_4px_14px_-8px_rgba(15,23,42,0.2)]")}>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGroup(open ? null : r2.group.id)}
-                            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white"
-                          >
-                            <span
-                              className={cn(
-                                "text-[10px] text-text-tertiary transition-transform duration-200",
-                                open && "rotate-90"
-                              )}
-                            >
-                              ▶
-                            </span>
-                            <Avatar name={r2.group.head} className="h-6 w-6 text-[9px]" />
-                            <b className="w-[190px] text-[12.5px] leading-tight text-text-primary">{r2.group.name}</b>
-                            <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
-                              <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
-                            </span>
-                            <b className="w-[86px] text-right text-[12px] tnum">{fmtAmount(goal.unit, r2.verified)}</b>
-                            {r2.awaiting > 0 && (
-                              <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10px] font-bold text-[color:#B45309] tnum">
-                                +{fmtAmount(goal.unit, r2.awaiting)}
-                              </span>
-                            )}
-                          </button>
-                          {open && (
-                            <div className="tab-panel space-y-1 px-2 pb-2 pl-9">
-                              {groupPeople
-                                .map((name) => ({
-                                  name,
-                                  verified: familyValue(state, goal, { range: row.range, person: name, verifiedOnly: true }),
-                                  awaiting: familyValue(state, goal, { range: row.range, person: name, reportedOnly: true }),
-                                }))
-                                .sort((a, b) => b.verified - a.verified)
-                                .map((p) => (
-                                  <div key={p.name} className="flex items-center gap-2.5 py-1">
-                                    <Avatar name={p.name} className="h-5 w-5 text-[8px]" />
-                                    <span className="w-[176px] text-[12px] font-medium text-text-primary">
-                                      {p.name}
-                                      {p.name === r2.group.head && (
-                                        <span className="ml-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#B4318F]">
-                                          owner
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
-                                      <span
-                                        className="block h-full rounded-full bg-blue-primary/70"
-                                        style={{ width: `${(p.verified / Math.max(1, r2.verified)) * 100}%` }}
-                                      />
-                                    </span>
-                                    <b className="w-[80px] text-right text-[11.5px] tnum">
-                                      {p.verified > 0 ? fmtAmount(goal.unit, p.verified) : "–"}
-                                    </b>
-                                    {p.awaiting > 0 && (
-                                      <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
-                                        +{fmtAmount(goal.unit, p.awaiting)}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          <p className="mt-3 text-[11px] leading-relaxed text-text-tertiary">
-            {gran === "years"
-              ? "Five financial years of history in one row."
-              : `Cadences this goal allows: ${cadences.join(", ")}.`}{" "}
-            Every block is only the sum of its groups, and every group of its
-            people.
-          </p>
-        </Card>
-
-        {/* ------------------------------------------- verification rail */}
-        <div className="space-y-4">
-          <Card className="overflow-hidden p-0">
-            <div className="flex items-center gap-2 border-b border-border-light px-4 py-2.5">
-              <b className="text-[14px] text-text-primary">
-                Waiting for verification
-              </b>
-              {waiting.length > 0 &&
-                pill(
-                  "bg-[rgba(180,83,9,0.12)] text-[color:#B45309]",
-                  String(waiting.length)
-                )}
-              <span className="ml-auto text-[10.5px] text-text-tertiary">
-                only the group owner can verify
-              </span>
-            </div>
-            {waiting.length === 0 ? (
-              <p className="px-4 py-3 text-[12px] text-text-secondary">
-                Nothing waiting. New claims land here with their evidence for
-                the group owner to check and lock.
+        )}
+        {recentVerified.length > 0 && (
+          <div className="border-t border-border-light px-4 py-2.5">
+            {recentVerified.map((a) => (
+              <p
+                key={a.id}
+                className="flex items-center gap-1.5 py-0.5 text-[11px] text-text-secondary"
+              >
+                <CheckCircle2
+                  size={12}
+                  strokeWidth={2.4}
+                  className="shrink-0 text-[#16A34A]"
+                />
+                <b>{a.person}</b> · {fmtAmount(goal.unit, a.amount)}
+                {a.customer ? ` · ${a.customer}` : ""}. Verified by{" "}
+                {a.verifiedBy}, locked
               </p>
-            ) : (
-              <div className="divide-y divide-border-light/70 px-4">
-                {waiting.map((a) => {
-                  const ci = componentOf(a);
-                  return (
-                    <div key={a.id} className="py-2.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
-                        <b className="text-[12.5px]">{a.person}</b>
-                        {ci >= 0 && (
-                          <span
-                            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                            style={{
-                              background: `${COMPONENT_COLORS[ci % 3]}1A`,
-                              color: COMPONENT_COLORS[ci % 3],
-                            }}
-                          >
-                            {COMPONENT_ICONS[ci % 3]}{" "}
-                            {components[ci].name.replace("Booked ", "")}
-                          </span>
-                        )}
-                        <b className="text-[12.5px] tnum">
-                          {fmtAmount(goal.unit, a.amount)}
-                        </b>
-                        <span className="text-[10.5px] text-text-tertiary tnum">
-                          {a.date}
-                        </span>
-                        {amHead && canVerify(a.person) && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (run) {
-                                await run(
-                                  { op: "verify-actual", actualId: a.id },
-                                  "Verified and locked. It counts now"
-                                );
-                                return;
-                              }
-                              const res = await fetch("/api/performance", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  op: "verify-actual",
-                                  actualId: a.id,
-                                }),
-                              });
-                              if (res.ok) router.refresh();
-                              else {
-                                const data = await res.json().catch(() => ({}));
-                                alert(data.error ?? "Could not verify");
-                              }
-                            }}
-                            className="ml-auto cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[11.5px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-                          >
-                            Verify ✓
-                          </button>
-                        )}
-                      </div>
-                      {a.customer && (
-                        <p className="mt-1 pl-8 text-[11px] text-text-secondary">
-                          {a.customer}
-                        </p>
-                      )}
-                      {a.evidence?.length ? (
-                        <div className="mt-1 flex flex-wrap gap-1.5 pl-8">
-                          {a.evidence.map((e) => (
-                            <a
-                              key={e.url}
-                              href={e.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary hover:bg-[rgba(0,113,227,0.14)]"
-                            >
-                              <Paperclip size={10} strokeWidth={2.4} /> {e.name}
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 pl-8 text-[10.5px] text-[color:#B45309]">
-                          No evidence attached.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {recentVerified.length > 0 && (
-              <div className="border-t border-border-light px-4 py-2.5">
-                {recentVerified.map((a) => (
-                  <p
-                    key={a.id}
-                    className="flex items-center gap-1.5 py-0.5 text-[11px] text-text-secondary"
-                  >
-                    <CheckCircle2
-                      size={12}
-                      strokeWidth={2.4}
-                      className="shrink-0 text-[#16A34A]"
-                    />
-                    <b>{a.person}</b> · {fmtAmount(goal.unit, a.amount)}
-                    {a.customer ? ` · ${a.customer}` : ""}. Verified by{" "}
-                    {a.verifiedBy}, locked
-                  </p>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <b className="text-[14px] text-text-primary">Groups on this goal</b>
-              <span className="ml-auto text-[10.5px] text-text-tertiary">
-                verified, {fiscalLabel(fy)}
-              </span>
-            </div>
-            {groupRows.length === 0 ? (
-              <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                No groups yet. Once groups exist, every group&apos;s total on this
-                goal lines up here, best first, and their owners become the
-                people who verify.
-              </p>
-            ) : (
-              <div className="mt-3 space-y-2.5">
-                {groupRows.map((r, i) => (
-                  <div key={r.group.id} className="flex items-center gap-2.5">
-                    <span className="w-[180px] text-[12px] font-semibold leading-tight">
-                      {r.group.name}
-                    </span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(r.verified / maxGroup) * 100}%`,
-                          background: COMPONENT_COLORS[i % 3],
-                        }}
-                      />
-                    </div>
-                    <b className="w-[86px] text-right text-[11.5px] tnum">
-                      {fmtAmount(goal.unit, r.verified)}
-                    </b>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
+            ))}
+          </div>
+        )}
+      </Card>
       </div>
     </div>
   );
