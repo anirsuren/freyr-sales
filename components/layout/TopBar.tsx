@@ -113,17 +113,14 @@ export function TopBar({
         body: JSON.stringify({ mode }),
       });
       if (r.ok) {
-        // A RECORD ONLY EXISTS IN ONE MODE. Reloading the same URL is right for
-        // a list or a dashboard — you want to see the other mode's version of
-        // the screen you are on — but a detail page is keyed by an id that the
-        // other store has never heard of: a real customer is a UUID, a sample
-        // one is "cust-001". Reloading there rendered the not-found page, so
-        // flipping the switch looked like the app breaking (Anir, Aug 9: "it
-        // kept saying that there was some error and that the page doesn't
-        // exist"). Land on the module's list instead, which exists in both.
-        const segments = window.location.pathname.split("/").filter(Boolean);
-        window.location.href =
-          segments.length > 1 ? `/${segments[0]}` : window.location.pathname;
+        // STAY ON THE SAME PAGE (Anir, Aug 13: "whatever page I'm on, it has
+        // to show me the same page"). The old behavior bounced every detail
+        // page to its module list because cross-mode ids 404 — but that made
+        // the switch itself feel like a teleport. Reload in place instead;
+        // when the record genuinely does not exist in the other mode, the
+        // branded not-found page with its way back is the accepted outcome
+        // ("when the page just doesn't exist, that's fine").
+        window.location.reload();
         return;
       }
     } catch {}
