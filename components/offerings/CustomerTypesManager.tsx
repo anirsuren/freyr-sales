@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, Stethoscope, ShoppingBag, type LucideIcon } from "lucide-react";
+// The five family icons that used to be listed here came with the local
+// FAMILY_META copy; they now travel with CUSTOMER_FAMILY_META instead.
+import { Plus, ArrowRight, X, Pencil, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -17,6 +19,7 @@ import type {
   CustomerSize,
 } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
+import { CUSTOMER_FAMILY_META } from "@/lib/customerFamilies";
 import { flagForGeography } from "@/lib/countryFlags";
 
 const FIELD =
@@ -32,15 +35,14 @@ const FAMILIES: CustomerFamily[] = [
 ];
 const SIZES: CustomerSize[] = ["Small", "Mid size", "Large"];
 
-// Colour + icon per family and size (chip rule: never a plain chip). Family
-// colours match familyColor() on the offerings page.
-const FAMILY_META: Record<CustomerFamily, { color: string; icon: LucideIcon }> = {
-  Pharmaceutical: { color: "#0071E3", icon: Pill },
-  Biologics: { color: "#DB2777", icon: Dna },
-  "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
-  "Medical Devices": { color: "#0F766E", icon: Stethoscope },
-  "Consumer Products": { color: "#C2410C", icon: ShoppingBag },
-};
+// Colour + icon per family and size (chip rule: never a plain chip).
+//
+// The family half is NOT redeclared here any more. This file used to hold its
+// own copy under a comment promising it "matches familyColor() on the
+// offerings page", and that promise is exactly what broke: the shared table
+// moved Consumer Products off rust and these three separate copies did not
+// (Anir, Aug 14). One import cannot drift.
+const FAMILY_META = CUSTOMER_FAMILY_META;
 const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
   Small: { color: "#0891B2", icon: Store },
   "Mid size": { color: "#0891B2", icon: Building },
@@ -53,12 +55,17 @@ export function CustomerTypesManager({
   typeCounts = {},
   marketCounts = {},
   canEdit = true,
+  canManageLists = false,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
   typeCounts?: Record<string, number>;
   marketCounts?: Record<string, number>;
   canEdit?: boolean;
+  /** EDITING an existing definition, as opposed to adding a new one. Admin
+   *  only (Saras, Aug 14, change log #37) — a narrower gate than `canEdit`,
+   *  which is admin + manager and stays exactly as it was. */
+  canManageLists?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -76,6 +83,78 @@ export function CustomerTypesManager({
   // Markets in use by offerings get a confirm step before removal — deleting one
   // cascades, unmapping it from every offering.
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  // EDITING AN EXISTING DEFINITION (change log #37). Separate state from the
+  // add form on purpose: opening the editor must never inherit half-typed text
+  // from an abandoned add, and cancelling an edit must leave the add form
+  // alone.
+  const [editingType, setEditingType] = useState<CustomerType | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    product_type: "",
+    revenue: "",
+    employees: "",
+    operational_focus: "",
+  });
+  const [editingMarket, setEditingMarket] = useState<Market | null>(null);
+  const [marketDraft, setMarketDraft] = useState("");
+
+  function openTypeEditor(t: CustomerType) {
+    setEditingType(t);
+    setEditDraft({
+      product_type: t.product_type || "",
+      revenue: t.revenue || "",
+      employees: t.employees || "",
+      operational_focus: t.operational_focus || "",
+    });
+  }
+
+  async function saveType() {
+    if (!editingType) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/customer-types/${editingType.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editDraft),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`Saved ${data.customerType.name}.`);
+        setEditingType(null);
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't save the customer type.", "error");
+      }
+    } catch {
+      toast("Couldn't save the customer type.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveMarketName() {
+    if (!editingMarket || !marketDraft.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/markets/${editingMarket.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: marketDraft }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`Renamed to ${data.market.name}.`);
+        setEditingMarket(null);
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't rename the market.", "error");
+      }
+    } catch {
+      toast("Couldn't rename the market.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function addType() {
     setBusy(true);
@@ -287,6 +366,124 @@ export function CustomerTypesManager({
         </div>
       </Modal>
 
+      {/* EDIT AN EXISTING DEFINITION (change log #37). Family and size are
+          shown but not editable here: together they ARE the identity of a
+          customer type and the display name is derived from them, so changing
+          one would silently turn this row into a different row. Renaming a
+          family is a different job from correcting its description, and only
+          the second one was asked for. */}
+      <Modal
+        open={!!editingType}
+        onClose={() => setEditingType(null)}
+        title={editingType ? `Edit ${editingType.name}` : "Edit customer type"}
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <label className={LABEL}>Product type</label>
+            <input
+              className={FIELD}
+              value={editDraft.product_type}
+              onChange={(e) =>
+                setEditDraft((d) => ({ ...d, product_type: e.target.value }))
+              }
+              placeholder="What kind of products they make"
+              autoFocus
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL}>Revenue</label>
+              <input
+                className={FIELD}
+                value={editDraft.revenue}
+                onChange={(e) =>
+                  setEditDraft((d) => ({ ...d, revenue: e.target.value }))
+                }
+                placeholder="e.g. Under $500M"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Employees</label>
+              <input
+                className={FIELD}
+                value={editDraft.employees}
+                onChange={(e) =>
+                  setEditDraft((d) => ({ ...d, employees: e.target.value }))
+                }
+                placeholder="e.g. < 500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className={LABEL}>Operational focus</label>
+            <input
+              className={FIELD}
+              value={editDraft.operational_focus}
+              onChange={(e) =>
+                setEditDraft((d) => ({
+                  ...d,
+                  operational_focus: e.target.value,
+                }))
+              }
+              placeholder="Their operational profile"
+            />
+          </div>
+          <Button onClick={saveType} loading={busy}>
+            Save changes
+          </Button>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setEditingType(null)}
+              className="rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Renaming a market is only ever a label change: offerings point at
+          markets by id, so nothing has to be remapped and no offering can be
+          orphaned (change log #37). */}
+      <Modal
+        open={!!editingMarket}
+        onClose={() => setEditingMarket(null)}
+        title={editingMarket ? `Rename ${editingMarket.name}` : "Rename market"}
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <label className={LABEL}>Market</label>
+            <div className="relative">
+              <input
+                className={`${FIELD} pl-9`}
+                value={marketDraft}
+                onChange={(e) => setMarketDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveMarketName()}
+                placeholder="e.g. Canada"
+                autoFocus
+              />
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px]">
+                {flagForGeography(marketDraft) || <Globe2 size={14} strokeWidth={2} />}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[12px] text-text-tertiary">
+              Every offering already filed under this market keeps its mapping.
+            </p>
+          </div>
+          <Button onClick={saveMarketName} loading={busy}>
+            Save name
+          </Button>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setEditingMarket(null)}
+              className="rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Definitions, grouped by family */}
       {groups.map(({ fam, types }) => {
         const fm = FAMILY_META[fam];
@@ -321,10 +518,14 @@ export function CustomerTypesManager({
               // pill reads in the row's own colour, never gray.
               const accent = listAccent(ti);
               return (
+                /* The row still opens the offerings for this type. The pencil
+                   sits OUTSIDE the link rather than inside it, because a
+                   button nested in an anchor is not a thing a browser can
+                   dispatch cleanly (change log #37). */
+                <div key={t.id} className="relative">
                 <Link
-                  key={t.id}
                   href={`/offerings?type=${t.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-center hover:bg-surface transition-colors group"
+                  className={`grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-center hover:bg-surface transition-colors group ${canManageLists ? "pr-12" : ""}`}
                 >
                   {(() => {
                     const sm = SIZE_META[t.size as CustomerSize] ?? SIZE_META.Large;
@@ -355,6 +556,18 @@ export function CustomerTypesManager({
                     {count} offering{count === 1 ? "" : "s"}
                   </span>
                 </Link>
+                {canManageLists && (
+                  <button
+                    type="button"
+                    onClick={() => openTypeEditor(t)}
+                    aria-label={`Edit ${t.name}`}
+                    title="Edit this definition"
+                    className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <Pencil size={14} strokeWidth={2} />
+                  </button>
+                )}
+                </div>
               );
             })}
           </div>
@@ -443,6 +656,21 @@ export function CustomerTypesManager({
                     {count}
                   </span>
                 </Link>
+                {canManageLists && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingMarket(m);
+                      setMarketDraft(m.name);
+                    }}
+                    disabled={busy}
+                    aria-label={`Rename ${m.name}`}
+                    title="Rename this market"
+                    className="px-1 py-1 text-text-tertiary hover:text-blue-primary disabled:opacity-50"
+                  >
+                    <Pencil size={12} strokeWidth={2.2} />
+                  </button>
+                )}
                 {canEdit && (
                   <button
                     type="button"

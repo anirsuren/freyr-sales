@@ -7,6 +7,8 @@ import { getDataMode } from "./dataMode";
 import { createClient } from "@supabase/supabase-js";
 import {
   canonicalMaterialFolder,
+  isFixedMaterialFolder,
+  sanitizeMaterialFolderPath,
   type OfferingMaterial,
 } from "./offeringMaterials";
 import {
@@ -2484,6 +2486,31 @@ export function createMarket(name: string): Market {
   return record;
 }
 
+/**
+ * RENAME A MARKET IN PLACE (Saras, Aug 14, change log #37: the master lists
+ * "currently not editable at any user level").
+ *
+ * Safe by construction: offerings reference markets through `market_ids`, so
+ * the name is only ever a label. Nothing else has to be rewritten, and no
+ * offering can be orphaned by a rename.
+ *
+ * Returns null when the id is unknown, and refuses a name already taken by a
+ * DIFFERENT market so the list cannot end up with two identical entries that
+ * createMarket's dedupe would never have allowed in the first place.
+ */
+export function updateMarket(id: string, name: string): Market | null {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const i = activeStore().markets.findIndex((m) => m.id === id);
+  if (i === -1) return null;
+  const clash = activeStore().markets.some(
+    (m) => m.id !== id && m.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (clash) return null;
+  activeStore().markets[i] = { ...activeStore().markets[i], name: trimmed };
+  return activeStore().markets[i];
+}
+
 export function deleteMarket(id: string): boolean {
   const before = activeStore().markets.length;
   activeStore().markets = activeStore().markets.filter((m) => m.id !== id);
@@ -2852,6 +2879,87 @@ export function createOffering(data: Partial<Offering>): Offering {
   activeStore().offerings.unshift(record);
   return record;
 }
+/**
+ * RENAME A SALES-MATERIAL FOLDER, AND EVERYTHING FILED UNDER IT.
+ *
+ * Folders here are a PATH STRING on each material, not a record with an id
+ * (see lib/offeringMaterials), so a rename is a rewrite of every stored path
+ * that starts with the old one. Renaming "Roadmap" has to carry
+ * "Roadmap/Technical" with it, or the children are orphaned into folders whose
+ * parent no longer exists.
+ *
+ * THE 12 APPROVED FOLDERS ARE NOT RENAMEABLE HERE, and that is deliberate.
+ * They come from Freyr Change Request Log item 20 and the picker offers them
+ * from a fixed list, so renaming one would leave the old name still on offer
+ * beside the new one, and `canonicalMaterialFolder` would keep presenting
+ * stored rows under the approved name. That mismatch is exactly the
+ * "who renamed Eswar's subfolders" confusion of Aug 12. Owner-created folders
+ * have no such contract and rename cleanly.
+ *
+ * Returns the number of materials moved, or null when the rename is refused.
+ */
+export function renameMaterialFolder(
+  offeringId: string,
+  from: string,
+  to: string
+): { moved: number } | null {
+  const offering = activeStore().offerings.find((o) => o.id === offeringId);
+  if (!offering) return null;
+  // Aliased as plain strings before the guard below. `isFixedMaterialFolder`
+  // is declared `(value: unknown): value is string`, so its FALSE branch
+  // narrows an already-string variable to `never` and every later use of it
+  // stops compiling.
+  const source: string = sanitizeMaterialFolderPath(from);
+  const target: string = sanitizeMaterialFolderPath(to);
+  if (!source || !target || source === target) return null;
+  // The approved tree is fixed at both ends: you may not rename one of the
+  // system folders, and you may not rename a folder INTO a system name and
+  // thereby merge owner files into the approved tree by the back door.
+  if (isFixedMaterialFolder(sanitizeMaterialFolderPath(from))) return null;
+  if (isFixedMaterialFolder(sanitizeMaterialFolderPath(to))) return null;
+
+  const rewrite = (path: string) => `${target}${path.slice(source.length)}`;
+
+  // A rename that would land on a folder that already exists would silently
+  // merge two folders. Refuse: merging is a different operation and nobody
+  // asked for it.
+  const existingPaths = new Set<string>([
+    ...(offering.materialFolders || []).map((f) => sanitizeMaterialFolderPath(f)),
+    ...offering.materials.map((m) => sanitizeMaterialFolderPath(m.folder || "")),
+  ]);
+  existingPaths.delete("");
+  if (
+    [...existingPaths].some(
+      (path) => !isFolderUnder(path, source) && isFolderUnder(path, target)
+    )
+  )
+    return null;
+
+  let moved = 0;
+  offering.materials = offering.materials.map((material) => {
+    const current = sanitizeMaterialFolderPath(material.folder || "");
+    if (!current || !isFolderUnder(current, source)) return material;
+    moved += 1;
+    return { ...material, folder: rewrite(current) };
+  });
+  offering.materialFolders = Array.from(
+    new Set(
+      (offering.materialFolders || []).map((folder) => {
+        const current = sanitizeMaterialFolderPath(folder);
+        return current && isFolderUnder(current, source)
+          ? rewrite(current)
+          : folder;
+      })
+    )
+  );
+  return { moved };
+}
+
+/** Is `path` the folder `root` itself, or nested inside it? */
+function isFolderUnder(path: string, root: string): boolean {
+  return path === root || path.startsWith(`${root}/`);
+}
+
 export function updateOffering(
   id: string,
   data: Partial<Offering>

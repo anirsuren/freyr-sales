@@ -19,10 +19,15 @@ import type { Offering } from "@/lib/offerings";
 export function OfferingMaterialsTab({
   offering: o,
   admin,
+  workspaceAdmin = false,
   preferenceOwnerId,
 }: {
   offering: Offering;
+  /** May edit THIS offering: its owners, plus admins. */
   admin: boolean;
+  /** A workspace admin, which is narrower. Renaming a folder is theirs alone
+   *  (Saras, Aug 14, change log #38). */
+  workspaceAdmin?: boolean;
   preferenceOwnerId?: string | null;
 }) {
   return (
@@ -48,6 +53,7 @@ export function OfferingMaterialsTab({
         offeringId={o.id}
         offeringName={o.offering_name}
         canEdit={admin}
+        canRenameFolders={workspaceAdmin}
         materialFolders={o.materialFolders ?? []}
         ownerNames={(o.owners ?? [])
           .filter((owner) => owner.status === "owner")

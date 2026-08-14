@@ -22,11 +22,13 @@ import {
   Route,
   ShieldCheck,
   GripVertical,
+  Pencil,
   type LucideIcon,
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
@@ -48,6 +50,7 @@ import {
   allFolders,
   childFolders,
   countUnder,
+  isFixedMaterialFolder,
   isSalesVisible,
   materialsInFolder,
   materialFolderLabel,
@@ -205,6 +208,7 @@ export function MaterialsSection({
   offeringId,
   offeringName,
   canEdit = false,
+  canRenameFolders = false,
   materialFolders = [],
   preferenceOwnerId,
   ownerNames = [],
@@ -222,6 +226,11 @@ export function MaterialsSection({
   /** Owners add and remove. Seller-visible files are downloadable by the
    *  workspace; agent-only files reach this component only for an owner. */
   canEdit?: boolean;
+  /** Renaming a folder is admin-only (Saras, Aug 14, change log #38), a
+   *  narrower gate than `canEdit`, which is the offering's owners. Freyr's 12
+   *  standard folders stay fixed for everyone; only folders an owner created
+   *  can be renamed. */
+  canRenameFolders?: boolean;
   /** Keeps a shared browser from leaking one signed-in user's view preference
    *  into another user's session. */
   preferenceOwnerId?: string | null;
@@ -322,6 +331,60 @@ export function MaterialsSection({
     } finally {
       setRemoving(null);
       setPendingRemoval(null);
+    }
+  }
+
+  /**
+   * RENAMING A FOLDER (change log #38). Its own endpoint, not the generic
+   * offering PATCH the drag-to-move above uses: moving one file is a change to
+   * that file, while renaming a folder rewrites every path nested under it, and
+   * that has to happen in one server-side write or a half-renamed tree is
+   * possible.
+   */
+  const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
+
+  async function submitFolderRename() {
+    if (!renamingFolder || !offeringId || !renameDraft.trim()) return;
+    // The editor shows only the last segment, so a nested folder keeps its
+    // parent: renaming "Roadmap/Technical" to "Engineering" must send
+    // "Roadmap/Engineering", never a new top-level folder.
+    const parts = renamingFolder.split("/");
+    parts[parts.length - 1] = renameDraft.trim();
+    const target = parts.join("/");
+    if (target === renamingFolder) {
+      setRenamingFolder(null);
+      return;
+    }
+    setRenameBusy(true);
+    try {
+      const response = await fetch(
+        `/api/offerings/${offeringId}/materials/folder`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from: renamingFolder, to: target }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Could not rename that folder.");
+      }
+      toast(
+        data.moved > 0
+          ? `Renamed to "${renameDraft.trim()}". ${data.moved} file${data.moved === 1 ? "" : "s"} moved with it.`
+          : `Renamed to "${renameDraft.trim()}".`
+      );
+      setRenamingFolder(null);
+      router.refresh();
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : "Could not rename that folder.",
+        "error"
+      );
+    } finally {
+      setRenameBusy(false);
     }
   }
 
@@ -930,6 +993,10 @@ export function MaterialsSection({
             const name = materialFolderLabel(path).split(" · ").pop() as string;
             const count = countUnder(mine, path);
             const nested = childFolders(folders, path).length;
+            // Only folders someone here created. Freyr's 12 standard folders
+            // are fixed for every offering, so offering a pencil on them would
+            // promise something the server refuses (change log #38).
+            const renameable = canRenameFolders && !isFixedMaterialFolder(path);
             return (
               /* HOVER TO LOOK INSIDE. The card still opens the folder on click;
                  the peek is for the twelve-folder scan where clicking into each
@@ -946,6 +1013,7 @@ export function MaterialsSection({
                     : window.open(material.url, "_blank", "noopener,noreferrer")
                 }
               >
+              <span className="relative block h-full">
               <button
                 type="button"
                 onClick={() => goToFolder(path)}
@@ -1001,6 +1069,22 @@ export function MaterialsSection({
                   className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
                 />
               </button>
+              {renameable && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setRenamingFolder(path);
+                    setRenameDraft(name);
+                  }}
+                  aria-label={`Rename ${name}`}
+                  title="Rename this folder"
+                  className="absolute right-9 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-0 transition-all hover:bg-blue-light hover:text-blue-primary focus-visible:opacity-100 group-hover:opacity-100"
+                >
+                  <Pencil size={13} strokeWidth={2} />
+                </button>
+              )}
+              </span>
               </FolderPeek>
             );
           })}
@@ -1628,6 +1712,64 @@ export function MaterialsSection({
         }
         confirmLabel="Remove material"
       />
+
+      {/* RENAME A FOLDER (change log #38). Only the last segment is editable:
+          a nested folder keeps its parent, so this can never turn a subfolder
+          into a new top-level one by accident. */}
+      <Modal
+        open={Boolean(renamingFolder)}
+        onClose={() => setRenamingFolder(null)}
+        title="Rename this folder"
+      >
+        <div className="space-y-4 p-1">
+          {renamingFolder && renamingFolder.includes("/") && (
+            <p className="text-[12.5px] text-text-secondary">
+              Inside{" "}
+              <span className="font-semibold text-text-primary">
+                {materialFolderLabel(
+                  renamingFolder.split("/").slice(0, -1).join("/")
+                )}
+              </span>
+            </p>
+          )}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              Folder name
+            </label>
+            <input
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:shadow-input-focus focus:outline-none"
+              value={renameDraft}
+              onChange={(event) => setRenameDraft(event.target.value)}
+              onKeyDown={(event) =>
+                event.key === "Enter" && void submitFolderRename()
+              }
+              placeholder="e.g. Regional Case Studies"
+              autoFocus
+            />
+            <p className="mt-1.5 text-[12px] text-text-tertiary">
+              Everything inside it, including any folders within it, keeps its
+              place.
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setRenamingFolder(null)}
+              className="rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submitFolderRename()}
+              disabled={renameBusy || !renameDraft.trim()}
+              className="rounded-md bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-primary/90 disabled:opacity-60"
+            >
+              {renameBusy ? "Saving…" : "Save name"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -29,7 +29,7 @@ import {
   listAssignablePeople,
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
-import { canManageOfferings } from "@/lib/role";
+import { canManageOfferings, isAdmin } from "@/lib/role";
 import {
   customerFamiliesPresent,
   customerFamilyColor,
@@ -541,6 +541,11 @@ export default async function OfferingDetailPage({
           <OfferingMaterialsTab
             offering={o}
             admin={admin}
+            /* Renaming a folder is admin-only (change log #38), narrower than
+               `admin` above, which is "may edit this offering" and includes
+               its owners. Passing canManageOfferings() here would show the
+               pencil to managers and then 403 them at the API. */
+            workspaceAdmin={await isAdmin()}
             preferenceOwnerId={me.memberId || me.id}
           />
         ) : tab === "customers" ? (
