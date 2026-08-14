@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  Captions,
   Check,
   FileQuestion,
   Folder,
@@ -88,6 +89,34 @@ const ACCESS_OPTIONS: ColorOption[] = [
 // only thing the upload still has to state is what kind of file it is. Four
 // equal tiles across one row: symmetric, and the whole choice is one glance.
 const FORMATS = MATERIAL_FORMATS;
+
+/**
+ * WHAT ACTUALLY HAPPENS TO A VIDEO (Saras, Aug 14, change log #39: offering
+ * owners "are unaware that the AI Agent cannot access any videos that they
+ * upload").
+ *
+ * Freyr AI answers from the TEXT of uploaded files — see isReadableFile() in
+ * lib/fileText, which reads Office documents, PDFs, archives and plain text.
+ * A video file has no text to read, so an uploaded recording reaches the
+ * assistant as a title and nothing more. Nobody was told that, so owners
+ * uploaded demo recordings believing the assistant could answer from them.
+ *
+ * A recommendation, never a block: the video is still worth uploading on its
+ * own merits, and a rep opens it directly. Saras asked for exactly one
+ * sentence, and this is deliberately not a warning colour — nothing is wrong.
+ */
+function VideoTranscriptHint({ format }: { format: string }) {
+  if (format !== "video") return null;
+  return (
+    <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-blue-light/60 px-2 py-1.5 text-[11px] leading-snug text-blue-primary">
+      <Captions size={12} strokeWidth={2.2} className="mt-[1px] shrink-0" />
+      <span>
+        Freyr AI cannot watch video. Upload the transcript alongside it and the
+        assistant can answer from what was said.
+      </span>
+    </p>
+  );
+}
 
 // What each extension USUALLY is — for a gentle heads-up when the picked
 // format disagrees (Anir, Aug 12: "if they choose video and it's a docx...
@@ -955,6 +984,7 @@ export function AddMaterialButton({
                 );
               })}
             </div>
+            <VideoTranscriptHint format={kind} />
           </div>
 
           {/* Shared defaults are applied to every selected file and remain
@@ -1308,6 +1338,9 @@ export function AddMaterialButton({
                               </p>
                             );
                           })()}
+                          <VideoTranscriptHint
+                            format={fileOverrides[key]?.kind || kind}
+                          />
                         </div>
                         <div>
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">

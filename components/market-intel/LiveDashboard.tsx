@@ -143,12 +143,6 @@ export function LiveMarketIntelDashboard({
           subtitle="Scroll the strip or search. Any chip opens that company's briefing."
         />
       </div>
-
-      <p className="mt-4 text-[11px] text-text-tertiary">
-        Live data from public LinkedIn pages and Google News. Signals are
-        detected automatically and always link to their source. The feed
-        refreshes itself twice a day, shared by everyone.
-      </p>
         </>
       </MiTabs>
     </div>

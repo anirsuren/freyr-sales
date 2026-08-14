@@ -1317,6 +1317,24 @@ export function MaterialViewer({
                 )}
               </dd>
             </div>
+            {/* CAN THE ASSISTANT READ THIS ONE? (Saras, Aug 14, change log
+                #39.) Owners were uploading demo recordings believing Freyr AI
+                could answer from them. It answers from a file's TEXT, so a
+                video contributes its title and nothing else. Stated here, on
+                the material itself, so it is answerable after the upload and
+                not only during it. */}
+            {materialFormat(material.kind) === "video" && (
+              <>
+                <span aria-hidden="true" className="h-4 w-px bg-border-light" />
+                <div className="flex items-center gap-1.5">
+                  <dt className="font-medium text-text-tertiary">Freyr AI</dt>
+                  <dd className="font-semibold text-text-primary">
+                    Cannot watch video. Upload the transcript so the assistant
+                    can use it.
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
         </header>
         <div className="min-h-0 flex-1 p-3">{viewerBody}</div>

@@ -56,19 +56,20 @@ import { stripBriefFormatting } from "@/components/offerings/BriefText";
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
 import { FILTER_PALETTE, listAccent } from "./filterPalette";
+import { customerFamilyColor } from "@/lib/customerFamilies";
+// ONE PALETTE FOR CUSTOMER FAMILIES, AND IT LIVES IN lib/customerFamilies.
+//
+// This file used to carry its own copy, matched by substring. It drifted the
+// moment the shared table changed: Consumer Products moved off rust and this
+// copy did not, so the same family was rust on the offerings list and cyan
+// everywhere else (Anir, Aug 14, with screenshots). The old copy also fell
+// back to slate #475569, a gray, which the chip rule forbids outright.
+//
 // A customer family is an IDENTITY, so it never borrows a status colour: red
-// means a problem, green means healthy, #C2410C means caution (Anir, Jul 28:
+// means a problem, green means healthy, amber means caution (Anir, Jul 28:
 // "red means horrible, red means negative... red, green and yellow are
-// reserved"). Biologics used to be rose #E11D48 and read as an error chip.
-const familyColor = (fam: string): string => {
-  const f = (fam || "").toLowerCase();
-  if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED"; // violet
-  if (f.includes("biologic")) return "#DB2777"; // pink
-  if (f.includes("pharma")) return "#0071E3"; // blue
-  if (f.includes("medical device")) return "#0F766E";
-  if (f.includes("consumer")) return "#C2410C";
-  return "#475569"; // slate
-};
+// reserved"). That reasoning now lives beside the palette itself.
+const familyColor = customerFamilyColor;
 
 function offeringTypeFilterIcon(name: string): LucideIcon {
   const normalized = name.toLowerCase();
@@ -143,18 +144,20 @@ function goToMarketStatus(offering: HydratedOffering): GoToMarketStatus {
   return "coming";
 }
 
-// "Pharmaceutical · Biologics · Bio Pharmaceutical" for an offering that covers
-// every customer type is just noise — when it applies to all of them, say so
-// plainly so a rep reads "this is for everyone" at a glance (Suren's cleaner-
-// cards ask).
-function whoForLabel(
-  famList: string[],
-  coveredCount: number,
-  totalCount: number
-): string {
-  if (totalCount > 0 && coveredCount === totalCount) return "All customer types";
-  return famList.join(" · ");
-}
+// ALWAYS NAME THE CUSTOMER TYPES, even when an offering covers all of them.
+//
+// Both views used to collapse full coverage into "All customer types" to keep
+// things clean. In front of real users that backfired: Freya.Register listed
+// five families on its row while Freya.Intelligence, which happens to cover
+// every one, said "All customer types" — so the two looked like they were
+// describing different KINDS of thing rather than the same field (Saras and
+// Ritika, Aug 14: "confused some end users"). Reading the same five names on
+// every row costs a little width and removes the question entirely.
+//
+// Both views now render the families themselves, each in its own colour from
+// familyColor above, so the card and the table agree. The Customer Type FILTER
+// keeps its own "All customer types" option: there the phrase means "do not
+// filter", which is a different statement.
 
 // Sort options: also valid ?sort= deep-link values, kept in sync with the
 // rest of the filter bar so a sorted view can be shared/bookmarked.
@@ -745,17 +748,32 @@ export function OfferingsBrowser({
               <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
                 For
               </dt>
-              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug text-[#0F766E]">
+              {/* EACH FAMILY IN ITS OWN COLOUR, the same colour the table view
+                  gives it. This line used to paint all five names one flat
+                  teal, which happened to be Medical Devices' colour, so the
+                  card and the table disagreed about what colour a family is
+                  (Anir, Aug 14, with both views side by side). The separators
+                  stay neutral so the names themselves carry the coding. */}
+              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug">
                 <Users
                   size={11}
                   strokeWidth={2.4}
                   aria-hidden="true"
-                  className="translate-y-[1px] shrink-0 text-[#0F766E]"
+                  className="translate-y-[1px] shrink-0 text-text-tertiary"
                 />
                 <span className="min-w-0 break-words">
-                  {hasCt
-                    ? whoForLabel(families, o.customerTypes.length, customerTypes.length)
-                    : "Not set"}
+                  {hasCt ? (
+                    families.map((f, index) => (
+                      <span key={f}>
+                        {index > 0 && (
+                          <span className="text-text-tertiary"> · </span>
+                        )}
+                        <span style={{ color: familyColor(f) }}>{f}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-text-tertiary">Not set</span>
+                  )}
                 </span>
               </dd>
 
@@ -1604,29 +1622,20 @@ export function OfferingsBrowser({
                       </td>
                       <td className="px-4 py-3">
                         {famList.length ? (
-                          o.customerTypes.length === customerTypes.length ? (
-                            <span
-                              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                              style={{ color: "#0F6E56", background: "#0F6E5614" }}
-                            >
-                              All customer types
-                            </span>
-                          ) : (
-                            <span className="flex flex-wrap gap-1">
-                              {famList.map((f) => (
-                                <span
-                                  key={f}
-                                  className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                                  style={{
-                                    color: familyColor(f),
-                                    background: `${familyColor(f)}14`,
-                                  }}
-                                >
-                                  {f}
-                                </span>
-                              ))}
-                            </span>
-                          )
+                          <span className="flex flex-wrap gap-1">
+                            {famList.map((f) => (
+                              <span
+                                key={f}
+                                className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                                style={{
+                                  color: familyColor(f),
+                                  background: `${familyColor(f)}14`,
+                                }}
+                              >
+                                {f}
+                              </span>
+                            ))}
+                          </span>
                         ) : (
                           <span className="text-text-secondary">-</span>
                         )}

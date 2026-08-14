@@ -47,7 +47,11 @@ export const CUSTOMER_FAMILY_META: Record<
   Biologics: { color: "#DB2777", icon: Dna },
   "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
   "Medical Devices": { color: "#0F766E", icon: Stethoscope },
-  "Consumer Products": { color: "#C2410C", icon: ShoppingBag },
+  // Was #C2410C, a rust orange. A customer type is an identity, and warm
+  // orange/amber is reserved for status in this app (Anir, Aug 14). Cyan is
+  // the one hue left that is neither a status colour nor a neighbour of the
+  // four above it.
+  "Consumer Products": { color: "#0891B2", icon: ShoppingBag },
 };
 
 /** The family's colour. Falls back to Pharmaceutical's blue rather than gray:

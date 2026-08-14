@@ -50,6 +50,7 @@ import type {
   OfferingRoadmapDetails,
   ServiceCardStyle,
 } from "@/lib/offerings";
+import { customerFamilyColor } from "@/lib/customerFamilies";
 import {
   RoadmapEditorFields,
   blankRoadmapDetails,
@@ -203,14 +204,9 @@ const YEAR_OPTIONS: ColorOption[] = [
   })
 );
 
-// Family accents match the offering detail page exactly (violet / rose / blue).
-const FAMILY_COLOR: Record<string, string> = {
-  Pharmaceutical: "#0071E3",
-  Biologics: "#DB2777",
-  "Bio Pharmaceutical": "#7C3AED",
-  "Medical Devices": "#0F766E",
-  "Consumer Products": "#C2410C",
-};
+// Family accents come from the one shared table, not a copy. The copy that
+// used to live here drifted the moment Consumer Products moved off rust
+// (Anir, Aug 14) — see lib/customerFamilies.
 
 // Markets carry a flag + their own colour here for the same reason they do on
 // the offering page: a chip is never plain gray.
@@ -1849,7 +1845,7 @@ export function OfferingForm({
         {ctGroups.map(({ fam, types }) => {
           const ids = types.map((t) => t.id);
           const allOn = ids.every((id) => ctIds.includes(id));
-          const famColor = FAMILY_COLOR[fam] || "#0071E3";
+          const famColor = customerFamilyColor(fam);
           return (
             <div
               key={fam}

@@ -827,12 +827,6 @@ export function LiveCompanyBriefing({
           )}
         </div>
       </div>
-
-      <p className="mt-5 text-[11px] text-text-tertiary">
-        Live data from public LinkedIn pages and Google News. Signals are
-        detected automatically from those items and link to their source. The
-        feed refreshes itself twice a day.
-      </p>
     </div>
   );
 }

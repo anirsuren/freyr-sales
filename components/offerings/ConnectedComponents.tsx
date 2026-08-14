@@ -221,19 +221,35 @@ export function ConnectedComponents({
                 <Fragment key={group.kind}>
                   {/* The band that says which kind you are looking at. A row
                       inside the table, not a second table, so every column
-                      stays in one grid and nothing has to line up twice. */}
-                  <tr className="bg-surface/60">
-                    <td colSpan={7} className="px-4 py-1.5">
+                      stays in one grid and nothing has to line up twice.
+
+                      IT IS A REAL TITLE BAR, not a caption. At 10.5px on a
+                      neutral tint it was smaller than the component names
+                      underneath it, so "Modules" and "Agents" read as noise
+                      above the list rather than as the thing dividing it
+                      (Saras, Aug 14, change log #36). Now it carries the
+                      kind's own tint and border and sits at heading size. */}
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="border-y px-4 py-2"
+                      style={{
+                        background: FDL_TYPE_META[group.kind].bg,
+                        borderColor: FDL_TYPE_META[group.kind].border,
+                      }}
+                    >
                       <span
-                        className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]"
+                        className="inline-flex items-center gap-2 text-[13px] font-bold tracking-[0.01em]"
                         style={{ color: FDL_TYPE_META[group.kind].color }}
                       >
                         {(() => {
                           const KindIcon = FDL_TYPE_META[group.kind].Icon;
-                          return <KindIcon size={11} strokeWidth={2.4} aria-hidden="true" />;
+                          return <KindIcon size={15} strokeWidth={2.4} aria-hidden="true" />;
                         })()}
                         {group.title}
-                        <span className="text-text-tertiary">({group.items.length})</span>
+                        <span className="tnum font-semibold opacity-70">
+                          ({group.items.length})
+                        </span>
                       </span>
                     </td>
                   </tr>
@@ -371,16 +387,24 @@ export function ConnectedComponents({
         <div className="mt-4 space-y-5">
           {groups.map((group) => (
           <div key={group.kind}>
+            {/* Same title bar as the table view, so a reader who switches
+                layouts sees the same divider both times (change log #36). */}
             <p
-              className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]"
-              style={{ color: FDL_TYPE_META[group.kind].color }}
+              className="mb-2.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold tracking-[0.01em]"
+              style={{
+                color: FDL_TYPE_META[group.kind].color,
+                background: FDL_TYPE_META[group.kind].bg,
+                borderColor: FDL_TYPE_META[group.kind].border,
+              }}
             >
               {(() => {
                 const KindIcon = FDL_TYPE_META[group.kind].Icon;
-                return <KindIcon size={11} strokeWidth={2.4} aria-hidden="true" />;
+                return <KindIcon size={15} strokeWidth={2.4} aria-hidden="true" />;
               })()}
               {group.title}
-              <span className="text-text-tertiary">({group.items.length})</span>
+              <span className="tnum font-semibold opacity-70">
+                ({group.items.length})
+              </span>
             </p>
             <div className="grid gap-3 md:grid-cols-2 stagger">
           {group.items.map((component) => {
