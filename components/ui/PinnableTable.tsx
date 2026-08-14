@@ -94,18 +94,28 @@ function usePinned(id: string): boolean {
  *  OUTER span: Tooltip wraps its child in a positioned span of its own, and an
  *  absolute button inside that anchors to the tooltip's tiny box, not the table.
  *
- *  LEAVE IT HERE. Two alternatives were tried on Aug 14 and both were worse:
- *  below the table it sat 3084px down the Team page, 2244px of scrolling away
- *  from the header it controls; in its own strip above the table it read as a
- *  stray floating button. Anir looked at all three and chose the corner.
+ *  THE CORNER IS THE FALLBACK NOW, NOT THE ANSWER. It clips the tail of the
+ *  longest last-column label ("TREND" reads as "TREN") and padding the last
+ *  <th> does not fix it: these tables are `w-full` with the last column already
+ *  squeezed to its own text, so a 44px gutter only makes the label overflow its
+ *  padding box. Measured, not assumed: the label ended at x=1464 with the pin at
+ *  x=1445, before and after.
  *
- *  It does clip the tail of the longest last-column label. Padding the last
- *  <th> does not fix that, and I measured rather than assumed: these tables are
- *  `w-full` with the last column already squeezed to its own text, so a 44px
- *  gutter only makes the label overflow its padding box. The label ended at
- *  x=1464 with the pin at x=1445, before and after. The real fix is a taller
- *  header row so the pin clears the baseline, which is a design change nobody
- *  has asked for yet. */
+ *  Two placements I invented were both worse. Below the table it sat 3084px down
+ *  the Team page, 2244px from the header it controls. In its own strip above the
+ *  table it read as a stray floating button.
+ *
+ *  Anir's placement is the one that works, because it lands on a line that
+ *  already exists instead of inventing one: the "Showing N of N" count line,
+ *  right-aligned (Aug 14: "move the pin logo to the right, on the same line as
+ *  the 31 offerings... the pin is always going to cover that last column, so
+ *  it's never going to be visible"). Pages that have that line render
+ *  <PinTableButton compact/> there and pass showCornerPin={false}. Pages that
+ *  do not still get the corner, which is why this stays.
+ *
+ *  The floating header keeps its own pin either way. Once the page has scrolled
+ *  far enough for the strip to appear, the count line is long gone, and that pin
+ *  is the only way left to unpin. */
 function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
   const pinned = usePinned(id);
   return (
@@ -139,10 +149,14 @@ export function PinTableButton({
   id,
   className,
   label = "header",
+  compact,
 }: {
   id: string;
   className?: string;
   label?: string;
+  /** Sits on a text line rather than in a toolbar, so it matches the row's
+   *  height instead of setting it. Used by the "Showing N of N" lines. */
+  compact?: boolean;
 }) {
   const pinned = usePinned(id);
   return (
@@ -167,14 +181,15 @@ export function PinTableButton({
           }
           aria-pressed={pinned}
           className={cn(
-            "flex h-9 w-9 cursor-pointer items-center justify-center transition-colors",
+            "flex cursor-pointer items-center justify-center transition-colors",
+            compact ? "h-7 w-7" : "h-9 w-9",
             pinned
               ? "bg-blue-light text-blue-primary"
               : "text-text-secondary hover:bg-surface hover:text-text-primary"
           )}
         >
           <Pin
-            size={15}
+            size={compact ? 13 : 15}
             strokeWidth={1.9}
             className={pinned ? "rotate-45" : undefined}
           />
@@ -189,11 +204,15 @@ export function PinnableTable({
   children,
   className,
   wrapperClassName,
+  showCornerPin = true,
 }: {
   id: string;
   children: React.ReactNode;
   className?: string;
   wrapperClassName?: string;
+  /** Pass false when the page puts a <PinTableButton> on its count line, so
+   *  the corner pin stops sitting on top of the last column header. */
+  showCornerPin?: boolean;
 }) {
   const pinned = usePinned(id);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -324,7 +343,7 @@ export function PinnableTable({
 
   return (
     <div className={cn("relative", className)}>
-      <PinCorner id={id} />
+      {showCornerPin && <PinCorner id={id} />}
       <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
         {children}
       </div>

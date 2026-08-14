@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
-import { PinnableTable } from "@/components/ui/PinnableTable";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -704,14 +704,22 @@ export function CustomersBrowser({
       )}
 
       {filtered.length > 0 && (
-        <p className="text-[13px] text-text-secondary mb-4 tnum">
-          Showing{" "}
-          <span className="font-semibold text-text-primary">
-            {rangeStart}–{rangeEnd}
-          </span>{" "}
-          of <span className="font-semibold text-text-primary">{filtered.length}</span>{" "}
-          {filtered.length === 1 ? "account" : "accounts"}
-        </p>
+        /* The pin sits on the right of this line in table view, for the same
+           reason as Offerings: in the table's corner it permanently covered
+           the last column header (Anir, Aug 14). */
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-[13px] text-text-secondary tnum">
+            Showing{" "}
+            <span className="font-semibold text-text-primary">
+              {rangeStart}–{rangeEnd}
+            </span>{" "}
+            of <span className="font-semibold text-text-primary">{filtered.length}</span>{" "}
+            {filtered.length === 1 ? "account" : "accounts"}
+          </p>
+          {view === "table" && (
+            <PinTableButton id="customers-table" label="column headers" compact />
+          )}
+        </div>
       )}
 
       {filtered.length === 0 ? (
@@ -789,7 +797,7 @@ export function CustomersBrowser({
         </div>
       ) : (
         <div className="bg-white border border-border-light rounded-lg shadow-card overflow-hidden">
-          <PinnableTable id="customers-table">
+          <PinnableTable id="customers-table" showCornerPin={false}>
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">

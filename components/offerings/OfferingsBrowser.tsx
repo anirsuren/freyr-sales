@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { PinnableTable } from "@/components/ui/PinnableTable";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -1397,19 +1397,29 @@ export function OfferingsBrowser({
         /* Same size and rhythm as the Customers count line, which is the one
            he holds up as right. The -mt-1 pulled it against the toolbar and
            mb-3 left less air below than above, which is the "odd amount of
-           space below the search bar". */
-        <p className="mb-4 text-[13px] text-text-secondary">
-          Showing{" "}
-          <span className="font-semibold text-text-primary tnum">
-            {sorted.length}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold text-text-primary tnum">
-            {offerings.length}
-          </span>{" "}
-          offering{offerings.length === 1 ? "" : "s"}
-          {sorted.length !== offerings.length ? " · filters applied" : ""}
-        </p>
+           space below the search bar".
+
+           The pin rides on the right of this line in table view. In the corner
+           of the table it permanently covered the last column header, and this
+           line is already here, already the table's width, and already right
+           above the header it controls (Anir, Aug 14). */
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-[13px] text-text-secondary">
+            Showing{" "}
+            <span className="font-semibold text-text-primary tnum">
+              {sorted.length}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold text-text-primary tnum">
+              {offerings.length}
+            </span>{" "}
+            offering{offerings.length === 1 ? "" : "s"}
+            {sorted.length !== offerings.length ? " · filters applied" : ""}
+          </p>
+          {view === "grid" && (
+            <PinTableButton id="offerings-grid" label="column headers" compact />
+          )}
+        </div>
       )}
 
       {offerings.length === 0 ? (
@@ -1446,7 +1456,7 @@ export function OfferingsBrowser({
         // Excel so the whole catalog is scannable in rows. Keyed so switching
         // views re-mounts with the shared fade/lift.
         <Card key="grid-view" className="tab-panel p-0 overflow-hidden">
-          <PinnableTable id="offerings-grid">
+          <PinnableTable id="offerings-grid" showCornerPin={false}>
             {/* table-fixed + explicit widths. The min-width was 1280px, wider
                 than the card on a 1512 screen, so the table always scrolled and
                 the last column sat half off the edge (Anir, Jul 28: "it's not

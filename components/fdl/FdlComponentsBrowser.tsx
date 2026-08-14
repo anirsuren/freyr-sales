@@ -589,7 +589,7 @@ export function FdlComponentsBrowser({
                     <th className="w-[9%] px-4 py-2.5">Versions</th>
                     <th className="w-[9%] px-4 py-2.5">Features</th>
                     <th className="w-[17%] px-4 py-2.5">In offerings</th>
-                    <th className="w-[12%] px-4 py-2.5 text-right">Actions</th>
+                    <th className="w-[12%] px-4 py-2.5">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="stagger">
@@ -690,10 +690,17 @@ export function FdlComponentsBrowser({
                             the detail page already does; this just saves the
                             trip. */}
                         <td
-                          className="px-4 py-2.5 text-right"
+                          className="px-4 py-2.5"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          <span className="-mr-1.5 inline-flex items-center justify-end gap-1">
+                          {/* Left, like every other column here. Right-aligned
+                              it broke the rhythm the header comment above
+                              already argued for, and it parked the icons under
+                              the corner pin (Anir, Aug 14: "why is the action
+                              column not aligned? It should be on the left").
+                              The -ml-1.5 pulls the first icon's padding back so
+                              it optically lines up with the header text. */}
+                          <span className="-ml-1.5 inline-flex items-center gap-1">
                             <Tooltip label="Download the feature sheet">
                               <button
                                 type="button"
