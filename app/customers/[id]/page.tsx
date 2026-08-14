@@ -22,7 +22,19 @@ import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
-export const metadata = { title: "Customer" };
+/** The account's own name in the tab, the way every offering already does it.
+ *  A static "Customer" made three open accounts indistinguishable in the tab
+ *  strip (found Aug 14 walking the flows). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const customer = await getDb().customers.get(id);
+  return { title: customer ? `${customer.company_name} · Customers` : "Customer" };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function CustomerDetailPage({
@@ -127,6 +139,17 @@ export default async function CustomerDetailPage({
         sublabel={customer.industry || ""}
         href={`/customers/${customer.id}`}
       />
+      {/* THE WAY BACK. This page had none: every other detail page in the app
+          opens with one, but a customer opened from the list, the heat map or
+          a search result left you with the sidebar as the only exit (found
+          Aug 14 walking the flows). SmartBack, not a hardcoded link, so it
+          returns to wherever you actually came from. */}
+      <SmartBack
+        fallback="/customers"
+        className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+      >
+        <ArrowLeft size={15} strokeWidth={1.8} /> All customers
+      </SmartBack>
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <CompanyLogo

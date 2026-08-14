@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
@@ -108,6 +108,9 @@ export function CommandPalette({
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Result[]>([]);
+  /** The query the palette is currently showing an answer for. A response for
+   *  any other query is stale and gets dropped. */
+  const latestQuery = useRef("");
   const [busy, setBusy] = useState<string | null>(null);
   const [sel, setSel] = useState(0);
 
@@ -130,31 +133,39 @@ export function CommandPalette({
       setResults([]);
       return;
     }
-    let cancelled = false;
+    /**
+     * THE ANSWER IS KEYED TO THE QUESTION, not to a closure flag.
+     *
+     * This used to cancel via a `cancelled` boolean captured per effect run.
+     * Typing quickly could leave the palette showing nothing for a query that
+     * genuinely had matches: "Freya.GRR" listed no records, and pressing one
+     * more key made both GRR-PAC offerings appear (found Aug 14 walking the
+     * flows). An empty search box that is silently wrong is worse than a slow
+     * one, so correctness no longer depends on cleanup ordering: the response
+     * is applied only when it still answers the query on screen.
+     */
+    const asked = q;
+    latestQuery.current = asked;
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const r = await fetch(`/api/search?q=${encodeURIComponent(asked)}`);
         const data = await r.json();
-        if (!cancelled) {
-          const next = data.results || [];
-          setResults(
-            offeringsOnly
-              ? next.filter(
-                  (result: Result) =>
-                    result.type === "Offering" ||
-                    (customersReleased && result.type === "Customer")
-                )
-              : next
-          );
-        }
+        if (latestQuery.current !== asked) return;
+        const next = data.results || [];
+        setResults(
+          offeringsOnly
+            ? next.filter(
+                (result: Result) =>
+                  result.type === "Offering" ||
+                  (customersReleased && result.type === "Customer")
+              )
+            : next
+        );
       } catch {
-        if (!cancelled) setResults([]);
+        if (latestQuery.current === asked) setResults([]);
       }
     }, 140);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
+    return () => clearTimeout(t);
   }, [customersReleased, offeringsOnly, q]);
 
   const go = useCallback(
@@ -378,7 +389,10 @@ export function CommandPalette({
                   onMouseEnter={() => setSel(i)}
                   disabled={isBusy}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:opacity-50",
+                    // items-start, not items-center: a long name now wraps to
+                    // a second line, and the icon must stay level with the
+                    // FIRST line rather than float to the middle of the row.
+                    "w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors disabled:opacity-50",
                     selected ? "bg-surface" : "hover:bg-surface"
                   )}
                 >
@@ -407,12 +421,19 @@ export function CommandPalette({
                       )}
                     />
                   )}
+                  {/* NAMES WRAP, THEY DO NOT GET CUT. Searching "Freya"
+                      returned "Freya.GRR-PAC (Global Regulatory Requirements
+                      for Post Approval …" — the one result whose name you
+                      actually needed to read to tell it apart from the other
+                      thirty (found Aug 14 walking the flows). Truncating with
+                      an ellipsis is banned app-wide; if it does not fit, the
+                      layout gives it another line. */}
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[14px] text-text-primary truncate">
+                    <span className="block break-words text-[14px] leading-snug text-text-primary">
                       {isBusy ? "Working…" : it.label}
                     </span>
                     {it.sublabel && (
-                      <span className="block text-[12px] text-text-tertiary truncate">
+                      <span className="mt-0.5 block break-words text-[12px] leading-snug text-text-tertiary">
                         {it.sublabel}
                       </span>
                     )}

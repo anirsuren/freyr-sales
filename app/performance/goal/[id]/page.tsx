@@ -8,7 +8,21 @@ import { visibleNamesFor } from "@/lib/performanceShared";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
-export const metadata = { title: "Goal" };
+/** The goal's own name in the tab. A static "Goal" made two open goals
+ *  indistinguishable, which is the state you are most often in on this page
+ *  since its whole purpose is comparing one against another (found Aug 14
+ *  walking the flows). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const state = await readPerformance();
+  const goal = state.goals.find((g) => g.id === id);
+  return { title: goal ? `${goal.name} · Performance` : "Goal" };
+}
+
 export const dynamic = "force-dynamic";
 
 /**

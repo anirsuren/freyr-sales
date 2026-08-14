@@ -22,7 +22,23 @@ import {
 import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
 
-export const metadata = { title: "Account report" };
+/** Which account's report. A static "Account report" was indistinguishable
+ *  across open tabs, the same way the customer page itself was (found Aug 14
+ *  walking the flows). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const customer = await getDb().customers.get(id);
+  return {
+    title: customer
+      ? `${customer.company_name} report · Customers`
+      : "Account report",
+  };
+}
+
 export const dynamic = "force-dynamic";
 
 /**

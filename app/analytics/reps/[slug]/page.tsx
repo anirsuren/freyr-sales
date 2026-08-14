@@ -43,7 +43,26 @@ import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 
-export const metadata = { title: "Rep" };
+/**
+ * The teammate's own name in the tab. A static "Rep" made every open profile
+ * identical in the tab strip, and it is the same slug-to-name mapping the page
+ * itself uses below (found Aug 14 walking the flows). Derived from the slug so
+ * this costs no extra lookup: the slug IS the name, lowercased and hyphenated.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const name = slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return { title: name ? `${name} · Team` : "Rep" };
+}
+
 export const dynamic = "force-dynamic";
 
 const ago = (days: number) =>

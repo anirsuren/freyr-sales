@@ -46,7 +46,19 @@ export async function generateMetadata({
   const tracked = await readMarketIntelTracking()
     .then((t) => t.companies.find((c) => c.id === id)?.name)
     .catch(() => undefined);
-  return { title: tracked ?? miCompany(id)?.name ?? "Market Intel" };
+  /**
+   * The LIVE FEED is the third place a company's name can live, and it was
+   * the one this missed. A competitor that exists in the scraped feed but not
+   * in the tracked-companies list rendered a full briefing with its name in
+   * the heading and "Market Intel" in the tab: GSK got its name, Intertek did
+   * not (found Aug 14 walking the flows).
+   */
+  const fromFeed = tracked
+    ? undefined
+    : await readMarketIntelFeed()
+        .then((f) => f?.companies?.[id]?.name)
+        .catch(() => undefined);
+  return { title: tracked ?? fromFeed ?? miCompany(id)?.name ?? "Market Intel" };
 }
 
 export default async function MarketIntelCompanyPage({
@@ -103,15 +115,34 @@ export default async function MarketIntelCompanyPage({
   }
 
   const mine = tracking.companies.find((c) => c.id === id);
+  /**
+   * BACK GOES TO THE BUCKET YOU CAME FROM, NAMED CORRECTLY.
+   *
+   * This module has three buckets — Customer Intelligence, Competitor
+   * Intelligence and Market Intelligence — and these two empty states both
+   * hardcoded the label "Market Intelligence" while pointing at
+   * /market-intel, which is the CUSTOMER bucket. So a competitor with no
+   * activity yet offered a back arrow naming a third bucket and landing on a
+   * second one (found Aug 14 walking the flows). The live briefing beside
+   * them has always done this properly; these two just never matched it.
+   */
+  const backHref =
+    mine?.group === "competitor"
+      ? "/market-intel?tab=competitors"
+      : "/market-intel";
+  const backLabel =
+    mine?.group === "competitor"
+      ? "Competitor Intelligence"
+      : "Customer Intelligence";
   if (!mine) {
     return (
       <div>
         <AutoFresh />
         <SmartBack
-          fallback="/market-intel"
+          fallback={backHref}
           className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
         >
-          <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
+          <ArrowLeft size={14} strokeWidth={2} /> {backLabel}
         </SmartBack>
         <EmptyState
           icon={Radar}
@@ -131,10 +162,10 @@ export default async function MarketIntelCompanyPage({
   return (
     <div>
       <SmartBack
-        fallback="/market-intel"
+        fallback={backHref}
         className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
-        <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
+        <ArrowLeft size={14} strokeWidth={2} /> {backLabel}
       </SmartBack>
 
       <div className="rise-in flex flex-wrap items-center gap-4">

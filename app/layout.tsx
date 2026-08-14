@@ -30,8 +30,28 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const currentUser = await getCurrentUser();
+  const realUser = await getCurrentUser();
   const roleInfo = await getRoleInfo();
+  /**
+   * THE CHROME FOLLOWS THE ROLE YOU ARE ACTING AS, not the one you own.
+   *
+   * `getCurrentUser()` reports the role from the signed grant; `getRoleInfo()`
+   * applies the "view as" preview on top. Pages already gate on the second,
+   * but the shell was handed the first, so previewing as Rep left the whole
+   * sidebar at admin: Customers, Reports, Performance, Market Intel and Admin
+   * all still listed, every one of them manager-or-admin only. Clicking Admin
+   * as a "Rep" landed on "Admin tools are open to workspace admins" — a nav
+   * item that opens onto a wall (found Aug 14 walking the flows).
+   *
+   * Nothing changes for a real user: without a preview the two roles are
+   * equal and this is the same object. It only stops the preview from lying,
+   * and it grants nobody anything, because the server still gates on
+   * getRole() either way.
+   */
+  const currentUser =
+    roleInfo.role === realUser.role
+      ? realUser
+      : { ...realUser, role: roleInfo.role };
 
   return (
     <html lang="en" suppressHydrationWarning>

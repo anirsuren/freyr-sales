@@ -145,7 +145,10 @@ export function CompanyIntel({
         fallback="/market-intel"
         className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
-        <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
+        {/* Named for where it actually goes. The fallback is /market-intel,
+            which is the CUSTOMER bucket; "Market Intelligence" is the third,
+            separate bucket (M&A) and this never went there. */}
+        <ArrowLeft size={14} strokeWidth={2} /> Customer Intelligence
       </SmartBack>
 
       {/* Header: who this is, how loud the market is about them, how fresh. */}

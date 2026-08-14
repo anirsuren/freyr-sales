@@ -485,10 +485,12 @@ export default async function OfferingDetailPage({
             ? [
                 {
                   key: "customers",
-                  label:
-                    offeringCustomers.length > 0
-                      ? `Customers (${offeringCustomers.length})`
-                      : "Customers",
+                  // Zero says zero, the same as Sales Materials and Components
+                  // above (Anir, Aug 8: "If there's zero, then say zero").
+                  // Hiding it made one tab bar use two conventions at once, so
+                  // a new offering read "Sales Materials (0) · Components (0) ·
+                  // Customers · Competition" (found Aug 14 walking the flows).
+                  label: `Customers (${offeringCustomers.length})`,
                   href: `/offerings/${o.id}?tab=customers`,
                 },
               ]
@@ -497,10 +499,8 @@ export default async function OfferingDetailPage({
           // the competitive companies and their product names" — the fifth tab.
           {
             key: "competition",
-            label:
-              competitionRows.length > 0
-                ? `Competition (${competitionRows.length})`
-                : "Competition",
+            // Zero says zero, same rule as every other tab in this bar.
+            label: `Competition (${competitionRows.length})`,
             href: `/offerings/${o.id}?tab=competition`,
           },
           ...(showReports
