@@ -72,6 +72,8 @@ export function GoalZoom({
   const nowFy = currentFiscalYear();
   const [fy, setFy] = useState(nowFy);
   const [gran, setGran] = useState<Granularity>("months");
+  const [selected, setSelected] = useState<number | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
 
@@ -347,15 +349,14 @@ export function GoalZoom({
       )}
 
       <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.62fr_1fr]">
-        {/* ------------------------------------------- period table */}
-        <Card className="overflow-hidden p-0">
-          <div className="flex items-center gap-3 border-b border-border-light px-4 py-3">
+        {/* ------------------------------- periods as blocks + focused drill */}
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
             <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
-              The year, period by period
+              Period by period
             </b>
             <span className="min-w-0 truncate text-[11px] text-text-tertiary">
-              weeks add into months, months into quarters, quarters into{" "}
-              {fiscalLabel(fy)}
+              pick a block, then read it by group and by person
             </span>
             <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
               {grans
@@ -364,7 +365,11 @@ export function GoalZoom({
                   <button
                     key={g.key}
                     type="button"
-                    onClick={() => setGran(g.key)}
+                    onClick={() => {
+                      setGran(g.key);
+                      setSelected(null);
+                      setOpenGroup(null);
+                    }}
                     className={cn(
                       "cursor-pointer border-r border-border-light px-3.5 py-1.5 text-[12px] font-semibold transition-colors last:border-r-0",
                       gran === g.key
@@ -377,155 +382,194 @@ export function GoalZoom({
                 ))}
             </span>
           </div>
-          {/* Re-mounts on every Weeks/Months/Quarters/Years switch so the rows
-              lift in instead of teleporting (Anir: "Animations, please, when I
-              switch between the four"). */}
-          <div key={gran} className="tab-panel overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead>
-                <tr className="border-b border-border-light">
-                  {["Period", "Verified", "Awaiting check", "Progress", "Status"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
-                      >
-                        {h}
-                      </th>
-                    )
+
+          {/* the blocks: one compact square per period, never a full-width list
+              (Suren: "don't use this entire space only once... one block, year
+              one, year two, year three") */}
+          <div
+            key={`${gran}-${fy}`}
+            className={cn(
+              "tab-panel mt-3 grid gap-2",
+              gran === "months"
+                ? "grid-cols-3 sm:grid-cols-4 xl:grid-cols-6"
+                : gran === "weeks"
+                  ? "grid-cols-2 sm:grid-cols-5"
+                  : "grid-cols-2 sm:grid-cols-5"
+            )}
+          >
+            {rows.map((r, i) => {
+              const active = (selected ?? rows.findIndex((x) => x.isNow)) === i;
+              return (
+                <button
+                  key={r.label}
+                  type="button"
+                  onClick={() => {
+                    setSelected(i);
+                    setOpenGroup(null);
+                  }}
+                  className={cn(
+                    "cursor-pointer rounded-xl border p-2.5 text-left transition-all",
+                    active
+                      ? "border-blue-primary bg-[rgba(0,113,227,0.05)] shadow-[0_6px_18px_-10px_rgba(0,60,120,0.35)]"
+                      : "border-border-light bg-white hover:border-blue-subtle"
                   )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light/70">
-                {rows.map((r) => (
-                  <tr
-                    key={r.label}
-                    onClick={() => {
-                      if (gran === "years") {
-                        const y = nowFy - 4 + rows.indexOf(r);
-                        setFy(y);
-                        setGran("months");
-                      }
-                    }}
-                    className={cn(
-                      r.isNow && "bg-[rgba(0,113,227,0.045)]",
-                      gran === "years" && "cursor-pointer hover:bg-surface"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <b className="truncate text-[12px] text-text-primary">
+                      {gran === "weeks" ? r.label.replace("Week ", "") : r.label}
+                    </b>
+                    {r.isNow && (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary" title="current" />
                     )}
-                  >
-                    <td className="px-4 py-3">
-                      <b className="text-[12.5px] text-text-primary">{r.label}</b>
-                      {r.isNow && (
-                        <span className="ml-1.5 text-[10px] font-semibold text-blue-primary">
-                          current
-                        </span>
-                      )}
-                      {r.sub && (
-                        <span className="ml-1.5 text-[10.5px] text-text-tertiary">
-                          {r.sub}
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-[12.5px] font-bold tnum">
-                      {r.verified > 0 ? fmtAmount(goal.unit, r.verified) : "–"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-[12px] tnum">
-                      {r.awaiting > 0 ? (
-                        <span className="font-bold text-[color:#B45309]">
-                          {fmtAmount(goal.unit, r.awaiting)} · {r.waitingCount}{" "}
-                          {r.waitingCount === 1 ? "entry" : "entries"}
-                        </span>
-                      ) : (
-                        <span className="text-text-tertiary">–</span>
-                      )}
-                    </td>
-                    <td className="w-[26%] px-4 py-3">
-                      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface">
-                        <div
-                          className="h-full bg-[#16A34A]"
-                          style={{ width: `${(r.verified / maxRow) * 100}%` }}
-                        />
-                        <div
-                          className="h-full bg-[#B45309]/60"
-                          style={{ width: `${(r.awaiting / maxRow) * 100}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      {r.waitingCount > 0
-                        ? pill(
-                            "bg-[rgba(180,83,9,0.12)] text-[color:#B45309]",
-                            `${r.waitingCount} waiting`
-                          )
-                        : r.verified > 0
-                          ? pill(
-                              "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]",
-                              "✓ All verified"
-                            )
-                          : r.ended
-                            ? pill("bg-surface text-text-tertiary", "Nothing logged")
-                            : pill(
-                                "bg-[rgba(0,113,227,0.10)] text-blue-primary",
-                                "Open"
-                              )}
-                    </td>
-                  </tr>
-                ))}
-                {gran !== "years" && (
-                <tr className="border-t-2 border-border-light bg-white">
-                  <td className="px-4 py-3">
-                    <b className="text-[12.5px]">{fiscalLabel(fy)}</b>
-                    {yearTarget > 0 && (
-                      <span className="ml-1.5 text-[10.5px] text-text-tertiary tnum">
-                        target {fmtAmount(goal.unit, yearTarget)}
+                  </span>
+                  <span className="mt-1 block text-[13px] font-extrabold tnum">
+                    {r.verified > 0 ? fmtAmount(goal.unit, r.verified) : "–"}
+                  </span>
+                  <span className="mt-1.5 flex h-1 w-full overflow-hidden rounded-full bg-surface">
+                    <span className="h-full bg-[#16A34A]" style={{ width: `${(r.verified / maxRow) * 100}%` }} />
+                    <span className="h-full bg-[#B45309]/60" style={{ width: `${(r.awaiting / maxRow) * 100}%` }} />
+                  </span>
+                  <span className="mt-1 block text-[9.5px] font-semibold tnum">
+                    {r.waitingCount > 0 ? (
+                      <span className="text-[color:#B45309]">
+                        {fmtAmount(goal.unit, r.awaiting)} waiting
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[12.5px] font-extrabold tnum">
-                    {fmtAmount(goal.unit, yearVerified)}
-                  </td>
-                  <td className="px-4 py-3 text-[12px] tnum">
-                    {yearAwaiting > 0 ? (
-                      <span className="font-bold text-[color:#B45309]">
-                        {fmtAmount(goal.unit, yearAwaiting)} pending
-                      </span>
+                    ) : r.verified > 0 ? (
+                      <span className="text-[color:#16A34A]">all verified</span>
                     ) : (
-                      <span className="text-text-tertiary">–</span>
+                      <span className="text-text-tertiary">{r.ended ? "nothing logged" : "open"}</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
-                      <div
-                        className="h-full rounded-full bg-blue-primary"
-                        style={{
-                          width:
-                            yearTarget > 0
-                              ? `${Math.min(100, (yearVerified / yearTarget) * 100)}%`
-                              : yearVerified > 0
-                                ? "100%"
-                                : "0%",
-                        }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {pill(
-                      "bg-[rgba(0,113,227,0.10)] text-blue-primary",
-                      "adds into the year"
-                    )}
-                  </td>
-                </tr>
-                )}
-              </tbody>
-            </table>
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <p className="border-t border-border-light px-4 py-2.5 text-[11px] leading-relaxed text-text-tertiary">
+
+          {/* the focused period, read by group then by person, without leaving
+              (Suren: "I need to see the group, and I also need to see person,
+              but not lose focus") */}
+          {(() => {
+            const idx = selected ?? rows.findIndex((x) => x.isNow);
+            const row = rows[idx] ?? null;
+            if (!row) return null;
+            const inPeriodGroups = state.groups
+              .map((g) => {
+                const people = new Set([g.head, ...g.members].map((n) => n.trim()));
+                return {
+                  group: g,
+                  verified: familyValue(state, goal, { range: row.range, people, verifiedOnly: true }),
+                  awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
+                };
+              })
+              .sort((a, b) => b.verified - a.verified);
+            const maxG = Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
+            return (
+              <div key={`${gran}-${idx}`} className="tab-panel mt-4 rounded-xl border border-border-light bg-surface/40 p-3.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <b className="text-[12.5px] text-text-primary">
+                    {row.label}
+                    {row.sub ? <span className="ml-1.5 font-normal text-text-tertiary">{row.sub}</span> : null}
+                  </b>
+                  <span className="text-[11px] text-text-tertiary">by group, best first</span>
+                  <span className="ml-auto text-[12px] font-bold tnum">
+                    {fmtAmount(goal.unit, row.verified)}
+                    {row.awaiting > 0 && (
+                      <span className="ml-1.5 text-[11px] font-bold text-[color:#B45309]">
+                        +{fmtAmount(goal.unit, row.awaiting)} waiting
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {state.groups.length === 0 ? (
+                  <p className="mt-2 text-[12px] text-text-secondary">
+                    No groups yet. Once groups exist, this period fans out by
+                    group and every group opens into its people.
+                  </p>
+                ) : (
+                  <div className="mt-2.5 space-y-1.5">
+                    {inPeriodGroups.map((r2) => {
+                      const open = openGroup === r2.group.id;
+                      const groupPeople = [...new Set([r2.group.head, ...r2.group.members].map((n) => n.trim()))];
+                      return (
+                        <div key={r2.group.id} className={cn("rounded-lg", open && "bg-white shadow-[0_4px_14px_-8px_rgba(15,23,42,0.2)]")}>
+                          <button
+                            type="button"
+                            onClick={() => setOpenGroup(open ? null : r2.group.id)}
+                            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white"
+                          >
+                            <span
+                              className={cn(
+                                "text-[10px] text-text-tertiary transition-transform duration-200",
+                                open && "rotate-90"
+                              )}
+                            >
+                              ▶
+                            </span>
+                            <Avatar name={r2.group.head} className="h-6 w-6 text-[9px]" />
+                            <b className="w-[190px] text-[12.5px] leading-tight text-text-primary">{r2.group.name}</b>
+                            <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+                              <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
+                            </span>
+                            <b className="w-[86px] text-right text-[12px] tnum">{fmtAmount(goal.unit, r2.verified)}</b>
+                            {r2.awaiting > 0 && (
+                              <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10px] font-bold text-[color:#B45309] tnum">
+                                +{fmtAmount(goal.unit, r2.awaiting)}
+                              </span>
+                            )}
+                          </button>
+                          {open && (
+                            <div className="tab-panel space-y-1 px-2 pb-2 pl-9">
+                              {groupPeople
+                                .map((name) => ({
+                                  name,
+                                  verified: familyValue(state, goal, { range: row.range, person: name, verifiedOnly: true }),
+                                  awaiting: familyValue(state, goal, { range: row.range, person: name, reportedOnly: true }),
+                                }))
+                                .sort((a, b) => b.verified - a.verified)
+                                .map((p) => (
+                                  <div key={p.name} className="flex items-center gap-2.5 py-1">
+                                    <Avatar name={p.name} className="h-5 w-5 text-[8px]" />
+                                    <span className="w-[176px] text-[12px] font-medium text-text-primary">
+                                      {p.name}
+                                      {p.name === r2.group.head && (
+                                        <span className="ml-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#B4318F]">
+                                          owner
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                                      <span
+                                        className="block h-full rounded-full bg-blue-primary/70"
+                                        style={{ width: `${(p.verified / Math.max(1, r2.verified)) * 100}%` }}
+                                      />
+                                    </span>
+                                    <b className="w-[80px] text-right text-[11.5px] tnum">
+                                      {p.verified > 0 ? fmtAmount(goal.unit, p.verified) : "–"}
+                                    </b>
+                                    {p.awaiting > 0 && (
+                                      <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                                        +{fmtAmount(goal.unit, p.awaiting)}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <p className="mt-3 text-[11px] leading-relaxed text-text-tertiary">
             {gran === "years"
-              ? "Five financial years of history. Click one to open its months."
-              : `Cadences this goal allows: ${cadences.join(", ")}. ${
-                  cadences.includes("weekly")
-                    ? ""
-                    : "Weekly is off for this goal: the Goal Master decides which cadences a goal can use."
-                }`}
+              ? "Five financial years of history in one row."
+              : `Cadences this goal allows: ${cadences.join(", ")}.`}{" "}
+            Every block is only the sum of its groups, and every group of its
+            people.
           </p>
         </Card>
 
