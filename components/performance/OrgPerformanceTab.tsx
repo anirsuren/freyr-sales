@@ -393,7 +393,20 @@ export function OrgPerformanceTab({
         </p>
       ) : (
         <Card className="mt-4 overflow-x-auto p-0">
-          <table className="w-full min-w-[860px]">
+          {/* TABLE-FIXED, BECAUSE EXPANDING A ROW MUST NOT MOVE THE COLUMNS.
+              With the default auto layout the browser re-solves every column
+              width whenever the drill-down's colSpan={7} row appears, and the
+              only column with no declared width absorbed the difference: Goal
+              lost 47px and Verified gained it, so the whole grid jumped
+              sideways on every open and close (Anir, Aug 14, with before and
+              after screenshots). Fixed layout means the header decides the
+              widths once and nothing below can renegotiate them.
+
+              Every column therefore needs a width except Goal, which is
+              deliberately left free to absorb the remainder. min-w is raised
+              to match: the declared columns total 778px, so 1000px keeps Goal
+              readable at the narrowest before the card starts scrolling. */}
+          <table className="w-full min-w-[1000px] table-fixed">
             <thead>
               <tr className="border-b border-border-light">
                 {(
@@ -411,8 +424,14 @@ export function OrgPerformanceTab({
                     key={i}
                     className={cn(
                       "px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
-                      i >= 1 && i <= 4 && "w-[130px]",
-                      i === 6 && "w-8"
+                      // Column 0 (Goal) stays free and takes what is left.
+                      i >= 1 && i <= 3 && "w-[130px]",
+                      // % met carries a bar plus its value; 130 clipped it.
+                      i === 4 && "w-[150px]",
+                      // Verified holds "Not verified" + the VERIFY badge on one
+                      // line: 149px of pill plus the cell's 32px of padding.
+                      i === 5 && "w-[190px]",
+                      i === 6 && "w-12"
                     )}
                   >
                     <span className="flex items-center gap-1">

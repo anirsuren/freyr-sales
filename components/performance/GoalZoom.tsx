@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Layers, Paperclip } from "lucide-react";
@@ -45,7 +43,19 @@ import type { RunOp } from "./PerformanceModule";
 const COMPONENT_COLORS = ["#0071E3", "#0F766E", "#6D28D9"];
 const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
 
-type Granularity = "weeks" | "months" | "quarters" | "years";
+/**
+ * "halves" is Suren's semiannual view (Aug 14, via Anir: "you also have H1 and
+ * H2… semiannual one and semiannual two").
+ *
+ * It is deliberately NOT a new Cadence. Cadence is a property of a goal
+ * (weekly / monthly / quarterly / yearly) that lives in the stored model, and
+ * adding a fifth would mean touching the Goal Master and the performance
+ * normalizer, which silently drops any field it does not carry. A half is not
+ * a rhythm anyone reports on; it is a slice of the fiscal year, the same way
+ * Years is. So it reads the existing `fiscalRange(fy, "half", i)`, which has
+ * supported halves all along, and is always available.
+ */
+type Granularity = "weeks" | "months" | "quarters" | "halves" | "years";
 
 function inRange(a: PerfActual, [s, e]: [number, number]): boolean {
   const t = Date.parse(a.date);
@@ -153,6 +163,17 @@ export function GoalZoom({
         );
       });
     }
+    if (gran === "halves") {
+      return [0, 1].map((h) => {
+        const range = fiscalRange(fy, "half", h);
+        return build(
+          `H${h + 1}`,
+          `${monthLabels[h * 6].slice(0, 3)} – ${monthLabels[h * 6 + 5].slice(0, 3)}`,
+          range,
+          now >= range[0] && now < range[1]
+        );
+      });
+    }
     if (gran === "weeks") {
       const monthIdx = currentMonthIdx >= 0 ? currentMonthIdx : 0;
       return fiscalWeeks(fy, monthIdx).map((w) =>
@@ -210,6 +231,9 @@ export function GoalZoom({
     { key: "weeks", label: "Weeks", allowed: cadences.includes("weekly") },
     { key: "months", label: "Months", allowed: cadences.includes("monthly") },
     { key: "quarters", label: "Quarters", allowed: cadences.includes("quarterly") },
+    // Always available, like Years: a half is a slice of the fiscal year, not
+    // a cadence a goal has to opt into. H1 is Apr–Sep, H2 is Oct–Mar.
+    { key: "halves", label: "Halves", allowed: true },
     { key: "years", label: "Years", allowed: true },
   ];
 
@@ -598,15 +622,10 @@ export function GoalZoom({
         </p>
       </Card>
 
-      {embedded && (
-        <Link
-          href={`/performance/goal/${goalId}`}
-          className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
-        >
-          Open the full goal page
-          <ArrowLeft size={13} strokeWidth={2.2} className="rotate-180" />
-        </Link>
-      )}
+      {/* No "Open the full goal page" link here (Anir, Aug 14: "we don't need
+          this"). The way out has not gone anywhere: the goal NAME at the top
+          of the row is still a link to /performance/goal/[id] on every tab, so
+          the expansion does not need to repeat it at the bottom. */}
 
       {!embedded && (
       <div className="mt-4">

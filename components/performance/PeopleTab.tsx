@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { PencilLine, Search, UserRound } from "lucide-react";
+import { ChevronDown, PencilLine, Search, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   actualValue,
   fmtAmount,
@@ -246,6 +247,20 @@ export function PeopleTab({
                           <PencilLine size={11} strokeWidth={2.2} /> Log an actual
                         </button>
                       )}
+                      {/* The row opens its drill-down, and until now nothing
+                          said so: the toggle worked but wore no affordance, so
+                          it read as flat text (Anir, Aug 14: "I think this
+                          should be a dropdown"). Same chevron, same rotation
+                          as Org performance. */}
+                      <ChevronDown
+                        size={15}
+                        strokeWidth={2.2}
+                        aria-hidden="true"
+                        className={cn(
+                          "shrink-0 text-text-tertiary transition-transform",
+                          goalOpen && "rotate-180 text-blue-primary"
+                        )}
+                      />
                     </span>
                   </div>
                   <GoalBar

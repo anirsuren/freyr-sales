@@ -234,6 +234,17 @@ export function GroupPerformanceTab({
                                       Log an actual
                                     </button>
                                   )}
+                                  {/* Says the row opens, the same way Org
+                                      performance does (change log, Aug 14). */}
+                                  <ChevronDown
+                                    size={15}
+                                    strokeWidth={2.2}
+                                    aria-hidden="true"
+                                    className={cn(
+                                      "shrink-0 text-text-tertiary transition-transform",
+                                      goalOpen && "rotate-180 text-blue-primary"
+                                    )}
+                                  />
                                 </span>
                               </div>
                               <GoalBar

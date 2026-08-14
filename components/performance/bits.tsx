@@ -390,18 +390,19 @@ const PACE_META: Record<
 
 export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md" }) {
   const meta = PACE_META[pace];
-  if (!meta) {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full bg-[rgba(0,113,227,0.06)] font-medium text-text-tertiary",
-          size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
-        )}
-      >
-        no target yet
-      </span>
-    );
-  }
+  /**
+   * A goal with no target gets NO pill at all (Anir, Aug 14: "you don't need
+   * to say 'no target yet' either").
+   *
+   * It used to render a gray "no target yet" chip beside every goal name,
+   * which was noise on a page where most goals have no target yet, and gray
+   * besides. The Target column already says "Set target" on the same row, so
+   * the fact was on screen twice.
+   *
+   * The bar chart keeps its own "no target yet" caption, which he asked to
+   * leave: there the bar is 0% with nothing else to explain it.
+   */
+  if (!meta) return null;
   const Icon = meta.icon;
   return (
     <span
@@ -433,7 +434,11 @@ export function VerifiedPill({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-full font-bold",
+          // whitespace-nowrap: "Not verified" is two words and the Verified
+          // column is narrow, so it broke across two lines inside the pill and
+          // made that one row taller than every other (Anir, Aug 14, with a
+          // screenshot). The label is short; it should never wrap.
+          "inline-flex items-center gap-1 whitespace-nowrap rounded-full font-bold",
           size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
         )}
         style={
@@ -462,7 +467,10 @@ export function VerifiedPill({
           : "Click when leadership has checked this number"
       }
       className={cn(
-        "group/vp inline-flex cursor-pointer items-center gap-1.5 rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
+        // whitespace-nowrap for the same reason as the read-only chip above:
+        // "Not verified" plus the VERIFY badge is three words in a narrow
+        // column, and it wrapped mid-label.
+        "group/vp inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
         size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
       )}
       style={
