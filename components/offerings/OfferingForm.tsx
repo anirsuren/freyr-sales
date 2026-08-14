@@ -1868,7 +1868,15 @@ export function OfferingForm({
                         : Array.from(new Set([...l, ...ids]))
                     )
                   }
-                  className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-2 py-0.5 text-[10.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                  // Clearing takes selections away, so it reads as the
+                  // destructive half of this toggle (Anir, Aug 14). Select all
+                  // stays neutral: it only ever adds.
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[10.5px] font-semibold transition-colors",
+                    allOn
+                      ? "border-error/30 text-error hover:border-error hover:bg-error/5"
+                      : "border-border-light text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
+                  )}
                 >
                   {allOn ? "Clear all" : "Select all"}
                 </button>

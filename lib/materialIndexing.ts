@@ -3,6 +3,10 @@ import "server-only";
 import { docsStorage } from "./docsStorage";
 import { contentTypeForFilename, mirrorMaterialToSupabase } from "./materialStorage";
 import { extractFileContent, isReadableFile } from "./fileText";
+import {
+  isTranscribableFile,
+  transcribeMaterial,
+} from "./videoTranscribe";
 import { saveMaterialText } from "./materialText";
 
 /**
@@ -131,6 +135,30 @@ export async function indexStoredMaterial(args: {
         bytes,
         contentTypeForFilename(filename)
       ).catch(() => undefined);
+    }
+
+    /**
+     * A VIDEO HAS NO TEXT TO EXTRACT, SO LISTEN TO IT INSTEAD.
+     *
+     * extractFileContent returns nothing for a recording, which is what left
+     * demo videos reaching the assistant as a filename. Anything with an audio
+     * track now goes to speech-to-text and stores the words it hears, so the
+     * rest of the app treats a video exactly like a readable document.
+     *
+     * Last, and awaited inside the same try, because it is the slowest step
+     * and everything above it is worth having even if this fails.
+     */
+    if (!readable && isTranscribableFile(filename)) {
+      const heard = await transcribeMaterial({
+        offeringId,
+        path,
+        filename,
+        bytes,
+      }).catch(() => null);
+      if (heard?.transcribed) {
+        readable = true;
+        words = heard.words;
+      }
     }
   } catch {
     // Indexing is a bonus. The file is stored either way.

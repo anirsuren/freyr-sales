@@ -16,6 +16,20 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  bucketByDay,
+  clockTime,
+  dayAndTime,
+  dayLabel,
+  listStamp,
+  sameDay,
+} from "@/lib/chatTime";
+import { putConversations } from "@/lib/saveConversations";
+import {
+  injectEntities,
+  useEntityIndex,
+  type Entity,
+} from "@/components/agent/EntityPills";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import {
@@ -129,14 +143,23 @@ function smartTitle(text: string): string {
 // --- lightweight markdown: [link](/path), **bold**, *italic*, `code` + bullets -
 // Links are restricted to internal paths (href must start with "/") so the chat
 // can only ever deep-link inside the app, never to an external URL.
-function renderInline(s: string, keyBase: string): ReactNode[] {
+// The `entities` index turns bare names in the plain-text runs into pills.
+// Markdown links are handled below and are left alone.
+function renderInline(
+  s: string,
+  keyBase: string,
+  entities: Entity[] = []
+): ReactNode[] {
   const nodes: ReactNode[] = [];
   const re = /(\[([^\]]+)\]\((\/[^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\n]+)\*|_([^_\n]+)_|`([^`]+)`)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let k = 0;
   while ((m = re.exec(s)) !== null) {
-    if (m.index > last) nodes.push(s.slice(last, m.index));
+    if (m.index > last)
+      nodes.push(
+        ...injectEntities(s.slice(last, m.index), entities, `${keyBase}-t${k++}`)
+      );
     if (m[2] != null && m[3] != null) {
       const href = m[3];
       const label = m[2];
@@ -178,7 +201,8 @@ function renderInline(s: string, keyBase: string): ReactNode[] {
       );
     last = m.index + m[0].length;
   }
-  if (last < s.length) nodes.push(s.slice(last));
+  if (last < s.length)
+    nodes.push(...injectEntities(s.slice(last), entities, `${keyBase}-t${k++}`));
   return nodes;
 }
 
@@ -288,7 +312,13 @@ function ChatChart({ spec }: { spec: ChartSpec }) {
   );
 }
 
-function MarkdownText({ text }: { text: string }) {
+function MarkdownText({
+  text,
+  entities = [],
+}: {
+  text: string;
+  entities?: Entity[];
+}) {
   const lines = text.split("\n");
   const blocks: ReactNode[] = [];
   let bullets: string[] = [];
@@ -299,7 +329,7 @@ function MarkdownText({ text }: { text: string }) {
     blocks.push(
       <ul key={key} className="list-disc pl-5 space-y-1 my-1.5">
         {items.map((it, idx) => (
-          <li key={idx}>{renderInline(it, `${key}-${idx}`)}</li>
+          <li key={idx}>{renderInline(it, `${key}-${idx}`, entities)}</li>
         ))}
       </ul>
     );
@@ -367,7 +397,7 @@ function MarkdownText({ text }: { text: string }) {
                     key={hi}
                     className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary"
                   >
-                    {renderInline(h, `th-${i}-${hi}`)}
+                    {renderInline(h, `th-${i}-${hi}`, entities)}
                   </th>
                 ))}
               </tr>
@@ -377,7 +407,7 @@ function MarkdownText({ text }: { text: string }) {
                 <tr key={ri} className="border-t border-border-light">
                   {r.map((c, ci) => (
                     <td key={ci} className="px-3 py-2 align-middle">
-                      {renderInline(c, `td-${i}-${ri}-${ci}`)}
+                      {renderInline(c, `td-${i}-${ri}-${ci}`, entities)}
                     </td>
                   ))}
                 </tr>
@@ -404,7 +434,7 @@ function MarkdownText({ text }: { text: string }) {
     }
     blocks.push(
       <p key={`p-${i}`} className="whitespace-pre-wrap">
-        {renderInline(line, `p-${i}`)}
+        {renderInline(line, `p-${i}`, entities)}
       </p>
     );
     i++;
@@ -432,10 +462,12 @@ function Typewriter({
   text,
   onDone,
   onTick,
+  entities = [],
 }: {
   text: string;
   onDone: () => void;
   onTick?: () => void;
+  entities?: Entity[];
 }) {
   const [n, setN] = useState(0);
   const doneRef = useRef(false);
@@ -458,7 +490,9 @@ function Typewriter({
     }, 14);
     return () => clearTimeout(t);
   }, [n, text, onDone, onTick]);
-  return <MarkdownText text={trimStreamingLink(text.slice(0, n))} />;
+  return (
+    <MarkdownText text={trimStreamingLink(text.slice(0, n))} entities={entities} />
+  );
 }
 
 function ThinkingDots() {
@@ -485,6 +519,9 @@ export function AgentChat({
   offeringsOnly?: boolean;
 } = {}) {
   const currentUser = useCurrentUser();
+  // Names of customers, contacts, offerings, components, teammates and
+  // reports, so the assistant's answers render them as pills, not grey text.
+  const entities = useEntityIndex();
   const firstName = firstNameForUser(currentUser);
   const storageKey = userScopedStorageKey(KEY, currentUser.id);
   const [convos, setConvos] = useState<Convo[]>([]);
@@ -622,15 +659,8 @@ export function AgentChat({
     historySaveChainRef.current = historySaveChainRef.current
       .catch(() => {})
       .then(async () => {
-        const response = await fetch("/api/agent/conversations", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversations: snapshot }),
-          keepalive: true,
-        });
-        if (!response.ok) {
-          throw new Error("Conversation history was not saved to your account.");
-        }
+        // Size-aware keepalive lives in one place; see lib/saveConversations.
+        await putConversations(snapshot);
       })
       .then(() => setHistorySyncFailed(false))
       .catch(() => setHistorySyncFailed(true));
@@ -936,36 +966,52 @@ export function AgentChat({
               No conversations yet. Ask the agent anything to start.
             </p>
           ) : (
-            <>
-              <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                Recent
-              </p>
-              <ul className="space-y-0.5">
-                {visibleConvos.map((c) => (
-                  <li key={c.id} className="group relative">
-                    <button
-                      onClick={() => setActiveId(c.id)}
-                      className={cn(
-                        "w-full text-left flex items-center gap-2 pl-2.5 pr-7 py-2 rounded-md text-[13px] truncate transition-colors",
-                        c.id === activeId
-                          ? "bg-blue-light text-blue-primary font-medium"
-                          : "text-text-secondary hover:bg-surface"
-                      )}
-                    >
-                      <MessageSquareText size={15} strokeWidth={1.7} className="shrink-0" />
-                      <span className="truncate">{c.title || "New chat"}</span>
-                    </button>
-                    <button
-                      onClick={() => remove(c.id)}
-                      aria-label={`Delete ${c.title || "chat"}`}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
-                    >
-                      <Trash2 size={13} strokeWidth={1.8} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
+            /* Grouped by day rather than one flat "Recent" pile, so a thread
+               tells you when it is from before you open it (Anir, Aug 14). The
+               stamp on each row and the delete button share the same corner:
+               the stamp is what you see, the delete appears over it on hover. */
+            bucketByDay(visibleConvos, (c) => c.updated || 0).map((group) => (
+              <div key={group.label}>
+                <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                  {group.label}
+                </p>
+                <ul className="space-y-0.5 mb-1.5">
+                  {group.items.map((c) => (
+                    <li key={c.id} className="group relative">
+                      <button
+                        onClick={() => setActiveId(c.id)}
+                        /* The stamp costs a little title width, so hover gives
+                           back the untruncated title alongside the full date. */
+                        title={[c.title || "New chat", c.updated ? dayAndTime(c.updated) : ""]
+                          .filter(Boolean)
+                          .join("\n")}
+                        className={cn(
+                          "w-full text-left flex items-center gap-2 pl-2.5 pr-[62px] py-2 rounded-md text-[13px] truncate transition-colors",
+                          c.id === activeId
+                            ? "bg-blue-light text-blue-primary font-medium"
+                            : "text-text-secondary hover:bg-surface"
+                        )}
+                      >
+                        <MessageSquareText size={15} strokeWidth={1.7} className="shrink-0" />
+                        <span className="truncate">{c.title || "New chat"}</span>
+                      </button>
+                      {c.updated ? (
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-text-tertiary group-hover:opacity-0 transition-opacity">
+                          {listStamp(c.updated)}
+                        </span>
+                      ) : null}
+                      <button
+                        onClick={() => remove(c.id)}
+                        aria-label={`Delete ${c.title || "chat"}`}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded bg-inherit text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
+                      >
+                        <Trash2 size={13} strokeWidth={1.8} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
           )}
         </div>
         <div className="p-2 border-t border-border-light flex flex-col gap-0.5">
@@ -1107,31 +1153,63 @@ export function AgentChat({
         ) : (
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
             <div className="max-w-[760px] mx-auto px-6 py-8 space-y-5">
-              {active.messages.map((msg, i) =>
-                msg.role === "user" ? (
-                  <div key={i} className="flex justify-end">
-                    <div className="max-w-[78%] bg-blue-primary text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
-                      {msg.text}
-                    </div>
-                  </div>
-                ) : (
-                  <div key={i} className="flex gap-3 justify-start">
-                    <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
-                      <Sparkles size={16} strokeWidth={1.9} />
-                    </span>
-                    <div className="min-w-0 max-w-[82%]">
-                      <p className="text-[12px] font-semibold text-text-tertiary mb-1">Agent</p>
-                      <div className="text-[14px] text-text-primary leading-relaxed bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-2.5">
-                        {msg.ts === typingTs ? (
-                          <Typewriter text={msg.text} onDone={finishTyping} onTick={scrollToBottom} />
-                        ) : (
-                          <MarkdownText text={msg.text} />
-                        )}
+              {active.messages.map((msg, i) => {
+                /* A divider whenever the conversation crosses midnight, and on
+                   the first message so even a one-day chat is dated. Without
+                   this a thread reads as one continuous session no matter how
+                   many weeks it actually spans (Anir, Aug 14). */
+                const prev = i > 0 ? active.messages[i - 1] : null;
+                const newDay = !prev || !sameDay(prev.ts, msg.ts);
+                return (
+                  <div key={i} className="space-y-5">
+                    {newDay && (
+                      <div className="flex items-center gap-3 pt-1" aria-hidden>
+                        <span className="h-px flex-1 bg-border-light" />
+                        <span className="text-[11px] font-medium text-text-tertiary whitespace-nowrap">
+                          {dayLabel(msg.ts)}
+                        </span>
+                        <span className="h-px flex-1 bg-border-light" />
                       </div>
-                    </div>
+                    )}
+                    {msg.role === "user" ? (
+                      <div className="flex flex-col items-end">
+                        <div className="max-w-[78%] bg-blue-primary text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
+                          {msg.text}
+                        </div>
+                        <span className="mt-1 mr-1 text-[11px] tabular-nums text-text-tertiary">
+                          {clockTime(msg.ts)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3 justify-start">
+                        <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles size={16} strokeWidth={1.9} />
+                        </span>
+                        <div className="min-w-0 max-w-[82%]">
+                          <p className="text-[12px] font-semibold text-text-tertiary mb-1">
+                            Agent
+                            <span className="ml-2 font-normal tabular-nums">
+                              {clockTime(msg.ts)}
+                            </span>
+                          </p>
+                          <div className="text-[14px] text-text-primary leading-relaxed bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-2.5">
+                            {msg.ts === typingTs ? (
+                              <Typewriter
+                                text={msg.text}
+                                onDone={finishTyping}
+                                onTick={scrollToBottom}
+                                entities={entities}
+                              />
+                            ) : (
+                              <MarkdownText text={msg.text} entities={entities} />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )
-              )}
+                );
+              })}
               {sendingId === active?.id && (
                 <div className="flex gap-3 justify-start">
                   <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">

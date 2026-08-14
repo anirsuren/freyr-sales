@@ -11,9 +11,14 @@ import {
   PanelRightClose,
 } from "lucide-react";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
+import { putConversations } from "@/lib/saveConversations";
+import { clockTime, dayLabel, sameDay } from "@/lib/chatTime";
+import {
+  injectEntities,
+  useEntityIndex,
+  type Entity,
+} from "@/components/agent/EntityPills";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import {
@@ -21,61 +26,6 @@ import {
   type AgentOfferingContext,
   type AskAgentDetail,
 } from "@/lib/agentEvents";
-
-type Entity = { name: string; id: string; kind: "company" | "contact" };
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Turn a plain-text string into nodes where any known company/person name
-// becomes an inline entity pill (logo/headshot + link). Matched longest-first so
-// "Cortexa Biopharma" wins over "Cortexa". Case-insensitive, word-bounded.
-function injectEntities(
-  text: string,
-  entities: Entity[],
-  keyBase: string,
-  /** In the offerings-only release there are no customer or contact pages, so
-   *  a pill would be a link to a 404. The name still reads normally. */
-  linkable = true
-): ReactNode[] {
-  if (!entities.length || !text || !linkable) return [text];
-  const re = new RegExp(
-    `\\b(${entities.map((e) => escapeRe(e.name)).join("|")})\\b`,
-    "gi"
-  );
-  const out: ReactNode[] = [];
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let k = 0;
-  while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const hit = entities.find(
-      (e) => e.name.toLowerCase() === m![1].toLowerCase()
-    );
-    if (hit) {
-      out.push(
-        <Link
-          key={`${keyBase}-e${k++}`}
-          href={hit.kind === "company" ? `/customers/${hit.id}` : `/contacts/${hit.id}`}
-          className="inline-flex items-center gap-1 align-middle rounded-full bg-blue-light/70 border border-blue-subtle/60 pl-1 pr-2 py-0.5 mx-0.5 font-semibold text-blue-primary no-underline hover:bg-blue-light hover:border-blue-subtle transition-colors"
-        >
-          {hit.kind === "company" ? (
-            <CompanyLogo name={hit.name} className="w-4 h-4 text-[7px] shrink-0" />
-          ) : (
-            <Avatar name={hit.name} className="w-4 h-4 text-[7px] shrink-0" />
-          )}
-          {m[1]}
-        </Link>
-      );
-    } else {
-      out.push(m[1]);
-    }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
-}
 
 // The dock and the full Agent page deliberately use the SAME account-backed
 // conversation model. A rep can start beside an offering, then continue that
@@ -341,7 +291,8 @@ export function AgentDock({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
-  const [entities, setEntities] = useState<Entity[]>([]);
+  // Customers, contacts, offerings, FDL components, teammates and reports.
+  const entities = useEntityIndex();
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -351,33 +302,6 @@ export function AgentDock({
   const requestControllerRef = useRef<AbortController | null>(null);
   const explicitContextRef = useRef(false);
 
-  // Load the name→id index once so the assistant's answers can render company
-  // logos and headshots inline (Suren, #92). Longest names first so multi-word
-  // company names match before any single-word contained token.
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/agent/entities")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!alive) return;
-        const list: Entity[] = [
-          ...(d.companies || []).map((c: { name: string; id: string }) => ({
-            ...c,
-            kind: "company" as const,
-          })),
-          ...(d.contacts || []).map((c: { name: string; id: string }) => ({
-            ...c,
-            kind: "contact" as const,
-          })),
-        ].filter((e) => e.name && e.name.length > 2);
-        list.sort((a, b) => b.name.length - a.name.length);
-        setEntities(list);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   // Anything in the app can open THIS chat instead of navigating away. An
   // offering CTA supplies explicit context but does not auto-send a prompt, so
@@ -547,13 +471,9 @@ export function AgentDock({
     historySaveChainRef.current = historySaveChainRef.current
       .catch(() => {})
       .then(async () => {
-        const response = await fetch("/api/agent/conversations", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversations: snapshot }),
-          keepalive: true,
-        });
-        if (!response.ok) throw new Error("history save failed");
+        // Had the same 64KB keepalive bug as the chat page, with the error
+        // swallowed below so it failed silently. Shared helper now.
+        await putConversations(snapshot);
       })
       .catch(() => {});
   }, [
@@ -852,30 +772,62 @@ export function AgentDock({
             <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
               {renderRich(greeting, entities, !offeringsOnly)}
             </div>
-            {visibleMsgs.map((m, i) => (
-              <div
-                key={`${m.ts}-${i}`}
-                className={cn(
-                  "w-fit max-w-[85%] px-3.5 py-2 text-[13px] leading-relaxed",
-                  m.role === "agent"
-                    ? "rounded-2xl rounded-bl-md bg-surface text-text-primary"
-                    : "rounded-2xl rounded-br-md bg-blue-primary text-white ml-auto"
-                )}
-              >
-                {m.role === "agent" ? (
-                  <TypedReply
-                    text={m.text}
-                    // Only the reply that just arrived types out. Restoring a
-                    // saved thread must not replay the whole conversation.
-                    active={m.ts === typingTs}
-                    entities={entities}
-                    linksOn={!offeringsOnly}
-                  />
-                ) : (
-                  m.text
-                )}
-              </div>
-            ))}
+            {visibleMsgs.map((m, i) => {
+              // Same dating as the full chat page: a divider when the thread
+              // crosses a day, and the time under every bubble. A dock thread
+              // survives across days, so "when was this said" matters here too.
+              const prev = i > 0 ? visibleMsgs[i - 1] : null;
+              const newDay = !prev || !sameDay(prev.ts, m.ts);
+              return (
+                /* Matches the container's own space-y-2.5 so a wrapped pair
+                   sits exactly like the unwrapped bubbles used to. Not
+                   `display: contents`: that generates no box, so the parent's
+                   space-y margins would land on nothing and the bubbles would
+                   collide. */
+                <div key={`${m.ts}-${i}`} className="space-y-2.5">
+                  {newDay && (
+                    <div className="flex items-center gap-2 pt-0.5" aria-hidden>
+                      <span className="h-px flex-1 bg-border-light" />
+                      <span className="text-[10px] font-medium text-text-tertiary whitespace-nowrap">
+                        {dayLabel(m.ts)}
+                      </span>
+                      <span className="h-px flex-1 bg-border-light" />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "flex flex-col",
+                      m.role === "agent" ? "items-start" : "items-end"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-fit max-w-[85%] px-3.5 py-2 text-[13px] leading-relaxed",
+                        m.role === "agent"
+                          ? "rounded-2xl rounded-bl-md bg-surface text-text-primary"
+                          : "rounded-2xl rounded-br-md bg-blue-primary text-white"
+                      )}
+                    >
+                      {m.role === "agent" ? (
+                        <TypedReply
+                          text={m.text}
+                          // Only the reply that just arrived types out. Restoring a
+                          // saved thread must not replay the whole conversation.
+                          active={m.ts === typingTs}
+                          entities={entities}
+                          linksOn={!offeringsOnly}
+                        />
+                      ) : (
+                        m.text
+                      )}
+                    </div>
+                    <span className="mt-0.5 px-1 text-[10px] tabular-nums text-text-tertiary">
+                      {clockTime(m.ts)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
             {busy && (
               <div className="w-fit rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5">
                 <Thinking />

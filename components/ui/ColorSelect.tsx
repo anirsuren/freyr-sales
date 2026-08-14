@@ -271,26 +271,30 @@ export function ColorSelect({
     );
   };
 
-  // `minWidth` is the caller's floor, not permission to ellipsize. Sized off
-  // the longest option the trigger can ever show, the same way the multi-select
-  // below already does it. Without this a long name was cut mid-word: the log
-  // modal's goal picker read "Booked Revenue (Contract Value …" with 300px of
-  // empty modal to its right (Anir, Aug 14).
-  const longestOption = options.reduce(
-    (longest, o) => (o.label.length > longest.length ? o.label : longest),
-    triggerLabel ?? ""
-  );
-  const roomForLabel = Math.ceil(longestOption.length * 7.2 + 70);
-
+  /**
+   * DO NOT SIZE THIS FROM THE LONGEST OPTION. I tried it on Aug 14 to stop the
+   * log modal's goal picker truncating, and it broke two layouts in a row:
+   * the New offering modal's OFFERING TYPE select ran under the OFFERING NAME
+   * label beside it, and then the Offerings toolbar pushed its view toggle
+   * clean out of the filter bar ("you're bleeding here too").
+   *
+   * The reason is `min-width`: it is a floor that flex cannot shrink past, so
+   * the moment several selects share a row, the row stops compressing and the
+   * overflow lands on whatever sits at the end of it. Capping each select at
+   * 100% does not save it either, because that resolves per item and not
+   * across the row.
+   *
+   * A caller that genuinely needs a wider trigger passes a bigger `minWidth`
+   * and owns the consequence in its own layout. That is one deliberate call
+   * site instead of every select in the app.
+   */
   return (
     <div
       ref={ref}
       className={cn("relative transition-[min-width]", SP_MOTION, className)}
       style={{
         width: compact ? SP_COMPACT_SIZE : undefined,
-        minWidth: compact
-          ? SP_COMPACT_SIZE
-          : Math.max(minWidth, roomForLabel),
+        minWidth: compact ? SP_COMPACT_SIZE : minWidth,
       }}
     >
       <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>

@@ -2613,7 +2613,11 @@ function LogActualModal({
                   setGoalId(v);
                 }}
                 ariaLabel="Goal"
-                minWidth={280}
+                // Wide on purpose: this one sits alone in a roomy modal cell,
+                // and the longest goal name is "Booked Revenue (Contract Value
+                // Signed) · adds up". Set here, at the one call site that needs
+                // it, rather than teaching every select in the app to grow.
+                minWidth={430}
                 options={[
                   { value: "", label: "Pick a goal…", color: "#8E98A8" },
                   ...state.goals.map((g) => ({

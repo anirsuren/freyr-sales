@@ -15,6 +15,7 @@ import {
   Route,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -97,22 +98,90 @@ const FORMATS = MATERIAL_FORMATS;
  *
  * Freyr AI answers from the TEXT of uploaded files — see isReadableFile() in
  * lib/fileText, which reads Office documents, PDFs, archives and plain text.
- * A video file has no text to read, so an uploaded recording reaches the
- * assistant as a title and nothing more. Nobody was told that, so owners
- * uploaded demo recordings believing the assistant could answer from them.
+ * WHAT THIS SAYS MATTERS. It used to read "Freyr AI cannot watch video",
+ * which was both defeatist and wrong about where this is going (Anir, Aug 14:
+ * "there has to be AI used here"). Freyr transcribes the video itself. The
+ * upload is an OPTIONAL second opinion: if the owner already has a good
+ * transcript, the two get reconciled into one, which beats either alone on
+ * names, product terms and numbers that speech recognition mangles.
  *
- * A recommendation, never a block: the video is still worth uploading on its
- * own merits, and a rep opens it directly. Saras asked for exactly one
- * sentence, and this is deliberately not a warning colour — nothing is wrong.
+ * A recommendation, never a block: the video is worth uploading on its own
+ * merits, and a rep opens it directly. Deliberately not a warning colour,
+ * because nothing is wrong.
  */
+/**
+ * Attach an owner's own transcript to a video. It saves as its own document
+ * beside the video, in the same folder with the same audience, because a
+ * document is the thing the assistant can read.
+ *
+ * Deliberately plain: one line, no drop zone, no preview. It is an optional
+ * extra on a card that already carries five controls.
+ */
+function TranscriptPicker({
+  value,
+  onPick,
+}: {
+  value?: File;
+  onPick: (file: File | undefined) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="mt-1.5">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".txt,.vtt,.srt,.md,.doc,.docx,.pdf,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          const picked = e.target.files?.[0];
+          if (picked) onPick(picked);
+          e.target.value = "";
+        }}
+      />
+      {value ? (
+        <span className="flex h-[38px] w-full items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/40 px-3">
+          <Captions
+            size={14}
+            strokeWidth={2.2}
+            className="shrink-0 text-blue-primary"
+          />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
+            {value.name}
+          </span>
+          <button
+            type="button"
+            aria-label="Remove the transcript"
+            onClick={() => onPick(undefined)}
+            className="shrink-0 cursor-pointer text-text-tertiary transition-colors hover:text-error"
+          >
+            <X size={13} strokeWidth={2.4} />
+          </button>
+        </span>
+      ) : (
+        // Same height and shape as the selects beside it, so the row of
+        // controls on this card reads as one set rather than a field and a
+        // stray button.
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex h-[38px] w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-tertiary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+        >
+          <Plus size={14} strokeWidth={2.2} className="shrink-0" />
+          Add a transcript
+        </button>
+      )}
+    </div>
+  );
+}
+
 function VideoTranscriptHint({ format }: { format: string }) {
   if (format !== "video") return null;
   return (
     <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-blue-light/60 px-2 py-1.5 text-[11px] leading-snug text-blue-primary">
       <Captions size={12} strokeWidth={2.2} className="mt-[1px] shrink-0" />
       <span>
-        Freyr AI cannot watch video. Upload the transcript alongside it and the
-        assistant can answer from what was said.
+        Freyr transcribes this automatically. Have your own transcript? Add it
+        too and we will reconcile the two into one.
       </span>
     </p>
   );
@@ -222,6 +291,10 @@ export function AddMaterialButton({
         divisions?: Division[];
         accessLevel?: AccessLevel;
         description?: string;
+        /** An owner's own transcript for a video, uploaded alongside it and
+         *  filed in the same folder so the assistant can read what was said
+         *  (Anir, Aug 14). Optional: the video saves fine without one. */
+        transcript?: File;
       }
     >
   >({});
@@ -728,6 +801,9 @@ export function AddMaterialButton({
         url: string;
         docsPath?: string;
         indexing: boolean;
+        /** Set when this row IS a transcript, naming the video it belongs to
+         *  so the saved material can say so. */
+        transcriptFor?: string;
       }> = [];
       for (let index = 0; index < files.length; index += 1) {
         const currentFile = files[index];
@@ -740,6 +816,46 @@ export function AddMaterialButton({
           docsPath: stored.docsPath,
           indexing: Boolean(stored.indexing),
         });
+        // A transcript rides with its video: same folder, same audience, and
+        // it is the half the assistant can actually read.
+        const transcript = fileOverrides[fileKey(currentFile)]?.transcript;
+        if (transcript) {
+          const storedTranscript = await uploadFile(transcript);
+          if (storedTranscript) {
+            uploaded.push({
+              file: transcript,
+              url: storedTranscript.url,
+              docsPath: storedTranscript.docsPath,
+              indexing: Boolean(storedTranscript.indexing),
+              transcriptFor:
+                fileLabels[fileKey(currentFile)]?.trim() ||
+                currentFile.name.replace(/\.[^.]+$/, ""),
+            });
+            /**
+             * Ask the server to merge the two once both are readable. Only the
+             * client knows this transcript belongs to this video, so it says so
+             * rather than leaving the server to guess from filenames.
+             *
+             * Deliberately not awaited: transcription runs in the background
+             * and can take minutes on a long recording. The endpoint answers
+             * "not ready" harmlessly if it arrives first, and the machine
+             * transcript is stored either way.
+             */
+            if (stored.docsPath && storedTranscript.docsPath) {
+              void fetch(
+                `/api/offerings/${offeringId}/materials/reconcile-transcript`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    videoPath: stored.docsPath,
+                    transcriptPath: storedTranscript.docsPath,
+                  }),
+                }
+              ).catch(() => undefined);
+            }
+          }
+        }
       }
       const failedCount = files.length - uploaded.length;
       if (files.length && uploaded.length === 0) {
@@ -777,26 +893,52 @@ export function AddMaterialButton({
           ? uploaded.map((item) => {
               const key = fileKey(item.file);
               const override = fileOverrides[key] || {};
-              const selectedKind = (override.kind || kind) as MaterialFormat;
-              const selectedStages = override.journeyStages || journeyStages;
-              const selectedAccess = (override.accessLevel || accessLevel) as AccessLevel;
+              // A transcript inherits everything from the video it belongs to,
+              // except its format: it is a document, and being a document is
+              // exactly what lets the assistant read it.
+              const parentKey = item.transcriptFor
+                ? Object.keys(fileOverrides).find(
+                    (k) => fileOverrides[k]?.transcript === item.file
+                  )
+                : undefined;
+              const parent = parentKey ? fileOverrides[parentKey] || {} : override;
+              const selectedKind = item.transcriptFor
+                ? ("document" as MaterialFormat)
+                : ((override.kind || kind) as MaterialFormat);
+              const selectedStages = item.transcriptFor
+                ? parent.journeyStages || journeyStages
+                : override.journeyStages || journeyStages;
+              const selectedAccess = (
+                item.transcriptFor
+                  ? parent.accessLevel || accessLevel
+                  : override.accessLevel || accessLevel
+              ) as AccessLevel;
               return {
               id: "",
               kind: selectedKind,
-              label:
-                fileLabels[key]?.trim() ||
-                item.file.name.replace(/\.[^.]+$/, ""),
+              label: item.transcriptFor
+                ? `${item.transcriptFor} (transcript)`
+                : fileLabels[key]?.trim() ||
+                  item.file.name.replace(/\.[^.]+$/, ""),
               url: item.url,
               ...(item.docsPath ? { docsPath: item.docsPath } : {}),
-              ...((override.description ?? description).trim()
-                ? { description: (override.description ?? description).trim() }
-                : {}),
-              folder: override.folder || folder,
+              ...(item.transcriptFor
+                ? { description: `What was said in ${item.transcriptFor}.` }
+                : (override.description ?? description).trim()
+                  ? { description: (override.description ?? description).trim() }
+                  : {}),
+              folder: item.transcriptFor
+                ? parent.folder || folder
+                : override.folder || folder,
               journeyStage: selectedStages[0],
               journeyStages: selectedStages,
-              ...((override.divisions ?? divisions).length
-                ? { divisions: override.divisions ?? divisions }
-                : {}),
+              ...(item.transcriptFor
+                ? (parent.divisions ?? divisions).length
+                  ? { divisions: parent.divisions ?? divisions }
+                  : {}
+                : (override.divisions ?? divisions).length
+                  ? { divisions: override.divisions ?? divisions }
+                  : {}),
               accessLevel: selectedAccess,
             };
           })
@@ -940,8 +1082,11 @@ export function AddMaterialButton({
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-primary/15 text-blue-primary">
                 <Package size={15} strokeWidth={2} />
               </span>
+              {/* "Add sales material to <offering>" and nothing else. The old
+                  line repeated the dialog's own title back at the reader
+                  (Anir, Aug 14). */}
               <p className="text-[12px] text-text-secondary">
-                Adding materials to{" "}
+                Add sales material to{" "}
                 <span className="font-semibold text-text-primary">
                   {offeringName}
                 </span>
@@ -993,7 +1138,12 @@ export function AddMaterialButton({
             <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               <span>Folder</span>
               <InfoHint text="Which folder this file will live in. Create a new one with the + button." />
-              {!folder && (
+              {/* This is the DEFAULT, not the answer. It used to shout Required
+                  whenever it was empty, even when every file below already had
+                  a folder chosen on its own card, so the modal looked unfinished
+                  when it was complete (Anir, Aug 14). The badge now asks the
+                  real question: is any file still without one? */}
+              {files.some((f) => !(fileOverrides[fileKey(f)]?.folder || folder)) && (
                 <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                   Required
                 </span>
@@ -1008,15 +1158,11 @@ export function AddMaterialButton({
                 ariaLabel="Folder"
                 className="min-w-0 flex-1"
               />
-              <button
-                type="button"
-                onClick={() => setCreatingFolder(true)}
-                aria-label="Create a new folder"
-                title="Create a new folder"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-              >
-                <Plus size={17} strokeWidth={2.2} />
-              </button>
+              {/* NO NEW FOLDERS FROM HERE. The twelve standard folders are the
+                  shape every offering shares, and letting each uploader invent
+                  their own is how one workspace ends up with "Decks", "decks"
+                  and "Sales Decks" (Anir, Aug 14: "no one should be able to
+                  create new folders"). Files go into the folders that exist. */}
             </div>
           </div>
 
@@ -1024,7 +1170,11 @@ export function AddMaterialButton({
               see it. Both must be deliberately chosen rather than silently
               inheriting defaults. */}
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Three across, not two-then-one. Stage, audience and division are
+                the same kind of choice, so they read as one row (Anir, Aug 14:
+                "put these three on just one dropdown... three dropdowns in one
+                row"). They collapse to one column on a narrow window. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Buyer&apos;s journey stage</span>
@@ -1338,10 +1488,30 @@ export function AddMaterialButton({
                               </p>
                             );
                           })()}
-                          <VideoTranscriptHint
-                            format={fileOverrides[key]?.kind || kind}
-                          />
                         </div>
+                        {/* TRANSCRIPT, as a proper field rather than a button
+                            hanging off the format dropdown. The blue banner is
+                            NOT repeated here: it says the same thing as the one
+                            at the top of the dialog, and twice is noise (Anir,
+                            Aug 14). The explanation lives on the question mark
+                            instead, where every other field keeps its help. */}
+                        {(fileOverrides[key]?.kind || kind) === "video" && (
+                          <div>
+                            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                              Transcript
+                              <span className="font-medium normal-case tracking-normal text-text-tertiary">
+                                optional
+                              </span>
+                              <InfoHint text={"Freyr transcribes this video automatically once it is uploaded.\nIf you already have a transcript, add it here and the two are reconciled into one: your spelling wins on names and product terms, and anything only the machine caught is kept."} />
+                            </span>
+                            <TranscriptPicker
+                              value={fileOverrides[key]?.transcript}
+                              onPick={(f) =>
+                                updateFileOverride(selected, { transcript: f })
+                              }
+                            />
+                          </div>
+                        )}
                         <div>
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             Folder

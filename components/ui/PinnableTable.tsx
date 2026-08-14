@@ -90,26 +90,29 @@ function usePinned(id: string): boolean {
   return hydrated ? value : false;
 }
 
-/** The pin. The absolute position lives on an OUTER span: Tooltip wraps its
- *  child in a positioned span of its own, and an absolute button inside that
- *  anchored to the tooltip's tiny box instead of the table.
+/** The pin, in the table's top-right corner. The absolute position lives on an
+ *  OUTER span: Tooltip wraps its child in a positioned span of its own, and an
+ *  absolute button inside that anchors to the tooltip's tiny box, not the table.
  *
- *  IT DOES NOT SIT ON THE HEADER ROW. It used to, and it ate letters off the
- *  last column's label: TREND read "TRE", ACTIONS read "ACTIO", ACTIVITY read
- *  "A|TI" (Anir, Aug 14). Padding the last <th> does not rescue that — these
- *  tables are `w-full` with the last column already squeezed to its text, so
- *  extra padding just makes the label overflow its own padding box. Measured
- *  live: label ended at x=1464 with the pin starting at x=1445, before AND
- *  after a 44px gutter. So the pin lives under the table instead, where no
- *  column can ever reach it. The floating strip keeps its own copy, centred
- *  on the strip, because there is nothing below that one to collide with. */
+ *  LEAVE IT HERE. Two alternatives were tried on Aug 14 and both were worse:
+ *  below the table it sat 3084px down the Team page, 2244px of scrolling away
+ *  from the header it controls; in its own strip above the table it read as a
+ *  stray floating button. Anir looked at all three and chose the corner.
+ *
+ *  It does clip the tail of the longest last-column label. Padding the last
+ *  <th> does not fix that, and I measured rather than assumed: these tables are
+ *  `w-full` with the last column already squeezed to its own text, so a 44px
+ *  gutter only makes the label overflow its padding box. The label ended at
+ *  x=1464 with the pin at x=1445, before and after. The real fix is a taller
+ *  header row so the pin clears the baseline, which is a design change nobody
+ *  has asked for yet. */
 function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
   const pinned = usePinned(id);
   return (
     <span
       className={cn(
         "absolute z-20",
-        floating ? "right-2 top-1/2 -translate-y-1/2" : "bottom-1.5 right-1.5"
+        floating ? "right-2 top-1/2 -translate-y-1/2" : "right-1.5 top-1.5"
       )}
     >
       <Tooltip label={pinned ? "Unpin the column headers" : "Keep the column headers visible while you scroll"}>
