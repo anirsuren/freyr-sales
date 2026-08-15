@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   ColorSelect,
   MultiColorSelect,
@@ -43,7 +44,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { downloadDocx } from "@/lib/docx";
 
 /** An imported row whose sheet cell had a date but no version number. */
@@ -396,6 +397,27 @@ export function FdlComponentDetail({
     await patch({ releases: next }, "Current version updated.");
   }
 
+  /**
+   * SET (OR CHANGE) A VERSION'S DATE, WHEREVER YOU ARE.
+   *
+   * The timeline told you to "click it to set a date" and the click opened
+   * this panel, where the date was a grey chip you could not do anything with
+   * — the field only ever existed on the Add-version form (Anir, Aug 15: "it
+   * says 'Click to set a date'. I click it, and then where do I set a date?
+   * That's the problem there... the user gets confused"). So the promise was
+   * one the app could not keep for any version that already existed.
+   */
+  async function setReleaseDate(id: string, date: string) {
+    await patch(
+      {
+        releases: component.releases.map((r) =>
+          r.id === id ? { ...r, date: date || null } : r
+        ),
+      },
+      date ? "Date set." : "Date cleared."
+    );
+  }
+
   const [confirmReleaseDelete, setConfirmReleaseDelete] = useState<string | null>(null);
   async function removeRelease(id: string) {
     setConfirmReleaseDelete(null);
@@ -414,6 +436,71 @@ export function FdlComponentDetail({
   const [featVersions, setFeatVersions] = useState<string[]>([]);
   const [featFiles, setFeatFiles] = useState<FdlFeatureAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  /** Distinct ids even when the same file is picked twice. */
+  const uploadSeq = useRef(0);
+  /**
+   * ONE ROW PER FILE, WITH A REAL PERCENTAGE (Anir, Aug 15: "when I upload an
+   * image, first of all, it doesn't look like it's working... it has to show
+   * the progress bar... no matter if it's a document or an image").
+   *
+   * The old label said "Uploading…" and nothing else, which on a large file is
+   * indistinguishable from a frozen form. Rows survive a moment after they
+   * finish so you can see that they did, and a failed one keeps its reason.
+   */
+  const [uploads, setUploads] = useState<
+    {
+      id: string;
+      name: string;
+      percent: number;
+      status: "uploading" | "done" | "error";
+      error?: string;
+    }[]
+  >([]);
+
+  /** Upload one file, keeping its row's percentage live. */
+  async function sendOneFile(file: File): Promise<FdlFeatureAttachment> {
+    const id = `${file.name}-${file.size}-${uploadSeq.current++}`;
+    setUploads((prev) => [
+      ...prev,
+      { id, name: file.name, percent: 0, status: "uploading" },
+    ]);
+    try {
+      const payload = await uploadWithProgress<{
+        attachment: FdlFeatureAttachment;
+      }>(`/api/fdl-components/${component.id}/upload`, file, (percent) =>
+        setUploads((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, percent } : u))
+        )
+      );
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === id ? { ...u, percent: 100, status: "done" } : u
+        )
+      );
+      // Finished rows clear themselves; the attachment below is the receipt.
+      window.setTimeout(
+        () => setUploads((prev) => prev.filter((u) => u.id !== id)),
+        1400
+      );
+      return payload.attachment;
+    } catch (caught) {
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                status: "error",
+                error:
+                  caught instanceof Error
+                    ? caught.message
+                    : "Could not upload that file.",
+              }
+            : u
+        )
+      );
+      throw caught;
+    }
+  }
   /** The release whose Files panel opened the picker, if any. */
   const [filesForRelease, setFilesForRelease] = useState<string | null>(null);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
@@ -425,15 +512,8 @@ export function FdlComponentDetail({
     setUploading(true);
     try {
       for (const file of Array.from(files).slice(0, 5)) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch(`/api/fdl-components/${component.id}/upload`, {
-          method: "POST",
-          body,
-        });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || "Could not upload that file.");
-        setFeatFiles((prev) => [...prev, payload.attachment]);
+        const attachment = await sendOneFile(file);
+        setFeatFiles((prev) => [...prev, attachment]);
       }
     } catch (caught) {
       toast(
@@ -459,15 +539,7 @@ export function FdlComponentDetail({
     try {
       const added: FdlFeatureAttachment[] = [];
       for (const file of Array.from(files).slice(0, 5)) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch(`/api/fdl-components/${component.id}/upload`, {
-          method: "POST",
-          body,
-        });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || "Could not upload that file.");
-        added.push(payload.attachment);
+        added.push(await sendOneFile(file));
       }
       const next = component.features.map((f) =>
         f.id === featureId
@@ -723,10 +795,44 @@ export function FdlComponentDetail({
                         </span>
                         {/* Facts as chips, not a run-on grey sentence. */}
                         <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
-                            <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
-                            {release.date ? formatDate(release.date) : "Date not set"}
-                          </span>
+                          {/* The chip IS the date picker when you may edit.
+                              A native date input sits invisibly on top of it,
+                              so one click opens the calendar the timeline
+                              promised (Anir, Aug 15). */}
+                          {canEdit ? (
+                            <span
+                              className={cn(
+                                "relative inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] tnum transition-colors",
+                                release.date
+                                  ? "bg-surface text-text-secondary hover:bg-blue-light hover:text-blue-primary"
+                                  : "border border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
+                              )}
+                              title={
+                                release.date
+                                  ? `Change the date on ${withV(release.version)}`
+                                  : `Set a date for ${withV(release.version)}`
+                              }
+                            >
+                              <CalendarDays size={11} strokeWidth={2} />
+                              {release.date ? formatDate(release.date) : "Set a date"}
+                              <input
+                                type="date"
+                                aria-label={`Date for ${withV(release.version)}`}
+                                value={release.date ?? ""}
+                                disabled={busy}
+                                onChange={(event) =>
+                                  void setReleaseDate(release.id, event.target.value)
+                                }
+                                onClick={(event) => event.stopPropagation()}
+                                className="absolute inset-0 cursor-pointer opacity-0"
+                              />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
+                              <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
+                              {release.date ? formatDate(release.date) : "Date not set"}
+                            </span>
+                          )}
                           {/* The count alone made you scroll to the features
                               table and re-filter to answer "which two?"
                               (Anir, Aug 9: "I need hover over the 2 features
@@ -953,6 +1059,13 @@ export function FdlComponentDetail({
                           edit button or something"). Mark current only ever
                           appeared on an already-released version, so a version
                           still marked Expected had no way to become either. */}
+                      {/* EACH BUTTON WEARS THE STATUS IT PRODUCES (Anir,
+                          Aug 15: "can we have icons for these... maybe colors
+                          too, I think you already have some colors associated
+                          with it"). We did: Released is the green #1A7A35,
+                          Expected the purple #6D28D9 and Current the brand
+                          blue, on the pills two lines up. Three identical grey
+                          buttons made you read the words to tell them apart. */}
                       {canEdit && (
                         <button
                           type="button"
@@ -963,8 +1076,18 @@ export function FdlComponentDetail({
                               ? "Move this back to Expected"
                               : "Mark this version as Released"
                           }
-                          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50"
+                          style={{
+                            color: shipped ? "#6D28D9" : "#1A7A35",
+                            borderColor: `${shipped ? "#6D28D9" : "#1A7A35"}40`,
+                            background: `${shipped ? "#6D28D9" : "#1A7A35"}0D`,
+                          }}
                         >
+                          {shipped ? (
+                            <Clock size={11} strokeWidth={2.4} />
+                          ) : (
+                            <CircleCheck size={11} strokeWidth={2.4} />
+                          )}
                           {shipped ? "Mark expected" : "Mark released"}
                         </button>
                       )}
@@ -973,8 +1096,10 @@ export function FdlComponentDetail({
                           type="button"
                           onClick={() => void markCurrent(release.id)}
                           disabled={busy}
-                          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                          title="Make this the version customers are on today"
+                          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg border border-[color:rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.05)] px-2 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:opacity-50"
                         >
+                          <Check size={11} strokeWidth={3} />
                           Mark current
                         </button>
                       )}
@@ -2539,9 +2664,10 @@ export function FdlComponentDetail({
                   </li>
                 ))}
               </ul>
-              {uploading && (
-                <p className="text-[12px] text-text-secondary">Uploading…</p>
-              )}
+              {/* The same bars as the feature popup — this is the other way
+                  in, and a document coming from here deserves the same
+                  feedback as one coming from there. */}
+              <UploadProgressRows uploads={uploads} />
             </div>
           );
         })()}
@@ -2892,6 +3018,7 @@ export function FdlComponentDetail({
                 ))}
               </ul>
             )}
+            <UploadProgressRows uploads={uploads} />
             <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary">
               <Paperclip size={13} strokeWidth={2.2} />
               {uploading ? "Uploading…" : "Add a document or image"}
@@ -2931,5 +3058,72 @@ export function FdlComponentDetail({
         </form>
       </Modal>
     </div>
+  );
+}
+
+/** The upload rows: name, a real bar, and the percentage. Shared by both
+ *  places in this screen that take a file, so a document and an image are
+ *  reported identically (Anir, Aug 15). */
+function UploadProgressRows({
+  uploads,
+}: {
+  uploads: {
+    id: string;
+    name: string;
+    percent: number;
+    status: "uploading" | "done" | "error";
+    error?: string;
+  }[];
+}) {
+  if (uploads.length === 0) return null;
+  return (
+    <ul className="mb-2 space-y-1.5">
+      {uploads.map((u) => (
+        <li
+          key={u.id}
+          className="rounded-lg border border-border-light bg-white px-3 py-2"
+        >
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text-primary">
+              {u.name}
+            </span>
+            <span
+              className={cn(
+                "shrink-0 text-[11px] font-bold tnum",
+                u.status === "error"
+                  ? "text-error"
+                  : u.status === "done"
+                    ? "text-[color:#16A34A]"
+                    : "text-blue-primary"
+              )}
+            >
+              {u.status === "error"
+                ? "Failed"
+                : u.status === "done"
+                  ? "Done"
+                  : `${u.percent}%`}
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-200",
+                u.status === "error"
+                  ? "bg-error"
+                  : u.status === "done"
+                    ? "bg-[color:#16A34A]"
+                    : "bg-blue-primary"
+              )}
+              style={{ width: `${u.status === "error" ? 100 : u.percent}%` }}
+            />
+          </div>
+          {u.error && (
+            <p className="mt-1 text-[11.5px] leading-snug text-error">
+              {u.error}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

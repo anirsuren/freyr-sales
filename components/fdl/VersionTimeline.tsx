@@ -383,10 +383,17 @@ export function VersionTimeline({
           );
         })}
       </div>
+      {/* Says where the date actually gets set. The old line promised the
+          click itself would do it, so opening a panel with a greyed-out date
+          chip read as a dead end (Anir, Aug 15: "it says 'Click to set a
+          date'. I click it, and then where do I set a date?"). The chip in
+          that panel is now the picker, and this says so. */}
       <p className="mt-2.5 text-[11.5px] text-text-tertiary">
-        Click {undated.length === 1 ? "it" : "them"} to set a date, and{" "}
-        {undated.length === 1 ? "it moves" : "they move"} up onto the dates
-        above.
+        Open {undated.length === 1 ? "it" : "them"} and click the{" "}
+        <span className="font-semibold text-blue-primary">Set a date</span>{" "}
+        chip. {undated.length === 1 ? "It moves" : "They move"} up onto the
+        dates above as soon as {undated.length === 1 ? "it has" : "they have"} a
+        date.
       </p>
     </div>
   );
