@@ -16,6 +16,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * ONE WRITER AT A TIME. Every call below reads the whole tracking list, adds or
+ * drops one entry, and writes the whole list back. Two people adding a person
+ * in the same moment both read the same "before", so the second write drops the
+ * first: two 200s, one entry kept. Performance had the identical shape and lost
+ * five of six simultaneous saves until it was serialised this way.
+ *
+ * The queue tail lives on globalThis so a dev-server hot reload cannot hand two
+ * requests two separate empty queues.
+ */
+declare global {
+  var __FREYR_MI_TRACKING_QUEUE__: Promise<void> | undefined;
+}
+async function acquireTrackingWrite(): Promise<() => void> {
+  const previous = globalThis.__FREYR_MI_TRACKING_QUEUE__ ?? Promise.resolve();
+  let release: () => void = () => undefined;
+  globalThis.__FREYR_MI_TRACKING_QUEUE__ = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous.catch(() => undefined);
+  return release;
+}
+
 // Tracking is every rep's tool, not an admin surface: anyone signed in can put
 // a company or a person on the watch list, same as anyone can log an activity.
 
@@ -25,6 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const body = await req.json().catch(() => ({}));
+  const releaseWrite = await acquireTrackingWrite();
   try {
     // Link-only flows: the LinkedIn page is the whole form; everything else
     // (name, logo, title, photo, first data pull) comes from the page itself.
@@ -68,6 +92,8 @@ export async function POST(req: NextRequest) {
       { error: error instanceof Error ? error.message : "Could not save." },
       { status: 400 }
     );
+  } finally {
+    releaseWrite();
   }
 }
 
@@ -79,6 +105,7 @@ export async function DELETE(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id ?? "").trim();
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+  const releaseWrite = await acquireTrackingWrite();
   try {
     if (body?.kind === "company") {
       await untrackCompany(id);
@@ -94,5 +121,7 @@ export async function DELETE(req: NextRequest) {
       { error: error instanceof Error ? error.message : "Could not save." },
       { status: 400 }
     );
+  } finally {
+    releaseWrite();
   }
 }
