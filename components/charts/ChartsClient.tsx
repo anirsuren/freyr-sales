@@ -1665,6 +1665,7 @@ export function BarChart({
   unit,
   hideTipStats = false,
   tipRecordsLabel = "Records behind this bar",
+  fillCard,
 }: {
   data: {
     label: string;
@@ -1711,6 +1712,24 @@ export function BarChart({
   // Unit appended to each bar's at-rest value label so a bare "12" reads as
   // "12 calls" without hovering (Suren: "all graphs need units").
   unit?: string;
+  /**
+   * SIT FLUSH IN A PADDED CARD. Pass the card's own padding in px (20 for
+   * p-5) and the caller bleeds this chart into it with a matching negative
+   * margin.
+   *
+   * Two things Anir asked for on Aug 15, and they are the same thing:
+   *  - "the bar chart should go all the way to the edge of the rectangle,
+   *    it's getting cut short a little bit" — the plot stops 20px inside the
+   *    card on each side. The padding moves ONTO the grid here, so the bars
+   *    run edge to edge and the padding scrolls with them (padding-right on a
+   *    scroll container is dropped by the browser at the end of the scroll,
+   *    which is what leaves the last column jammed against the edge).
+   *  - "the scroll bar is kind of why it is so high up, it should be at the
+   *    bottom" — h-full lets the scroller take the card's leftover height, so
+   *    its scrollbar lands on the card's bottom edge instead of cutting
+   *    across a wrapped axis label.
+   */
+  fillCard?: number;
 }) {
   const {
     hover,
@@ -1772,7 +1791,7 @@ export function BarChart({
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className={cn("w-full overflow-x-auto", fillCard ? "h-full" : undefined)}>
     <div
       className="relative grid w-full items-stretch gap-3"
       style={{
@@ -1781,7 +1800,9 @@ export function BarChart({
           data.length,
           1
         )}, minmax(${minColumn}px, 1fr))`,
-        minWidth: gridMinWidth,
+        minWidth: gridMinWidth + (fillCard ?? 0) * 2,
+        paddingLeft: fillCard,
+        paddingRight: fillCard,
       }}
       role="img"
       aria-label={`Bar chart: ${data

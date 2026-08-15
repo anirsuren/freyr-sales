@@ -49,6 +49,7 @@ export function PeopleTab({
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const person = picked ?? meName;
+  const first = person.trim().split(/\s+/)[0] || person;
 
   const names = useMemo(() => knownPeople(state, meName), [state, meName]);
   const matches = useMemo(() => {
@@ -153,6 +154,31 @@ export function PeopleTab({
           goals: scoped.goals,
           noun: "goals",
           picker,
+          accent: "#B4318F",
+          // Named after the person you are looking at, so the screen says who
+          // it is about before you check which tab is lit (Anir, Aug 15).
+          words: {
+            trackedLabel:
+              person === meName ? "Goals you carry" : `Goals ${first} carries`,
+            trackedSub:
+              person === meName
+                ? "assigned to you or picked up by you"
+                : `assigned to ${first} or picked up by them`,
+            verifiedSub:
+              person === meName
+                ? "signed off by your group owner"
+                : `signed off by ${first}'s group owner`,
+            barTitle:
+              person === meName
+                ? "How far along you are on each goal"
+                : `How far along ${first} is on each goal`,
+            donutTitle:
+              person === meName ? "Where you stand" : `Where ${first} stands`,
+            searchPlaceholder:
+              person === meName
+                ? "Search your goals and subgoals…"
+                : `Search ${first}'s goals and subgoals…`,
+          },
           emptyTitle:
             person === meName
               ? "You carry no goals yet"

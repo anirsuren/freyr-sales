@@ -128,6 +128,30 @@ export function OrgPerformanceTab({
     picker?: React.ReactNode;
     emptyTitle: string;
     emptyDescription: string;
+    /**
+     * THE SAME STRUCTURE, NOT THE SAME PAGE (Anir, Aug 15: "he wants a
+     * structure between org, group and people performance. The text and stuff
+     * have to be a little bit different. They have to know which one they're
+     * on"). Identical tiles over identical charts left three screens you could
+     * only tell apart by the tab that was lit. Every heading here names who is
+     * being counted, so the page says it before the tab bar has to.
+     */
+    words?: {
+      /** First tile: "Goals in this group", "Goals Suren carries". */
+      trackedLabel: string;
+      /** Its sub-line: "carried by 4 people". */
+      trackedSub: string;
+      /** Verified tile sub-line: who does the signing off on this screen. */
+      verifiedSub: string;
+      /** Bar chart heading: "How far along Growth Accounts is on each goal". */
+      barTitle: string;
+      /** Donut heading: "Where Growth Accounts stands". */
+      donutTitle: string;
+      /** Search placeholder, so even the empty field says the scope. */
+      searchPlaceholder: string;
+    };
+    /** The tab's identity colour, on the tile that names the scope. */
+    accent?: string;
   };
 }) {
   const [query, setQuery] = useState("");
@@ -143,6 +167,7 @@ export function OrgPerformanceTab({
 
   const picked = scope ? scope.goals : state.goals.filter((g) => g.pickedForOrg);
   const noun = scope?.noun ?? "org goals";
+  const words = scope?.words;
   const q = query.trim().toLowerCase();
   const shown = picked.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -188,9 +213,10 @@ export function OrgPerformanceTab({
       <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile
           icon={Target}
-          label="Goals tracked"
+          label={words?.trackedLabel ?? "Goals tracked"}
           value={String(picked.length)}
-          sub={scope ? noun : `${state.goals.length} on the master`}
+          color={scope?.accent}
+          sub={words?.trackedSub ?? `${state.goals.length} on the master`}
         />
         <StatTile
           icon={CheckCircle2}
@@ -212,20 +238,29 @@ export function OrgPerformanceTab({
           label="Verified"
           value={`${verifiedCount} of ${picked.length}`}
           color="#0F766E"
-          sub="marked by leadership"
+          sub={words?.verifiedSub ?? "marked by leadership"}
         />
       </div>
 
       {picked.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-          <Card className="p-5">
+          {/* flex column + flex-1 on the plot: this card is the short one in
+              the row and stretches to match the donut beside it, so the chart
+              used to stop mid-card and park its scrollbar across the wrapped
+              axis labels (Anir, Aug 15: "the scroll bar is kind of why it is
+              so high up... it should be at the bottom"). Now the plot takes
+              whatever height is left and the scrollbar lands on the card's
+              own bottom edge. -mx-5 with a matching fillCard runs the bars to
+              the card's left and right edges. */}
+          <Card className="flex flex-col p-5">
             <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
-              How far along each goal is
+              {words?.barTitle ?? "How far along each goal is"}
               <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
             </p>
-            <div className="mt-3">
+            <div className="-mx-5 mt-3 min-h-0 flex-1">
               <BarChart
                 height={190}
+                fillCard={20}
                 format="percent"
                 data={picked.map((g) => {
                   const a = actualValue(state.actuals, g);
@@ -259,7 +294,7 @@ export function OrgPerformanceTab({
           </Card>
           <Card className="p-5">
             <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
-              Where the goals stand
+              {words?.donutTitle ?? "Where the goals stand"}
               <InfoHint text="Every tracked goal, judged against where the calendar says it should be by today." />
             </p>
             <div className="mx-auto mt-3 flex w-full max-w-[420px] items-center justify-center gap-6">
@@ -317,7 +352,7 @@ export function OrgPerformanceTab({
         <PrioritySearchInput
           value={query}
           onChange={setQuery}
-          placeholder="Search goals, subgoals, people…"
+          placeholder={words?.searchPlaceholder ?? "Search goals, subgoals, people…"}
           ariaLabel="Search org performance"
           grow
           className="min-w-[200px] flex-1"

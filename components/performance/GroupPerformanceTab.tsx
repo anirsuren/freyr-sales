@@ -145,6 +145,26 @@ export function GroupPerformanceTab({
         goals: scoped.goals,
         noun: "goals in this group",
         picker,
+        accent: "#0F766E",
+        // Every heading names the group, so this screen can never be mistaken
+        // for Org or People (Anir, Aug 15: "they have to know which one
+        // they're on").
+        words: {
+          trackedLabel: "Goals in this group",
+          trackedSub: group
+            ? `carried by ${members.length} ${members.length === 1 ? "person" : "people"} in ${group.name}`
+            : "carried by its people",
+          verifiedSub: group
+            ? `signed off by ${group.head.split(" ")[0]}`
+            : "signed off by the group owner",
+          barTitle: group
+            ? `How far along ${group.name} is on each goal`
+            : "How far along this group is on each goal",
+          donutTitle: group ? `Where ${group.name} stands` : "Where this group stands",
+          searchPlaceholder: group
+            ? `Search ${group.name}'s goals and people…`
+            : "Search this group's goals and people…",
+        },
         emptyTitle: group
           ? `Nobody in ${group.name} carries a goal yet`
           : "No group selected",
