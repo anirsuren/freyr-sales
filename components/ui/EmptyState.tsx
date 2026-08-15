@@ -21,7 +21,12 @@ export function EmptyState({
         className
       )}
     >
-      <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-b from-white to-surface text-text-tertiary mb-4 border border-border-light shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+      {/* `from-white` is Tailwind's literal #fff, which the .dark re-skin
+          cannot reach, so in dark mode this tile rendered as a near-white
+          blob with an invisible glyph in it (found sweeping dark mode,
+          Aug 15). `--white` is the token the theme redefines, so the tile
+          follows the theme like everything else. */}
+      <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-b from-[color:var(--white)] to-surface text-text-tertiary mb-4 border border-border-light shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
         <Icon size={24} strokeWidth={1.5} />
       </span>
       <p className="text-[16px] font-semibold text-text-primary tracking-[-0.01em]">
