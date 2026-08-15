@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Building2,
-  Check,
-  ChevronDown,
-  Globe2,
-  Loader2,
-  Swords,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Building2, Globe2, Swords } from "lucide-react";
+import { PageTabs } from "@/components/ui/PageTabs";
 
 /**
- * The page title IS the bucket picker (Anir: "at the top where it says
- * Market Intelligence, that's where the dropdown should be"). The h1 opens a
- * menu of the three intelligence buckets; picking flips the title instantly,
- * swaps the content for a loading skeleton, and the server's bucket streams
- * in. Siblings are prefetched so the wait is usually a blink.
+ * The three intelligence buckets, as a segmented selector rather than a
+ * dropdown behind the title (Anir, Aug 15: "I need the selector instead of
+ * the drop-down at the top for the three pages"). Same control as Performance,
+ * so the two modules move the same way: all three destinations visible, one
+ * click to any of them.
+ *
+ * Picking one flips the pill instantly, swaps the content for a loading
+ * skeleton, and the server's bucket streams in. Siblings are prefetched so the
+ * wait is usually a blink.
  */
 const TABS = [
   {
@@ -82,8 +79,6 @@ export function MiTabs({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [clicked, setClicked] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
 
   // The server's answer is the truth once it arrives.
   useEffect(() => {
@@ -96,28 +91,6 @@ export function MiTabs({
     }
   }, [active, router]);
 
-  useEffect(() => {
-    if (!open) return;
-    // Capture-phase so a click outside ONLY closes the menu: without the
-    // preventDefault, that same click lands on whatever card sits under the
-    // menu and drags you off to its page.
-    const onClickCapture = (event: MouseEvent) => {
-      if (anchorRef.current?.contains(event.target as Node)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("click", onClickCapture, true);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClickCapture, true);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   const current = TABS.find((t) => t.key === (clicked ?? active)) ?? TABS[0];
   const switching = isPending && clicked !== null && clicked !== active;
 
@@ -125,79 +98,23 @@ export function MiTabs({
     <>
       <div className="rise-in relative z-40 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div ref={anchorRef} className="relative">
-          <h1 className="m-0">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            className="group flex cursor-pointer items-center gap-2 rounded-lg text-[24px] font-semibold tracking-[-0.02em] text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/35"
-          >
-            {current.label}
-            {switching ? (
-              <Loader2
-                size={20}
-                strokeWidth={2.2}
-                className="animate-spin text-blue-primary"
-              />
-            ) : (
-              <ChevronDown
-                size={20}
-                strokeWidth={2.2}
-                className={cn(
-                  "text-text-tertiary transition-transform group-hover:text-blue-primary",
-                  open && "rotate-180 text-blue-primary"
-                )}
-              />
-            )}
-          </button>
-          </h1>
-          {open && (
-            <div
-              role="menu"
-              className="menu-in absolute left-0 top-full z-50 mt-2 w-[290px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
-            >
-              {TABS.map((tab) => {
-                const TIcon = tab.icon;
-                const isActive = tab.key === current.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setOpen(false);
-                      if (tab.key === current.key) return;
-                      setClicked(tab.key);
-                      startTransition(() =>
-                        router.push(tab.href, { scroll: false })
-                      );
-                    }}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] font-semibold transition-colors",
-                      isActive ? "bg-blue-light text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"
-                    )}
-                  >
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                      style={{ color: tab.color, background: `${tab.color}14` }}
-                    >
-                      <TIcon size={15} strokeWidth={2.2} />
-                    </span>
-                    <span className="min-w-0 flex-1">{tab.label}</span>
-                    {isActive && (
-                      <Check
-                        size={15}
-                        strokeWidth={2.4}
-                        className="shrink-0 text-blue-primary"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        <div className="relative">
+          {/* The pills carry the page name, so the visible h1 would say it
+              twice. Kept for screen readers and the document outline, exactly
+              as Performance does it. */}
+          <h1 className="sr-only">{current.label}</h1>
+          <PageTabs
+            tabs={TABS}
+            active={current.key}
+            pending={switching ? current.key : null}
+            onSelect={(key) => {
+              if (key === current.key) return;
+              const next = TABS.find((t) => t.key === key);
+              if (!next) return;
+              setClicked(key);
+              startTransition(() => router.push(next.href, { scroll: false }));
+            }}
+          />
         </div>
         {action && <div className="shrink-0">{action}</div>}
         </div>

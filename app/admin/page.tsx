@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/layout/PageHeader";
-import { UserGroupsAdmin } from "@/components/admin/UserGroupsAdmin";
-import { MemberRoles } from "@/components/admin/MemberRoles";
+import { AdminTabs } from "@/components/admin/AdminTabs";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getRole } from "@/lib/role";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
@@ -34,22 +33,22 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Admin"
-        subtitle="Running the workspace: who is what, and which departments they belong to."
-      />
       {role === "admin" ? (
-        <div className="space-y-4">
-          {/* Deciding someone is a Manager is running the workspace, not a
-              personal preference, so it lives here rather than in Settings
-              (Anir, Aug 15: "It should not be in the settings"). */}
-          <MemberRoles canEdit />
-          <UserGroupsAdmin memberNames={memberNames} />
-        </div>
+        // Team members and User groups are separate screens now, behind the
+        // same segmented selector Performance and Market Intel use (Anir,
+        // Aug 15). The selector carries the page name, so there is no
+        // PageHeader above it repeating it.
+        <AdminTabs memberNames={memberNames} />
       ) : (
+        <>
+        <PageHeader
+          title="Admin"
+          subtitle="Running the workspace: who is what, and which departments they belong to."
+        />
         <div className="rounded-2xl border border-border-light bg-white px-6 py-14 text-center text-[13px] text-text-secondary">
           Admin tools are open to workspace admins.
         </div>
+        </>
       )}
     </div>
   );
