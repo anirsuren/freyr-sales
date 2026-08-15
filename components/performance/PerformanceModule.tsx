@@ -44,6 +44,7 @@ import {
   parseAmountInput,
   type GoalMeasure,
   type GoalUnit,
+  type PerfGroup,
   type PerformanceState,
   type PrimaryGoal,
   type Subgoal,
@@ -56,6 +57,7 @@ import {
   UnitChip,
   typeMeta,
   VerifiedPill,
+  GroupPill,
   RoleChip,
 } from "./bits";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
@@ -1093,6 +1095,136 @@ function MasterTab({
 /** Attach the goal to one person, with an optional personal target. Group
  *  heads only see their own people in this list; individuals see themselves
  *  (Suren, Aug 12: "show only those people who are in his list"). */
+/**
+ * PICK THE DEPARTMENT, AND OPTIONALLY ITS NUMBER.
+ *
+ * Same shape as AssignPersonModal next door, including the no-popup-on-a-popup
+ * rule: inside the goal popup this unfolds in place instead of stacking.
+ */
+function AssignGroupModal({
+  open,
+  inline,
+  goal,
+  groups,
+  onClose,
+  run,
+  busy,
+}: {
+  open: boolean;
+  inline: boolean;
+  goal: PrimaryGoal;
+  groups: PerfGroup[];
+  onClose: () => void;
+  run: RunOp;
+  busy: boolean;
+}) {
+  const [groupId, setGroupId] = useState("");
+  const [target, setTarget] = useState("");
+  const parsed = parseAmountInput(target);
+  const picked = groups.find((g) => g.id === groupId);
+
+  async function save() {
+    if (!groupId) return;
+    const ok = await run(
+      {
+        op: "assign-goal-group",
+        goalId: goal.id,
+        groupId,
+        ...(parsed !== null ? { target: parsed } : {}),
+      },
+      `${goal.name} assigned to ${picked?.name ?? "the group"}`
+    );
+    if (ok) {
+      setGroupId("");
+      setTarget("");
+      onClose();
+    }
+  }
+
+  const body = (
+    <div className="space-y-3">
+      <p className="text-[12.5px] leading-relaxed text-text-secondary">
+        The group carries the number; its people keep their own targets
+        underneath. Nobody logs achievement on a group, because a group&apos;s
+        achievement is its people&apos;s added up.
+      </p>
+      <div>
+        <label className="text-[12px] font-semibold text-text-primary">
+          Group
+        </label>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {groups.length === 0 ? (
+            <p className="text-[12.5px] text-text-tertiary">
+              Every group already carries this goal.
+            </p>
+          ) : (
+            groups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setGroupId(g.id === groupId ? "" : g.id)}
+                aria-pressed={g.id === groupId}
+                className={cn(
+                  "cursor-pointer rounded-full border px-1 py-1 transition-colors",
+                  g.id === groupId
+                    ? "border-blue-primary bg-blue-light"
+                    : "border-border-light bg-white hover:bg-surface"
+                )}
+              >
+                <GroupPill name={g.name} />
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+      <div>
+        <label className="text-[12px] font-semibold text-text-primary">
+          Group target <span className="text-text-tertiary">(optional)</span>
+        </label>
+        <input
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          placeholder={goal.unit === "currency" ? "e.g. 900k" : "e.g. 120"}
+          className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none tnum focus:border-blue-primary"
+        />
+        {target.trim() !== "" &&
+          (parsed !== null ? (
+            <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
+              = {fmtAmount(goal.unit, parsed)}
+            </p>
+          ) : (
+            <p className="mt-1 whitespace-nowrap text-[10.5px] text-error">
+              {goal.unit === "currency"
+                ? "Numbers only, e.g. 900k"
+                : "Numbers only, e.g. 120"}
+            </p>
+          ))}
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={save} disabled={!groupId} loading={busy}>
+          Assign to group
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (!open) return null;
+  if (inline)
+    return (
+      <div className="tab-panel mt-2 rounded-xl border border-border-light bg-white p-3.5">
+        {body}
+      </div>
+    );
+  return (
+    <Modal open={open} onClose={onClose} title={`Assign ${goal.name} to a group`}>
+      {body}
+    </Modal>
+  );
+}
+
 function AssignPersonModal({
   open,
   inline,
@@ -1294,6 +1426,22 @@ function GoalPopupBody({
   const [confirmSubRemove, setConfirmSubRemove] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [confirmUnassign, setConfirmUnassign] = useState<string | null>(null);
+  const [groupAssignOpen, setGroupAssignOpen] = useState(false);
+  const [confirmGroupUnassign, setConfirmGroupUnassign] = useState<string | null>(
+    null
+  );
+  /** Each group carrying this goal, with what its people add up to — the two
+   *  numbers this section reconciles. */
+  const groupRows = (goal.groupAssignments ?? []).map((assignment) => {
+    const group = state.groups.find((g) => g.id === assignment.groupId);
+    const roster = new Set(
+      group ? [group.head, ...group.members].map((m) => m.trim()) : []
+    );
+    const peopleTotal = (goal.assignments ?? [])
+      .filter((a) => roster.has(a.person.trim()))
+      .reduce((sum, a) => sum + (a.target || 0), 0);
+    return { assignment, group, peopleTotal };
+  });
   /** Which subgoal row is expanded; "new" = the add-subgoal editor. */
   const [openSub, setOpenSub] = useState<string | null>(null);
 
@@ -1642,6 +1790,142 @@ function GoalPopupBody({
         })}
 
       </div>
+
+      {/* ---------------- GROUP-LEVEL ATTACHES ----------------
+          The middle altitude, which did not exist until Aug 15 (Anir, for
+          Suren: "assigning goals to organization, to group, and people is not
+          there. There's only assignment at the people level").
+
+          Organization is the Tracking toggle at the top of this popup, person
+          is the section below, and this is the department in between. The
+          group carries its own target; its people still carry theirs, and
+          neither is forced to match — the same way a subgoal and its people
+          already work. Achievement is never entered here: a group's number is
+          always its people's, added up. */}
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+          Assigned groups
+          <InfoHint text={"This goal handed to a whole department, with a target for the group.\nIts people keep their own targets; nobody logs a number on the group itself, because a group's achievement is its people's added up."} />
+        </p>
+        {live && groupRows.length > 0 && (
+          <Tooltip label="Assign this goal to a group">
+            <button
+              type="button"
+              aria-label="Assign this goal to a group"
+              onClick={() => setGroupAssignOpen(true)}
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-blue-primary text-white transition-all hover:opacity-90 active:scale-[0.94]"
+            >
+              <Plus size={14} strokeWidth={2.6} />
+            </button>
+          </Tooltip>
+        )}
+      </div>
+      {groupRows.length === 0 ? (
+        <div className="mt-1.5 flex flex-col items-center gap-2.5 rounded-lg bg-surface px-4 py-5 text-center">
+          <p className="text-[12.5px] text-text-secondary">
+            No department carries this goal yet.
+          </p>
+          {live && state.groups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setGroupAssignOpen(true)}
+              className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-3.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+            >
+              <UsersRound size={12} strokeWidth={2.4} /> Assign to a group
+            </button>
+          )}
+          {live && state.groups.length === 0 && (
+            <p className="text-[11.5px] text-text-tertiary">
+              Create a group on the Admin page first.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-1.5 space-y-1.5">
+          {groupRows.map(({ assignment, group, peopleTotal }) => (
+            <div
+              key={assignment.groupId}
+              className="flex flex-wrap items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
+            >
+              <GroupPill name={group?.name ?? "Group removed"} />
+              <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
+                {assignment.target > 0
+                  ? `Target ${fmtAmount(goal.unit, assignment.target)}`
+                  : "No group target"}
+              </span>
+              {/* The reconciliation, stated rather than enforced — the same
+                  line a subgoal shows about its people. */}
+              {assignment.target > 0 && (
+                <span
+                  className={cn(
+                    "shrink-0 text-[11px] tnum",
+                    Math.abs(peopleTotal - assignment.target) <
+                      0.005 * assignment.target
+                      ? "text-[color:#16A34A]"
+                      : "text-text-tertiary"
+                  )}
+                >
+                  its people carry {fmtAmount(goal.unit, peopleTotal)}
+                </span>
+              )}
+              {live && (
+                <span className="relative ml-auto shrink-0">
+                  {confirmGroupUnassign === assignment.groupId ? (
+                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void run(
+                            {
+                              op: "unassign-goal-group",
+                              goalId: goal.id,
+                              groupId: assignment.groupId,
+                            },
+                            `${group?.name ?? "That group"} no longer carries ${goal.name}`
+                          );
+                          setConfirmGroupUnassign(null);
+                        }}
+                        className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                      >
+                        Remove
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmGroupUnassign(null)}
+                        className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Keep
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      title={`Take ${goal.name} off ${group?.name ?? "this group"}`}
+                      aria-label={`Unassign ${group?.name ?? "this group"}`}
+                      onClick={() => setConfirmGroupUnassign(assignment.groupId)}
+                      className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
+                    >
+                      <X size={14} strokeWidth={2.4} />
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <AssignGroupModal
+        open={groupAssignOpen}
+        inline={hostedInPopup}
+        goal={goal}
+        groups={state.groups.filter(
+          (g) => !(goal.groupAssignments ?? []).some((a) => a.groupId === g.id)
+        )}
+        onClose={() => setGroupAssignOpen(false)}
+        run={run}
+        busy={busy}
+      />
 
       {/* ---------------- person-level attaches (Suren, Aug 12: "add to the
           org or add to a particular person" — departments never hold goals,

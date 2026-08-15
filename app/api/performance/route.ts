@@ -20,6 +20,8 @@ import {
   removeSubgoal,
   setVerified,
   unassignGoal,
+  assignGoalToGroup,
+  unassignGoalFromGroup,
   updateGoal,
   updateSubgoal,
 } from "@/lib/performance";
@@ -64,6 +66,13 @@ function callerScope(
  *  itself stays whole — the Goal Master is how anyone picks up more goals. */
 function scopeState(state: PerformanceState, visible: Set<string>): PerformanceState {
   const has = (name: string) => visible.has(name.trim());
+  // The groups this caller may see at all; a group assignment is scoped the
+  // same way its group is, so a rep never learns a goal was handed to a
+  // department they are not in.
+  const visibleGroups = state.groups.filter(
+    (g) => has(g.head) || g.members.some((m) => has(m))
+  );
+  const visibleGroupIds = new Set(visibleGroups.map((g) => g.id));
   return {
     types: state.types,
     goals: state.goals.map((g) => ({
@@ -73,10 +82,11 @@ function scopeState(state: PerformanceState, visible: Set<string>): PerformanceS
         people: s.people.filter((p) => has(p.name)),
       })),
       assignments: (g.assignments ?? []).filter((a) => has(a.person)),
+      groupAssignments: (g.groupAssignments ?? []).filter((a) =>
+        visibleGroupIds.has(a.groupId)
+      ),
     })),
-    groups: state.groups.filter(
-      (g) => has(g.head) || g.members.some((m) => has(m))
-    ),
+    groups: visibleGroups,
     actuals: state.actuals.filter((a) => has(a.person)),
   };
 }
@@ -284,6 +294,20 @@ export async function POST(req: NextRequest) {
           person: String(body.person ?? ""),
           ...(body.target !== undefined ? { target: Number(body.target) } : {}),
           addedBy: me.name,
+        });
+        break;
+      case "assign-goal-group":
+        await assignGoalToGroup({
+          goalId: String(body.goalId ?? ""),
+          groupId: String(body.groupId ?? ""),
+          ...(body.target !== undefined ? { target: Number(body.target) } : {}),
+          addedBy: me.name,
+        });
+        break;
+      case "unassign-goal-group":
+        await unassignGoalFromGroup({
+          goalId: String(body.goalId ?? ""),
+          groupId: String(body.groupId ?? ""),
         });
         break;
       case "unassign-goal":

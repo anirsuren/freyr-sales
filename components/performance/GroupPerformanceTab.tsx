@@ -26,8 +26,9 @@ import type { RunOp } from "./PerformanceModule";
  * rather than the company's — and there is one implementation to keep right
  * instead of three that drift.
  *
- * A group still never holds goals itself. It is exactly its members' goals
- * added up, which is what the scoping does.
+ * A group CAN hold a goal now (Suren, via Anir on Aug 15). Assigning one gives
+ * the department a target of its own; achievement is still only ever its
+ * people's, added up, which is what the scoping does.
  */
 export function GroupPerformanceTab({
   state,
@@ -65,7 +66,7 @@ export function GroupPerformanceTab({
   );
 
   const scoped = useMemo(
-    () => (group ? scopeStateToPeople(state, members) : state),
+    () => (group ? scopeStateToPeople(state, members, group.id) : state),
     [state, members, group]
   );
 
@@ -182,7 +183,7 @@ export function GroupPerformanceTab({
           ? `Nobody in ${group.name} carries a goal yet`
           : "No group selected",
         emptyDescription:
-          "Goals reach a group through its people: assign one from the Goal Master, or the person picks it up themselves. It then adds up here.",
+          "Assign one to this group from the Goal Master, or give it to somebody in it. Either way it shows up here, and what its people log adds up into it.",
       }}
     />
   );

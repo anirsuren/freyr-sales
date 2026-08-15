@@ -137,6 +137,31 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
           })
           .filter((a): a is NonNullable<typeof a> => a !== null)
       : [],
+    // NAMED HERE OR IT DIES. Same round-trip trap as the note below: a group
+    // assignment that this function does not rebuild is gone on the next
+    // write of the row.
+    groupAssignments: Array.isArray(raw.groupAssignments)
+      ? raw.groupAssignments
+          .map((a) => {
+            if (!a || typeof a !== "object") return null;
+            const r = a as Partial<
+              import("./performanceShared").GoalGroupAssignment
+            >;
+            const groupId = str(r.groupId, 60);
+            if (!groupId) return null;
+            return {
+              groupId,
+              target: num(r.target),
+              verified: r.verified === true,
+              assignedBy: str(r.assignedBy, 80) || "unknown",
+              assignedAt:
+                typeof r.assignedAt === "string"
+                  ? r.assignedAt
+                  : new Date().toISOString(),
+            };
+          })
+          .filter((a): a is NonNullable<typeof a> => a !== null)
+      : [],
     // The round-trip trap: this normalizer rebuilds the object field by
     // field, so any field it does not carry is silently DELETED on the next
     // write. The first booking-family seed died exactly that way.
@@ -682,6 +707,61 @@ export async function assignGoal(input: {
       assignedAt: new Date().toISOString(),
     });
   }
+  await writeRow(state);
+}
+
+/**
+ * GIVE A GOAL TO A GROUP (Suren, via Anir on Aug 15: assignment has to exist at
+ * organization, group AND person level, and only the person level did).
+ *
+ * The group's target lives here; its people keep their own on `assignments`.
+ * Neither is forced to match the other — the screens reconcile them the way
+ * they already do for a subgoal and its people.
+ */
+export async function assignGoalToGroup(input: {
+  goalId: string;
+  groupId: string;
+  target?: number;
+  addedBy: string;
+}): Promise<void> {
+  const groupId = str(input.groupId, 60);
+  if (!groupId) throw new Error("Pick which group this goal is for.");
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  if (!state.groups.some((g) => g.id === groupId))
+    throw new Error("That group is gone. Refresh and retry.");
+  goal.groupAssignments = goal.groupAssignments ?? [];
+  const existing = goal.groupAssignments.find((a) => a.groupId === groupId);
+  if (existing) {
+    if (typeof input.target === "number" && Number.isFinite(input.target)) {
+      existing.target = Math.max(0, input.target);
+    }
+  } else {
+    goal.groupAssignments.push({
+      groupId,
+      target:
+        typeof input.target === "number" && Number.isFinite(input.target)
+          ? Math.max(0, input.target)
+          : 0,
+      verified: false,
+      assignedBy: input.addedBy,
+      assignedAt: new Date().toISOString(),
+    });
+  }
+  await writeRow(state);
+}
+
+export async function unassignGoalFromGroup(input: {
+  goalId: string;
+  groupId: string;
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  goal.groupAssignments = (goal.groupAssignments ?? []).filter(
+    (a) => a.groupId !== input.groupId
+  );
   await writeRow(state);
 }
 

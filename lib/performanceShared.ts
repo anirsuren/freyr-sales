@@ -54,6 +54,33 @@ export type GoalAssignment = {
   assignedAt: string;
 };
 
+/**
+ * A GOAL GIVEN TO A GROUP.
+ *
+ * Suren wanted a goal to be assignable at all three altitudes, not only to a
+ * person (Anir, Aug 15: "assigning goals to organization, to group, and people
+ * is not there. There's only assignment at the people level"). Organization was
+ * already `pickedForOrg` and person was already `assignments`; this is the
+ * middle one that was missing.
+ *
+ * It carries a target of its own AND leaves the group's people carrying theirs,
+ * because both readings are true at once (Anir: "I think it can be both") and
+ * that is exactly how a subgoal already behaves: the group holds the number,
+ * the people hold their share, and the UI reconciles the two without forcing
+ * them to match.
+ *
+ * ACTUALS are never entered here. Suren's rule stands: "each person's count
+ * becomes their group's count, and the groups add up to the organization.
+ * That's the only math." A group's achievement is always its people's, summed.
+ */
+export type GoalGroupAssignment = {
+  groupId: string;
+  target: number;
+  verified: boolean;
+  assignedBy: string;
+  assignedAt: string;
+};
+
 export type PrimaryGoal = {
   id: string;
   name: string;
@@ -70,6 +97,8 @@ export type PrimaryGoal = {
   subgoals: Subgoal[];
   /** Person-level attaches from the Goal Master. */
   assignments?: GoalAssignment[];
+  /** Group-level attaches from the Goal Master. */
+  groupAssignments?: GoalGroupAssignment[];
   /** COMPOSITE goal: its number is only the sum of these goals, and nobody
    *  logs on it directly (Suren, Aug 13: "people enter only the sub-level").
    *  Booked Revenue = New Business + Existing Business + Renewals. */
@@ -637,7 +666,15 @@ export function fiscalMonthLabels(fy: number): string[] {
  */
 export function scopeStateToPeople(
   state: PerformanceState,
-  people: string[]
+  people: string[],
+  /**
+   * The group being looked at, when there is one. A goal handed straight to
+   * this group belongs on its screen even if not one of its people has been
+   * given a personal share yet, and the group's own target is the number to
+   * show (Suren, via Anir on Aug 15). Absent — People performance — nothing
+   * changes.
+   */
+  groupId?: string
 ): PerformanceState {
   const names = new Set(people.map((p) => p.trim().toLowerCase()));
   const mine = (n: string) => names.has(n.trim().toLowerCase());
@@ -648,14 +685,29 @@ export function scopeStateToPeople(
       const subgoals = goal.subgoals
         .map((s) => ({ ...s, people: s.people.filter((p) => mine(p.name)) }))
         .filter((s) => s.people.length > 0);
-      if (assignments.length === 0 && subgoals.length === 0) return null;
+      const groupAssignment = groupId
+        ? (goal.groupAssignments ?? []).find((a) => a.groupId === groupId)
+        : undefined;
+      if (
+        assignments.length === 0 &&
+        subgoals.length === 0 &&
+        !groupAssignment
+      )
+        return null;
       // Their share of it: direct assignments plus their slice of any subgoal.
-      const target =
+      // A group target, when the department has been given one, is the number
+      // for this screen instead — the people's shares are then a split of it
+      // rather than a separate total.
+      const peopleShare =
         assignments.reduce((sum, a) => sum + (a.target || 0), 0) +
         subgoals.reduce(
           (sum, s) => sum + s.people.reduce((n, p) => n + (p.target || 0), 0),
           0
         );
+      const target =
+        groupAssignment && groupAssignment.target > 0
+          ? groupAssignment.target
+          : peopleShare;
       const scoped: PrimaryGoal = {
         ...goal,
         assignments,
