@@ -541,27 +541,47 @@ export function GoalZoom({
                           type="button"
                           onClick={() => setOpenGroup(r2.group.id)}
                           className={cn(
-                            "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                             active
                               ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                               : "hover:bg-surface"
                           )}
                         >
-                          <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
-                          {/* Blue pill + group icon here too, so the row and
-                              the box heading it feeds agree. */}
-                          <span className="w-[120px] shrink-0">
-                            <GroupPill name={r2.group.name} size="sm" />
+                          {/* THE BAR GETS ITS OWN LINE (Anir, Aug 15: "that bar
+                              does not look like a progress bar at all"). Wedged
+                              between the pill and two numbers it had about 40px
+                              in a column this narrow, so it read as a stray
+                              grey pill. Full width underneath, it reads as the
+                              bar it is — and it only draws once there is
+                              something to draw, since the dash beside the name
+                              already says zero. */}
+                          <span className="flex w-full items-center gap-2.5">
+                            <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                            <span className="min-w-0 flex-1">
+                              <GroupPill name={r2.group.name} size="sm" />
+                            </span>
+                            <b className="shrink-0 text-right text-[11.5px] tnum">
+                              {r2.verified > 0 ? fmtAmount(goal.unit, r2.verified) : "–"}
+                            </b>
+                            {r2.awaiting > 0 && (
+                              <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                                +{fmtAmount(goal.unit, r2.awaiting)}
+                              </span>
+                            )}
                           </span>
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                            <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
-                          </span>
-                          <b className="w-[70px] shrink-0 text-right text-[11.5px] tnum">
-                            {r2.verified > 0 ? fmtAmount(goal.unit, r2.verified) : "–"}
-                          </b>
-                          {r2.awaiting > 0 && (
-                            <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
-                              +{fmtAmount(goal.unit, r2.awaiting)}
+                          {(r2.verified > 0 || r2.awaiting > 0) && (
+                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                              <span
+                                className="block h-full bg-blue-primary"
+                                style={{ width: `${Math.min(100, (r2.verified / maxG) * 100)}%` }}
+                              />
+                              {/* Waiting rides the same bar in amber, so you
+                                  can see the claim and the signed-off part in
+                                  one line without them being added together. */}
+                              <span
+                                className="block h-full bg-[rgba(180,83,9,0.55)]"
+                                style={{ width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%` }}
+                              />
                             </span>
                           )}
                         </button>
@@ -590,9 +610,10 @@ export function GoalZoom({
                     </p>
                   ) : (
                     groupPeople.map((p) => (
-                      <div key={p.name} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
+                      <div key={p.name} className="flex flex-col gap-1.5 rounded-lg px-2.5 py-2">
+                        <span className="flex w-full items-center gap-2.5">
                         <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
-                        <span className="w-[128px] shrink-0 text-[11.5px] font-medium leading-tight text-text-primary">
+                        <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
                           {p.name}
                           {p.name === selGroup.group.head && (
                             /* The SAME owner mark as the Admin page and the
@@ -604,18 +625,27 @@ export function GoalZoom({
                             </span>
                           )}
                         </span>
-                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                          <span
-                            className="block h-full rounded-full bg-blue-primary/70"
-                            style={{ width: `${(p.verified / maxP) * 100}%` }}
-                          />
-                        </span>
-                        <b className="w-[70px] shrink-0 text-right text-[11.5px] tnum">
+                        <b className="shrink-0 text-right text-[11.5px] tnum">
                           {p.verified > 0 ? fmtAmount(goal.unit, p.verified) : "–"}
                         </b>
                         {p.awaiting > 0 && (
                           <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
                             +{fmtAmount(goal.unit, p.awaiting)}
+                          </span>
+                        )}
+                        </span>
+                        {/* Same as the group rows: full width underneath, and
+                            only when there is something to draw. */}
+                        {(p.verified > 0 || p.awaiting > 0) && (
+                          <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                            <span
+                              className="block h-full bg-blue-primary"
+                              style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
+                            />
+                            <span
+                              className="block h-full bg-[rgba(180,83,9,0.55)]"
+                              style={{ width: `${Math.min(100, (p.awaiting / maxP) * 100)}%` }}
+                            />
                           </span>
                         )}
                       </div>
