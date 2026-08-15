@@ -1,14 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Crown, Pencil, Plus, Trash2, UsersRound, X } from "lucide-react";
+import {
+  ChevronDown,
+  Crown,
+  Pencil,
+  Plus,
+  Trash2,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { PersonFan } from "@/components/ui/PersonFan";
 import { PersonSelect } from "@/components/performance/bits";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { RoleTag, roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils";
 import type { PerfGroup } from "@/lib/performanceShared";
 
 /**
@@ -29,6 +40,34 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const [confirmRemove, setConfirmRemove] = useState<PerfGroup | null>(null);
   /** Set while editing an existing group — the same popup, prefilled. */
   const [editing, setEditing] = useState<PerfGroup | null>(null);
+  /** Which group is unfolded to show who is actually in it (Anir, Aug 15:
+   *  "it's not even showing me the groups, like who's in this group"). A row
+   *  that only counts heads makes you open the editor to answer that. */
+  const [openId, setOpenId] = useState<string | null>(null);
+  /** name → workspace role, so the unfolded list can say what each person is
+   *  rather than just who they are. Same directory the Team members tab reads. */
+  const [roles, setRoles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/settings/access", { cache: "no-store" });
+        const data = await res.json();
+        if (!alive || !res.ok || !Array.isArray(data.members)) return;
+        const map: Record<string, string> = {};
+        for (const m of data.members as { name?: string; role?: string }[]) {
+          if (m.name?.trim()) map[m.name.trim()] = m.role || "rep";
+        }
+        setRoles(map);
+      } catch {
+        /* no roles is not a reason for the page to fail; names still show */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -124,11 +163,12 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           User groups
           <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Performance; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
         </p>
-        {!creating && (
-          <Button onClick={openCreate}>
-            <Plus size={14} strokeWidth={2.2} /> New group
-          </Button>
-        )}
+        {/* Always here. It used to unmount while the popup was open, so
+            opening the editor made the button vanish from the page behind it
+            (Anir, Aug 15: "it looks like you're disappearing the button"). */}
+        <Button onClick={openCreate}>
+          <Plus size={14} strokeWidth={2.2} /> New group
+        </Button>
       </div>
 
       {/* Creating a group is its own popup (Anir, Aug 12: "when I create a
@@ -138,7 +178,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         onClose={closeEditor}
         title={editing ? `Edit ${editing.name}` : "New user group"}
         size="wide"
-        tall
       >
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           A group is a department with an owner. Its members&apos; goals add up
@@ -245,35 +284,70 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             No groups yet. Create the first department and pick who owns it.
           </p>
         ) : (
-          groups.map((g) => (
+          groups.map((g) => {
+            const open = openId === g.id;
+            // The owner belongs in the roster whether or not they were also
+            // added as a member; they are the one person guaranteed to be in
+            // the group.
+            const roster = [
+              ...new Set(
+                [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
+              ),
+            ];
+            return (
             <div
               key={g.id}
-              className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
+              className="overflow-hidden rounded-xl border border-border-light bg-white"
             >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold text-text-primary">
-                  {g.name}
+            <div className="flex items-center gap-3 px-3.5 py-2.5">
+              {/* The whole left side is the toggle: the row answers "who is in
+                  here" without sending you into the editor to find out. */}
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : g.id)}
+                aria-expanded={open}
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left"
+              >
+                <ChevronDown
+                  size={15}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className={cn(
+                    "shrink-0 text-text-tertiary transition-transform",
+                    open && "rotate-180 text-blue-primary"
+                  )}
+                />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-text-primary">
+                    {g.name}
+                  </span>
+                  {/* Say the word "owner" (Anir, Aug 14: "where is the fucking
+                      owner"). A crown next to a name reads as just another
+                      member unless it is spelled out. */}
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                    <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
+                    Owner{" "}
+                    <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
+                    {roster.length}{" "}
+                    {roster.length === 1 ? "person" : "people"}
+                  </span>
                 </span>
-                {/* Say the word "owner" (Anir, Aug 14: "where is the fucking
-                    owner"). A crown next to a name reads as just another
-                    member unless it is spelled out. */}
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                  <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
-                  Owner{" "}
-                  <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
-                  {g.members.length}{" "}
-                  {g.members.length === 1 ? "person" : "people"}
-                </span>
-              </span>
-              <span className="flex shrink-0 -space-x-1.5">
-                {g.members.slice(0, 6).map((m) => (
-                  <Avatar
-                    key={m}
-                    name={m}
-                    tooltip={m}
-                    className="h-6 w-6 border-2 border-white text-[9px]"
-                  />
-                ))}
+              </button>
+              {/* The faces fan apart on hover, the same mechanic as Offerings
+                  and the campaigns row (Anir, Aug 15: "do the same thing with
+                  the profile pictures... that animation I like"). */}
+              <span className="shrink-0">
+                <PersonFan
+                  people={roster.map((m) => ({
+                    name: m,
+                    role:
+                      m === g.head
+                        ? `Group owner · ${roleLabel(roles[m])}`
+                        : roleLabel(roles[m]),
+                    context: g.name,
+                  }))}
+                  avatarClassName="h-6 w-6 text-[9px]"
+                />
               </span>
               <button
                 type="button"
@@ -294,7 +368,45 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 <Trash2 size={13} strokeWidth={2.2} />
               </button>
             </div>
-          ))
+            {open && (
+              <div className="tab-panel border-t border-border-light px-3.5 py-3">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  In this group
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                  {roster.map((m) => (
+                    <div
+                      key={m}
+                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+                    >
+                      <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                        {m}
+                      </span>
+                      {m === g.head && (
+                        <Crown
+                          size={11}
+                          strokeWidth={2.6}
+                          aria-label="Group owner"
+                          className="shrink-0 text-[color:#7C3AED]"
+                        />
+                      )}
+                      <RoleTag role={roles[m]} size="sm" className="shrink-0" />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openEdit(g)}
+                  className="mt-2.5 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
+                >
+                  Add or remove people
+                </button>
+              </div>
+            )}
+            </div>
+            );
+          })
         )}
       </div>
 

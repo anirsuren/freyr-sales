@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { RoleTag } from "@/components/ui/RoleTag";
+import { Modal } from "@/components/ui/Modal";
+import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -28,6 +30,10 @@ const ROLE_OPTIONS: ColorOption[] = [
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
+/** Least power to most, so the dialog can say "promoting" or "reducing"
+ *  instead of the useless "changing". */
+const RANK: Record<string, number> = { rep: 0, manager: 1, admin: 2 };
+
 type Member = {
   id: string;
   name: string;
@@ -41,6 +47,11 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  /** The role change waiting on a yes. Nothing is sent until it gets one. */
+  const [pending, setPending] = useState<{
+    member: Member;
+    nextRole: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +88,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
       }
       const label = ROLE_OPTIONS.find((o) => o.value === nextRole)?.label ?? nextRole;
       toast(`${member.name} is now ${label}`);
+      setPending(null);
     } catch (error) {
       toast(
         error instanceof Error ? error.message : "Could not change the role",
@@ -145,7 +157,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                     value={
                       ROLE_OPTIONS.some((o) => o.value === m.role) ? m.role : "rep"
                     }
-                    onChange={(next) => changeRole(m, next)}
+                    onChange={(next) => setPending({ member: m, nextRole: next })}
                     ariaLabel={`${m.name}'s workspace role`}
                     options={ROLE_OPTIONS}
                   />
@@ -157,6 +169,105 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           ))}
         </div>
       )}
+
+      {/* A ROLE CHANGE ASKS FIRST (Anir, Aug 15: "whenever I'm changing
+          someone from rep to admin, or maybe from admin to rep... it should
+          ask me for confirmation... show their profile picture, show their
+          name, show the tag and the colour and the pill"). Picking in the
+          dropdown no longer writes anything; it opens this, and only the
+          confirm sends. Handing someone Admin, or taking it away, changes
+          what a real colleague can do the next time they sign in. */}
+      <RoleChangeDialog
+        pending={pending}
+        busy={busy !== null}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (pending) void changeRole(pending.member, pending.nextRole);
+        }}
+      />
     </div>
+  );
+}
+
+function RoleChangeDialog({
+  pending,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  pending: { member: Member; nextRole: string } | null;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const member = pending?.member;
+  const fromKey = roleKey(member?.role);
+  const toKey = roleKey(pending?.nextRole);
+  const promoting = RANK[toKey] > RANK[fromKey];
+  const first = member?.name.trim().split(/\s+/)[0] || "They";
+  /** "an Admin", "a Manager" — the article follows the word, not the role. */
+  const a = (label: string) => (/^[AEIOU]/i.test(label) ? "an" : "a");
+  const toLabel = ROLE_META[toKey].label;
+  const fromLabel = ROLE_META[fromKey].label;
+
+  return (
+    <Modal
+      open={pending !== null}
+      onClose={onClose}
+      title={promoting ? "Give them more access?" : "Reduce their access?"}
+    >
+      {member && (
+        <>
+          <div className="rounded-xl border border-border-light bg-surface px-3.5 py-3">
+            <div className="flex items-center gap-3">
+              <Avatar name={member.name} className="h-11 w-11 shrink-0 text-[13px]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-bold text-text-primary">
+                  {member.name}
+                </span>
+                {/* Not truncated: the whole point of this dialog is being sure
+                    WHO you are about to change, and half an address does not
+                    tell you that. It wraps instead. */}
+                <span className="mt-0.5 block break-all text-[12px] text-text-secondary">
+                  {member.email}
+                </span>
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-2 border-t border-border-light pt-2.5">
+              <RoleTag role={fromKey} size="sm" />
+              <ArrowRight
+                size={15}
+                strokeWidth={2.4}
+                aria-label="becomes"
+                className="text-text-tertiary"
+              />
+              <RoleTag role={toKey} size="sm" />
+            </div>
+          </div>
+
+          <p className="mt-3.5 text-[13.5px] leading-relaxed text-text-primary">
+            {promoting
+              ? `${first} gets everything ${a(toLabel)} ${toLabel} can do.`
+              : `${first} loses what ${a(fromLabel)} ${fromLabel} can do.`}{" "}
+            As {a(toLabel)} {toLabel}, {ROLE_META[toKey].what.toLowerCase()}.
+          </p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
+            It takes effect the next time they load a page. You can change it
+            back here at any time.
+          </p>
+
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={onConfirm} loading={busy}>
+              {promoting
+                ? `Make ${first} ${a(toLabel)} ${toLabel}`
+                : `Move ${first} to ${toLabel}`}
+            </Button>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }
