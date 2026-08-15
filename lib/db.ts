@@ -20,6 +20,10 @@ import type {
 // Supabase adapter implement this identically, so routes never branch on mode.
 export type Db = typeof mockDb;
 
+/** Postgres uuid columns reject anything that is not one, so check before asking. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function getDb(): Db {
   if (getDataMode() === "mock") return mockDb;
   if (hasSupabase()) {
@@ -144,6 +148,11 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   };
 
   const scopedAgentRun = async (id: string): Promise<AgentRun | null> => {
+    // A run id that is not a UUID is simply not a run we have. Postgres
+    // disagrees: comparing a uuid column to "zz-nonexistent" raises 22P02,
+    // which threw straight past /api/agent/undo's own "Run not found" branch
+    // and turned a clean 404 into a 500.
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<AgentRun & Record<string, unknown>>(
       await supabase
