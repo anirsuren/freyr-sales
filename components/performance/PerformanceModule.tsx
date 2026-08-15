@@ -20,6 +20,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -2409,6 +2410,15 @@ function SubgoalEditorFields({
 
 /* ------------------------------------------------------- log actual modal */
 
+/** A real account, with the engagements recorded against it. The deal list
+ *  comes from the same offering_usage the heat map and the account page read,
+ *  so a claim points at the engagement everyone else can already see. */
+type AccountOption = {
+  id: string;
+  name: string;
+  deals: { id: string; label: string }[];
+};
+
 /** A file on its way to storage: percentage while it travels, then done, or
  *  the reason it stopped. */
 type EvidenceUpload = {
@@ -2445,12 +2455,86 @@ function LogActualModal({
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [customer, setCustomer] = useState("");
+  /** Real accounts, so the customer on a claim is the same string every time
+   *  and a number can be traced back to the company that paid it. */
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [customerId, setCustomerId] = useState("");
+  const [dealId, setDealId] = useState("");
   const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   /** One row per file being sent, so a big contract shows a moving bar rather
    *  than a frozen "Uploading…" with nothing behind it. */
   const [uploads, setUploads] = useState<EvidenceUpload[]>([]);
   const evidenceInputRef = useRef<HTMLInputElement>(null);
+
+  // Real accounts, loaded when the form opens. A failure here costs nothing:
+  // the field stays typeable, it just stops suggesting.
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    (async () => {
+      try {
+        const [res, offRes] = await Promise.all([
+          fetch("/api/customers", { cache: "no-store" }),
+          fetch("/api/offerings", { cache: "no-store" }),
+        ]);
+        const data = await res.json();
+        const offJson = await offRes.json().catch(() => ({}));
+        const offeringName = new Map<string, string>(
+          (offJson.offerings ?? []).map((o: { id: string; offering_name?: string }) => [
+            o.id,
+            o.offering_name || o.id,
+          ])
+        );
+        if (!alive || !Array.isArray(data.customers)) return;
+        setAccounts(
+          data.customers.map(
+            (c: {
+              id: string;
+              company_name?: string;
+              offering_usage?: {
+                offering_id?: string;
+                engagement_versions?: {
+                  id?: string;
+                  activity?: string;
+                  status?: string;
+                  dollar_value?: number;
+                  linked?: boolean;
+                }[];
+              }[];
+            }) => ({
+              id: c.id,
+              name: c.company_name || "",
+              deals: (c.offering_usage ?? []).flatMap((u) =>
+                (u.engagement_versions ?? [])
+                  .filter((e) => e.linked !== false && e.id)
+                  .map((e) => ({
+                    id: String(e.id),
+                    label: [
+                      u.offering_id ? offeringName.get(u.offering_id) : null,
+                      e.activity
+                        ? e.activity.charAt(0).toUpperCase() + e.activity.slice(1)
+                        : null,
+                      e.dollar_value
+                        ? fmtAmount("currency", e.dollar_value)
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                  }))
+              ),
+            })
+          ).filter((a: AccountOption) => a.name)
+        );
+      } catch {
+        /* suggestions are a convenience, never a gate */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   // Opened from a person's goal row: land with goal, subgoal and person
   // already chosen so the only thing left to type is the number.
@@ -2658,6 +2742,21 @@ function LogActualModal({
     );
   }
 
+  /** Accounts matching what has been typed. Empty query shows the list, so
+   *  clicking the field offers the accounts rather than demanding a guess. */
+  const customerMatches = useMemo(() => {
+    const q = customer.trim().toLowerCase();
+    const hit = q
+      ? accounts.filter((a) => a.name.toLowerCase().includes(q))
+      : accounts;
+    return hit.slice(0, 8);
+  }, [accounts, customer]);
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === customerId) ?? null,
+    [accounts, customerId]
+  );
+
   const personOptions = useMemo(() => {
     const set = new Set<string>();
     if (sub) {
@@ -2685,6 +2784,14 @@ function LogActualModal({
         date: date || undefined,
         note: note || undefined,
         customer: customer || undefined,
+        // The account and the engagement behind the words, so this number can
+        // be traced back rather than matched on spelling.
+        customerId: customerId || undefined,
+        dealId: dealId || undefined,
+        dealLabel:
+          (dealId &&
+            selectedAccount?.deals.find((d) => d.id === dealId)?.label) ||
+          undefined,
         evidence: evidence.length ? evidence : undefined,
       },
       "Sent for verification. It counts once the group owner locks it"
@@ -2877,16 +2984,87 @@ function LogActualModal({
         )}
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Customer / deal{" "}
-            <span className="font-normal text-text-tertiary">(what is this from?)</span>
+            Customer
+            <InfoHint
+              text={
+                "Which account this number came from. Pick the real account so the money can be traced back to it.\nTyping something not on the list is allowed for a win that has no account record yet."
+              }
+            />
           </label>
-          <input
-            value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
-            placeholder="e.g. Zenlabs Pharma, first contract (MSA + Reg Ops)"
-            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-          />
+          {/* PICK THE ACCOUNT, DO NOT DESCRIBE IT (Anir, Aug 15: "it should be
+              like a dropdown where they choose and they search up the
+              customer"). Free text meant one account arrived as "Takeda",
+              "Takeda Pharma" and "takeda - renewal", so no report could ever
+              group by customer. Still an input, so a brand-new logo that has
+              no account record yet can be typed. */}
+          <div className="relative mt-1">
+            <input
+              value={customer}
+              onChange={(e) => {
+                setCustomer(e.target.value);
+                // Typed by hand: this is no longer one of our accounts.
+                setCustomerId("");
+                setDealId("");
+                setCustomerOpen(true);
+              }}
+              onFocus={() => setCustomerOpen(true)}
+              onBlur={() => window.setTimeout(() => setCustomerOpen(false), 150)}
+              placeholder="Search your accounts…"
+              className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+            />
+            {customerOpen && customerMatches.length > 0 && (
+              <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1 max-h-[240px] overflow-y-auto rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
+                {customerMatches.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setCustomer(c.name);
+                      setCustomerId(c.id);
+                      setDealId("");
+                      setCustomerOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-surface"
+                  >
+                    <CompanyLogo name={c.name} className="h-5 w-5 shrink-0" />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        {selectedAccount && selectedAccount.deals.length > 0 && (
+          /* The deal follows the customer (Anir, Aug 15: "I choose a customer
+             and then maybe I choose a deal"). These are the engagements
+             already recorded on that account, so a claim points at something
+             the heat map and the account page can both see. Optional: a win
+             can land before anyone has logged the engagement. */
+          <div>
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+              Deal{" "}
+              <span className="font-normal text-text-tertiary">(optional)</span>
+              <InfoHint text="The engagement on this account that produced the number. Leave it empty if the deal is not recorded yet." />
+            </label>
+            <div className="mt-1">
+              <ColorSelect
+                value={dealId}
+                onChange={setDealId}
+                ariaLabel="Deal"
+                minWidth={430}
+                options={[
+                  { value: "", label: "No specific deal", color: "#8E98A8" },
+                  ...selectedAccount.deals.map((d) => ({
+                    value: d.id,
+                    label: d.label,
+                    color: "#0F766E",
+                  })),
+                ]}
+              />
+            </div>
+          </div>
+        )}
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Evidence

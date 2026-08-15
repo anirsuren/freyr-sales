@@ -354,13 +354,12 @@ export function VersionTimeline({
    * with the one thing they need spelled out.
    */
   const undatedStrip = undated.length > 0 && (
-    <div
-      className={
-        dated.length === 0
-          ? "mt-3.5 rounded-xl border border-dashed border-border-light px-4 py-5"
-          : "mt-3 rounded-xl border border-dashed border-border-light px-4 py-3"
-      }
-    >
+    /* DOCKED TO THE TIMELINE, not floated under it (Anir, Aug 15: "If I have
+       a version, just show it to me"). A version with no date has no honest
+       position on a date axis — putting a dot at today would say it shipped
+       today — so it sits in its own lane attached to the chart, where it is
+       visibly part of the timeline and claims nothing about when. */
+    <div className="-mt-px rounded-b-xl border border-t-0 border-border-light bg-surface/60 px-4 py-3">
       <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
         {undated.length === 1 ? "No date yet" : `No date yet (${undated.length})`}
       </p>
@@ -385,8 +384,9 @@ export function VersionTimeline({
         })}
       </div>
       <p className="mt-2.5 text-[11.5px] text-text-tertiary">
-        Give {undated.length === 1 ? "it" : "them"} a date and{" "}
-        {undated.length === 1 ? "it moves" : "they move"} onto the timeline.
+        Click {undated.length === 1 ? "it" : "them"} to set a date, and{" "}
+        {undated.length === 1 ? "it moves" : "they move"} up onto the dates
+        above.
       </p>
     </div>
   );

@@ -123,7 +123,7 @@ export function PeopleTab({
     { value: "lagging", label: "Lagging", color: "#B45309" },
     { value: "met", label: "Met", color: "#15803D" },
     { value: "unset", label: "No target yet", color: "#64748B" },
-  ].filter((o) => allRows.some((r) => rowPace(r) === o.value));
+  ];
 
   return (
     <div>
@@ -163,7 +163,7 @@ export function PeopleTab({
           </div>
         )}
       </div>
-        {typeOptions.length > 1 && (
+        {allRows.length > 0 && (
           <MultiColorSelect
             values={typeFilter ? typeFilter.split(",") : []}
             onChange={(next) => setTypeFilter(next.join(","))}
@@ -183,7 +183,7 @@ export function PeopleTab({
             }))}
           />
         )}
-        {PACE_OPTIONS.length > 1 && (
+        {allRows.length > 0 && (
           <MultiColorSelect
             values={paceFilter ? paceFilter.split(",") : []}
             onChange={(next) => setPaceFilter(next.join(","))}

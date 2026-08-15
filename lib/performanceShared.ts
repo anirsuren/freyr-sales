@@ -128,8 +128,16 @@ export type PerfActual = {
   /** ISO date (day precision) the result belongs to. */
   date: string;
   note?: string;
-  /** Which customer/deal this came from — the claim in plain words. */
+  /** Which customer this came from. Free text historically, now the account
+   *  name chosen from the real list — same string every time, so a number can
+   *  be traced back to the company that paid it. */
   customer?: string;
+  /** The account record behind that name, when it is one of ours. */
+  customerId?: string;
+  /** The specific engagement on that account (Anir, Aug 15: "I choose a
+   *  customer and then maybe I choose a deal"), and the label shown for it. */
+  dealId?: string;
+  dealLabel?: string;
   /** The proof: signed contract, SOW, opportunity summary (Suren, Aug 13:
    *  "we need evidence"). */
   evidence?: ActualEvidence[];

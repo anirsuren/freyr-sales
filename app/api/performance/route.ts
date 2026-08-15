@@ -311,6 +311,9 @@ export async function POST(req: NextRequest) {
           date: body.date ? String(body.date) : undefined,
           note: body.note ? String(body.note) : undefined,
           customer: body.customer ? String(body.customer) : undefined,
+          customerId: body.customerId ? String(body.customerId) : undefined,
+          dealId: body.dealId ? String(body.dealId) : undefined,
+          dealLabel: body.dealLabel ? String(body.dealLabel) : undefined,
           evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
           addedBy: me.name,
         });

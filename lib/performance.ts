@@ -202,6 +202,11 @@ function normalize(value: unknown): PerformanceState {
             date: str(ra.date, 40) || new Date().toISOString().slice(0, 10),
             note: ra.note ? str(ra.note, 400) : undefined,
             customer: ra.customer ? str(ra.customer, 160) : undefined,
+            // Carried explicitly: a field this normalizer does not name is
+            // dropped the next time anything writes this row.
+            customerId: ra.customerId ? str(ra.customerId, 60) : undefined,
+            dealId: ra.dealId ? str(ra.dealId, 80) : undefined,
+            dealLabel: ra.dealLabel ? str(ra.dealLabel, 160) : undefined,
             evidence: Array.isArray(ra.evidence)
               ? ra.evidence
                   .map((e) => ({
@@ -488,6 +493,9 @@ export async function logActual(input: {
   date?: string;
   note?: string;
   customer?: string;
+  customerId?: string;
+  dealId?: string;
+  dealLabel?: string;
   evidence?: { name?: unknown; url?: unknown }[];
   addedBy: string;
 }): Promise<PerfActual> {
@@ -542,6 +550,9 @@ export async function logActual(input: {
     date: dateIso,
     note: input.note ? str(input.note, 400) : undefined,
     customer: input.customer ? str(input.customer, 160) : undefined,
+    customerId: input.customerId ? str(input.customerId, 60) : undefined,
+    dealId: input.dealId ? str(input.dealId, 80) : undefined,
+    dealLabel: input.dealLabel ? str(input.dealLabel, 160) : undefined,
     evidence: evidence.length ? evidence : undefined,
     // Everything logged now waits for its group owner. Legacy entries with no
     // status keep counting as verified so history does not move.
