@@ -2013,14 +2013,24 @@ export function BarChart({
                       className="absolute inset-x-0 top-0"
                       style={{
                         height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
-                        // No cap, no stripes: a light wash of the bar's own
-                        // colour, and nothing else. Both of the earlier tries
-                        // put a line across the bar that read as a separate
-                        // thing (Anir, Aug 15: "what's that green strip at the
-                        // top, it's throwing me off"). Where some of a bar IS
-                        // verified, the solid-to-pale boundary is the only edge
-                        // needed; where none is, the bar is simply pale.
-                        background: "rgba(255,255,255,0.74)",
+                        /**
+                         * NOT SIGNED OFF = STRIPED (Anir, Aug 15: "if it's not
+                         * verified, show it like a stripe").
+                         *
+                         * Third time on this. The first stripe was a barber
+                         * pole — full-strength colour against white, 50/50, at
+                         * a size you could read from across the room. Then a
+                         * flat wash, which said nothing. Then a coloured cap,
+                         * which read as a stray line.
+                         *
+                         * These are two WHITE veils over the bar's own colour,
+                         * a few percent apart, so the stripe is the same hue
+                         * twice and only shows up close. The bar still reads as
+                         * one colour at a glance and as provisional when you
+                         * look at it.
+                         */
+                        background:
+                          "repeating-linear-gradient(45deg, rgba(255,255,255,0.80) 0 5px, rgba(255,255,255,0.62) 5px 10px)",
                       }}
                     />
                   )}
