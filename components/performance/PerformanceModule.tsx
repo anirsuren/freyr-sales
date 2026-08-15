@@ -39,6 +39,7 @@ import { useStoredView } from "@/lib/useStoredView";
 import { cn } from "@/lib/utils";
 import {
   fmtAmount,
+  hasActuals,
   knownPeople,
   parseAmountInput,
   type GoalMeasure,
@@ -1712,8 +1713,17 @@ function GoalPopupBody({
               <VerifiedPill
                 verified={a.verified}
                 size="sm"
+                // Same rule as the performance tables: with nothing logged
+                // against this person there is nothing to sign off, so the
+                // pill reads as status and does not click.
                 onToggle={
-                  live
+                  live &&
+                  (hasActuals(state.actuals, {
+                    goalId: goal.id,
+                    subgoalId: null,
+                    person: a.person,
+                  }) ||
+                    a.verified)
                     ? () =>
                         run(
                           {

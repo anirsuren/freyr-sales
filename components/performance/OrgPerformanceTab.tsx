@@ -30,6 +30,7 @@ import {
   PERIODS,
   actualValue,
   fmtAmount,
+  hasActuals,
   paceVerdict,
   pctMet,
   yearElapsed,
@@ -441,7 +442,7 @@ export function OrgPerformanceTab({
                     { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
                     { h: "Met", hint: "Met means the actual has reached the target." },
                     { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
-                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it." },
+                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged — with nothing logged there is nothing to sign off." },
                     { h: "" },
                   ] as { h: string; hint?: string }[]
                 ).map((col, i) => (
@@ -646,8 +647,13 @@ function GoalRows({
           <VerifiedPill
             verified={goal.verified}
             size="sm"
+            // Nothing logged means nothing to verify, so the pill stays as a
+            // status and stops being a button (Anir, Aug 15: "I shouldn't be
+            // able to click on it... what's there to verify?"). Signing off on
+            // an empty row would record leadership approving zero. An existing
+            // yes stays clickable so it can always be undone.
             onToggle={
-              live
+              live && (hasActuals(actuals, { goalId: goal.id }) || goal.verified)
                 ? () =>
                     run(
                       {
@@ -676,7 +682,11 @@ function GoalRows({
       </tr>
       {open && (
         <tr className="!border-t-0">
-          <td colSpan={7} className="bg-[var(--surface)] px-4 pb-5 pt-3">
+          {/* No tint and no border on the drill-down (Anir, Aug 15: "there
+              are so many lines here... remove the rectangle that houses the
+              three cards"). The cards inside carry their own outlines; a box
+              around a box was one frame too many. */}
+          <td colSpan={7} className="px-4 pb-5 pt-3">
             <div className="tab-panel space-y-3">
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
@@ -767,7 +777,13 @@ function GoalRows({
                                 verified={a.verified}
                                 size="sm"
                                 onToggle={
-                                  live
+                                  live &&
+                                  (hasActuals(actuals, {
+                                    goalId: goal.id,
+                                    subgoalId: null,
+                                    person: a.person,
+                                  }) ||
+                                    a.verified)
                                     ? () =>
                                         run(
                                           {
@@ -899,7 +915,12 @@ function GoalRows({
                             verified={s.verified}
                             size="sm"
                             onToggle={
-                              live
+                              live &&
+                              (hasActuals(actuals, {
+                                goalId: goal.id,
+                                subgoalId: s.id,
+                              }) ||
+                                s.verified)
                                 ? () =>
                                     run(
                                       {
@@ -1017,7 +1038,13 @@ function GoalRows({
                                       verified={p.verified}
                                       size="sm"
                                       onToggle={
-                                        live
+                                        live &&
+                                        (hasActuals(actuals, {
+                                          goalId: goal.id,
+                                          subgoalId: s.id,
+                                          person: p.name,
+                                        }) ||
+                                          p.verified)
                                           ? () =>
                                               run(
                                                 {

@@ -218,6 +218,28 @@ export function actualValue(
   return goal.measure === "level" ? (latest?.amount ?? 0) : total;
 }
 
+/**
+ * Has anybody logged anything here yet? Verification is leadership signing
+ * off on a number somebody reported, so with no entries there is literally
+ * nothing to sign off (Anir, Aug 15: "there's nothing to verify here, right?
+ * Why would you need that thing there?").
+ *
+ * Deliberately counts ENTRIES, not the total: a level goal (a ratio, an
+ * average) can legitimately report zero, and that zero is still a claim
+ * somebody made and leadership can confirm.
+ */
+export function hasActuals(
+  actuals: PerfActual[],
+  filter: { goalId: string; subgoalId?: string | null; person?: string }
+): boolean {
+  return actuals.some(
+    (a) =>
+      a.goalId === filter.goalId &&
+      (filter.subgoalId === undefined || a.subgoalId === filter.subgoalId) &&
+      (!filter.person || a.person === filter.person)
+  );
+}
+
 /** The distinct people who actually logged numbers on a goal (for goals that
  *  have no subgoal assignments yet). */
 export function contributors(
