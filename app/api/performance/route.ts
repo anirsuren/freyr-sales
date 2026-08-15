@@ -32,6 +32,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The tail of the write queue (see the comment in POST). Hung on globalThis so
+ * a dev-server hot reload of this module cannot hand two requests two separate
+ * "empty" queues and put us straight back where we started.
+ */
+declare global {
+  var __FREYR_PERFORMANCE_WRITE_QUEUE__: Promise<void> | undefined;
+}
+let performanceWriteQueue: Promise<void> =
+  globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ ?? Promise.resolve();
+
 // THREE KINDS OF PEOPLE WALK IN (Suren, Aug 12): the org head sees everything,
 // a group owner sees exactly their group ("Rukmini should not have access to
 // other groups"), and an individual sees their own goals. Managers and admins
@@ -151,6 +162,23 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+
+  // ONE WRITER AT A TIME. Every op below is read-modify-write over a single
+  // catalog row: read the whole state, change one thing, write the whole state
+  // back. Two people saving in the same moment both read the same "before",
+  // and the second write erases the first — with a 200 and a success toast on
+  // both screens. Measured: six simultaneous saves, six 200s, one survivor.
+  //
+  // Offerings already solved this with a promise queue in
+  // commitOfferingsChange; this is the same idea at the one boundary every
+  // performance write passes through, so the ops themselves stay untouched.
+  const previousWrite = performanceWriteQueue;
+  let releaseWrite: () => void = () => undefined;
+  performanceWriteQueue = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ = performanceWriteQueue;
+  await previousWrite.catch(() => undefined);
 
   try {
     switch (op) {
@@ -318,6 +346,8 @@ export async function POST(req: NextRequest) {
       { error: error instanceof Error ? error.message : "That didn't save." },
       { status: 400 }
     );
+  } finally {
+    releaseWrite();
   }
   const state = await readPerformance();
   const visible = callerScope(state, me.name, manager);
