@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtWhen } from "@/lib/whenLabel";
 import { useRouter } from "next/navigation";
 import { ExternalLink, MapPin, MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -17,14 +18,8 @@ import type { TrackedPerson } from "@/lib/marketIntelTracking";
  * accidental tap deleted a real person once, never again.
  */
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+/** Date, plus the time when the record actually carries one. */
+const fmtDate = fmtWhen;
 
 export function TrackedPeopleList({
   people,
@@ -201,7 +196,10 @@ export function TrackedPeopleList({
                     className="rounded-xl border border-border-light bg-white p-4 shadow-card"
                   >
                     <p className="flex items-center text-[11.5px] font-medium text-text-tertiary">
-                      <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0071E3]">
+                      <span
+                        className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0071E3]"
+                        suppressHydrationWarning
+                      >
                         {fmtDate(post.date)}
                       </span>
                       <a

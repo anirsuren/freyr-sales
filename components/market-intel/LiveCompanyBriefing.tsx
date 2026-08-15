@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -74,14 +75,8 @@ type Kind = "company" | "people" | "news" | "signal";
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+/** Date, plus the time when the record actually carries one. */
+const fmtDate = fmtWhen;
 
 function fmtFollowers(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -217,7 +212,10 @@ export function LiveCompanyBriefing({
               <span className="text-[13.5px] font-semibold text-text-primary">
                 {post.by ? post.by.name : briefing.name}
               </span>
-              <span className="text-[11.5px] text-text-tertiary">
+              <span
+                className="text-[11.5px] text-text-tertiary"
+                suppressHydrationWarning
+              >
                 {post.by
                   ? `${post.by.role || "Tracked person"} · ${fmtDate(post.date)}`
                   : `Company page · ${fmtDate(post.date)}`}
@@ -284,7 +282,7 @@ export function LiveCompanyBriefing({
         <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
           <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
         </span>
-        <span className="text-[11.5px] text-text-tertiary">
+        <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
           {fmtDate(item.published)}
         </span>
       </p>
@@ -322,7 +320,9 @@ export function LiveCompanyBriefing({
           >
             <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
           </span>
-          <span className="text-[11.5px] text-text-tertiary">{fmtDate(signal.date)}</span>
+          <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
+            {fmtDate(signal.date)}
+          </span>
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           {signal.title}
@@ -715,7 +715,10 @@ export function LiveCompanyBriefing({
                             </p>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary">
+                        <td
+                          className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary"
+                          suppressHydrationWarning
+                        >
                           {fmtDate(row.when)}
                         </td>
                         <td className="px-4 py-3 text-right align-top">

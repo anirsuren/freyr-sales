@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtWhen } from "@/lib/whenLabel";
 import {
   ArrowRight,
   CheckCircle2,
@@ -43,14 +44,8 @@ const STATUS_META = {
   completed: { label: "Completed", color: "#1A7A35" },
 } as const;
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+/** Date, plus the time when the record actually carries one. */
+const fmtDate = fmtWhen;
 
 /** "$360 M" / "$3.8 B" → dollars; null when the deal value is undisclosed. */
 function dealValueUsd(v: string | null): number | null {
@@ -264,7 +259,7 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
                   >
                     {meta.label}
                   </span>
-                  <span className="text-[11.5px] text-text-tertiary">
+                  <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
                     {fmtDate(deal.date)}
                   </span>
                 </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fmtWhen } from "@/lib/whenLabel";
 import {
   ChevronLeft,
   ChevronRight,
@@ -35,14 +36,8 @@ export type CardPerson = {
   posts: number;
 };
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+/** Date, plus the time when the record actually carries one. */
+const fmtDate = fmtWhen;
 
 export function LiveCompanyCard({
   briefing,
@@ -274,7 +269,7 @@ export function LiveCompanyCard({
                 {item.source}:
               </span>{" "}
               <span className="text-text-secondary">{item.title}</span>
-              <span className="text-text-tertiary">
+              <span className="text-text-tertiary" suppressHydrationWarning>
                 {" "}
                 · {fmtDate(item.published)}
               </span>
