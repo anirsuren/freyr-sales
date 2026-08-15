@@ -19,7 +19,8 @@ import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import type { RunOp } from "./PerformanceModule";
 import { MyEntriesCard, VerifyQueueCard } from "./EntryCards";
-import { GoalBar, PacePill, TypeChip } from "./bits";
+import { GoalBar, PacePill, TypeChip, typeMeta } from "./bits";
+import { MultiColorSelect } from "@/components/ui/ColorSelect";
 
 /**
  * PEOPLE PERFORMANCE (Suren, Aug 12): "I just want to do only individual
@@ -51,10 +52,46 @@ export function PeopleTab({
    *  and the same GoalZoom, as Org and Group performance: the detail opens
    *  where you clicked it rather than on a page of its own. */
   const [openGoal, setOpenGoal] = useState<string | null>(null);
+  /** FILTERS, because a person will carry a lot of goals before long (Anir,
+   *  Aug 15: "eventually were gonna have lots of stuff here"). Same control
+   *  and same shape as the Offerings and Customers filter rows. */
+  const [typeFilter, setTypeFilter] = useState("");
+  const [paceFilter, setPaceFilter] = useState("");
 
   const names = useMemo(() => knownPeople(state, meName), [state, meName]);
   const person = picked ?? meName;
-  const rows = personGoalRows(state, person);
+  const allRows = personGoalRows(state, person);
+
+  const typeOptions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const r of allRows)
+      seen.set(r.goal.type, (seen.get(r.goal.type) ?? 0) + 1);
+    return [...seen.keys()].sort();
+  }, [allRows]);
+
+  /** The verdict a row's pace pill shows, so filtering matches what is read
+   *  on screen rather than a second opinion computed differently. */
+  const rowPace = (r: (typeof allRows)[number]) =>
+    paceVerdict(
+      actualValue(state.actuals, r.goal, {
+        subgoalId: r.subgoal ? r.subgoal.id : null,
+        person,
+      }),
+      r.target,
+      r.goal.year,
+      r.goal.measure
+    );
+
+  const rows = useMemo(() => {
+    const types = typeFilter ? new Set(typeFilter.split(",")) : null;
+    const paces = paceFilter ? new Set(paceFilter.split(",")) : null;
+    return allRows.filter((r) => {
+      if (types && !types.has(r.goal.type)) return false;
+      if (paces && !paces.has(rowPace(r))) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRows, typeFilter, paceFilter, state.actuals, person]);
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -80,9 +117,18 @@ export function PeopleTab({
   const attainment =
     pcts.length > 0 ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null;
 
+  const PACE_OPTIONS = [
+    { value: "ahead", label: "Ahead", color: "#0F766E" },
+    { value: "ontrack", label: "On track", color: "#0071E3" },
+    { value: "lagging", label: "Lagging", color: "#B45309" },
+    { value: "met", label: "Met", color: "#15803D" },
+    { value: "unset", label: "No target yet", color: "#64748B" },
+  ].filter((o) => allRows.some((r) => rowPace(r) === o.value));
+
   return (
     <div>
-      <div className="relative max-w-[420px]">
+      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="relative w-full max-w-[420px] sm:w-auto sm:flex-1">
         <Search
           size={15}
           strokeWidth={2}
@@ -117,6 +163,42 @@ export function PeopleTab({
           </div>
         )}
       </div>
+        {typeOptions.length > 1 && (
+          <MultiColorSelect
+            values={typeFilter ? typeFilter.split(",") : []}
+            onChange={(next) => setTypeFilter(next.join(","))}
+            minWidth={150}
+            width={118}
+            maxWidth={200}
+            triggerLabel="Goal type"
+            dense
+            className="shrink-0"
+            allLabel="All goal types"
+            ariaLabel="Filter by goal type"
+            options={typeOptions.map((t) => ({
+              value: t,
+              label: t,
+              color: typeMeta(t).color,
+              icon: typeMeta(t).icon,
+            }))}
+          />
+        )}
+        {PACE_OPTIONS.length > 1 && (
+          <MultiColorSelect
+            values={paceFilter ? paceFilter.split(",") : []}
+            onChange={(next) => setPaceFilter(next.join(","))}
+            minWidth={140}
+            width={110}
+            maxWidth={180}
+            triggerLabel="Pace"
+            dense
+            className="shrink-0"
+            allLabel="Any pace"
+            ariaLabel="Filter by pace"
+            options={PACE_OPTIONS}
+          />
+        )}
+      </div>
 
       <div className="mt-4 space-y-4">
         <VerifyQueueCard state={state} run={run} meName={meName} busy={false} />
@@ -135,7 +217,9 @@ export function PeopleTab({
               )}
             </p>
             <p className="text-[12px] text-text-secondary">
-              {rows.length} {rows.length === 1 ? "goal" : "goals"} assigned
+              {rows.length === allRows.length
+                ? `${rows.length} ${rows.length === 1 ? "goal" : "goals"} assigned`
+                : `${rows.length} of ${allRows.length} goals shown`}
             </p>
           </div>
           {attainment !== null && (
@@ -160,7 +244,31 @@ export function PeopleTab({
           )}
         </div>
 
-        {rows.length === 0 ? (
+        {rows.length === 0 && allRows.length > 0 ? (
+          /* Filtered to nothing is not the same as carrying nothing, and
+             telling someone to go and assign a goal they already have is
+             worse than saying nothing. */
+          <div className="mt-4 flex flex-col items-center gap-2 rounded-xl bg-surface px-4 py-8 text-center">
+            <p className="text-[13px] font-semibold text-text-primary">
+              No goals match these filters
+            </p>
+            <p className="text-[12.5px] text-text-secondary">
+              {person === meName ? "You carry" : `${person} carries`}{" "}
+              {allRows.length} {allRows.length === 1 ? "goal" : "goals"} in
+              total.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("");
+                setPaceFilter("");
+              }}
+              className="mt-0.5 cursor-pointer rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-blue-primary shadow-sm transition-colors hover:bg-blue-light"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : rows.length === 0 ? (
           <div className="mt-4 flex flex-col items-center gap-1.5 rounded-xl bg-surface px-4 py-8 text-center">
             <UserRound size={20} strokeWidth={1.8} className="text-text-tertiary" />
             <p className="text-[13px] font-semibold text-text-primary">

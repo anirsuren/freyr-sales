@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Layers, Paperclip } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Crown, Layers, Paperclip } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
@@ -344,10 +344,12 @@ export function GoalZoom({
                   >
                     {COMPONENT_ICONS[i % 3]}
                   </span>
+                  {/* No "people enter here" chip on each card (Anir, Aug 15):
+                      it looked like a button, did nothing, and said the same
+                      thing three times. The parent above already says people
+                      log results on the goals below, which is where the
+                      distinction actually matters. */}
                   <b className="text-[13.5px] text-text-primary">{c.name}</b>
-                  <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-blue-primary">
-                    ✍️ people enter here
-                  </span>
                 </div>
                 <p className="mt-2.5 text-[21px] font-extrabold tnum">
                   {fmtAmount(c.unit, cVerified)}
@@ -588,7 +590,11 @@ export function GoalZoom({
                         <span className="w-[128px] shrink-0 text-[11.5px] font-medium leading-tight text-text-primary">
                           {p.name}
                           {p.name === selGroup.group.head && (
-                            <span className="ml-1 rounded-full bg-[rgba(180,49,143,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#B4318F]">
+                            /* The SAME owner mark as the Admin page and the
+                               group cards: purple with the crown (Anir,
+                               Aug 15). It was magenta and crownless here. */
+                            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#7C3AED]">
+                              <Crown size={8} strokeWidth={2.8} />
                               owner
                             </span>
                           )}
@@ -615,11 +621,6 @@ export function GoalZoom({
             </div>
           );
         })()}
-        <p className="mt-2.5 text-[11px] text-text-tertiary">
-          The same view continues everywhere: whatever cadence box 1 is in,
-          boxes 2 and 3 read that exact period. Every number is verified only;
-          amber is still waiting.
-        </p>
       </Card>
 
       {/* No "Open the full goal page" link here (Anir, Aug 14: "we don't need
