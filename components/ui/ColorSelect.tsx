@@ -384,7 +384,20 @@ export function ColorSelect({
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
           {searchable && (
-            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-border-light bg-white p-1.5">
+            /* The search bar has to cover the panel's own top padding, or
+               rows scroll through the strip above it and you can read an
+               option straight through the search box (Anir, Aug 15: "I can
+               see the thing right behind the search bar"). `top-0` sticks to
+               the scrollport, which is INSIDE that padding, so the offset and
+               the margins have to match the panel's padding exactly. */
+            <div
+              className={cn(
+                "sticky z-10 mb-1 border-b border-border-light bg-white",
+                detailed
+                  ? "-top-2 -mx-2 -mt-2 p-2"
+                  : "-top-1.5 -mx-1.5 -mt-1.5 p-1.5"
+              )}
+            >
               <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
                 <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
                 <input
