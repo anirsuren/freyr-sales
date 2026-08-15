@@ -2719,32 +2719,39 @@ function LogActualModal({
           )}
         </div>
         {composite && (
-          <div className="rounded-xl border border-[rgba(109,40,217,0.3)] bg-[rgba(109,40,217,0.04)] px-3 py-2.5">
-            <p className="text-[11.5px] font-semibold text-[color:#6D28D9]">
-              {goal?.name} is only ever a sum — pick which booking this was:
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {components.map((c) => {
-                const active = componentId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      if (c.id !== componentId) setSubgoalId("");
-                      setComponentId(c.id);
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
-                      active
-                        ? "bg-blue-primary text-white"
-                        : "border border-border-light bg-white text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
+          /* A DROPDOWN, like every other field in this form (Anir, Aug 15:
+             "there should be another dropdown that asks me this instead of
+             whatever you have right now"). This was a purple banner that
+             explained the parent goal is only ever a sum, with chips under
+             it. The label now just says what to do, and the explanation
+             moved into the hint where the rest of this form keeps its
+             explanations. */
+          <div>
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+              Which booking?
+              <InfoHint
+                text={`${goal?.name ?? "This goal"} is only ever the sum of the bookings underneath it, so the number belongs to one of them.`}
+              />
+            </label>
+            <div className="mt-1">
+              <ColorSelect
+                value={componentId}
+                onChange={(v) => {
+                  if (v !== componentId) setSubgoalId("");
+                  setComponentId(v);
+                }}
+                ariaLabel="Which booking"
+                minWidth={430}
+                options={[
+                  { value: "", label: "Pick which booking…", color: "#8E98A8" },
+                  ...components.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                    color: typeMeta(c.type).color,
+                    icon: typeMeta(c.type).icon,
+                  })),
+                ]}
+              />
             </div>
           </div>
         )}
