@@ -261,7 +261,13 @@ export function OrgPerformanceTab({
               {words?.barTitle ?? "How far along each goal is"}
               <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
             </p>
-            <div className="-mx-5 mt-3 min-h-0 flex-1">
+            {/* -mb-5 as well as -mx-5: the card's bottom padding was holding the
+                scroller 20px off the card's edge, so the scrollbar floated
+                above it (Anir, Aug 15: "the scrollbar has to be at the very
+                bottom edge and the bars right above it"). Bleeding into all
+                three sides puts the bar on the edge and the axis labels
+                immediately above it. */}
+            <div className="-mx-5 -mb-5 mt-3 min-h-0 flex-1">
               <BarChart
                 height={190}
                 fillCard={20}

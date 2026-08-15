@@ -1782,10 +1782,21 @@ export function BarChart({
   // one sat half outside it and read as clipped ("Billed / Colle Revenue" on
   // Org performance, Anir Aug 14). 100 still fits a wrapped company name and
   // keeps six columns inside the card instead of behind a sideways scroll.
-  const minColumn = wideLabels ? 100 : 64;
+  // 124, not 100: at 100 a two-line wrap could not hold "Billed / Collected
+  // Revenue" and the clamp turned it into "Billed / Collected…" (Anir, Aug 15:
+  // "dont have ... figure out how to space them out properly"). The clamp is
+  // the guarantee that nothing ever runs to three lines; this is the width
+  // that stops it having to. Wider columns just mean the plot scrolls, which
+  // he has already said is fine.
+  const minColumn = wideLabels ? 124 : 64;
   // A fixed label-block height keeps every column on ONE baseline; sized from
   // the longest name so the tallest wrap still fits without clipping.
-  const labelTextHeight = longestLabel > 18 ? 42 : 28;
+  // TWO LINES, NEVER THREE (Anir, Aug 15: "the bar header has to be 2 lines
+  // max not 3"). "Billed / Collected Revenue" took three and every column's
+  // label block grew to match it, which is where a chunk of the card's dead
+  // height was coming from. 28 = two lines at 11px/1.2, and the label itself
+  // is clamped so it can never spill past the block it is given.
+  const labelTextHeight = 28;
   const labelBlockHeight = labelTextHeight + (hasLogos ? 24 : 0);
   const baselineOffset = labelBlockHeight + 8; // + the label block's mt-2
   const gridMinWidth =
@@ -1808,9 +1819,12 @@ export function BarChart({
       className={cn(
         "w-full overflow-x-auto",
         fillCard ? "h-full" : undefined,
-        // Centred, so a collapsed empty chart sits in the middle of the card
-        // instead of pinned to the top with a void underneath.
-        fillCard && allZero ? "flex items-center" : undefined
+        // BOTTOM-ANCHORED when there is nothing to plot. The card still has
+        // to match the donut beside it (equal card heights is a standing
+        // rule), so the air has to go somewhere — and it belongs ABOVE a bar,
+        // never below it. Centred left a band under the labels and the bars
+        // read as floating (Anir, Aug 15: "the bars are so high up").
+        fillCard && allZero ? "flex items-end" : undefined
       )}
     >
     <div
@@ -1830,8 +1844,12 @@ export function BarChart({
         // classic scrollbar — macOS overlay bars take no layout height, so
         // without it "always show scrollbars" draws straight across the
         // labels.
+        // With every bar at zero there is no tall column to leave room above
+        // and no column to give height to, so the plot is exactly its value
+        // labels, a stub band and the axis labels (Anir, Aug 15: "the bars are
+        // so high up").
         height: allZero
-          ? labelRoom + 30 + baselineOffset + SCROLLBAR_STRIP
+          ? labelRoom + 16 + baselineOffset + SCROLLBAR_STRIP
           : fillCard
             ? "100%"
             : height,
@@ -1993,7 +2011,10 @@ export function BarChart({
                   bottom". Only when the column has no logo: a company already
                   has its mark above the name and a dot beside it would be a
                   second, weaker identity. Same 6px dot the forecast uses. */}
-              <span className="w-full break-words text-[11px] leading-[1.2] text-text-tertiary">
+              <span
+                title={d.label}
+                className="line-clamp-2 w-full break-words text-[11px] leading-[1.2] text-text-tertiary"
+              >
                 {!d.logo && d.color && (
                   <span
                     aria-hidden
