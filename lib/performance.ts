@@ -749,6 +749,38 @@ export async function assignGoalToGroup(input: {
       assignedAt: new Date().toISOString(),
     });
   }
+
+  /**
+   * THE GROUP'S PEOPLE COME WITH IT (Anir, Aug 15: "shouldn't it automatically
+   * assign those people?").
+   *
+   * Yes — otherwise handing a goal to a department changes nothing for the
+   * people who have to deliver it: they would not see it on their own screen
+   * and could not log against it. Suren's rule needs them attached, because a
+   * group's number is only ever its people's added up.
+   *
+   * Each arrives on 0, never a share invented by dividing the group target:
+   * splitting it is leadership's call, and a made-up number would read as a
+   * real one. Anyone already assigned is left exactly as they are, so this can
+   * never overwrite a target somebody set by hand.
+   */
+  const group = state.groups.find((g) => g.id === groupId);
+  if (group) {
+    goal.assignments = goal.assignments ?? [];
+    const roster = [group.head, ...group.members]
+      .map((m) => m.trim())
+      .filter(Boolean);
+    for (const person of new Set(roster)) {
+      if (goal.assignments.some((a) => a.person === person)) continue;
+      goal.assignments.push({
+        person,
+        target: 0,
+        verified: false,
+        assignedBy: input.addedBy,
+        assignedAt: new Date().toISOString(),
+      });
+    }
+  }
   await writeRow(state);
 }
 

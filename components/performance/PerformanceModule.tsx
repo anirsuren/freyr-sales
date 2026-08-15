@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   ChevronDown,
+  Check,
   Crown,
   ClipboardList,
   Gauge,
@@ -1149,31 +1150,54 @@ function AssignGroupModal({
         achievement is its people&apos;s added up.
       </p>
       <div>
-        <label className="text-[12px] font-semibold text-text-primary">
+        {/* SAY THAT IT IS A CHOICE (Anir, Aug 15: "make it more clear that I
+            have to select it"). One group on screen looked like a label
+            stating which group this was, not a control waiting to be picked,
+            and the disabled button gave no reason for being disabled. */}
+        <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
           Group
+          <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#B45309]">
+            Pick one
+          </span>
         </label>
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {groups.length === 0 ? (
             <p className="text-[12.5px] text-text-tertiary">
               Every group already carries this goal.
             </p>
           ) : (
-            groups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => setGroupId(g.id === groupId ? "" : g.id)}
-                aria-pressed={g.id === groupId}
-                className={cn(
-                  "cursor-pointer rounded-full border px-1 py-1 transition-colors",
-                  g.id === groupId
-                    ? "border-blue-primary bg-blue-light"
-                    : "border-border-light bg-white hover:bg-surface"
-                )}
-              >
-                <GroupPill name={g.name} />
-              </button>
-            ))
+            groups.map((g) => {
+              const on = g.id === groupId;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setGroupId(on ? "" : g.id)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full border-2 px-2 py-1.5 transition-all",
+                    on
+                      ? "border-blue-primary bg-blue-light shadow-sm"
+                      : "border-dashed border-blue-subtle bg-white hover:border-blue-primary hover:bg-blue-light/40"
+                  )}
+                >
+                  {/* A tick box, so an unpicked chip reads as "choose me"
+                      rather than as a caption. */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                      on
+                        ? "border-blue-primary bg-blue-primary text-white"
+                        : "border-blue-subtle bg-white"
+                    )}
+                  >
+                    {on && <Check size={10} strokeWidth={3.4} />}
+                  </span>
+                  <GroupPill name={g.name} />
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -1200,12 +1224,20 @@ function AssignGroupModal({
             </p>
           ))}
       </div>
-      <div className="flex justify-end gap-2 pt-1">
+      {/* The hint gets its own line so the two buttons always share one
+          (Anir, Aug 15: "make sure it is on the same line"). Sitting it beside
+          them wrapped the row the moment the modal was narrow. */}
+      {!groupId && groups.length > 0 && (
+        <p className="text-[11.5px] text-text-tertiary">
+          Pick a group above to continue.
+        </p>
+      )}
+      <div className="flex flex-nowrap items-center justify-end gap-2 pt-1">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
         <Button onClick={save} disabled={!groupId} loading={busy}>
-          Assign to group
+          {picked ? `Assign to ${picked.name}` : "Assign to group"}
         </Button>
       </div>
     </div>
@@ -1848,6 +1880,28 @@ function GoalPopupBody({
               className="flex flex-wrap items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
             >
               <GroupPill name={group?.name ?? "Group removed"} />
+              {/* WHO IS ACTUALLY IN IT (Anir, Aug 15: "it doesn't even show me
+                  who the people are"). A group name alone makes you go to
+                  Admin to find out who just picked up a goal. */}
+              {group && (
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <span className="flex -space-x-1.5">
+                    {[...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean))]
+                      .slice(0, 6)
+                      .map((m) => (
+                        <Avatar
+                          key={m}
+                          name={m}
+                          tooltip={m === group.head ? `${m} — group owner` : m}
+                          className="h-6 w-6 border-2 border-white text-[9px]"
+                        />
+                      ))}
+                  </span>
+                  <span className="text-[11.5px] text-text-secondary tnum">
+                    {new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)).size}
+                  </span>
+                </span>
+              )}
               <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
                 {assignment.target > 0
                   ? `Target ${fmtAmount(goal.unit, assignment.target)}`
