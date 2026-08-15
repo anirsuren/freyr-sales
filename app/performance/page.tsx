@@ -64,6 +64,14 @@ export default async function PerformancePage() {
         .filter(Boolean)
     ),
   ].sort((a, b) => a.localeCompare(b));
+  // Name → role, so a picker can say WHO someone is rather than just what
+  // they are called (Anir, Aug 15: "I feel like it should show a role").
+  const memberRoles: Record<string, string> = {};
+  for (const m of directory?.members ?? []) {
+    if (m.active && m.accountType === "real" && m.name.trim()) {
+      memberRoles[m.name.trim()] = m.role;
+    }
+  }
   return (
     <PerformanceModule
       initial={scoped}
@@ -71,6 +79,7 @@ export default async function PerformancePage() {
       meName={me.name}
       isManager={manager}
       memberNames={memberNames}
+      memberRoles={memberRoles}
     />
   );
 }

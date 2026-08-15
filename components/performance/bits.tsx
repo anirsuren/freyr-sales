@@ -19,6 +19,8 @@ import {
   TrendingDown,
   TrendingUp,
   UserPlus,
+  UserRound,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -121,12 +123,16 @@ export function PersonSelect({
   people,
   placeholder = "Pick a person…",
   allowFree = true,
+  roles,
 }: {
   value: string;
   onChange: (next: string) => void;
   people: string[];
   placeholder?: string;
   allowFree?: boolean;
+  /** Name → workspace role, shown beside each name so you pick a person, not
+   *  a string (Anir, Aug 15: "it should show a role"). */
+  roles?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -259,6 +265,7 @@ export function PersonSelect({
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
                   {p}
                 </span>
+                {roles?.[p.trim()] && <RoleChip role={roles[p.trim()]} />}
                 {p === value && (
                   <Check size={13} strokeWidth={2.6} className="shrink-0 text-blue-primary" />
                 )}
@@ -572,5 +579,32 @@ export function GoalBar({
         )}
       </p>
     </div>
+  );
+}
+
+/**
+ * WHO SOMEONE IS, next to their name (Anir, Aug 15: "I feel like it should
+ * show a role"). Colour and icon, never a bare grey word, same rule every
+ * other tag in the app follows — and never red, amber or green, which mean
+ * something here.
+ */
+const ROLE_META: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+  admin: { label: "Admin", color: "#7C3AED", icon: ShieldCheck },
+  manager: { label: "Manager", color: "#0071E3", icon: UsersRound },
+  rep: { label: "Rep", color: "#0F766E", icon: UserRound },
+};
+
+export function RoleChip({ role }: { role: string }) {
+  const meta = ROLE_META[role.trim().toLowerCase()];
+  if (!meta) return null;
+  const Icon = meta.icon;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
+      style={{ background: `${meta.color}14`, color: meta.color }}
+    >
+      <Icon size={9} strokeWidth={2.6} />
+      {meta.label}
+    </span>
   );
 }

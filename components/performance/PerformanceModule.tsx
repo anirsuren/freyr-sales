@@ -20,6 +20,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -54,6 +55,7 @@ import {
   UnitChip,
   typeMeta,
   VerifiedPill,
+  RoleChip,
 } from "./bits";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
@@ -157,6 +159,7 @@ export function PerformanceModule({
   meName,
   isManager,
   memberNames,
+  memberRoles,
 }: {
   initial: PerformanceState;
   live: boolean;
@@ -166,6 +169,9 @@ export function PerformanceModule({
   isManager: boolean;
   /** Real workspace accounts — the only names suggested in live mode. */
   memberNames: string[];
+  /** Name → workspace role, so a person reads as a person rather than a bare
+   *  string (Anir, Aug 15: "it should show a role"). */
+  memberRoles?: Record<string, string>;
 }) {
   const { toast } = useToast();
   const [state, setState] = useState<PerformanceState>(initial);
@@ -394,6 +400,7 @@ export function PerformanceModule({
             busy={busy}
             suggestions={people}
             assignablePeople={assignablePeople}
+            memberRoles={memberRoles}
             isManager={isManager}
             onNewGoal={() => setGoalModal({ editing: null })}
             onEditGoal={(g) => setGoalModal({ editing: g })}
@@ -564,11 +571,13 @@ function MasterTab({
   run,
   busy,
   suggestions,
+  memberRoles,
   assignablePeople,
   isManager,
   onNewGoal,
   onEditGoal,
 }: {
+  memberRoles?: Record<string, string>;
   assignablePeople: string[];
   isManager: boolean;
   state: PerformanceState;
@@ -988,6 +997,7 @@ function MasterTab({
                             <GoalPopupBody
                               hostedInPopup={false}
                               assignablePeople={assignablePeople}
+                              memberRoles={memberRoles}
                               isManager={isManager}
                               key={g.id}
                               goal={g}
@@ -1047,12 +1057,17 @@ function MasterTab({
         open={openGoal !== null}
         onClose={() => setOpenId(null)}
         title={openGoal ? openGoal.name : ""}
-        size="wide"
+        // 640px was cramped for a goal that carries subgoals, people and a
+        // confirm (Anir, Aug 15: "make the entire pop-up bigger... why is it
+        // so small"). 980 gives every row room and stops the unassign confirm
+        // being pushed off the bottom edge.
+        size="workflow"
       >
         {openGoal && (
           <GoalPopupBody
             hostedInPopup
             assignablePeople={assignablePeople}
+            memberRoles={memberRoles}
             isManager={isManager}
             key={openGoal.id}
             goal={openGoal}
@@ -1087,6 +1102,7 @@ function AssignPersonModal({
   inline,
   goal,
   options,
+  roles,
   onClose,
   run,
   busy,
@@ -1097,6 +1113,7 @@ function AssignPersonModal({
   inline: boolean;
   goal: PrimaryGoal;
   options: string[];
+  roles?: Record<string, string>;
   onClose: () => void;
   run: RunOp;
   busy: boolean;
@@ -1139,6 +1156,7 @@ function AssignPersonModal({
               value={person}
               onChange={setPerson}
               people={options}
+              roles={roles}
               placeholder="Pick a person…"
             />
           </div>
@@ -1251,10 +1269,12 @@ function GoalPopupBody({
   onRemoved,
   onEditGoal,
   hostedInPopup,
+  memberRoles,
   assignablePeople,
   isManager,
 }: {
   goal: PrimaryGoal;
+  memberRoles?: Record<string, string>;
   assignablePeople: string[];
   isManager: boolean;
   state: PerformanceState;
@@ -1635,16 +1655,21 @@ function GoalPopupBody({
           Assigned people
           <InfoHint text={"This goal attached straight to a person from the Goal Master.\nTheir numbers roll into their group and the organization: a department is just its people added up."} />
         </p>
-        {/* The action sits WITH the empty state while there's nobody here —
-            centred in the grey box, not floating in the header (Anir). */}
+        {/* A PLUS, NOT A SENTENCE (Anir, Aug 15: "it can just be a blue and
+            white plus sign on the right side of the assigned people text").
+            The words only earn their space in the empty state, where they
+            tell you what the section is for. */}
         {live && (goal.assignments ?? []).length > 0 && (
-          <button
-            type="button"
-            onClick={() => setAssignOpen(true)}
-            className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-blue-light px-3 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
-          >
-            <UserRoundPlus size={12} strokeWidth={2.4} /> Assign to a person
-          </button>
+          <Tooltip label="Assign this goal to a person">
+            <button
+              type="button"
+              aria-label="Assign this goal to a person"
+              onClick={() => setAssignOpen(true)}
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-blue-primary text-white transition-all hover:opacity-90 active:scale-[0.94]"
+            >
+              <Plus size={14} strokeWidth={2.6} />
+            </button>
+          </Tooltip>
         )}
       </div>
       {(goal.assignments ?? []).length === 0 ? (
@@ -1670,8 +1695,14 @@ function GoalPopupBody({
               className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
             >
               <Avatar name={a.person} className="h-7 w-7 text-[10px]" />
-              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-primary">
-                {a.person}
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="truncate text-[13px] font-semibold text-text-primary">
+                  {a.person}
+                </span>
+                {/* Who they are, not just what they are called (Anir, Aug 15). */}
+                {memberRoles?.[a.person.trim()] && (
+                  <RoleChip role={memberRoles[a.person.trim()]} />
+                )}
               </span>
               <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
                 {a.target > 0
@@ -1740,6 +1771,7 @@ function GoalPopupBody({
         options={assignablePeople.filter(
           (name) => !(goal.assignments ?? []).some((a) => a.person === name)
         )}
+        roles={memberRoles}
         onClose={() => setAssignOpen(false)}
         run={run}
         busy={busy}
