@@ -46,7 +46,6 @@ import {
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
-import { NeedsAttention } from "./NeedsAttention";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -288,15 +287,6 @@ export function OrgPerformanceTab({
 
   return (
     <div>
-      {/* What is broken, above what is merely behind. */}
-      <NeedsAttention
-        state={state}
-        goals={picked}
-        meName={meName}
-        live={live}
-        onEditGoal={onEditGoal}
-        onAssign={onEditGoal}
-      />
       {scope?.picker}
       <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile

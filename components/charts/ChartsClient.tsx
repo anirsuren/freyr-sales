@@ -2013,9 +2013,14 @@ export function BarChart({
                       className="absolute inset-x-0 top-0"
                       style={{
                         height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
-                        background: "rgba(255,255,255,0.86)",
-                        borderTop: `2.5px solid ${d.color || VIZ.blue}`,
-                        borderBottom: "1.5px solid rgba(255,255,255,0.95)",
+                        // No cap, no stripes: a light wash of the bar's own
+                        // colour, and nothing else. Both of the earlier tries
+                        // put a line across the bar that read as a separate
+                        // thing (Anir, Aug 15: "what's that green strip at the
+                        // top, it's throwing me off"). Where some of a bar IS
+                        // verified, the solid-to-pale boundary is the only edge
+                        // needed; where none is, the bar is simply pale.
+                        background: "rgba(255,255,255,0.74)",
                       }}
                     />
                   )}
