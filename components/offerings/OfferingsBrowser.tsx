@@ -1497,18 +1497,23 @@ export function OfferingsBrowser({
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
                   {/* px-4 like every other column: the header text must start
                       exactly where the cell text below it starts. */}
-                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[20%]">Offering</th>
                   <th className="px-4 py-2.5 w-[18%]">Category</th>
                   <th className="px-4 py-2.5 w-[14%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>
-                  <th className="px-4 py-2.5 w-[13%]">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5 w-[12%]">Who it&apos;s for</th>
                   {/* Materials sits before the money columns: it is the one
                       number in this table that is filled in today, and it is
                       what a rep actually opens the row for (Anir, Aug 7:
                       "shift the material column before revenue"). */}
-                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[9%]">Materials</th>
                   <th className="px-4 py-2.5 w-[9%]">Revenue</th>
-                  <th className="px-4 py-2.5 w-[5%]">Trend</th>
+                  {/* 7, not 5: at the table's 1280 floor a 5% Trend column is
+                      64px, and its own heading needs about 48px of that before
+                      the px-4 padding, so the word sat flush against the card
+                      edge (Anir, Aug 15: "that's not enough space for the trend
+                      column"). */}
+                  <th className="px-4 py-2.5 w-[7%]">Trend</th>
                 </tr>
               </thead>
               <tbody>
