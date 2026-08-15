@@ -52,6 +52,7 @@ export function SupabaseLoginForm({
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ssoBusy, setSsoBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +109,38 @@ export function SupabaseLoginForm({
     setStep(next);
     setError(null);
     setMessage(null);
+  }
+
+  /**
+   * HAND THE PERSON TO MICROSOFT, and let Supabase bring them back.
+   *
+   * signInWithSSO returns a URL rather than a session: the browser goes to
+   * Entra, the person signs in with their Freyr account, and Microsoft posts a
+   * signed assertion back to Supabase, which redirects here with the tokens in
+   * the URL fragment. The effect handler at the top of this component already
+   * watches for that fragment and calls establishSession, which is the same
+   * final step the password path uses — so the app session is minted the one
+   * way it always has been.
+   */
+  async function startMicrosoftSignIn() {
+    if (!supabase) {
+      setError("Sign-in is not configured yet.");
+      return;
+    }
+    setError(null);
+    setSsoBusy(true);
+    try {
+      const { data, error: ssoError } = await supabase.auth.signInWithSSO({
+        domain: "freyrsolutions.com",
+        options: { redirectTo: `${window.location.origin}/login` },
+      });
+      if (ssoError) throw ssoError;
+      if (!data?.url) throw new Error("Microsoft sign-in is not available yet.");
+      window.location.href = data.url;
+    } catch (caught) {
+      setSsoBusy(false);
+      setError(friendlyAuthError(caught) || "Could not reach Microsoft.");
+    }
   }
 
   async function establishSession(accessToken: string) {
@@ -518,27 +551,35 @@ export function SupabaseLoginForm({
             More sign-in options
           </p>
           <div className="grid grid-cols-1 gap-2">
-            {/* "Passkey — Coming soon" is gone: it sat directly above a
-                working "Sign in with Touch ID" button and told you the exact
-                opposite (Anir, Aug 7). Microsoft stays because it genuinely
-                is not built. */}
-            {[{ label: "Microsoft", Icon: Building2 }].map(({ label, Icon }) => (
-              <div
-                key={label}
-                aria-disabled="true"
-                className="flex min-h-14 items-center gap-2.5 rounded-md border border-border-light bg-surface px-3 text-left"
-              >
-                <Icon size={16} className="shrink-0 text-text-secondary" />
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-semibold text-text-primary">
-                    {label}
-                  </span>
-                  <span className="block text-[10.5px] font-medium text-text-tertiary">
-                    Coming soon
-                  </span>
+            {/* MICROSOFT IS REAL NOW (Anir, Aug 15: "I want to create a new
+                account with SSO"). It used to say "Coming soon" because the
+                Entra provider did not exist; it is registered against the
+                freyrsolutions.com domain, so this hands the person to
+                Microsoft and Supabase brings them back with a session.
+                Additive on purpose: the email and password paths above are
+                untouched, so anyone Entra does not know — the +2/+3 test
+                accounts, anyone outside the tenant — signs in exactly as
+                before. */}
+            <button
+              type="button"
+              disabled={busy || ssoBusy}
+              onClick={startMicrosoftSignIn}
+              className="flex min-h-14 w-full cursor-pointer items-center gap-2.5 rounded-md border border-border-light bg-white px-3 text-left transition-colors hover:border-blue-subtle hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {ssoBusy ? (
+                <Loader2 size={16} className="shrink-0 animate-spin text-blue-primary" />
+              ) : (
+                <Building2 size={16} className="shrink-0 text-text-secondary" />
+              )}
+              <span className="min-w-0">
+                <span className="block text-[12px] font-semibold text-text-primary">
+                  Microsoft
                 </span>
-              </div>
-            ))}
+                <span className="block text-[10.5px] font-medium text-text-tertiary">
+                  {ssoBusy ? "Taking you to Microsoft…" : "Use your Freyr work account"}
+                </span>
+              </span>
+            </button>
           </div>
         </div>
       )}
