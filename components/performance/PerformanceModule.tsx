@@ -30,6 +30,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
+import { PersonFan } from "@/components/ui/PersonFan";
+import { roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
 import {
   PrioritySearchInput,
@@ -1885,18 +1887,26 @@ function GoalPopupBody({
                   Admin to find out who just picked up a goal. */}
               {group && (
                 <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="flex -space-x-1.5">
-                    {[...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean))]
-                      .slice(0, 6)
-                      .map((m) => (
-                        <Avatar
-                          key={m}
-                          name={m}
-                          tooltip={m === group.head ? `${m} — group owner` : m}
-                          className="h-6 w-6 border-2 border-white text-[9px]"
-                        />
-                      ))}
-                  </span>
+                  {/* The fan, not a static stack (Anir, Aug 15: "I need the
+                      animation with the pfps"). Same mechanic as the group
+                      rows on Admin: the faces slide apart on hover and each
+                      one opens its person card. */}
+                  <PersonFan
+                    people={[
+                      ...new Set(
+                        [group.head, ...group.members]
+                          .map((m) => m.trim())
+                          .filter(Boolean)
+                      ),
+                    ].map((m) => ({
+                      name: m,
+                      role:
+                        m === group.head
+                          ? `Group owner · ${roleLabel(memberRoles?.[m])}`
+                          : roleLabel(memberRoles?.[m]),
+                      context: group.name,
+                    }))}
+                  />
                   <span className="text-[11.5px] text-text-secondary tnum">
                     {new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)).size}
                   </span>
