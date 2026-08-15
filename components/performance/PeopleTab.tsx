@@ -42,7 +42,7 @@ export function PeopleTab({
   run: RunOp;
   meName: string;
   memberRoles?: Record<string, string>;
-  onLogActual: () => void;
+  onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
 }) {

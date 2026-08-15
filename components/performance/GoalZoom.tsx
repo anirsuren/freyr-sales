@@ -68,6 +68,7 @@ export function GoalZoom({
   meName,
   run,
   embedded = false,
+  headerAction,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -85,6 +86,10 @@ export function GoalZoom({
    * standalone page stays reachable from a link at the bottom.
    */
   embedded?: boolean;
+  /** Rendered on the drill-down's own header line, so a caller's button never
+   *  costs a line of its own (Anir, Aug 15: "that's not a good place, I can't
+   *  take up its own line"). */
+  headerAction?: React.ReactNode;
 }) {
   const router = useRouter();
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
@@ -406,7 +411,8 @@ export function GoalZoom({
           </b>
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
               three numbered column headings below already say what this is. */}
-          <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
+          {headerAction && <span className="ml-auto shrink-0">{headerAction}</span>}
+          <span className={cn("inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white", !headerAction && "ml-auto")}>
             {grans
               .filter((g) => g.allowed)
               .map((g) => (

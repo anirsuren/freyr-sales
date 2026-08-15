@@ -109,7 +109,7 @@ export function OrgPerformanceTab({
   meName: string;
   live: boolean;
   run: RunOp;
-  onLogActual: () => void;
+  onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onGoToMaster: () => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
@@ -426,7 +426,7 @@ export function OrgPerformanceTab({
           {live && (
             <button
               type="button"
-              onClick={onLogActual}
+              onClick={() => onLogActual()}
               className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
             >
               <PenLine size={13.5} strokeWidth={2.4} /> Log an actual
@@ -528,6 +528,7 @@ export function OrgPerformanceTab({
                   period={period}
                   periodLabel={periodLabel}
                   onEditGoal={onEditGoal}
+                  onLogActual={onLogActual}
                   onEditSubgoal={onEditSubgoal}
                 />
               ))}
@@ -579,6 +580,7 @@ function GoalRows({
   periodLabel,
   onEditGoal,
   onEditSubgoal,
+  onLogActual,
 }: {
   goal: PrimaryGoal;
   actuals: PerfActual[];
@@ -589,6 +591,7 @@ function GoalRows({
   period: PeriodKey;
   periodLabel: string;
   onEditGoal: (g: PrimaryGoal) => void;
+  onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
   state: PerformanceState;
   meName: string;
@@ -737,12 +740,35 @@ function GoalRows({
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link
                   out to the full page lives at the bottom of it. */}
+              {/* LOG IT FROM WHERE YOU ARE (Anir, Aug 15: "shouldn't there be a
+                  button to log it after I click on the goal, in addition to at
+                  the top"). The one at the top opens an empty form; this one
+                  arrives knowing which goal you were reading, which is the
+                  whole reason you drilled in. */}
               <GoalZoom
                 state={state}
                 goalId={goal.id}
                 meName={meName}
                 run={run}
                 embedded
+                headerAction={
+                  live ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onLogActual({
+                          goalId: goal.id,
+                          subgoalId: null,
+                          person: meName,
+                        })
+                      }
+                      title={`Log an actual on ${goal.name}`}
+                      className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-primary px-3 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+                    >
+                      <PenLine size={12.5} strokeWidth={2.4} /> Log an actual
+                    </button>
+                  ) : undefined
+                }
               />
               {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
                   goal and "all the people who have contributed to this, and

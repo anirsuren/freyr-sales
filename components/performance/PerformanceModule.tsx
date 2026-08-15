@@ -430,7 +430,10 @@ export function PerformanceModule({
             meName={meName}
             live={live}
             run={run}
-            onLogActual={() => setLogOpen(true)}
+            onLogActual={(prefill) => {
+              setLogPrefill(prefill ?? null);
+              setLogOpen(true);
+            }}
             onGoToMaster={() => setMasterFor(tab)}
             onEditGoal={(g) => setGoalModal({ editing: g })}
             onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
@@ -441,7 +444,10 @@ export function PerformanceModule({
             meName={meName}
             live={live}
             run={run}
-            onLogActual={() => setLogOpen(true)}
+            onLogActual={(prefill) => {
+              setLogPrefill(prefill ?? null);
+              setLogOpen(true);
+            }}
             onEditGoal={(g) => setGoalModal({ editing: g })}
             onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
           />
@@ -452,7 +458,10 @@ export function PerformanceModule({
             run={run}
             meName={meName}
             memberRoles={memberRoles}
-            onLogActual={() => setLogOpen(true)}
+            onLogActual={(prefill) => {
+              setLogPrefill(prefill ?? null);
+              setLogOpen(true);
+            }}
             onEditGoal={(g) => setGoalModal({ editing: g })}
             onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
           />

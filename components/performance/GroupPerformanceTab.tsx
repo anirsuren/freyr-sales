@@ -43,7 +43,7 @@ export function GroupPerformanceTab({
   meName: string;
   live: boolean;
   run: RunOp;
-  onLogActual: () => void;
+  onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
 }) {
