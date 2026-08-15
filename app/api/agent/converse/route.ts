@@ -91,6 +91,15 @@ export async function POST(req: NextRequest) {
   const onPath = String(body.path || "").slice(0, 200);
   const onSubject = String(body.subject || "").slice(0, 120);
   const pageContext = String(body.pageContext || "").slice(0, 5000);
+  // The destinations behind the words on screen. textContent drops every
+  // href, so without these the agent can see "Read the article" and honestly
+  // cannot tell you where it goes.
+  const pageLinks = Array.isArray(body.pageLinks)
+    ? body.pageLinks
+        .map((l: unknown) => String(l).slice(0, 300))
+        .filter(Boolean)
+        .slice(0, 30)
+    : [];
   const liveAccounts =
     getDataMode() === "live" ? await listAssignablePeople() : [];
   const visibleOfferings = () =>
@@ -562,7 +571,14 @@ export async function POST(req: NextRequest) {
         'about "this page", "this company" or anything they can see.' +
         "\nPAGE CONTENT:\n" + '"""' + "\n" +
         pageContext +
-        "\n" + '"""' + "\n\n"
+        "\n" + '"""' + "\n" +
+        (pageLinks.length
+          ? "LINKS ON THIS PAGE (label — destination). Use these when asked " +
+            "for an article, source or link:\n" +
+            pageLinks.map((l: string) => `- ${l}`).join("\n") +
+            "\n"
+          : "") +
+        "\n"
       : "") +
     (offeringsOnly ? "" : "THE BOOK (live data):\n" + facts) +
     offeringFocus +

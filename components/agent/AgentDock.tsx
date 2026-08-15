@@ -659,6 +659,26 @@ export function AgentDock({
           pageContext: (document.querySelector("main")?.textContent || "")
             .replace(/\s+/g, " ")
             .slice(0, 5000),
+          // TEXT ALONE THROWS THE LINKS AWAY (Anir, Aug 15: "you're clearly
+          // not feeding in all the data points"). textContent flattens every
+          // anchor to its label, so asked for the article link the agent
+          // answered, correctly, that it could only see "Read the article"
+          // buttons. The destinations travel alongside the text now.
+          pageLinks: (() => {
+            const seen = new Set<string>();
+            const out: string[] = [];
+            for (const a of Array.from(
+              document.querySelectorAll<HTMLAnchorElement>("main a[href^='http']")
+            )) {
+              const href = a.href;
+              if (seen.has(href)) continue;
+              seen.add(href);
+              const label = (a.textContent || "").replace(/\s+/g, " ").trim();
+              out.push(label ? `${label.slice(0, 80)} — ${href}` : href);
+              if (out.length >= 30) break;
+            }
+            return out;
+          })(),
         }),
         signal: controller.signal,
       });
@@ -914,7 +934,12 @@ export function AgentDock({
                     ? `Ask about ${focusedSubject}…`
                     : "Ask your agent…"
                 }
-                className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none border-none min-w-0"
+                /* The box you type in has to look like a box (Anir, Aug 15:
+                   "the text box in the AI chatbot is a little bit hard to
+                   see"). It was a barely-there grey fill with border-none on
+                   a white card, so there was no edge at all. Same border and
+                   focus ring every other input in the app uses. */
+                className="min-w-0 flex-1 rounded-xl border border-border-light bg-white px-3.5 py-2.5 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
               />
               <button
                 onClick={() => ask()}

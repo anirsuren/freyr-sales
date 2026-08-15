@@ -102,9 +102,22 @@ export function injectEntities(
     : entities.filter((e) => e.kind === "offering" || e.kind === "component");
   if (!usable.length) return [text];
 
+  /**
+   * CASE-SENSITIVE ON PURPOSE (Anir, Aug 15: "that's not supposed to be
+   * tagged, right?").
+   *
+   * Matching case-insensitively turned every ordinary use of a common word
+   * into a product link: an asset named "Registrations" meant the sentence
+   * "new sites typically mean new registrations and compliance work" pilled
+   * the plain English word and sent the reader to an offering page.
+   *
+   * Product names are proper nouns and the agent writes them that way, so the
+   * capital is the signal that a name is meant. "Freya.Register" still
+   * matches; "registrations" in a sentence no longer does.
+   */
   const re = new RegExp(
     `\\b(${usable.map((e) => escapeRe(e.name)).join("|")})(?![\\w-])`,
-    "gi"
+    "g"
   );
   const out: ReactNode[] = [];
   let last = 0;
@@ -112,7 +125,7 @@ export function injectEntities(
   let k = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    const hit = usable.find((e) => e.name.toLowerCase() === m![1].toLowerCase());
+    const hit = usable.find((e) => e.name === m![1]);
     if (hit) {
       const style = KIND[hit.kind];
       out.push(
