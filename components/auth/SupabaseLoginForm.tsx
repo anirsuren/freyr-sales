@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
-  Building2,
   Loader2,
   LockKeyhole,
   Mail,
@@ -36,6 +35,33 @@ function safeNext(): string {
     }
   } catch {}
   return "/dashboard";
+}
+
+/**
+ * THE ACTUAL MICROSOFT LOGO (Anir, Aug 15: "I need the actual Microsoft
+ * logo"). A generic building icon was standing in for it, which is both
+ * off-brand and, on a sign-in button, genuinely less recognisable — the four
+ * squares are the thing people look for.
+ *
+ * Drawn inline rather than fetched: Microsoft's own guidance is the four
+ * equal squares in these exact hues, and an inline SVG cannot fail to load,
+ * cannot be blocked, and needs no network round trip on the login screen.
+ */
+function MicrosoftMark() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 23 23"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+      <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+      <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+      <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+    </svg>
+  );
 }
 
 export function SupabaseLoginForm({
@@ -569,7 +595,7 @@ export function SupabaseLoginForm({
               {ssoBusy ? (
                 <Loader2 size={16} className="shrink-0 animate-spin text-blue-primary" />
               ) : (
-                <Building2 size={16} className="shrink-0 text-text-secondary" />
+                <MicrosoftMark />
               )}
               <span className="min-w-0">
                 <span className="block text-[12px] font-semibold text-text-primary">
