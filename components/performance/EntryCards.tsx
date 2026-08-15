@@ -540,7 +540,7 @@ export function MyEntriesCard({
                                 }}
                                 className="cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
                               >
-                                Unlock and send back
+                                Send it back
                               </button>
                               <button
                                 type="button"

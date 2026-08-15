@@ -211,7 +211,6 @@ export function GoalZoom({
    * and the box says so.
    */
   const scaleBase = yearTarget > 0 ? yearTarget : maxRow;
-  const relative = yearTarget <= 0;
 
   /** Verification rail: waiting entries on THIS goal family. */
   const waiting = familyActuals
