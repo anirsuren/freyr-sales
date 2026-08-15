@@ -31,6 +31,26 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ rows });
 }
 
+/**
+ * ONE WRITER AT A TIME. Every op below reads the whole competition row, adds or
+ * drops one entry, and writes the row back. Two people adding a competitor in
+ * the same moment both read the same "before", so the second write erases the
+ * first. Measured on this route: six simultaneous adds, six 200s, ONE survivor.
+ * Same fix as Performance and Market Intel tracking.
+ */
+declare global {
+  var __FREYR_COMPETITION_QUEUE__: Promise<void> | undefined;
+}
+async function acquireCompetitionWrite(): Promise<() => void> {
+  const previous = globalThis.__FREYR_COMPETITION_QUEUE__ ?? Promise.resolve();
+  let release: () => void = () => undefined;
+  globalThis.__FREYR_COMPETITION_QUEUE__ = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous.catch(() => undefined);
+  return release;
+}
+
 export async function POST(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
@@ -49,6 +69,7 @@ export async function POST(req: NextRequest) {
   if (!offeringId) {
     return NextResponse.json({ error: "Missing offeringId" }, { status: 400 });
   }
+  const releaseWrite = await acquireCompetitionWrite();
   try {
     if (body.op === "add-competitor") {
       const entry = await addCompetitorProduct({
@@ -92,5 +113,7 @@ export async function POST(req: NextRequest) {
       { error: err instanceof Error ? err.message : "That didn't save." },
       { status: 400 }
     );
+  } finally {
+    releaseWrite();
   }
 }
