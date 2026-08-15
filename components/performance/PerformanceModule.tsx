@@ -420,11 +420,11 @@ export function PerformanceModule({
           <GroupPerformanceTab
             state={state}
             meName={meName}
-            onLogActual={(prefill) => {
-              setLogPrefill(prefill);
-              setLogOpen(true);
-            }}
             live={live}
+            run={run}
+            onLogActual={() => setLogOpen(true)}
+            onEditGoal={(g) => setGoalModal({ editing: g })}
+            onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
           />
         ) : (
           <PeopleTab
@@ -432,10 +432,10 @@ export function PerformanceModule({
             live={live}
             run={run}
             meName={meName}
-            onLogActual={(prefill) => {
-              setLogPrefill(prefill);
-              setLogOpen(true);
-            }}
+            memberRoles={memberRoles}
+            onLogActual={() => setLogOpen(true)}
+            onEditGoal={(g) => setGoalModal({ editing: g })}
+            onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
           />
         )}
       </div>

@@ -102,6 +102,7 @@ export function OrgPerformanceTab({
   onGoToMaster,
   onEditGoal,
   onEditSubgoal,
+  scope,
 }: {
   state: PerformanceState;
   meName: string;
@@ -111,6 +112,22 @@ export function OrgPerformanceTab({
   onGoToMaster: () => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
+  /**
+   * SAME SCREEN, NARROWER AUDIENCE (Suren, Aug 15). Group and People
+   * performance are this page pointed at fewer people, so they hand in a
+   * scoped state plus the words that change: which goals count, what the
+   * tiles are counting, and what to say when there is nothing yet. Left out,
+   * everything behaves exactly as the org page always has.
+   */
+  scope?: {
+    /** Which goals belong on this screen. Org uses "on the goal plan". */
+    goals: PrimaryGoal[];
+    /** "org goals" → "goals in this group" / "goals" for a person. */
+    noun: string;
+    picker?: React.ReactNode;
+    emptyTitle: string;
+    emptyDescription: string;
+  };
 }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -123,7 +140,8 @@ export function OrgPerformanceTab({
   );
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const picked = state.goals.filter((g) => g.pickedForOrg);
+  const picked = scope ? scope.goals : state.goals.filter((g) => g.pickedForOrg);
+  const noun = scope?.noun ?? "org goals";
   const q = query.trim().toLowerCase();
   const shown = picked.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -165,19 +183,20 @@ export function OrgPerformanceTab({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {scope?.picker}
+      <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile
           icon={Target}
           label="Goals tracked"
           value={String(picked.length)}
-          sub={`${state.goals.length} on the master`}
+          sub={scope ? noun : `${state.goals.length} on the master`}
         />
         <StatTile
           icon={CheckCircle2}
           label="Targets met"
           value={String(metCount)}
           color="#16A34A"
-          sub={picked.length ? `of ${picked.length} org goals` : undefined}
+          sub={picked.length ? `of ${picked.length} ${noun}` : undefined}
         />
         <StatTile
           icon={TrendingDown}
@@ -248,7 +267,7 @@ export function OrgPerformanceTab({
                 thickness={15}
                 syncId="perf-pace"
                 centerLabel={String(picked.length)}
-                centerSub={picked.length === 1 ? "org goal" : "org goals"}
+                centerSub={picked.length === 1 ? noun.replace(/s$/, "") : noun}
                 segments={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
                   .map((k) => ({
                     label: PACE_LABEL[k],
@@ -374,9 +393,14 @@ export function OrgPerformanceTab({
         <div className="mt-4">
           <EmptyState
             icon={Gauge}
-            title="Nothing on the goal plan yet"
-            description="Goals live on the Goal Master. Mark one as 'On the goal plan' and it shows up here with its target, actuals and verification."
+            title={scope ? scope.emptyTitle : "Nothing on the goal plan yet"}
+            description={
+              scope
+                ? scope.emptyDescription
+                : "Goals live on the Goal Master. Mark one as 'On the goal plan' and it shows up here with its target, actuals and verification."
+            }
             action={
+              scope ? undefined : (
               <button
                 type="button"
                 onClick={onGoToMaster}
@@ -384,6 +408,7 @@ export function OrgPerformanceTab({
               >
                 Open the Goal Master
               </button>
+              )
             }
           />
         </div>

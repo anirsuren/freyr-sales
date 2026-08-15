@@ -576,3 +576,67 @@ export function fiscalMonthLabels(fy: number): string[] {
     })
   );
 }
+
+/**
+ * THE SAME SCREEN, POINTED AT FEWER PEOPLE (Suren, Aug 15: Group and People
+ * performance should read exactly like Org performance).
+ *
+ * Rather than build two more copies of that page and let them drift, this
+ * narrows the DATA and lets the Org view render it unchanged. Every number on
+ * that screen is computed from `state`, so a state describing one group — its
+ * goals, its people's targets, its people's logged numbers — produces the
+ * group's version of the same tiles, charts and table for free.
+ *
+ * What changes, and why:
+ * - actuals: only what these people logged, so "Actual" is theirs, not the
+ *   company's.
+ * - target: the sum of THEIR personal targets on that goal, not the annual
+ *   org target, which nobody in a group of three is expected to carry alone.
+ * - subgoal people: trimmed to the scope, so a drill-down does not expose a
+ *   colleague from another group.
+ * - a goal survives only if someone in scope actually carries it.
+ */
+export function scopeStateToPeople(
+  state: PerformanceState,
+  people: string[]
+): PerformanceState {
+  const names = new Set(people.map((p) => p.trim().toLowerCase()));
+  const mine = (n: string) => names.has(n.trim().toLowerCase());
+
+  const goals = state.goals
+    .map((goal) => {
+      const assignments = (goal.assignments ?? []).filter((a) => mine(a.person));
+      const subgoals = goal.subgoals
+        .map((s) => ({ ...s, people: s.people.filter((p) => mine(p.name)) }))
+        .filter((s) => s.people.length > 0);
+      if (assignments.length === 0 && subgoals.length === 0) return null;
+      // Their share of it: direct assignments plus their slice of any subgoal.
+      const target =
+        assignments.reduce((sum, a) => sum + (a.target || 0), 0) +
+        subgoals.reduce(
+          (sum, s) => sum + s.people.reduce((n, p) => n + (p.target || 0), 0),
+          0
+        );
+      const scoped: PrimaryGoal = {
+        ...goal,
+        assignments,
+        subgoals,
+        target,
+        // Verified at this altitude means every person in scope is signed off,
+        // not the leadership flag that belongs to the org row.
+        verified:
+          assignments.every((a) => a.verified) &&
+          subgoals.every((s) => s.people.every((p) => p.verified)) &&
+          assignments.length + subgoals.length > 0,
+      };
+      return scoped;
+    })
+    .filter((g): g is PrimaryGoal => g !== null);
+
+  return {
+    types: state.types,
+    goals,
+    groups: state.groups,
+    actuals: state.actuals.filter((a) => mine(a.person)),
+  };
+}
