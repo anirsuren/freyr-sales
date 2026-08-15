@@ -14,6 +14,7 @@ import {
   sendBackActual,
   readPerformance,
   removeActual,
+  updateActual,
   removeGoal,
   removeGroup,
   updateGroup,
@@ -142,6 +143,13 @@ export async function POST(req: NextRequest) {
       // that the caller heads a group containing the entry's person.
       "verify-actual",
       "send-back-actual",
+      // Your own claim is yours to fix or withdraw until somebody locks it
+      // (Anir, Aug 15: "if I was the one who did this, I should be able to
+      // delete it"). The store checks per entry that it is yours or that you
+      // head the group of the person it belongs to, and refuses either once
+      // the entry is verified.
+      "update-actual",
+      "remove-actual",
     ]);
     if (!SELF_OPS.has(op)) {
       return NextResponse.json(
@@ -152,7 +160,11 @@ export async function POST(req: NextRequest) {
     const state = await readPerformance();
     const visible = visibleNamesFor(state, me.name);
     const person = String(body.person ?? "");
-    const entryOps = op === "verify-actual" || op === "send-back-actual";
+    const entryOps =
+      op === "verify-actual" ||
+      op === "send-back-actual" ||
+      op === "update-actual" ||
+      op === "remove-actual";
     if (!entryOps && (!person || !visible.has(person.trim()))) {
       return NextResponse.json(
         { error: "You can only do that for yourself or people in your group." },
@@ -340,6 +352,24 @@ export async function POST(req: NextRequest) {
           dealLabel: body.dealLabel ? String(body.dealLabel) : undefined,
           evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
           addedBy: me.name,
+        });
+        break;
+      case "update-actual":
+        await updateActual({
+          actualId: String(body.actualId ?? ""),
+          amount:
+            body.amount === undefined || body.amount === null
+              ? undefined
+              : Number(body.amount),
+          date: body.date ? String(body.date) : undefined,
+          note: body.note === undefined ? undefined : String(body.note ?? ""),
+          customer:
+            body.customer === undefined ? undefined : String(body.customer ?? ""),
+          customerId: body.customerId ? String(body.customerId) : undefined,
+          dealId: body.dealId ? String(body.dealId) : undefined,
+          dealLabel:
+            body.dealLabel === undefined ? undefined : String(body.dealLabel ?? ""),
+          by: me.name,
         });
         break;
       case "remove-actual":

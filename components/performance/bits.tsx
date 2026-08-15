@@ -681,41 +681,114 @@ export function PaceTimeline({
   const vPct = pctOf(verified);
   const aPct = pctOf(verified + awaiting);
   const marker = Math.min(100, Math.max(0, expectedPct));
-  const gap = Math.max(0, (target * marker) / 100 - (verified + awaiting));
+  const mustBe = (target * marker) / 100;
+  const ahead = verified + awaiting - mustBe;
+
+  /* THE FDL VERSION TIMELINE, FOR A NUMBER (Anir, Aug 15: "look at what you
+   * did on the timeline for the FDL components. It looks a lot better.
+   * Everything's so squished here. Use as much space as you need. Show me the
+   * percent, show me what number you're at, and show me what number you have
+   * to get to").
+   *
+   * Same anatomy as that timeline: every point on the track is a dot, its
+   * label hangs above it in its own lane, and the ends of the track are
+   * labelled underneath. No black rule — the calendar is a dot like everything
+   * else, and the end of the track carries one too, so the last point does not
+   * look unfinished. */
+  const LANE = 19;
+  const clamp = (n: number) => Math.min(93, Math.max(7, n));
+  const collide = Math.abs(aPct - marker) < 30;
+  const nowLane = collide ? LANE : 0;
 
   return (
-    <div className="min-w-[260px]">
-      <p className="text-[12.5px] font-semibold text-text-primary">{title}</p>
+    <div className="min-w-[380px]">
+      <p className="text-[13px] font-semibold text-text-primary">{title}</p>
 
       {target > 0 ? (
         <>
-          <p className="mt-0.5 text-[11.5px] text-text-secondary tnum">
-            {fmtAmount(unit, verified + awaiting)} of {fmtAmount(unit, target)}
-          </p>
+          <div
+            className="relative mt-3.5"
+            style={{ paddingTop: (collide ? 2 : 1) * LANE + 8 }}
+          >
+            {/* WHERE YOU ARE. */}
+            <span
+              className="absolute flex -translate-x-1/2 flex-col items-center"
+              style={{ left: `${clamp(aPct)}%`, top: nowLane }}
+            >
+              <span className="whitespace-nowrap text-[12px] font-bold tnum" style={{ color: accent }}>
+                {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
+              </span>
+              <span
+                className="w-px"
+                style={{
+                  height: (collide ? 1 : 1) * LANE - 11,
+                  background: accent,
+                  opacity: 0.35,
+                }}
+                aria-hidden="true"
+              />
+            </span>
 
-          {/* The timeline itself. */}
-          <div className="relative mt-3 mb-1 h-2.5 w-full rounded-full bg-[color:var(--border-light)]">
+            {/* WHERE THE CALENDAR SAYS YOU MUST BE. */}
             <span
-              className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${aPct}%`, background: accent, opacity: 0.28 }}
-            />
-            <span
-              className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${vPct}%`, background: accent }}
-            />
-            {/* Where the calendar says you should be. */}
-            <span
-              className="absolute -top-1 bottom-[-4px] w-[2px] rounded-full bg-text-primary"
-              style={{ left: `calc(${marker}% - 1px)` }}
-              aria-hidden="true"
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-semibold text-text-tertiary">
-            <span>you are here · {Math.round(aPct)}%</span>
-            <span>must be at {Math.round(marker)}%</span>
+              className="absolute flex -translate-x-1/2 flex-col items-center"
+              style={{ left: `${clamp(marker)}%`, top: 0 }}
+            >
+              <span className="whitespace-nowrap text-[12px] font-semibold text-text-secondary tnum">
+                must be at {fmtAmount(unit, mustBe)}
+              </span>
+              <span
+                className="w-px bg-text-tertiary/45"
+                style={{ height: (collide ? 2 : 1) * LANE - 11 }}
+                aria-hidden="true"
+              />
+            </span>
+
+            {/* THE TRACK. */}
+            <div className="relative h-2.5 w-full rounded-full bg-[color:var(--border-light)]">
+              <span
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ width: `${aPct}%`, background: accent, opacity: 0.32 }}
+              />
+              <span
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ width: `${vPct}%`, background: accent }}
+              />
+              {/* Every point on the track wears a dot, including the last one. */}
+              <span
+                className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white"
+                style={{ left: `${aPct}%`, background: accent }}
+                aria-hidden="true"
+              />
+              <span
+                className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-text-tertiary"
+                style={{ left: `${marker}%` }}
+                aria-hidden="true"
+              />
+              <span
+                className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] bg-white"
+                style={{ left: "100%", borderColor: accent }}
+                aria-hidden="true"
+              />
+            </div>
+
+            {/* WHAT EACH END OF THE TRACK IS WORTH. */}
+            <div className="mt-2 flex items-baseline justify-between">
+              <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                {fmtAmount(unit, 0)}
+              </span>
+              <span className="text-right">
+                <b className="block text-[12.5px] font-bold text-text-primary tnum">
+                  {fmtAmount(unit, target)}
+                </b>
+                <span className="block text-[10.5px] text-text-tertiary">
+                  target · {Math.round(marker)}% of the year gone
+                </span>
+              </span>
+            </div>
           </div>
 
-          <div className="mt-2.5 space-y-1 border-t border-border-light pt-2">
+          <div className="mt-3 space-y-1.5 border-t border-border-light pt-2.5">
             <PaceRow
               swatch={accent}
               label="Verified, counts now"
@@ -728,14 +801,14 @@ export function PaceTimeline({
               value={fmtAmount(unit, awaiting)}
             />
             <PaceRow
-              label={gap > 0 ? "Behind the calendar by" : "Ahead of the calendar"}
-              value={fmtAmount(unit, gap > 0 ? gap : 0)}
+              label={ahead < 0 ? "Behind the calendar by" : "Ahead of the calendar by"}
+              value={fmtAmount(unit, Math.abs(ahead))}
               strong
             />
           </div>
         </>
       ) : (
-        <p className="mt-1 text-[11.5px] text-text-secondary">
+        <p className="mt-1 text-[12px] text-text-secondary">
           No target set, so there is no pace to be measured against.{" "}
           {fmtAmount(unit, verified + awaiting)} logged so far.
         </p>
@@ -758,7 +831,7 @@ function PaceRow({
   strong?: boolean;
 }) {
   return (
-    <p className="flex items-center gap-2 text-[11.5px]">
+    <p className="flex items-center gap-2 text-[12px]">
       {swatch && (
         <span
           className="h-2 w-2 shrink-0 rounded-full"

@@ -178,6 +178,7 @@ export function GroupPerformanceTab({
         picker,
         jumps,
         accent: "#0F766E",
+        exportLabel: `group-${group?.name ?? "all"}`,
         // Every heading names the group, so this screen can never be mistaken
         // for Org or People (Anir, Aug 15: "they have to know which one
         // they're on").

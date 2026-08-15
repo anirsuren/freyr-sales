@@ -9,11 +9,14 @@ import {
   FileText,
   Hourglass,
   Paperclip,
+  PenLine,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import {
   entryStatus,
   fmtAmount,
+  parseAmountInput,
   verificationQueue,
   headedGroups,
   type PerfActual,
@@ -305,6 +308,10 @@ export function MyEntriesCard({
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [undoFor, setUndoFor] = useState<string | null>(null);
   const [undoNote, setUndoNote] = useState("");
+  const [dropFor, setDropFor] = useState<string | null>(null);
+  /** Fixing a typo used to mean delete and re-enter, losing the upload. */
+  const [editFor, setEditFor] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ amount: "", date: "", customer: "" });
   /**
    * A LOCK NEEDS AN UNDO (bug, Aug 15). Verifying pulls the row out of the
    * queue, and the queue was the only place Send back lived — so a claim
@@ -509,6 +516,136 @@ export function MyEntriesCard({
                             </p>
                           )}
 
+                          {/* YOUR OWN CLAIM IS YOURS UNTIL SOMEBODY LOCKS IT
+                              (Anir, Aug 15: "if I was the one who did this, I
+                              should be able to delete it"). The server has
+                              always allowed this and always refused it once
+                              verified; the row simply never offered it. */}
+                          {status === "reported" &&
+                            !!run &&
+                            (a.person === meName || a.addedBy === meName) && (
+                              <div
+                                className="mt-3 flex flex-wrap items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {dropFor === a.id ? (
+                                  <>
+                                    <span className="text-[12.5px] text-text-secondary">
+                                      Delete this entry for good?
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={async () => {
+                                        const okDone = await run?.(
+                                          { op: "remove-actual", actualId: a.id },
+                                          "Entry deleted"
+                                        );
+                                        if (okDone) setDropFor(null);
+                                      }}
+                                      className="cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                                    >
+                                      Delete it
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDropFor(null)}
+                                      className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                                    >
+                                      Keep it
+                                    </button>
+                                  </>
+                                ) : editFor === a.id ? (
+                                  <>
+                                    <label className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                                      Amount
+                                      <input
+                                        value={draft.amount}
+                                        onChange={(e) =>
+                                          setDraft((d) => ({ ...d, amount: e.target.value }))
+                                        }
+                                        className="h-[34px] w-[110px] rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle tnum"
+                                      />
+                                    </label>
+                                    <label className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                                      Date
+                                      <input
+                                        type="date"
+                                        value={draft.date}
+                                        onChange={(e) =>
+                                          setDraft((d) => ({ ...d, date: e.target.value }))
+                                        }
+                                        className="h-[34px] rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle"
+                                      />
+                                    </label>
+                                    <label className="flex min-w-[160px] flex-1 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                                      Customer
+                                      <input
+                                        value={draft.customer}
+                                        onChange={(e) =>
+                                          setDraft((d) => ({ ...d, customer: e.target.value }))
+                                        }
+                                        className="h-[34px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle"
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={async () => {
+                                        const parsed = parseAmountInput(draft.amount);
+                                        const okDone = await run?.(
+                                          {
+                                            op: "update-actual",
+                                            actualId: a.id,
+                                            amount: parsed ?? a.amount,
+                                            date: draft.date || a.date,
+                                            customer: draft.customer,
+                                          },
+                                          "Entry updated"
+                                        );
+                                        if (okDone) setEditFor(null);
+                                      }}
+                                      className="cursor-pointer rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditFor(null)}
+                                      className="cursor-pointer rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditFor(a.id);
+                                        setDropFor(null);
+                                        setDraft({
+                                          amount: String(a.amount),
+                                          date: a.date,
+                                          customer: a.customer ?? "",
+                                        });
+                                      }}
+                                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+                                    >
+                                      <PenLine size={13} strokeWidth={2.2} /> Edit this entry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDropFor(a.id)}
+                                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-[color:#DC2626] hover:text-[color:#DC2626]"
+                                    >
+                                      <Trash2 size={13} strokeWidth={2.2} /> Delete this entry
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+
                           {status === "verified" && iOwnThisPerson && undoFor === a.id && (
                             <div
                               className="mt-3 flex flex-wrap items-center gap-2"
@@ -583,6 +720,10 @@ export function VerifyQueueCard({
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
+  /** Twenty claims used to be twenty clicks (Anir, Aug 15: "so many features
+   *  people would need that just don't exist"). Customers has select-many;
+   *  this is the same idiom on the queue. */
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const heads = headedGroups(state, meName);
   if (heads.length === 0) return null;
   const queue = verificationQueue(state, meName);
@@ -608,6 +749,35 @@ export function VerifyQueueCard({
             into two fragments with the full stop gone. The name is the object
             of the sentence now, so the pill has somewhere to sit and the line
             still reads as English. Blue, like every other group tag. */}
+        {picked.size > 0 ? (
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-[11.5px] font-semibold text-text-secondary tnum">
+              {picked.size} selected
+            </span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                // One at a time on the wire: the server checks ownership per
+                // entry, and a partial failure must not look like a success.
+                for (const id of picked) {
+                  await run({ op: "verify-actual", actualId: id }, "");
+                }
+                setPicked(new Set());
+              }}
+              className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+            >
+              Verify and lock {picked.size} ✓
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicked(new Set())}
+              className="cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Clear
+            </button>
+          </span>
+        ) : (
         <span className="ml-auto flex items-center gap-1.5 text-[11px] text-text-tertiary">
           Only you can lock claims from
           {heads.map((g, i) => (
@@ -617,6 +787,7 @@ export function VerifyQueueCard({
             </span>
           ))}
         </span>
+        )}
       </div>
       {queue.length === 0 ? (
         <p className="px-4 py-3 text-[13px] text-text-secondary">
@@ -633,6 +804,22 @@ export function VerifyQueueCard({
           <table className="w-full min-w-[900px] border-collapse">
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
+                <th className="w-9 px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    aria-label="Select every claim"
+                    checked={picked.size > 0 && picked.size === queue.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = picked.size > 0 && picked.size < queue.length;
+                    }}
+                    onChange={(e) =>
+                      setPicked(
+                        e.target.checked ? new Set(queue.map((x) => x.id)) : new Set()
+                      )
+                    }
+                    className="h-3.5 w-3.5 cursor-pointer accent-[color:#0071E3]"
+                  />
+                </th>
                 <th className="w-10 px-4 py-2.5 text-right">#</th>
                 <th className="px-4 py-2.5">Logged by</th>
                 <th className="px-4 py-2.5">Goal</th>
@@ -648,7 +835,28 @@ export function VerifyQueueCard({
                 const goal = state.goals.find((g) => g.id === a.goalId);
                 return (
                   <Fragment key={a.id}>
-                    <tr className="transition-colors hover:bg-surface">
+                    <tr
+                      className={cn(
+                        "transition-colors",
+                        picked.has(a.id) ? "bg-blue-light/35" : "hover:bg-surface"
+                      )}
+                    >
+                      <td className="px-4 py-3.5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${a.person}'s claim`}
+                          checked={picked.has(a.id)}
+                          onChange={(e) =>
+                            setPicked((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(a.id);
+                              else next.delete(a.id);
+                              return next;
+                            })
+                          }
+                          className="h-3.5 w-3.5 cursor-pointer accent-[color:#0071E3]"
+                        />
+                      </td>
                       <td className="px-4 py-3.5 text-right text-[13px] font-bold text-text-tertiary tnum">
                         {i + 1}
                       </td>
@@ -704,7 +912,7 @@ export function VerifyQueueCard({
                     </tr>
                     {noteFor === a.id && (
                       <tr className="bg-blue-light/20">
-                        <td colSpan={8} className="px-4 pb-3.5 pt-0">
+                        <td colSpan={9} className="px-4 pb-3.5 pt-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               value={note}

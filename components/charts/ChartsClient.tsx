@@ -1991,7 +1991,10 @@ export function BarChart({
                   className="chart-bar relative h-full w-full overflow-hidden rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
                   style={{
                     animationDelay: `${i * 45}ms`,
-                    background: d.color || VIZ.blue,
+                    background:
+                      d.value > 0
+                        ? d.color || VIZ.blue
+                        : "var(--border-light)",
                     boxShadow:
                       activeIndex === i
                         ? `0 0 0 2px #fff, 0 0 0 4px ${d.color || VIZ.blue}`
@@ -2010,7 +2013,8 @@ export function BarChart({
                       className="absolute inset-x-0 top-0"
                       style={{
                         height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
-                        background: "rgba(255,255,255,0.55)",
+                        background: "rgba(255,255,255,0.86)",
+                        borderTop: `2.5px solid ${d.color || VIZ.blue}`,
                         borderBottom: "1.5px solid rgba(255,255,255,0.95)",
                       }}
                     />

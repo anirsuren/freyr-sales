@@ -11,8 +11,11 @@ import {
   PenLine,
   UsersRound,
   ShieldCheck,
+  ArrowDownAZ,
+  Layers,
   Target,
   TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -42,6 +45,8 @@ import {
 } from "@/lib/performanceShared";
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { PerformanceExport } from "./PerformanceExport";
+import { NeedsAttention } from "./NeedsAttention";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -94,6 +99,17 @@ function monthlyTotals(
   }
   return months;
 }
+
+type SortKey = "pace" | "met" | "target" | "actual" | "verified" | "name";
+const SORT_KEYS: SortKey[] = ["pace", "met", "target", "actual", "verified", "name"];
+/** Worst first: lagging, then behind-but-moving, then fine, then done. */
+const PACE_RANK: Record<string, number> = {
+  lagging: 0,
+  ontrack: 1,
+  ahead: 2,
+  met: 3,
+  unset: 4,
+};
 
 export function OrgPerformanceTab({
   state,
@@ -157,6 +173,8 @@ export function OrgPerformanceTab({
     };
     /** The tab's identity colour, on the tile that names the scope. */
     accent?: string;
+    /** Goes in an exported filename, e.g. "group-test". */
+    exportLabel?: string;
     /**
      * WHAT ELSE THIS ONE SEARCH BAR CAN FIND (Anir, Aug 15: "why is there a
      * search a person button there? There's already a search bar on the left
@@ -183,6 +201,13 @@ export function OrgPerformanceTab({
     PERIOD_KEYS
   );
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Insertion order told you nothing. Every other list in the app opens with
+   *  a sort (Team, Customers, Offerings), so this one does too. */
+  const [sortBy, setSortBy] = useStoredView<SortKey>(
+    "freyr.performance.sort",
+    "pace",
+    SORT_KEYS
+  );
 
   const picked = scope ? scope.goals : state.goals.filter((g) => g.pickedForOrg);
   const noun = scope?.noun ?? "org goals";
@@ -218,6 +243,33 @@ export function OrgPerformanceTab({
     );
   });
 
+  /** Sorted for reading, not for storage: worst pace first by default, so the
+   *  goals that need somebody land at the top of the table. */
+  const sorted = [...shown].sort((a, b) => {
+    const av = actualValue(state.actuals, a);
+    const bv = actualValue(state.actuals, b);
+    switch (sortBy) {
+      case "name":
+        return a.name.localeCompare(b.name);
+      case "target":
+        return b.target - a.target;
+      case "actual":
+        return bv - av;
+      case "met":
+        return (
+          (b.target > 0 ? pctMet(bv, b.target) : -1) -
+          (a.target > 0 ? pctMet(av, a.target) : -1)
+        );
+      case "verified":
+        return Number(b.verified) - Number(a.verified);
+      default: {
+        const rank = (g: PrimaryGoal, v: number) =>
+          PACE_RANK[paceVerdict(v, g.target, g.year, g.measure)];
+        return rank(a, av) - rank(b, bv);
+      }
+    }
+  });
+
   const withValue = picked.map((g) => ({
     goal: g,
     actual: actualValue(state.actuals, g),
@@ -236,6 +288,15 @@ export function OrgPerformanceTab({
 
   return (
     <div>
+      {/* What is broken, above what is merely behind. */}
+      <NeedsAttention
+        state={state}
+        goals={picked}
+        meName={meName}
+        live={live}
+        onEditGoal={onEditGoal}
+        onAssign={onEditGoal}
+      />
       {scope?.picker}
       <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile
@@ -454,6 +515,27 @@ export function OrgPerformanceTab({
           )}
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-2">
+          <PerformanceExport
+            state={state}
+            goals={sorted}
+            label={scope?.exportLabel ?? "org"}
+            live={live}
+          />
+          <ColorSelect
+            value={sortBy}
+            onChange={(v) => setSortBy(v as SortKey)}
+            ariaLabel="Sort the goals"
+            dense
+            minWidth={168}
+            options={[
+              { value: "pace", label: "Worst pace first", color: "#C2410C", icon: TrendingDown },
+              { value: "met", label: "Most complete", color: "#16A34A", icon: Target },
+              { value: "target", label: "Biggest target", color: "#0071E3", icon: Layers },
+              { value: "actual", label: "Most achieved", color: "#7C3AED", icon: TrendingUp },
+              { value: "verified", label: "Verified first", color: "#0F766E", icon: ShieldCheck },
+              { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
+            ]}
+          />
           <ColorSelect
             value={typeFilter}
             onChange={setTypeFilter}
@@ -600,7 +682,7 @@ export function OrgPerformanceTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {shown.map((g) => (
+              {sorted.map((g) => (
                 <GoalRows
                   key={g.id}
                   goal={g}
@@ -732,10 +814,33 @@ function GoalRows({
           </span>
         </td>
         <td className="whitespace-nowrap px-4 py-4">
+          {/* A TARGET YOU CAN CHANGE FROM HERE (Anir, Aug 15: "shouldn't there
+              be an edit button here? If I want to remove or change the target,
+              how do I do that"). Setting one was already a click; changing one
+              meant a trip to the Goal Master. */}
           {goal.target > 0 ? (
-            <span className="text-[13px] font-semibold text-text-primary tnum">
-              {fmtAmount(goal.unit, goal.target)}
-            </span>
+            live ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditGoal(goal);
+                }}
+                title={`Change or clear the target on ${goal.name}`}
+                className="group/tg inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1.5 py-1 -mx-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface tnum"
+              >
+                {fmtAmount(goal.unit, goal.target)}
+                <Pencil
+                  size={12}
+                  strokeWidth={2.2}
+                  className="text-text-tertiary opacity-0 transition-opacity group-hover/tg:opacity-100"
+                />
+              </button>
+            ) : (
+              <span className="text-[13px] font-semibold text-text-primary tnum">
+                {fmtAmount(goal.unit, goal.target)}
+              </span>
+            )
           ) : live ? (
             <button
               type="button"

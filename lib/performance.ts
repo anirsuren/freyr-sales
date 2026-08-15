@@ -590,6 +590,59 @@ export async function logActual(input: {
   return actual;
 }
 
+/**
+ * FIX A CLAIM WITHOUT LOSING IT (Anir, Aug 15).
+ *
+ * Until now a wrong amount, date or customer meant delete and re-enter, which
+ * threw away the evidence upload with it. Same lock rule as removeActual: once
+ * a group owner has verified it, the owner sends it back before anything can
+ * change. Only the fields a person can get wrong are editable; who logged it,
+ * which goal it belongs to and its status are not.
+ */
+export async function updateActual(input: {
+  actualId: string;
+  amount?: number;
+  date?: string;
+  note?: string;
+  customer?: string;
+  customerId?: string;
+  dealId?: string;
+  dealLabel?: string;
+  by: string;
+}): Promise<void> {
+  const state = await readRow();
+  const entry = state.actuals.find((a) => a.id === input.actualId);
+  if (!entry) throw new Error("That entry is gone. Refresh and retry.");
+  if ((entry.status ?? "verified") === "verified" && entry.verifiedBy) {
+    throw new Error(
+      "This entry is verified and locked. The group owner has to send it back before it can change."
+    );
+  }
+  // Yours to fix, or your group's to fix on your behalf.
+  const mine =
+    entry.person.trim().toLowerCase() === input.by.trim().toLowerCase() ||
+    entry.addedBy.trim().toLowerCase() === input.by.trim().toLowerCase();
+  if (!mine && !canVerifyEntry(state, input.by, entry.person)) {
+    throw new Error("Only the person who logged this, or their group owner, can change it.");
+  }
+  if (typeof input.amount === "number" && Number.isFinite(input.amount)) {
+    entry.amount = input.amount;
+  }
+  if (input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date)) entry.date = input.date;
+  if (input.note !== undefined) {
+    entry.note = input.note ? str(input.note, 400) : undefined;
+  }
+  if (input.customer !== undefined) {
+    entry.customer = input.customer ? str(input.customer, 160) : undefined;
+    entry.customerId = input.customerId ? str(input.customerId, 60) : undefined;
+  }
+  if (input.dealLabel !== undefined) {
+    entry.dealLabel = input.dealLabel ? str(input.dealLabel, 160) : undefined;
+    entry.dealId = input.dealId ? str(input.dealId, 80) : undefined;
+  }
+  await writeRow(state);
+}
+
 export async function removeActual(actualId: string): Promise<void> {
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === actualId);

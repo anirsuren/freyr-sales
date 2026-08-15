@@ -506,7 +506,7 @@ export function GoalZoom({
                       <HoverCard
                         key={r.label}
                         side="right"
-                        width={300}
+                        width={420}
                         delayMs={0}
                         content={
                           <PaceTimeline
@@ -585,7 +585,7 @@ export function GoalZoom({
                         <HoverCard
                           key={r2.group.id}
                           side="bottom"
-                          width={300}
+                          width={420}
                           delayMs={0}
                           content={
                             <PaceTimeline
@@ -681,7 +681,7 @@ export function GoalZoom({
                       <HoverCard
                         key={p.name}
                         side="left"
-                        width={300}
+                        width={420}
                         delayMs={0}
                         content={
                           <PaceTimeline
