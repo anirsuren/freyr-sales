@@ -370,7 +370,7 @@ export function GoalZoom({
                     </span>
                   )}
                 </p>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                   <div
                     className="h-full rounded-full transition-[width] duration-500"
                     style={{
@@ -501,7 +501,7 @@ export function GoalZoom({
                             <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-blue-primary align-middle" />
                           )}
                         </b>
-                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                           <span className="h-full bg-[#16A34A]" style={{ width: `${(r.verified / maxRow) * 100}%` }} />
                           <span className="h-full bg-[#B45309]/60" style={{ width: `${(r.awaiting / maxRow) * 100}%` }} />
                         </span>
@@ -553,7 +553,7 @@ export function GoalZoom({
                           <span className="w-[120px] shrink-0">
                             <GroupPill name={r2.group.name} size="sm" />
                           </span>
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                             <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
                           </span>
                           <b className="w-[70px] shrink-0 text-right text-[11.5px] tnum">
@@ -604,7 +604,7 @@ export function GoalZoom({
                             </span>
                           )}
                         </span>
-                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                           <span
                             className="block h-full rounded-full bg-blue-primary/70"
                             style={{ width: `${(p.verified / maxP) * 100}%` }}
