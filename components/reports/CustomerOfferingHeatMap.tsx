@@ -1232,11 +1232,19 @@ export function CustomerOfferingHeatMap({
                       "relative transition-colors",
                       expanded
                         // Row + form as one visibly bounded card: lifted out of
-                        // the list, tinted, ringed in blue. Without the shared
-                        // boundary the form read as a separate unrelated panel
-                        // (Anir, Aug 13: "I'm not getting the sense that this
-                        // is part of that").
-                        ? "z-20 my-1.5 overflow-visible rounded-xl bg-blue-light/30 ring-2 ring-inset ring-blue-primary/40"
+                        // the list and tinted, so the form does not read as a
+                        // separate unrelated panel (Anir, Aug 13: "I'm not
+                        // getting the sense that this is part of that").
+                        //
+                        // A LEFT RULE, NOT A RING (Anir, Aug 15: "just look at
+                        // that blue line thing... it looks like there's a
+                        // little bit of a glitch"). The expanded form is taller
+                        // than the dialog's scroll area, so a ring drew its top
+                        // and bottom off-screen and left two blue lines running
+                        // down the sides with no ends — which reads as broken.
+                        // A rule down the left edge belongs to the row it hangs
+                        // off and looks deliberate however it is clipped.
+                        ? "z-20 my-1.5 overflow-visible rounded-xl border-l-[3px] border-blue-primary/60 bg-blue-light/30"
                         : "overflow-hidden border-t border-border-light bg-white first:border-t-0"
                     )}
                   >
