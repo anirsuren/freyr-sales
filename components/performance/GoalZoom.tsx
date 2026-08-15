@@ -404,9 +404,8 @@ export function GoalZoom({
           <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
             Organization → group → person
           </b>
-          <span className="min-w-0 truncate text-[11px] text-text-tertiary">
-            one period, three altitudes, side by side
-          </span>
+          {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
+              three numbered column headings below already say what this is. */}
           <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
             {grans
               .filter((g) => g.allowed)

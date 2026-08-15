@@ -10,6 +10,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { NamePill } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -726,9 +727,14 @@ export function CustomerTypesManager({
         }}
         title="Remove this market?"
         body={
-          removingMarket
-            ? `${removingMarket.name} disappears from the market list and from the offering filters.`
-            : ""
+          removingMarket ? (
+            <>
+              <NamePill>{removingMarket.name}</NamePill> disappears from the
+              market list and from the offering filters.
+            </>
+          ) : (
+            ""
+          )
         }
         detail={
           removingMarket && (marketCounts[removingMarket.id] || 0) > 0

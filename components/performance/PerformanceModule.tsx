@@ -2231,6 +2231,8 @@ function SubgoalEditorFields({
     editing && editing.target > 0 ? String(editing.target) : ""
   );
   const [owners, setOwners] = useState<string[]>(editing?.owners ?? []);
+  /** Which row is asking "are you sure" — "owner:Name" or "person:Name". */
+  const [confirmDrop, setConfirmDrop] = useState<string | null>(null);
   const [rows, setRows] = useState<{ name: string; target: string }[]>(
     editing?.people.map((p) => ({
       name: p.name,
@@ -2306,11 +2308,23 @@ function SubgoalEditorFields({
               className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
             />
           </div>
-          {target.trim() !== "" && parsedTarget !== null && (
-            <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
-              = {fmtAmount(goal.unit, parsedTarget)}
-            </p>
-          )}
+          {/* Say what was read back, and say so when nothing was. A field that
+              quietly ignores what you typed saves a target you never set
+              (Anir, Aug 15: "just make sure it works either way"). */}
+          {target.trim() !== "" &&
+            (parsedTarget !== null ? (
+              <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
+                = {fmtAmount(goal.unit, parsedTarget)}
+              </p>
+            ) : (
+              // One line, and it stays one line (Anir, Aug 15). The field is
+              // 170px, so the message has to fit that, not explain itself.
+              <p className="mt-1 whitespace-nowrap text-[10.5px] text-error">
+                {goal.unit === "currency"
+                  ? "Numbers only, e.g. 40m"
+                  : "Numbers only, e.g. 900"}
+              </p>
+            ))}
         </div>
       </div>
 
@@ -2353,14 +2367,43 @@ function SubgoalEditorFields({
                     className="shrink-0 text-[color:#7C3AED]"
                   />
                 </span>
-                <button
-                  type="button"
-                  aria-label={"Remove " + o}
-                  onClick={() => setOwners(owners.filter((x) => x !== o))}
-                  className="cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-surface hover:text-[color:#DC2626]"
-                >
-                  <Trash2 size={13} strokeWidth={2.2} />
-                </button>
+                {/* AN X, AND IT ASKS (Anir, Aug 15: "can you make it just an
+                    X instead of a delete icon... obviously it should ask me
+                    for confirmation... it didn't ask me for any confirmation,
+                    so that's a problem"). The confirm replaces the row's own
+                    controls rather than opening a dialog: this is already
+                    inside a popup, and no popup ever opens on a popup. */}
+                {confirmDrop === `owner:${o}` ? (
+                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOwners(owners.filter((x) => x !== o));
+                        setConfirmDrop(null);
+                      }}
+                      className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDrop(null)}
+                      className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                    >
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={"Remove " + o}
+                    title={`Remove ${o} as a goal owner`}
+                    onClick={() => setConfirmDrop(`owner:${o}`)}
+                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -2407,14 +2450,37 @@ function SubgoalEditorFields({
                   aria-label={"Target for " + r.name}
                   className="h-[32px] w-[110px] rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
                 />
-                <button
-                  type="button"
-                  aria-label={"Remove " + r.name}
-                  onClick={() => setRows(rows.filter((_, xi) => xi !== i))}
-                  className="cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-surface hover:text-[color:#DC2626]"
-                >
-                  <Trash2 size={13} strokeWidth={2.2} />
-                </button>
+                {confirmDrop === `person:${r.name}` ? (
+                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRows(rows.filter((_, xi) => xi !== i));
+                        setConfirmDrop(null);
+                      }}
+                      className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDrop(null)}
+                      className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                    >
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={"Remove " + r.name}
+                    title={`Take ${r.name} off this subgoal`}
+                    onClick={() => setConfirmDrop(`person:${r.name}`)}
+                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

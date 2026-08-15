@@ -95,3 +95,20 @@ export function SizeBadge({ tier }: { tier: string | null }) {
     </Tooltip>
   );
 }
+
+/**
+ * A NAME, INSIDE A SENTENCE, AS A PILL.
+ *
+ * Standing rule (Anir, Aug 15: "again, group name has to be in the pill, and
+ * blue"): when a confirm dialog or a warning names the exact thing it is about,
+ * that name is a blue pill so you can see WHAT you are about to change without
+ * reading the whole sentence. The sentence stays a sentence around it, full
+ * stop and all, which is the part the first attempt at this got wrong.
+ */
+export function NamePill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mx-0.5 inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 align-baseline text-[12.5px] font-semibold text-blue-primary">
+      {children}
+    </span>
+  );
+}

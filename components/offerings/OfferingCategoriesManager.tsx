@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonSelect } from "@/components/performance/bits";
@@ -330,9 +331,14 @@ export function OfferingCategoriesManager({
         }}
         title="Remove this offering category?"
         body={
-          confirmRemove
-            ? `${confirmRemove.name} disappears from the category list and from the filters.`
-            : ""
+          confirmRemove ? (
+            <>
+              <NamePill>{confirmRemove.name}</NamePill> disappears from the
+              category list and from the filters.
+            </>
+          ) : (
+            ""
+          )
         }
         detail={
           confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0

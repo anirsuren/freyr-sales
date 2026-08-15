@@ -13,6 +13,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { PersonSelect } from "@/components/performance/bits";
@@ -395,13 +396,10 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     </div>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openEdit(g)}
-                  className="mt-2.5 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
-                >
-                  Add or remove people
-                </button>
+                {/* No "Add or remove people" link: the pencil on the row above
+                    already opens the editor (Anir, Aug 15: "we don't need the
+                    add or remove people because there's already an edit
+                    button"). */}
               </div>
             )}
             </div>
@@ -420,9 +418,18 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         }}
         title="Remove this group?"
         body={
-          confirmRemove
-            ? `${confirmRemove.name} disappears from Performance. Its people and their goals are untouched — only the grouping goes.`
-            : ""
+          confirmRemove ? (
+            <>
+              {/* The name is a blue pill, not bare text in the sentence
+                  (Anir, Aug 15: "again, group name has to be in the pill,
+                  and blue"). */}
+              <NamePill>{confirmRemove.name}</NamePill> disappears from
+              Performance. Its people and their goals are untouched. Only the
+              grouping goes.
+            </>
+          ) : (
+            ""
+          )
         }
         confirmLabel="Remove group"
       />

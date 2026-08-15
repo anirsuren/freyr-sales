@@ -751,22 +751,37 @@ export function FdlComponentDetail({
                         is on it, with its own download (Suren, Aug 8: "for
                         version 4, when it clicks, give those features for
                         version 4 and then download"). */}
-                    <button
-                      type="button"
-                      onClick={() => toggleVersion(release.id)}
-                      aria-expanded={open}
-                      aria-label={`${open ? "Hide" : "Show"} what is in ${withV(release.version)}`}
-                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
-                    >
-                      <ChevronRight
-                        size={15}
-                        strokeWidth={2.2}
-                        className={`shrink-0 text-text-tertiary transition-transform ${
-                          open ? "rotate-90 text-blue-primary" : ""
-                        }`}
-                      />
+                    {/* THE ROW IS NOT ONE BIG BUTTON ANY MORE.
+                        It used to be, and the date chip lived inside it — an
+                        <input> nested in a <button>, which is invalid HTML and
+                        which the browser resolves by letting the button eat
+                        every click. That is why "Set a date" did nothing at
+                        all (Anir, Aug 15). The chevron and the version name
+                        still toggle the row; the chips beside them are now
+                        ordinary siblings that can carry their own controls. */}
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleVersion(release.id)}
+                        aria-expanded={open}
+                        aria-label={`${open ? "Hide" : "Show"} what is in ${withV(release.version)}`}
+                        className="flex shrink-0 cursor-pointer items-center"
+                      >
+                        <ChevronRight
+                          size={15}
+                          strokeWidth={2.2}
+                          className={`shrink-0 text-text-tertiary transition-transform ${
+                            open ? "rotate-90 text-blue-primary" : ""
+                          }`}
+                        />
+                      </button>
                       <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleVersion(release.id)}
+                          tabIndex={-1}
+                          className="flex cursor-pointer flex-wrap items-center gap-2 text-left"
+                        >
                           <span className="text-[16px] font-semibold leading-tight tracking-[-0.01em] text-text-primary">
                             {MONTH_ONLY.test(release.version)
                               ? "No version number recorded"
@@ -792,41 +807,25 @@ export function FdlComponentDetail({
                               <Check size={12} strokeWidth={3.2} /> Current version
                             </span>
                           )}
-                        </span>
+                        </button>
                         {/* Facts as chips, not a run-on grey sentence. */}
                         <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          {/* The chip IS the date picker when you may edit.
-                              A native date input sits invisibly on top of it,
-                              so one click opens the calendar the timeline
-                              promised (Anir, Aug 15). */}
+                          {/* The chip IS the date picker when you may edit. */}
                           {canEdit ? (
-                            <span
-                              className={cn(
-                                "relative inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] tnum transition-colors",
+                            <ReleaseDateChip
+                              label={
                                 release.date
-                                  ? "bg-surface text-text-secondary hover:bg-blue-light hover:text-blue-primary"
-                                  : "border border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
-                              )}
-                              title={
-                                release.date
-                                  ? `Change the date on ${withV(release.version)}`
-                                  : `Set a date for ${withV(release.version)}`
+                                  ? formatDate(release.date)
+                                  : "Set a date"
                               }
-                            >
-                              <CalendarDays size={11} strokeWidth={2} />
-                              {release.date ? formatDate(release.date) : "Set a date"}
-                              <input
-                                type="date"
-                                aria-label={`Date for ${withV(release.version)}`}
-                                value={release.date ?? ""}
-                                disabled={busy}
-                                onChange={(event) =>
-                                  void setReleaseDate(release.id, event.target.value)
-                                }
-                                onClick={(event) => event.stopPropagation()}
-                                className="absolute inset-0 cursor-pointer opacity-0"
-                              />
-                            </span>
+                              value={release.date ?? ""}
+                              hasDate={Boolean(release.date)}
+                              versionLabel={withV(release.version)}
+                              disabled={busy}
+                              onPick={(next) =>
+                                void setReleaseDate(release.id, next)
+                              }
+                            />
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
                               <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
@@ -1051,7 +1050,7 @@ export function FdlComponentDetail({
                           </HoverCard>
                         )}
                       </span>
-                    </button>
+                    </div>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
                       {/* SAYING A VERSION HAS SHIPPED (Anir, Aug 9: "if I want
                           to say that this is the version that's current or
@@ -3125,5 +3124,90 @@ function UploadProgressRows({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * THE DATE CHIP THAT ACTUALLY OPENS A CALENDAR.
+ *
+ * Two things were wrong with the first attempt (Anir, Aug 15: "the fucking
+ * button doesn't even work — the set a date"):
+ *
+ *  1. it lived inside the big row <button>, and an <input> inside a <button>
+ *     is invalid HTML: the button swallows the click. The row is no longer one
+ *     button, which fixes that half.
+ *  2. a transparent <input type="date"> laid over a chip does not open
+ *     anything when you click it. Chrome only opens the calendar from the
+ *     little indicator glyph, which opacity-0 had just made invisible.
+ *
+ * So: a real button that calls showPicker() on a hidden input. Where
+ * showPicker is missing (older Safari), the input is focused and revealed
+ * instead of silently doing nothing, which is the failure this is fixing.
+ */
+function ReleaseDateChip({
+  label,
+  value,
+  hasDate,
+  versionLabel,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  value: string;
+  hasDate: boolean;
+  versionLabel: string;
+  disabled?: boolean;
+  onPick: (next: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [fallback, setFallback] = useState(false);
+
+  function open() {
+    const input = inputRef.current;
+    if (!input) return;
+    try {
+      // showPicker throws if the input is not visible, hence the fallback.
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+      if (!("showPicker" in input)) setFallback(true);
+    } catch {
+      setFallback(true);
+    }
+    input.focus();
+  }
+
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={open}
+        title={
+          hasDate
+            ? `Change the date on ${versionLabel}`
+            : `Set a date for ${versionLabel}`
+        }
+        className={cn(
+          "inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] tnum transition-colors disabled:opacity-50",
+          hasDate
+            ? "bg-surface text-text-secondary hover:bg-blue-light hover:text-blue-primary"
+            : "border border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
+        )}
+      >
+        <CalendarDays size={11} strokeWidth={2} />
+        {label}
+      </button>
+      <input
+        ref={inputRef}
+        type="date"
+        aria-label={`Date for ${versionLabel}`}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onPick(event.target.value)}
+        className={cn(
+          "absolute left-0 top-full z-20 mt-1 rounded-lg border border-border-light bg-white px-2 py-1 text-[12px] shadow-lg",
+          fallback ? "block" : "sr-only"
+        )}
+      />
+    </span>
   );
 }

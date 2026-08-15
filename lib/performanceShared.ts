@@ -357,11 +357,28 @@ function trim1(n: number): string {
 export function parseAmountInput(text: string): number | null {
   const raw = text.trim().replace(/[$,%\s]/g, "").replace(/,/g, "").toLowerCase();
   if (!raw) return null;
-  const m = raw.match(/^(\d+(?:\.\d+)?)([kmb])?$/);
+  // Shorthand people actually type, spelled out rather than guessed at (Anir,
+  // Aug 15: "if I enter 10m, it should know it's 10 million... you can either
+  // do that or just straight up let people only type in a number"). It is a
+  // parser, not a model: every accepted form is listed here, and anything
+  // else returns null so the field can say it did not understand instead of
+  // saving a number nobody typed.
+  //
+  //   1000 · 1,000 · $1,000 · 1.5k · 40m · 40mm · 40mn · 2b · 2bn
+  //   1.5 thousand · 40 million · 2 billion
+  const m = raw.match(/^(\d+(?:\.\d+)?)(k|thousand|m|mm|mn|million|b|bn|billion)?$/);
   if (!m) return null;
   const base = parseFloat(m[1]);
   if (!Number.isFinite(base)) return null;
-  const mult = m[2] === "b" ? 1e9 : m[2] === "m" ? 1e6 : m[2] === "k" ? 1e3 : 1;
+  const suffix = m[2] ?? "";
+  const mult =
+    suffix === "b" || suffix === "bn" || suffix === "billion"
+      ? 1e9
+      : suffix === "m" || suffix === "mm" || suffix === "mn" || suffix === "million"
+        ? 1e6
+        : suffix === "k" || suffix === "thousand"
+          ? 1e3
+          : 1;
   return base * mult;
 }
 

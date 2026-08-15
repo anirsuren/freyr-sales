@@ -701,10 +701,25 @@ export function FdlComponentsBrowser({
                               The -ml-1.5 pulls the first icon's padding back so
                               it optically lines up with the header text. */}
                           <span className="-ml-1.5 inline-flex items-center gap-1">
-                            <Tooltip label="Download the feature sheet">
+                            {/* SAY WHY IT IS GREY (Anir, Aug 15: "I should say
+                                why it's not able to be downloaded... when I
+                                hover"). The button greys out when there is
+                                nothing to put in the sheet, and the tooltip
+                                used to promise a download anyway. */}
+                            <Tooltip
+                              label={
+                                component.features.length === 0
+                                  ? `${component.name} has no features yet, so there is nothing to put in a feature sheet. Add one and this turns on.`
+                                  : "Download the feature sheet"
+                              }
+                            >
                               <button
                                 type="button"
-                                aria-label={`Download the ${component.name} feature sheet`}
+                                aria-label={
+                                  component.features.length === 0
+                                    ? `${component.name} has no features yet, so there is no feature sheet to download`
+                                    : `Download the ${component.name} feature sheet`
+                                }
                                 onClick={() => {
                                   downloadFeatureSheet(component);
                                   toast(`${component.name} feature sheet downloaded.`);
