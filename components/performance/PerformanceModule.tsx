@@ -1482,6 +1482,9 @@ function GoalPopupBody({
   const [confirmGroupUnassign, setConfirmGroupUnassign] = useState<string | null>(
     null
   );
+  /** Which assigned group is unfolded to show who is in it (Anir, Aug 15:
+   *  "it should be like a dropdown and I can see the people inside it"). */
+  const [openGroupRow, setOpenGroupRow] = useState<string | null>(null);
   /** Each group carrying this goal, with what its people add up to — the two
    *  numbers this section reconciles. */
   const groupRows = (goal.groupAssignments ?? []).map((assignment) => {
@@ -1897,8 +1900,31 @@ function GoalPopupBody({
           {groupRows.map(({ assignment, group, peopleTotal }) => (
             <div
               key={assignment.groupId}
-              className="flex flex-wrap items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
+              className="overflow-hidden rounded-xl bg-surface"
             >
+            <div className="flex flex-wrap items-center gap-2.5 px-3 py-2">
+              {/* The row unfolds, like a group row on Admin. */}
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenGroupRow(
+                    openGroupRow === assignment.groupId ? null : assignment.groupId
+                  )
+                }
+                aria-expanded={openGroupRow === assignment.groupId}
+                aria-label={`Show who is in ${group?.name ?? "this group"}`}
+                className="flex shrink-0 cursor-pointer items-center"
+              >
+                <ChevronDown
+                  size={15}
+                  strokeWidth={2.2}
+                  className={cn(
+                    "text-text-tertiary transition-transform",
+                    openGroupRow === assignment.groupId &&
+                      "rotate-180 text-blue-primary"
+                  )}
+                />
+              </button>
               <GroupPill name={group?.name ?? "Group removed"} />
               {/* WHO IS ACTUALLY IN IT (Anir, Aug 15: "it doesn't even show me
                   who the people are"). A group name alone makes you go to
@@ -1992,6 +2018,55 @@ function GoalPopupBody({
                   )}
                 </span>
               )}
+            </div>
+            {openGroupRow === assignment.groupId && group && (
+              <div className="tab-panel border-t border-border-light px-3 py-2.5">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  In this group
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {[
+                    ...new Set(
+                      [group.head, ...group.members]
+                        .map((m) => m.trim())
+                        .filter(Boolean)
+                    ),
+                  ].map((m) => {
+                    const theirs = (goal.assignments ?? []).find(
+                      (a) => a.person === m
+                    );
+                    return (
+                      <div
+                        key={m}
+                        className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+                      >
+                        <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                          {m}
+                        </span>
+                        {m === group.head && (
+                          <Crown
+                            size={11}
+                            strokeWidth={2.6}
+                            aria-label="Group owner"
+                            className="shrink-0 text-[color:#7C3AED]"
+                          />
+                        )}
+                        {/* What each of them carries on THIS goal, which is
+                            the question you open the row to answer. */}
+                        <span className="shrink-0 text-[11px] text-text-secondary tnum">
+                          {theirs
+                            ? theirs.target > 0
+                              ? fmtAmount(goal.unit, theirs.target)
+                              : "no target"
+                            : "not assigned"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             </div>
           ))}
         </div>
