@@ -1868,11 +1868,12 @@ export function BarChart({
         .map((d) => `${d.label} ${d.value}`)
         .join(", ")}`}
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 h-px bg-border-light"
-        style={{ bottom: baselineOffset }}
-      />
+      {/* No baseline rule. It sat exactly where the axis labels begin, so
+          once the label block tightened it ran straight through the words
+          (Anir, Aug 15: "what's that weird line in the background, please
+          remove or at least make it so it doesn't intersect text"). The bars
+          all start from the same place anyway; the line was restating that
+          and colliding with the labels to do it. */}
       {data.map((d, i) => {
         const barInteractive = tipIsLong(d.tip);
         return (
