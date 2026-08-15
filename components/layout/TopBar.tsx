@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon, UserRoundCog } from "lucide-react";
+import { Search, Bell, BellOff, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon, UserRoundCog } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { RoleTag } from "@/components/ui/RoleTag";
 import {
@@ -372,7 +372,16 @@ export function TopBar({
                   page the old panel had no visible bottom edge (Anir, Aug 13:
                   "I can't properly see where it ends"). */}
               <div className={cn("popover-in absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
-                <div className="px-4 py-3 border-b border-border-light flex items-center justify-between gap-3">
+                {/* The separators only exist to divide a list. With nothing in
+                    the panel they drew two rules around an empty middle and
+                    the whole thing read as a broken table (Anir, Aug 15: "you
+                    don't need those two rectangle lines, it looks weird"). */}
+                <div
+                  className={cn(
+                    "px-4 py-3 flex items-center justify-between gap-3",
+                    visibleNotifs.length > 0 && "border-b border-border-light"
+                  )}
+                >
                   <span className="text-[14px] font-semibold text-text-primary">Notifications</span>
                   {unread > 0 && (
                     <span className="text-[11px] font-semibold text-blue-primary tnum whitespace-nowrap">
@@ -429,16 +438,27 @@ export function TopBar({
                     </div>
                   ))}
                   {visibleNotifs.length === 0 && (
-                    <p className="px-4 py-6 text-[13px] text-text-secondary text-center">
-                      You&apos;re all caught up.
-                    </p>
+                    <div className="flex flex-col items-center gap-2 px-4 pb-5 pt-3 text-center">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-text-tertiary">
+                        <BellOff size={16} strokeWidth={1.9} />
+                      </span>
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        You&apos;re all caught up
+                      </p>
+                      <p className="text-[12px] leading-relaxed text-text-secondary">
+                        Approvals, quiet deals and follow-ups land here.
+                      </p>
+                    </div>
                   )}
                 </div>
                 <Link
                   href="/notifications"
                   prefetch
                   onClick={() => setNotifOpen(false)}
-                  className="block px-4 py-2.5 text-[13px] font-semibold text-blue-primary text-center border-t border-border-light hover:bg-surface transition-colors"
+                  className={cn(
+                    "block px-4 py-2.5 text-[13px] font-semibold text-blue-primary text-center hover:bg-surface transition-colors",
+                    visibleNotifs.length > 0 && "border-t border-border-light"
+                  )}
                 >
                   View all notifications
                 </Link>

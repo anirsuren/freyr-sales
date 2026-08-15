@@ -3,8 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BellOff, Check } from "lucide-react";
+import {
+  AlarmClock,
+  BellDot,
+  BellOff,
+  CalendarDays,
+  Check,
+  Clock3,
+  Inbox,
+  type LucideIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PageTabs } from "@/components/ui/PageTabs";
+import { StatTile } from "@/components/ui/StatTile";
 import {
   NotificationGroupHeading,
   NotificationRow,
@@ -17,9 +28,55 @@ import {
   groupByUrgency,
   NOTIF_READ_KEY as READ_KEY,
   type AppNotification,
+  type NotificationUrgency,
 } from "@/lib/notifications";
 
 const EMPTY_READ_SET = new Set<string>();
+
+/** The four whens, as tiles. Same order and same words as the group headings
+ *  below, so the count you read at the top names the section you scroll to.
+ *  Overdue borrows the caution burnt-orange, never amber. */
+const URGENCY_TILES: {
+  urgency: NotificationUrgency;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  sub: string;
+  empty: string;
+}[] = [
+  {
+    urgency: "overdue",
+    label: "Overdue",
+    icon: AlarmClock,
+    color: "#C2410C",
+    sub: "past their date",
+    empty: "nothing late",
+  },
+  {
+    urgency: "today",
+    label: "Today",
+    icon: Clock3,
+    color: "#0071E3",
+    sub: "due today",
+    empty: "nothing due today",
+  },
+  {
+    urgency: "week",
+    label: "This week",
+    icon: CalendarDays,
+    color: "#7C3AED",
+    sub: "in the next few days",
+    empty: "clear this week",
+  },
+  {
+    urgency: "later",
+    label: "Later",
+    icon: Inbox,
+    color: "#0F766E",
+    sub: "no date pressing",
+    empty: "nothing queued",
+  },
+];
 
 function readSet(storageKey: string): Set<string> {
   try {
@@ -92,6 +149,18 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
     [filter, items, visibleRead]
   );
   const groups = useMemo(() => groupByUrgency(shown), [shown]);
+  /** Tile counts read the WHOLE list, not the filtered one: they say what is
+   *  waiting on you, which does not change because you flipped to Unread. */
+  const counts = useMemo(() => {
+    const out: Record<NotificationUrgency, number> = {
+      overdue: 0,
+      today: 0,
+      week: 0,
+      later: 0,
+    };
+    for (const n of items) out[n.urgency || "later"] += 1;
+    return out;
+  }, [items]);
 
   // Warm every destination up front. Nothing here is awaited on click — the
   // whole point is that the page is already on its way before you press it.
@@ -104,43 +173,73 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
   }, [items, router]);
 
   return (
-    <div className="max-w-[760px]">
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <div className="flex gap-2">
-          {(["all", "unread"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "text-[13px] font-medium px-3 py-1.5 rounded-md border transition-colors capitalize",
-                filter === f
-                  ? "border-blue-primary bg-blue-light text-blue-primary"
-                  : "border-border text-text-secondary hover:bg-surface"
-              )}
-            >
-              {f}
-              {f === "unread" ? ` (${unreadCount})` : ""}
-            </button>
-          ))}
-        </div>
+    <div>
+      {/* WHAT IS WAITING, BEFORE YOU READ A SINGLE ROW (Anir, Aug 15: "this
+          doesn't even look good... I don't know what this is"). The old page
+          opened on two bordered boxes and a bare text link over an empty
+          column, and said nothing until you had read every row. Four counts
+          by when they are due answer it at a glance, in the app's own tiles. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {URGENCY_TILES.map((t) => {
+          const n = counts[t.urgency];
+          return (
+            <StatTile
+              key={t.urgency}
+              icon={t.icon}
+              label={t.label}
+              value={String(n)}
+              color={n > 0 ? t.color : undefined}
+              sub={n > 0 ? t.sub : t.empty}
+            />
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        {/* The same segmented selector as Performance, Market Intel and Admin,
+            instead of two bordered boxes from an older era of this app. */}
+        <PageTabs
+          tabs={[
+            { key: "all", label: `All (${items.length})`, icon: Inbox, color: "#0071E3" },
+            {
+              key: "unread",
+              label: `Unread (${unreadCount})`,
+              icon: BellDot,
+              color: "#C2410C",
+            },
+          ]}
+          active={filter}
+          onSelect={(k) => setFilter(k as "all" | "unread")}
+        />
         <button
           onClick={markAll}
           disabled={unreadCount === 0}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-blue-primary hover:underline disabled:text-text-tertiary disabled:no-underline"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-45 disabled:hover:border-border-light disabled:hover:text-text-secondary"
         >
-          <Check size={15} strokeWidth={2} />
+          <Check size={14} strokeWidth={2.2} />
           Mark all read
         </button>
       </div>
 
       {shown.length === 0 ? (
-        <EmptyState
-          icon={BellOff}
-          title={filter === "unread" ? "You're all caught up" : "No notifications"}
-          description="Alerts about pitches awaiting review, cooling deals, and new buying signals will appear here."
-        />
+        // Inside a card, not floating in the middle of an empty page.
+        <Card className="mt-4 px-6 py-12">
+          <EmptyState
+            icon={BellOff}
+            title={
+              filter === "unread"
+                ? "Nothing unread"
+                : "Nothing is waiting on you"
+            }
+            description={
+              filter === "unread"
+                ? "You have read everything here. Switch to All to look back over it."
+                : "Pitches waiting on your approval, deals going quiet, follow-ups you promised and fresh buying signals all land here."
+            }
+          />
+        </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="mt-4 space-y-5">
           {groups.map((group) => (
             <section key={group.urgency}>
               <NotificationGroupHeading
@@ -149,7 +248,7 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
                 urgency={group.urgency}
                 className="mb-2"
               />
-              <Card className="p-0 overflow-hidden">
+              <Card className="overflow-hidden p-0">
                 <ul>
                   {group.items.map((n) => {
                     const isRead = visibleRead.has(n.id);
@@ -167,7 +266,12 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
                             } catch {}
                           }}
                           onClick={() => markOne(n.id)}
-                          className="block px-4 py-3.5 hover:bg-surface transition-colors"
+                          className={cn(
+                            "block px-4 py-3.5 transition-colors hover:bg-surface",
+                            // Unread carries a coloured left rule, so a full
+                            // list still shows you where to start.
+                            !isRead && "border-l-[3px] border-l-blue-primary"
+                          )}
                         >
                           <NotificationRow notification={n} unread={!isRead} />
                         </Link>
