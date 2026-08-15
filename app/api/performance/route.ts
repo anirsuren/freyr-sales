@@ -38,6 +38,7 @@ export const dynamic = "force-dynamic";
  * "empty" queues and put us straight back where we started.
  */
 declare global {
+  // eslint-disable-next-line no-var
   var __FREYR_PERFORMANCE_WRITE_QUEUE__: Promise<void> | undefined;
 }
 let performanceWriteQueue: Promise<void> =

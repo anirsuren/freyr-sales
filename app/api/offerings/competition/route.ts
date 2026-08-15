@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
  * Same fix as Performance and Market Intel tracking.
  */
 declare global {
+  // eslint-disable-next-line no-var
   var __FREYR_COMPETITION_QUEUE__: Promise<void> | undefined;
 }
 async function acquireCompetitionWrite(): Promise<() => void> {

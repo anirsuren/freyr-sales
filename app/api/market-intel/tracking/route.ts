@@ -27,6 +27,7 @@ export const dynamic = "force-dynamic";
  * requests two separate empty queues.
  */
 declare global {
+  // eslint-disable-next-line no-var
   var __FREYR_MI_TRACKING_QUEUE__: Promise<void> | undefined;
 }
 async function acquireTrackingWrite(): Promise<() => void> {
