@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { EVIDENCE_NAMESPACE } from "@/lib/performanceEvidence";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,21 @@ export const dynamic = "force-dynamic";
  * path must live in this namespace, so nobody pulls other storage objects
  * through it.
  */
-const NAMESPACE = "perf-evidence/";
-const MAX_BYTES = 15 * 1024 * 1024;
+const NAMESPACE = EVIDENCE_NAMESPACE;
+/**
+ * THE FALLBACK PATH ONLY, and it is the one with a cap.
+ *
+ * Files now go straight to storage from the browser (evidence/upload-url +
+ * evidence/complete) with no size limit at all. This proxy stays for a
+ * deployment without the Docs credentials, and it has to hold the whole file
+ * in the Node process, so it keeps a ceiling.
+ *
+ * 8 MB, not the 15 MB this used to claim: anything at or above 10 MB never
+ * reaches this handler — the body dies upstream and `formData()` comes back
+ * empty, which is why a rep who very much attached a file was told to "Attach
+ * a file". Promising 15 MB while failing at 10 was the actual bug.
+ */
+const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function POST(req: Request) {
   const actor = await verifiedWorkflowActor(req as never);
@@ -41,7 +55,7 @@ export async function POST(req: Request) {
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "Files up to 15 MB only" },
+      { error: "This deployment has no direct storage, so files over 8 MB cannot be attached here." },
       { status: 413 }
     );
   }

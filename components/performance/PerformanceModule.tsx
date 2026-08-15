@@ -2409,6 +2409,15 @@ function SubgoalEditorFields({
 
 /* ------------------------------------------------------- log actual modal */
 
+/** A file on its way to storage: percentage while it travels, then done, or
+ *  the reason it stopped. */
+type EvidenceUpload = {
+  name: string;
+  percent: number;
+  status: "uploading" | "done" | "failed";
+  error?: string;
+};
+
 function LogActualModal({
   open,
   state,
@@ -2438,6 +2447,9 @@ function LogActualModal({
   const [customer, setCustomer] = useState("");
   const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  /** One row per file being sent, so a big contract shows a moving bar rather
+   *  than a frozen "Uploading…" with nothing behind it. */
+  const [uploads, setUploads] = useState<EvidenceUpload[]>([]);
   const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   // Opened from a person's goal row: land with goal, subgoal and person
@@ -2467,27 +2479,127 @@ function LogActualModal({
   const unit = effectiveGoal?.unit ?? goal?.unit ?? null;
   const parsed = parseAmountInput(amount);
 
+  /** Straight to storage with a real percentage, exactly like a sales
+   *  material. Resolves false and leaves the reason on screen. */
+  function putWithProgress(
+    url: string,
+    headers: Record<string, string>,
+    file: File
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url);
+      for (const [k, v] of Object.entries(headers || {}))
+        xhr.setRequestHeader(k, v);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          setUploads((prev) =>
+            prev.map((u) =>
+              u.name === file.name && u.status === "uploading"
+                ? { ...u, percent }
+                : u
+            )
+          );
+        }
+      };
+      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => resolve(false);
+      xhr.onabort = () => resolve(false);
+      xhr.send(file);
+    });
+  }
+
+  /**
+   * ATTACHING EVIDENCE NEVER LEAVES THE POPUP (Anir, Aug 15: "don't take me
+   * off the pop-up"). Progress shows per file and the finished ones stay
+   * listed; a failure writes its reason under the row instead of throwing a
+   * browser alert over the whole form.
+   *
+   * The file goes browser → storage, so there is NO SIZE LIMIT. The old code
+   * posted it through our own server, which is why anything from 10 MB up came
+   * back as "Attach a file" on a file that was very much attached.
+   */
   async function attachEvidence(files: FileList | null) {
     if (!files?.length) return;
+    const picked = Array.from(files).slice(0, 5 - evidence.length);
     setUploading(true);
-    try {
-      for (const file of Array.from(files).slice(0, 5 - evidence.length)) {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch("/api/performance/evidence", {
+    setUploads((prev) => [
+      ...prev,
+      ...picked.map((f) => ({
+        name: f.name,
+        percent: 0,
+        status: "uploading" as const,
+      })),
+    ]);
+    const mark = (name: string, patch: Partial<EvidenceUpload>) =>
+      setUploads((prev) =>
+        prev.map((u) => (u.name === name ? { ...u, ...patch } : u))
+      );
+
+    for (const file of picked) {
+      try {
+        const signed = await fetch("/api/performance/evidence/upload-url", {
           method: "POST",
-          body: form,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+          }),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        const grant = await signed.json().catch(() => ({}));
+
+        // No Docs credentials on this deployment: fall back to the proxy,
+        // which is capped because it holds the file in memory.
+        if (signed.status === 503) {
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch("/api/performance/evidence", {
+            method: "POST",
+            body: form,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error ?? "Upload failed");
+          setEvidence((prev) => [...prev, { name: data.name, url: data.url }]);
+          mark(file.name, { percent: 100, status: "done" });
+          continue;
+        }
+        if (!signed.ok || !grant.uploadUrl) {
+          throw new Error(grant.error ?? "Could not start that upload");
+        }
+
+        const sent = await putWithProgress(
+          grant.uploadUrl,
+          grant.uploadHeaders,
+          file
+        );
+        if (!sent) throw new Error("The upload did not finish. Try again.");
+
+        const done = await fetch("/api/performance/evidence/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: grant.path, name: file.name }),
+        });
+        const data = await done.json().catch(() => ({}));
+        if (!done.ok) throw new Error(data.error ?? "Upload failed");
         setEvidence((prev) => [...prev, { name: data.name, url: data.url }]);
+        mark(file.name, { percent: 100, status: "done" });
+      } catch (error) {
+        mark(file.name, {
+          status: "failed",
+          error: error instanceof Error ? error.message : "Upload failed",
+        });
       }
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      if (evidenceInputRef.current) evidenceInputRef.current.value = "";
     }
+
+    setUploading(false);
+    if (evidenceInputRef.current) evidenceInputRef.current.value = "";
+    // Clear the finished rows once they have been seen; failures stay until
+    // the person retries or closes the form.
+    window.setTimeout(
+      () => setUploads((prev) => prev.filter((u) => u.status !== "done")),
+      2500
+    );
   }
 
   const personOptions = useMemo(() => {
@@ -2750,6 +2862,56 @@ function LogActualModal({
               onChange={(e) => attachEvidence(e.target.files)}
             />
           </div>
+          {/* The bar the sales-material uploader shows, for the same reason:
+              a large contract takes a while, and a frozen label reads as
+              broken (Anir, Aug 15). */}
+          {uploads.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {uploads.map((u) => (
+                <div key={u.name + u.status}>
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-secondary">
+                      {u.name}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 text-[11px] font-semibold tnum",
+                        u.status === "failed"
+                          ? "text-error"
+                          : u.status === "done"
+                            ? "text-success"
+                            : "text-text-tertiary"
+                      )}
+                    >
+                      {u.status === "failed"
+                        ? "Failed"
+                        : u.status === "done"
+                          ? "Attached ✓"
+                          : `${u.percent}%`}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-200",
+                        u.status === "failed"
+                          ? "bg-error"
+                          : u.status === "done"
+                            ? "bg-success"
+                            : "bg-blue-primary"
+                      )}
+                      style={{
+                        width: `${u.status === "failed" ? 100 : u.percent}%`,
+                      }}
+                    />
+                  </div>
+                  {u.error && (
+                    <p className="mt-1 text-[10.5px] text-error">{u.error}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {effectiveGoal?.unit === "currency" && evidence.length === 0 && (
             <p className="mt-1 text-[10.5px] text-[color:#B45309]">
               Money claims need the contract attached before they can be submitted.
