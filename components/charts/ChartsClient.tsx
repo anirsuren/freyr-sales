@@ -1674,6 +1674,14 @@ export function BarChart({
     label: string;
     value: number;
     color?: string;
+    /**
+     * How much of `value` is claimed but not signed off yet. That slice is
+     * drawn hatched on top of the solid part, so a bar says what counts and
+     * what is still someone's word (Anir, Aug 15: "there has to be
+     * differentiation between what's verified, what someone says they have,
+     * and what's not").
+     */
+    pending?: number;
     // TIP_ICONS key ("qualified", "company", …) — string, not a component, so
     // server components can pass it. Absent/unknown = no mark, same as today.
     icon?: string;
@@ -1980,7 +1988,7 @@ export function BarChart({
                   )}
                 </span>
                 <div
-                  className="chart-bar h-full w-full rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
+                  className="chart-bar relative h-full w-full overflow-hidden rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
                   style={{
                     animationDelay: `${i * 45}ms`,
                     background: d.color || VIZ.blue,
@@ -1989,7 +1997,25 @@ export function BarChart({
                         ? `0 0 0 2px #fff, 0 0 0 4px ${d.color || VIZ.blue}`
                         : undefined,
                   }}
-                />
+                >
+                  {/* The unverified slice: the same colour washed out, sitting
+                      on top of what is already signed off. Diagonal stripes
+                      were the first attempt and they were unreadable at this
+                      size (Anir, Aug 15: "whatever that fucking design for
+                      that bar is, it's horrible"). A pale band with a crisp
+                      edge says "not counted yet" without the barber pole. */}
+                  {!!d.pending && d.value > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0"
+                      style={{
+                        height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
+                        background: "rgba(255,255,255,0.55)",
+                        borderBottom: "1.5px solid rgba(255,255,255,0.95)",
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
             {/* The axis label: the company's own mark above its name, and the

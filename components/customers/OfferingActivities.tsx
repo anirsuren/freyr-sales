@@ -93,7 +93,7 @@ const CURRENCY_OPTIONS: ColorOption[] = [
   { value: "GBP", label: "£ GBP", color: "#C2410C", icon: Coins },
   { value: "CHF", label: "CHF", color: "#0F766E", icon: Coins },
   { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
-  { value: "JPY", label: "¥ JPY", color: "#B45309", icon: Coins },
+  { value: "JPY", label: "¥ JPY", color: "#C2410C", icon: Coins },
   { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
   { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
   { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },

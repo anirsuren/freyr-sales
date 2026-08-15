@@ -219,15 +219,24 @@ type ActualFilter = {
  */
 export function actualValue(
   actuals: PerfActual[],
-  goal: Pick<PrimaryGoal, "id" | "measure">,
+  goal: Pick<PrimaryGoal, "id" | "measure" | "componentGoalIds">,
   filter: ActualFilter = {},
   period?: PeriodKey,
   now = new Date()
 ): number {
   let total = 0;
   let latest: PerfActual | null = null;
+  /**
+   * A COMPOSITE IS ITS COMPONENTS (bug, Aug 15). Nothing can be logged on a
+   * composite goal directly — the log form refuses it — so matching only its
+   * own id made "Booked Revenue (Contract Value Signed)" read $0 while its own
+   * drill-down, which uses goalFamilyActuals, showed the $250K verified on
+   * Renewals. The row and the drill-down under it disagreed about the same
+   * money. Plain goals have no components, so nothing else moves.
+   */
+  const family = new Set([goal.id, ...(goal.componentGoalIds ?? [])]);
   for (const a of actuals) {
-    if (a.goalId !== goal.id) continue;
+    if (!family.has(a.goalId)) continue;
     if (filter.subgoalId !== undefined && a.subgoalId !== filter.subgoalId)
       continue;
     if (filter.person && a.person !== filter.person) continue;

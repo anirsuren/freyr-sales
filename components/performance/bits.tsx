@@ -451,7 +451,7 @@ export function VerifiedPill({
         style={
           verified
             ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
-            : { color: "#B45309", background: "rgba(180,83,9,0.10)" }
+            : { color: "#0058B0", background: "rgba(0,113,227,0.10)" }
         }
       >
         <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
@@ -483,7 +483,7 @@ export function VerifiedPill({
       style={
         verified
           ? { color: "#16A34A", borderColor: "rgba(22,163,74,0.35)" }
-          : { color: "#B45309", borderColor: "rgba(180,83,9,0.35)" }
+          : { color: "#0058B0", borderColor: "rgba(0,113,227,0.35)" }
       }
     >
       <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
@@ -493,7 +493,7 @@ export function VerifiedPill({
           "rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.04em] transition-colors",
           verified
             ? "bg-[rgba(22,163,74,0.10)] group-hover/vp:bg-[rgba(22,163,74,0.18)]"
-            : "bg-[rgba(180,83,9,0.10)] group-hover/vp:bg-[rgba(180,83,9,0.18)]"
+            : "bg-[rgba(0,113,227,0.10)] group-hover/vp:bg-[rgba(0,113,227,0.18)]"
         )}
       >
         {verified ? "Undo" : "Verify"}
@@ -644,5 +644,136 @@ export function GroupPill({
       />
       {name}
     </span>
+  );
+}
+
+
+/**
+ * WHERE YOU ARE AND WHERE YOU HAVE TO BE, on one line (Anir, Aug 15: "when I
+ * hover over it, it'll show me a pop-up with an expanded version... it'll be
+ * kind of like a timeline. It'll show me: I'm here, and this is where I have
+ * to be. Very, very clear. Same thing for all three of these").
+ *
+ * The track is the whole target. The solid part is money that has been signed
+ * off, the pale part is claimed and still waiting, and the marker is the
+ * calendar: where this would have to stand today to be on time.
+ */
+export function PaceTimeline({
+  title,
+  verified,
+  awaiting,
+  target,
+  expectedPct,
+  unit,
+  accent = "#0071E3",
+}: {
+  title: React.ReactNode;
+  verified: number;
+  awaiting: number;
+  target: number;
+  /** 0-100. Where the calendar says this should be today. */
+  expectedPct: number;
+  unit: "currency" | "count" | "percent";
+  accent?: string;
+}) {
+  const pctOf = (n: number) =>
+    target > 0 ? Math.min(100, Math.max(0, (n / target) * 100)) : 0;
+  const vPct = pctOf(verified);
+  const aPct = pctOf(verified + awaiting);
+  const marker = Math.min(100, Math.max(0, expectedPct));
+  const gap = Math.max(0, (target * marker) / 100 - (verified + awaiting));
+
+  return (
+    <div className="min-w-[260px]">
+      <p className="text-[12.5px] font-semibold text-text-primary">{title}</p>
+
+      {target > 0 ? (
+        <>
+          <p className="mt-0.5 text-[11.5px] text-text-secondary tnum">
+            {fmtAmount(unit, verified + awaiting)} of {fmtAmount(unit, target)}
+          </p>
+
+          {/* The timeline itself. */}
+          <div className="relative mt-3 mb-1 h-2.5 w-full rounded-full bg-[color:var(--border-light)]">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: `${aPct}%`, background: accent, opacity: 0.28 }}
+            />
+            <span
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: `${vPct}%`, background: accent }}
+            />
+            {/* Where the calendar says you should be. */}
+            <span
+              className="absolute -top-1 bottom-[-4px] w-[2px] rounded-full bg-text-primary"
+              style={{ left: `calc(${marker}% - 1px)` }}
+              aria-hidden="true"
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px] font-semibold text-text-tertiary">
+            <span>you are here · {Math.round(aPct)}%</span>
+            <span>must be at {Math.round(marker)}%</span>
+          </div>
+
+          <div className="mt-2.5 space-y-1 border-t border-border-light pt-2">
+            <PaceRow
+              swatch={accent}
+              label="Verified, counts now"
+              value={fmtAmount(unit, verified)}
+            />
+            <PaceRow
+              swatch={accent}
+              faded
+              label="Claimed, not checked yet"
+              value={fmtAmount(unit, awaiting)}
+            />
+            <PaceRow
+              label={gap > 0 ? "Behind the calendar by" : "Ahead of the calendar"}
+              value={fmtAmount(unit, gap > 0 ? gap : 0)}
+              strong
+            />
+          </div>
+        </>
+      ) : (
+        <p className="mt-1 text-[11.5px] text-text-secondary">
+          No target set, so there is no pace to be measured against.{" "}
+          {fmtAmount(unit, verified + awaiting)} logged so far.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PaceRow({
+  swatch,
+  faded,
+  label,
+  value,
+  strong,
+}: {
+  swatch?: string;
+  faded?: boolean;
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <p className="flex items-center gap-2 text-[11.5px]">
+      {swatch && (
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: swatch, opacity: faded ? 0.28 : 1 }}
+        />
+      )}
+      <span className={cn("text-text-secondary", !swatch && "ml-4")}>{label}</span>
+      <b
+        className={cn(
+          "ml-auto tnum",
+          strong ? "text-text-primary" : "text-text-secondary"
+        )}
+      >
+        {value}
+      </b>
+    </p>
   );
 }

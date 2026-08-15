@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Folder, Search } from "lucide-react";
 import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 import {
   MATERIAL_FORMAT_META,
@@ -72,8 +73,13 @@ function positionFor(anchor: DOMRect): PanelPosition {
     160,
     Math.min(360, (above ? roomAbove : roomBelow) - gap)
   );
+  // CENTRED OVER WHAT YOU ARE POINTING AT (Anir, Aug 15: "does that look
+  // centered to you? It's not centered above the number"). It used to align
+  // its LEFT edge to the trigger's, so a 300px panel hanging off a 30px count
+  // pill sat almost entirely to the right of it and read as unanchored. The
+  // clamp still wins at the screen edges, where centring would overflow.
   const left = Math.min(
-    Math.max(edge, anchor.left),
+    Math.max(edge, anchor.left + anchor.width / 2 - PANEL_WIDTH / 2),
     window.innerWidth - PANEL_WIDTH - edge
   );
   return above
@@ -100,6 +106,10 @@ export function FolderPeek({
 }) {
   const [open, setOpen] = useState(false);
   const [peekPath, setPeekPath] = useState(path);
+  /** Folders, or every file under here in one flat list (Anir, Aug 15: "an
+   *  option to see folders or just all files at once in a row"). */
+  const [mode, setMode] = useState<"folders" | "files">("folders");
+  const [query, setQuery] = useState("");
   const [position, setPosition] = useState<PanelPosition | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -138,7 +148,15 @@ export function FolderPeek({
     if (openTimer.current !== null) return;
     openTimer.current = window.setTimeout(() => {
       openTimer.current = null;
-      const rect = wrapRef.current?.getBoundingClientRect();
+      // Measure the THING, not the cell it sits in. This wrapper is h-full and
+      // block, which is right for the folder grid where it IS the card, and
+      // wrong in a table cell where it stretches far wider than the little
+      // count pill inside it — centring on the wrapper then looked off-centre
+      // against the number (Anir, Aug 15). The first element child is the
+      // trigger itself in both cases.
+      const host = wrapRef.current;
+      const inner = host?.firstElementChild as HTMLElement | null;
+      const rect = (inner ?? host)?.getBoundingClientRect();
       if (!rect) return;
       setPosition(positionFor(rect));
       setOpen(true);
@@ -173,8 +191,17 @@ export function FolderPeek({
     };
   }, [open]);
 
-  const nested = childFolders(folderPaths, peekPath);
-  const files = materialsInFolder(materials, peekPath);
+  const q = query.trim().toLowerCase();
+  // Searching implies "all files": you are looking for a name, not a place.
+  const flat = mode === "files" || q.length > 0;
+  const under = (m: { folder?: string }) =>
+    !peekPath || m.folder === peekPath || (m.folder ?? "").startsWith(`${peekPath}/`);
+  const nested = flat ? [] : childFolders(folderPaths, peekPath);
+  const files = flat
+    ? materials
+        .filter(under)
+        .filter((m) => !q || m.label.toLowerCase().includes(q))
+    : materialsInFolder(materials, peekPath);
   const drilled = peekPath !== path;
   const rowCount = nested.length + files.length;
 
@@ -207,8 +234,8 @@ export function FolderPeek({
               maxHeight: position.maxHeight,
               // Grows out of the card's edge, the same gesture the dropdowns use.
               ["--menu-origin" as string]: position.above
-                ? "bottom left"
-                : "top left",
+                ? "bottom center"
+                : "top center",
               ["--menu-dir" as string]: position.above ? -1 : 1,
             }}
             className="menu-in fixed z-[70] flex flex-col overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_12px_32px_rgba(16,24,40,0.16)]"
@@ -242,11 +269,48 @@ export function FolderPeek({
                   )}
                 </span>
               </span>
+              {/* Folders or everything, one tap (Anir, Aug 15). */}
+              <span className="inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
+                {(["folders", "files"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    aria-pressed={mode === m}
+                    className={cn(
+                      "cursor-pointer px-2 py-1 text-[10.5px] font-semibold transition-colors",
+                      mode === m
+                        ? "bg-blue-light text-blue-primary"
+                        : "text-text-secondary hover:bg-surface"
+                    )}
+                  >
+                    {m === "folders" ? "Folders" : "All files"}
+                  </button>
+                ))}
+              </span>
+            </div>
+
+            <div className="border-b border-border-light px-2.5 py-2">
+              <span className="relative block">
+                <Search
+                  size={13}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+                />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search files…"
+                  aria-label="Search files"
+                  className="w-full rounded-lg border border-border-light bg-white py-1.5 pl-7 pr-2 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+                />
+              </span>
             </div>
 
             {rowCount === 0 ? (
               <p className="px-3 py-4 text-[12px] text-text-secondary">
-                Nothing filed here yet.
+                {q ? `Nothing matches "${query.trim()}".` : "Nothing filed here yet."}
               </p>
             ) : (
               <div

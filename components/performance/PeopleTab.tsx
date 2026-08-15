@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   knownPeople,
   scopeStateToPeople,
@@ -36,6 +36,7 @@ export function PeopleTab({
   onLogActual,
   onEditGoal,
   onEditSubgoal,
+  initialPerson = null,
 }: {
   state: PerformanceState;
   live: boolean;
@@ -45,25 +46,28 @@ export function PeopleTab({
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
+  /** Landed here from a search on another tab: open on that person. */
+  initialPerson?: string | null;
 }) {
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
+  const router = useRouter();
+  const [picked, setPicked] = useState<string | null>(initialPerson);
   const person = picked ?? meName;
   const first = person.trim().split(/\s+/)[0] || person;
 
   const names = useMemo(() => knownPeople(state, meName), [state, meName]);
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return names.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
-  }, [names, query]);
 
   const scoped = useMemo(
     () => scopeStateToPeople(state, [person]),
     [state, person]
   );
 
-  /** Who you are looking at, and how to look at someone else. */
+  /**
+   * WHO YOU ARE LOOKING AT. Nothing more — the search that used to live out
+   * here was a second box doing what the filter row's box already does (Anir,
+   * Aug 15: "why is there a search a person button there? That makes zero
+   * sense. There's already a search bar on the left with the filters").
+   * People and groups are matched by that one bar now, below.
+   */
   const picker = (
     <div className="flex flex-wrap items-center gap-3">
       <span className="flex items-center gap-2.5">
@@ -91,46 +95,31 @@ export function PeopleTab({
           )}
         </span>
       </span>
-
-      <div className="relative ml-auto w-full max-w-[320px]">
-        <Search
-          size={15}
-          strokeWidth={2}
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-        />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search a person…"
-          aria-label="Search a person"
-          className="w-full rounded-lg border border-border-light bg-white py-2.5 pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
-        />
-        {matches.length > 0 && (
-          <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
-            {matches.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => {
-                  setPicked(n);
-                  setQuery("");
-                }}
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
-              >
-                <Avatar name={n} className="h-7 w-7 text-[10px]" />
-                <span className="flex items-center gap-2 text-[13px] font-medium text-text-primary">
-                  {n}
-                  {memberRoles?.[n.trim()] && (
-                    <RoleChip role={memberRoles[n.trim()]} />
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
+  );
+
+  /** Everyone the server lets you see, plus every group, reachable from the
+   *  one search bar in the filter row. */
+  const jumps = useMemo(
+    () => [
+      ...names
+        .filter((n) => n !== person)
+        .map((n) => ({
+          kind: "person" as const,
+          id: n,
+          name: n,
+          sub: memberRoles?.[n.trim()],
+          go: () => setPicked(n),
+        })),
+      ...state.groups.map((g) => ({
+        kind: "group" as const,
+        id: g.id,
+        name: g.name,
+        sub: `${g.head} · group`,
+        go: () => router.push(`/performance/groups?group=${encodeURIComponent(g.id)}`),
+      })),
+    ],
+    [names, person, memberRoles, state.groups, router]
   );
 
   return (
@@ -154,6 +143,7 @@ export function PeopleTab({
           goals: scoped.goals,
           noun: "goals",
           picker,
+          jumps,
           accent: "#B4318F",
           // Named after the person you are looking at, so the screen says who
           // it is about before you check which tab is lit (Anir, Aug 15).
@@ -191,7 +181,12 @@ export function PeopleTab({
       />
 
       <div className="mt-4">
-        <MyEntriesCard state={state} person={person} />
+        <MyEntriesCard
+          state={state}
+          person={person}
+          run={run}
+          meName={meName}
+        />
       </div>
     </div>
   );

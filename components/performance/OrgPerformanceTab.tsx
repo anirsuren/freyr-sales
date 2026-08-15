@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import {
   PERIODS,
   actualValue,
+  familyValue,
   fmtAmount,
   hasActuals,
   paceVerdict,
@@ -41,7 +42,7 @@ import {
 } from "@/lib/performanceShared";
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
+import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -156,6 +157,20 @@ export function OrgPerformanceTab({
     };
     /** The tab's identity colour, on the tile that names the scope. */
     accent?: string;
+    /**
+     * WHAT ELSE THIS ONE SEARCH BAR CAN FIND (Anir, Aug 15: "why is there a
+     * search a person button there? There's already a search bar on the left
+     * with the filters. Just make sure I can search goals, people, groups,
+     * etc."). The bar filters goals and subgoals as you type; these are the
+     * people and groups matching the same words, offered as somewhere to go.
+     */
+    jumps?: {
+      kind: "person" | "group";
+      id: string;
+      name: string;
+      sub?: string;
+      go: () => void;
+    }[];
   };
 }) {
   const [query, setQuery] = useState("");
@@ -173,6 +188,14 @@ export function OrgPerformanceTab({
   const noun = scope?.noun ?? "org goals";
   const words = scope?.words;
   const q = query.trim().toLowerCase();
+  /** People and groups this same query matches, offered under the bar. */
+  const jumpHits = q
+    ? (scope?.jumps ?? [])
+        .filter(
+          (j) => j.name.toLowerCase().includes(q) || (j.sub ?? "").toLowerCase().includes(q)
+        )
+        .slice(0, 6)
+    : [];
   const shown = picked.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
     if (paceFilter !== "all") {
@@ -274,14 +297,33 @@ export function OrgPerformanceTab({
                 format="percent"
                 data={picked.map((g) => {
                   const a = actualValue(state.actuals, g);
-                  const p = paceVerdict(a, g.target, g.year, g.measure);
+                  /**
+                   * SOLID IS SIGNED OFF, HATCHED IS SOMEBODY'S WORD (Anir,
+                   * Aug 15). The bar still reaches everything logged, so it
+                   * agrees with the Actual column, but the part nobody has
+                   * checked is drawn hatched instead of filled.
+                   *
+                   * The colour is the goal's own type colour, never the pace
+                   * red: this chart is progress, and red on a progress bar
+                   * read as damage ("I have no idea why you are using red...
+                   * this is the progress, right?"). Lagging still shows in the
+                   * row's pace pill and the donut beside this card.
+                   */
+                  const verified = familyValue(state, g, { verifiedOnly: true });
+                  const awaiting = Math.max(0, a - verified);
                   return {
                     label: chartName(g.name),
                     value: g.target > 0 ? Math.round(pctMet(a, g.target)) : 0,
-                    color: PACE_COLOR[p],
+                    pending:
+                      g.target > 0 && awaiting > 0
+                        ? Math.round(pctMet(awaiting, g.target))
+                        : 0,
+                    color: typeMeta(g.type).color,
                     caption:
                       g.target > 0
-                        ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
+                        ? awaiting > 0
+                          ? `${fmtAmount(g.unit, verified)} verified · ${fmtAmount(g.unit, awaiting)} waiting`
+                          : `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
                         : "no target yet",
                     tip: g.subgoals.map((s) => {
                       const sa = actualValue(state.actuals, g, { subgoalId: s.id });
@@ -359,14 +401,58 @@ export function OrgPerformanceTab({
         query={query}
         className="mt-4 flex flex-wrap items-center gap-2"
       >
-        <PrioritySearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder={words?.searchPlaceholder ?? "Search goals, subgoals, people…"}
-          ariaLabel="Search org performance"
-          grow
-          className="min-w-[200px] flex-1"
-        />
+        <span className="relative flex min-w-[200px] flex-1 items-center">
+          <PrioritySearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={words?.searchPlaceholder ?? "Search goals, subgoals, people…"}
+            ariaLabel="Search performance"
+            grow
+            className="w-full"
+          />
+          {jumpHits.length > 0 && (
+            <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
+              <span className="block px-2.5 pb-1 pt-1.5 text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Jump to
+              </span>
+              {jumpHits.map((j) => (
+                <button
+                  key={`${j.kind}-${j.id}`}
+                  type="button"
+                  onClick={() => {
+                    j.go();
+                    setQuery("");
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
+                >
+                  {j.kind === "person" ? (
+                    <Avatar name={j.name} className="h-7 w-7 shrink-0 text-[10px]" />
+                  ) : (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light">
+                      <UsersRound size={13} strokeWidth={2.2} className="text-blue-primary" />
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5">
+                      {j.kind === "group" ? (
+                        <GroupPill name={j.name} size="sm" />
+                      ) : (
+                        <span className="truncate text-[13px] font-medium text-text-primary">
+                          {j.name}
+                        </span>
+                      )}
+                    </span>
+                    {j.sub && (
+                      <span className="block truncate text-[11px] text-text-secondary">
+                        {j.sub}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
         <span className="ml-auto flex flex-wrap items-center gap-2">
           <ColorSelect
             value={typeFilter}
@@ -408,7 +494,7 @@ export function OrgPerformanceTab({
             options={[
               { value: "all", label: "Verified + not", color: "#0071E3" },
               { value: "verified", label: "Verified", color: "#16A34A" },
-              { value: "unverified", label: "Not verified", color: "#B45309" },
+              { value: "unverified", label: "Not verified", color: "#0058B0" },
             ]}
           />
           <ColorSelect
@@ -687,7 +773,7 @@ function GoalRows({
           <MiniBar actual={actual} target={goal.target} pace={pace} />
           {goal.measure === "total" && goal.target > 0 && (
             <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
-              calendar says {expectedPct}%
+              {expectedPct}% of the year gone
             </span>
           )}
         </td>
@@ -734,8 +820,20 @@ function GoalRows({
               are so many lines here... remove the rectangle that houses the
               three cards"). The cards inside carry their own outlines; a box
               around a box was one frame too many. */}
-          <td colSpan={7} className="px-4 pb-5 pt-3">
-            <div className="tab-panel space-y-3">
+          {/* ONE BLOCK WITH THE ROW ABOVE IT (Anir, Aug 15: "there's a lot of
+              gap... I'm not getting the sense that this is all part of one
+              thing. You're gonna have to have some signifier that shows, okay,
+              this is all part of the same goal"). The rail down the left is
+              the goal's own type colour, the tint carries on from the open
+              row, and the top padding is gone so the two touch. */}
+          <td colSpan={7} className="px-4 pb-4 pt-0">
+            <div
+              className="tab-panel space-y-3 overflow-hidden rounded-xl border-l-[3px] py-3 pl-3.5"
+              style={{
+                borderColor: typeMeta(goal.type).color,
+                background: `${typeMeta(goal.type).color}08`,
+              }}
+            >
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link

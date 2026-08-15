@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Crown, Layers, Paperclip } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import {
@@ -18,13 +19,14 @@ import {
   fmtAmount,
   goalCadences,
   goalFamilyActuals,
+  yearElapsed,
   headedGroups,
   isComposite,
   type PerfActual,
   type PerformanceState,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
-import { typeMeta, GroupPill } from "./bits";
+import { typeMeta, GroupPill, PaceTimeline } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -40,6 +42,9 @@ import type { RunOp } from "./PerformanceModule";
  * feature exists. Nothing is invented.
  */
 
+/** Reported-but-unverified, drawn as hatched brand blue: the same colour as a
+ *  signed-off number because it is the same measurement, striped because it is
+ *  not confirmed yet. */
 const COMPONENT_COLORS = ["#0071E3", "#0F766E", "#6D28D9"];
 const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
 
@@ -193,6 +198,20 @@ export function GoalZoom({
   }, [gran, fy, state, currentMonthIdx]);
 
   const maxRow = Math.max(1, ...rows.map((r) => r.verified + r.awaiting));
+  /**
+   * EVERY BAR IS A SHARE OF THE TARGET (Anir, Aug 15: "it says 25% met, which
+   * is fine... but then in August it says 250K, but why is it 100%? That
+   * doesn't make sense to me").
+   *
+   * They used to be scaled to the biggest row, so the single month that had
+   * anything in it filled its track completely while the row above said 25%.
+   * The same $250K now reads 25% here, in the group box and on the person —
+   * one meaning for a full bar, everywhere on the screen. With no target set
+   * there is nothing to be a share OF, so those fall back to relative scale
+   * and the box says so.
+   */
+  const scaleBase = yearTarget > 0 ? yearTarget : maxRow;
+  const relative = yearTarget <= 0;
 
   /** Verification rail: waiting entries on THIS goal family. */
   const waiting = familyActuals
@@ -305,7 +324,7 @@ export function GoalZoom({
             </span>
           )}
           {yearAwaiting > 0 ? (
-            <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309] tnum">
+            <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#0058B0] tnum">
               +{fmtAmount(goal.unit, yearAwaiting)} waiting
             </span>
           ) : (
@@ -365,7 +384,7 @@ export function GoalZoom({
                     </span>
                   )}
                   {cAwaiting > 0 && (
-                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:#B45309] tnum">
+                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:#0058B0] tnum">
                       +{fmtAmount(c.unit, cAwaiting)} waiting
                     </span>
                   )}
@@ -404,7 +423,7 @@ export function GoalZoom({
           The same period context flows left to right: pick a period in Box 1,
           Box 2 shows every group inside it, pick a group and Box 3 shows its
           people. Nothing navigates away; the three columns ARE the drill. */}
-      <Card className="mt-4 p-4">
+      <Card className={cn("p-4", embedded ? "mt-0 border-transparent bg-transparent shadow-none" : "mt-4")}>
         <div className="flex items-center gap-3">
           <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
             Organization → group → person
@@ -450,7 +469,9 @@ export function GoalZoom({
               };
             })
             .sort((a, b) => b.verified - a.verified);
-          const maxG = Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
+          const maxG = yearTarget > 0
+            ? yearTarget
+            : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
           const selGroup =
             inPeriodGroups.find((r2) => r2.group.id === openGroup) ?? inPeriodGroups[0] ?? null;
           const groupPeople = selGroup
@@ -462,7 +483,9 @@ export function GoalZoom({
                 }))
                 .sort((a, b) => b.verified - a.verified)
             : [];
-          const maxP = Math.max(1, ...groupPeople.map((p) => p.verified));
+          const maxP = yearTarget > 0
+            ? yearTarget
+            : Math.max(1, ...groupPeople.map((p) => p.verified));
           const boxCls =
             "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
           const boxHead =
@@ -481,8 +504,23 @@ export function GoalZoom({
                   {rows.map((r, i) => {
                     const active = i === selIdx;
                     return (
-                      <button
+                      <HoverCard
                         key={r.label}
+                        side="right"
+                        width={300}
+                        delayMs={0}
+                        content={
+                          <PaceTimeline
+                            title={r.sub ? `${r.label} · ${r.sub}` : r.label}
+                            verified={r.verified}
+                            awaiting={r.awaiting}
+                            target={yearTarget}
+                            expectedPct={yearElapsed(goal.year) * 100}
+                            unit={goal.unit}
+                          />
+                        }
+                      >
+                      <button
                         type="button"
                         onClick={() => {
                           setSelected(i);
@@ -502,13 +540,22 @@ export function GoalZoom({
                           )}
                         </b>
                         <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                          <span className="h-full bg-[#16A34A]" style={{ width: `${(r.verified / maxRow) * 100}%` }} />
-                          <span className="h-full bg-[#B45309]/60" style={{ width: `${(r.awaiting / maxRow) * 100}%` }} />
+                          <span
+                            className="h-full bg-[#16A34A]"
+                            style={{ width: `${Math.min(100, (r.verified / scaleBase) * 100)}%` }}
+                          />
+                          <span
+                            className="h-full bg-blue-primary opacity-[0.28]"
+                            style={{ width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%` }}
+                          />
                         </span>
                         <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
-                          {r.verified > 0 ? fmtAmount(goal.unit, r.verified) : "–"}
+                          <span className={r.verified > 0 ? "" : "text-text-tertiary"}>
+                            {fmtAmount(goal.unit, r.verified)}
+                          </span>
                         </b>
                       </button>
+                      </HoverCard>
                     );
                   })}
                 </div>
@@ -536,8 +583,23 @@ export function GoalZoom({
                     inPeriodGroups.map((r2) => {
                       const active = selGroup?.group.id === r2.group.id;
                       return (
-                        <button
+                        <HoverCard
                           key={r2.group.id}
+                          side="bottom"
+                          width={300}
+                          delayMs={0}
+                          content={
+                            <PaceTimeline
+                              title={`${r2.group.name} · ${row?.label ?? ""}`}
+                              verified={r2.verified}
+                              awaiting={r2.awaiting}
+                              target={yearTarget}
+                              expectedPct={yearElapsed(goal.year) * 100}
+                              unit={goal.unit}
+                            />
+                          }
+                        >
+                        <button
                           type="button"
                           onClick={() => setOpenGroup(r2.group.id)}
                           className={cn(
@@ -561,10 +623,12 @@ export function GoalZoom({
                               <GroupPill name={r2.group.name} size="sm" />
                             </span>
                             <b className="shrink-0 text-right text-[11.5px] tnum">
-                              {r2.verified > 0 ? fmtAmount(goal.unit, r2.verified) : "–"}
+                              <span className={r2.verified > 0 ? "" : "text-text-tertiary"}>
+                                {fmtAmount(goal.unit, r2.verified)}
+                              </span>
                             </b>
                             {r2.awaiting > 0 && (
-                              <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                              <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
                                 +{fmtAmount(goal.unit, r2.awaiting)}
                               </span>
                             )}
@@ -575,16 +639,21 @@ export function GoalZoom({
                                 className="block h-full bg-blue-primary"
                                 style={{ width: `${Math.min(100, (r2.verified / maxG) * 100)}%` }}
                               />
-                              {/* Waiting rides the same bar in amber, so you
-                                  can see the claim and the signed-off part in
-                                  one line without them being added together. */}
+                              {/* WAITING IS THE SAME BLUE, WASHED OUT — not
+                                  amber, and not stripes either: both were
+                                  rejected (Anir, Aug 15). One colour, two
+                                  strengths, so a bar still measures one thing
+                                  while saying how much of it is signed off. */}
                               <span
-                                className="block h-full bg-[rgba(180,83,9,0.55)]"
-                                style={{ width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%` }}
+                                className="block h-full bg-blue-primary opacity-[0.28]"
+                                style={{
+                                  width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
+                                }}
                               />
                             </span>
                           )}
                         </button>
+                        </HoverCard>
                       );
                     })
                   )}
@@ -610,7 +679,23 @@ export function GoalZoom({
                     </p>
                   ) : (
                     groupPeople.map((p) => (
-                      <div key={p.name} className="flex flex-col gap-1.5 rounded-lg px-2.5 py-2">
+                      <HoverCard
+                        key={p.name}
+                        side="left"
+                        width={300}
+                        delayMs={0}
+                        content={
+                          <PaceTimeline
+                            title={`${p.name} · ${row?.label ?? ""}`}
+                            verified={p.verified}
+                            awaiting={p.awaiting}
+                            target={yearTarget}
+                            expectedPct={yearElapsed(goal.year) * 100}
+                            unit={goal.unit}
+                          />
+                        }
+                      >
+                      <div className="flex flex-col gap-1.5 rounded-lg px-2.5 py-2">
                         <span className="flex w-full items-center gap-2.5">
                         <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
                         <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
@@ -626,10 +711,12 @@ export function GoalZoom({
                           )}
                         </span>
                         <b className="shrink-0 text-right text-[11.5px] tnum">
-                          {p.verified > 0 ? fmtAmount(goal.unit, p.verified) : "–"}
+                          <span className={p.verified > 0 ? "" : "text-text-tertiary"}>
+                            {fmtAmount(goal.unit, p.verified)}
+                          </span>
                         </b>
                         {p.awaiting > 0 && (
-                          <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#B45309] tnum">
+                          <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
                             +{fmtAmount(goal.unit, p.awaiting)}
                           </span>
                         )}
@@ -643,12 +730,15 @@ export function GoalZoom({
                               style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
                             />
                             <span
-                              className="block h-full bg-[rgba(180,83,9,0.55)]"
-                              style={{ width: `${Math.min(100, (p.awaiting / maxP) * 100)}%` }}
+                              className="block h-full bg-blue-primary opacity-[0.28]"
+                              style={{
+                                width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
+                              }}
                             />
                           </span>
                         )}
                       </div>
+                      </HoverCard>
                     ))
                   )}
                 </div>
@@ -672,7 +762,7 @@ export function GoalZoom({
           </b>
           {waiting.length > 0 &&
             pill(
-              "bg-[rgba(180,83,9,0.12)] text-[color:#B45309]",
+              "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]",
               String(waiting.length)
             )}
           <span className="ml-auto text-[10.5px] text-text-tertiary">
@@ -762,7 +852,7 @@ export function GoalZoom({
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-1 pl-8 text-[10.5px] text-[color:#B45309]">
+                    <p className="mt-1 pl-8 text-[10.5px] text-[color:#0058B0]">
                       No evidence attached.
                     </p>
                   )}

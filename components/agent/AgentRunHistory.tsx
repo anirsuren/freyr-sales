@@ -62,7 +62,7 @@ const KIND_ACCENT: Record<AgentRun["kind"], { color: string; icon: LucideIcon }>
 const OUTCOME_ACCENT: Record<AgentRun["outcome"], { color: string; icon: LucideIcon }> = {
   handled: { color: "#0071E3", icon: CheckCircle2 },
   sent: { color: "#059669", icon: Send },
-  escalated: { color: "#B45309", icon: AlertTriangle },
+  escalated: { color: "#C2410C", icon: AlertTriangle },
   mixed: { color: "#59616E", icon: CircleDot },
 };
 

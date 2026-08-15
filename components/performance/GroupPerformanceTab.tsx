@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { Crown, Settings2, UsersRound } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  knownPeople,
   scopeStateToPeople,
   type PerformanceState,
   type PrimaryGoal,
@@ -38,6 +40,7 @@ export function GroupPerformanceTab({
   onLogActual,
   onEditGoal,
   onEditSubgoal,
+  initialGroupId = null,
 }: {
   state: PerformanceState;
   meName: string;
@@ -46,10 +49,13 @@ export function GroupPerformanceTab({
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
+  /** Landed here from a search on another tab: open on that group. */
+  initialGroupId?: string | null;
 }) {
+  const router = useRouter();
   const groups = state.groups;
   const [pickedId, setPickedId] = useState<string | null>(
-    groups.length ? groups[0].id : null
+    initialGroupId ?? (groups.length ? groups[0].id : null)
   );
   const group = groups.find((g) => g.id === pickedId) ?? groups[0] ?? null;
 
@@ -69,6 +75,27 @@ export function GroupPerformanceTab({
     () => (group ? scopeStateToPeople(state, members, group.id) : state),
     [state, members, group]
   );
+
+  /** The one search bar reaches the other groups and every person from here
+   *  too (Anir, Aug 15: "I can search goals, people, groups, etc."). */
+  const jumps = [
+    ...groups
+      .filter((g) => g.id !== group?.id)
+      .map((g) => ({
+        kind: "group" as const,
+        id: g.id,
+        name: g.name,
+        sub: `${g.head} · group`,
+        go: () => setPickedId(g.id),
+      })),
+    ...knownPeople(state, meName).map((n) => ({
+      kind: "person" as const,
+      id: n,
+      name: n,
+      sub: members.includes(n) ? `in ${group?.name ?? "this group"}` : undefined,
+      go: () => router.push(`/performance/people?person=${encodeURIComponent(n)}`),
+    })),
+  ];
 
   if (groups.length === 0) {
     return (
@@ -149,6 +176,7 @@ export function GroupPerformanceTab({
         goals: scoped.goals,
         noun: "goals in this group",
         picker,
+        jumps,
         accent: "#0F766E",
         // Every heading names the group, so this screen can never be mistaken
         // for Org or People (Anir, Aug 15: "they have to know which one

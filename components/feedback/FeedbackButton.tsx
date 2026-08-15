@@ -434,7 +434,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
               </button>
             </div>
             {voiceError && (
-              <p role="alert" className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+              <p role="alert" className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#C2410C]">
                 {voiceError}
               </p>
             )}
@@ -446,7 +446,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
               <span className="inline-flex items-center gap-1 text-[10.5px] text-text-tertiary"><ClipboardPaste size={12} /> Paste anywhere in this dialog</span>
             </div>
             {captureError && (
-              <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+              <p className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#C2410C]">
                 {captureError}
               </p>
             )}

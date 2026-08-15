@@ -152,7 +152,7 @@ export function InviteTeammate({
               onChange={(e) => setName(e.target.value)}
             />
             {name.trim() !== "" && !isFullName(name) && (
-              <span className="mt-1 block text-[11px] text-[color:#B45309]">
+              <span className="mt-1 block text-[11px] text-[color:#C2410C]">
                 {FULL_NAME_HINT}
               </span>
             )}

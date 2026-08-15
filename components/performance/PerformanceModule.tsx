@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -191,6 +191,10 @@ export function PerformanceModule({
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  /** A search on one tab can land you on another, pointed at what you picked. */
+  const searchParams = useSearchParams();
+  const jumpPerson = searchParams.get("person");
+  const jumpGroup = searchParams.get("group");
   const [state, setState] = useState<PerformanceState>(initial);
   const tab = routeTab;
   const showMaster = routeMaster;
@@ -440,6 +444,7 @@ export function PerformanceModule({
           />
         ) : tab === "groups" ? (
           <GroupPerformanceTab
+            initialGroupId={jumpGroup}
             state={state}
             meName={meName}
             live={live}
@@ -453,6 +458,7 @@ export function PerformanceModule({
           />
         ) : (
           <PeopleTab
+            initialPerson={jumpPerson}
             state={state}
             live={live}
             run={run}
@@ -1185,7 +1191,7 @@ function AssignGroupModal({
             and the disabled button gave no reason for being disabled. */}
         <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
           Group
-          <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#B45309]">
+          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
             Pick one
           </span>
         </label>
@@ -1513,9 +1519,18 @@ function GoalPopupBody({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[var(--surface)] p-3.5">
-        <TypeIconTile type={goal.type} />
-        <span className="min-w-0 flex-1">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-3 rounded-xl bg-[var(--surface)] p-3.5",
+          // Inline under its own row, this card said the goal's name, type and
+          // year for the second time in 40px (Anir, Aug 15). The row above is
+          // the header; only the actions on the right earn their place, so
+          // that is all that renders.
+          !hostedInPopup && "border-none bg-transparent p-0 pb-1"
+        )}
+      >
+        {hostedInPopup && <TypeIconTile type={goal.type} />}
+        <span className={cn("min-w-0 flex-1", !hostedInPopup && "hidden")}>
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-[15px] font-bold text-text-primary">
               {goal.name}
@@ -1662,9 +1677,12 @@ function GoalPopupBody({
         )}
       </div>
       {goal.subgoals.length === 0 && (
-        <p className="mt-1.5 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] leading-relaxed text-text-secondary">
-          No subgoals yet. Split this goal when different teams carry different
-          pieces of it.
+        /* One line, not a slab. Three empty sections stacked as centred grey
+           boxes was most of what made this panel unreadable (Anir, Aug 15:
+           "this is the ugliest thing I've ever seen as well"). */
+        <p className="mt-1.5 text-[12.5px] text-text-secondary">
+          None yet. Split this goal when different teams carry different pieces
+          of it.
         </p>
       )}
       <div className="mt-1.5 space-y-2">
@@ -1885,7 +1903,7 @@ function GoalPopupBody({
         )}
       </div>
       {groupRows.length === 0 ? (
-        <div className="mt-1.5 flex flex-col items-center gap-2.5 rounded-lg bg-surface px-4 py-5 text-center">
+        <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
           <p className="text-[12.5px] text-text-secondary">
             No department carries this goal yet.
           </p>
@@ -2119,7 +2137,7 @@ function GoalPopupBody({
         )}
       </div>
       {(goal.assignments ?? []).length === 0 ? (
-        <div className="mt-1.5 flex flex-col items-center gap-2.5 rounded-lg bg-surface px-4 py-5 text-center">
+        <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
           <p className="text-[12.5px] text-text-secondary">
             Nobody carries this goal individually yet.
           </p>
@@ -3721,7 +3739,7 @@ function LogActualModal({
             </div>
           )}
           {effectiveGoal?.unit === "currency" && evidence.length === 0 && (
-            <p className="mt-1 text-[10.5px] text-[color:#B45309]">
+            <p className="mt-1 text-[10.5px] text-[color:#0058B0]">
               Money claims need the contract attached before they can be submitted.
             </p>
           )}
