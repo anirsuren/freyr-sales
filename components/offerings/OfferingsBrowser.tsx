@@ -56,6 +56,8 @@ import { stripBriefFormatting } from "@/components/offerings/BriefText";
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
 import { FILTER_PALETTE, listAccent } from "./filterPalette";
+import { FolderPeek } from "@/components/offerings/FolderPeek";
+import { allFolders, type OfferingMaterial } from "@/lib/offeringMaterials";
 import { customerFamilyColor } from "@/lib/customerFamilies";
 // ONE PALETTE FOR CUSTOMER FAMILIES, AND IT LIVES IN lib/customerFamilies.
 //
@@ -174,7 +176,8 @@ export interface HydratedOffering {
   poc: string;
   customerTypes: CustomerType[];
   markets: Market[];
-  materials: { id: string; kind: string; label: string; url: string }[];
+  /** The peek needs folder + docsPath, which the payload already carries. */
+  materials: OfferingMaterial[];
   /** Who may edit this offering. Empty until someone is granted it. */
   owners?: {
     memberId: string;
@@ -1684,10 +1687,41 @@ export function OfferingsBrowser({
                         )}
                       </td>
                       <td className="px-4 py-3 tnum">
+                        {/* HOVER THE COUNT, SEE WHAT IS IN IT (Anir, Aug 15:
+                            "when I hover over this number on the Offerings
+                            page, I would like to see, similar to the Sales
+                            Material page... all the materials in a row"). The
+                            same FolderPeek the Sales Materials tab uses, so
+                            the folders, their counts and the drill-down all
+                            behave identically. Clicking still opens the
+                            offering's own materials tab. */}
                         {o.materials.length ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary">
-                            {o.materials.length}
-                          </span>
+                          <FolderPeek
+                            path=""
+                            materials={o.materials}
+                            folderPaths={allFolders(o.materials)}
+                            onOpenFolder={() => {
+                              window.location.href = `/offerings/${o.id}#materials`;
+                            }}
+                            onOpenMaterial={(material: OfferingMaterial) => {
+                              if (material.url) {
+                                window.open(
+                                  material.url,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                );
+                              } else {
+                                window.location.href = `/offerings/${o.id}#materials`;
+                              }
+                            }}
+                          >
+                            <Link
+                              href={`/offerings/${o.id}#materials`}
+                              className="inline-flex cursor-pointer items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/40"
+                            >
+                              {o.materials.length}
+                            </Link>
+                          </FolderPeek>
                         ) : (
                           <span className="text-text-tertiary">-</span>
                         )}
