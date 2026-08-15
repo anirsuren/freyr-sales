@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
@@ -160,6 +162,8 @@ export function PerformanceModule({
   isManager,
   memberNames,
   memberRoles,
+  routeTab,
+  routeMaster,
 }: {
   initial: PerformanceState;
   live: boolean;
@@ -172,14 +176,25 @@ export function PerformanceModule({
   /** Name → workspace role, so a person reads as a person rather than a bare
    *  string (Anir, Aug 15: "it should show a role"). */
   memberRoles?: Record<string, string>;
+  /**
+   * WHICH SCREEN, FROM THE URL (Anir, Aug 15: "the 4 page should have
+   * different / within the /performance").
+   *
+   * The tab used to be client state kept in localStorage, so all four screens
+   * shared one address: you could not link somebody to People performance,
+   * a refresh did not always land where you were, and Back walked out of the
+   * module entirely. Each is its own route now and this component just renders
+   * what the route says.
+   */
+  routeTab: Tab;
+  routeMaster: boolean;
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [state, setState] = useState<PerformanceState>(initial);
-  const [tab, chooseTab] = useStoredView<Tab>(
-    "freyr.performance.tab",
-    "org",
-    TABS
-  );
+  const tab = routeTab;
+  const showMaster = routeMaster;
+  const chooseTab = (next: Tab) => router.push(`/performance/${next}`);
   const [busy, setBusy] = useState(false);
   // Which rooms this person gets: org for managers, groups when you head
   // one, and everyone gets their own performance plus the Goal Master.
@@ -192,9 +207,12 @@ export function PerformanceModule({
       ? ["groups", "people"]
       : ["people"];
   useEffect(() => {
-    if (!visibleTabs.includes(tab)) chooseTab(visibleTabs[0]);
+    // The route is gated on the server too; this only keeps the UI honest if
+    // somebody's permissions change while the page is open.
+    if (!showMaster && !visibleTabs.includes(tab))
+      router.replace(`/performance/${visibleTabs[0]}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, isManager, iHeadAGroup]);
+  }, [tab, showMaster, isManager, iHeadAGroup]);
   const [howOpen, setHowOpen] = useState(false);
 
   /**
@@ -263,8 +281,8 @@ export function PerformanceModule({
   // them, Goal Master should be there — what goal has been assigned to him,
   // and anybody can pick more goals for them"). The strip flips the room
   // between its numbers and the master list, scoped to who you may assign.
-  const [masterFor, setMasterFor] = useState<Tab | null>(null);
-  const showMaster = masterFor === tab;
+  const setMasterFor = (next: Tab | null) =>
+    router.push(next === null ? `/performance/${tab}` : "/performance/goal-master");
   const [logOpen, setLogOpen] = useState(false);
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
@@ -328,10 +346,10 @@ export function PerformanceModule({
                     key={key}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => {
-                      chooseTab(key);
-                      setMasterFor(null);
-                    }}
+                    // One navigation, not two: this used to also clear the
+                    // master flag, and that second push rewrote the URL back
+                    // to the tab we were leaving.
+                    onClick={() => chooseTab(key)}
                     className={cn(
                       "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
                       active
