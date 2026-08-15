@@ -163,8 +163,22 @@ export function VerifyQueueCard({
         >
           {queue.length || "all clear"}
         </span>
-        <span className="ml-auto text-[11px] text-text-tertiary">
-          you own {heads.map((g) => g.name).join(", ")}. Only you can lock these
+        {/* A GROUP NAME IS A TAG, NOT A WORD IN A SENTENCE (Anir, Aug 15:
+            "those variable names have to have a tag... just make it blue").
+            "you own test." read like a typo; a pill makes it obviously a
+            name, and blue is the same tag the group name wears everywhere
+            else. */}
+        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-text-tertiary">
+          you own
+          {heads.map((g) => (
+            <span
+              key={g.id}
+              className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary"
+            >
+              {g.name}
+            </span>
+          ))}
+          <span>Only you can lock these</span>
         </span>
       </div>
       {queue.length === 0 ? (

@@ -568,8 +568,10 @@ export function GoalZoom({
               <div className={boxCls}>
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">3 · People</b>
+                  {/* Same blue tag as every other group name (Anir, Aug 15:
+                      "You have it red somewhere else... just make it blue"). */}
                   {selGroup && (
-                    <span className="rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#B4318F]">
+                    <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary">
                       {selGroup.group.name}
                     </span>
                   )}

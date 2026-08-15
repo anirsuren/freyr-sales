@@ -172,9 +172,18 @@ export function GroupPerformanceTab({
                       </span>
                     </div>
                     {rows.length === 0 ? (
+                      /* "Pick some up" only makes sense on your own row. Read
+                         inside someone else's, it sounded like a chore handed
+                         to the viewer (Anir, Aug 15: "am I supposed to be the
+                         one who assigns the goal to Suren?"). Either can, in
+                         fact — they pick one up, or leadership assigns one —
+                         so the line just states the fact and leaves the two
+                         doors open. */
                       <p className="mt-2 rounded-lg bg-surface px-3 py-2.5 text-[12px] text-text-secondary">
-                        No goals assigned yet — pick some up from the Goal
-                        Master.
+                        {person.trim().toLowerCase() ===
+                        meName.trim().toLowerCase()
+                          ? "No goals assigned yet — pick some up from the Goal Master."
+                          : `Nothing assigned to ${person.split(" ")[0]} yet.`}
                       </p>
                     ) : (
                       <div className="mt-2.5 space-y-2.5">
