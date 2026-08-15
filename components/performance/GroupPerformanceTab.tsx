@@ -237,7 +237,7 @@ export function GroupPerformanceTab({
                                           person,
                                         });
                                       }}
-                                      className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+                                      className="flex cursor-pointer items-center gap-1 rounded-lg bg-blue-primary px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all hover:bg-blue-hover active:scale-[0.97]"
                                     >
                                       <PencilLine size={11} strokeWidth={2.2} />{" "}
                                       Log an actual
