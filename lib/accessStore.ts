@@ -40,6 +40,10 @@ export type InvitationRecord = {
   email: string;
   role: WorkspaceRole;
   expiresAt: string;
+  /** When it was sent, and by whom. An invitation nobody can attribute is
+   *  not much of an invitation (Anir, Aug 15: "I need to know who sent it"). */
+  createdAt: string;
+  invitedBy: string | null;
 };
 
 export type InvitationDelivery = {
@@ -470,11 +474,26 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       .eq("workspace_id", workspace)
       .eq("status", "pending")
       .order("created_at"),
+    /**
+     * AN INVITATION IS SOMETHING A PERSON SENT (Anir, Aug 15: "The invitations
+     * are people who have invited people... She's not supposed to be there").
+     *
+     * The signup path parks a placeholder row in this same table — no inviter,
+     * 24-hour expiry — to stand in for a signup about to happen. Those were
+     * being listed as "Pending invitations", so someone who joined through the
+     * freyrsolutions.com domain rule appeared as though a teammate had invited
+     * them. `invited_by` is what separates the two: the invite flow sets it,
+     * the signup placeholder writes null.
+     *
+     * Expired rows are dropped too. A lapsed invitation is not pending.
+     */
     client
       .from("workspace_invitations")
-      .select("id, display_name, email, app_role, expires_at")
+      .select("id, display_name, email, app_role, expires_at, created_at, invited_by")
       .eq("workspace_id", workspace)
       .eq("status", "pending")
+      .not("invited_by", "is", null)
+      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }),
   ]);
   if (membersError) throw new Error(membersError.message);
@@ -523,6 +542,11 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       email: item.email,
       role: normalizeWorkspaceRole(item.app_role) ?? "rep",
       expiresAt: item.expires_at,
+      createdAt: item.created_at,
+      // The inviter's own name, resolved from the same directory this call
+      // already loaded, so the card can say who sent it.
+      invitedBy:
+        memberRows.find((m) => m.id === item.invited_by)?.display_name ?? null,
     })),
   };
 }

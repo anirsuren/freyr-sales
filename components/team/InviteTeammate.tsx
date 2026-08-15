@@ -117,8 +117,12 @@ export function InviteTeammate({
           gap under Send invitation read as a broken dialog (Anir, Aug 14). */}
       <Modal open={open} onClose={close} title="Invite a teammate" size="wide">
         <p className="text-[12.5px] text-text-secondary">
+          {/* Roles moved off Settings and onto Admin (Anir, Aug 15), so this
+              line had to move with them rather than send people somewhere the
+              control no longer is. */}
           They get an email with a link that signs them in. The link expires
-          after 14 days, and you can change their role any time from Settings.
+          after 14 days, and an admin can change their role any time from the
+          Admin page.
         </p>
         {/* ROLE FIRST, THEN WHO, THEN THE NOTE (Anir, Aug 13: "The drop down
             should be at the top, and then their full name and then their work

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { fmtWhen } from "@/lib/whenLabel";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { isFullName } from "@/lib/fullName";
 import { useEffect, useRef, useState } from "react";
@@ -188,6 +189,9 @@ type AccessDirectory = {
     email: string;
     role: AccessRole;
     expiresAt: string;
+    /** When it was sent, and the teammate who sent it. */
+    createdAt: string;
+    invitedBy: string | null;
   }[];
 };
 // NO INVENTED TEAMMATES. MOCK_TEAMMATES and MOCK_ACCESS put made-up names on
@@ -948,6 +952,10 @@ export function SettingsTabs({
               email: invite.email.toLowerCase(),
               role: accessRole,
               expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+              // The row the server is writing right now, shown before the
+              // refetch: you sent it, just then.
+              createdAt: new Date().toISOString(),
+              invitedBy: currentUser.name,
             },
             ...directory.invitations,
           ],
@@ -1447,27 +1455,11 @@ export function SettingsTabs({
                     <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
                     <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
                   </div>
-                  {/* Admins get a live role control; everyone else sees the
-                      chip. Same three names, same colours, everywhere. */}
-                  {/* 170px control inside a 190px track: ColorSelect's inline
-                      minWidth is 170, so the column must out-size it or the
-                      control bleeds into the Status column. */}
-                  {currentUser.role === "admin" ? (
-                    <div className="w-[170px]">
-                      <ColorSelect
-                        value={
-                          ROLE_CHANGE_OPTIONS.some((o) => o.value === member.role)
-                            ? member.role
-                            : "rep"
-                        }
-                        options={ROLE_CHANGE_OPTIONS}
-                        onChange={(next) => changeMemberRole(member, next)}
-                        ariaLabel={`${member.name}'s workspace role`}
-                      />
-                    </div>
-                  ) : (
-                    <RoleTag role={member.role} size="sm" className="w-fit" />
-                  )}
+                  {/* READ-ONLY HERE. Changing a role is running the workspace,
+                      so the control lives on the Admin page beside User groups
+                      (Anir, Aug 15: "It should not be in the settings. It
+                      doesn't make any sense"). This stays a roster. */}
+                  <RoleTag role={member.role} size="sm" className="w-fit" />
                   {/* STATUS IS PRESENCE, NOT THE ACCOUNT FLAG. This column
                       printed "Active" on every row, because `active` only means
                       the account is not suspended — so eight people who were
@@ -1507,8 +1499,29 @@ export function SettingsTabs({
               <ul className="divide-y divide-border-light">
                 {accessDirectory.invitations.map((invitation) => (
                   <li key={invitation.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                    <span><span className="block text-[12.5px] font-medium text-text-primary">{invitation.email}</span><span className="text-[10.5px] text-text-tertiary">Expires {new Date(invitation.expiresAt).toLocaleDateString()}</span></span>
-                    <span className="rounded-md bg-warning/10 px-2 py-1 text-[10.5px] font-semibold capitalize text-warning">{invitation.role}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                        {invitation.email}
+                      </span>
+                      {/* Who sent it and when, because an invitation nobody
+                          can attribute is not much of an invitation (Anir,
+                          Aug 15: "I need to know who invited"). */}
+                      <span
+                        className="text-[10.5px] text-text-tertiary"
+                        suppressHydrationWarning
+                      >
+                        {invitation.invitedBy
+                          ? `Invited by ${invitation.invitedBy} · ${fmtWhen(invitation.createdAt)}`
+                          : `Sent ${fmtWhen(invitation.createdAt)}`}
+                        {" · expires "}
+                        {fmtWhen(invitation.expiresAt)}
+                      </span>
+                    </span>
+                    {/* The same role tag the directory above uses. This was
+                        amber, which in this app means "waiting" or "at risk",
+                        not "Rep" (Anir, Aug 15: "why is it red? You have to
+                        have consistent colors everywhere"). */}
+                    <RoleTag role={invitation.role} size="sm" className="shrink-0" />
                   </li>
                 ))}
               </ul>
