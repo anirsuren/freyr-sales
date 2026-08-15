@@ -1477,7 +1477,15 @@ export function OfferingsBrowser({
                 really properly aligned, especially in the last column"). It now
                 fits, and Category is wide enough to hold its longest name,
                 "Submissions and Document Operations", on ONE line. */}
-            <table className="w-full min-w-[1040px] table-fixed text-[13px] border-collapse">
+            {/* 1280, not 1040: at the narrow end Category had ~134px of text
+                width and Type ~82px, so "Regulatory Information Management"
+                and "Freya Fusion (Module)" each wrapped to THREE lines and
+                the row grew to match (Anir, Aug 15: "the category name and
+                the type are on two lines max... if I need to scroll
+                horizontally on the table that's fine"). The extra width buys
+                both of them a second line instead of a third, and the card
+                already scrolls sideways. */}
+            <table className="w-full min-w-[1280px] table-fixed text-[13px] border-collapse">
               <thead>
                 {/* WIDTHS SIZED TO THE HEADINGS, NOT JUST THE CELLS (Anir,
                     Aug 9: MATERIALS was printing straight through REVENUE).
@@ -1489,18 +1497,18 @@ export function OfferingsBrowser({
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
                   {/* px-4 like every other column: the header text must start
                       exactly where the cell text below it starts. */}
-                  <th className="px-4 py-2.5 w-[24%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[16%]">Category</th>
-                  <th className="px-4 py-2.5 w-[11%]">Type</th>
+                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[18%]">Category</th>
+                  <th className="px-4 py-2.5 w-[14%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>
                   <th className="px-4 py-2.5 w-[13%]">Who it&apos;s for</th>
                   {/* Materials sits before the money columns: it is the one
                       number in this table that is filled in today, and it is
                       what a rep actually opens the row for (Anir, Aug 7:
                       "shift the material column before revenue"). */}
-                  <th className="px-4 py-2.5 w-[9%]">Materials</th>
-                  <th className="px-4 py-2.5 w-[10%]">Revenue</th>
-                  <th className="px-4 py-2.5 w-[6%]">Trend</th>
+                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[9%]">Revenue</th>
+                  <th className="px-4 py-2.5 w-[5%]">Trend</th>
                 </tr>
               </thead>
               <tbody>
@@ -1624,7 +1632,10 @@ export function OfferingsBrowser({
                               aria-hidden="true"
                               className="mt-[3px] shrink-0"
                             />
-                            <span className="min-w-0 whitespace-normal break-words">
+                            <span
+                              title={o.offering_category}
+                              className="line-clamp-2 min-w-0 whitespace-normal break-words"
+                            >
                               {o.offering_category}
                             </span>
                           </span>
@@ -1651,7 +1662,10 @@ export function OfferingsBrowser({
                               aria-hidden="true"
                               className="mt-[3px] shrink-0"
                             />
-                            <span className="min-w-0 whitespace-normal break-words">
+                            <span
+                              title={o.offering_type}
+                              className="line-clamp-2 min-w-0 whitespace-normal break-words"
+                            >
                               {o.offering_type}
                             </span>
                           </span>
