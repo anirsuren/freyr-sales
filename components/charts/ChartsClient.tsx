@@ -1657,6 +1657,9 @@ export function DonutChart({
   );
 }
 
+/** Height a classic (non-overlay) horizontal scrollbar occupies. */
+const SCROLLBAR_STRIP = 14;
+
 export function BarChart({
   data,
   height = 160,
@@ -1795,7 +1798,16 @@ export function BarChart({
     <div
       className="relative grid w-full items-stretch gap-3"
       style={{
-        height,
+        // A CLASSIC SCROLLBAR NEEDS ITS OWN STRIP. macOS overlay scrollbars
+        // take no layout height, so on this machine the bar sat over nothing;
+        // with "always show scrollbars" on, it is ~14px tall and drew straight
+        // across the wrapped axis labels (Anir, Aug 15: "the scrollbar is
+        // still messed up", with "Billed / Collected Revenue" under it). The
+        // grid grows by that strip and gives it back as bottom padding, so the
+        // plot keeps its full height and the bar always has empty space to
+        // live in whether or not the OS reserves any.
+        height: fillCard ? height + SCROLLBAR_STRIP : height,
+        paddingBottom: fillCard ? SCROLLBAR_STRIP : undefined,
         gridTemplateColumns: `repeat(${Math.max(
           data.length,
           1

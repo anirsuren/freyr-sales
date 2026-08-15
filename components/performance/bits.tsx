@@ -608,3 +608,41 @@ export function RoleChip({ role }: { role: string }) {
     </span>
   );
 }
+
+/**
+ * A GROUP NAME, EVERYWHERE IT APPEARS.
+ *
+ * Standing rule, restated by Anir on Aug 15 after finding a bare "test" in a
+ * chart heading: "wherever it says test, it has to be the variable name...
+ * it has to be blue with the icon for GROUP always." A group is a category,
+ * and the category rule is colour AND icon, never plain text and never a
+ * colour on its own.
+ *
+ * One component so the pill can never drift again: the chart headings, the
+ * tiles, the drill-down boxes and the verification queue all render it.
+ */
+export function GroupPill({
+  name,
+  size = "md",
+}: {
+  name: string;
+  /** "sm" for the dense drill-down boxes and the queue line. */
+  size?: "sm" | "md";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-light align-baseline font-bold text-blue-primary",
+        size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-[12.5px]"
+      )}
+    >
+      <UsersRound
+        size={size === "sm" ? 10 : 12}
+        strokeWidth={2.4}
+        aria-hidden="true"
+        className="shrink-0"
+      />
+      {name}
+    </span>
+  );
+}

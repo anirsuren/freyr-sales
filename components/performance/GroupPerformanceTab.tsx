@@ -9,6 +9,7 @@ import {
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
+import { GroupPill } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
@@ -103,8 +104,10 @@ export function GroupPerformanceTab({
           >
             <Avatar name={g.head} className="h-6 w-6 shrink-0 text-[9px]" />
             <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
-                {g.name}
+              {/* The name IS the pill here too, so a group reads the same on
+                  the picker as it does in the headings below it. */}
+              <span className="flex items-center gap-1.5">
+                <GroupPill name={g.name} />
                 {isMine && (
                   <Crown
                     size={11}
@@ -152,15 +155,25 @@ export function GroupPerformanceTab({
         words: {
           trackedLabel: "Goals in this group",
           trackedSub: group
-            ? `carried by ${members.length} ${members.length === 1 ? "person" : "people"} in ${group.name}`
+            ? `carried by ${members.length} ${members.length === 1 ? "person" : "people"}`
             : "carried by its people",
           verifiedSub: group
             ? `signed off by ${group.head.split(" ")[0]}`
             : "signed off by the group owner",
-          barTitle: group
-            ? `How far along ${group.name} is on each goal`
-            : "How far along this group is on each goal",
-          donutTitle: group ? `Where ${group.name} stands` : "Where this group stands",
+          barTitle: group ? (
+            <>
+              How far along <GroupPill name={group.name} /> is on each goal
+            </>
+          ) : (
+            "How far along this group is on each goal"
+          ),
+          donutTitle: group ? (
+            <>
+              Where <GroupPill name={group.name} /> stands
+            </>
+          ) : (
+            "Where this group stands"
+          ),
           searchPlaceholder: group
             ? `Search ${group.name}'s goals and people…`
             : "Search this group's goals and people…",

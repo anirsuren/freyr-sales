@@ -14,7 +14,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
-import { typeMeta } from "./bits";
+import { typeMeta, GroupPill } from "./bits";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -174,9 +174,7 @@ export function VerifyQueueCard({
           {heads.map((g, i) => (
             <span key={g.id} className="flex items-center gap-1.5">
               {i > 0 && <span>{i === heads.length - 1 ? "and" : ","}</span>}
-              <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary">
-                {g.name}
-              </span>
+              <GroupPill name={g.name} size="sm" />
             </span>
           ))}
         </span>

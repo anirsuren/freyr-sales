@@ -24,7 +24,7 @@ import {
   type PerformanceState,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
-import { typeMeta } from "./bits";
+import { typeMeta, GroupPill } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -542,8 +542,10 @@ export function GoalZoom({
                           )}
                         >
                           <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
-                          <span className="w-[120px] shrink-0 text-[11.5px] font-semibold leading-tight text-text-primary">
-                            {r2.group.name}
+                          {/* Blue pill + group icon here too, so the row and
+                              the box heading it feeds agree. */}
+                          <span className="w-[120px] shrink-0">
+                            <GroupPill name={r2.group.name} size="sm" />
                           </span>
                           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
                             <span className="block h-full rounded-full bg-blue-primary" style={{ width: `${(r2.verified / maxG) * 100}%` }} />
@@ -569,11 +571,7 @@ export function GoalZoom({
                   <b className="text-[12px] text-text-primary">3 · People</b>
                   {/* Same blue tag as every other group name (Anir, Aug 15:
                       "You have it red somewhere else... just make it blue"). */}
-                  {selGroup && (
-                    <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary">
-                      {selGroup.group.name}
-                    </span>
-                  )}
+                  {selGroup && <GroupPill name={selGroup.group.name} size="sm" />}
                   <span className="ml-auto text-[10.5px] tnum text-text-tertiary">
                     {selGroup ? fmtAmount(goal.unit, selGroup.verified) : ""}
                   </span>

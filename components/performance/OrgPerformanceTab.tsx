@@ -143,11 +143,15 @@ export function OrgPerformanceTab({
       trackedSub: string;
       /** Verified tile sub-line: who does the signing off on this screen. */
       verifiedSub: string;
-      /** Bar chart heading: "How far along Growth Accounts is on each goal". */
-      barTitle: string;
-      /** Donut heading: "Where Growth Accounts stands". */
-      donutTitle: string;
-      /** Search placeholder, so even the empty field says the scope. */
+      /**
+       * Chart headings. NODES, not strings, because the group name inside them
+       * is a GroupPill (Anir, Aug 15: "wherever it says test, it has to be the
+       * variable name... it has to be blue with the icon for GROUP always").
+       */
+      barTitle: React.ReactNode;
+      donutTitle: React.ReactNode;
+      /** Search placeholder. Plain text: an input placeholder cannot hold a
+       *  pill, so this is the one place the name stays bare. */
       searchPlaceholder: string;
     };
     /** The tab's identity colour, on the tile that names the scope. */

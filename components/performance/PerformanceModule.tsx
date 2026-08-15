@@ -129,28 +129,22 @@ export type RunOp = (
 
 const ROOMS: Record<
   Tab,
-  { label: string; icon: typeof Gauge; color: string; subtitle: string }
+  { label: string; icon: typeof Gauge; color: string }
 > = {
   org: {
     label: "Org performance",
     icon: Gauge,
     color: "#0071E3",
-    subtitle:
-      "The goals being tracked this year: target, actual, met, % met and verified, from the company down to every person.",
   },
   groups: {
     label: "Group performance",
     icon: UsersRound,
     color: "#0F766E",
-    subtitle:
-      "Every group added up from its members' goals — open one to see the people inside and their numbers.",
   },
   people: {
     label: "People performance",
     icon: CircleUserRound,
     color: "#B4318F",
-    subtitle:
-      "You land on your own goals. Search a name to see anyone you're allowed to see.",
   },
 };
 
@@ -387,9 +381,10 @@ export function PerformanceModule({
             )}
           </div>
         </div>
-        <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
-          {room.subtitle}
-        </p>
+        {/* No subtitle under the selector (Anir, Aug 15: "remove this text
+            from the four tabs under the chooser for the page"). The tab you
+            are standing on already names the screen, and the tiles under it
+            say what is being counted. */}
       </div>
 
       <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
