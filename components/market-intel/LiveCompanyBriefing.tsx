@@ -186,7 +186,15 @@ export function LiveCompanyBriefing({
   );
 
   const postCard = (post: LiveBriefing["posts"][number], key: string) => {
-    const isLong = post.text.length > 420;
+    // COUNT CHARACTERS, NOT UTF-16 UNITS. LinkedIn posts are full of styled
+    // unicode (𝘪𝘯𝘥𝘶𝘴𝘵𝘳𝘺, 🎉), where one visible character is two units, so
+    // post.text.slice(0, 420) could land in the middle of one and leave half a
+    // character behind. The server and the client then rendered that broken
+    // text differently and React threw a hydration error, tearing down the
+    // whole page and rebuilding it on the client — /market-intel/bayer and
+    // /market-intel/viatris both did it. Array.from splits on code points.
+    const chars = Array.from(post.text);
+    const isLong = chars.length > 420;
     const open = expanded.has(post.url);
     return (
       <Card key={key} className="p-4">
@@ -227,7 +235,9 @@ export function LiveCompanyBriefing({
               </a>
             </p>
             <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
-              {isLong && !open ? `${post.text.slice(0, 420).trimEnd()}…` : post.text}
+              {isLong && !open
+                ? `${chars.slice(0, 420).join("").trimEnd()}…`
+                : post.text}
             </p>
             {isLong && (
               <button
