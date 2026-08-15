@@ -1743,6 +1743,16 @@ export function BarChart({
     keepOpen,
   } = useChartHover();
   const max = Math.max(...data.map((d) => d.value), 1);
+  /**
+   * NOTHING LOGGED YET SHOULD NOT RESERVE A FULL-HEIGHT PLOT.
+   *
+   * With every value at 0 the bars are stubs on the baseline and the chart
+   * still held back the whole card for a 100% bar that does not exist, so the
+   * card read as a big white rectangle with some words at the bottom (Anir,
+   * Aug 15, twice). When there is nothing to plot, the chart collapses to the
+   * height its labels actually need and centres itself.
+   */
+  const allZero = data.every((d) => !d.value);
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const ranked = [...data].sort((a, b) => b.value - a.value);
   // Hover wins over the externally-selected bar; otherwise the selected bar lit.
@@ -1794,19 +1804,38 @@ export function BarChart({
   }
 
   return (
-    <div className={cn("w-full overflow-x-auto", fillCard ? "h-full" : undefined)}>
+    <div
+      className={cn(
+        "w-full overflow-x-auto",
+        fillCard ? "h-full" : undefined,
+        // Centred, so a collapsed empty chart sits in the middle of the card
+        // instead of pinned to the top with a void underneath.
+        fillCard && allZero ? "flex items-center" : undefined
+      )}
+    >
     <div
       className="relative grid w-full items-stretch gap-3"
       style={{
-        // A CLASSIC SCROLLBAR NEEDS ITS OWN STRIP. macOS overlay scrollbars
-        // take no layout height, so on this machine the bar sat over nothing;
-        // with "always show scrollbars" on, it is ~14px tall and drew straight
-        // across the wrapped axis labels (Anir, Aug 15: "the scrollbar is
-        // still messed up", with "Billed / Collected Revenue" under it). The
-        // grid grows by that strip and gives it back as bottom padding, so the
-        // plot keeps its full height and the bar always has empty space to
-        // live in whether or not the OS reserves any.
-        height: fillCard ? height + SCROLLBAR_STRIP : height,
+        // THE PLOT FILLS THE CARD; THE SCROLLBAR SITS UNDER IT.
+        //
+        // First attempt padded the grid, which just shoved the bars up and
+        // left the same dead band (Anir, Aug 15: "no. ur moving the bars up.
+        // not the scroll bar down."). The real problem was that the grid kept
+        // its fixed height inside a scroller stretched to a taller card, so it
+        // hugged the top and everything below it was empty.
+        //
+        // 100% makes the plot take the whole card, so the bars grow and the
+        // axis labels land at the bottom where they belong. `height` becomes
+        // the floor rather than the value. The strip is still reserved for a
+        // classic scrollbar — macOS overlay bars take no layout height, so
+        // without it "always show scrollbars" draws straight across the
+        // labels.
+        height: allZero
+          ? labelRoom + 30 + baselineOffset + SCROLLBAR_STRIP
+          : fillCard
+            ? "100%"
+            : height,
+        minHeight: undefined,
         paddingBottom: fillCard ? SCROLLBAR_STRIP : undefined,
         gridTemplateColumns: `repeat(${Math.max(
           data.length,
