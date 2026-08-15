@@ -20,6 +20,7 @@ import { OutcomeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
+import { IndustryTag } from "@/components/ui/IndustryTag";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -894,13 +895,16 @@ export function CustomersBrowser({
                     <td className="px-5 py-4"><Signal tier={c.size_tier} /></td>
                     <td className="px-5 py-4"><HealthBar health={c.health} /></td>
                     <td className="px-5 py-4 whitespace-nowrap">
+                      {/* IndustryTag, not a local one-off. This cell had its
+                          own colour table and its own type scale, so Industry
+                          was the one column in the table wearing a different
+                          font from everything around it and a different chip
+                          from every other industry in the app (Anir, Aug 15:
+                          "industry font looks weird, make it the same as the
+                          other ones"). The shared tag also brings the icon the
+                          chip rule asks for. */}
                       {c.industry ? (
-                        <span
-                          className="inline-flex items-center text-[12px] font-medium rounded-full px-2.5 py-0.5"
-                          style={industryStyle(c.industry)}
-                        >
-                          {c.industry}
-                        </span>
+                        <IndustryTag industry={c.industry} size="sm" />
                       ) : (
                         <span className="text-[13px] text-text-tertiary">-</span>
                       )}

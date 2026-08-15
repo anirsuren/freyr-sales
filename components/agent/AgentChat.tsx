@@ -189,10 +189,33 @@ function renderInline(
         )
       );
     }
-    else if (m[4] != null) nodes.push(<strong key={`${keyBase}-${k++}`}>{m[4]}</strong>);
-    else if (m[5] != null) nodes.push(<strong key={`${keyBase}-${k++}`}>{m[5]}</strong>);
-    else if (m[6] != null) nodes.push(<em key={`${keyBase}-${k++}`}>{m[6]}</em>);
-    else if (m[7] != null) nodes.push(<em key={`${keyBase}-${k++}`}>{m[7]}</em>);
+    // Emphasis carries entities through too, so a bolded name is still a pill
+    // (Anir, Aug 15). Bare **Name** was the assistant's most common way of
+    // naming somebody and the one shape that never pilled.
+    else if (m[4] != null)
+      nodes.push(
+        <strong key={`${keyBase}-${k++}`}>
+          {injectEntities(m[4], entities, `${keyBase}-b${k}`)}
+        </strong>
+      );
+    else if (m[5] != null)
+      nodes.push(
+        <strong key={`${keyBase}-${k++}`}>
+          {injectEntities(m[5], entities, `${keyBase}-b${k}`)}
+        </strong>
+      );
+    else if (m[6] != null)
+      nodes.push(
+        <em key={`${keyBase}-${k++}`}>
+          {injectEntities(m[6], entities, `${keyBase}-i${k}`)}
+        </em>
+      );
+    else if (m[7] != null)
+      nodes.push(
+        <em key={`${keyBase}-${k++}`}>
+          {injectEntities(m[7], entities, `${keyBase}-i${k}`)}
+        </em>
+      );
     else if (m[8] != null)
       nodes.push(
         <code key={`${keyBase}-${k++}`} className="px-1 py-0.5 rounded bg-border-light text-[13px]">

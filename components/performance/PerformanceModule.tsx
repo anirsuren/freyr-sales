@@ -2161,13 +2161,18 @@ function GoalEditorFields({
             className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
           />
         </div>
-        {target.trim() !== "" && (
-          <p className="mt-1 text-[11px] text-text-tertiary tnum">
-            {parsedTarget !== null
-              ? `= ${fmtAmount(unit, parsedTarget)}`
-              : "That doesn't read as a number yet."}
-          </p>
-        )}
+        {target.trim() !== "" &&
+          (parsedTarget !== null ? (
+            <p className="mt-1 text-[11px] text-text-tertiary tnum">
+              = {fmtAmount(unit, parsedTarget)}
+            </p>
+          ) : (
+            <p className="mt-1 whitespace-nowrap text-[11px] text-error">
+              {unit === "currency"
+                ? "Numbers only, e.g. 100m"
+                : "Numbers only, e.g. 1200"}
+            </p>
+          ))}
       </div>
       <div
         className={cn(
@@ -3063,13 +3068,22 @@ function LogActualModal({
                 className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
               />
             </div>
-            {amount.trim() !== "" && effectiveGoal && (
-              <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
-                {parsed !== null
-                  ? `= ${fmtAmount(effectiveGoal.unit, parsed)}`
-                  : "That doesn't read as a number yet."}
-              </p>
-            )}
+            {/* Feedback is NOT gated on a goal being picked: typing "dd" in
+                an empty form used to get no reaction at all (Anir, Aug 15,
+                with a screenshot of exactly that). And a refusal is red and
+                one line, the same words as every other amount field. */}
+            {amount.trim() !== "" &&
+              (parsed !== null ? (
+                <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
+                  = {fmtAmount(effectiveGoal?.unit ?? unit ?? "count", parsed)}
+                </p>
+              ) : (
+                <p className="mt-1 whitespace-nowrap text-[10.5px] text-error">
+                  {unit === "currency"
+                    ? "Numbers only, e.g. 250k"
+                    : "Numbers only, e.g. 12"}
+                </p>
+              ))}
           </div>
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">

@@ -97,10 +97,22 @@ export function injectEntities(
   linkable = true
 ): ReactNode[] {
   if (!entities.length || !text) return [text];
-  const usable = linkable
-    ? entities
-    : entities.filter((e) => e.kind === "offering" || e.kind === "component");
-  if (!usable.length) return [text];
+  /**
+   * EVERY NAME IS A PILL. ONLY THE LINK IS CONDITIONAL.
+   *
+   * This used to DROP every entity whose page the release did not ship, on
+   * the grounds that there was nothing to link to. The effect was that in the
+   * offerings-only build a person's name was plain grey text everywhere the
+   * assistant said it, which is exactly what Anir kept reporting (Aug 15: "I
+   * thought I told you... whenever it mentions a person's name or any sort of
+   * asset like that, it should always have the icon... It's still not doing
+   * what I asked").
+   *
+   * A pill is identity: the face, the colour, the shape. Navigation is a
+   * bonus. So a name with no destination renders as the same pill without the
+   * href, instead of not rendering as a pill at all.
+   */
+  const usable = entities;
 
   /**
    * CASE-SENSITIVE ON PURPOSE (Anir, Aug 15: "that's not supposed to be
@@ -128,11 +140,23 @@ export function injectEntities(
     const hit = usable.find((e) => e.name === m![1]);
     if (hit) {
       const style = KIND[hit.kind];
+      // Offerings-only has no customer or contact pages; those pills stay
+      // pills and simply do not navigate.
+      const hasPage =
+        linkable || hit.kind === "offering" || hit.kind === "component" ||
+        hit.kind === "person" || hit.kind === "report";
       out.push(
-        <Link key={`${keyBase}-e${k++}`} href={style.href(hit.id)} className={PILL}>
-          {style.mark(hit.name)}
-          {m[1]}
-        </Link>
+        hasPage ? (
+          <Link key={`${keyBase}-e${k++}`} href={style.href(hit.id)} className={PILL}>
+            {style.mark(hit.name)}
+            {m[1]}
+          </Link>
+        ) : (
+          <span key={`${keyBase}-e${k++}`} className={`${PILL} cursor-default`}>
+            {style.mark(hit.name)}
+            {m[1]}
+          </span>
+        )
       );
     } else {
       out.push(m[1]);

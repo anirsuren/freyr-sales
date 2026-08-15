@@ -115,10 +115,27 @@ function pageLabel(path: string): string {
     [/^\/voice/, "Voice agents"],
     [/^\/sequences/, "Sequences"],
     [/^\/reports/, "Reports"],
+    // Before /analytics: a teammate's page lives under /analytics/reps/<slug>,
+    // and the broader rule would otherwise claim it.
+    [/^\/analytics\/reps\/[^/]+/, "a teammate"],
     [/^\/analytics/, "Analytics"],
     [/^\/tasks/, "Tasks"],
     [/^\/activity/, "Activity"],
     [/^\/agent/, "the Agent workspace"],
+    // THE MODULES THAT SHIPPED AFTER THIS MAP WAS WRITTEN. Without them every
+    // one of these pages fell through to "Freyr" and got the generic offerings
+    // prompts, so standing on a teammate's page the assistant offered "What do
+    // we offer for labelling?" (Anir, Aug 15: "the pre-made questions that it
+    // asks have to be catered to whatever page I'm on").
+    [/^\/team/, "the Team roster"],
+    [/^\/components\/[^/]+/, "an FDL component"],
+    [/^\/components/, "FDL Components"],
+    [/^\/market-intel\/[^/]+/, "a tracked company"],
+    [/^\/market-intel/, "Market Intel"],
+    [/^\/performance/, "Performance"],
+    [/^\/admin/, "Admin"],
+    [/^\/notifications/, "Notifications"],
+    [/^\/settings/, "Settings"],
   ];
   for (const [re, label] of map) if (re.test(p)) return label;
   return "Freyr";
@@ -128,18 +145,64 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
   // Real mode is the offerings repository plus the assistant, so the prompts
   // have to be about what a rep can actually do there: understand an offering,
   // find the right collateral, work out who it suits.
+  // PER PAGE, NOT PER RELEASE. The offerings-only build used to answer this
+  // question once for the whole app, so every page that was not an offering
+  // got the same three offerings prompts (Anir, Aug 15).
+  const perPage: [string, string[]][] = [
+    ["an offering", [
+      "Explain this offering in plain English",
+      "What materials do we have for it?",
+      "Which customers is it a fit for?",
+    ]],
+    ["a teammate", [
+      "What is this person working on?",
+      "Which offerings do they own?",
+      "How do I reach them?",
+    ]],
+    ["the Team roster", [
+      "Who owns which offerings?",
+      "Who joined most recently?",
+      "Who should I ask about labelling?",
+    ]],
+    ["an FDL component", [
+      "What is in the current version?",
+      "What changed since the last release?",
+      "Which offerings use this component?",
+    ]],
+    ["FDL Components", [
+      "What is releasing this quarter?",
+      "Which components have no current version?",
+      "What shipped most recently?",
+    ]],
+    ["a tracked company", [
+      "What has this company been doing lately?",
+      "What should I bring to a first call?",
+      "Who are their competitors?",
+    ]],
+    ["Market Intel", [
+      "What moved this week?",
+      "Which competitors are most active?",
+      "Any acquisitions worth knowing about?",
+    ]],
+    ["Performance", [
+      "How is the org tracking against target?",
+      "Who is lagging the calendar?",
+      "What still needs verifying?",
+    ]],
+    ["Admin", [
+      "Who has admin access?",
+      "Which groups exist and who owns them?",
+      "Who has no group yet?",
+    ]],
+  ];
+  const match = perPage.find(([l]) => l === label);
+  if (match) return match[1];
   if (offeringsOnly)
-    return label === "an offering"
-      ? [
-          "Explain this offering in plain English",
-          "What materials do we have for it?",
-          "Which customers is it a fit for?",
-        ]
-      : [
-          "What do we offer for labelling?",
-          "Which offerings are available today?",
-          "Who owns Freya.Register?",
-        ];
+    return [
+      "What do we offer for labelling?",
+      "Which offerings are available today?",
+      "Who owns Freya.Register?",
+    ];
   if (label.includes("customer") || label.includes("contact"))
     return ["Summarize this account", "Draft an intro email", "What's the next best action?"];
   if (label.includes("Pipeline") || label.includes("Forecast"))
@@ -169,8 +232,25 @@ function renderRich(
       nodes.push(...injectEntities(s, entities, kb, linkable));
     while ((m = re.exec(line))) {
       if (m.index > last) plain(line.slice(last, m.index), `${li}-${k}`);
-      if (m[2] != null) nodes.push(<strong key={k++}>{m[2]}</strong>);
-      else if (m[3] != null) nodes.push(<em key={k++}>{m[3]}</em>);
+      // A NAME INSIDE BOLD IS STILL A NAME (Anir, Aug 15: "whenever it
+      // mentions a person's name or any sort of asset like that, it should
+      // always have the icon... it has to be in a pill shape. It's still not
+      // doing what I asked"). The emphasis branches used to print their text
+      // raw, so the assistant writing **Anant Puranik** — which is exactly
+      // what it does when it leads with a name — produced bold grey text and
+      // never a pill. Entities are injected inside the emphasis now.
+      if (m[2] != null)
+        nodes.push(
+          <strong key={k++}>
+            {injectEntities(m[2], entities, `${li}-b${k}`, linkable)}
+          </strong>
+        );
+      else if (m[3] != null)
+        nodes.push(
+          <em key={k++}>
+            {injectEntities(m[3], entities, `${li}-i${k}`, linkable)}
+          </em>
+        );
       else if (m[4] != null)
         nodes.push(
           <code key={k++} className="px-1 py-0.5 rounded bg-black/5 text-[12px]">
