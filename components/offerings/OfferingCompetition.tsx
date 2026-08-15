@@ -112,6 +112,22 @@ export function OfferingCompetition({
 
   // ---- add-material form (inside the competitor popup)
   const [formOpen, setFormOpen] = useState(false);
+  /**
+   * DELETING ASKS FIRST (Anir, Aug 15: "I just removed the competitor. It
+   * didn't ask me for any sort of confirmation").
+   *
+   * The confirm unfolds UNDER the button rather than opening a dialog on top,
+   * because this all lives inside a popup already and the rule here is no
+   * popup on a popup (Anir, Aug 12, twice: "it should just show me underneath
+   * the delete button").
+   */
+  const [confirmCompetitor, setConfirmCompetitor] = useState(false);
+  const [confirmMaterial, setConfirmMaterial] = useState<string | null>(null);
+  // Whichever competitor is on screen, its confirm starts closed.
+  useEffect(() => {
+    setConfirmCompetitor(false);
+    setConfirmMaterial(null);
+  }, [openId]);
   const [mKind, setMKind] = useState<CompetitionMaterialKind>("about");
   const [mLabel, setMLabel] = useState("");
   const [mText, setMText] = useState("");
@@ -506,6 +522,10 @@ export function OfferingCompetition({
         onClose={() => {
           setOpenId(null);
           setFormOpen(false);
+          // Never leave a half-answered "are you sure" waiting for the next
+          // competitor you open.
+          setConfirmCompetitor(false);
+          setConfirmMaterial(null);
         }}
         title={openRow ? `${openRow.company} — ${openRow.product}` : ""}
         size="workflow"
@@ -585,19 +605,50 @@ export function OfferingCompetition({
                         type="button"
                         aria-label={`Remove ${m.label}`}
                         onClick={() =>
-                          remove(
-                            {
-                              op: "remove-material",
-                              competitorId: openRow.id,
-                              materialId: m.id,
-                            },
-                            "Material removed"
+                          setConfirmMaterial(
+                            confirmMaterial === m.id ? null : m.id
                           )
                         }
                         className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
                       >
                         <Trash2 size={13} strokeWidth={2.2} />
                       </button>
+                    )}
+                    {/* Same rule as the competitor below: a piece of intel
+                        somebody wrote does not disappear on one click. */}
+                    {confirmMaterial === m.id && (
+                      <div className="tab-panel mt-2 basis-full rounded-lg border border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.04)] px-3 py-2.5">
+                        <p className="text-[12.5px] text-text-primary">
+                          Delete <b className="font-semibold">{m.label}</b>?
+                          This is the only copy.
+                        </p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              remove(
+                                {
+                                  op: "remove-material",
+                                  competitorId: openRow.id,
+                                  materialId: m.id,
+                                },
+                                "Material removed"
+                              ).then(() => setConfirmMaterial(null))
+                            }
+                            className="cursor-pointer rounded-lg bg-[color:#B02020] px-3 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:opacity-50"
+                          >
+                            {busy ? "Deleting…" : "Delete"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmMaterial(null)}
+                            className="cursor-pointer rounded-lg border border-border-light bg-white px-3 py-1 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
@@ -689,12 +740,7 @@ export function OfferingCompetition({
                   )}
                   <button
                     type="button"
-                    onClick={() =>
-                      remove(
-                        { op: "remove-competitor", competitorId: openRow.id },
-                        `${openRow.company} removed`
-                      ).then(() => setOpenId(null))
-                    }
+                    onClick={() => setConfirmCompetitor(true)}
                     className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
                   >
                     <Trash2 size={12.5} strokeWidth={2.2} /> Remove from list
@@ -706,6 +752,49 @@ export function OfferingCompetition({
                 </span>
               )}
             </div>
+
+            {/* The confirm, unfolded under the button that opened it. */}
+            {confirmCompetitor && (
+              <div className="tab-panel mt-2.5 rounded-xl border border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.04)] p-3.5">
+                <p className="text-[13px] font-semibold text-text-primary">
+                  Remove {openRow.company} from this list?
+                </p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
+                  {openRow.product ? `${openRow.product} stops` : "It stops"}{" "}
+                  being tracked against {offeringName}
+                  {openRow.materials.length > 0
+                    ? `, and the ${openRow.materials.length} piece${
+                        openRow.materials.length === 1 ? "" : "s"
+                      } of intel the team wrote on it go with it.`
+                    : "."}
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      remove(
+                        { op: "remove-competitor", competitorId: openRow.id },
+                        `${openRow.company} removed`
+                      ).then(() => {
+                        setConfirmCompetitor(false);
+                        setOpenId(null);
+                      })
+                    }
+                    className="cursor-pointer rounded-lg bg-[color:#B02020] px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:opacity-50"
+                  >
+                    {busy ? "Removing…" : "Remove competitor"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCompetitor(false)}
+                    className="cursor-pointer rounded-lg border border-border-light bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    Keep it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>
