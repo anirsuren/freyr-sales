@@ -20,7 +20,14 @@ import type {
 // Supabase adapter implement this identically, so routes never branch on mode.
 export type Db = typeof mockDb;
 
-/** Postgres uuid columns reject anything that is not one, so check before asking. */
+/**
+ * An id that cannot be a uuid is not a record we hold, so every scoped lookup
+ * below checks the shape before asking Postgres. Without this, comparing a uuid
+ * column to something like "zz-not-a-uuid" raises 22P02, and that error threw
+ * straight past each route's own "not found" branch: /api/agent/undo,
+ * /api/customers/[id], /api/contacts/[id] and /api/sessions/[id] all answered
+ * 500 where they had a 404 written and waiting.
+ */
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -87,6 +94,7 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   };
 
   const scopedCustomer = async (id: string): Promise<Customer | null> => {
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     return maybe<Customer>(
       await supabase
@@ -99,6 +107,7 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   };
 
   const scopedContact = async (id: string): Promise<Contact | null> => {
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<Contact & Record<string, unknown>>(
       await supabase
@@ -114,6 +123,7 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   const scopedPitchSession = async (
     id: string
   ): Promise<PitchSession | null> => {
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<PitchSession & Record<string, unknown>>(
       await supabase
@@ -130,6 +140,7 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   const scopedInteraction = async (
     id: string
   ): Promise<Pick<Interaction, "id" | "customer_id"> | null> => {
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<
       Pick<Interaction, "id" | "customer_id"> & Record<string, unknown>
@@ -148,10 +159,6 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   };
 
   const scopedAgentRun = async (id: string): Promise<AgentRun | null> => {
-    // A run id that is not a UUID is simply not a run we have. Postgres
-    // disagrees: comparing a uuid column to "zz-nonexistent" raises 22P02,
-    // which threw straight past /api/agent/undo's own "Run not found" branch
-    // and turned a clean 404 into a 500.
     if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<AgentRun & Record<string, unknown>>(
@@ -171,6 +178,7 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
   const scopedSequenceEnrollment = async (
     id: string
   ): Promise<SequenceEnrollment | null> => {
+    if (!UUID_RE.test(id)) return null;
     const workspace = await workspaceId();
     const row = maybe<SequenceEnrollment & Record<string, unknown>>(
       await supabase
