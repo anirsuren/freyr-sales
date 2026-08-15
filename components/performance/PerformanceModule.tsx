@@ -2479,8 +2479,64 @@ function LogActualModal({
   const unit = effectiveGoal?.unit ?? goal?.unit ?? null;
   const parsed = parseAmountInput(amount);
 
+  /**
+   * THE FALLBACK, and today it is the one that actually runs.
+   *
+   * FreyaFusion's bucket has no CORS policy, so a browser's preflight is
+   * refused and the direct PUT never sends a byte — while the identical
+   * signed PUT succeeds from a server. Sales materials hit this on Aug 13 and
+   * solved it the same way: reroute through our own server, which writes into
+   * the SAME bucket server-side. The rep just sees the upload finish.
+   *
+   * XHR rather than fetch so this path shows a real percentage too, instead of
+   * a bar that only appears on the route we cannot use yet.
+   */
+  function uploadThroughServer(file: File): Promise<{ name: string; url: string }> {
+    return new Promise((resolve, reject) => {
+      const form = new FormData();
+      form.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/performance/evidence");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          setUploads((prev) =>
+            prev.map((u) =>
+              u.name === file.name && u.status === "uploading"
+                ? { ...u, percent }
+                : u
+            )
+          );
+        }
+      };
+      xhr.onload = () => {
+        let data: { name?: string; url?: string; error?: string } = {};
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          /* a proxy or the framework answered with HTML */
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && data.url) {
+          resolve({ name: data.name || file.name, url: data.url });
+        } else {
+          reject(
+            new Error(
+              data.error ||
+                (xhr.status === 413 || xhr.status === 0
+                  ? "That file is too large to attach here yet."
+                  : "Upload failed")
+            )
+          );
+        }
+      };
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.send(form);
+    });
+  }
+
   /** Straight to storage with a real percentage, exactly like a sales
-   *  material. Resolves false and leaves the reason on screen. */
+   *  material. Resolves false when the browser is refused, which is what
+   *  happens today. */
   function putWithProgress(
     url: string,
     headers: Record<string, string>,
@@ -2549,18 +2605,10 @@ function LogActualModal({
         });
         const grant = await signed.json().catch(() => ({}));
 
-        // No Docs credentials on this deployment: fall back to the proxy,
-        // which is capped because it holds the file in memory.
+        // No Docs credentials on this deployment: straight to the proxy.
         if (signed.status === 503) {
-          const form = new FormData();
-          form.append("file", file);
-          const res = await fetch("/api/performance/evidence", {
-            method: "POST",
-            body: form,
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error ?? "Upload failed");
-          setEvidence((prev) => [...prev, { name: data.name, url: data.url }]);
+          const stored = await uploadThroughServer(file);
+          setEvidence((prev) => [...prev, stored]);
           mark(file.name, { percent: 100, status: "done" });
           continue;
         }
@@ -2573,7 +2621,15 @@ function LogActualModal({
           grant.uploadHeaders,
           file
         );
-        if (!sent) throw new Error("The upload did not finish. Try again.");
+        if (!sent) {
+          // The browser was refused (no CORS on the bucket). Reroute rather
+          // than telling the rep to try again at something that cannot work.
+          mark(file.name, { percent: 0, status: "uploading" });
+          const stored = await uploadThroughServer(file);
+          setEvidence((prev) => [...prev, stored]);
+          mark(file.name, { percent: 100, status: "done" });
+          continue;
+        }
 
         const done = await fetch("/api/performance/evidence/complete", {
           method: "POST",
