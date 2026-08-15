@@ -3,20 +3,34 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X, Pencil, Package } from "lucide-react";
+import { Plus, X, Pencil, Package } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingType } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
 
 const FIELD =
-  "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
+  "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 const LABEL =
-  "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1";
+  "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 
+/**
+ * Same treatment as the offering categories next door (Anir, Aug 15:
+ * "Offering Type: same thing, you have to fix it... everything should be up to
+ * date with our standards"): Edit opens the same popup as Add instead of
+ * unfolding a form inside the row and shoving the list down, and removing a
+ * type asks in the app's confirm dialog rather than sprouting a bare red
+ * "Remove" word beside it.
+ *
+ * No owner here on purpose — an offering TYPE has no owner in the data model;
+ * ownership is a property of the category (Suren, Jun 27: "for every offering
+ * category there's going to be an offering owner"). Inventing one would be a
+ * field with nothing behind it.
+ */
 export function OfferingTypesManager({
   offeringTypes,
   offeringCounts = {},
@@ -28,68 +42,48 @@ export function OfferingTypesManager({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<OfferingType | null>(null);
 
+  /** The one editor. `editing` null means it is creating. */
+  const [editor, setEditor] = useState<{ editing: OfferingType | null } | null>(
+    null
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const editing = editor?.editing ?? null;
 
-  // Inline edit (one row at a time) and a confirm step before removing a type
-  // that offerings still use.
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editDesc, setEditDesc] = useState("");
-  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-
-  async function addType() {
-    if (!name.trim()) return;
-    setBusy(true);
-    const exists = offeringTypes.some(
-      (t) => t.name.toLowerCase() === name.trim().toLowerCase()
-    );
-    try {
-      const res = await fetch("/api/offering-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast(`${exists ? "Updated" : "Added"} ${data.offeringType.name}.`);
-        setName("");
-        setDescription("");
-        setAdding(false);
-        router.refresh();
-      } else {
-        toast(data.error || "Couldn't add the offering type.", "error");
-      }
-    } catch {
-      toast("Couldn't add the offering type.", "error");
-    } finally {
-      setBusy(false);
-    }
+  function openCreate() {
+    setName("");
+    setDescription("");
+    setEditor({ editing: null });
   }
 
-  function startEdit(t: OfferingType) {
-    setEditingId(t.id);
-    setEditName(t.name);
-    setEditDesc(t.description);
-    setConfirmRemove(null);
+  function openEdit(t: OfferingType) {
+    setName(t.name);
+    setDescription(t.description);
+    setEditor({ editing: t });
   }
 
-  async function saveEdit(id: string) {
-    if (!editName.trim()) return;
+  async function save() {
+    if (!name.trim() || !editor) return;
+    const t = editor.editing;
     setBusy(true);
     try {
-      const res = await fetch(`/api/offering-types/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName, description: editDesc }),
-      });
+      const res = await fetch(
+        t ? `/api/offering-types/${t.id}` : "/api/offering-types",
+        {
+          method: t ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description }),
+        }
+      );
       const data = await res.json();
       if (data.ok) {
-        toast(`Updated ${data.offeringType.name}.`);
-        setEditingId(null);
+        toast(
+          t ? `Updated ${data.offeringType.name}.` : `Added ${data.offeringType.name}.`
+        );
+        setEditor(null);
         router.refresh();
       } else {
         toast(data.error || "Couldn't save the offering type.", "error");
@@ -139,25 +133,23 @@ export function OfferingTypesManager({
         subtitle="The master list of offering types: what Freyr sells, each with a plain-English description. Offerings are grouped and filtered by these."
         action={
           canEdit ? (
-            <button
-              onClick={() => setAdding((a) => !a)}
-              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13px] font-semibold text-blue-primary hover:bg-blue-light"
-            >
-              <Plus size={14} strokeWidth={2} /> Add offering type
-            </button>
+            <Button onClick={openCreate}>
+              <Plus size={14} strokeWidth={2.2} /> Add offering type
+            </Button>
           ) : undefined
         }
       />
 
-      {/* Create in a POPUP, not a form that shoves the list down — every create
-          flow in the app opens a modal (Anir, Jul 25: "whenever there's an add
-          button… it should always be a pop-up"). */}
+      {/* ONE popup for create AND edit — every create flow in the app opens a
+          modal (Anir, Jul 25: "whenever there's an add button… it should
+          always be a pop-up"), and Aug 15: editing must too. */}
       <Modal
-        open={canEdit && adding}
-        onClose={() => setAdding(false)}
-        title="Add an offering type"
+        open={canEdit && editor !== null}
+        onClose={() => setEditor(null)}
+        title={editing ? `Edit ${editing.name}` : "Add an offering type"}
+        size="wide"
       >
-        <div className="space-y-4 p-1">
+        <div className="space-y-4">
           <div>
             <label className={LABEL}>Offering type</label>
             <input
@@ -178,14 +170,11 @@ export function OfferingTypesManager({
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              onClick={() => setAdding(false)}
-              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-            >
+            <Button variant="secondary" onClick={() => setEditor(null)}>
               Cancel
-            </button>
-            <Button onClick={addType} loading={busy}>
-              Add offering type
+            </Button>
+            <Button onClick={save} loading={busy} disabled={!name.trim()}>
+              {editing ? "Save changes" : "Add offering type"}
             </Button>
           </div>
         </div>
@@ -197,42 +186,6 @@ export function OfferingTypesManager({
           {offeringTypes.map((t, i) => {
             const count = offeringCounts[t.id] || 0;
             const accent = listAccent(i);
-            if (editingId === t.id) {
-              return (
-                <div key={t.id} className="p-4 bg-surface/60 space-y-3">
-                  <div>
-                    <label className={LABEL}>Offering type</label>
-                    <input
-                      className={FIELD}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL}>Description</label>
-                    <textarea
-                      className={`${FIELD} min-h-[72px] resize-y`}
-                      value={editDesc}
-                      onChange={(e) => setEditDesc(e.target.value)}
-                      placeholder="What this offering type is: in plain English"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(editName !== t.name || editDesc !== t.description) && (
-                      <Button onClick={() => saveEdit(t.id)} loading={busy}>
-                        Save
-                      </Button>
-                    )}
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              );
-            }
             return (
               <div
                 key={t.id}
@@ -257,8 +210,8 @@ export function OfferingTypesManager({
                     </p>
                   ) : canEdit ? (
                     <button
-                      onClick={() => startEdit(t)}
-                      className="text-[12.5px] text-text-tertiary hover:text-blue-primary mt-0.5"
+                      onClick={() => openEdit(t)}
+                      className="mt-0.5 cursor-pointer text-[12.5px] text-text-tertiary hover:text-blue-primary"
                     >
                       Add a description →
                     </button>
@@ -278,36 +231,22 @@ export function OfferingTypesManager({
                     {count} offering{count === 1 ? "" : "s"}
                   </Link>
                   {canEdit && (
-                  <button
-                    onClick={() => startEdit(t)}
-                    aria-label={`Edit ${t.name}`}
-                    className="text-text-tertiary hover:text-blue-primary p-1.5"
-                  >
-                    <Pencil size={13} strokeWidth={1.8} />
-                  </button>
-                  )}
-                  {!canEdit ? null : confirmRemove === t.id ? (
-                    <span className="inline-flex items-center gap-1.5 text-[12px]">
-                      <button
-                        onClick={() => removeType(t)}
-                        disabled={busy}
-                        className="font-semibold text-error hover:underline disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        onClick={() => setConfirmRemove(null)}
-                        className="font-semibold text-text-secondary hover:text-text-primary"
-                      >
-                        Keep
-                      </button>
-                    </span>
-                  ) : (
                     <button
-                      onClick={() => setConfirmRemove(t.id)}
+                      onClick={() => openEdit(t)}
+                      aria-label={`Edit ${t.name}`}
+                      title={`Edit ${t.name}`}
+                      className="cursor-pointer rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <Pencil size={13} strokeWidth={1.8} />
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={() => setConfirmRemove(t)}
                       disabled={busy}
                       aria-label={`Remove ${t.name}`}
-                      className="text-text-tertiary hover:text-error p-1.5 disabled:opacity-50"
+                      title={`Remove ${t.name}`}
+                      className="cursor-pointer rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-error/10 hover:text-error disabled:opacity-50"
                     >
                       <X size={14} strokeWidth={2.2} />
                     </button>
@@ -318,6 +257,29 @@ export function OfferingTypesManager({
           })}
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        busy={busy}
+        onConfirm={() => {
+          if (confirmRemove) void removeType(confirmRemove);
+        }}
+        title="Remove this offering type?"
+        body={
+          confirmRemove
+            ? `${confirmRemove.name} disappears from the type list and from the filters.`
+            : ""
+        }
+        detail={
+          confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0
+            ? `${offeringCounts[confirmRemove.id]} offering${
+                offeringCounts[confirmRemove.id] === 1 ? "" : "s"
+              } currently use it. They are not deleted, but they lose this type.`
+            : undefined
+        }
+        confirmLabel="Remove type"
+      />
     </div>
   );
 }

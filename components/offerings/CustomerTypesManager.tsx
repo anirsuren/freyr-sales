@@ -9,6 +9,7 @@ import { Plus, ArrowRight, X, Pencil, Store, Building, Building2, Globe2, type L
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -23,9 +24,9 @@ import { CUSTOMER_FAMILY_META } from "@/lib/customerFamilies";
 import { flagForGeography } from "@/lib/countryFlags";
 
 const FIELD =
-  "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
+  "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 const LABEL =
-  "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1";
+  "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 const FAMILIES: CustomerFamily[] = [
   "Pharmaceutical",
   "Biologics",
@@ -83,6 +84,7 @@ export function CustomerTypesManager({
   // Markets in use by offerings get a confirm step before removal — deleting one
   // cascades, unmapping it from every offering.
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const removingMarket = markets.find((m) => m.id === confirmRemove) ?? null;
 
   // EDITING AN EXISTING DEFINITION (change log #37). Separate state from the
   // add form on purpose: opening the editor must never inherit half-typed text
@@ -276,12 +278,9 @@ export function CustomerTypesManager({
         subtitle="The customer-type definitions and markets you can attach to each offering. Add more as the catalog grows."
         action={
           canEdit ? (
-            <button
-              onClick={() => setAdding((a) => !a)}
-              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13px] font-semibold text-blue-primary hover:bg-blue-light"
-            >
-              <Plus size={14} strokeWidth={2} /> Add customer type
-            </button>
+            <Button onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={2.2} /> Add customer type
+            </Button>
           ) : undefined
         }
       />
@@ -352,16 +351,18 @@ export function CustomerTypesManager({
                 it.
               </p>
             )}
+          {/* Cancel then primary, on ONE right-aligned row. The save button
+              used to sit on its own line ABOVE a right-aligned Cancel, so the
+              two halves of the same decision were in different places
+              (Anir, Aug 15: "everything should be up to date with our
+              standards"). */}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button variant="secondary" onClick={() => setAdding(false)}>
+              Cancel
+            </Button>
             <Button onClick={addType} loading={busy}>
               {typeExists ? "Update definition" : "Add customer type"}
             </Button>
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              onClick={() => setAdding(false)}
-              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </Modal>
@@ -604,36 +605,6 @@ export function CustomerTypesManager({
         <div className="flex flex-wrap gap-2 mb-4">
           {markets.map((m) => {
             const count = marketCounts[m.id] || 0;
-            if (confirmRemove === m.id) {
-              return (
-                <span
-                  key={m.id}
-                  className="inline-flex items-center gap-2 text-[12.5px] font-medium bg-error/5 border border-error/30 rounded-md pl-2.5 pr-1.5 py-1"
-                >
-                  <span className="text-text-primary">
-                    Remove {m.name}?{" "}
-                    <span className="text-text-tertiary">
-                      {count} offering{count === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeMarket(m)}
-                    disabled={busy}
-                    className="font-semibold text-error hover:underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmRemove(null)}
-                    className="font-semibold text-text-secondary hover:text-text-primary"
-                  >
-                    Keep
-                  </button>
-                </span>
-              );
-            }
             const accent = listAccent(markets.indexOf(m));
             return (
               <span
@@ -674,10 +645,11 @@ export function CustomerTypesManager({
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={() => (count > 0 ? setConfirmRemove(m.id) : removeMarket(m))}
+                    onClick={() => setConfirmRemove(m.id)}
                     disabled={busy}
                     aria-label={`Remove ${m.name}`}
-                    className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
+                    title={`Remove ${m.name}`}
+                    className="cursor-pointer px-1.5 py-1 text-text-tertiary transition-colors hover:text-error disabled:opacity-50"
                   >
                     <X size={12} strokeWidth={2.2} />
                   </button>
@@ -730,18 +702,43 @@ export function CustomerTypesManager({
             </p>
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              onClick={() => setAddingMarket(false)}
-              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-            >
-              Cancel
-            </button>
+            <Button variant="secondary" onClick={() => setAddingMarket(false)}>
+                Cancel
+              </Button>
             <Button onClick={addMarket} loading={busy}>
               Add market
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Removing a market asks in the app's own dialog, instead of the chip
+          turning into a red inline "Remove / Keep" strip that reflowed the
+          whole row of chips around it (Anir, Aug 15: "everything should be up
+          to date with our standards"). */}
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        busy={busy}
+        onConfirm={() => {
+          const m = markets.find((x) => x.id === confirmRemove);
+          if (m) void removeMarket(m);
+        }}
+        title="Remove this market?"
+        body={
+          removingMarket
+            ? `${removingMarket.name} disappears from the market list and from the offering filters.`
+            : ""
+        }
+        detail={
+          removingMarket && (marketCounts[removingMarket.id] || 0) > 0
+            ? `${marketCounts[removingMarket.id]} offering${
+                marketCounts[removingMarket.id] === 1 ? "" : "s"
+              } are filed under it. They are not deleted, but they lose this market.`
+            : undefined
+        }
+        confirmLabel="Remove market"
+      />
     </div>
   );
 }

@@ -729,19 +729,30 @@ export function OfferingsBrowser({
               <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
                 Type
               </dt>
-              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug">
-                <Sparkles
-                  size={11}
-                  strokeWidth={2.4}
-                  aria-hidden="true"
-                  className="translate-y-[1px] shrink-0"
-                  style={{ color: typeColorByName[o.offering_type] || "#7C3AED" }}
-                />
+              {/* A PILL, not coloured words (Anir, Aug 15: "where it says
+                  'Freya Fusion', for example, can you put that in a pill
+                  shape?"). It is the same value the table view already shows
+                  as a pill, so the two views now say it the same way. */}
+              <dd className="flex min-w-0">
                 <span
-                  className="min-w-0 break-words"
-                  style={{ color: typeColorByName[o.offering_type] || "#7C3AED" }}
+                  className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
+                  style={
+                    {
+                      "--semantic-color":
+                        typeColorByName[o.offering_type] || "#7C3AED",
+                      "--semantic-bg": `${typeColorByName[o.offering_type] || "#7C3AED"}14`,
+                    } as CSSProperties
+                  }
                 >
-                  {o.offering_type || "Not set"}
+                  <Sparkles
+                    size={11}
+                    strokeWidth={2.4}
+                    aria-hidden="true"
+                    className="mt-[3px] shrink-0"
+                  />
+                  <span className="min-w-0 break-words">
+                    {o.offering_type || "Not set"}
+                  </span>
                 </span>
               </dd>
 
@@ -1598,6 +1609,18 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
+                            {/* Colour AND icon — the standing chip rule. The
+                                table's two chips were the only ones in the app
+                                wearing colour alone (Anir, Aug 15: "can you add
+                                the icons, like the little icons that are
+                                associated with it"). Layers is the same glyph
+                                the offering-categories master uses. */}
+                            <Layers
+                              size={11}
+                              strokeWidth={2.4}
+                              aria-hidden="true"
+                              className="mt-[3px] shrink-0"
+                            />
                             <span className="min-w-0 whitespace-normal break-words">
                               {o.offering_category}
                             </span>
@@ -1617,7 +1640,17 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
-                            <span className="min-w-0">{o.offering_type}</span>
+                            {/* Same mark the card view gives an offering type,
+                                so the two views agree. */}
+                            <Sparkles
+                              size={11}
+                              strokeWidth={2.4}
+                              aria-hidden="true"
+                              className="mt-[3px] shrink-0"
+                            />
+                            <span className="min-w-0 whitespace-normal break-words">
+                              {o.offering_type}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-text-secondary">{o.offering_type || "-"}</span>

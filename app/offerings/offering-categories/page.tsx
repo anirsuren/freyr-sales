@@ -3,12 +3,16 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { OfferingCategoriesManager } from "@/components/offerings/OfferingCategoriesManager";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { listAssignablePeople } from "@/lib/assignablePeople";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offering categories" };
 
 export default async function OfferingCategoriesPage() {
   const offeringCategories = listOfferingCategories();
+  // The owner picker offers colleagues with accounts, not a free-text box
+  // (Anir, Aug 15: "add the owner dropdown, like you do normally").
+  const assignable = await listAssignablePeople();
   // How many offerings sit in each category — offerings store the category as a
   // string, so match by name → the category's id.
   const byName: Record<string, string> = {};
@@ -31,6 +35,10 @@ export default async function OfferingCategoriesPage() {
         offeringCategories={offeringCategories}
         offeringCounts={offeringCounts}
         canEdit={await canManageOfferings()}
+        people={assignable.map((p) => p.name)}
+        peopleRoles={Object.fromEntries(
+          assignable.filter((p) => p.role).map((p) => [p.name, p.role as string])
+        )}
       />
     </div>
   );
