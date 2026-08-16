@@ -6,6 +6,8 @@ import {
   Crown,
   CheckCircle2,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Gauge,
   Pencil,
   PenLine,
@@ -17,6 +19,7 @@ import {
   CalendarDays,
   CalendarRange,
   Layers,
+  Maximize2,
   Target,
   TrendingDown,
   TrendingUp,
@@ -226,7 +229,17 @@ export function OrgPerformanceTab({
     "quarter",
     PERIOD_KEYS
   );
-  const [openId, setOpenId] = useState<string | null>(null);
+  /** Which goals are expanded. A set, not one id, so Expand all can open them
+   *  together (Anir, Aug 16: "at the end it should be like [a button] to
+   *  expand all"). */
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   /** What YOU want to read the numbers in. A lens, never a stored fact. */
   /** Channel the chart and the table below it share for linked hover. */
   const syncId = `perf-${scope?.exportLabel ?? "org"}`;
@@ -682,7 +695,7 @@ export function OrgPerformanceTab({
                     { h: "Met", hint: "Met means the actual has reached the target." },
                     { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
                     { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged — with nothing logged there is nothing to sign off." },
-                    { h: "" },
+                    { h: "Actions" },
                   ] as { h: string; hint?: string }[]
                 ).map((col, i) => (
                   <th
@@ -696,13 +709,43 @@ export function OrgPerformanceTab({
                       // Verified holds "Not verified" + the VERIFY badge on one
                       // line: 149px of pill plus the cell's 32px of padding.
                       i === 5 && "w-[190px]",
-                      i === 6 && "w-12"
+                      i === 6 && "w-[120px] text-right"
                     )}
                   >
-                    <span className="flex items-center gap-1">
-                      {col.h}
-                      {col.hint && <InfoHint text={col.hint} />}
-                    </span>
+                    {i === 6 ? (
+                      /* EXPAND EVERYTHING AT ONCE, from the head of the column
+                         the per-row buttons live in. */
+                      <span className="flex items-center justify-end gap-1.5">
+                        <span>{col.h}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenIds((prev) =>
+                              prev.size === sorted.length
+                                ? new Set()
+                                : new Set(sorted.map((g) => g.id))
+                            )
+                          }
+                          title={
+                            openIds.size === sorted.length
+                              ? "Collapse every goal"
+                              : "Expand every goal"
+                          }
+                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                        >
+                          {openIds.size === sorted.length ? (
+                            <ChevronsDownUp size={13.5} strokeWidth={2.2} />
+                          ) : (
+                            <ChevronsUpDown size={13.5} strokeWidth={2.2} />
+                          )}
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        {col.h}
+                        {col.hint && <InfoHint text={col.hint} />}
+                      </span>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -715,12 +758,12 @@ export function OrgPerformanceTab({
                   index={i}
                   syncId={syncId}
                   rates={state.rates ?? {}}
-                  dimmed={openId !== null && openId !== g.id}
+                  dimmed={openIds.size > 0 && !openIds.has(g.id)}
                   state={state}
                   meName={meName}
                   actuals={state.actuals}
-                  open={openId === g.id}
-                  onToggle={() => setOpenId(openId === g.id ? null : g.id)}
+                  open={openIds.has(g.id)}
+                  onToggle={() => toggleOpen(g.id)}
                   live={live}
                   run={run}
                   period={period}
@@ -862,6 +905,23 @@ function GoalRows({
         run={run}
         onClose={() => setVerifying(false)}
       />
+        <Modal
+          open={full}
+          onClose={() => setFull(false)}
+          title={goal.name}
+          size="viewer"
+        >
+          {/* THE SAME THREE COLUMNS, GIVEN THE WHOLE WINDOW. Nothing
+              else comes with them: no goal table underneath, no tiles,
+              no charts. */}
+          <GoalZoom
+            state={state}
+            goalId={goal.id}
+            meName={meName}
+            run={run}
+            embedded
+          />
+        </Modal>
       <tr
         onClick={onToggle}
         onMouseEnter={() => donutSyncBroadcast(syncId, index)}
@@ -997,6 +1057,23 @@ function GoalRows({
           />
         </td>
         <td className="px-4 py-4">
+          <span className="flex items-center justify-end gap-1">
+          {/* FULL SCREEN LIVES ON THE ROW (Anir, Aug 16: "Expand it. I don't
+              see that button. It should be like a button. It should be an
+              action column on this row"). Buried in the drill-down header it
+              was only reachable once you had already opened the row. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFull(true);
+            }}
+            title={`Open ${goal.name} full screen: organization, groups, people`}
+            aria-label={`Open ${goal.name} full screen`}
+            className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <Maximize2 size={13.5} strokeWidth={2.2} />
+          </button>
           {/* THE KEYBOARD'S WAY IN (found Aug 16). The row answers the mouse;
               this answers Tab and Enter. It cannot be the row itself — a
               role="button" may not contain the verify pill and the target
@@ -1020,6 +1097,7 @@ function GoalRows({
             )}
           />
           </button>
+          </span>
         </td>
       </tr>
       {open && (
@@ -1076,23 +1154,6 @@ function GoalRows({
                   ) : undefined
                 }
               />
-              <Modal
-                open={full}
-                onClose={() => setFull(false)}
-                title={goal.name}
-                size="viewer"
-              >
-                {/* THE SAME THREE COLUMNS, GIVEN THE WHOLE WINDOW. Nothing
-                    else comes with them: no goal table underneath, no tiles,
-                    no charts. */}
-                <GoalZoom
-                  state={state}
-                  goalId={goal.id}
-                  meName={meName}
-                  run={run}
-                  embedded
-                />
-              </Modal>
               {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
                   goal and "all the people who have contributed to this, and
                   their individual performance"). */}

@@ -718,7 +718,25 @@ export function PaceTimeline({
    * under the track instead gives each label its own half of the picture, so
    * the lines can never meet however close the dots get.
    */
-  const collide = Math.abs(aPct - marker) < 30;
+  /**
+   * ALWAYS SPLIT, NEVER JUDGED (Anir, Aug 16: "Don't stop until you've
+   * confirmed that it'll never intersect... You have the top and the bottom,
+   * right? That should never happen").
+   *
+   * This used to keep both labels above the track and only split them when the
+   * two points came within 30% of each other. That number was a guess about
+   * text width in a container whose width the component never knows: at 30%
+   * apart in a narrow column the two labels still met. One label above, one
+   * below, always — then no distance between the dots can ever bring them
+   * together, and the layout no longer jumps between two arrangements.
+   */
+  /** Track thickness, and how far the biggest dot reaches past its centre. */
+  const TRACK = compact ? 8 : 10;
+  const DOT = 7;
+  const LEADER = LANE - 11;
+  /** Top of the label that hangs UNDER the track: clear of the track itself,
+   *  clear of the dot sitting on it, plus the leader line. */
+  const belowTop = LANE + 8 + TRACK / 2 + DOT + 1;
 
   return (
     <div className={compact ? "w-full" : "min-w-[380px]"}>
@@ -730,20 +748,17 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            style={{ paddingTop: LANE + 8, paddingBottom: collide ? LANE : 0 }}
+            style={{
+              paddingTop: LANE + 8,
+              // Reserve the whole hanging label: clearance + leader + text.
+              paddingBottom: TRACK / 2 + DOT + 1 + LEADER + (compact ? 15 : 18),
+            }}
           >
             {/* WHERE YOU ARE — above the track, or under it when the two
                 points are close enough that two lanes would cross. */}
             <span
-              className={cn(
-                "absolute flex -translate-x-1/2 items-center",
-                collide ? "flex-col-reverse" : "flex-col"
-              )}
-              style={
-                collide
-                  ? { left: `${clamp(aPct)}%`, top: LANE + 8 }
-                  : { left: `${clamp(aPct)}%`, top: 0 }
-              }
+              className="absolute flex -translate-x-1/2 flex-col-reverse items-center"
+              style={{ left: `${clamp(aPct)}%`, top: belowTop }}
             >
               <span
                 className={cn(
@@ -757,7 +772,7 @@ export function PaceTimeline({
               <span
                 className="w-px"
                 style={{
-                  height: LANE - 11,
+                  height: LEADER,
                   background: accent,
                   opacity: 0.35,
                 }}

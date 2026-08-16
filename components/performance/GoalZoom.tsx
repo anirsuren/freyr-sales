@@ -606,7 +606,13 @@ export function GoalZoom({
                           active
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                             : "hover:bg-surface",
-                          !empty && lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
+                          !empty && lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
+                          /* THE REST FADE BUT STAY (Anir, Aug 16: "when I click
+                             on this, you can kind of fade out the other ones,
+                             but I should still be able to see them"). Hovering
+                             a faded row brings it back, so nothing is out of
+                             reach while one is open. */
+                          openPeriod !== null && !shown && "opacity-45 hover:opacity-100"
                         )}
                       >
                         <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
@@ -716,7 +722,9 @@ export function GoalZoom({
                             "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                             active
                               ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                              : "hover:bg-surface"
+                              : "hover:bg-surface",
+                            /* Same fade as every other row in this column. */
+                            openGroup !== null && !active && "opacity-45 hover:opacity-100"
                           )}
                         >
                           <span className="flex w-full items-center gap-2.5">
@@ -762,7 +770,9 @@ export function GoalZoom({
                             active
                               ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                               : "hover:bg-surface",
-                            lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
+                            lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
+                            /* Same fade as the period column above. */
+                            openGroup !== null && !active && "opacity-45 hover:opacity-100"
                           )}
                         >
                           {/* THE BAR GETS ITS OWN LINE (Anir, Aug 15: "that bar
