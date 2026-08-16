@@ -469,7 +469,29 @@ export async function PATCH(
   }
 
   const updated = await db.customers.update((await params).id, patch);
-  return NextResponse.json({ ok: true, customer: updated });
+  /**
+   * SAY WHAT ACTUALLY CHANGED (found Aug 16 while exercising this route).
+   *
+   * PATCH builds `patch` from a fixed list of fields and ignores everything
+   * else — then answered `{ok:true}` either way. Sending `industry` (not on
+   * the list) returned 200 and changed nothing, so a caller, an integration or
+   * the agent could believe a write landed when it had not. That is how a
+   * record quietly diverges from what somebody thinks they saved.
+   *
+   * The status stays 200 so nothing that sends extra fields breaks; the answer
+   * now reports which keys were applied and which were ignored, so a caller
+   * that cares can tell.
+   */
+  const applied = Object.keys(patch);
+  const ignored = Object.keys(body ?? {}).filter(
+    (k) => !applied.includes(k) && k !== "owner_user_id" && k !== "analyzed_at"
+  );
+  return NextResponse.json({
+    ok: true,
+    customer: updated,
+    applied,
+    ...(ignored.length ? { ignored } : {}),
+  });
 }
 
 export async function GET(
