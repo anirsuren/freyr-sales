@@ -423,7 +423,7 @@ export function OfferingActivities({
                           type="button"
                           aria-label="Remove this activity"
                           onClick={() => setConfirmDelete(version.id)}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          className="text-[color:#DC2626] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                         >
                           <Trash2 size={13} strokeWidth={2} />
                         </button>

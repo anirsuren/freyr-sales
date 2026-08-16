@@ -381,7 +381,7 @@ export function MyEntriesCard({
                                   setDropFor(a.id);
                                   setEditFor(null);
                                 }}
-                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-surface"
                               >
                                 <Trash2 size={14} strokeWidth={2.2} />
                               </button>
@@ -665,6 +665,14 @@ export function VerifyQueueCard({
 }) {
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  /**
+   * VERIFYING ASKS FIRST (Anir, Aug 16: "I pressed the check mark. I was
+   * expecting a pop-up. Why did it just let me do it?"). Locking a claim makes
+   * money count and takes it out of this queue, and the only way back is
+   * hunting the row down in Logged results — too much for a single stray
+   * click on a 32px icon.
+   */
+  const [confirmFor, setConfirmFor] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   /** Twenty claims used to be twenty clicks (Anir, Aug 15: "so many features
    *  people would need that just don't exist"). Customers has select-many;
@@ -840,12 +848,10 @@ export function VerifyQueueCard({
                               type="button"
                               disabled={busy}
                               aria-label={`Verify and lock ${a.person}'s ${a.date} claim`}
-                              onClick={() =>
-                                run(
-                                  { op: "verify-actual", actualId: a.id },
-                                  "Verified and locked. It counts now"
-                                )
-                              }
+                              onClick={() => {
+                                setConfirmFor(confirmFor === a.id ? null : a.id);
+                                setNoteFor(null);
+                              }}
                               className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-all hover:opacity-90 active:scale-[0.95] disabled:opacity-50"
                             >
                               <Check size={15} strokeWidth={2.8} />
@@ -858,6 +864,7 @@ export function VerifyQueueCard({
                               aria-label={`Send back ${a.person}'s ${a.date} claim`}
                               onClick={() => {
                                 setNoteFor(noteFor === a.id ? null : a.id);
+                                setConfirmFor(null);
                                 setNote("");
                               }}
                               className={cn(
@@ -873,6 +880,48 @@ export function VerifyQueueCard({
                         </span>
                       </td>
                     </tr>
+                    {confirmFor === a.id && (
+                      /* The confirm sits in the row it belongs to and reads
+                         out what is about to happen, in money, so the answer
+                         is not "yes" to a generic question. */
+                      <tr className="bg-surface">
+                        <td colSpan={9} className="px-4 pb-3.5 pt-0">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <span className="text-[12.5px] text-text-secondary">
+                              Lock {a.person}&apos;s{" "}
+                              <b className="text-text-primary tnum">
+                                {fmtAmount(
+                                  state.goals.find((g) => g.id === a.goalId)?.unit ?? "currency",
+                                  a.amount
+                                )}
+                              </b>{" "}
+                              so it counts? Only you can undo it.
+                            </span>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={async () => {
+                                const ok = await run(
+                                  { op: "verify-actual", actualId: a.id },
+                                  "Verified and locked. It counts now"
+                                );
+                                if (ok) setConfirmFor(null);
+                              }}
+                              className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                            >
+                              Verify and lock
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmFor(null)}
+                              className="cursor-pointer rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {noteFor === a.id && (
                       <tr className="bg-blue-light/20">
                         <td colSpan={9} className="px-4 pb-3.5 pt-0">

@@ -662,8 +662,12 @@ function MasterTab({
    *  (Anir, Aug 12: "these should be drop-downs instead of pop-ups"). The
    *  cards view keeps the popup, where an inline expansion has no room. */
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  /** Which row is asking "remove this goal?" — inline, never a dialog over the
-   *  list, so the row you are deleting stays visible while you decide. */
+  /** Which goal is being removed. A real dialog, not an inline Remove/Keep
+   *  pair (Anir, Aug 16: "it's not a popup so why is it not throwing me a
+   *  popup to delete it"). This supersedes his Aug 12 note about confirming
+   *  under the button: that was for the confirm INSIDE the goal popup, where
+   *  a second dialog would stack; the table has no such problem, and an inline
+   *  pair on a dense row is too easy to hit by accident. */
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   /** Categories the reader has folded shut in the Goal Master table. Local to
    *  the session and to this browser: hiding Financial to get to Lead
@@ -1056,7 +1060,7 @@ function MasterTab({
                                     confirmRemoveId === g.id ? null : g.id
                                   );
                                 }}
-                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
                               </button>
@@ -1098,33 +1102,6 @@ function MasterTab({
                             />
                           </button>
                         </span>
-                        {confirmRemoveId === g.id && (
-                          <span
-                            className="mt-1.5 flex items-center justify-end gap-1.5 whitespace-nowrap text-[11px]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmRemoveId(null);
-                                void run(
-                                  { op: "remove-goal", goalId: g.id },
-                                  `${g.name} removed from the master`
-                                );
-                              }}
-                              className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
-                            >
-                              Remove
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmRemoveId(null)}
-                              className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                            >
-                              Keep
-                            </button>
-                          </span>
-                        )}
                       </td>
                     </tr>
                     {expandedId === g.id && (
@@ -1203,6 +1180,11 @@ function MasterTab({
         // so small"). 980 gives every row room and stops the unassign confirm
         // being pushed off the bottom edge.
         size="workflow"
+        // ONE SIZE, WHETHER OR NOT A FORM IS OPEN (Anir, Aug 16: "This is too
+        // small. Just make it the same size as the second screenshot"). The
+        // dialog used to grow by the height of the assign form the moment you
+        // opened it, so the whole thing jumped under the cursor.
+        tall
       >
         {openGoal && (
           <GoalPopupBody
@@ -1222,6 +1204,30 @@ function MasterTab({
           />
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={confirmRemoveId !== null}
+        onClose={() => setConfirmRemoveId(null)}
+        onConfirm={() => {
+          const id = confirmRemoveId;
+          setConfirmRemoveId(null);
+          if (!id) return;
+          const name = state.goals.find((x) => x.id === id)?.name ?? "This goal";
+          void run({ op: "remove-goal", goalId: id }, `${name} removed from the master`);
+        }}
+        title="Remove this goal?"
+        body={
+          <>
+            <b>
+              {state.goals.find((x) => x.id === confirmRemoveId)?.name ??
+                "This goal"}
+            </b>{" "}
+            and its subgoals come off the master, and Org performance stops
+            counting it.
+          </>
+        }
+        confirmLabel="Remove goal"
+      />
     </div>
   );
 }
@@ -1686,15 +1692,17 @@ function AssignGroupModal({
             </p>
           ))}
       </div>
-      {/* The hint gets its own line so the two buttons always share one
-          (Anir, Aug 15: "make sure it is on the same line"). Sitting it beside
-          them wrapped the row the moment the modal was narrow. */}
-      {!groupId && groups.length > 0 && (
-        <p className="text-[11.5px] text-text-tertiary">
-          Pick a group above to continue.
-        </p>
-      )}
+      {/* THE HINT SITS ON THE BUTTON LINE (Anir, Aug 16: "put this text in
+          line with the buttons on the right so it doesn't shift up and down
+          and make the popup shift"). On its own line it appeared and vanished
+          with the selection, and the whole dialog moved each time. Sharing the
+          row means picking a group changes nothing but the text. */}
       <div className="flex flex-nowrap items-center justify-end gap-2 pt-1">
+        {!groupId && groups.length > 0 && (
+          <p className="mr-auto text-[11.5px] text-text-tertiary">
+            Pick a group above to continue.
+          </p>
+        )}
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
@@ -2017,7 +2025,7 @@ function GoalPopupBody({
                 type="button"
                 title="Remove this goal from the master"
                 onClick={() => setConfirmGoalRemove(!confirmGoalRemove)}
-                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
+                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white"
               >
                 <Trash2 size={14} strokeWidth={2.2} />
               </button>
@@ -2247,7 +2255,7 @@ function GoalPopupBody({
                           confirmSubRemove === s.id ? null : s.id
                         );
                       }}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-[color:#DC2626]"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10"
                     >
                       <Trash2 size={13} strokeWidth={2.2} />
                     </span>
@@ -2645,7 +2653,7 @@ function GoalPopupBody({
                         confirmUnassign === a.person ? null : a.person
                       )
                     }
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-[color:#DC2626]"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10"
                   >
                     <Trash2 size={13} strokeWidth={2.2} />
                   </button>
@@ -2669,8 +2677,11 @@ function GoalPopupBody({
           ))}
         </div>
       )}
-      </div>
-
+      {/* THE FORM OPENS INSIDE THIS BOX (Anir, Aug 16: "When I add a person,
+          it should show up inside the box because this is confusing. It's like
+          making up a third section"). It used to unfold after the box closed,
+          so it read as a fourth section with its own title rather than as this
+          section doing its job. */}
       <AssignPersonModal
         open={assignOpen}
         inline={hostedInPopup}
@@ -2683,6 +2694,8 @@ function GoalPopupBody({
         run={run}
         busy={busy}
       />
+      </div>
+
 
       {!live && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-light pt-3">

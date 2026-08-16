@@ -1433,7 +1433,7 @@ export function AddMaterialButton({
                           onClick={() => removeFile(selected)}
                           aria-label={`Remove ${selected.name}`}
                           title={`Remove ${selected.name}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
+                          className="text-[color:#DC2626] flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
                         >
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>

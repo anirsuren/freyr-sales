@@ -1117,7 +1117,7 @@ export function FdlComponentDetail({
                             type="button"
                             aria-label={`Remove ${withV(release.version)}`}
                             onClick={() => setConfirmReleaseDelete(release.id)}
-                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            className="text-[color:#DC2626] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
@@ -2189,7 +2189,7 @@ export function FdlComponentDetail({
                             type="button"
                             aria-label={`Remove ${feature.name}`}
                             onClick={() => setConfirmFeatureDelete(feature.id)}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
                           >
                             <Trash2 size={13} strokeWidth={2} />
                           </button>

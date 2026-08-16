@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  knownPeople,
+  visiblePeople,
   scopeStateToPeople,
   type PerformanceState,
   type PrimaryGoal,
@@ -52,7 +52,18 @@ export function PeopleTab({
   initialPerson?: string | null;
 }) {
   const router = useRouter();
-  const names = useMemo(() => knownPeople(state, meName), [state, meName]);
+  /**
+   * ONLY THE PEOPLE YOU MAY LOOK AT (Anir, Aug 16: "Restrict"). Admins get the
+   * whole workspace; everybody else gets themselves plus the groups they head.
+   * See visiblePeople — this list is also what a `?person=` link is validated
+   * against below, so a link cannot reach past it.
+   */
+  const names = useMemo(
+    () => visiblePeople(state, meName, memberRoles?.[meName.trim()]),
+    [state, meName, memberRoles]
+  );
+  /** Nobody else to look at: the name is a label, not a control. */
+  const canSwitch = names.length > 1;
 
   /**
    * A NAME IN A LINK IS A REQUEST, NOT A FACT (found Aug 16, sweeping the

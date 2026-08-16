@@ -1375,7 +1375,7 @@ export function CustomerOfferingHeatMap({
                             title="Delete this activity"
                             aria-label="Delete this activity"
                             onClick={() => setConfirmUnlink(version.id)}
-                            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            className="text-[color:#DC2626] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>

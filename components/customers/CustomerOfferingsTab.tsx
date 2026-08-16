@@ -374,7 +374,7 @@ function RevenueSection({
               <button
                 onClick={() => onSave(lines.filter((x) => x.id !== l.id))}
                 aria-label="Remove revenue line"
-                className="shrink-0 text-text-tertiary hover:text-error transition-colors mt-0.5"
+                className="shrink-0 text-[color:#DC2626] hover:text-error transition-colors mt-0.5"
               >
                 <Trash2 size={14} strokeWidth={1.8} />
               </button>

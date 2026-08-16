@@ -1026,7 +1026,7 @@ export function AgentChat({
                       <button
                         onClick={() => remove(c.id)}
                         aria-label={`Delete ${c.title || "chat"}`}
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded bg-inherit text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded bg-inherit text-[color:#DC2626] opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
                       >
                         <Trash2 size={13} strokeWidth={1.8} />
                       </button>

@@ -1511,7 +1511,7 @@ export function OfferingForm({
                         type="button"
                         onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
                         aria-label="Remove group heading"
-                        className="mb-1 shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+                        className="mb-1 shrink-0 rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-blue-light hover:text-error"
                       >
                         <Trash2 size={15} strokeWidth={1.7} />
                       </button>
@@ -1549,7 +1549,7 @@ export function OfferingForm({
                           type="button"
                           onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
                           aria-label="Remove service"
-                          className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-error"
+                          className="shrink-0 rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white hover:text-error"
                         >
                           <Trash2 size={15} strokeWidth={1.7} />
                         </button>
@@ -2117,7 +2117,7 @@ export function OfferingForm({
                   type="button"
                   onClick={() => setMaterials((l) => l.filter((_, j) => j !== i))}
                   aria-label={`Remove ${m.label || "material"}`}
-                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
                 >
                   <Trash2 size={15} strokeWidth={1.8} />
                 </button>
@@ -2399,7 +2399,7 @@ export function OfferingForm({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-error hover:underline"
+              className="text-[color:#DC2626] inline-flex items-center gap-1.5 text-[13px] font-semibold text-error hover:underline"
             >
               <Trash2 size={14} strokeWidth={1.8} /> Delete offering
             </button>

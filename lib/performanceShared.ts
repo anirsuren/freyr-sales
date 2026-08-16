@@ -520,6 +520,38 @@ export function knownPeople(state: PerformanceState, extra?: string): string[] {
 
 /* ------------------------------------------------------- who sees whom */
 
+/**
+ * WHOSE PERFORMANCE YOU MAY OPEN (Anir, Aug 16: asked whether viewing somebody
+ * else's data was admin-only, was told no, and answered "Restrict").
+ *
+ * Until now the People tab listed every name in the workspace to everyone, so
+ * any rep could read any colleague's targets and results. Acting on a claim
+ * was always gated — verify, unlock and send back need you to own a group that
+ * person is in — but reading was not gated at all.
+ *
+ * - admin: everybody.
+ * - anyone else: yourself, plus everyone in the groups you head.
+ *
+ * This is the ONLY list the picker offers and the only list a `?person=` link
+ * is checked against, so both ways in close together.
+ */
+export function visiblePeople(
+  state: PerformanceState,
+  me: string,
+  role?: string
+): string[] {
+  if ((role ?? "").trim().toLowerCase() === "admin") {
+    return knownPeople(state, me);
+  }
+  const set = new Set<string>();
+  if (me.trim()) set.add(me.trim());
+  for (const g of headedGroups(state, me)) {
+    if (g.head.trim()) set.add(g.head.trim());
+    for (const m of g.members) if (m.trim()) set.add(m.trim());
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
 /** Groups this person heads. */
 export function headedGroups(
   state: Pick<PerformanceState, "groups">,

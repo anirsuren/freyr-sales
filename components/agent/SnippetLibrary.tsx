@@ -195,7 +195,7 @@ export function SnippetLibrary() {
                   onClick={() => remove(s.id)}
                   disabled={busy === s.id}
                   aria-label={`Delete snippet ${s.title}`}
-                  className="text-text-tertiary hover:text-error transition-colors shrink-0 disabled:opacity-50"
+                  className="text-[color:#DC2626] hover:text-error transition-colors shrink-0 disabled:opacity-50"
                 >
                   <Trash2 size={15} strokeWidth={1.8} />
                 </button>

@@ -751,7 +751,7 @@ export function FdlComponentsBrowser({
                                     // should read as dangerous before you reach
                                     // it (Anir, Aug 9: "the delete button should
                                     // be red, obviously").
-                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                                    className="text-[color:#DC2626] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                                   >
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>

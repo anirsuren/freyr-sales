@@ -141,7 +141,7 @@ export function PasskeySetup() {
           )}
         </div>
         {on ? (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="text-[color:#DC2626] flex shrink-0 items-center gap-2">
             <Button
               onClick={() => void resetAll()}
               loading={busy}
@@ -152,10 +152,12 @@ export function PasskeySetup() {
               <RotateCw size={13} strokeWidth={2} />
               Reset
             </Button>
+            {/* Every delete reads red (Anir, Aug 16: "all delete buttons
+                have to be red"). */}
             <Button
               onClick={() => void removeAll()}
               disabled={busy}
-              variant="secondary"
+              variant="destructive"
               title="Turn Touch ID off for this account"
             >
               <Trash2 size={13} strokeWidth={2} />

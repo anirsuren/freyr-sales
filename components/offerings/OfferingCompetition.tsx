@@ -609,7 +609,7 @@ export function OfferingCompetition({
                             confirmMaterial === m.id ? null : m.id
                           )
                         }
-                        className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                        className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-surface"
                       >
                         <Trash2 size={13} strokeWidth={2.2} />
                       </button>
@@ -741,7 +741,7 @@ export function OfferingCompetition({
                   <button
                     type="button"
                     onClick={() => setConfirmCompetitor(true)}
-                    className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                    className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-[color:#DC2626] transition-colors hover:bg-surface"
                   >
                     <Trash2 size={12.5} strokeWidth={2.2} /> Remove from list
                   </button>

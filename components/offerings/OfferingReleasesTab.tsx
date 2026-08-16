@@ -345,7 +345,7 @@ function SummaryRow({
         type="button"
         onClick={onRemove}
         aria-label={removeLabel}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
       >
         <Trash2 size={14} strokeWidth={2} />
       </button>
@@ -1551,7 +1551,7 @@ export function OfferingReleasesTab({
                         )
                       }
                       aria-label={`Remove ${rel.version}`}
-                      className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                      className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </button>

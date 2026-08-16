@@ -394,7 +394,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 title={`Remove ${g.name}`}
                 aria-label={`Remove ${g.name}`}
                 onClick={() => setConfirmRemove(g)}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
               >
                 <Trash2 size={13} strokeWidth={2.2} />
               </button>
