@@ -76,10 +76,37 @@ export async function POST(request: NextRequest) {
       .filter((item) => item.sequence_id === sequenceId)
       .map((item) => item.customer_id)
   );
+  /**
+   * TWO DIFFERENT SKIPS USED TO LOOK THE SAME (found Aug 16, sweeping this API
+   * for writes that quietly do nothing). An account already on the sequence is
+   * a legitimate no-op — enrolling twice should not be an error — but an id
+   * that matches no account at all is not a no-op, it is a miss. Both fell
+   * through the same `continue` and the answer was 200 {ok:true, enrolled:0}
+   * either way, so a caller enrolling a stale id was told it worked.
+   */
+  const unknown = customerIds.filter((id) => !customerById.has(id));
+  if (unknown.length === customerIds.length) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          unknown.length === 1
+            ? "That account no longer exists, so there was nothing to enroll."
+            : "None of those accounts exist any more, so there was nothing to enroll.",
+      },
+      { status: 404 }
+    );
+  }
+
   let created = 0;
+  let alreadyOn = 0;
   for (const customerId of customerIds) {
     const customer = customerById.get(customerId);
-    if (!customer || enrolled.has(customerId)) continue;
+    if (!customer) continue;
+    if (enrolled.has(customerId)) {
+      alreadyOn++;
+      continue;
+    }
     await db.sequenceEnrollments.create({
       customer_id: customerId,
       sequence_id: sequenceId,
@@ -100,7 +127,13 @@ export async function POST(request: NextRequest) {
     }
     created++;
   }
-  return NextResponse.json({ ok: true, enrolled: created });
+  // Say what actually happened, not just that the call returned.
+  return NextResponse.json({
+    ok: true,
+    enrolled: created,
+    alreadyEnrolled: alreadyOn,
+    unknown: unknown.length,
+  });
 }
 
 export async function DELETE(request: NextRequest) {
