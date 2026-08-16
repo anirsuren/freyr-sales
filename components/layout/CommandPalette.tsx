@@ -19,26 +19,58 @@ import {
   Bot,
   Rocket,
   Zap,
+  Boxes,
+  UsersRound,
+  Gauge,
+  FileBarChart,
+  ChartColumnBig,
+  Radar,
+  Megaphone,
+  PhoneCall,
+  ListChecks,
+  Rss,
+  Bell,
+  Target,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessModule } from "@/lib/moduleAccess";
+import { isOfferingsReleasePath } from "@/lib/release";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
+// KEEP THIS THE SAME LIST THE SIDEBAR SHOWS (found Aug 16: the rail offered
+// eight modules in real mode and search could jump to two). Every module a
+// person can click in the rail has to be typeable here, or "jump to a page"
+// is a promise the box does not keep. Both surfaces are filtered by the same
+// release gate below, so a page appears here exactly when it appears there.
 const NAV: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Agent", href: "/agent", icon: Bot },
   // Offerings near the top, consistent with the offerings-first sidebar order.
   { label: "Offerings", href: "/offerings", icon: Package },
+  { label: "FDL Components", href: "/components", icon: Boxes },
   { label: "New Session", href: "/intake", icon: FilePlus2 },
   { label: "Sessions", href: "/sessions", icon: CalendarClock },
   { label: "Pipeline", href: "/pipeline", icon: Columns3 },
+  { label: "Forecast", href: "/forecast", icon: Target },
   { label: "Customers", href: "/customers", icon: Building2 },
   { label: "Contacts", href: "/contacts", icon: Contact },
-  { label: "Knowledge Base", href: "/admin", icon: Database },
+  { label: "Team", href: "/team", icon: UsersRound },
+  { label: "Performance", href: "/performance", icon: Gauge },
+  { label: "Reports", href: "/reports", icon: FileBarChart },
+  { label: "Market Intel", href: "/market-intel", icon: Radar },
+  { label: "Sequences", href: "/sequences", icon: Zap },
+  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
+  { label: "Voice agents", href: "/voice", icon: PhoneCall },
+  { label: "Tasks", href: "/tasks", icon: ListChecks },
+  { label: "Analytics", href: "/analytics", icon: ChartColumnBig },
+  { label: "Activity", href: "/activity", icon: Rss },
+  { label: "Notifications", href: "/notifications", icon: Bell },
+  { label: "Admin", href: "/admin", icon: Database },
   { label: "Service Catalog", href: "/services", icon: Package },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
@@ -229,12 +261,15 @@ export function CommandPalette({
         (n) =>
           // A Sales Rep must not be able to jump to a manager-only module
           // from search either (Freyr, Aug 12).
+          // ONE ANSWER FOR "IS THIS RELEASED", the same one the sidebar asks.
+          // This used to be a hand-rolled prefix test that knew only about
+          // offerings and customers, which is precisely the drift lib/release
+          // exists to stop — the rail had graduated six more modules into real
+          // mode and search never heard about it.
           canAccessModule(n.href, me.role) &&
-          (!offeringsOnly ||
-            n.href.startsWith("/offerings") ||
-            (customersReleased && n.href.startsWith("/customers")))
+          (!offeringsOnly || isOfferingsReleasePath(n.href))
       ),
-    [customersReleased, offeringsOnly, q, me.role]
+    [offeringsOnly, q, me.role]
   );
 
   const agentMatches = useMemo(
