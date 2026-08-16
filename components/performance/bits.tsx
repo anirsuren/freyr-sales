@@ -708,8 +708,17 @@ export function PaceTimeline({
    * look unfinished. */
   const LANE = compact ? 16 : 19;
   const clamp = (n: number) => Math.min(93, Math.max(7, n));
+  /**
+   * TOP AND BOTTOM, NEVER CROSSING (Anir, Aug 16: "you can't intersect, bro.
+   * You can utilize the top and the bottom of the slides").
+   *
+   * Both labels used to hang above the track, and when the two points sat
+   * close together the second one dropped into a lower lane — which put its
+   * leader line straight through the first one's. Sending "where you are"
+   * under the track instead gives each label its own half of the picture, so
+   * the lines can never meet however close the dots get.
+   */
   const collide = Math.abs(aPct - marker) < 30;
-  const nowLane = collide ? LANE : 0;
 
   return (
     <div className={compact ? "w-full" : "min-w-[380px]"}>
@@ -721,12 +730,20 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            style={{ paddingTop: (collide ? 2 : 1) * LANE + 8 }}
+            style={{ paddingTop: LANE + 8, paddingBottom: collide ? LANE : 0 }}
           >
-            {/* WHERE YOU ARE. */}
+            {/* WHERE YOU ARE — above the track, or under it when the two
+                points are close enough that two lanes would cross. */}
             <span
-              className="absolute flex -translate-x-1/2 flex-col items-center"
-              style={{ left: `${clamp(aPct)}%`, top: nowLane }}
+              className={cn(
+                "absolute flex -translate-x-1/2 items-center",
+                collide ? "flex-col-reverse" : "flex-col"
+              )}
+              style={
+                collide
+                  ? { left: `${clamp(aPct)}%`, top: LANE + 8 }
+                  : { left: `${clamp(aPct)}%`, top: 0 }
+              }
             >
               <span
                 className={cn(
@@ -740,7 +757,7 @@ export function PaceTimeline({
               <span
                 className="w-px"
                 style={{
-                  height: (collide ? 1 : 1) * LANE - 11,
+                  height: LANE - 11,
                   background: accent,
                   opacity: 0.35,
                 }}
@@ -763,7 +780,7 @@ export function PaceTimeline({
               </span>
               <span
                 className="w-px bg-text-tertiary/45"
-                style={{ height: (collide ? 2 : 1) * LANE - 11 }}
+                style={{ height: LANE - 11 }}
                 aria-hidden="true"
               />
             </span>

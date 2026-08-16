@@ -22,6 +22,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
@@ -822,6 +823,9 @@ function GoalRows({
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
   /** Which column the cursor is on in the chart above (or on a sibling row). */
   const linkedIndex = useDonutSync(syncId);
+  /** True while this goal's three columns are open on their own, full width
+   *  (Anir, Aug 16: "a whole pop-up so that all the bullshit gets hidden"). */
+  const [full, setFull] = useState(false);
   const [verifying, setVerifying] = useState(false);
   /**
    * MONEY STAYS IN THE CURRENCY IT WAS SIGNED IN (Anir, Aug 16: "it should be
@@ -1035,7 +1039,7 @@ function GoalRows({
             className="px-4 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
             style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
           >
-            <div className="tab-panel space-y-3 py-3 pl-3.5">
+            <div className="tab-panel space-y-3 pb-3 pl-3.5 pt-1">
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link
@@ -1046,6 +1050,7 @@ function GoalRows({
                   arrives knowing which goal you were reading, which is the
                   whole reason you drilled in. */}
               <GoalZoom
+                onFullScreen={() => setFull(true)}
                 state={state}
                 goalId={goal.id}
                 meName={meName}
@@ -1071,6 +1076,23 @@ function GoalRows({
                   ) : undefined
                 }
               />
+              <Modal
+                open={full}
+                onClose={() => setFull(false)}
+                title={goal.name}
+                size="viewer"
+              >
+                {/* THE SAME THREE COLUMNS, GIVEN THE WHOLE WINDOW. Nothing
+                    else comes with them: no goal table underneath, no tiles,
+                    no charts. */}
+                <GoalZoom
+                  state={state}
+                  goalId={goal.id}
+                  meName={meName}
+                  run={run}
+                  embedded
+                />
+              </Modal>
               {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
                   goal and "all the people who have contributed to this, and
                   their individual performance"). */}

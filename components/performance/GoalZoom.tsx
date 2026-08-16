@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Crown,
+  Maximize2,
   Paperclip,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -118,6 +119,7 @@ export function GoalZoom({
   embedded = false,
   headerAction,
   lit = false,
+  onFullScreen,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -142,6 +144,14 @@ export function GoalZoom({
   /** The goal's row (or its bar in the chart) is under the cursor: light every
    *  row in here that contributes to the number being pointed at. */
   lit?: boolean;
+  /**
+   * Offer a "Full screen" button beside the period picker (Anir, Aug 16: "it
+   * might be a good idea to have a full pop-up screen where I can see in more
+   * detail... all the bullshit gets hidden, and I can just see the
+   * organization, the group, and the person. They have three massive tiles").
+   * The host opens this same component in a viewer-sized dialog.
+   */
+  onFullScreen?: () => void;
 }) {
   const router = useRouter();
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
@@ -387,7 +397,7 @@ export function GoalZoom({
 
       {/* ------------------------------------------------ component cards */}
       {composite && (
-        <div className="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+        <div className={cn("grid grid-cols-1 gap-3.5 lg:grid-cols-3", embedded ? "mt-0" : "mt-4")}>
           {components.map((c, i) => {
             const cVerified = val(yearRange, {
               componentGoalId: c.id,
@@ -470,7 +480,11 @@ export function GoalZoom({
           The same period context flows left to right: pick a period in Box 1,
           Box 2 shows every group inside it, pick a group and Box 3 shows its
           people. Nothing navigates away; the three columns ARE the drill. */}
-      <Card className={cn("p-4", embedded ? "mt-0 border-transparent bg-transparent shadow-none" : "mt-4")}>
+      {/* TIGHTER WHEN EMBEDDED (Anir, Aug 16: "why is there so much gap
+          here?... the space is massive"). Inside an expanded row this card is
+          transparent and borderless, so its 16px of padding was pure empty
+          inset stacked on the row's own padding and the grid's margin. */}
+      <Card className={cn(embedded ? "mt-0 border-transparent bg-transparent p-0 shadow-none" : "mt-4 p-4")}>
         <div className="flex items-center gap-3">
           <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
             Organization → group → person
@@ -478,6 +492,19 @@ export function GoalZoom({
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
               three numbered column headings below already say what this is. */}
           {headerAction && <span className="ml-auto shrink-0">{headerAction}</span>}
+          {onFullScreen && (
+            <button
+              type="button"
+              onClick={onFullScreen}
+              title="Open the three columns on their own, full width"
+              className={cn(
+                "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary",
+                !headerAction && "ml-auto"
+              )}
+            >
+              <Maximize2 size={12.5} strokeWidth={2.2} /> Full screen
+            </button>
+          )}
           {/* FIVE BUTTONS BECAME ONE PICKER (Anir, Aug 15: "where you say weeks,
               months, quarters, etc., let's make that into a single drop-down
               with icons"). Same five choices, a fifth of the width, and each
