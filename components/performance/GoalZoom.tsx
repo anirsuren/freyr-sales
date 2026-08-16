@@ -41,7 +41,7 @@ import {
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
-import { weightedValue } from "@/lib/opportunitiesShared";
+import { expectedByNow, weightedValue } from "@/lib/opportunitiesShared";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -208,6 +208,19 @@ export function GoalZoom({
   const yearAwaiting = val(yearRange, { reportedOnly: true });
   const yearTarget =
     goal.target || components.reduce((s, c) => s + (c.target || 0), 0);
+
+  /**
+   * WHERE THIS GOAL SHOULD BE BY TODAY, from the pipeline when it can say so
+   * (Anir, Aug 16: the straight line "doesn't make any sense" when the deals
+   * are dated November). Falls back to the calendar share for goals with no
+   * dated deals behind them.
+   */
+  const pacing = expectedByNow(
+    goal.id,
+    yearTarget,
+    opportunities,
+    yearElapsed(goal.year)
+  );
 
   const now = Date.now();
   const monthLabels = fiscalMonthLabels(fy);
@@ -824,6 +837,9 @@ export function GoalZoom({
                               awaiting={r.awaiting}
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
+                              expected={pacing.expected}
+                              expectedBasis={pacing.basis}
+                              expectedCount={pacing.dueCount}
                               unit={goal.unit}
                             />
                           </div>
@@ -911,6 +927,9 @@ export function GoalZoom({
                               awaiting={r2.awaiting}
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
+                              expected={pacing.expected}
+                              expectedBasis={pacing.basis}
+                              expectedCount={pacing.dueCount}
                               unit={goal.unit}
                             />
                           }
@@ -1018,6 +1037,9 @@ export function GoalZoom({
                                 awaiting={r2.awaiting}
                                 target={yearTarget}
                                 expectedPct={yearElapsed(goal.year) * 100}
+                                expected={pacing.expected}
+                                expectedBasis={pacing.basis}
+                                expectedCount={pacing.dueCount}
                                 unit={goal.unit}
                               />
                             </div>
@@ -1285,6 +1307,9 @@ export function GoalZoom({
                             awaiting={p.awaiting}
                             target={yearTarget}
                             expectedPct={yearElapsed(goal.year) * 100}
+                            expected={pacing.expected}
+                            expectedBasis={pacing.basis}
+                            expectedCount={pacing.dueCount}
                             unit={goal.unit}
                           />
                         }

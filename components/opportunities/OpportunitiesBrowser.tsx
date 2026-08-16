@@ -76,6 +76,7 @@ type Draft = {
   customerId: string;
   offeringIds: string[];
   offeringLabels: string;
+  goalIds: string[];
   level: string;
   status: string;
   revenueType: string;
@@ -93,6 +94,7 @@ const BLANK: Draft = {
   customerId: "",
   offeringIds: [],
   offeringLabels: "",
+  goalIds: [],
   level: "Pipeline",
   status: "",
   revenueType: "",
@@ -112,6 +114,7 @@ function toDraft(o: Opportunity): Draft {
     customerId: o.customerId ?? "",
     offeringIds: [...o.offeringIds],
     offeringLabels: o.offeringLabels.join(", "),
+    goalIds: [...(o.goalIds ?? [])],
     level: o.level,
     status: o.status ?? "",
     revenueType: o.revenueType ?? "",
@@ -127,6 +130,7 @@ export function OpportunitiesBrowser({
   opportunities,
   offerings,
   customers,
+  goals,
   meName,
   canEdit,
   live,
@@ -134,6 +138,7 @@ export function OpportunitiesBrowser({
   opportunities: Opportunity[];
   offerings: { id: string; name: string }[];
   customers: { id: string; name: string }[];
+  goals: { id: string; name: string; year: number }[];
   meName: string;
   canEdit: boolean;
   live: boolean;
@@ -206,6 +211,7 @@ export function OpportunitiesBrowser({
           .split(",")
           .map((x) => x.trim())
           .filter(Boolean),
+        goalIds: editing.goalIds,
         level: editing.level,
         status: editing.status || undefined,
         revenueType: editing.revenueType || undefined,
@@ -660,6 +666,51 @@ export function OpportunitiesBrowser({
                         )}
                       >
                         {o.name}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </Field>
+
+            {/* WHICH GOAL THIS DEAL FEEDS (Anir, Aug 16: the straight-line
+                "must be at" "doesn't make any sense" for deals dated
+                November). With this, a goal's pacing line becomes the deals
+                that were supposed to have signed by today instead of a twelfth
+                of the target per month. */}
+            <Field
+              label="Goals this deal feeds"
+              hint="Its value counts toward the pacing line on every goal you tick, once its estimated sign date has passed."
+            >
+              <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
+                {goals.length === 0 ? (
+                  <span className="px-1 text-[12px] text-text-tertiary">
+                    No goals on the master yet.
+                  </span>
+                ) : (
+                  goals.map((g) => {
+                    const on = editing.goalIds.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            goalIds: on
+                              ? editing.goalIds.filter((x) => x !== g.id)
+                              : [...editing.goalIds, g.id],
+                          })
+                        }
+                        className={cn(
+                          "cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
+                          on
+                            ? "bg-blue-primary text-white"
+                            : "bg-surface text-text-secondary hover:text-text-primary"
+                        )}
+                      >
+                        {g.name}
+                        <span className="ml-1 opacity-70 tnum">{g.year}</span>
                       </button>
                     );
                   })

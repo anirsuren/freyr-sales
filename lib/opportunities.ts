@@ -103,6 +103,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
     estSignDate: day(r.estSignDate),
     owner: str(r.owner, 120) || undefined,
     nextSteps: str(r.nextSteps, 600) || undefined,
+    goalIds: strList(r.goalIds, 60),
     createdAt: str(r.createdAt, 40) || now,
     updatedAt: str(r.updatedAt, 40) || now,
   };
@@ -170,6 +171,7 @@ function seededMock(): OpportunitiesState {
       estSignDate: r.estSignDate ?? undefined,
       owner: undefined,
       nextSteps: r.nextSteps ?? undefined,
+      goalIds: [],
       createdAt: now,
       updatedAt: now,
     })),
@@ -199,6 +201,7 @@ export type OpportunityInput = {
   estSignDate?: string;
   owner?: string;
   nextSteps?: string;
+  goalIds?: string[];
 };
 
 export async function addOpportunity(input: OpportunityInput): Promise<Opportunity> {

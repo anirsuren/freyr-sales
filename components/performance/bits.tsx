@@ -669,6 +669,9 @@ export function PaceTimeline({
   unit,
   accent = "#0071E3",
   compact = false,
+  expected,
+  expectedBasis = "calendar",
+  expectedCount = 0,
 }: {
   title: React.ReactNode;
   verified: number;
@@ -678,6 +681,15 @@ export function PaceTimeline({
   expectedPct: number;
   unit: "currency" | "count" | "percent";
   accent?: string;
+  /**
+   * Where the goal should be by today, when the pipeline can say. Given, the
+   * marker sits on that number and the caption names its source; absent, it
+   * falls back to the calendar share, which is only a reference (Anir, Aug 16:
+   * the straight line "doesn't make any sense" for deals dated November).
+   */
+  expected?: number;
+  expectedBasis?: "pipeline" | "calendar";
+  expectedCount?: number;
   /**
    * Drawn inside a narrow drill-down column instead of a 420px hover card
    * (Anir, Aug 16: "whatever you had when I hover over it, that's the same
@@ -691,8 +703,9 @@ export function PaceTimeline({
     target > 0 ? Math.min(100, Math.max(0, (n / target) * 100)) : 0;
   const vPct = pctOf(verified);
   const aPct = pctOf(verified + awaiting);
-  const marker = Math.min(100, Math.max(0, expectedPct));
-  const mustBe = (target * marker) / 100;
+  const mustBe = expected ?? (target * Math.min(100, Math.max(0, expectedPct))) / 100;
+  const marker =
+    target > 0 ? Math.min(100, Math.max(0, (mustBe / target) * 100)) : 0;
   const ahead = verified + awaiting - mustBe;
 
   /* THE FDL VERSION TIMELINE, FOR A NUMBER (Anir, Aug 15: "look at what you
@@ -868,7 +881,13 @@ export function PaceTimeline({
                     compact ? "text-[9px]" : "text-[10.5px]"
                   )}
                 >
-                  target · {Math.round(marker)}% of the year gone
+                  {/* SAY WHERE THE LINE CAME FROM. A pacing number nobody can
+                      source is a number nobody trusts (Anir, Aug 16: "im still
+                      utterly confused where ur getting this 'must be' value
+                      from"). */}
+                  {expectedBasis === "pipeline"
+                    ? `target · ${expectedCount} ${expectedCount === 1 ? "deal" : "deals"} due by now`
+                    : `target · ${Math.round(expectedPct)}% of the year gone`}
                 </span>
               </span>
             </div>

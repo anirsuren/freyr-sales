@@ -12,6 +12,7 @@ import {
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { GroupPill } from "./bits";
+import { Avatar } from "@/components/ui/Avatar";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
@@ -161,8 +162,23 @@ export function GroupPerformanceTab({
                   />
                 )}
               </span>
-              <span className="block text-[11px] text-text-secondary">
-                {g.head} · {count} {count === 1 ? "person" : "people"}
+              {/* THE OWNER WEARS THEIR FACE AND THE CROWN (Anir, Aug 16: "i
+                  need the crown and the pfp next to the owner name"). The
+                  faces on the left are everyone in the group; this one says
+                  which of them runs it, in the same purple used everywhere
+                  else for ownership. */}
+              <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+                <Avatar name={g.head} className="h-4 w-4 shrink-0 text-[6px]" />
+                <span className="truncate">{g.head}</span>
+                <Crown
+                  size={10}
+                  strokeWidth={2.8}
+                  aria-label="Group owner"
+                  className="shrink-0 text-[color:#7C3AED]"
+                />
+                <span className="shrink-0 text-text-tertiary">
+                  · {count} {count === 1 ? "person" : "people"}
+                </span>
               </span>
             </span>
           </button>

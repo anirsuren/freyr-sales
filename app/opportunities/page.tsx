@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
 import { listOfferings } from "@/lib/offerings";
+import { readPerformance } from "@/lib/performance";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
@@ -20,9 +21,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function OpportunitiesPage() {
   await requireModuleAccess("/opportunities");
-  const [{ opportunities }, offerings, me] = await Promise.all([
+  const [{ opportunities }, offerings, perf, me] = await Promise.all([
     readOpportunities(),
     listOfferings(),
+    readPerformance(),
     getCurrentUser(),
   ]);
   const db = getDb();
@@ -33,6 +35,7 @@ export default async function OpportunitiesPage() {
       opportunities={opportunities}
       offerings={offerings.map((o) => ({ id: o.id, name: o.offering_name }))}
       customers={customers.map((c) => ({ id: c.id, name: c.company_name }))}
+      goals={perf.goals.map((g) => ({ id: g.id, name: g.name, year: g.year }))}
       meName={me.name}
       canEdit={isManagerOrAdmin(me.role)}
       live={getDataMode() === "live"}

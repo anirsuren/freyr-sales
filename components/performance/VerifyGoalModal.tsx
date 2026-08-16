@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   CheckCircle2,
   Hourglass,
@@ -20,7 +19,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
+import { EvidenceInline } from "./EvidenceViewer";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -53,7 +52,6 @@ export function VerifyGoalModal({
   run: RunOp;
   onClose: () => void;
 }) {
-  const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   if (!open || !goal) return null;
 
   const entries = goalFamilyActuals(state, goal).sort((a, b) =>
@@ -69,151 +67,149 @@ export function VerifyGoalModal({
       open
       onClose={onClose}
       title={undoing ? "Take back this sign-off" : "Verify this goal"}
-      size="wide"
+      size="workflow"
+      tall
     >
-      <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
-        {undoing ? "Removing your sign-off from" : "Signing off"}
-        <b className="text-text-primary">{goal.name}</b>
-        for {goal.year}.
-      </p>
-
-      {/* WHAT THE NUMBER IS MADE OF. */}
-      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Fact label="Target" value={goal.target > 0 ? fmtAmount(goal.unit, goal.target) : "none set"} />
-        <Fact label="Achieved" value={fmtAmount(goal.unit, total)} />
-        <Fact
-          label="Checked by a group owner"
-          value={fmtAmount(goal.unit, verified)}
-          tone="good"
-        />
-        <Fact
-          label="Still somebody's word"
-          value={fmtAmount(goal.unit, waiting)}
-          tone={waiting > 0 ? "warn" : undefined}
-        />
+      {/* THE SAME SHAPE AS REVIEW THIS CLAIM (Anir, Aug 16: "this is ugly. i
+          dont like the way this looks"). Four boxed tiles with wrapping
+          uppercase captions and a red slab under them made a decision screen
+          look like a form. One header strip carries the number, two dot rows
+          say what it is made of, and the proof is drawn rather than linked. */}
+      <div className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3">
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          style={{ background: "rgba(15,118,110,0.10)", color: "#0F766E" }}
+        >
+          <ShieldCheck size={19} strokeWidth={2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-bold text-text-primary">
+            {goal.name}
+          </span>
+          <span className="block text-[12px] text-text-secondary">
+            {undoing ? "removing your sign-off" : "signing off"} · {goal.year}
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          <b className="block text-[22px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
+            {fmtAmount(goal.unit, total)}
+          </b>
+          <span className="block text-[11px] text-text-tertiary tnum">
+            {goal.target > 0
+              ? `${Math.round(pctMet(total, goal.target))}% of ${fmtAmount(goal.unit, goal.target)}`
+              : "no target set"}
+          </span>
+        </span>
       </div>
 
-      {goal.target > 0 && (
-        <p className="mt-2 text-[12px] text-text-secondary tnum">
-          That is <b className="text-text-primary">{Math.round(pctMet(total, goal.target))}%</b>{" "}
-          of the target.
-        </p>
-      )}
+      <div className="mt-3 rounded-xl bg-white px-3 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+        <span className="flex items-center gap-2 py-[3px] text-[12px]">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:#16A34A]" />
+          <span className="min-w-0 flex-1 text-text-secondary">
+            Checked by a group owner
+          </span>
+          <b className="shrink-0 text-text-primary tnum">
+            {fmtAmount(goal.unit, verified)}
+          </b>
+        </span>
+        <span className="flex items-center gap-2 py-[3px] text-[12px]">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.28]" />
+          <span className="min-w-0 flex-1 text-text-secondary">
+            Still somebody&apos;s word
+          </span>
+          <b className="shrink-0 text-text-primary tnum">
+            {fmtAmount(goal.unit, waiting)}
+          </b>
+        </span>
+      </div>
 
       {waiting > 0 && !undoing && (
-        <p className="mt-3 flex items-start gap-2 rounded-xl bg-[rgba(194,65,12,0.08)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[color:#C2410C]">
-          <TriangleAlert size={15} strokeWidth={2.2} className="mt-0.5 shrink-0" />
+        /* One quiet line, not a slab. */
+        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+          <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
-            {fmtAmount(goal.unit, waiting)} of this has not been checked by a
-            group owner yet. You can still sign the goal off, but you are
-            vouching for numbers nobody has verified.
+            Signing off vouches for {fmtAmount(goal.unit, waiting)} nobody has
+            checked yet.
           </span>
         </p>
       )}
 
-      {/* EVERY ENTRY BEHIND IT. */}
-      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary">
         What was logged · {entries.length}{" "}
         {entries.length === 1 ? "entry" : "entries"}
       </p>
       {entries.length === 0 ? (
-        <p className="mt-2 rounded-xl border border-border-light px-3 py-4 text-center text-[12.5px] text-text-secondary">
+        <p className="mt-1.5 rounded-xl bg-surface px-3 py-4 text-center text-[12.5px] text-text-secondary">
           Nothing has been logged against this goal.
         </p>
       ) : (
-        <div className="mt-2 max-h-[260px] space-y-1.5 overflow-y-auto pr-1">
+        <div className="mt-1.5 max-h-[340px] space-y-2.5 overflow-y-auto pr-1">
           {entries.slice(0, 40).map((a) => {
             const locked = entryStatus(a) === "verified";
             return (
-              <div
-                key={a.id}
-                className="rounded-xl border border-border-light px-3 py-2.5"
-              >
-              <div className="flex flex-wrap items-center gap-2.5">
-                <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
-                {/* A NAME NEVER SQUEEZES BELOW READABLE (Aug 16, found at
-                    390px). Sharing one flex line with the customer, "Anir
-                    Suren" collapsed to "Anir …" and only a hover tooltip —
-                    useless on a phone — could tell you who it was. The name
-                    keeps a floor and the customer wraps to its own line
-                    instead. */}
-                <span className="min-w-[8.5rem] flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                  {a.person}
-                </span>
-                {a.customer && (
-                  <span className="min-w-0 basis-full truncate text-[11.5px] text-text-secondary sm:basis-auto">
-                    {a.customer}
+              <div key={a.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
+                  <span className="min-w-[7rem] flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                    {a.person}
                   </span>
-                )}
-                <span className="shrink-0 text-[11px] text-text-tertiary tnum">
-                  {a.date}
-                </span>
-                <b className="shrink-0 text-[13px] text-text-primary tnum">
-                  {fmtAmount(goal.unit, a.amount, a.currency)}
-                </b>
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold",
-                    locked
-                      ? "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]"
-                      : "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]"
+                  {a.customer && (
+                    <span className="min-w-0 truncate text-[11.5px] text-text-secondary">
+                      {a.customer}
+                    </span>
                   )}
-                >
-                  {locked ? (
-                    <>
-                      <CheckCircle2 size={11} strokeWidth={2.4} /> checked
-                    </>
-                  ) : (
-                    <>
-                      <Hourglass size={11} strokeWidth={2.4} /> waiting
-                    </>
-                  )}
-                </span>
-              </div>
-
-              {/* THE PROOF, WHICH IS THE WHOLE POINT (Anir, Aug 16: "where is
-                  the document? Where is the information I need to look at?").
-                  Signing a goal off without reading what it rests on is just
-                  clicking a button. */}
-              {a.evidence?.length ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {a.evidence.map((e) => (
-                    <button
-                      key={e.url}
-                      type="button"
-                      onClick={() => setPreview({ name: e.name, url: e.url })}
-                      title={`Open ${e.name}`}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white p-1.5 pr-3 text-left transition-colors hover:border-blue-primary"
-                    >
-                      <EvidenceThumb file={e} />
-                      <span className="min-w-0">
-                        <span className="block max-w-[220px] truncate text-[11.5px] font-semibold text-text-primary">
-                          {e.name}
-                        </span>
-                        <span className="block text-[10px] text-blue-primary">
-                          Click to read it
-                        </span>
-                      </span>
-                    </button>
-                  ))}
+                  <span className="shrink-0 text-[11px] text-text-tertiary tnum">
+                    {a.date}
+                  </span>
+                  <b className="shrink-0 text-[13px] text-text-primary tnum">
+                    {fmtAmount(goal.unit, a.amount, a.currency)}
+                  </b>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold",
+                      locked
+                        ? "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]"
+                        : "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]"
+                    )}
+                  >
+                    {locked ? (
+                      <>
+                        <CheckCircle2 size={11} strokeWidth={2.4} /> checked
+                      </>
+                    ) : (
+                      <>
+                        <Hourglass size={11} strokeWidth={2.4} /> waiting
+                      </>
+                    )}
+                  </span>
                 </div>
-              ) : (
-                <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-[color:#C2410C]">
-                  <Paperclip size={11} strokeWidth={2.4} />
-                  Nothing attached — there is no proof to read for this one.
-                </p>
-              )}
 
-              {a.note && (
-                <p className="mt-1.5 text-[11.5px] text-text-secondary">
-                  &ldquo;{a.note}&rdquo;
-                </p>
-              )}
+                {a.note && (
+                  <p className="mt-1 pl-8 text-[11.5px] text-text-secondary">
+                    &ldquo;{a.note}&rdquo;
+                  </p>
+                )}
+
+                {/* THE PROOF, ALREADY OPEN — same as Review this claim. Signing
+                    a goal off without reading what it rests on is just
+                    clicking a button. */}
+                {a.evidence?.length ? (
+                  <div className="mt-1.5 space-y-2 pl-8">
+                    {a.evidence.map((e) => (
+                      <EvidenceInline key={e.url} file={e} height={260} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 flex items-center gap-1.5 pl-8 text-[11.5px] text-[color:#C2410C]">
+                    <Paperclip size={11} strokeWidth={2.4} />
+                    Nothing attached — there is no proof to read for this one.
+                  </p>
+                )}
               </div>
             );
           })}
           {entries.length > 40 && (
-            <p className="px-1 py-1 text-[11.5px] text-text-tertiary">
+            <p className="px-1 text-[11.5px] text-text-tertiary">
               And {entries.length - 40} more.
             </p>
           )}
@@ -249,39 +245,6 @@ export function VerifyGoalModal({
           {undoing ? "Take back the sign-off" : "Sign this goal off"}
         </button>
       </div>
-      {preview && (
-        <EvidencePreview file={preview} onClose={() => setPreview(null)} />
-      )}
     </Modal>
-  );
-}
-
-function Fact({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "good" | "warn";
-}) {
-  return (
-    <div className="rounded-xl border border-border-light px-3 py-2">
-      <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-        {label}
-      </span>
-      <b
-        className={cn(
-          "mt-0.5 block text-[15px] tnum",
-          tone === "good"
-            ? "text-[color:#16A34A]"
-            : tone === "warn"
-              ? "text-[color:#C2410C]"
-              : "text-text-primary"
-        )}
-      >
-        {value}
-      </b>
-    </div>
   );
 }

@@ -45,6 +45,7 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     estSignDate: s(raw.estSignDate),
     owner: s(raw.owner),
     nextSteps: s(raw.nextSteps),
+    goalIds: list(raw.goalIds),
   };
 }
 

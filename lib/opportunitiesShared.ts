@@ -75,6 +75,16 @@ export type Opportunity = {
   estSignDate?: string;
   owner?: string;
   nextSteps?: string;
+  /**
+   * Which goals this deal is expected to feed.
+   *
+   * Without it, "must be at" can only straight-line a target across twelve
+   * months, which flags a goal red for being exactly on plan when its deals
+   * are not due until November (Anir, Aug 16: "it doesn't make any sense").
+   * With it, the pacing line becomes the deals that were supposed to have
+   * signed by today.
+   */
+  goalIds?: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -131,4 +141,53 @@ export function inDayRange(day: string | undefined, range: [number, number]): bo
   if (!day) return false;
   const t = Date.parse(day);
   return !Number.isNaN(t) && t >= range[0] && t < range[1];
+}
+
+/**
+ * WHERE A GOAL SHOULD BE BY TODAY.
+ *
+ * Anir, Aug 16: "does that make any sense" — no, it did not. "Must be at" was
+ * the target straight-lined across twelve months, so a goal whose deals are
+ * all dated November read as lagging every day until November and then landed.
+ * That made the pill meaningless: nearly everything was red in H1 and green in
+ * Q4, so nobody looked at it.
+ *
+ * The pipeline already knows better. Every opportunity carries an estimated
+ * sign date, so the honest pacing line is the deals that were SUPPOSED to have
+ * signed by now — nothing else.
+ *
+ * Falls back to the straight line only when a goal has no dated deals behind
+ * it, which is the case Suren named: "not all goals can be connected to deals
+ * and opportunities, some goals may not be." A meetings-held goal has no
+ * pipeline, so a calendar share is the best available reference — and the
+ * basis is returned so the UI can say which one it used rather than passing
+ * off a guess as a schedule.
+ */
+export function expectedByNow(
+  goalId: string,
+  target: number,
+  opportunities: Opportunity[],
+  elapsedFraction: number,
+  now = new Date()
+): { expected: number; basis: "pipeline" | "calendar"; dueCount: number } {
+  const today = now.getTime();
+  const mine = opportunities.filter((o) => (o.goalIds ?? []).includes(goalId));
+  const dated = mine.filter((o) => {
+    if (!o.estSignDate) return false;
+    const t = Date.parse(o.estSignDate);
+    return !Number.isNaN(t);
+  });
+  if (dated.length === 0) {
+    return {
+      expected: target * elapsedFraction,
+      basis: "calendar",
+      dueCount: 0,
+    };
+  }
+  const due = dated.filter((o) => Date.parse(o.estSignDate!) <= today);
+  return {
+    expected: due.reduce((sum, o) => sum + o.value, 0),
+    basis: "pipeline",
+    dueCount: due.length,
+  };
 }
