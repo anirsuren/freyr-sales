@@ -3435,10 +3435,16 @@ function SubgoalEditorFields({
                   );
                 })
               )}
-              <select
+              {/* NOT A RAW <select> (Anir, Aug 16: "the fuck is this
+                  dropdown"). It was the browser's own menu — OS styling, no
+                  group pill, no owner, a tick beside the placeholder — sitting
+                  in a form where every other picker is the app's. */}
+              <ColorSelect
                 value=""
-                onChange={(e) => {
-                  const groupId = e.target.value;
+                ariaLabel="Add a group to this subgoal"
+                collapsible={false}
+                className="w-full"
+                onChange={(groupId) => {
                   if (!groupId) return;
                   void run(
                     {
@@ -3450,21 +3456,29 @@ function SubgoalEditorFields({
                     "Group added to this slice"
                   );
                 }}
-                aria-label="Add a group to this subgoal"
-                className="h-[34px] w-full cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[12.5px] text-text-primary outline-none focus:border-blue-primary"
-              >
-                <option value="">Add a group…</option>
-                {state.groups
-                  .filter(
-                    (g) =>
-                      !(editing.groupAssignments ?? []).some((a) => a.groupId === g.id)
-                  )
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} · {new Set([g.head, ...g.members].map((m) => m.trim())).size} people
-                    </option>
-                  ))}
-              </select>
+                options={[
+                  { value: "", label: "Add a group…", color: "#8E98A8" },
+                  ...state.groups
+                    .filter(
+                      (g) =>
+                        !(editing.groupAssignments ?? []).some(
+                          (a) => a.groupId === g.id
+                        )
+                    )
+                    .map((g) => {
+                      const size = new Set(
+                        [g.head, ...g.members].map((m) => m.trim())
+                      ).size;
+                      return {
+                        value: g.id,
+                        label: g.name,
+                        color: "#0071E3",
+                        icon: UsersRound,
+                        description: `${g.head} · ${size} ${size === 1 ? "person" : "people"}`,
+                      };
+                    }),
+                ]}
+              />
             </div>
           </section>
         )}
@@ -4137,19 +4151,22 @@ function LogActualModal({
                   className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
                 />
               </span>
+              {/* Same reason as the group picker above: no raw browser menus
+                  in a form the rest of which is the app's own. */}
               {unit === "currency" && (
-                <select
+                <ColorSelect
                   value={entryCurrency}
-                  onChange={(e) => setEntryCurrency(e.target.value as CurrencyCode)}
-                  aria-label="Currency this was signed in"
-                  className="h-[40px] shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-subtle"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.symbol.trim()} {c.code}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="Currency this was signed in"
+                  collapsible={false}
+                  minWidth={120}
+                  className="shrink-0"
+                  onChange={(v) => setEntryCurrency(v as CurrencyCode)}
+                  options={CURRENCIES.map((c) => ({
+                    value: c.code,
+                    label: `${c.symbol.trim()} ${c.code}`,
+                    color: "#0071E3",
+                  }))}
+                />
               )}
             </div>
             {/* Feedback is NOT gated on a goal being picked: typing "dd" in

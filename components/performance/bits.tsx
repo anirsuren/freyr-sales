@@ -702,10 +702,16 @@ export function PaceTimeline({
    * to get to").
    *
    * Same anatomy as that timeline: every point on the track is a dot, its
-   * label hangs above it in its own lane, and the ends of the track are
-   * labelled underneath. No black rule — the calendar is a dot like everything
-   * else, and the end of the track carries one too, so the last point does not
-   * look unfinished. */
+   * label sits centred over that dot in its own lane, and the ends of the
+   * track are labelled underneath. No black rule — the calendar is a dot like
+   * everything else, and the end of the track carries one too, so the last
+   * point does not look unfinished.
+   *
+   * NO LEADER LINES (Anir, Aug 16: "the lines r still weird", after three goes
+   * at making them behave). A 5px stub between a label and the dot it belongs
+   * to reads as a stray mark, and when the dot and the stub met it looked like
+   * the line was stabbing the dot. The label is centred on its dot, which says
+   * the same thing with nothing to misalign. */
   const LANE = compact ? 16 : 19;
   const clamp = (n: number) => Math.min(93, Math.max(7, n));
   /**
@@ -731,7 +737,8 @@ export function PaceTimeline({
    * together, and the layout no longer jumps between two arrangements.
    */
   /** Track thickness, and how far the biggest dot reaches past its centre. */
-  const LEADER = LANE - 11;
+  /** Breathing room between the track and a label sitting under it. */
+  const GAP = 6;
   /** Height of a label line, so its lane can be reserved exactly. */
   const LABEL = compact ? 14 : 17;
 
@@ -806,10 +813,10 @@ export function PaceTimeline({
                 Absolutely positioned over the end-label row it landed on top
                 of "$0" and "$900K", and the space reserved for it opened a
                 dead band underneath them. */}
-            <div className="relative" style={{ height: LEADER + LABEL }}>
+            <div className="relative" style={{ height: GAP + LABEL }}>
               <span
-                className="absolute flex -translate-x-1/2 flex-col-reverse items-center"
-                style={{ left: `${clamp(aPct)}%`, top: 0 }}
+                className="absolute -translate-x-1/2"
+                style={{ left: `${clamp(aPct)}%`, top: GAP }}
               >
                 <span
                   className={cn(
@@ -820,11 +827,6 @@ export function PaceTimeline({
                 >
                   {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
                 </span>
-                <span
-                  className="w-px"
-                  style={{ height: LEADER, background: accent, opacity: 0.35 }}
-                  aria-hidden="true"
-                />
               </span>
             </div>
             {/* WHAT EACH END OF THE TRACK IS WORTH. */}

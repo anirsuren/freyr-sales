@@ -104,9 +104,9 @@ CREATING A GOAL. Goal Master → "New goal". Fields: "Goal name", "Goal type",
 "Counted in" (Money ($) / Count (#) / Percentage (%)), "How it adds up"
 (Running total or Latest value), "Year", and the annual target. Save with "Add
 to the goal master". A goal only appears on Org performance once its Tracking
-switch is on: the column is headed "Tracking" and the pill reads "Tracking" or
-"Not tracked". The goal editor has the same switch as "Track on Org
-performance".
+switch is on. That switch is on the goal's own row in Goal Master, in the
+column headed "Tracking", where the pill reads "Tracking" or "Not tracked"; the
+goal editor carries the same switch worded "Track on Org performance".
 
 SUBGOALS. Open a goal and use "Add subgoal" to split it when different teams
 carry different pieces of the same goal.
@@ -214,10 +214,17 @@ and a zip opens as a list you can click into. The tab has "Search materials…",
 "All formats", "All buyer's journey stages", "All access levels", and a
 Folders / All files switch. Hovering the materials count peeks inside.
 
+THE THREE ACCESS LEVELS on a material, set by "Who can view this file?".
+"Client Facing" and "Internal Only" are both visible to everyone in the
+workspace; they label how the file may be used outside, they are not a lock.
+"Freyr AI Only" IS a lock: the assistant reads that file and answers from it,
+but only a recorded owner of that offering can see the row or open it, and the
+assistant never names it or its filename to anyone else.
+
 ADDING A FILE. The + on the materials section ("Add material") opens "Add
 sales materials". Pick the "File format", a "Folder" (required), the "Buyer's
-journey stage", "Who can view this file?" (Client Facing, Internal Only or
-Freyr AI Only) and the "Division", then drop files on "Drop files or a whole
+journey stage", "Who can view this file?" and the "Division", then drop files
+on "Drop files or a whole
 folder here" or use "Or paste a link". Finish with "Add material" / "Add n
 materials". The same + also offers "Create a folder". Renaming a folder (the
 pencil, "Rename this folder" → "Save name") is workspace-admin only. Deleting
@@ -227,7 +234,16 @@ rights: a workspace admin, or an owner of that offering. Everyone else sees
 
 COMPONENTS ON AN OFFERING. The "Components" tab lists the FDL components inside
 the package; "Connect component" adds one and "Disconnect from this offering"
-takes it out.`,
+takes it out.
+
+EDITING OR DELETING THE OFFERING ITSELF. The pencil on the header opens the
+edit form, which is sectioned into "The basics", "Offering brief & service
+cards", "Who it's for", "Where it's available" and "Sales materials". Nothing
+saves until you press "Save changes", and leaving with unsaved work asks first.
+Deleting the whole offering is at the foot of that same edit form: "Delete
+offering", which then asks "Delete this offering? This can't be undone." with
+"Delete" and "Keep". Same edit rights as everything else: a workspace admin, or
+an owner of that offering.`,
   },
   {
     routes: ["/customers"],
@@ -471,9 +487,12 @@ role picker offering Rep, Manager and Admin. Changing a role opens a
 confirmation, "Give them more access?" or "Reduce their access?", which spells
 out what that role can do before you press "Make {name} a {role}". Nothing is
 sent until you confirm, and the server refuses a role change from anyone who is
-not an admin. There is no remove or suspend button on this page, and no invite
-button either — inviting is done from the Team page. Anyone with a
-@freyrsolutions.com email joins automatically with no invite.
+not an admin. The role picker is the ONLY control here: there is no button to
+remove, delete or suspend a member anywhere in the app, so taking someone out
+of the workspace is not something this app does — a suspended person shows a
+"Suspended" badge, but nothing here sets it. There is no invite button here
+either; inviting is done from the Team page. Anyone with a @freyrsolutions.com
+email joins automatically with no invite.
 
 USER GROUPS is where departments are created. "New group" opens "New user
 group" and asks for a "Group name", a "Group owner" (the person who runs that
@@ -493,8 +512,9 @@ put them in the group.`,
       "integration", "tour", "onboarding", "access request", "linkedin profile"],
     title: "Settings, Notifications and the product tour",
     body: `SETTINGS (/settings) is a rail of sections: "Workspace", "Profile",
-"Team", "Notifications", "Integrations" and "Access". Notifications and
-Integrations are hidden in the released workspace.
+"Team", "Notifications", "Integrations" and "Access". The released workspace
+does not show the Notifications and Integrations sections yet, so say they are
+not there rather than describing them, unless the person is in progress mode.
 
   Workspace — "Data view", the same Ready now / In progress switch as the
   account menu, worded here as "Real mode" and "Mock mode"; and "Guided product

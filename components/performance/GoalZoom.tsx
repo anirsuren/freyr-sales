@@ -581,7 +581,7 @@ export function GoalZoom({
                     pick a period
                   </span>
                 </div>
-                <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
+                <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
                   {rows.map((r, i) => {
                     const active = i === selIdx;
                     const shown = openPeriod === i;
@@ -712,7 +712,7 @@ export function GoalZoom({
                     {row && row.awaiting > 0 ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting` : ""}
                   </span>
                 </div>
-                <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
+                <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
                   {inPeriodGroups.length === 0 ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       No groups yet. Once groups exist, this box lists every
@@ -1034,7 +1034,7 @@ export function GoalZoom({
                     {selGroup ? fmtAmount(goal.unit, selGroup.verified) : ""}
                   </span>
                 </div>
-                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
+                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
                   {!selGroup ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       Pick a group in box 2 and its people line up here for the
