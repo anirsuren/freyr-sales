@@ -1504,3 +1504,45 @@ input {
     animation: none;
   }
 }
+
+/* THE BAR ITSELF GLOWS, not a box around it (Anir, Aug 16: "I'm not talking
+   about a basic thing where you highlight the box. I mean, the actual part of
+   the progress bar shines or something, or pops out or something glows").
+   A ring of the bar's own colour bleeding outward, plus a sheen travelling
+   across the filled part, so the eye lands on the QUANTITY being pointed at
+   rather than on its container. */
+.bar-lit {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 0 10px 1px var(--bar-glow, rgba(0, 113, 227, 0.75)),
+    0 0 20px 3px var(--bar-glow, rgba(0, 113, 227, 0.35));
+  filter: saturate(1.25) brightness(1.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.bar-lit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.75) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: barSheen 1.15s ease-in-out infinite;
+}
+
+@keyframes barSheen {
+  to {
+    transform: translateX(200%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-lit::after {
+    animation: none;
+  }
+}

@@ -756,12 +756,17 @@ function MiniBar({
           "h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
           // Glow when its bar in the chart is hovered, so the eye can carry a
           // number from the chart to its row without counting columns.
-          lit && "h-2.5 w-28 ring-2 ring-blue-primary/35"
+          // The container stays put; the FILL is what lights up.
+          lit && "h-2 w-28"
         )}
       >
         <span
-          className="block h-full rounded-full"
-          style={{ width: `${target > 0 ? pct : 0}%`, background: color }}
+          className={cn("block h-full rounded-full", lit && "bar-lit")}
+          style={{
+            width: `${target > 0 ? pct : 0}%`,
+            background: color,
+            ["--bar-glow" as string]: `${color}BF`,
+          }}
         />
       </span>
       <span className="text-[12px] font-semibold tnum" style={{ color }}>
@@ -849,7 +854,7 @@ function GoalRows({
           // down the left, a tinted header, and a hard edge above it so the
           // goal before it clearly ends.
           open &&
-            "bg-surface [box-shadow:inset_4px_0_0_0_var(--goal-accent)] border-t-2 border-t-[color:var(--goal-accent)]",
+            "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]",
           dimmed && "opacity-45 hover:opacity-100",
           linkedIndex === index && "bg-blue-light/40"
         )}
@@ -997,16 +1002,10 @@ function GoalRows({
               row, and the top padding is gone so the two touch. */}
           <td
             colSpan={7}
-            className="border-b-2 bg-surface/40 px-4 pb-4 pt-0"
-            style={{ borderBottomColor: typeMeta(goal.type).color }}
+            className="px-4 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+            style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
           >
-            <div
-              className="tab-panel space-y-3 overflow-hidden rounded-xl border-l-[3px] py-3 pl-3.5"
-              style={{
-                borderColor: typeMeta(goal.type).color,
-                background: `${typeMeta(goal.type).color}08`,
-              }}
-            >
+            <div className="tab-panel space-y-3 py-3 pl-3.5">
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link

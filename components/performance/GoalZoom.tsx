@@ -602,11 +602,17 @@ export function GoalZoom({
                           )}
                         >
                           <span
-                            className="h-full bg-[#16A34A]"
-                            style={{ width: `${Math.min(100, (r.verified / scaleBase) * 100)}%` }}
+                            className={cn("h-full bg-[#16A34A]", lit && "bar-lit")}
+                            style={{
+                              width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
+                              ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
+                            }}
                           />
                           <span
-                            className="h-full bg-blue-primary opacity-[0.28]"
+                            className={cn(
+                              "h-full bg-blue-primary opacity-[0.28]",
+                              lit && "bar-lit"
+                            )}
                             style={{ width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%` }}
                           />
                         </span>
@@ -722,7 +728,10 @@ export function GoalZoom({
                           {(r2.verified > 0 || r2.awaiting > 0) && (
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               <span
-                                className="block h-full bg-blue-primary"
+                                className={cn(
+                                  "block h-full bg-blue-primary",
+                                  lit && "bar-lit"
+                                )}
                                 style={{ width: `${Math.min(100, (r2.verified / maxG) * 100)}%` }}
                               />
                               {/* WAITING IS THE SAME BLUE, WASHED OUT — not
@@ -887,7 +896,10 @@ export function GoalZoom({
                         {(p.verified > 0 || p.awaiting > 0) && (
                           <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                             <span
-                              className="block h-full bg-blue-primary"
+                              className={cn(
+                                "block h-full bg-blue-primary",
+                                lit && "bar-lit"
+                              )}
                               style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
                             />
                             <span
