@@ -15,31 +15,65 @@ export function SnippetLibrary() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [query, setQuery] = useState("");
+  /** True when the last load failed, so an error is not drawn as "none yet". */
+  const [loadFailed, setLoadFailed] = useState(false);
 
+  /**
+   * A REJECTED RENAME USED TO REPORT SUCCESS (found Aug 16, forcing the PATCH
+   * to 404). Only a thrown request was caught, so any answer the server gave —
+   * 404 "Snippet not found", 403 without workspace access — still toasted
+   * "Snippet renamed", and the optimistic title stayed on screen until a
+   * reload put the old one back. `remove` below already checks the response;
+   * this simply does the same, and puts the previous title back when the
+   * server says no.
+   */
   async function rename(id: string) {
     const title = draftTitle.trim();
     setEditing(null);
     if (!title) return;
+    const previous = snippets?.find((x) => x.id === id)?.title ?? "";
     setSnippets((s) =>
       s ? s.map((x) => (x.id === id ? { ...x, title } : x)) : s
     );
+    const undo = () =>
+      setSnippets((s) =>
+        s ? s.map((x) => (x.id === id ? { ...x, title: previous } : x)) : s
+      );
     try {
-      await fetch("/api/agent/snippets", {
+      const res = await fetch("/api/agent/snippets", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, title }),
       });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        undo();
+        toast(data?.error || "Couldn't rename the snippet", "error");
+        return;
+      }
       toast("Snippet renamed");
     } catch {
+      undo();
       toast("Couldn't rename the snippet", "error");
     }
   }
 
+  /* A load that failed is not an empty library — see the empty state below. */
   useEffect(() => {
     fetch("/api/agent/snippets")
-      .then((r) => r.json())
-      .then((d) => setSnippets(d.snippets || []))
-      .catch(() => setSnippets([]));
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (!r.ok || !Array.isArray(d?.snippets)) throw new Error("load failed");
+        return d.snippets as DraftSnippet[];
+      })
+      .then((list) => {
+        setLoadFailed(false);
+        setSnippets(list);
+      })
+      .catch(() => {
+        setLoadFailed(true);
+        setSnippets([]);
+      });
   }, []);
 
   async function remove(id: string) {
@@ -97,7 +131,12 @@ export function SnippetLibrary() {
         </span>
       </div>
 
-      {snippets.length === 0 ? (
+      {loadFailed ? (
+        <p className="text-[13px] text-text-secondary">
+          Your snippets could not be loaded, so this is not an empty library.
+          Reload the page to try again.
+        </p>
+      ) : snippets.length === 0 ? (
         <p className="text-[13px] text-text-secondary">
           No saved snippets yet, in a play, edit a draft and hit “Save as
           snippet” to reuse it later.
