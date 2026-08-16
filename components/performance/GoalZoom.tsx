@@ -75,6 +75,28 @@ const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
  */
 type Granularity = "weeks" | "months" | "quarters" | "halves" | "years";
 
+/**
+ * A hover card that can be switched off without unmounting what it wraps.
+ * Rendering `<HoverCard>` conditionally would remount the button underneath it
+ * on every open/close, which drops the click that caused the change.
+ */
+function ConditionalHover({
+  on,
+  content,
+  children,
+}: {
+  on: boolean;
+  content: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (!on) return <>{children}</>;
+  return (
+    <HoverCard side="bottom" width={420} delayMs={0} content={content}>
+      {children}
+    </HoverCard>
+  );
+}
+
 function inRange(a: PerfActual, [s, e]: [number, number]): boolean {
   const t = Date.parse(a.date);
   return !Number.isNaN(t) && t >= s && t < e;
@@ -499,8 +521,12 @@ export function GoalZoom({
           const maxG = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
+          /* NOTHING IS OPEN UNTIL YOU OPEN IT (Anir, Aug 16: "I still can't
+             even click it"). Falling back to the first group meant one row was
+             always drawn open, and clicking that row did nothing at all —
+             there was no state left for the click to change. */
           const selGroup =
-            inPeriodGroups.find((r2) => r2.group.id === openGroup) ?? inPeriodGroups[0] ?? null;
+            inPeriodGroups.find((r2) => r2.group.id === openGroup) ?? null;
           const groupPeople = selGroup
             ? [...new Set([selGroup.group.head, ...selGroup.group.members].map((n) => n.trim()))]
                 .map((name) => ({
@@ -676,10 +702,15 @@ export function GoalZoom({
                         </button>
                         ) : (
                         <Fragment key={r2.group.id}>
-                        <HoverCard
-                          side="bottom"
-                          width={420}
-                          delayMs={0}
+                        {/* THE HOVER CARD IS FOR THE CLOSED ROW ONLY (Anir,
+                            Aug 16: "when I'm hovering over the dropdown, when
+                            it's not dropped down, then it can do the hover
+                            thing, not when I'm already there. It has nothing
+                            else to show me"). Open the row and the same figures
+                            are already on screen, so the card was covering the
+                            thing you had just asked to see. */}
+                        <ConditionalHover
+                          on={!active}
                           content={
                             <PaceTimeline
                               title={`${r2.group.name} · ${row?.label ?? ""}`}
@@ -693,7 +724,10 @@ export function GoalZoom({
                         >
                         <button
                           type="button"
-                          onClick={() => setOpenGroup(r2.group.id)}
+                          aria-expanded={active}
+                          onClick={() =>
+                            setOpenGroup(active ? null : r2.group.id)
+                          }
                           className={cn(
                             "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
                             active
@@ -766,9 +800,64 @@ export function GoalZoom({
                             </span>
                           )}
                         </button>
-                        </HoverCard>
+                        </ConditionalHover>
                         {active && (
                           <div className="tab-panel ml-3 mt-0.5 space-y-1 border-l-2 border-blue-primary/25 py-1 pl-2.5">
+                            {/* WHAT THE HOVER CARD USED TO SAY, SAID IN PLACE
+                                (Anir, Aug 16: "all of this data should show up
+                                when I draw the dropdown"). Not the PaceTimeline
+                                itself: that is built for a 420px card and its
+                                right-hand numbers fall off the edge of this
+                                column. Same four figures, stacked. */}
+                            {(() => {
+                              const mustBe =
+                                (yearTarget * yearElapsed(goal.year) * 100) / 100;
+                              const gap = r2.verified + r2.awaiting - mustBe;
+                              const facts: [string, string, string?][] = [
+                                ["Verified, counts now", fmtAmount(goal.unit, r2.verified), "dot"],
+                                ["Claimed, not checked yet", fmtAmount(goal.unit, r2.awaiting), "faint"],
+                              ];
+                              if (yearTarget > 0) {
+                                facts.push([
+                                  "Should be at by now",
+                                  fmtAmount(goal.unit, mustBe),
+                                ]);
+                                facts.push([
+                                  gap >= 0 ? "Ahead of the calendar by" : "Behind the calendar by",
+                                  fmtAmount(goal.unit, Math.abs(gap)),
+                                ]);
+                              }
+                              return (
+                                <div className="rounded-md border border-border-light bg-white px-2.5 py-2">
+                                  {facts.map(([label, value, kind]) => (
+                                    <span
+                                      key={label}
+                                      className="flex items-center gap-2 py-[3px] text-[10px]"
+                                    >
+                                      {kind && (
+                                        <span
+                                          className={cn(
+                                            "h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary",
+                                            kind === "faint" && "opacity-[0.28]"
+                                          )}
+                                        />
+                                      )}
+                                      <span
+                                        className={cn(
+                                          "min-w-0 flex-1 truncate text-text-secondary",
+                                          !kind && "pl-[14px]"
+                                        )}
+                                      >
+                                        {label}
+                                      </span>
+                                      <b className="shrink-0 text-text-primary tnum">
+                                        {value}
+                                      </b>
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                             {[
                               ...new Set(
                                 [r2.group.head, ...r2.group.members]
