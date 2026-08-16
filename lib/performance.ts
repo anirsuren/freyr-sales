@@ -832,7 +832,9 @@ export async function setRates(input: {
 export async function removeActual(actualId: string): Promise<void> {
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === actualId);
-  if (entry && (entry.status ?? "verified") === "verified" && entry.verifiedBy) {
+  // Same rule: an entry that is not there cannot be deleted successfully.
+  if (!entry) throw new Error("That entry is gone. Refresh and retry.");
+  if ((entry.status ?? "verified") === "verified" && entry.verifiedBy) {
     // Verified means LOCKED (Suren, Aug 13: "once she verifies and then locks
     // it, that's all"). The group owner sends it back first if it is wrong.
     throw new Error(
@@ -1101,6 +1103,11 @@ export async function updateGroup(input: {
 
 export async function removeGroup(groupId: string): Promise<void> {
   const state = await readRow();
+  // Deleting nothing is not success — the last two ops on this row that
+  // filtered-and-wrote both reported removals that never happened.
+  if (!state.groups.some((g) => g.id === groupId)) {
+    throw new Error("That group is gone. Refresh and retry.");
+  }
   state.groups = state.groups.filter((g) => g.id !== groupId);
   await writeRow(state);
 }
