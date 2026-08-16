@@ -655,6 +655,9 @@ function MasterTab({
    *  (Anir, Aug 12: "these should be drop-downs instead of pop-ups"). The
    *  cards view keeps the popup, where an inline expansion has no room. */
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  /** Which row is asking "remove this goal?" — inline, never a dialog over the
+   *  list, so the row you are deleting stays visible while you decide. */
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   /** Categories the reader has folded shut in the Goal Master table. Local to
    *  the session and to this browser: hiding Financial to get to Lead
    *  Generation is a way of looking, not a change to anybody's plan. */
@@ -913,8 +916,8 @@ function MasterTab({
                             <col style={{ width: "12%" }} />
                             <col style={{ width: "9%" }} />
                             <col style={{ width: "10%" }} />
-                            <col style={{ width: "16%" }} />
-                            <col style={{ width: "6%" }} />
+                            <col style={{ width: "13%" }} />
+                            <col style={{ width: "12%" }} />
                           </colgroup>
                           <thead>
                             <tr className="border-b border-border-light">
@@ -928,7 +931,16 @@ function MasterTab({
                                   </th>
                                 )
                               )}
-                              <th aria-hidden />
+                              {/* EVERY ACTION IN ONE COLUMN, HEADED (Anir,
+                                  Aug 15: "just have an actions column at the
+                                  end and then put all the actions there. Just
+                                  make sure it's aligned properly"). Edit and
+                                  delete used to be buried in a strip inside
+                                  the unfolded panel, which repeated the
+                                  Tracking toggle already on the row. */}
+                              <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                Actions
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-border-light">
@@ -941,9 +953,17 @@ function MasterTab({
                         setExpandedId(expandedId === g.id ? null : g.id)
                       }
                       className={cn(
-                        "cursor-pointer transition-colors",
-                        expandedId === g.id ? "bg-blue-light/40" : "hover:bg-surface"
+                        "cursor-pointer transition-all",
+                        // The open goal gets a rail in its own type colour and
+                        // a hard edge above it; the rest step back, so one goal
+                        // is obviously the subject (Anir, Aug 15: "some
+                        // separation between goals would be nice").
+                        expandedId === g.id
+                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                          : "hover:bg-surface",
+                        expandedId !== null && expandedId !== g.id && "opacity-45 hover:opacity-100"
                       )}
+                      style={{ ["--goal-accent" as string]: typeMeta(g.type).color }}
                     >
                       <td className="px-4 py-4">
                         <span className="flex items-center gap-2.5">
@@ -1002,8 +1022,38 @@ function MasterTab({
                       <td className="px-4 py-4">
                         <PickedPill goal={g} live={live} run={run} />
                       </td>
-                      <td className="w-16 py-4 pr-4">
-                        <span className="flex items-center justify-end gap-1">
+                      <td className="py-4 pl-2 pr-4">
+                        <span className="flex items-center justify-end gap-0.5">
+                          {live && (
+                            <>
+                              <button
+                                type="button"
+                                title="Edit this goal: name, type, year, target"
+                                aria-label={`Edit ${g.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEditGoal(g);
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <Pencil size={13} strokeWidth={2.2} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Remove this goal from the master"
+                                aria-label={`Remove ${g.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmRemoveId(
+                                    confirmRemoveId === g.id ? null : g.id
+                                  );
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                              >
+                                <Trash2 size={13} strokeWidth={2.2} />
+                              </button>
+                            </>
+                          )}
                           {/* the same goal, in the popup form instead of the
                               inline unfold (Anir, Aug 12: "add the option to
                               have it in a pop-up form if they want to") */}
@@ -1023,16 +1073,47 @@ function MasterTab({
                             size={15}
                             strokeWidth={2.2}
                             className={cn(
-                              "text-text-tertiary transition-transform",
+                              "ml-0.5 text-text-tertiary transition-transform",
                               expandedId === g.id && "rotate-180 text-blue-primary"
                             )}
                           />
                         </span>
+                        {confirmRemoveId === g.id && (
+                          <span
+                            className="mt-1.5 flex items-center justify-end gap-1.5 whitespace-nowrap text-[11px]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmRemoveId(null);
+                                void run(
+                                  { op: "remove-goal", goalId: g.id },
+                                  `${g.name} removed from the master`
+                                );
+                              }}
+                              className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                            >
+                              Remove
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRemoveId(null)}
+                              className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                            >
+                              Keep
+                            </button>
+                          </span>
+                        )}
                       </td>
                     </tr>
                     {expandedId === g.id && (
                       <tr className="!border-t-0 bg-white">
-                        <td colSpan={7} className="px-4 pb-6 pt-2">
+                        <td
+                          colSpan={7}
+                          className="px-4 pb-6 pt-2 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                          style={{ ["--goal-accent" as string]: typeMeta(g.type).color }}
+                        >
                           <div className="tab-panel pt-1">
                             <GoalPopupBody
                               hostedInPopup={false}
@@ -1165,11 +1246,13 @@ function GroupSplitPanel({
   goal,
   group,
   assignment,
+  state,
   live,
   busy,
   run,
 }: {
   goal: PrimaryGoal;
+  state: PerformanceState;
   group: PerformanceState["groups"][number];
   assignment: NonNullable<PrimaryGoal["groupAssignments"]>[number];
   live: boolean;
@@ -1189,6 +1272,16 @@ function GroupSplitPanel({
   const off = roster.filter((m) => excluded.has(m.toLowerCase()));
   const targetOf = (person: string) =>
     (goal.assignments ?? []).find((a) => a.person === person)?.target ?? 0;
+  /** What this person has actually logged against the goal, so the row says
+   *  something even before anybody sets a target. */
+  const loggedBy = (person: string) =>
+    (state.actuals ?? [])
+      .filter(
+        (a) =>
+          a.person === person &&
+          (a.goalId === goal.id || (goal.componentGoalIds ?? []).includes(a.goalId))
+      )
+      .reduce((sum, a) => sum + a.amount, 0);
   const split = on.reduce((sum, m) => sum + targetOf(m), 0);
   const groupTarget = assignment.target;
   const left = groupTarget - split;
@@ -1291,18 +1384,31 @@ function GroupSplitPanel({
                 className="shrink-0 text-[color:#7C3AED]"
               />
             )}
+            <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
+              {loggedBy(m) > 0 ? (
+                <>
+                  <b className="text-text-primary">{fmtAmount(goal.unit, loggedBy(m))}</b>{" "}
+                  logged
+                </>
+              ) : (
+                <span className="text-text-tertiary">nothing logged yet</span>
+              )}
+            </span>
             {live ? (
-              <input
-                value={draft[m] ?? (targetOf(m) > 0 ? String(targetOf(m)) : "")}
-                onChange={(e) => setDraft((d) => ({ ...d, [m]: e.target.value }))}
-                onBlur={() => void saveTarget(m)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void saveTarget(m);
-                }}
-                placeholder="their target"
-                aria-label={`${m}'s target on ${goal.name}`}
-                className="h-[30px] w-[120px] shrink-0 rounded-lg border border-border-light bg-white px-2 text-right text-[12px] outline-none transition-colors focus:border-blue-primary tnum"
-              />
+              <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-tertiary">
+                target
+                <input
+                  value={draft[m] ?? (targetOf(m) > 0 ? String(targetOf(m)) : "")}
+                  onChange={(e) => setDraft((d) => ({ ...d, [m]: e.target.value }))}
+                  onBlur={() => void saveTarget(m)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void saveTarget(m);
+                  }}
+                  placeholder="—"
+                  aria-label={`${m}'s target on ${goal.name}`}
+                  className="h-[30px] w-[96px] rounded-lg border border-border-light bg-white px-2 text-right text-[12px] text-text-primary outline-none transition-colors focus:border-blue-primary tnum"
+                />
+              </label>
             ) : (
               <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
                 {targetOf(m) > 0 ? fmtAmount(goal.unit, targetOf(m)) : "no target"}
@@ -1834,6 +1940,7 @@ function GoalPopupBody({
 
   return (
     <div>
+      {!hostedInPopup ? null : (
       <div
         className={cn(
           "flex flex-wrap items-center gap-3 rounded-xl bg-[var(--surface)] p-3.5",
@@ -1903,6 +2010,7 @@ function GoalPopupBody({
           )}
         </span>
       </div>
+      )}
 
       {splitSubs.length >= 2 && (
         <div className="mt-3 rounded-xl border border-border-light bg-white p-3.5">
@@ -1973,7 +2081,8 @@ function GoalPopupBody({
         confirmLabel="Remove subgoal"
       />
 
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Subgoals
           <InfoHint text={"A subgoal splits the goal across teams, like Growth Accounts vs Focused Account AMR.\nClick a row to open it and edit its target, owners and people right here."} />
@@ -1992,10 +2101,7 @@ function GoalPopupBody({
         )}
       </div>
       {goal.subgoals.length === 0 && (
-        /* One line, not a slab. Three empty sections stacked as centred grey
-           boxes was most of what made this panel unreadable (Anir, Aug 15:
-           "this is the ugliest thing I've ever seen as well"). */
-        <p className="mt-1.5 text-[12.5px] text-text-secondary">
+        <p className="mt-3 text-center text-[12.5px] text-text-secondary">
           None yet. Split this goal when different teams carry different pieces
           of it.
         </p>
@@ -2199,7 +2305,10 @@ function GoalPopupBody({
           neither is forced to match — the same way a subgoal and its people
           already work. Achievement is never entered here: a group's number is
           always its people's, added up. */}
-      <div className="mt-4 flex items-center justify-between gap-2">
+      </div>
+
+      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned groups
           <InfoHint text={"This goal handed to a whole department, with a target for the group.\nIts people keep their own targets; nobody logs a number on the group itself, because a group's achievement is its people's added up."} />
@@ -2218,7 +2327,7 @@ function GoalPopupBody({
         )}
       </div>
       {groupRows.length === 0 ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+        <div className="mt-3 flex flex-col items-center gap-2.5">
           <p className="text-[12.5px] text-text-secondary">
             No department carries this goal yet.
           </p>
@@ -2244,19 +2353,27 @@ function GoalPopupBody({
               key={assignment.groupId}
               className="overflow-hidden rounded-xl bg-surface"
             >
-            <div className="flex flex-wrap items-center gap-2.5 px-3 py-2">
-              {/* The row unfolds, like a group row on Admin. */}
-              <button
-                type="button"
-                onClick={() =>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={openGroupRow === assignment.groupId}
+              aria-label={`Show who is in ${group?.name ?? "this group"}`}
+              onClick={() =>
+                setOpenGroupRow(
+                  openGroupRow === assignment.groupId ? null : assignment.groupId
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
                   setOpenGroupRow(
                     openGroupRow === assignment.groupId ? null : assignment.groupId
-                  )
+                  );
                 }
-                aria-expanded={openGroupRow === assignment.groupId}
-                aria-label={`Show who is in ${group?.name ?? "this group"}`}
-                className="flex shrink-0 cursor-pointer items-center"
-              >
+              }}
+              className="flex cursor-pointer flex-wrap items-center gap-2.5 px-3 py-2 transition-colors hover:bg-blue-light/40"
+            >
+              <span className="flex shrink-0 items-center">
                 <ChevronDown
                   size={15}
                   strokeWidth={2.2}
@@ -2266,7 +2383,7 @@ function GoalPopupBody({
                       "rotate-180 text-blue-primary"
                   )}
                 />
-              </button>
+              </span>
               <GroupPill name={group?.name ?? "Group removed"} />
               {/* WHO IS ACTUALLY IN IT (Anir, Aug 15: "it doesn't even show me
                   who the people are"). A group name alone makes you go to
@@ -2366,6 +2483,7 @@ function GoalPopupBody({
                 goal={goal}
                 group={group}
                 assignment={assignment}
+                state={state}
                 live={live}
                 busy={busy}
                 run={run}
@@ -2391,7 +2509,10 @@ function GoalPopupBody({
       {/* ---------------- person-level attaches (Suren, Aug 12: "add to the
           org or add to a particular person" — departments never hold goals,
           their people do) ---------------- */}
-      <div className="mt-4 flex items-center justify-between gap-2">
+      </div>
+
+      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned individually
           <InfoHint text={"People given this goal on their own, outside any group above.\nA group's people are listed inside their group, with their share of its target — they are not repeated here.\nEverything rolls up the same way: person → group → organization."} />
@@ -2414,7 +2535,7 @@ function GoalPopupBody({
         )}
       </div>
       {soloAssignments.length === 0 ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+        <div className="mt-3 flex flex-col items-center gap-2.5">
           <p className="text-[12.5px] text-text-secondary">
             {(goal.groupAssignments ?? []).length > 0
               ? "Nobody outside those groups carries this goal."
@@ -2516,6 +2637,8 @@ function GoalPopupBody({
           ))}
         </div>
       )}
+      </div>
+
       <AssignPersonModal
         open={assignOpen}
         inline={hostedInPopup}
