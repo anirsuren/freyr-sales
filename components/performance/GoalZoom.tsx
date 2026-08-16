@@ -10,6 +10,7 @@ import {
   CalendarFold,
   CalendarRange,
   CheckCircle2,
+  ChevronDown,
   Crown,
   Layers,
   Paperclip,
@@ -724,6 +725,20 @@ export function GoalZoom({
                                 +{fmtAmount(goal.unit, r2.awaiting)}
                               </span>
                             )}
+                            {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
+                                "this is still not a drop-down"). The people
+                                appeared on select with nothing on the row to
+                                say they would, and nothing to close them
+                                again. */}
+                            <ChevronDown
+                              size={13}
+                              strokeWidth={2.4}
+                              aria-hidden="true"
+                              className={cn(
+                                "shrink-0 text-text-tertiary transition-transform",
+                                active && "rotate-180 text-blue-primary"
+                              )}
+                            />
                           </span>
                           {(r2.verified > 0 || r2.awaiting > 0) && (
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
@@ -753,7 +768,7 @@ export function GoalZoom({
                         </button>
                         </HoverCard>
                         {active && (
-                          <div className="tab-panel mt-0.5 space-y-0.5 rounded-lg bg-surface/70 px-2 py-1.5">
+                          <div className="tab-panel ml-3 mt-0.5 space-y-1 border-l-2 border-blue-primary/25 py-1 pl-2.5">
                             {[
                               ...new Set(
                                 [r2.group.head, ...r2.group.members]
@@ -827,13 +842,23 @@ export function GoalZoom({
                                         name.trim().toLowerCase()
                                     );
                                     const tgt = mine?.target ?? 0;
-                                    if (!tgt)
-                                      return (
-                                        <span className="pl-7 text-[9.5px] text-text-tertiary">
-                                          no individual target set
-                                        </span>
-                                      );
-                                    const done = Math.min(100, ((v + w) / tgt) * 100);
+                                    /**
+                                     * ALWAYS A BAR (Anir, Aug 16: "It should
+                                     * definitely show a progress bar on how big
+                                     * compared to the goal they have
+                                     * contributed"). With an individual target
+                                     * the bar measures against that. Without
+                                     * one it measures against the same
+                                     * denominator every other bar in this
+                                     * column uses, so the row still answers
+                                     * "how much of this is them" instead of
+                                     * printing "no individual target set" and
+                                     * leaving a hole where a bar should be.
+                                     */
+                                    const base = tgt || maxG;
+                                    const done = base
+                                      ? Math.min(100, ((v + w) / base) * 100)
+                                      : 0;
                                     return (
                                       <span className="flex items-center gap-2 pl-7">
                                         <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
@@ -842,18 +867,29 @@ export function GoalZoom({
                                               "block h-full bg-blue-primary",
                                               lit && "bar-lit"
                                             )}
-                                            style={{ width: `${Math.min(100, (v / tgt) * 100)}%` }}
+                                            style={{
+                                              width: base
+                                                ? `${Math.min(100, (v / base) * 100)}%`
+                                                : "0%",
+                                            }}
                                           />
                                           <span
                                             className={cn(
                                               "block h-full bg-blue-primary opacity-[0.28]",
                                               lit && "bar-lit"
                                             )}
-                                            style={{ width: `${Math.min(100, (w / tgt) * 100)}%` }}
+                                            style={{
+                                              width: base
+                                                ? `${Math.min(100, (w / base) * 100)}%`
+                                                : "0%",
+                                            }}
                                           />
                                         </span>
                                         <span className="shrink-0 text-[9.5px] tnum text-text-tertiary">
-                                          {Math.round(done)}% of {fmtAmount(goal.unit, tgt)}
+                                          {Math.round(done)}%{" "}
+                                          {tgt
+                                            ? `of ${fmtAmount(goal.unit, tgt)}`
+                                            : "of the goal"}
                                         </span>
                                       </span>
                                     );
