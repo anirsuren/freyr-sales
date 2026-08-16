@@ -826,13 +826,14 @@ export function GoalZoom({
                       <Fragment key={r.label}>
                       <div
                         className={cn(
-                          shown &&
-                            /* A real border, NOT an inset ring (Anir, Aug 16, third time: "FIX THE
+                          /* A real border, NOT an inset ring (Anir, Aug 16, third time: "FIX THE
                                  FUCKING CONTAINER"). ring-inset is a box-shadow painted UNDER the
                                  children, and the panel's white background covered three sides of it —
                                  so the box only ever showed around the tinted header. A border cannot
-                                 be painted over. */
-                              "overflow-hidden rounded-lg border border-blue-primary/40"
+                                 be painted over. The border is always present, transparent when
+                                 closed, so opening a row never steals 2px from its bar. */
+                          "overflow-hidden rounded-lg border",
+                          shown ? "border-blue-primary/40" : "border-transparent"
                         )}
                       >
                       <button
@@ -1014,13 +1015,13 @@ export function GoalZoom({
                             on top of the content. */}
                         <div
                           className={cn(
-                            active &&
-                              /* A real border, NOT an inset ring (Anir, Aug 16, third time: "FIX THE
-                                 FUCKING CONTAINER"). ring-inset is a box-shadow painted UNDER the
-                                 children, and the panel's white background covered three sides of it —
-                                 so the box only ever showed around the tinted header. A border cannot
-                                 be painted over. */
-                              "overflow-hidden rounded-lg border border-blue-primary/40"
+                            /* A real border, NOT an inset ring: ring-inset is
+                               painted UNDER children, so the panel's white
+                               background covered three of its sides. Always
+                               present, transparent when closed, so opening a
+                               row never steals 2px from its bar. */
+                            "overflow-hidden rounded-lg border",
+                            active ? "border-blue-primary/40" : "border-transparent"
                           )}
                         >
                         {/* THE HOVER CARD IS FOR THE CLOSED ROW ONLY (Anir,
@@ -1152,7 +1153,7 @@ export function GoalZoom({
                                 unit={goal.unit}
                               />
                             </div>
-                            {r2.members.map((name) => {
+                            {r2.members.map((name, memberIdx) => {
                               const v = familyValue(state, goal, {
                                 range: row.range,
                                 person: name,
@@ -1180,7 +1181,14 @@ export function GoalZoom({
                                  */
                                 <span
                                   key={name}
-                                  className="flex flex-col gap-1 border-t border-border-light px-0.5 pb-1 pt-2"
+                                  className={cn(
+                                    "flex flex-col gap-1 px-0.5 pb-1 pt-2",
+                                    /* A rule between the people only (Anir,
+                                       Aug 16: "you can probably keep it
+                                       between the people"). */
+                                    memberIdx > 0 &&
+                                      "border-t border-border-light"
+                                  )}
                                 >
                                   <span className="flex items-center gap-2">
                                   <Avatar
@@ -1361,8 +1369,10 @@ export function GoalZoom({
                           panel (Anir, Aug 16: "fix the container"). */}
                       <div
                         className={cn(
-                          openPeople.has(p.name) &&
-                            "overflow-hidden rounded-lg border border-blue-primary/40"
+                          "overflow-hidden rounded-lg border",
+                          openPeople.has(p.name)
+                            ? "border-blue-primary/40"
+                            : "border-transparent"
                         )}
                       >
                       <button
@@ -1407,8 +1417,10 @@ export function GoalZoom({
                       <Fragment key={p.name}>
                       <div
                         className={cn(
-                          openPeople.has(p.name) &&
-                            "overflow-hidden rounded-lg border border-blue-primary/40"
+                          "overflow-hidden rounded-lg border",
+                          openPeople.has(p.name)
+                            ? "border-blue-primary/40"
+                            : "border-transparent"
                         )}
                       >
                       <HoverCard

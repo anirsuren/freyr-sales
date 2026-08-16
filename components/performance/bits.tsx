@@ -791,7 +791,10 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            style={{ paddingTop: LANE + 8 }}
+            /* The label lane above the track only exists when a schedule puts
+               a label in it (Anir, Aug 16: "you're not utilizing the top of
+               the progress bar... you can definitely save some space"). */
+            style={{ paddingTop: hasSchedule ? LANE + 8 : 0 }}
           >
             {/* WHERE THE GOAL'S OWN SCHEDULE SAYS IT SHOULD BE. */}
             {hasSchedule && (
@@ -904,12 +907,7 @@ export function PaceTimeline({
             </div>
           </div>
 
-          <div
-            className={cn(
-              "border-t border-border-light",
-              compact ? "mt-2 space-y-1 pt-2" : "mt-3 space-y-1.5 pt-2.5"
-            )}
-          >
+          <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-1.5")}>
             <PaceRow
               swatch={accent}
               label="Verified, counts now"
