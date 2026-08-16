@@ -25,6 +25,11 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
 import {
+  persistNotifRead,
+  readNotifRead,
+  subscribeNotifRead,
+} from "@/lib/notificationsRead";
+import {
   groupByUrgency,
   NOTIF_READ_KEY as READ_KEY,
   type AppNotification,
@@ -78,15 +83,6 @@ const URGENCY_TILES: {
   },
 ];
 
-function readSet(storageKey: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
 export function NotificationsCenter({ items }: { items: AppNotification[] }) {
   const currentUser = useCurrentUser();
   const router = useRouter();
@@ -97,10 +93,19 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
 
   useEffect(() => {
     setLoadedStorageKey(null);
-    setRead(readSet(readStorageKey));
+    setRead(readNotifRead(readStorageKey));
     setFilter("all");
     setLoadedStorageKey(readStorageKey);
   }, [readStorageKey]);
+
+  /* The bell writes this same key. Stay in step with it. */
+  useEffect(
+    () =>
+      subscribeNotifRead((key) => {
+        if (key === readStorageKey) setRead(readNotifRead(readStorageKey));
+      }),
+    [readStorageKey]
+  );
 
   // The write is a plain background side effect, deliberately OUTSIDE the state
   // updater: an updater is called during render, so a localStorage write in
@@ -109,14 +114,7 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
   const persist = useCallback(
     (ids: string[]) => {
       if (loadedStorageKey !== readStorageKey) return;
-      try {
-        const current = readSet(readStorageKey);
-        ids.forEach((id) => current.add(id));
-        localStorage.setItem(
-          readStorageKey,
-          JSON.stringify(Array.from(current))
-        );
-      } catch {}
+      persistNotifRead(readStorageKey, ids);
     },
     [loadedStorageKey, readStorageKey]
   );

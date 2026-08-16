@@ -24,6 +24,11 @@ import {
   useMyPhoto,
 } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
+import {
+  persistNotifRead,
+  readNotifRead,
+  subscribeNotifRead,
+} from "@/lib/notificationsRead";
 import { canSwitchWorkspaceMode } from "@/lib/release";
 
 /** How many alerts the bell panel shows before "View all notifications". */
@@ -158,10 +163,7 @@ export function TopBar({
     load();
     const timer = window.setInterval(load, 15_000);
     window.addEventListener("focus", load);
-    try {
-      const raw = localStorage.getItem(notificationReadKey);
-      if (raw) setReadIds(new Set(JSON.parse(raw)));
-    } catch {}
+    setReadIds(readNotifRead(notificationReadKey));
     setLoadedNotificationKey(notificationReadKey);
     return () => {
       on = false;
@@ -169,6 +171,17 @@ export function TopBar({
       window.removeEventListener("focus", load);
     };
   }, [notificationReadKey]);
+
+  /* The Notifications page writes this same key — "Mark all read" there has
+     to empty the badge here, and the header never unmounts to re-read it. */
+  useEffect(
+    () =>
+      subscribeNotifRead((key) => {
+        if (key === notificationReadKey)
+          setReadIds(readNotifRead(notificationReadKey));
+      }),
+    [notificationReadKey]
+  );
 
   const notificationStateReady =
     loadedNotificationKey === notificationReadKey;
@@ -207,15 +220,7 @@ export function TopBar({
       // render, so a localStorage write in there is a render-phase side effect
       // React may re-run or interleave with the navigation it just started).
       setReadIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-      try {
-        const raw = localStorage.getItem(notificationReadKey);
-        const stored = new Set<string>(raw ? JSON.parse(raw) : []);
-        stored.add(id);
-        localStorage.setItem(
-          notificationReadKey,
-          JSON.stringify(Array.from(stored))
-        );
-      } catch {}
+      persistNotifRead(notificationReadKey, [id]);
     },
     [notificationReadKey, notificationStateReady]
   );
