@@ -64,6 +64,11 @@ const RELEASED_MODULE_PREFIXES = [
   // roster, every pipeline number 0 until deals exist (Anir, Aug 6).
   "/team",
   "/customers",
+  // OPPORTUNITIES ships with Performance: the goal drill-down's fourth level
+  // reads these records, so hiding the module would leave line items with no
+  // page to manage them from (Suren, Aug 16: "first you start with this then
+  // we'll go to a manage opportunity").
+  "/opportunities",
   // REPORTS SHIPS WITH THE REAL ACCOUNTS (Suren, Aug 9, via Anir: "you want
   // the reports module in the real mode, correct, with the data from the
   // spreadsheet, with all this data"). It reads getDb(), so in real mode it
