@@ -1126,7 +1126,11 @@ function GoalRows({
           />
         </td>
         <td className="px-2 py-4">
-          <span className="flex items-center justify-end gap-0.5">
+          {/* THE FIRST ICON STARTS WHERE THE HEADING DOES (Anir, Aug 16: "the
+              a should line up with the first icon"). The heading was left
+              aligned and the controls right aligned, so they sat on opposite
+              edges of the same column and read as two different columns. */}
+          <span className="flex items-center justify-start gap-0.5">
           {/* EDIT BELONGS IN ACTIONS (Anir, Aug 16: "where is the edit
               button?"). Editing a goal was only reachable from the Goal
               Master, so the row that shows a goal could not change it — and
