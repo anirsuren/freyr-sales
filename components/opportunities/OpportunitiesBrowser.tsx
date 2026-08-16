@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2,
   TrendingUp,
+  X,
   Target,
   Percent,
 } from "lucide-react";
@@ -637,40 +638,21 @@ export function OpportunitiesBrowser({
               </Field>
             </div>
 
-            <Field label="Offerings" hint="An opportunity can cover several. Tick every one it includes.">
-              <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
-                {offerings.length === 0 ? (
-                  <span className="px-1 text-[12px] text-text-tertiary">
-                    No offerings in the catalogue yet.
-                  </span>
-                ) : (
-                  offerings.map((o) => {
-                    const on = editing.offeringIds.includes(o.id);
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() =>
-                          setEditing({
-                            ...editing,
-                            offeringIds: on
-                              ? editing.offeringIds.filter((x) => x !== o.id)
-                              : [...editing.offeringIds, o.id],
-                          })
-                        }
-                        className={cn(
-                          "cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
-                          on
-                            ? "bg-blue-primary text-white"
-                            : "bg-surface text-text-secondary hover:text-text-primary"
-                        )}
-                      >
-                        {o.name}
-                      </button>
-                    );
+            <Field label="Offerings" hint="An opportunity can cover several. Search and pick each one it includes.">
+              <MultiPicker
+                options={offerings.map((o) => ({ id: o.id, label: o.name }))}
+                selected={editing.offeringIds}
+                onToggle={(id) =>
+                  setEditing({
+                    ...editing,
+                    offeringIds: editing.offeringIds.includes(id)
+                      ? editing.offeringIds.filter((x) => x !== id)
+                      : [...editing.offeringIds, id],
                   })
-                )}
-              </div>
+                }
+                placeholder="Search offerings…"
+                emptyLabel="No offerings in the catalogue yet."
+              />
             </Field>
 
             {/* WHICH GOAL THIS DEAL FEEDS (Anir, Aug 16: the straight-line
@@ -680,42 +662,26 @@ export function OpportunitiesBrowser({
                 of the target per month. */}
             <Field
               label="Goals this deal feeds"
-              hint="Its value counts toward the pacing line on every goal you tick, once its estimated sign date has passed."
+              hint="Its value counts toward the pacing line on every goal you pick, once its estimated sign date has passed."
             >
-              <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
-                {goals.length === 0 ? (
-                  <span className="px-1 text-[12px] text-text-tertiary">
-                    No goals on the master yet.
-                  </span>
-                ) : (
-                  goals.map((g) => {
-                    const on = editing.goalIds.includes(g.id);
-                    return (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() =>
-                          setEditing({
-                            ...editing,
-                            goalIds: on
-                              ? editing.goalIds.filter((x) => x !== g.id)
-                              : [...editing.goalIds, g.id],
-                          })
-                        }
-                        className={cn(
-                          "cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
-                          on
-                            ? "bg-blue-primary text-white"
-                            : "bg-surface text-text-secondary hover:text-text-primary"
-                        )}
-                      >
-                        {g.name}
-                        <span className="ml-1 opacity-70 tnum">{g.year}</span>
-                      </button>
-                    );
+              <MultiPicker
+                options={goals.map((g) => ({
+                  id: g.id,
+                  label: g.name,
+                  sub: String(g.year),
+                }))}
+                selected={editing.goalIds}
+                onToggle={(id) =>
+                  setEditing({
+                    ...editing,
+                    goalIds: editing.goalIds.includes(id)
+                      ? editing.goalIds.filter((x) => x !== id)
+                      : [...editing.goalIds, id],
                   })
-                )}
-              </div>
+                }
+                placeholder="Search goals…"
+                emptyLabel="No goals on the master yet."
+              />
             </Field>
 
             <Field
@@ -915,6 +881,110 @@ function Fact({
       <span className="mt-1 block truncate text-[13px] font-medium text-text-primary">
         {children}
       </span>
+    </div>
+  );
+}
+
+/**
+ * A SEARCHABLE PICKER, NOT A WALL OF CHIPS (Anir, Aug 16: "whateven is this
+ * fix it").
+ *
+ * The form listed every offering and every goal as a chip — sixty-odd of them
+ * — so the two fields that matter (name, customer) were pushed off the top of
+ * the dialog and picking one thing meant reading all of them. Collapsed it is
+ * two lines: what you have chosen, and a box to find the next one.
+ */
+function MultiPicker({
+  options,
+  selected,
+  onToggle,
+  placeholder,
+  emptyLabel,
+}: {
+  options: { id: string; label: string; sub?: string }[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  placeholder: string;
+  emptyLabel: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
+  const q = query.trim().toLowerCase();
+  const matches = useMemo(
+    () =>
+      options
+        .filter((o) => !selected.includes(o.id))
+        .filter(
+          (o) =>
+            !q ||
+            o.label.toLowerCase().includes(q) ||
+            (o.sub ?? "").toLowerCase().includes(q)
+        )
+        .slice(0, 40),
+    [options, selected, q]
+  );
+
+  return (
+    <div className="rounded-lg border border-border-light bg-white p-2">
+      {selected.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {selected.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onToggle(id)}
+              title="Remove"
+              className="group inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white transition-colors hover:bg-[color:#0058B0]"
+            >
+              {byId.get(id)?.label ?? id}
+              <X size={11} strokeWidth={2.8} className="opacity-70 group-hover:opacity-100" />
+            </button>
+          ))}
+        </div>
+      )}
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        placeholder={selected.length ? "Add another…" : placeholder}
+        className="h-[34px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
+      />
+      {open && (
+        <div className="mt-1.5 max-h-[168px] overflow-y-auto rounded-lg border border-border-light">
+          {options.length === 0 ? (
+            <p className="px-2.5 py-2 text-[12px] text-text-tertiary">{emptyLabel}</p>
+          ) : matches.length === 0 ? (
+            <p className="px-2.5 py-2 text-[12px] text-text-tertiary">
+              {q ? `Nothing matches "${query.trim()}".` : "All of them are already on this deal."}
+            </p>
+          ) : (
+            matches.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onToggle(o.id);
+                  setQuery("");
+                }}
+                className="flex w-full cursor-pointer items-baseline gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
+              >
+                <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                {o.sub && (
+                  <span className="shrink-0 text-[11px] text-text-tertiary tnum">
+                    {o.sub}
+                  </span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
