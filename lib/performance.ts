@@ -412,6 +412,18 @@ export async function updateGoal(
 
 export async function removeGoal(goalId: string): Promise<void> {
   const state = await readRow();
+  /**
+   * DELETING NOTHING IS NOT SUCCESS (found Aug 16 exercising the guard paths).
+   *
+   * This filtered by id and wrote, so removing a goal that was not there
+   * answered {ok:true} — a typo'd id, a stale tab, or a retry after a timeout
+   * all reported a deletion that never happened. Every other op on this row
+   * already says "That goal is gone. Refresh and retry."; this one now says it
+   * too, and a caller can tell the difference between removed and absent.
+   */
+  if (!state.goals.some((g) => g.id === goalId)) {
+    throw new Error("That goal is gone. Refresh and retry.");
+  }
   state.goals = state.goals.filter((g) => g.id !== goalId);
   state.actuals = state.actuals.filter((a) => a.goalId !== goalId);
   await writeRow(state);
@@ -493,7 +505,11 @@ export async function removeSubgoal(
 ): Promise<void> {
   const state = await readRow();
   const goal = state.goals.find((g) => g.id === goalId);
-  if (!goal) return;
+  // Same rule as removeGoal: a silent no-op reads as a successful delete.
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  if (!goal.subgoals.some((s) => s.id === subgoalId)) {
+    throw new Error("That subgoal is gone. Refresh and retry.");
+  }
   goal.subgoals = goal.subgoals.filter((s) => s.id !== subgoalId);
   state.actuals = state.actuals.filter(
     (a) => !(a.goalId === goalId && a.subgoalId === subgoalId)
