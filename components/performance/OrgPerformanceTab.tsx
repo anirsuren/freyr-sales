@@ -171,6 +171,15 @@ export function OrgPerformanceTab({
    * everything behaves exactly as the org page always has.
    */
   scope?: {
+    /**
+     * Changes when the subject does — a different group, a different person.
+     * Everything BELOW the picker is keyed on it and re-enters like a page
+     * change (Anir, Aug 16: "when im switching between groups i want a premium
+     * animation on all the visual stuff as if im switching pages"), while the
+     * tab strip and the picker itself hold still ("it shouldn't do the
+     * animation on the top thing... that should stay the same").
+     */
+    subjectKey?: string;
     /** Which goals belong on this screen. Org uses "on the goal plan". */
     goals: PrimaryGoal[];
     /** "org goals" → "goals in this group" / "goals" for a person. */
@@ -341,6 +350,10 @@ export function OrgPerformanceTab({
         live={live}
       />
       {scope?.picker}
+      <div
+        key={scope?.subjectKey ?? "static"}
+        className={cn(scope?.subjectKey && "scope-swap")}
+      >
       <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile
           icon={Target}
@@ -729,13 +742,19 @@ export function OrgPerformanceTab({
                          line"). 120px of Actions was squeezing the Goal cell
                          until the name, the pace pill and the category
                          wrapped onto three lines. */
-                      i === 6 && "w-[88px] !px-2 text-right"
+                      /* LEFT-ALIGNED LIKE EVERY OTHER HEADER (Anir, Aug 16:
+                         "the 'actions' text should be on the left it looks
+                         like its on the right aligned"). It was the only
+                         right-aligned heading in the table, which read as a
+                         mistake even though the controls under it are right
+                         aligned. Label left, controls right, same as the rest. */
+                      i === 6 && "w-[112px] !px-2"
                     )}
                   >
                     {i === 6 ? (
                       /* EXPAND EVERYTHING AT ONCE, from the head of the column
                          the per-row buttons live in. */
-                      <span className="flex items-center justify-end gap-1.5">
+                      <span className="flex items-center gap-1.5">
                         <span>{col.h}</span>
                         <button
                           type="button"
@@ -798,6 +817,7 @@ export function OrgPerformanceTab({
           </table>
         </Card>
       )}
+      </div>
     </div>
   );
 }
@@ -1107,6 +1127,24 @@ function GoalRows({
         </td>
         <td className="px-2 py-4">
           <span className="flex items-center justify-end gap-0.5">
+          {/* EDIT BELONGS IN ACTIONS (Anir, Aug 16: "where is the edit
+              button?"). Editing a goal was only reachable from the Goal
+              Master, so the row that shows a goal could not change it — and
+              now that a goal carries a schedule, this is the way to it. */}
+          {live && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditGoal(goal);
+              }}
+              title={`Edit ${goal.name} — target, schedule, tracking`}
+              aria-label={`Edit ${goal.name}`}
+              className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            >
+              <Pencil size={13.5} strokeWidth={2.2} />
+            </button>
+          )}
           {/* FULL SCREEN LIVES ON THE ROW (Anir, Aug 16: "Expand it. I don't
               see that button. It should be like a button. It should be an
               action column on this row"). Buried in the drill-down header it

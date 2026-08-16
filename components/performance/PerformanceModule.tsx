@@ -27,6 +27,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { TargetSlider } from "./TargetSlider";
 import { useOpportunities } from "@/lib/useOpportunities";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -1675,29 +1676,13 @@ function AssignGroupModal({
           )}
         </div>
       </div>
-      <div>
-        <label className="text-[12px] font-semibold text-text-primary">
-          Group target <span className="text-text-tertiary">(optional)</span>
-        </label>
-        <input
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder={goal.unit === "currency" ? "e.g. 900k" : "e.g. 120"}
-          className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none tnum focus:border-blue-primary"
-        />
-        {target.trim() !== "" &&
-          (parsed !== null ? (
-            <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
-              = {fmtAmount(goal.unit, parsed)}
-            </p>
-          ) : (
-            <p className="mt-1 whitespace-nowrap text-[10.5px] text-error">
-              {goal.unit === "currency"
-                ? "Numbers only, e.g. 900k"
-                : "Numbers only, e.g. 120"}
-            </p>
-          ))}
-      </div>
+      <TargetSlider
+        label="Group target"
+        value={target}
+        onChange={setTarget}
+        unit={goal.unit}
+        max={goal.target}
+      />
       {/* THE HINT SITS ON THE BUTTON LINE (Anir, Aug 16: "put this text in
           line with the buttons on the right so it doesn't shift up and down
           and make the popup shift"). On its own line it appeared and vanished
@@ -1797,18 +1782,14 @@ function AssignPersonModal({
             />
           </div>
         </div>
-        <div>
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Personal target
-            <InfoHint text="Optional. Their own slice of the goal. Type 250K, 1.5M or a plain number." />
-          </label>
-          <input
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            placeholder={goal.unit === "currency" ? "e.g. 250K" : "e.g. 40"}
-            className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-          />
-        </div>
+        <TargetSlider
+          label="Personal target"
+          value={target}
+          onChange={setTarget}
+          unit={goal.unit}
+          max={goal.target}
+          placeholder={goal.unit === "currency" ? "e.g. 250K" : "e.g. 40"}
+        />
       </div>
       <div className="mt-4 flex items-center justify-end">
         <Button onClick={save} disabled={!person} loading={busy}>

@@ -1658,3 +1658,72 @@ input {
     animation: none;
   }
 }
+
+/* THE TARGET SLIDER'S THUMB (Anir, Aug 16: "it should be very aesthetic, just
+   like all the other things that you have that are similar"). The browser's
+   default thumb is grey and platform-shaped; this is the same white-ringed
+   blue dot the pace timeline ends with, so a draggable target reads as part
+   of the same family. The track itself is drawn behind the input, so only the
+   thumb is styled here. */
+.freyr-range {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.freyr-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 15px;
+  width: 15px;
+  border-radius: 9999px;
+  background: var(--blue-primary);
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  cursor: grab;
+  transition: transform 0.12s ease;
+}
+.freyr-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.freyr-range:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+.freyr-range::-moz-range-thumb {
+  height: 15px;
+  width: 15px;
+  border-radius: 9999px;
+  background: var(--blue-primary);
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  cursor: grab;
+}
+.freyr-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--blue-primary);
+  outline-offset: 2px;
+}
+
+/* SWITCHING THE SUBJECT READS AS SWITCHING PAGES (Anir, Aug 16: "when im
+   switching between groups i want a premium animation on all the visual stuff
+   as if im switching pages"). Applied ONLY below the picker — the tab strip
+   and the group chips must hold still, or the thing you clicked moves under
+   the cursor ("it shouldn't do the animation on the top thing"). Slightly
+   longer and softer than .tab-panel so a whole screenful of tiles, charts and
+   a table settles rather than snaps. */
+@keyframes scopeSwapIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.scope-swap {
+  animation: scopeSwapIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scope-swap {
+    animation: none;
+  }
+}

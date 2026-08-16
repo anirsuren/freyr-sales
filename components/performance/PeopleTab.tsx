@@ -242,6 +242,7 @@ export function PeopleTab({
         onEditGoal={onEditGoal}
         onEditSubgoal={onEditSubgoal}
         scope={{
+        subjectKey: person,
           goals: scoped.goals,
           noun: "goals",
           picker,

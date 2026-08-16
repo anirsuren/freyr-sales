@@ -209,6 +209,7 @@ export function GroupPerformanceTab({
       onEditGoal={onEditGoal}
       onEditSubgoal={onEditSubgoal}
       scope={{
+        subjectKey: group?.id ?? "none",
         goals: scoped.goals,
         noun: "goals in this group",
         picker,
