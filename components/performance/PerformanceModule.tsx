@@ -959,6 +959,7 @@ function MasterTab({
                       onClick={() =>
                         setExpandedId(expandedId === g.id ? null : g.id)
                       }
+
                       className={cn(
                         "cursor-pointer transition-all",
                         // The open goal gets a rail in its own type colour and
@@ -1076,14 +1077,26 @@ function MasterTab({
                           >
                             <Maximize2 size={13} strokeWidth={2.2} />
                           </button>
-                          <ChevronDown
-                            size={15}
-                            strokeWidth={2.2}
-                            className={cn(
-                              "ml-0.5 text-text-tertiary transition-transform",
-                              expandedId === g.id && "rotate-180 text-blue-primary"
-                            )}
-                          />
+                          {/* The keyboard's way into an expandable row. */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedId(expandedId === g.id ? null : g.id);
+                            }}
+                            aria-expanded={expandedId === g.id}
+                            aria-label={`${expandedId === g.id ? "Hide" : "Show"} ${g.name}`}
+                            className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface"
+                          >
+                            <ChevronDown
+                              size={15}
+                              strokeWidth={2.2}
+                              className={cn(
+                                "transition-transform",
+                                expandedId === g.id && "rotate-180 text-blue-primary"
+                              )}
+                            />
+                          </button>
                         </span>
                         {confirmRemoveId === g.id && (
                           <span

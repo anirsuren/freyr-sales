@@ -1005,6 +1005,20 @@ function GoalRows({
           />
         </td>
         <td className="px-4 py-4">
+          {/* THE KEYBOARD'S WAY IN (found Aug 16). The row answers the mouse;
+              this answers Tab and Enter. It cannot be the row itself — a
+              role="button" may not contain the verify pill and the target
+              editor, and doing that swallowed their names. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            aria-expanded={open}
+            aria-label={`${open ? "Hide" : "Show"} the breakdown for ${goal.name}`}
+            className="cursor-pointer rounded-md p-0.5 transition-colors hover:bg-surface"
+          >
           <ChevronDown
             size={15}
             strokeWidth={2.2}
@@ -1013,6 +1027,7 @@ function GoalRows({
               open && "rotate-180 text-blue-primary"
             )}
           />
+          </button>
         </td>
       </tr>
       {open && (

@@ -814,6 +814,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     onClick={() =>
                       setOpenRep(openRep === r.identityKey ? null : r.identityKey)
                     }
+
                     className={
                       r.you
                         ? "bg-blue-light/35 hover:bg-blue-light/50 transition-colors"
@@ -1034,15 +1035,26 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         >
                           <ArrowRight size={16} strokeWidth={1.9} />
                         </Link>
-                        <ChevronDown
-                          size={16}
-                          strokeWidth={2.2}
-                          aria-hidden="true"
-                          className={cn(
-                            "text-text-tertiary transition-transform",
-                            openRep === r.identityKey && "rotate-180 text-blue-primary"
-                          )}
-                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenRep(openRep === r.identityKey ? null : r.identityKey);
+                          }}
+                          aria-expanded={openRep === r.identityKey}
+                          aria-label={`${openRep === r.identityKey ? "Hide" : "Show"} ${r.name}'s numbers`}
+                          className="cursor-pointer rounded-md p-1 transition-colors hover:bg-surface"
+                        >
+                          <ChevronDown
+                            size={16}
+                            strokeWidth={2.2}
+                            aria-hidden="true"
+                            className={cn(
+                              "text-text-tertiary transition-transform",
+                              openRep === r.identityKey && "rotate-180 text-blue-primary"
+                            )}
+                          />
+                        </button>
                       </span>
                     </td>
                   </tr>
