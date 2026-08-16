@@ -992,7 +992,7 @@ export async function assignGoalToGroup(input: {
   groupId: string;
   target?: number;
   addedBy: string;
-}): Promise<void> {
+}): Promise<{ warning?: string }> {
   const groupId = str(input.groupId, 60);
   if (!groupId) throw new Error("Pick which group this goal is for.");
   const state = await readRow();
@@ -1001,6 +1001,7 @@ export async function assignGoalToGroup(input: {
   if (!state.groups.some((g) => g.id === groupId))
     throw new Error("That group is gone. Refresh and retry.");
   goal.groupAssignments = goal.groupAssignments ?? [];
+  let overlapWarning: string | undefined;
   const existing = goal.groupAssignments.find((a) => a.groupId === groupId);
   if (existing) {
     if (typeof input.target === "number" && Number.isFinite(input.target)) {
@@ -1018,25 +1019,29 @@ export async function assignGoalToGroup(input: {
      * both groups may count them; this is one goal refusing a double-count.
      * Taking them off the earlier assignment frees them for this one.
      */
-    const alreadyCounted = new Set<string>();
+    /* A WARNING, NOT A WALL (Anir, Aug 16: "a single owner can add two
+       different groups. its just that it throw a warning if the same person r
+       in the two groups. It's okay if they own it"). The assignment goes
+       through; shared MEMBERS are named in the warning and excluded from this
+       new assignment so they keep counting where they already count. A shared
+       owner is no overlap at all — heads are not counted. */
+    const countedIn = new Map<string, string>();
     for (const a of goal.groupAssignments) {
       const g = state.groups.find((x) => x.id === a.groupId);
       if (!g) continue;
       const ex = new Set(
         (a.excludedPeople ?? []).map((n) => n.trim().toLowerCase())
       );
-      for (const n of [g.head, ...g.members]) {
+      for (const n of g.members) {
         const key = n.trim().toLowerCase();
-        if (key && !ex.has(key)) alreadyCounted.add(key);
+        if (key && !ex.has(key) && !countedIn.has(key)) countedIn.set(key, g.name);
       }
     }
     const joining = state.groups.find((g) => g.id === groupId);
     const overlap = joining
-      ? [
-          ...new Set(
-            [joining.head, ...joining.members].map((n) => n.trim()).filter(Boolean)
-          ),
-        ].filter((n) => alreadyCounted.has(n.toLowerCase()))
+      ? [...new Set(joining.members.map((n) => n.trim()).filter(Boolean))].filter(
+          (n) => countedIn.has(n.toLowerCase())
+        )
       : [];
     goal.groupAssignments.push({
       groupId,
@@ -1049,6 +1054,12 @@ export async function assignGoalToGroup(input: {
       assignedAt: new Date().toISOString(),
       ...(overlap.length ? { excludedPeople: overlap } : {}),
     });
+    if (overlap.length) {
+      const named = overlap
+        .map((n) => `${n} (counts through ${countedIn.get(n.toLowerCase())})`)
+        .join(", ");
+      overlapWarning = `Heads up: on this goal, ${named} — the same person never counts twice.`;
+    }
   }
 
   /**
@@ -1068,9 +1079,9 @@ export async function assignGoalToGroup(input: {
   const group = state.groups.find((g) => g.id === groupId);
   if (group) {
     goal.assignments = goal.assignments ?? [];
-    const roster = [group.head, ...group.members]
-      .map((m) => m.trim())
-      .filter(Boolean);
+    /* Members only — the owner carries no target unless they joined the
+       roster themselves (Suren, Aug 16). */
+    const roster = group.members.map((m) => m.trim()).filter(Boolean);
     const off = new Set(
       (
         goal.groupAssignments.find((a) => a.groupId === groupId)?.excludedPeople ?? []
@@ -1091,6 +1102,7 @@ export async function assignGoalToGroup(input: {
     }
   }
   await writeRow(state);
+  return { warning: overlapWarning };
 }
 
 export async function unassignGoalFromGroup(input: {

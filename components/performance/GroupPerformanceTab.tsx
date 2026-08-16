@@ -60,14 +60,18 @@ export function GroupPerformanceTab({
   );
   const group = groups.find((g) => g.id === pickedId) ?? groups[0] ?? null;
 
+  /**
+   * COUNTING SCOPE = THE ROSTER, NOT THE CROWN (Suren, Aug 16: "the group
+   * owner doesn't have to carry a target. Only the member is carrying the
+   * target... but they can put themselves as a member"). The owner still
+   * runs this page — sees it, verifies from it — but their own numbers only
+   * roll in if they joined the roster like anyone else. The chip faces above
+   * still show the owner, because who runs it is display, not math.
+   */
   const members = useMemo(
     () =>
       group
-        ? [
-            ...new Set(
-              [group.head, ...group.members].map((m) => m.trim()).filter(Boolean)
-            ),
-          ]
+        ? [...new Set(group.members.map((m) => m.trim()).filter(Boolean))]
         : [],
     [group]
   );

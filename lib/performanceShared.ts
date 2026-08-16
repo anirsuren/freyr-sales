@@ -603,11 +603,17 @@ export function goalGroupAttribution(
   goal: Pick<PrimaryGoal, "groupAssignments">
 ): Map<string, string> {
   const map = new Map<string, string>();
+  /**
+   * MEMBERS ONLY — the head is not implicitly one (Suren, Aug 16: "the group
+   * owner doesn't have to carry a target. Only the member is carrying the
+   * target... but they can put themselves as a member"). An owner who wants
+   * their own numbers in the group joins its roster like anyone else; owning
+   * it only grants running it. Verification and visibility still come from
+   * being head — this is about counting.
+   */
   const claim = (g: PerfGroup, excluded?: string[]) => {
     const ex = new Set((excluded ?? []).map((n) => n.trim().toLowerCase()));
-    for (const n of new Set(
-      [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
-    )) {
+    for (const n of new Set(g.members.map((m) => m.trim()).filter(Boolean))) {
       const key = n.toLowerCase();
       if (ex.has(key)) continue;
       if (!map.has(key)) map.set(key, g.id);
@@ -628,9 +634,9 @@ export function attributedMembers(
   group: PerfGroup
 ): string[] {
   const attribution = goalGroupAttribution(state, goal);
-  return [
-    ...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)),
-  ].filter((n) => attribution.get(n.toLowerCase()) === group.id);
+  return [...new Set(group.members.map((m) => m.trim()).filter(Boolean))].filter(
+    (n) => attribution.get(n.toLowerCase()) === group.id
+  );
 }
 
 /* ------------------------------------------------------- who sees whom */

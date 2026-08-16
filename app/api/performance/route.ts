@@ -147,6 +147,8 @@ export async function POST(req: NextRequest) {
   const manager = isManagerOrAdmin(me.role);
   const body = await req.json().catch(() => ({}));
   const op = String(body.op ?? "");
+  /** A non-fatal note for the toast, e.g. a member counted in two groups. */
+  let warning: string | undefined;
 
   // What a non-manager may do, and only inside their own circle: log their
   // numbers, pick up goals for themselves (a head, for their group), and a
@@ -327,14 +329,16 @@ export async function POST(req: NextRequest) {
           addedBy: me.name,
         });
         break;
-      case "assign-goal-group":
-        await assignGoalToGroup({
+      case "assign-goal-group": {
+        const res = await assignGoalToGroup({
           goalId: String(body.goalId ?? ""),
           groupId: String(body.groupId ?? ""),
           ...(body.target !== undefined ? { target: Number(body.target) } : {}),
           addedBy: me.name,
         });
+        warning = res.warning;
         break;
+      }
       case "set-group-goal-exclusion":
         await setGroupGoalExclusion({
           goalId: String(body.goalId ?? ""),
@@ -483,6 +487,7 @@ export async function POST(req: NextRequest) {
   const visible = callerScope(state, me.name, me.role === "admin");
   return NextResponse.json({
     ok: true,
+    ...(warning ? { warning } : {}),
     state: visible ? scopeState(state, visible) : state,
   });
 }

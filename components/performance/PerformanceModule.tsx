@@ -248,7 +248,12 @@ export function PerformanceModule({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "That didn't save.");
       if (data.state) setState(data.state);
-      if (ok) toast(ok, "success");
+      /* The server can succeed AND have something to say — "a single owner
+         can add two different groups. its just that it throws a warning if
+         the same person is in the two groups" (Anir, Aug 16). The warning
+         replaces the cheery fixed message so it is actually read. */
+      if (data.warning) toast(String(data.warning), "success");
+      else if (ok) toast(ok, "success");
       return true;
     } catch (err) {
       toast(err instanceof Error ? err.message : "That didn't save.", "error");
