@@ -520,7 +520,8 @@ export function PerformanceModule({
           tall
         >
           <SubgoalEditorFields
-            key={subModal.editing?.id ?? "new"}
+                              state={state}
+                              key={subModal.editing?.id ?? "new"}
             goal={subModal.goal}
             editing={subModal.editing}
             suggestions={people}
@@ -2144,6 +2145,7 @@ function GoalPopupBody({
               </div>
               <div className="p-3.5">
                 <SubgoalEditorFields
+                  state={state}
                   key="new-inline"
                   goal={goal}
                   editing={null}
@@ -2165,6 +2167,7 @@ function GoalPopupBody({
             stacked
           >
             <SubgoalEditorFields
+              state={state}
               key="new"
               goal={goal}
               editing={null}
@@ -2269,6 +2272,7 @@ function GoalPopupBody({
                   {live ? (
                     <>
                       <SubgoalEditorFields
+                        state={state}
                         key={s.id}
                         goal={goal}
                         editing={s}
@@ -3099,6 +3103,7 @@ function GoalEditorFields({
 function SubgoalEditorFields({
   goal,
   editing,
+  state,
   suggestions,
   run,
   busy,
@@ -3106,6 +3111,8 @@ function SubgoalEditorFields({
 }: {
   goal: PrimaryGoal;
   editing: Subgoal | null;
+  /** For the group list — a subgoal can carry a department now. */
+  state: PerformanceState;
   suggestions: string[];
   run: RunOp;
   busy: boolean;
@@ -3293,6 +3300,90 @@ function SubgoalEditorFields({
             ))}
           </div>
         </section>
+
+        {editing && (
+          <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+              Groups on this subgoal
+              <InfoHint text={"A whole department carrying this slice. Its people are added below automatically at a target of 0, so they can log straight away.\nSave the subgoal first, then assign — a group needs something to attach to."} />
+            </label>
+            <div className="mt-2 space-y-1.5">
+              {(editing.groupAssignments ?? []).length === 0 ? (
+                <p className="text-[12px] text-text-secondary">
+                  No department carries this slice yet.
+                </p>
+              ) : (
+                (editing.groupAssignments ?? []).map((a) => {
+                  const g = state.groups.find((x) => x.id === a.groupId);
+                  return (
+                    <div
+                      key={a.groupId}
+                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5"
+                    >
+                      <GroupPill name={g?.name ?? "Group removed"} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-secondary">
+                        {g ? `led by ${g.head}` : ""}
+                      </span>
+                      <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
+                        {a.target > 0 ? fmtAmount(goal.unit, a.target) : "no target"}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title={`Take this slice off ${g?.name ?? "the group"}`}
+                        aria-label={`Unassign ${g?.name ?? "group"} from this subgoal`}
+                        onClick={() =>
+                          void run(
+                            {
+                              op: "unassign-subgoal-group",
+                              goalId: goal.id,
+                              subgoalId: editing.id,
+                              groupId: a.groupId,
+                            },
+                            `${g?.name ?? "That group"} no longer carries this slice`
+                          )
+                        }
+                        className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                      >
+                        <X size={13} strokeWidth={2.4} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+              <select
+                value=""
+                onChange={(e) => {
+                  const groupId = e.target.value;
+                  if (!groupId) return;
+                  void run(
+                    {
+                      op: "assign-subgoal-group",
+                      goalId: goal.id,
+                      subgoalId: editing.id,
+                      groupId,
+                    },
+                    "Group added to this slice"
+                  );
+                }}
+                aria-label="Add a group to this subgoal"
+                className="h-[34px] w-full cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[12.5px] text-text-primary outline-none focus:border-blue-primary"
+              >
+                <option value="">Add a group…</option>
+                {state.groups
+                  .filter(
+                    (g) =>
+                      !(editing.groupAssignments ?? []).some((a) => a.groupId === g.id)
+                  )
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} · {new Set([g.head, ...g.members].map((m) => m.trim())).size} people
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </section>
+        )}
 
         <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
