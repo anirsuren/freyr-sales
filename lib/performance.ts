@@ -716,6 +716,27 @@ export async function setGroupGoalExclusion(input: {
   await writeRow(state);
 }
 
+/**
+ * THE WORKSPACE'S EXCHANGE RATES, set by an admin (Suren, via Anir, Aug 15:
+ * "there should be a way to standardize the currency").
+ *
+ * Units of the currency per one US dollar. Deliberately typed in rather than
+ * fetched: a live rate would make last quarter's report move every time it is
+ * opened, and nobody could reproduce a board number a week later. Setting a
+ * rate to 0 or blank removes it, and anything without a rate is shown in its
+ * own currency rather than converted at a guess.
+ */
+export async function setRates(input: {
+  rates: Record<string, unknown>;
+}): Promise<void> {
+  const state = await readRow();
+  // REPLACE, never merge. The editor always sends the whole set, so a merge
+  // meant a rate could be added but never removed: clearing the field left the
+  // old number in place and the board kept converting with it.
+  state.rates = normalizeRates(input.rates);
+  await writeRow(state);
+}
+
 export async function removeActual(actualId: string): Promise<void> {
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === actualId);

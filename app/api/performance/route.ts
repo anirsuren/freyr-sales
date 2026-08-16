@@ -23,6 +23,7 @@ import {
   unassignGoal,
   assignGoalToGroup,
   setGroupGoalExclusion,
+  setRates,
   unassignGoalFromGroup,
   updateGoal,
   updateSubgoal,
@@ -380,6 +381,14 @@ export async function POST(req: NextRequest) {
           dealLabel:
             body.dealLabel === undefined ? undefined : String(body.dealLabel ?? ""),
           by: me.name,
+        });
+        break;
+      case "set-rates":
+        await setRates({
+          rates:
+            body.rates && typeof body.rates === "object"
+              ? (body.rates as Record<string, unknown>)
+              : {},
         });
         break;
       case "remove-actual":

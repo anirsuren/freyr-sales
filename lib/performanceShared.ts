@@ -24,6 +24,7 @@
 
 import {
   BASE_CURRENCY,
+  convert,
   fmtMoney,
   type CurrencyCode,
   type CurrencyRates,
@@ -413,6 +414,30 @@ export function inPeriod(
 /* ------------------------------------------------------------ formatting */
 
 /** $100M / $2.4M / $850K / $12,500 for money; 1,200 for counts; 45% flat. */
+/**
+ * THE READING LENS: format a recorded amount in whatever currency the reader
+ * asked for. Non-money units ignore all of it. With no rate on file the amount
+ * comes back in its OWN currency with its own symbol — the caller has not been
+ * lied to, it just is not converted.
+ */
+export function fmtIn(
+  unit: GoalUnit,
+  value: number,
+  opts: {
+    /** What the number was recorded in. */
+    from?: CurrencyCode;
+    /** What the reader wants to see. */
+    to?: CurrencyCode;
+    rates?: CurrencyRates;
+  } = {}
+): string {
+  if (unit !== "currency") return fmtAmount(unit, value);
+  const from = opts.from ?? BASE_CURRENCY;
+  const to = opts.to ?? BASE_CURRENCY;
+  const c = convert(value, from, to, opts.rates ?? { [BASE_CURRENCY]: 1 });
+  return fmtMoney(c.value, c.code);
+}
+
 export function fmtAmount(
   unit: GoalUnit,
   value: number,

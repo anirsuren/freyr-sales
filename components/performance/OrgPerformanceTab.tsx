@@ -38,6 +38,7 @@ import {
   actualValue,
   familyValue,
   fmtAmount,
+  fmtIn,
   hasActuals,
   paceVerdict,
   pctMet,
@@ -57,6 +58,11 @@ import {
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { VerifyGoalModal } from "./VerifyGoalModal";
+import {
+  DisplayCurrencyPicker,
+  useDisplayCurrency,
+} from "./CurrencyControls";
+import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -225,6 +231,8 @@ export function OrgPerformanceTab({
     PERIOD_KEYS
   );
   const [openId, setOpenId] = useState<string | null>(null);
+  /** What YOU want to read the numbers in. A lens, never a stored fact. */
+  const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
   /** Channel the chart and the table below it share for linked hover. */
   const syncId = `perf-${scope?.exportLabel ?? "org"}`;
   /** Insertion order told you nothing. Every other list in the app opens with
@@ -539,6 +547,16 @@ export function OrgPerformanceTab({
           )}
         </span>
         <span className="flex flex-wrap items-center gap-2">
+          {/* READ EVERYTHING IN ONE CURRENCY. A lens over the same records,
+              never a rewrite of what was signed. */}
+          <DisplayCurrencyPicker
+            value={displayCurrency}
+            onChange={setDisplayCurrency}
+            rates={state.rates ?? {}}
+            live={live}
+            run={run}
+            canEditRates={live}
+          />
           <ColorSelect
             value={sortBy}
             onChange={(v) => setSortBy(v as SortKey)}
@@ -711,6 +729,8 @@ export function OrgPerformanceTab({
                   goal={g}
                   index={i}
                   syncId={syncId}
+                  displayCurrency={displayCurrency}
+                  rates={state.rates ?? {}}
                   dimmed={openId !== null && openId !== g.id}
                   state={state}
                   meName={meName}
@@ -780,6 +800,8 @@ function GoalRows({
   goal,
   index,
   syncId,
+  displayCurrency,
+  rates,
   dimmed,
   state,
   meName,
@@ -798,6 +820,8 @@ function GoalRows({
   /** Position in the same list the chart above draws, for linked hover. */
   index: number;
   syncId: string;
+  displayCurrency: CurrencyCode;
+  rates: CurrencyRates;
   /** Another goal is open: step back so the open one reads as the subject. */
   dimmed: boolean;
   actuals: PerfActual[];
@@ -818,6 +842,9 @@ function GoalRows({
   /** Which column the cursor is on in the chart above (or on a sibling row). */
   const linkedIndex = useDonutSync(syncId);
   const [verifying, setVerifying] = useState(false);
+  /** Every money figure on this row, read in the viewer's chosen currency. */
+  const money = (v: number, from?: CurrencyCode) =>
+    fmtIn(goal.unit, v, { from, to: displayCurrency, rates });
   const periodDelta =
     goal.measure === "total"
       ? actualValue(actuals, goal, {}, period)
@@ -900,7 +927,7 @@ function GoalRows({
                 title={`Change or clear the target on ${goal.name}`}
                 className="group/tg inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1.5 py-1 -mx-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface tnum"
               >
-                {fmtAmount(goal.unit, goal.target)}
+                {money(goal.target, goal.currency)}
                 <Pencil
                   size={12}
                   strokeWidth={2.2}
@@ -909,7 +936,7 @@ function GoalRows({
               </button>
             ) : (
               <span className="text-[13px] font-semibold text-text-primary tnum">
-                {fmtAmount(goal.unit, goal.target)}
+                {money(goal.target, goal.currency)}
               </span>
             )
           ) : live ? (
@@ -929,7 +956,7 @@ function GoalRows({
         </td>
         <td className="whitespace-nowrap px-4 py-4">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
-            {fmtAmount(goal.unit, actual)}
+            {money(actual, goal.currency)}
           </span>
           {periodDelta !== null && periodDelta > 0 && (
             <span className="block text-[10.5px] text-text-tertiary tnum">
