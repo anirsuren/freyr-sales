@@ -5,6 +5,7 @@ import {
   EMPTY_PERFORMANCE,
   type GoalMeasure,
   type GoalUnit,
+  type GoalGroupAssignment,
   type PerfActual,
   type PerfGroup,
   type PerformanceState,
@@ -70,6 +71,29 @@ function normalizePerson(v: unknown): SubgoalPerson | null {
   return { name, target: num(raw.target), verified: raw.verified === true };
 }
 
+
+/** A group carrying a goal or a subgoal. One implementation, because a field
+ *  this does not name is deleted by the next write. */
+function normalizeGroupAssignment(a: unknown): GoalGroupAssignment | null {
+  if (!a || typeof a !== "object") return null;
+  const r = a as Partial<GoalGroupAssignment>;
+  const groupId = str(r.groupId, 60);
+  if (!groupId) return null;
+  return {
+    groupId,
+    target: num(r.target),
+    verified: r.verified === true,
+    excludedPeople: Array.isArray(r.excludedPeople)
+      ? (r.excludedPeople as unknown[])
+          .map((n) => str(String(n ?? ""), 80))
+          .filter(Boolean)
+      : undefined,
+    assignedBy: str(r.assignedBy, 80) || "unknown",
+    assignedAt:
+      typeof r.assignedAt === "string" ? r.assignedAt : new Date().toISOString(),
+  };
+}
+
 function normalizeSubgoal(v: unknown): Subgoal | null {
   if (!v || typeof v !== "object") return null;
   const raw = v as Partial<Subgoal>;
@@ -89,6 +113,12 @@ function normalizeSubgoal(v: unknown): Subgoal | null {
           .map(normalizePerson)
           .filter((p): p is SubgoalPerson => p !== null)
       : [],
+    // NAMED, OR DELETED BY THE NEXT WRITE — the trap this module keeps setting.
+    groupAssignments: Array.isArray(raw.groupAssignments)
+      ? raw.groupAssignments
+          .map(normalizeGroupAssignment)
+          .filter((a): a is GoalGroupAssignment => a !== null)
+      : undefined,
   };
 }
 
@@ -147,33 +177,9 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
     // write of the row.
     groupAssignments: Array.isArray(raw.groupAssignments)
       ? raw.groupAssignments
-          .map((a) => {
-            if (!a || typeof a !== "object") return null;
-            const r = a as Partial<
-              import("./performanceShared").GoalGroupAssignment
-            >;
-            const groupId = str(r.groupId, 60);
-            if (!groupId) return null;
-            return {
-              groupId,
-              target: num(r.target),
-              verified: r.verified === true,
-              // NAMED, OR SILENTLY DROPPED. A field this normalizer does not
-              // list is deleted by the next write.
-              excludedPeople: Array.isArray(r.excludedPeople)
-                ? (r.excludedPeople as unknown[])
-                    .map((n) => str(String(n ?? ""), 80))
-                    .filter(Boolean)
-                : undefined,
-              assignedBy: str(r.assignedBy, 80) || "unknown",
-              assignedAt:
-                typeof r.assignedAt === "string"
-                  ? r.assignedAt
-                  : new Date().toISOString(),
-            };
-          })
-          .filter((a): a is NonNullable<typeof a> => a !== null)
-      : [],
+          .map(normalizeGroupAssignment)
+          .filter((a): a is GoalGroupAssignment => a !== null)
+      : undefined,
     // The round-trip trap: this normalizer rebuilds the object field by
     // field, so any field it does not carry is silently DELETED on the next
     // write. The first booking-family seed died exactly that way.
@@ -726,6 +732,76 @@ export async function setGroupGoalExclusion(input: {
  * rate to 0 or blank removes it, and anything without a rate is shown in its
  * own currency rather than converted at a guess.
  */
+/**
+ * A DEPARTMENT CARRIES A SLICE (Anir, Aug 15: "for these sub-goals, should I
+ * be able to add a group too?"). Same rules as the goal-level version: the
+ * group gets its own target, its people are attached at 0 so they can log
+ * straight away, and anyone on the exception list stays off.
+ */
+export async function assignSubgoalToGroup(input: {
+  goalId: string;
+  subgoalId: string;
+  groupId: string;
+  target?: number;
+  addedBy: string;
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  const sub = goal.subgoals.find((x) => x.id === input.subgoalId);
+  if (!sub) throw new Error("That subgoal is gone. Refresh and retry.");
+  const group = state.groups.find((g) => g.id === input.groupId);
+  if (!group) throw new Error("That group is gone. Refresh and retry.");
+
+  sub.groupAssignments = sub.groupAssignments ?? [];
+  const existing = sub.groupAssignments.find((a) => a.groupId === input.groupId);
+  if (existing) {
+    if (typeof input.target === "number" && Number.isFinite(input.target)) {
+      existing.target = Math.max(0, input.target);
+    }
+  } else {
+    sub.groupAssignments.push({
+      groupId: input.groupId,
+      target:
+        typeof input.target === "number" && Number.isFinite(input.target)
+          ? Math.max(0, input.target)
+          : 0,
+      verified: false,
+      assignedBy: input.addedBy,
+      assignedAt: new Date().toISOString(),
+    });
+  }
+
+  const off = new Set(
+    (sub.groupAssignments.find((a) => a.groupId === input.groupId)?.excludedPeople ?? [])
+      .map((n) => n.trim().toLowerCase())
+  );
+  for (const person of new Set(
+    [group.head, ...group.members].map((m) => m.trim()).filter(Boolean)
+  )) {
+    if (off.has(person.toLowerCase())) continue;
+    if (sub.people.some((x) => x.name === person)) continue;
+    sub.people.push({ name: person, target: 0, verified: false });
+  }
+  await writeRow(state);
+}
+
+export async function unassignSubgoalFromGroup(input: {
+  goalId: string;
+  subgoalId: string;
+  groupId: string;
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  const sub = goal?.subgoals.find((x) => x.id === input.subgoalId);
+  if (!sub) throw new Error("That subgoal is gone. Refresh and retry.");
+  sub.groupAssignments = (sub.groupAssignments ?? []).filter(
+    (a) => a.groupId !== input.groupId
+  );
+  if (!sub.groupAssignments.length) sub.groupAssignments = undefined;
+  await writeRow(state);
+}
+
 export async function setRates(input: {
   rates: Record<string, unknown>;
 }): Promise<void> {

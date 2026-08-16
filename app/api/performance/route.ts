@@ -23,7 +23,9 @@ import {
   unassignGoal,
   assignGoalToGroup,
   setGroupGoalExclusion,
+  assignSubgoalToGroup,
   setRates,
+  unassignSubgoalFromGroup,
   unassignGoalFromGroup,
   updateGoal,
   updateSubgoal,
@@ -381,6 +383,25 @@ export async function POST(req: NextRequest) {
           dealLabel:
             body.dealLabel === undefined ? undefined : String(body.dealLabel ?? ""),
           by: me.name,
+        });
+        break;
+      case "assign-subgoal-group":
+        await assignSubgoalToGroup({
+          goalId: String(body.goalId ?? ""),
+          subgoalId: String(body.subgoalId ?? ""),
+          groupId: String(body.groupId ?? ""),
+          target:
+            body.target === undefined || body.target === null
+              ? undefined
+              : Number(body.target),
+          addedBy: me.name,
+        });
+        break;
+      case "unassign-subgoal-group":
+        await unassignSubgoalFromGroup({
+          goalId: String(body.goalId ?? ""),
+          subgoalId: String(body.subgoalId ?? ""),
+          groupId: String(body.groupId ?? ""),
         });
         break;
       case "set-rates":

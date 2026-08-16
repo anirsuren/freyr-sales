@@ -49,6 +49,14 @@ export type Subgoal = {
   owners: string[];
   verified: boolean;
   people: SubgoalPerson[];
+  /**
+   * Departments carrying this slice (Anir, Aug 15: "for these sub-goals,
+   * should I be able to add a group too? Doesn't it make sense for that to be
+   * there?"). It does: a subgoal is a goal with a narrower scope, and without
+   * this "the EU team owns this half" could only be said by listing names.
+   * Same shape and same rules as a goal's, exclusions included.
+   */
+  groupAssignments?: GoalGroupAssignment[];
 };
 
 /** A goal attached straight to a person from the Goal Master (Suren, Aug 12:
