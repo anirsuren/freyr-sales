@@ -4438,16 +4438,22 @@ function LogActualModal({
             the account follow it. Optional forever: Suren was explicit that
             "not all goals can be connected to deals and opportunities". */}
         <div>
+          {/* CALL IT WHAT THE MODULE IS CALLED (Anir, Aug 16: "where is the
+              opportunity thing"). Merging the two fields left the form saying
+              "Deal", and the word he uses for the thing being connected — the
+              one on the sidebar, the one on his pipeline sheet — was nowhere
+              on screen. Engagements still live in the same picker; they are
+              the secondary kind, and each one says so on its own row. */}
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Deal{" "}
+            Opportunity{" "}
             <span className="font-normal text-text-tertiary">(optional)</span>
-            <InfoHint text={"The opportunity or engagement this number came out of.\nIt becomes a line item under the goal, so the total can be traced back to the deals behind it."} />
+            <InfoHint text={"The opportunity this number came out of, from the Opportunities module.\nIt becomes a line item under the goal, so the total can be traced back to the deals behind it.\nEngagements already recorded on the account are listed here too."} />
           </label>
           <div className="mt-1">
             <ColorSelect
               value={link}
               onChange={pickLink}
-              ariaLabel="Deal"
+              ariaLabel="Opportunity"
               minWidth={430}
               options={[
                 { value: "", label: "Not linked to a deal", color: "#8E98A8" },
@@ -4521,15 +4527,26 @@ function LogActualModal({
               })}
             </div>
           )}
-          {/* An account with nothing in the pipeline says so, instead of the
-              whole field disappearing and leaving nowhere to connect a deal. */}
-          {customer.trim() !== "" && oppMatches.length === 0 && (
+          {/* AN EMPTY PIPELINE SAYS WHERE DEALS COME FROM. The field used to
+              disappear entirely when there was nothing in it, which is every
+              real workspace today — so there was nowhere to connect a deal and
+              nothing on screen explaining why. */}
+          {pipeline.length === 0 ? (
             <p className="mt-1.5 text-[11px] text-text-tertiary">
-              No opportunities recorded on {customer.trim()} yet
-              {(selectedAccount?.deals.length ?? 0) > 0
-                ? " — the engagements on the account are still listed above."
-                : "."}
+              Nothing in the pipeline yet. Deals added on{" "}
+              <b className="font-semibold text-text-secondary">Opportunities</b>{" "}
+              show up here, with their value ready to pull into the amount.
             </p>
+          ) : (
+            customer.trim() !== "" &&
+            oppMatches.length === 0 && (
+              <p className="mt-1.5 text-[11px] text-text-tertiary">
+                No opportunities recorded on {customer.trim()} yet
+                {(selectedAccount?.deals.length ?? 0) > 0
+                  ? " — the engagements on the account are still listed above."
+                  : "."}
+              </p>
+            )
           )}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
