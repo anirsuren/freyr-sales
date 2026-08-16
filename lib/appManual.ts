@@ -149,7 +149,8 @@ every logged entry as a spreadsheet, or Print / Save as PDF.`,
     keywords: [
       "offering", "offerings", "service", "capability", "material", "deck",
       "collateral", "sales material", "folder", "category", "customer type",
-      "market", "poc", "availability",
+      "market", "poc", "availability", "owner", "add a person", "add someone",
+      "contact", "assign", "remove owner", "upload",
     ],
     title: "Offerings",
     body: `Offerings is Freyr's catalogue of what the company sells. Grid or
@@ -162,6 +163,20 @@ reports. Sales materials are real files: click one to read it in the app —
 Word, PowerPoint, PDF, Excel, video and images all render without downloading.
 Hovering the materials count peeks inside, with a folders/all-files toggle and
 a search box.
+
+PUTTING A PERSON ON AN OFFERING. There are two kinds of person on an
+offering, and they are added in different places on the offering's page.
+  - An OWNER (also called a POC) is a Freyr person accountable for it. Open the
+    offering, find the owners row, and press "Add an owner". Pick the person
+    and confirm. To take yourself off, press "Give up ownership"; it asks
+    before it does anything.
+  - A CONTACT is anyone else worth reaching about it. Press "Add a contact",
+    then "Choose who to add".
+Both changes save straight away and show on the offering for everyone.
+
+ADDING SALES MATERIAL. Open the offering and use the add-material control on
+the materials section. Files can be dropped into a folder, and folders can be
+renamed. Nothing is deleted without asking first.
 
 Admins manage the lists behind the filters — offering categories, offering
 types and customer types — from the Admin page, including the owner of each.`,
@@ -213,18 +228,28 @@ means by "group".`,
   },
   {
     routes: ["/market-intel"],
-    keywords: ["market intel", "news", "briefing", "competitor", "signal", "tracking"],
+    keywords: ["market intel", "news", "briefing", "competitor", "signal",
+      "tracking", "what does this page track", "watchlist", "linkedin"],
     title: "Market Intel",
-    body: `Market Intel follows companies and competitors: news, LinkedIn
-activity and briefings, with a selector at the top for its three views.
-Removing a competitor asks for confirmation.`,
+    body: `Market Intel is the outside-the-company view: it follows named
+companies and competitors and collects what they are doing. Three views from
+the selector at the top — news picked up about them, their LinkedIn activity,
+and briefings that pull it together. You choose which companies it watches;
+removing a competitor asks for confirmation first.`,
   },
   {
     routes: ["/reports"],
-    keywords: ["report", "heat map", "analytics", "dashboard"],
+    keywords: ["report", "heat map", "analytics", "dashboard", "export", "csv",
+      "download", "spreadsheet", "excel"],
     title: "Reports",
     body: `Reports holds the cross-cutting views — customer/offering heat maps
-and analytics that read across accounts rather than down one.`,
+and analytics that read across accounts rather than down one.
+
+EXPORTING. "Export CSV" on Reports gives the whole revenue book as raw
+numbers: headline totals, revenue per offering and every renewal date.
+Performance has its own export for goals and logged entries, and Customers
+exports the rows you have selected. Everything comes out as CSV you can open
+in a spreadsheet.`,
   },
   {
     routes: ["/agent"],
@@ -238,11 +263,16 @@ real work: save a draft, log a call, schedule a follow-up, show a pitch.`,
   },
   {
     routes: ["/settings", "/notifications"],
-    keywords: ["setting", "notification", "email", "telegram", "alert", "theme", "dark"],
+    keywords: ["setting", "notification", "email", "telegram", "alert", "theme",
+      "dark", "mark all read", "unread", "bell", "badge"],
     title: "Settings and Notifications",
     body: `Settings covers integrations, alerts and preferences, including dark
 mode. Notifications is everything still waiting on you, grouped by overdue, due
-today and this week.`,
+today and this week.
+
+"Mark all read" at the top of Notifications clears the lot at once, and the
+bell's badge in the top bar updates with it — the page and the bell read the
+same list, so they never disagree.`,
   },
 ];
 
