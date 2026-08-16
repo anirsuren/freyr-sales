@@ -124,6 +124,7 @@ export function GoalZoom({
   headerAction,
   lit = false,
   fill = false,
+  onLinkHover,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -156,6 +157,15 @@ export function GoalZoom({
    * fit without a scrollbar instead of being capped at 340px.
    */
   fill?: boolean;
+  /**
+   * THE LINK RUNS BOTH WAYS (Anir, Aug 16: "if I hover over the bar chart it
+   * properly shines the right things, but if I hover over any one of those
+   * linked items, all of those should do the same thing"). The bars in here
+   * always RECEIVED the shine via `lit`; this lets them send it, so hovering
+   * a month, group or person bar lights the goal's bar in the chart and its
+   * row in the table exactly like hovering the chart lights them.
+   */
+  onLinkHover?: (on: boolean) => void;
 }) {
   const router = useRouter();
 
@@ -814,6 +824,8 @@ export function GoalZoom({
                           setSelected(i);
                           togglePeriod(i, e.shiftKey);
                         }}
+                        onMouseEnter={() => !empty && onLinkHover?.(true)}
+                        onMouseLeave={() => !empty && onLinkHover?.(false)}
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-all",
                           shown ? "bg-[rgba(0,113,227,0.08)]" : "rounded-lg",
@@ -1019,6 +1031,8 @@ export function GoalZoom({
                           type="button"
                           aria-expanded={active}
                           onClick={(e) => toggleGroup(r2.group.id, e.shiftKey)}
+                          onMouseEnter={() => onLinkHover?.(true)}
+                          onMouseLeave={() => onLinkHover?.(false)}
                           className={cn(
                             "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
                             active
@@ -1400,6 +1414,8 @@ export function GoalZoom({
                         type="button"
                         aria-expanded={openPeople.has(p.name)}
                         onClick={(e) => togglePerson(p.name, e.shiftKey)}
+                        onMouseEnter={() => onLinkHover?.(true)}
+                        onMouseLeave={() => onLinkHover?.(false)}
                         className={cn(
                           "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
                           openPeople.has(p.name)

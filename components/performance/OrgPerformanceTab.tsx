@@ -1187,6 +1187,9 @@ function GoalRows({
                 meName={meName}
                 run={run}
                 lit={linkedIndex === index}
+                onLinkHover={(on) =>
+                  donutSyncBroadcast(syncId, on ? index : null)
+                }
                 embedded
                 headerAction={
                   live ? (
