@@ -1,5 +1,6 @@
 import { isCurrencyCode, type CurrencyCode } from "./currency";
 import { getDataMode } from "./dataMode";
+import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import {
   EMPTY_OPPORTUNITIES,
   normalizeConfidence,
@@ -140,7 +141,43 @@ async function writeRow(state: OpportunitiesState): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * MOCK SHOWS THE REAL PIPELINE (Anir, Aug 16: "prolly dont want to use the
+ * data its not real — maybe in mock mode u can add it").
+ *
+ * Suren's sheet, transcribed, so the module is full the moment you open it in
+ * Mock instead of showing an empty table. Ids are derived from the row, not
+ * random, so the same deal keeps the same id across reloads and anything that
+ * points at one keeps pointing at it.
+ *
+ * Real mode never touches this: it reads the live store and starts empty.
+ */
+function seededMock(): OpportunitiesState {
+  const now = "2026-08-16T00:00:00.000Z";
+  return {
+    opportunities: SEED_OPPORTUNITIES.map((r, i) => ({
+      id: `seed-opp-${i + 1}`,
+      externalId: r.externalId ?? undefined,
+      name: r.offering ? `${r.offering} — ${r.customer}` : r.customer,
+      customer: r.customer,
+      offeringIds: [],
+      offeringLabels: r.offering ? [r.offering] : [],
+      level: normalizeLevel(r.level),
+      status: normalizeStatus(r.status),
+      revenueType: normalizeRevenueType(r.revenueType),
+      value: r.value ?? 0,
+      confidence: normalizeConfidence(r.confidence),
+      estSignDate: r.estSignDate ?? undefined,
+      owner: undefined,
+      nextSteps: r.nextSteps ?? undefined,
+      createdAt: now,
+      updatedAt: now,
+    })),
+  };
+}
+
 export async function readOpportunities(): Promise<OpportunitiesState> {
+  if (getDataMode() === "mock") return seededMock();
   return readRow().catch(() => structuredClone(EMPTY_OPPORTUNITIES));
 }
 

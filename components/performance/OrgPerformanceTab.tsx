@@ -1122,10 +1122,15 @@ function GoalRows({
             }}
             aria-expanded={open}
             aria-label={`${open ? "Hide" : "Show"} the breakdown for ${goal.name}`}
-            className="cursor-pointer rounded-md p-0.5 transition-colors hover:bg-surface"
+            /* SAME INSET AS THE HEADER'S CONTROL (Anir, Aug 16: "This column
+               isn't aligned"). The cell and the header cell already share an
+               edge to the pixel; it was the two trailing glyphs sitting at
+               different paddings inside them, 2px apart, that read as a
+               crooked column. */
+            className="cursor-pointer rounded-md p-1 transition-colors hover:bg-surface"
           >
           <ChevronDown
-            size={15}
+            size={13.5}
             strokeWidth={2.2}
             className={cn(
               "text-text-tertiary transition-transform",
