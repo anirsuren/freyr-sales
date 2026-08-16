@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -668,8 +668,8 @@ export function GoalZoom({
                           </span>
                         </button>
                         ) : (
+                        <Fragment key={r2.group.id}>
                         <HoverCard
-                          key={r2.group.id}
                           side="bottom"
                           width={420}
                           delayMs={0}
@@ -740,6 +740,64 @@ export function GoalZoom({
                           )}
                         </button>
                         </HoverCard>
+                        {active && (
+                          <div className="tab-panel mt-0.5 space-y-0.5 rounded-lg bg-surface/70 px-2 py-1.5">
+                            {[
+                              ...new Set(
+                                [r2.group.head, ...r2.group.members]
+                                  .map((n) => n.trim())
+                                  .filter(Boolean)
+                              ),
+                            ].map((name) => {
+                              const v = familyValue(state, goal, {
+                                range: row.range,
+                                person: name,
+                                verifiedOnly: true,
+                              });
+                              const w = familyValue(state, goal, {
+                                range: row.range,
+                                person: name,
+                                reportedOnly: true,
+                              });
+                              return (
+                                <span
+                                  key={name}
+                                  className="flex items-center gap-2 px-1 py-0.5"
+                                >
+                                  <Avatar
+                                    name={name}
+                                    className="h-5 w-5 shrink-0 text-[7.5px]"
+                                  />
+                                  <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
+                                    {name}
+                                    {name === r2.group.head && (
+                                      <Crown
+                                        size={8}
+                                        strokeWidth={2.8}
+                                        aria-label="Group owner"
+                                        className="ml-1 inline text-[color:#7C3AED]"
+                                      />
+                                    )}
+                                  </span>
+                                  <b
+                                    className={cn(
+                                      "shrink-0 text-[11px] tnum",
+                                      v > 0 ? "text-text-primary" : "text-text-tertiary"
+                                    )}
+                                  >
+                                    {fmtAmount(goal.unit, v)}
+                                  </b>
+                                  {w > 0 && (
+                                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#0058B0] tnum">
+                                      +{fmtAmount(goal.unit, w)}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        </Fragment>
                         )
                       );
                     })
