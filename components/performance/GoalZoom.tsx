@@ -63,6 +63,11 @@ import type { RunOp } from "./PerformanceModule";
  *  signed-off number because it is the same measurement, striped because it is
  *  not confirmed yet. */
 const COMPONENT_COLORS = ["#0071E3", "#0F766E", "#6D28D9"];
+/** One identity colour per line item, matched between a bar's segments and
+ *  the rows under it (Anir, Aug 16: "On the progress bar, show this, this,
+ *  this, and then color-code it, and then the line items for each below").
+ *  Identity hues only — red and green stay reserved for status. */
+const DEAL_COLORS = ["#0071E3", "#7C3AED", "#0891B2", "#B4318F", "#0F766E", "#6366F1"];
 const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
 
 /**
@@ -664,17 +669,19 @@ export function GoalZoom({
            * under a person inside box 3, or as the whole of box 3 when the
            * scope is widened past the drill.
            */
-          const lineItems = (names: Set<string> | null, indent: boolean) => {
-            const entries = familyActuals
+          const entriesFor = (names: Set<string> | null) =>
+            familyActuals
               .filter((a) => inRange(a, row.range))
               .filter((a) => !names || names.has(a.person.trim().toLowerCase()))
               .sort((x, y) => y.amount - x.amount);
+          const lineItems = (names: Set<string> | null, indent: boolean) => {
+            const entries = entriesFor(names);
             if (entries.length === 0) {
               return (
                 <p
                   className={cn(
                     "py-2 text-[10.5px] text-text-tertiary",
-                    indent ? "pl-9" : "px-2 py-3 text-[12px] text-text-secondary"
+                    !indent && "px-2 py-3 text-[12px] text-text-secondary"
                   )}
                 >
                   {indent
@@ -684,8 +691,8 @@ export function GoalZoom({
               );
             }
             return (
-              <div className={cn("space-y-1", indent && "pl-7")}>
-                {entries.map((a) => {
+              <div className="space-y-1">
+                {entries.map((a, entryIdx) => {
                   const opp = a.opportunityId
                     ? opportunities.find((o) => o.id === a.opportunityId)
                     : undefined;
@@ -697,6 +704,17 @@ export function GoalZoom({
                       className="flex flex-col gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
                     >
                       <span className="flex items-center gap-2">
+                        {indent && (
+                          /* The dot that ties this row to its segment on the
+                             person's bar above. */
+                          <span
+                            className="h-2.5 w-1 shrink-0 rounded-full"
+                            style={{
+                              background:
+                                DEAL_COLORS[entryIdx % DEAL_COLORS.length],
+                            }}
+                          />
+                        )}
                         {account ? (
                           <CompanyLogo
                             name={account}
@@ -1452,8 +1470,33 @@ export function GoalZoom({
                         )}
                         </span>
                         {/* Same as the group rows: full width underneath, and
-                            only when there is something to draw. */}
-                        {(p.verified > 0 || p.awaiting > 0) && (
+                            only when there is something to draw. Open, the bar
+                            becomes the BREAKDOWN — one coloured segment per
+                            deal, matching the dots on the rows below (Anir,
+                            Aug 16: "on the progress bar, show this, this,
+                            this, and then color-code it, and then the line
+                            items for each below"). Waiting segments stay
+                            faded, same as everywhere. */}
+                        {(p.verified > 0 || p.awaiting > 0) &&
+                          (openPeople.has(p.name) ? (
+                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                              {entriesFor(
+                                new Set([p.name.trim().toLowerCase()])
+                              ).map((a, entryIdx) => (
+                                <span
+                                  key={a.id}
+                                  className={cn("block h-full", lit && "bar-lit")}
+                                  style={{
+                                    width: `${Math.min(100, (a.amount / maxP) * 100)}%`,
+                                    background:
+                                      DEAL_COLORS[entryIdx % DEAL_COLORS.length],
+                                    opacity:
+                                      entryStatus(a) === "verified" ? 1 : 0.45,
+                                  }}
+                                />
+                              ))}
+                            </span>
+                          ) : (
                           <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                             <span
                               className={cn(
@@ -1472,7 +1515,7 @@ export function GoalZoom({
                               }}
                             />
                           </span>
-                        )}
+                          ))}
                       </button>
                       </HoverCard>
                       {openPeople.has(p.name) && (

@@ -3233,32 +3233,70 @@ function SubgoalEditorFields({
         </p>
         {goalTarget > 0 && (
           <>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            {/* THE SPLIT, DRAWN, NOT NARRATED (Anir, Aug 16: "you don't have
+                to say '1 million still unsplit'... Show me where we have
+                gotten to in terms of what number I've written and then how
+                much more we have. Show it visually"). Solid is what the other
+                subgoals already claim, the pale segment is THIS one growing
+                live as the target is typed, and the grey is what is left.
+                Same one-blue-two-strengths idiom as verified vs waiting. */}
+            <div className="mt-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+              <span
+                className="block h-full bg-blue-primary transition-all"
+                style={{
+                  width: `${Math.min(100, (siblingTotal / goalTarget) * 100)}%`,
+                }}
+              />
               <span
                 className={cn(
-                  "block h-full rounded-full transition-all",
-                  spoken > goalTarget ? "bg-[color:#C2410C]" : "bg-blue-primary"
+                  "block h-full transition-all",
+                  spoken > goalTarget
+                    ? "bg-[color:#C2410C] opacity-70"
+                    : "bg-blue-primary opacity-[0.35]"
                 )}
-                style={{ width: `${Math.min(100, (spoken / goalTarget) * 100)}%` }}
+                style={{
+                  width: `${Math.max(0, Math.min(100, (spoken / goalTarget) * 100) - Math.min(100, (siblingTotal / goalTarget) * 100))}%`,
+                }}
               />
             </div>
-            <p className="mt-1.5 text-[11.5px] text-text-secondary tnum">
-              Subgoals account for{" "}
-              <b className="text-text-primary">{fmtAmount(goal.unit, spoken)}</b>{" "}
-              of it
-              {spoken < goalTarget && (
-                <span className="text-[color:#0058B0]">
-                  {" "}
-                  · {fmtAmount(goal.unit, goalTarget - spoken)} still unsplit
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+              {siblingTotal > 0 && (
+                <span className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary" />
+                  Other subgoals
+                  <b className="text-text-primary tnum">
+                    {fmtAmount(goal.unit, siblingTotal)}
+                  </b>
                 </span>
               )}
-              {spoken > goalTarget && (
-                <span className="text-[color:#C2410C]">
-                  {" "}
-                  · {fmtAmount(goal.unit, spoken - goalTarget)} over
+              <span className="flex items-center gap-1.5 text-text-secondary">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    spoken > goalTarget
+                      ? "bg-[color:#C2410C]"
+                      : "bg-blue-primary opacity-[0.35]"
+                  )}
+                />
+                This one
+                <b className="text-text-primary tnum">
+                  {fmtAmount(goal.unit, mine)}
+                </b>
+              </span>
+              {spoken <= goalTarget ? (
+                <span className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--border-light)]" />
+                  Left
+                  <b className="text-text-primary tnum">
+                    {fmtAmount(goal.unit, goalTarget - spoken)}
+                  </b>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 font-semibold text-[color:#C2410C] tnum">
+                  Over by {fmtAmount(goal.unit, spoken - goalTarget)}
                 </span>
               )}
-            </p>
+            </div>
           </>
         )}
       </div>
