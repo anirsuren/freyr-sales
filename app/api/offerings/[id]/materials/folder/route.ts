@@ -75,6 +75,21 @@ export async function PATCH(
         { error: `Could not rename to "${to}" — a folder by that name may already exist.` },
         { status: 409 }
       );
+    /**
+     * RENAMING NOTHING IS NOT A RENAME (found Aug 16, sweeping every write for
+     * targets that do not exist). Folders here are derived from the materials
+     * filed under them, so a source with no materials is a folder that does
+     * not exist — and answering {ok:true} for it told a caller a rename had
+     * happened. It reported moved: 0 alongside, but a 200 is what most callers
+     * check.
+     */
+    if (result.moved === 0)
+      return NextResponse.json(
+        {
+          error: `Nothing is filed under "${materialFolderLabel(from)}", so there is no folder to rename.`,
+        },
+        { status: 404 }
+      );
     return NextResponse.json({ ok: true, moved: result.moved, folder: to });
   } catch (error) {
     return NextResponse.json(
