@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Download, FileSpreadsheet, ListChecks, Printer } from "lucide-react";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import {
@@ -43,6 +44,11 @@ export function PerformanceExport({
   live: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  /** The header slot only exists after the module has mounted. */
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlot(document.getElementById("perf-header-actions"));
+  }, []);
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   function exportGoals() {
@@ -152,16 +158,18 @@ export function PerformanceExport({
 
   if (!live) return null;
 
-  return (
+  const control = (
     <span className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         title="Export or print this view"
-        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+        aria-label="Export or print this view"
+        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
       >
-        <Download size={14} strokeWidth={2.2} /> Export
+        <Download size={13} strokeWidth={2.2} />
+        Export
       </button>
       {open && (
         <>
@@ -197,6 +205,8 @@ export function PerformanceExport({
       )}
     </span>
   );
+
+  return slot ? createPortal(control, slot) : null;
 }
 
 function ExportRow({

@@ -74,6 +74,7 @@ export function GoalZoom({
   run,
   embedded = false,
   headerAction,
+  lit = false,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -95,6 +96,9 @@ export function GoalZoom({
    *  costs a line of its own (Anir, Aug 15: "that's not a good place, I can't
    *  take up its own line"). */
   headerAction?: React.ReactNode;
+  /** The goal's row (or its bar in the chart) is under the cursor: light every
+   *  row in here that contributes to the number being pointed at. */
+  lit?: boolean;
 }) {
   const router = useRouter();
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
@@ -503,6 +507,35 @@ export function GoalZoom({
                   {rows.map((r, i) => {
                     const active = i === selIdx;
                     return (
+                      r.verified === 0 && r.awaiting === 0 ? (
+                      <button
+                        key={r.label}
+                        type="button"
+                        onClick={() => {
+                          setSelected(i);
+                          setOpenGroup(null);
+                        }}
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                          active
+                            ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
+                            : "hover:bg-surface"
+                        )}
+                      >
+                        <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
+                          {gran === "weeks" ? r.label.replace("Week ", "") : r.label}
+                          {r.isNow && (
+                            <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-blue-primary align-middle" />
+                          )}
+                        </b>
+                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]" />
+                        <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
+                          <span className="text-text-tertiary">
+                            {fmtAmount(goal.unit, 0)}
+                          </span>
+                        </b>
+                      </button>
+                      ) : (
                       <HoverCard
                         key={r.label}
                         side="right"
@@ -526,10 +559,11 @@ export function GoalZoom({
                           setOpenGroup(null);
                         }}
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all",
                           active
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                            : "hover:bg-surface"
+                            : "hover:bg-surface",
+                          lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
                         )}
                       >
                         <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
@@ -538,7 +572,12 @@ export function GoalZoom({
                             <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-blue-primary align-middle" />
                           )}
                         </b>
-                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                        <span
+                          className={cn(
+                            "flex flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)] transition-all",
+                            lit ? "h-2.5" : "h-1.5"
+                          )}
+                        >
                           <span
                             className="h-full bg-[#16A34A]"
                             style={{ width: `${Math.min(100, (r.verified / scaleBase) * 100)}%` }}
@@ -555,6 +594,7 @@ export function GoalZoom({
                         </b>
                       </button>
                       </HoverCard>
+                      )
                     );
                   })}
                 </div>
@@ -582,6 +622,29 @@ export function GoalZoom({
                     inPeriodGroups.map((r2) => {
                       const active = selGroup?.group.id === r2.group.id;
                       return (
+                        r2.verified === 0 && r2.awaiting === 0 ? (
+                        <button
+                          key={r2.group.id}
+                          type="button"
+                          onClick={() => setOpenGroup(r2.group.id)}
+                          className={cn(
+                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            active
+                              ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
+                              : "hover:bg-surface"
+                          )}
+                        >
+                          <span className="flex w-full items-center gap-2.5">
+                            <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                            <span className="min-w-0 flex-1">
+                              <GroupPill name={r2.group.name} size="sm" />
+                            </span>
+                            <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
+                              {fmtAmount(goal.unit, 0)}
+                            </b>
+                          </span>
+                        </button>
+                        ) : (
                         <HoverCard
                           key={r2.group.id}
                           side="bottom"
@@ -602,10 +665,11 @@ export function GoalZoom({
                           type="button"
                           onClick={() => setOpenGroup(r2.group.id)}
                           className={cn(
-                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
                             active
                               ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                              : "hover:bg-surface"
+                              : "hover:bg-surface",
+                            lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
                           )}
                         >
                           {/* THE BAR GETS ITS OWN LINE (Anir, Aug 15: "that bar
@@ -653,6 +717,7 @@ export function GoalZoom({
                           )}
                         </button>
                         </HoverCard>
+                        )
                       );
                     })
                   )}
@@ -678,6 +743,17 @@ export function GoalZoom({
                     </p>
                   ) : (
                     groupPeople.map((p) => (
+                      p.verified === 0 && p.awaiting === 0 ? (
+                      <div key={p.name} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
+                        <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
+                        <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
+                          {p.name}
+                        </span>
+                        <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
+                          {fmtAmount(goal.unit, 0)}
+                        </b>
+                      </div>
+                      ) : (
                       <HoverCard
                         key={p.name}
                         side="left"
@@ -694,7 +770,12 @@ export function GoalZoom({
                           />
                         }
                       >
-                      <div className="flex flex-col gap-1.5 rounded-lg px-2.5 py-2">
+                      <div
+                        className={cn(
+                          "flex flex-col gap-1.5 rounded-lg px-2.5 py-2 transition-all",
+                          lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
+                        )}
+                      >
                         <span className="flex w-full items-center gap-2.5">
                         <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
                         <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
@@ -738,6 +819,7 @@ export function GoalZoom({
                         )}
                       </div>
                       </HoverCard>
+                      )
                     ))
                   )}
                 </div>

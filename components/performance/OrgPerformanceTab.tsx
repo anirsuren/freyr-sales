@@ -12,6 +12,10 @@ import {
   UsersRound,
   ShieldCheck,
   ArrowDownAZ,
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  CalendarRange,
   Layers,
   Target,
   TrendingDown,
@@ -43,7 +47,13 @@ import {
   type PeriodKey,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
-import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import {
+  BarChart,
+  DonutChart,
+  DonutLegend,
+  donutSyncBroadcast,
+  useDonutSync,
+} from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
@@ -98,6 +108,20 @@ function monthlyTotals(
   }
   return months;
 }
+
+/** THE COLOUR OF AN AMOUNT. Every bar that measures money or count uses this
+ *  one blue, in the chart and in the table, so the same $250K never appears in
+ *  two colours on one screen (Anir, Aug 15). Identity colour stays on the type
+ *  chip and the icon tile; status stays on the pace pill. */
+const MONEY = "#0071E3";
+
+/** The four windows, widest to narrowest, each with its own mark. */
+const PERIOD_META: Record<PeriodKey, { color: string; icon: typeof CalendarDays }> = {
+  week: { color: "#0891B2", icon: CalendarRange },
+  month: { color: "#0071E3", icon: CalendarDays },
+  quarter: { color: "#7C3AED", icon: CalendarClock },
+  year: { color: "#0F766E", icon: CalendarCheck },
+};
 
 type SortKey = "pace" | "met" | "target" | "actual" | "verified" | "name";
 const SORT_KEYS: SortKey[] = ["pace", "met", "target", "actual", "verified", "name"];
@@ -200,6 +224,8 @@ export function OrgPerformanceTab({
     PERIOD_KEYS
   );
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Channel the chart and the table below it share for linked hover. */
+  const syncId = `perf-${scope?.exportLabel ?? "org"}`;
   /** Insertion order told you nothing. Every other list in the app opens with
    *  a sort (Team, Customers, Offerings), so this one does too. */
   const [sortBy, setSortBy] = useStoredView<SortKey>(
@@ -287,6 +313,12 @@ export function OrgPerformanceTab({
 
   return (
     <div>
+      <PerformanceExport
+        state={state}
+        goals={sorted}
+        label={scope?.exportLabel ?? "org"}
+        live={live}
+      />
       {scope?.picker}
       <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-4", Boolean(scope?.picker) && "mt-4")}>
         <StatTile
@@ -330,7 +362,7 @@ export function OrgPerformanceTab({
               whatever height is left and the scrollbar lands on the card's
               own bottom edge. -mx-5 with a matching fillCard runs the bars to
               the card's left and right edges. */}
-          <Card className="flex flex-col p-5">
+          <Card className="flex flex-col p-5" data-chart-root>
             <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
               {words?.barTitle ?? "How far along each goal is"}
               <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
@@ -346,7 +378,8 @@ export function OrgPerformanceTab({
                 height={190}
                 fillCard={20}
                 format="percent"
-                data={picked.map((g) => {
+                syncId={syncId}
+                data={sorted.map((g) => {
                   const a = actualValue(state.actuals, g);
                   /**
                    * SOLID IS SIGNED OFF, HATCHED IS SOMEBODY'S WORD (Anir,
@@ -369,7 +402,7 @@ export function OrgPerformanceTab({
                       g.target > 0 && awaiting > 0
                         ? Math.round(pctMet(awaiting, g.target))
                         : 0,
-                    color: typeMeta(g.type).color,
+                    color: MONEY,
                     caption:
                       g.target > 0
                         ? awaiting > 0
@@ -452,7 +485,7 @@ export function OrgPerformanceTab({
         query={query}
         className="mt-4 flex flex-wrap items-center gap-2"
       >
-        <span className="relative flex min-w-[200px] flex-1 items-center">
+        <span className="relative flex min-w-[190px] flex-1 basis-[190px] items-center">
           <PrioritySearchInput
             value={query}
             onChange={setQuery}
@@ -504,19 +537,13 @@ export function OrgPerformanceTab({
             </div>
           )}
         </span>
-        <span className="ml-auto flex flex-wrap items-center gap-2">
-          <PerformanceExport
-            state={state}
-            goals={sorted}
-            label={scope?.exportLabel ?? "org"}
-            live={live}
-          />
+        <span className="flex flex-wrap items-center gap-2">
           <ColorSelect
             value={sortBy}
             onChange={(v) => setSortBy(v as SortKey)}
             ariaLabel="Sort the goals"
             dense
-            minWidth={168}
+            minWidth={150}
             options={[
               { value: "pace", label: "Worst pace first", color: "#C2410C", icon: TrendingDown },
               { value: "met", label: "Most complete", color: "#16A34A", icon: Target },
@@ -575,10 +602,15 @@ export function OrgPerformanceTab({
             ariaLabel="Recent window"
             dense
             minWidth={150}
+            // Four identical blue dots told you nothing (Anir, Aug 15: "you
+            // can have some nice icons for these four instead of the same blue
+            // circle"). A widening window, drawn as one: a day, a month grid,
+            // a quarter's range, a whole year.
             options={PERIODS.map((p) => ({
               value: p.value,
               label: p.label,
-              color: "#0071E3",
+              color: PERIOD_META[p.value].color,
+              icon: PERIOD_META[p.value].icon,
             }))}
           />
           {live && (
@@ -672,10 +704,12 @@ export function OrgPerformanceTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {sorted.map((g) => (
+              {sorted.map((g, i) => (
                 <GoalRows
                   key={g.id}
                   goal={g}
+                  index={i}
+                  syncId={syncId}
                   state={state}
                   meName={meName}
                   actuals={state.actuals}
@@ -702,17 +736,27 @@ function MiniBar({
   actual,
   target,
   pace,
+  lit = false,
 }: {
   actual: number;
   target: number;
   pace: ReturnType<typeof paceVerdict>;
+  /** This row's bar in the chart above is under the cursor. */
+  lit?: boolean;
 }) {
   const pct = Math.min(100, pctMet(actual, target));
   const color =
     pace === "lagging" ? "#DC2626" : pace === "ontrack" ? "#0071E3" : "#16A34A";
   return (
     <span className="flex items-center gap-2">
-      <span className="h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+      <span
+        className={cn(
+          "h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
+          // Glow when its bar in the chart is hovered, so the eye can carry a
+          // number from the chart to its row without counting columns.
+          lit && "h-2.5 w-28 ring-2 ring-blue-primary/35"
+        )}
+      >
         <span
           className="block h-full rounded-full"
           style={{ width: `${target > 0 ? pct : 0}%`, background: color }}
@@ -727,6 +771,8 @@ function MiniBar({
 
 function GoalRows({
   goal,
+  index,
+  syncId,
   state,
   meName,
   actuals,
@@ -741,6 +787,9 @@ function GoalRows({
   onLogActual,
 }: {
   goal: PrimaryGoal;
+  /** Position in the same list the chart above draws, for linked hover. */
+  index: number;
+  syncId: string;
   actuals: PerfActual[];
   open: boolean;
   onToggle: () => void;
@@ -756,6 +805,8 @@ function GoalRows({
 }) {
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
+  /** Which column the cursor is on in the chart above (or on a sibling row). */
+  const linkedIndex = useDonutSync(syncId);
   const periodDelta =
     goal.measure === "total"
       ? actualValue(actuals, goal, {}, period)
@@ -774,9 +825,15 @@ function GoalRows({
     <Fragment>
       <tr
         onClick={onToggle}
+        onMouseEnter={() => donutSyncBroadcast(syncId, index)}
+        onMouseLeave={() => donutSyncBroadcast(syncId, null)}
+        data-linked={linkedIndex === index ? "true" : undefined}
         className={cn(
           "cursor-pointer transition-colors hover:bg-surface",
-          open && "bg-surface"
+          open && "bg-surface",
+          // Its column in the chart above is under the cursor: light the whole
+          // row, not only its bar, so the link between the two is obvious.
+          linkedIndex === index && "bg-blue-light/40"
         )}
       >
         <td className="px-4 py-4">
@@ -865,7 +922,12 @@ function GoalRows({
           )}
         </td>
         <td className="px-4 py-4">
-          <MiniBar actual={actual} target={goal.target} pace={pace} />
+          <MiniBar
+            actual={actual}
+            target={goal.target}
+            pace={pace}
+            lit={linkedIndex === index}
+          />
           {goal.measure === "total" && goal.target > 0 && (
             <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
               {expectedPct}% of the year gone
@@ -943,6 +1005,7 @@ function GoalRows({
                 goalId={goal.id}
                 meName={meName}
                 run={run}
+                lit={linkedIndex === index}
                 embedded
                 headerAction={
                   live ? (

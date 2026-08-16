@@ -402,8 +402,18 @@ function PortalTip({
   // gap "belongs" changes — so plain tips keep their existing geometry.
   const bridge = interactive ? 10 : 0;
   const anchorElement = anchor.element;
+  /**
+   * The box the card must clear. `data-chart-root` marks the whole CARD where
+   * a chart sets it; `[role="img"]` is only the plot strip inside that card.
+   * One `closest()` over both returned whichever was NEARER, which is always
+   * the plot — so the card cleared the bars and still landed on the title
+   * (Anir, Aug 15: "it can never cover up the pop-up"). Ask for the outer box
+   * first and fall back to the plot when a chart has not marked one.
+   */
   const chartElement =
-    anchorElement?.closest('[data-chart-root], [role="img"]') ?? anchorElement;
+    anchorElement?.closest("[data-chart-root]") ??
+    anchorElement?.closest('[role="img"]') ??
+    anchorElement;
   const chartRect = chartElement?.getBoundingClientRect() ?? {
     left: currentAnchor.x,
     right: currentAnchor.x,
@@ -1665,6 +1675,7 @@ export function BarChart({
   height = 160,
   format,
   activeIndex = null,
+  syncId,
   unit,
   hideTipStats = false,
   tipRecordsLabel = "Records behind this bar",
@@ -1720,6 +1731,13 @@ export function BarChart({
   // its index so that bar stays lit + ringed while the rest dim (Suren: "when I
   // highlight one, show that its bar is highlighted").
   activeIndex?: number | null;
+  /**
+   * Linked hover, the donut's mechanic applied to bars (Anir, Aug 15: "when I
+   * hover over the bar chart... that reference amount of money should glow.
+   * All these progress bars should glow"). The chart and the table below it
+   * are the same list twice, so hovering either lights both.
+   */
+  syncId?: string;
   // Unit appended to each bar's at-rest value label so a bare "12" reads as
   // "12 calls" without hovering (Suren: "all graphs need units").
   unit?: string;
@@ -1764,7 +1782,8 @@ export function BarChart({
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const ranked = [...data].sort((a, b) => b.value - a.value);
   // Hover wins over the externally-selected bar; otherwise the selected bar lit.
-  const lit = hover ?? activeIndex;
+  const linked = useDonutSync(syncId);
+  const lit = hover ?? activeIndex ?? linked;
   // Two label lines need more headroom, else a full-height bar's label would
   // ride out of the top of the plot.
   const hasCaption = data.some((d) => d.caption);
@@ -1894,25 +1913,31 @@ export function BarChart({
             // so the wash stayed near-white on a near-black card. `var(--surface)`
             // is redefined under `.dark`, so it follows the theme by itself.
             className="group/bar relative z-[1] flex h-full min-w-0 cursor-pointer flex-col items-center rounded-md transition-colors hover:bg-[var(--surface)]"
-            onMouseEnter={(e) =>
-              showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
-            }
+            onMouseEnter={(e) => {
+              showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
+              if (syncId) donutSyncBroadcast(syncId, i);
+            }}
             onMouseMove={(e) =>
               moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
             }
-            onMouseLeave={() =>
-              closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0)
-            }
+            onMouseLeave={() => {
+              closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
+              if (syncId) donutSyncBroadcast(syncId, null);
+            }}
           >
             {/* Hover breakdown — portaled so it's never clipped by the card.
-                `nearPoint` hugs the anchor above, which is this bar's own
-                value label, so the card sits the same short distance above the
-                number whatever height the bar happens to be. */}
+                It clears the WHOLE plot, above it or below it, never over it
+                (Anir, Aug 15: "I can't be doing the pop-up right over the
+                graph. It should always do it on top or below").
+                `nearPoint` used to hug this bar's own value label, which reads
+                well on a tall area chart where the point is deep inside the
+                plot — but on a column chart the label sits ON the data, so the
+                card landed across the bars it was describing whenever the
+                chart was high in the viewport. */}
             {hover === i && (
               <PortalTip
                 anchor={mouse}
                 wide
-                nearPoint
                 interactive={barInteractive}
                 onEnter={keepOpen}
                 onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
@@ -1996,7 +2021,7 @@ export function BarChart({
                         ? d.color || VIZ.blue
                         : "var(--border-light)",
                     boxShadow:
-                      activeIndex === i
+                      lit === i
                         ? `0 0 0 2px #fff, 0 0 0 4px ${d.color || VIZ.blue}`
                         : undefined,
                   }}

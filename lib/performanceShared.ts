@@ -295,9 +295,25 @@ export function pctMet(actual: number, target: number): number {
 }
 
 /** How much of the goal's year has passed (0..1). */
+/**
+ * HOW MUCH OF THE **FISCAL** YEAR IS GONE (bug, Aug 15).
+ *
+ * This measured January to December while the rest of the module runs on
+ * Freyr's April-to-March year — the drill-down has always listed April first.
+ * On 15 Aug 2026 it therefore said 62% of the year was gone when the fiscal
+ * year was 37% through, so every goal was judged against four and a half
+ * months it had not been given yet: pace verdicts read "lagging" early, and
+ * "must be at" asked for $621K of a $1M target instead of $373K.
+ *
+ * Anir, Aug 15: "if you're counting the year starting, like the contract
+ * starting from January, that doesn't make any sense."
+ *
+ * FY2026 = 1 Apr 2026 → 31 Mar 2027, which is what FY_START_MONTH already
+ * encodes for the period columns.
+ */
 export function yearElapsed(year: number, now = new Date()): number {
-  const start = new Date(year, 0, 1).getTime();
-  const end = new Date(year + 1, 0, 1).getTime();
+  const start = new Date(year, FY_START_MONTH, 1).getTime();
+  const end = new Date(year + 1, FY_START_MONTH, 1).getTime();
   const frac = (now.getTime() - start) / (end - start);
   return Math.min(1, Math.max(0, frac));
 }

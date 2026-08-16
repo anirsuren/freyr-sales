@@ -393,6 +393,12 @@ export function PerformanceModule({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* Where the page-level actions live. The export control is
+                rendered by whichever tab is open (only it knows which goals are
+                on screen) and portals itself in here, beside How this works
+                (Anir, Aug 15: "what a weird place to have the download icon,
+                put it next to How this works"). */}
+            <span id="perf-header-actions" className="flex items-center gap-2" />
             <button
               type="button"
               onClick={() => setHowOpen(true)}
