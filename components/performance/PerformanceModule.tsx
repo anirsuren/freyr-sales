@@ -564,8 +564,8 @@ function HowItWorksModal({
       body: "The big annual number on the goal, split across its subgoals, split again across the people responsible. Goal owners are responsible for a subgoal overall.",
     },
     {
-      title: "Log actuals — the numbers roll up on their own",
-      body: "Anyone logs what was achieved with “Log an actual”. Each person's count becomes their group's count, and the groups add up to the organization. That's the only math.",
+      title: "Log results — the numbers roll up on their own",
+      body: "A result is ALWAYS entered against a person. There is no group entry and no organization entry — each person's number becomes their group's number, and the groups add up to the organization. It only ever runs one way: person → group → organization.",
     },
     {
       title: "Verified is leadership's stamp",
@@ -1201,7 +1201,11 @@ function AssignGroupModal({
             Pick one
           </span>
         </label>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {/* WHO IS ACTUALLY IN IT (Anir, Aug 15: "i cant even see who's in this
+            group so this ui sucks"). Assigning a goal to a department is a
+            decision about PEOPLE, and the chip named the group without naming
+            one of them. Every option now carries its roster. */}
+        <div className="mt-1.5 flex flex-col gap-1.5">
           {groups.length === 0 ? (
             <p className="text-[12.5px] text-text-tertiary">
               Every group already carries this goal.
@@ -1209,6 +1213,9 @@ function AssignGroupModal({
           ) : (
             groups.map((g) => {
               const on = g.id === groupId;
+              const roster = [
+                ...new Set([g.head, ...g.members].map((m) => m.trim()).filter(Boolean)),
+              ];
               return (
                 <button
                   key={g.id}
@@ -1216,7 +1223,7 @@ function AssignGroupModal({
                   onClick={() => setGroupId(on ? "" : g.id)}
                   aria-pressed={on}
                   className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border-2 px-2 py-1.5 transition-all",
+                    "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border-2 px-2.5 py-2 text-left transition-all",
                     on
                       ? "border-blue-primary bg-blue-light shadow-sm"
                       : "border-dashed border-blue-subtle bg-white hover:border-blue-primary hover:bg-blue-light/40"
@@ -1235,7 +1242,30 @@ function AssignGroupModal({
                   >
                     {on && <Check size={10} strokeWidth={3.4} />}
                   </span>
-                  <GroupPill name={g.name} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <GroupPill name={g.name} />
+                      <span className="text-[11px] text-text-secondary">
+                        led by {g.head}
+                      </span>
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {roster.slice(0, 8).map((n) => (
+                        <span key={n} className="flex items-center gap-1">
+                          <Avatar name={n} className="h-5 w-5 shrink-0 text-[7.5px]" />
+                          <span className="text-[11px] text-text-secondary">{n}</span>
+                        </span>
+                      ))}
+                      {roster.length > 8 && (
+                        <span className="text-[11px] font-semibold text-text-tertiary">
+                          +{roster.length - 8} more
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-bold text-text-secondary tnum">
+                    {roster.length}
+                  </span>
                 </button>
               );
             })
@@ -3389,7 +3419,7 @@ function LogActualModal({
   }
 
   return (
-    <Modal tall open={open} onClose={onClose} title="Log an actual" size="wide">
+    <Modal tall open={open} onClose={onClose} title="Log a result" size="wide">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         One number at a time: who achieved what, on which goal. Person rolls
         into group, group rolls into the organization, automatically.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   knownPeople,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { Avatar } from "@/components/ui/Avatar";
+import { cn } from "@/lib/utils";
 import { MyEntriesCard, VerifyQueueCard } from "./EntryCards";
 import { RoleChip } from "./bits";
 import type { RunOp } from "./PerformanceModule";
@@ -51,6 +53,7 @@ export function PeopleTab({
 }) {
   const router = useRouter();
   const [picked, setPicked] = useState<string | null>(initialPerson);
+  const [pickOpen, setPickOpen] = useState(false);
   const person = picked ?? meName;
   const first = person.trim().split(/\s+/)[0] || person;
 
@@ -70,10 +73,22 @@ export function PeopleTab({
    */
   const picker = (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="flex items-center gap-2.5">
+      {/* WHO YOU ARE LOOKING AT, AND HOW TO LOOK AT SOMEONE ELSE.
+          Suren, via Anir, Aug 15: "when I go to people performance and then
+          look at only Ananth, for that I have to log in as Ananth. What the
+          heck?" You never had to — but after the duplicate search box came out
+          the only way left was to type a name into the filter bar, which reads
+          as filtering YOUR goals, not switching person. So the name itself is
+          the control now. */}
+      <span className="relative flex items-center gap-2.5">
         <Avatar name={person} className="h-9 w-9 text-[12px]" />
         <span className="min-w-0">
-          <span className="flex items-center gap-2 text-[14px] font-bold text-text-primary">
+          <button
+            type="button"
+            onClick={() => setPickOpen((v) => !v)}
+            aria-expanded={pickOpen}
+            className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-0.5 -mx-1.5 text-[14px] font-bold text-text-primary transition-colors hover:bg-surface"
+          >
             {person}
             {person === meName && (
               <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary">
@@ -83,17 +98,61 @@ export function PeopleTab({
             {memberRoles?.[person.trim()] && (
               <RoleChip role={memberRoles[person.trim()]} />
             )}
+            <ChevronDown
+              size={15}
+              strokeWidth={2.4}
+              aria-hidden="true"
+              className={cn(
+                "text-text-tertiary transition-transform",
+                pickOpen && "rotate-180"
+              )}
+            />
+          </button>
+          <span className="block text-[11.5px] text-text-secondary">
+            {person === meName
+              ? "your goals — pick a name to see somebody else's"
+              : `viewing ${first}'s goals`}
           </span>
-          {picked && picked !== meName && (
-            <button
-              type="button"
-              onClick={() => setPicked(null)}
-              className="mt-0.5 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
-            >
-              Back to me
-            </button>
-          )}
         </span>
+
+        {pickOpen && (
+          <>
+            <span
+              className="fixed inset-0 z-20"
+              onClick={() => setPickOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="menu-in absolute left-11 top-full z-30 mt-1.5 max-h-[320px] w-[280px] overflow-y-auto rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
+              {names.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setPicked(n === meName ? null : n);
+                    setPickOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface",
+                    n === person && "bg-blue-light/50"
+                  )}
+                >
+                  <Avatar name={n} className="h-7 w-7 shrink-0 text-[10px]" />
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-[13px] font-medium text-text-primary">
+                      {n}
+                    </span>
+                    {n === meName && (
+                      <span className="rounded-full bg-blue-light px-1.5 py-0.5 text-[9px] font-bold text-blue-primary">
+                        YOU
+                      </span>
+                    )}
+                    {memberRoles?.[n.trim()] && <RoleChip role={memberRoles[n.trim()]} />}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </span>
     </div>
   );

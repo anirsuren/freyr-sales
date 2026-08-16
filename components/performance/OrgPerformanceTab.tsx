@@ -619,7 +619,7 @@ export function OrgPerformanceTab({
               onClick={() => onLogActual()}
               className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
             >
-              <PenLine size={13.5} strokeWidth={2.4} /> Log an actual
+              <PenLine size={13.5} strokeWidth={2.4} /> Log a result
             </button>
           )}
         </span>
@@ -710,6 +710,7 @@ export function OrgPerformanceTab({
                   goal={g}
                   index={i}
                   syncId={syncId}
+                  dimmed={openId !== null && openId !== g.id}
                   state={state}
                   meName={meName}
                   actuals={state.actuals}
@@ -773,6 +774,7 @@ function GoalRows({
   goal,
   index,
   syncId,
+  dimmed,
   state,
   meName,
   actuals,
@@ -790,6 +792,8 @@ function GoalRows({
   /** Position in the same list the chart above draws, for linked hover. */
   index: number;
   syncId: string;
+  /** Another goal is open: step back so the open one reads as the subject. */
+  dimmed: boolean;
   actuals: PerfActual[];
   open: boolean;
   onToggle: () => void;
@@ -829,12 +833,16 @@ function GoalRows({
         onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         data-linked={linkedIndex === index ? "true" : undefined}
         className={cn(
-          "cursor-pointer transition-colors hover:bg-surface",
-          open && "bg-surface",
-          // Its column in the chart above is under the cursor: light the whole
-          // row, not only its bar, so the link between the two is obvious.
+          "cursor-pointer transition-all hover:bg-surface",
+          // The open goal is the subject: a thick rail in its own type colour
+          // down the left, a tinted header, and a hard edge above it so the
+          // goal before it clearly ends.
+          open &&
+            "bg-surface [box-shadow:inset_4px_0_0_0_var(--goal-accent)] border-t-2 border-t-[color:var(--goal-accent)]",
+          dimmed && "opacity-45 hover:opacity-100",
           linkedIndex === index && "bg-blue-light/40"
         )}
+        style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
       >
         <td className="px-4 py-4">
           <span className="flex items-center gap-3">
@@ -983,7 +991,11 @@ function GoalRows({
               this is all part of the same goal"). The rail down the left is
               the goal's own type colour, the tint carries on from the open
               row, and the top padding is gone so the two touch. */}
-          <td colSpan={7} className="px-4 pb-4 pt-0">
+          <td
+            colSpan={7}
+            className="border-b-2 bg-surface/40 px-4 pb-4 pt-0"
+            style={{ borderBottomColor: typeMeta(goal.type).color }}
+          >
             <div
               className="tab-panel space-y-3 overflow-hidden rounded-xl border-l-[3px] py-3 pl-3.5"
               style={{
@@ -1018,10 +1030,10 @@ function GoalRows({
                           person: meName,
                         })
                       }
-                      title={`Log an actual on ${goal.name}`}
+                      title={`Log a result on ${goal.name}`}
                       className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-primary px-3 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
                     >
-                      <PenLine size={12.5} strokeWidth={2.4} /> Log an actual
+                      <PenLine size={12.5} strokeWidth={2.4} /> Log a result
                     </button>
                   ) : undefined
                 }
