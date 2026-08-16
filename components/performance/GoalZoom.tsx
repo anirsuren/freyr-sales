@@ -156,6 +156,7 @@ export function GoalZoom({
   fill?: boolean;
 }) {
   const router = useRouter();
+
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
   const meta = typeMeta(goal.type);
   const composite = isComposite(goal);
@@ -173,7 +174,7 @@ export function GoalZoom({
    *  from `selected`, which stays put so boxes 2 and 3 always have a period. */
   const [openPeriod, setOpenPeriod] = useState<number | null>(null);
   /**
-   * WHOSE LINE ITEMS COLUMN 4 IS SHOWING.
+   * WHOSE LINE ITEMS BOX 3 IS SHOWING.
    *
    * Suren wanted the deals behind a number — "Ananth has achieved 500K, but
    * that 500K came from what opportunities" — AND a way past the drill: "if
@@ -182,13 +183,15 @@ export function GoalZoom({
    * should see that... sometimes I don't want to see who is doing it, I want
    * to see all the accounts that are reaching to that number."
    *
-   * Anir, Aug 16: the skip is an ABILITY, not the default. So the column
-   * follows the drill unless you widen it here.
+   * Anir, Aug 16: the skip is an ABILITY, not the default — and it lives in
+   * box 3, not a box of its own ("i dont need a 4th column thats too much...
+   * merge the 4th and 3rd column"). People by default, each unfolding onto
+   * their own deals; widen only when you want to skip the drill.
    */
   const [lineScope, setLineScope] = useState<"person" | "group" | "period">(
     "person"
   );
-  /** Which person column 4 is following. Null = the whole picked group. */
+  /** Which person is unfolded onto their line items, inside box 3. */
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const { opportunities, loading: oppsLoading } = useOpportunities();
   const heads = headedGroups(state, meName);
@@ -581,6 +584,116 @@ export function GoalZoom({
                 }))
                 .sort((a, b) => b.verified - a.verified)
             : [];
+          /**
+           * THE DEALS BEHIND A NUMBER, rendered wherever it is asked for:
+           * under a person inside box 3, or as the whole of box 3 when the
+           * scope is widened past the drill.
+           */
+          const lineItems = (names: Set<string> | null, indent: boolean) => {
+            const entries = familyActuals
+              .filter((a) => inRange(a, row.range))
+              .filter((a) => !names || names.has(a.person.trim().toLowerCase()))
+              .sort((x, y) => y.amount - x.amount);
+            if (entries.length === 0) {
+              return (
+                <p
+                  className={cn(
+                    "py-2 text-[10.5px] text-text-tertiary",
+                    indent ? "pl-9" : "px-2 py-3 text-[12px] text-text-secondary"
+                  )}
+                >
+                  {indent
+                    ? "No deals logged in this period."
+                    : `Nothing logged against this goal in ${row?.label ?? "this period"}.`}
+                </p>
+              );
+            }
+            return (
+              <div className={cn("space-y-1", indent && "pl-7")}>
+                {entries.map((a) => {
+                  const opp = a.opportunityId
+                    ? opportunities.find((o) => o.id === a.opportunityId)
+                    : undefined;
+                  const account = opp?.customer ?? a.customer ?? "";
+                  const verified = entryStatus(a) === "verified";
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-col gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
+                    >
+                      <span className="flex items-center gap-2">
+                        {account ? (
+                          <CompanyLogo
+                            name={account}
+                            className="h-5 w-5 shrink-0 text-[7px]"
+                          />
+                        ) : (
+                          <span className="h-5 w-5 shrink-0" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-text-primary">
+                          {/* `account` is "" when nothing was recorded, and ""
+                              is not nullish — ?? let the empty string through
+                              and the row rendered nameless. */}
+                          {opp?.name || account || "Logged result"}
+                        </span>
+                        <b
+                          className={cn(
+                            "shrink-0 text-[11.5px] tnum",
+                            verified ? "" : "text-text-tertiary"
+                          )}
+                        >
+                          {fmtAmount(goal.unit, a.amount, a.currency)}
+                        </b>
+                      </span>
+                      <span className="flex flex-wrap items-center gap-1.5 pl-7 text-[9.5px] text-text-tertiary">
+                        {!indent && (
+                          <>
+                            <Avatar
+                              name={a.person}
+                              className="h-3.5 w-3.5 shrink-0 text-[6px]"
+                            />
+                            <span className="truncate">{a.person}</span>
+                            <span>·</span>
+                          </>
+                        )}
+                        <span className="tnum">{a.date}</span>
+                        {opp ? (
+                          <>
+                            {opp.status && (
+                              <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
+                                {opp.status}
+                              </span>
+                            )}
+                            {opp.confidence !== undefined && (
+                              <span className="tnum">
+                                {opp.confidence}% ·{" "}
+                                {fmtAmount(goal.unit, weightedValue(opp))} weighted
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          /* Suren: "not all goals can be connected to deals and
+                             opportunities, some goals may not be." */
+                          <span>not linked to an opportunity</span>
+                        )}
+                        {!verified && (
+                          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
+                            waiting
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+                {oppsLoading && (
+                  <p className="px-2 text-[10px] text-text-tertiary">
+                    Loading deal names…
+                  </p>
+                )}
+              </div>
+            );
+          };
+
           const maxP = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...groupPeople.map((p) => p.verified));
@@ -591,7 +704,7 @@ export function GoalZoom({
           return (
             <div
               className={cn(
-                "mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4",
+                "mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3",
                 fill && "min-h-0 flex-1"
               )}
             >
@@ -1050,16 +1163,68 @@ export function GoalZoom({
               {/* -------- Box 3: the picked group's people, same period */}
               <div className={boxCls}>
                 <div className={boxHead}>
-                  <b className="text-[12px] text-text-primary">3 · People</b>
+                  <b className="text-[12px] text-text-primary">
+                    3 · {lineScope === "person" ? "People" : "Line items"}
+                  </b>
                   {/* Same blue tag as every other group name (Anir, Aug 15:
                       "You have it red somewhere else... just make it blue"). */}
-                  {selGroup && <GroupPill name={selGroup.group.name} size="sm" />}
-                  <span className="ml-auto text-[10.5px] tnum text-text-tertiary">
-                    {selGroup ? fmtAmount(goal.unit, selGroup.verified) : ""}
+                  {selGroup && lineScope !== "period" && (
+                    <GroupPill name={selGroup.group.name} size="sm" />
+                  )}
+                  {/* THE LINE ITEMS LIVE IN THIS COLUMN (Anir, Aug 16: "i dont
+                      need a 4th column thats too much... it should be line
+                      items within the 3rd column. like merge the 4th and 3rd
+                      column"). People by default, each one opening onto the
+                      deals behind their number; the switch widens to the whole
+                      group or the whole period, which is the skip he asked
+                      for. */}
+                  <span className="ml-auto flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
+                    {(
+                      [
+                        ["person", "People"],
+                        ["group", "Group"],
+                        ["period", row?.label ?? "Period"],
+                      ] as const
+                    ).map(([k, label]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setLineScope(k)}
+                        className={cn(
+                          "cursor-pointer rounded-md px-1.5 py-0.5 text-[9.5px] font-bold transition-colors",
+                          lineScope === k
+                            ? "bg-white text-blue-primary shadow-sm"
+                            : "text-text-tertiary hover:text-text-primary"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </span>
                 </div>
                 <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
-                  {!selGroup ? (
+                  {lineScope !== "person" ? (
+                    /* Widened past the drill: the deals themselves, no names.
+                       Group needs a group picked; the period does not. */
+                    lineScope === "group" && !selGroup ? (
+                      <p className="px-2 py-3 text-[12px] text-text-secondary">
+                        Pick a group in box 2 to see the deals behind it.
+                      </p>
+                    ) : (
+                      lineItems(
+                        lineScope === "period"
+                          ? null
+                          : new Set(
+                              selGroup
+                                ? [selGroup.group.head, ...selGroup.group.members].map(
+                                    (n) => n.trim().toLowerCase()
+                                  )
+                                : []
+                            ),
+                        false
+                      )
+                    )
+                  ) : !selGroup ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       Pick a group in box 2 and its people line up here for the
                       same period.
@@ -1067,13 +1232,13 @@ export function GoalZoom({
                   ) : (
                     groupPeople.map((p) => (
                       p.verified === 0 && p.awaiting === 0 ? (
+                      <Fragment key={p.name}>
                       <button
-                        key={p.name}
                         type="button"
-                        onClick={() => {
-                          setOpenPerson(openPerson === p.name ? null : p.name);
-                          setLineScope("person");
-                        }}
+                        aria-expanded={openPerson === p.name}
+                        onClick={() =>
+                          setOpenPerson(openPerson === p.name ? null : p.name)
+                        }
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                           openPerson === p.name
@@ -1088,10 +1253,28 @@ export function GoalZoom({
                         <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
                           {fmtAmount(goal.unit, 0)}
                         </b>
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={2.4}
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform",
+                            openPerson === p.name && "rotate-180 text-blue-primary"
+                          )}
+                        />
                       </button>
+                      {openPerson === p.name && (
+                        <div className="tab-panel mb-1">
+                          {lineItems(
+                            new Set([p.name.trim().toLowerCase()]),
+                            true
+                          )}
+                        </div>
+                      )}
+                      </Fragment>
                       ) : (
+                      <Fragment key={p.name}>
                       <HoverCard
-                        key={p.name}
                         side="left"
                         width={420}
                         delayMs={0}
@@ -1108,10 +1291,10 @@ export function GoalZoom({
                       >
                       <button
                         type="button"
-                        onClick={() => {
-                          setOpenPerson(openPerson === p.name ? null : p.name);
-                          setLineScope("person");
-                        }}
+                        aria-expanded={openPerson === p.name}
+                        onClick={() =>
+                          setOpenPerson(openPerson === p.name ? null : p.name)
+                        }
                         className={cn(
                           "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
                           openPerson === p.name
@@ -1169,185 +1352,21 @@ export function GoalZoom({
                         )}
                       </button>
                       </HoverCard>
+                      {openPerson === p.name && (
+                        <div className="tab-panel mb-1">
+                          {lineItems(
+                            new Set([p.name.trim().toLowerCase()]),
+                            true
+                          )}
+                        </div>
+                      )}
+                      </Fragment>
                       )
                     ))
                   )}
                 </div>
               </div>
 
-              {/* -------- Box 4: the deals behind the number */}
-              <div className={boxCls}>
-                <div className={boxHead}>
-                  <b className="text-[12px] text-text-primary">4 · Line items</b>
-                  {/* THE SKIP IS AN ABILITY, NOT THE DEFAULT (Anir, Aug 16:
-                      "he wants the ABILITY to skip straight to line items, not
-                      just always"). It follows the drill until you widen it. */}
-                  <span className="ml-auto flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
-                    {(
-                      [
-                        ["person", "Person"],
-                        ["group", "Group"],
-                        ["period", row?.label ?? "Period"],
-                      ] as const
-                    ).map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => setLineScope(k)}
-                        className={cn(
-                          "cursor-pointer rounded-md px-1.5 py-0.5 text-[9.5px] font-bold transition-colors",
-                          lineScope === k
-                            ? "bg-white text-blue-primary shadow-sm"
-                            : "text-text-tertiary hover:text-text-primary"
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </span>
-                </div>
-                <div
-                  key={`l-${gran}-${selIdx}-${lineScope}-${openPerson ?? "all"}`}
-                  className={cn(
-                    "tab-panel flex-1 space-y-1 overflow-y-auto p-2",
-                    !fill && "max-h-[510px]"
-                  )}
-                >
-                  {(() => {
-                    /**
-                     * A LINE ITEM IS AN ENTRY, RESOLVED TO ITS DEAL.
-                     *
-                     * The number in every column above is the sum of logged
-                     * entries; this shows those same entries, each one named
-                     * by the opportunity it came out of. So the four levels
-                     * always agree — they are the same records, grouped four
-                     * different ways.
-                     */
-                    const names =
-                      lineScope === "period"
-                        ? null
-                        : lineScope === "group"
-                          ? new Set(
-                              selGroup
-                                ? [
-                                    selGroup.group.head,
-                                    ...selGroup.group.members,
-                                  ].map((n) => n.trim().toLowerCase())
-                                : []
-                            )
-                          : new Set(
-                              openPerson
-                                ? [openPerson.trim().toLowerCase()]
-                                : []
-                            );
-                    if (lineScope !== "period" && names && names.size === 0) {
-                      return (
-                        <p className="px-2 py-3 text-[12px] text-text-secondary">
-                          {lineScope === "person"
-                            ? "Pick somebody in box 3 to see the deals behind their number."
-                            : "Pick a group in box 2 to see the deals behind it."}
-                        </p>
-                      );
-                    }
-                    const entries = familyActuals
-                      .filter((a) => inRange(a, row.range))
-                      .filter(
-                        (a) =>
-                          !names || names.has(a.person.trim().toLowerCase())
-                      )
-                      .sort((x, y) => y.amount - x.amount);
-                    if (entries.length === 0) {
-                      return (
-                        <p className="px-2 py-3 text-[12px] text-text-secondary">
-                          Nothing logged against this goal in {row?.label}.
-                        </p>
-                      );
-                    }
-                    return (
-                      <>
-                        {entries.map((a) => {
-                          const opp = a.opportunityId
-                            ? opportunities.find((o) => o.id === a.opportunityId)
-                            : undefined;
-                          const account = opp?.customer ?? a.customer ?? "";
-                          const verified = entryStatus(a) === "verified";
-                          return (
-                            <div
-                              key={a.id}
-                              className="flex flex-col gap-1 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface"
-                            >
-                              <span className="flex items-center gap-2">
-                                {account ? (
-                                  <CompanyLogo
-                                    name={account}
-                                    className="h-5 w-5 shrink-0 text-[7px]"
-                                  />
-                                ) : (
-                                  <span className="h-5 w-5 shrink-0" />
-                                )}
-                                <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-text-primary">
-                                  {opp?.name ?? account ?? "Logged result"}
-                                </span>
-                                <b
-                                  className={cn(
-                                    "shrink-0 text-[11.5px] tnum",
-                                    verified ? "" : "text-text-tertiary"
-                                  )}
-                                >
-                                  {fmtAmount(goal.unit, a.amount, a.currency)}
-                                </b>
-                              </span>
-                              <span className="flex flex-wrap items-center gap-1.5 pl-7 text-[9.5px] text-text-tertiary">
-                                <Avatar
-                                  name={a.person}
-                                  className="h-3.5 w-3.5 shrink-0 text-[6px]"
-                                />
-                                <span className="truncate">{a.person}</span>
-                                <span>·</span>
-                                <span className="tnum">{a.date}</span>
-                                {opp ? (
-                                  <>
-                                    {opp.status && (
-                                      <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
-                                        {opp.status}
-                                      </span>
-                                    )}
-                                    {opp.confidence !== undefined && (
-                                      <span className="tnum">
-                                        {opp.confidence}% confidence ·{" "}
-                                        {fmtAmount(
-                                          goal.unit,
-                                          weightedValue(opp)
-                                        )}{" "}
-                                        weighted
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  /* Suren: "not all goals can be connected to
-                                     deals and opportunities, some goals may
-                                     not be." Say so; never demand one. */
-                                  <span>not linked to an opportunity</span>
-                                )}
-                                {!verified && (
-                                  <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
-                                    waiting
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        {oppsLoading && (
-                          <p className="px-2 py-1 text-[10px] text-text-tertiary">
-                            Loading deal names…
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
             </div>
           );
         })()}
