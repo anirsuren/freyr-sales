@@ -1324,15 +1324,24 @@ export function GoalZoom({
                     groupPeople.map((p) => (
                       p.verified === 0 && p.awaiting === 0 ? (
                       <Fragment key={p.name}>
+                      {/* Same one-border container as the group rows — a real
+                          border, since ring-inset is painted under the white
+                          panel (Anir, Aug 16: "fix the container"). */}
+                      <div
+                        className={cn(
+                          openPeople.has(p.name) &&
+                            "overflow-hidden rounded-lg border border-blue-primary/40"
+                        )}
+                      >
                       <button
                         type="button"
                         aria-expanded={openPeople.has(p.name)}
                         onClick={(e) => togglePerson(p.name, e.shiftKey)}
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                          "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-colors",
                           openPeople.has(p.name)
-                            ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                            : "hover:bg-surface"
+                            ? "bg-[rgba(0,113,227,0.08)]"
+                            : "rounded-lg hover:bg-surface"
                         )}
                       >
                         <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
@@ -1353,16 +1362,23 @@ export function GoalZoom({
                         />
                       </button>
                       {openPeople.has(p.name) && (
-                        <div className="tab-panel mb-1">
+                        <div className="tab-panel border-t border-border-light bg-white px-1 py-1">
                           {lineItems(
                             new Set([p.name.trim().toLowerCase()]),
                             true
                           )}
                         </div>
                       )}
+                      </div>
                       </Fragment>
                       ) : (
                       <Fragment key={p.name}>
+                      <div
+                        className={cn(
+                          openPeople.has(p.name) &&
+                            "overflow-hidden rounded-lg border border-blue-primary/40"
+                        )}
+                      >
                       <HoverCard
                         side="left"
                         width={420}
@@ -1385,11 +1401,13 @@ export function GoalZoom({
                         aria-expanded={openPeople.has(p.name)}
                         onClick={(e) => togglePerson(p.name, e.shiftKey)}
                         className={cn(
-                          "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
+                          "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
                           openPeople.has(p.name)
-                            ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                            : "hover:bg-surface",
-                          lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
+                            ? "bg-[rgba(0,113,227,0.08)]"
+                            : "rounded-lg hover:bg-surface",
+                          !openPeople.has(p.name) &&
+                            lit &&
+                            "rounded-lg bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
                         )}
                       >
                         <span className="flex w-full items-center gap-2.5">
@@ -1442,13 +1460,14 @@ export function GoalZoom({
                       </button>
                       </HoverCard>
                       {openPeople.has(p.name) && (
-                        <div className="tab-panel mb-1">
+                        <div className="tab-panel border-t border-border-light bg-white px-1 py-1">
                           {lineItems(
                             new Set([p.name.trim().toLowerCase()]),
                             true
                           )}
                         </div>
                       )}
+                      </div>
                       </Fragment>
                       )
                     ))
