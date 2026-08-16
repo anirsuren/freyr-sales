@@ -29,6 +29,7 @@ import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { TargetSlider } from "./TargetSlider";
 import { useOpportunities } from "@/lib/useOpportunities";
+import { weightedValue } from "@/lib/opportunitiesShared";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
@@ -3841,9 +3842,20 @@ function LogActualModal({
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
-  const [dealId, setDealId] = useState("");
-  /** The deal this number came out of, so the goal's line items can name it. */
-  const [opportunityId, setOpportunityId] = useState("");
+  /**
+   * WHICH DEAL THIS NUMBER CAME OUT OF — one field, not two.
+   *
+   * There were two: "Deal", listing the engagements already recorded on the
+   * account, and "Opportunity", listing the pipeline. Anir, Aug 16, looking at
+   * the first one: "the opportunities to be connected to this… here it should
+   * be connected to goals / performance." Two fields both meaning "the deal"
+   * is how a form starts lying about which one counts.
+   *
+   * So both live in one picker, and the value carries which kind it is:
+   * "opp:<id>" is a pipeline opportunity, "eng:<id>" an engagement. Nothing
+   * that used to be linkable stopped being linkable.
+   */
+  const [link, setLink] = useState("");
   const { opportunities: pipeline } = useOpportunities();
   const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -4141,6 +4153,52 @@ function LogActualModal({
     [accounts, customerId]
   );
 
+  /**
+   * THE CUSTOMER SELECTS THE OPPORTUNITY (Anir, Aug 16: "right now let's work
+   * on customer selects opportunity"). A number logged against Novartis did
+   * not come out of a Takeda deal, so the account narrows the list — by id
+   * when the account was picked from the menu, by name when it was typed.
+   * Nothing typed yet shows the whole pipeline rather than nothing.
+   */
+  const oppMatches = useMemo(() => {
+    const q = customer.trim().toLowerCase();
+    if (!q) return pipeline;
+    return pipeline.filter(
+      (o) =>
+        (customerId && o.customerId === customerId) ||
+        o.customer.trim().toLowerCase() === q
+    );
+  }, [pipeline, customer, customerId]);
+
+  const linkedOpp = useMemo(
+    () =>
+      link.startsWith("opp:")
+        ? (pipeline.find((o) => o.id === link.slice(4)) ?? null)
+        : null,
+    [link, pipeline]
+  );
+
+  const linkedEngagement =
+    link.startsWith("eng:")
+      ? (selectedAccount?.deals.find((d) => d.id === link.slice(4)) ?? null)
+      : null;
+
+  /** Picking a deal fills in what that deal already knows — the account it
+   *  sits on and the currency it was priced in. Neither is a guess: both are
+   *  fields on the opportunity. The account is only filled when the box is
+   *  still empty, so choosing a deal never rewrites a customer by hand. */
+  function pickLink(next: string) {
+    setLink(next);
+    if (!next.startsWith("opp:")) return;
+    const o = pipeline.find((x) => x.id === next.slice(4));
+    if (!o) return;
+    if (!customer.trim()) {
+      setCustomer(o.customer);
+      setCustomerId(o.customerId ?? "");
+    }
+    if (o.currency) setEntryCurrency(o.currency);
+  }
+
   const personOptions = useMemo(() => {
     const set = new Set<string>();
     if (sub) {
@@ -4171,14 +4229,13 @@ function LogActualModal({
         // The account and the engagement behind the words, so this number can
         // be traced back rather than matched on spelling.
         customerId: customerId || undefined,
-        dealId: dealId || undefined,
-        dealLabel:
-          (dealId &&
-            selectedAccount?.deals.find((d) => d.id === dealId)?.label) ||
-          undefined,
+        dealId: linkedEngagement?.id,
+        // The name travels with the entry so a card can say which deal it was
+        // without having to resolve the pipeline first.
+        dealLabel: linkedEngagement?.label ?? linkedOpp?.name,
         // Suren, Aug 16: "that 500K came from what opportunities" — this is
         // what makes the goal's fourth level able to answer him.
-        opportunityId: opportunityId || undefined,
+        opportunityId: linkedOpp?.id,
         evidence: evidence.length ? evidence : undefined,
         currency: unit === "currency" ? entryCurrency : undefined,
       },
@@ -4190,7 +4247,7 @@ function LogActualModal({
       setCustomer("");
       setEvidence([]);
       setComponentId("");
-      setOpportunityId("");
+      setLink("");
       onClose();
     }
   }
@@ -4321,6 +4378,160 @@ function LogActualModal({
             />
           </div>
         </div>
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Customer
+            <InfoHint
+              text={
+                "Which account this number came from. Pick the real account so the money can be traced back to it.\nTyping something not on the list is allowed for a win that has no account record yet."
+              }
+            />
+          </label>
+          {/* PICK THE ACCOUNT, DO NOT DESCRIBE IT (Anir, Aug 15: "it should be
+              like a dropdown where they choose and they search up the
+              customer"). Free text meant one account arrived as "Takeda",
+              "Takeda Pharma" and "takeda - renewal", so no report could ever
+              group by customer. Still an input, so a brand-new logo that has
+              no account record yet can be typed. */}
+          <div className="relative mt-1">
+            <input
+              value={customer}
+              onChange={(e) => {
+                setCustomer(e.target.value);
+                // Typed by hand: this is no longer one of our accounts.
+                setCustomerId("");
+                setLink("");
+                setCustomerOpen(true);
+              }}
+              onFocus={() => setCustomerOpen(true)}
+              onBlur={() => window.setTimeout(() => setCustomerOpen(false), 150)}
+              placeholder="Search your accounts…"
+              className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+            />
+            {customerOpen && customerMatches.length > 0 && (
+              <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1 max-h-[240px] overflow-y-auto rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
+                {customerMatches.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setCustomer(c.name);
+                      setCustomerId(c.id);
+                      setLink("");
+                      setCustomerOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-surface"
+                  >
+                    <CompanyLogo name={c.name} className="h-5 w-5 shrink-0" />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* The deal follows the customer (Anir, Aug 15: "I choose a customer
+            and then maybe I choose a deal"; Aug 16: "customer selects
+            opportunity"). The pipeline is listed first because that is where
+            the dollar value lives, and the engagements already recorded on
+            the account follow it. Optional forever: Suren was explicit that
+            "not all goals can be connected to deals and opportunities". */}
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Deal{" "}
+            <span className="font-normal text-text-tertiary">(optional)</span>
+            <InfoHint text={"The opportunity or engagement this number came out of.\nIt becomes a line item under the goal, so the total can be traced back to the deals behind it."} />
+          </label>
+          <div className="mt-1">
+            <ColorSelect
+              value={link}
+              onChange={pickLink}
+              ariaLabel="Deal"
+              minWidth={430}
+              options={[
+                { value: "", label: "Not linked to a deal", color: "#8E98A8" },
+                ...oppMatches.map((o) => ({
+                  value: `opp:${o.id}`,
+                  label: o.name,
+                  description: [
+                    o.customer,
+                    fmtAmount("currency", o.value, o.currency ?? BASE_CURRENCY),
+                    o.status,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                  color: "#0071E3",
+                })),
+                ...(selectedAccount?.deals ?? []).map((d) => ({
+                  value: `eng:${d.id}`,
+                  label: d.label,
+                  description: "Engagement already recorded on this account",
+                  color: "#0F766E",
+                })),
+              ]}
+            />
+          </div>
+          {/* THE MONEY COMES OFF THE DEAL (Anir, Aug 16: "from the opportunity,
+              because this is all about dollar value… it's about any particular
+              field from there you can select"). An opportunity carries two
+              figures — what it is worth signed, and what it is worth weighted
+              by confidence — so both are offered rather than one being assumed
+              to be the one he meant. They fill the box above; they do not lock
+              it, so typing the real signed number still wins. */}
+          {linkedOpp && unit === "currency" && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-text-tertiary">
+                Take the amount from this deal:
+              </span>
+              {[
+                { key: "value", label: "Contract value", amount: linkedOpp.value },
+                ...(linkedOpp.confidence === undefined
+                  ? []
+                  : [
+                      {
+                        key: "weighted",
+                        label: `Weighted · ${linkedOpp.confidence}%`,
+                        amount: weightedValue(linkedOpp),
+                      },
+                    ]),
+              ].map((f) => {
+                const on =
+                  parsed !== null && Math.round(parsed) === Math.round(f.amount);
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setAmount(String(Math.round(f.amount)))}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors tnum",
+                      on
+                        ? "border-blue-primary bg-[rgba(0,113,227,0.08)] text-blue-primary"
+                        : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
+                    )}
+                  >
+                    {f.label} ·{" "}
+                    {fmtAmount(
+                      "currency",
+                      f.amount,
+                      linkedOpp.currency ?? BASE_CURRENCY
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* An account with nothing in the pipeline says so, instead of the
+              whole field disappearing and leaving nowhere to connect a deal. */}
+          {customer.trim() !== "" && oppMatches.length === 0 && (
+            <p className="mt-1.5 text-[11px] text-text-tertiary">
+              No opportunities recorded on {customer.trim()} yet
+              {(selectedAccount?.deals.length ?? 0) > 0
+                ? " — the engagements on the account are still listed above."
+                : "."}
+            </p>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
@@ -4407,126 +4618,6 @@ function LogActualModal({
             This goal tracks the latest value, so this entry becomes the current
             number rather than adding to a total.
           </p>
-        )}
-        <div>
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Customer
-            <InfoHint
-              text={
-                "Which account this number came from. Pick the real account so the money can be traced back to it.\nTyping something not on the list is allowed for a win that has no account record yet."
-              }
-            />
-          </label>
-          {/* PICK THE ACCOUNT, DO NOT DESCRIBE IT (Anir, Aug 15: "it should be
-              like a dropdown where they choose and they search up the
-              customer"). Free text meant one account arrived as "Takeda",
-              "Takeda Pharma" and "takeda - renewal", so no report could ever
-              group by customer. Still an input, so a brand-new logo that has
-              no account record yet can be typed. */}
-          <div className="relative mt-1">
-            <input
-              value={customer}
-              onChange={(e) => {
-                setCustomer(e.target.value);
-                // Typed by hand: this is no longer one of our accounts.
-                setCustomerId("");
-                setDealId("");
-                setCustomerOpen(true);
-              }}
-              onFocus={() => setCustomerOpen(true)}
-              onBlur={() => window.setTimeout(() => setCustomerOpen(false), 150)}
-              placeholder="Search your accounts…"
-              className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-            />
-            {customerOpen && customerMatches.length > 0 && (
-              <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1 max-h-[240px] overflow-y-auto rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
-                {customerMatches.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setCustomer(c.name);
-                      setCustomerId(c.id);
-                      setDealId("");
-                      setCustomerOpen(false);
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-surface"
-                  >
-                    <CompanyLogo name={c.name} className="h-5 w-5 shrink-0" />
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        {selectedAccount && selectedAccount.deals.length > 0 && (
-          /* The deal follows the customer (Anir, Aug 15: "I choose a customer
-             and then maybe I choose a deal"). These are the engagements
-             already recorded on that account, so a claim points at something
-             the heat map and the account page can both see. Optional: a win
-             can land before anyone has logged the engagement. */
-          <div>
-            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-              Deal{" "}
-              <span className="font-normal text-text-tertiary">(optional)</span>
-              <InfoHint text="The engagement on this account that produced the number. Leave it empty if the deal is not recorded yet." />
-            </label>
-            <div className="mt-1">
-              <ColorSelect
-                value={dealId}
-                onChange={setDealId}
-                ariaLabel="Deal"
-                minWidth={430}
-                options={[
-                  { value: "", label: "No specific deal", color: "#8E98A8" },
-                  ...selectedAccount.deals.map((d) => ({
-                    value: d.id,
-                    label: d.label,
-                    color: "#0F766E",
-                  })),
-                ]}
-              />
-            </div>
-          </div>
-        )}
-        {/* WHICH DEAL THIS CAME OUT OF. Narrowed to the picked account when
-            there is one, because a number on Novartis did not come from a
-            Takeda deal. Optional forever: Suren was explicit that "not all
-            goals can be connected to deals and opportunities". */}
-        {pipeline.length > 0 && (
-          <div>
-            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-              Opportunity{" "}
-              <span className="font-normal text-text-tertiary">(optional)</span>
-              <InfoHint text={"The deal this number came out of.\nIt shows up as a line item under this goal, so the total can be traced back to the opportunities behind it."} />
-            </label>
-            <div className="mt-1">
-              <ColorSelect
-                value={opportunityId}
-                onChange={setOpportunityId}
-                ariaLabel="Opportunity"
-                minWidth={430}
-                options={[
-                  { value: "", label: "Not from a recorded deal", color: "#8E98A8" },
-                  ...pipeline
-                    .filter(
-                      (o) =>
-                        !customer.trim() ||
-                        o.customer.trim().toLowerCase() ===
-                          customer.trim().toLowerCase()
-                    )
-                    .map((o) => ({
-                      value: o.id,
-                      label: o.name,
-                      description: `${o.customer}${o.status ? ` · ${o.status}` : ""}`,
-                      color: "#0071E3",
-                    })),
-                ]}
-              />
-            </div>
-          </div>
         )}
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
