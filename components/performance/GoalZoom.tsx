@@ -200,6 +200,25 @@ export function GoalZoom({
    * want two months or two groups side by side.
    */
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  /**
+   * COLUMN 2 LISTS THE PEOPLE ONLY WHEN ASKED (Anir, Aug 16: "you don't have to
+   * show the people here because you show the people on the right side anyway…
+   * maybe there should be an option to show the people, but it should be like a
+   * drop down").
+   *
+   * Opening a group already fills column 3 with its people, so column 2 was
+   * printing the same roster twice and pushing the next group off the screen.
+   * Keyed by group id and empty by default: the list is one click away, and it
+   * stays open on the group you opened it on while you look at another.
+   */
+  const [openGroupPeople, setOpenGroupPeople] = useState<Set<string>>(new Set());
+  const toggleGroupPeople = (id: string) =>
+    setOpenGroupPeople((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   /** The group column 3 follows — the last one you opened. */
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const toggleGroup = (id: string, additive: boolean) =>
@@ -1194,7 +1213,63 @@ export function GoalZoom({
                                 unit={goal.unit}
                               />
                             </div>
-                            {r2.members.map((name, memberIdx) => {
+                            {/* THE ROSTER IS A DROPDOWN, NOT A DEFAULT (Anir,
+                                Aug 16: "there should be an option to show the
+                                people, but it should be like a drop down").
+                                Column 3 is already showing these names for the
+                                group you just opened. */}
+                            {r2.members.length > 0 && (
+                              <button
+                                type="button"
+                                aria-expanded={openGroupPeople.has(r2.group.id)}
+                                onClick={() => toggleGroupPeople(r2.group.id)}
+                                className={cn(
+                                  "mt-1.5 flex w-full cursor-pointer items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-semibold transition-colors",
+                                  openGroupPeople.has(r2.group.id)
+                                    ? "text-blue-primary"
+                                    : "text-text-secondary hover:text-blue-primary"
+                                )}
+                              >
+                                <ChevronDown
+                                  size={12}
+                                  strokeWidth={2.6}
+                                  aria-hidden="true"
+                                  className={cn(
+                                    "shrink-0 transition-transform",
+                                    openGroupPeople.has(r2.group.id) &&
+                                      "rotate-180"
+                                  )}
+                                />
+                                {openGroupPeople.has(r2.group.id)
+                                  ? "Hide"
+                                  : "Show"}{" "}
+                                {r2.members.length}{" "}
+                                {r2.members.length === 1 ? "person" : "people"}
+                                {/* Whose names they are, without opening it.
+                                    Plain faces, not the hover fan: this sits
+                                    inside a button, and a hover card inside a
+                                    button is a control inside a control. */}
+                                <span className="ml-auto flex shrink-0 items-center pl-1.5">
+                                  {r2.members.slice(0, 4).map((n, i) => (
+                                    <Avatar
+                                      key={n}
+                                      name={n}
+                                      className={cn(
+                                        "h-4 w-4 text-[6.5px] ring-1 ring-white",
+                                        i > 0 && "-ml-1"
+                                      )}
+                                    />
+                                  ))}
+                                  {r2.members.length > 4 && (
+                                    <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary tnum">
+                                      +{r2.members.length - 4}
+                                    </span>
+                                  )}
+                                </span>
+                              </button>
+                            )}
+                            {openGroupPeople.has(r2.group.id) &&
+                            r2.members.map((name, memberIdx) => {
                               const v = familyValue(state, goal, {
                                 range: row.range,
                                 person: name,
