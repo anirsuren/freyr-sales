@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckCircle2, Hourglass, ShieldCheck, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import {
+  CheckCircle2,
+  Hourglass,
+  Paperclip,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 import {
   entryStatus,
   familyValue,
@@ -13,6 +20,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
+import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -45,6 +53,7 @@ export function VerifyGoalModal({
   run: RunOp;
   onClose: () => void;
 }) {
+  const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   if (!open || !goal) return null;
 
   const entries = goalFamilyActuals(state, goal).sort((a, b) =>
@@ -61,7 +70,6 @@ export function VerifyGoalModal({
       onClose={onClose}
       title={undoing ? "Take back this sign-off" : "Verify this goal"}
       size="wide"
-      tall
     >
       <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
         {undoing ? "Removing your sign-off from" : "Signing off"}
@@ -119,8 +127,9 @@ export function VerifyGoalModal({
             return (
               <div
                 key={a.id}
-                className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border-light px-3 py-2"
+                className="rounded-xl border border-border-light px-3 py-2.5"
               >
+              <div className="flex flex-wrap items-center gap-2.5">
                 <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
                 <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                   {a.person}
@@ -154,6 +163,46 @@ export function VerifyGoalModal({
                     </>
                   )}
                 </span>
+              </div>
+
+              {/* THE PROOF, WHICH IS THE WHOLE POINT (Anir, Aug 16: "where is
+                  the document? Where is the information I need to look at?").
+                  Signing a goal off without reading what it rests on is just
+                  clicking a button. */}
+              {a.evidence?.length ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {a.evidence.map((e) => (
+                    <button
+                      key={e.url}
+                      type="button"
+                      onClick={() => setPreview({ name: e.name, url: e.url })}
+                      title={`Open ${e.name}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white p-1.5 pr-3 text-left transition-colors hover:border-blue-primary"
+                    >
+                      <EvidenceThumb file={e} />
+                      <span className="min-w-0">
+                        <span className="block max-w-[220px] truncate text-[11.5px] font-semibold text-text-primary">
+                          {e.name}
+                        </span>
+                        <span className="block text-[10px] text-blue-primary">
+                          Click to read it
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-[color:#C2410C]">
+                  <Paperclip size={11} strokeWidth={2.4} />
+                  Nothing attached — there is no proof to read for this one.
+                </p>
+              )}
+
+              {a.note && (
+                <p className="mt-1.5 text-[11.5px] text-text-secondary">
+                  &ldquo;{a.note}&rdquo;
+                </p>
+              )}
               </div>
             );
           })}
@@ -194,6 +243,9 @@ export function VerifyGoalModal({
           {undoing ? "Take back the sign-off" : "Sign this goal off"}
         </button>
       </div>
+      {preview && (
+        <EvidencePreview file={preview} onClose={() => setPreview(null)} />
+      )}
     </Modal>
   );
 }
