@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -13,6 +13,7 @@ import Link from "next/link";
 import {
   ArrowDownAZ,
   ArrowRight,
+  ChevronDown,
   CalendarDays,
   CircleSlash,
   Globe,
@@ -444,6 +445,11 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("pipeline");
+  /** Which rep is unfolded. Same mechanic as a goal row on Performance — the
+   *  glance stays on this page, the arrow still goes to their full analytics
+   *  (Anir, Aug 16: "I like the idea that I can just click on a rep and it'll
+   *  show me. Copy how it looks on the performance page"). */
+  const [openRep, setOpenRep] = useState<string | null>(null);
   const [view, setView] = useStoredView<"table" | "grid">(
     "freyr.team.view",
     "table",
@@ -803,8 +809,11 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
                 const ac = attainColor(pct);
                 return (
+                  <Fragment key={r.identityKey}>
                   <tr
-                    key={r.identityKey}
+                    onClick={() =>
+                      setOpenRep(openRep === r.identityKey ? null : r.identityKey)
+                    }
                     className={
                       r.you
                         ? "bg-blue-light/35 hover:bg-blue-light/50 transition-colors"
@@ -1016,15 +1025,48 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       <ActivityTrendInspector rep={r} />
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <Link
-                        href={`/analytics/reps/${r.slug}`}
-                        aria-label={`Open ${r.name}'s analytics`}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-blue-primary hover:bg-blue-light/50 transition-colors"
-                      >
-                        <ArrowRight size={16} strokeWidth={1.9} />
-                      </Link>
+                      <span className="flex items-center justify-end gap-0.5">
+                        <Link
+                          href={`/analytics/reps/${r.slug}`}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Open ${r.name}'s analytics`}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-blue-primary hover:bg-blue-light/50 transition-colors"
+                        >
+                          <ArrowRight size={16} strokeWidth={1.9} />
+                        </Link>
+                        <ChevronDown
+                          size={16}
+                          strokeWidth={2.2}
+                          aria-hidden="true"
+                          className={cn(
+                            "text-text-tertiary transition-transform",
+                            openRep === r.identityKey && "rotate-180 text-blue-primary"
+                          )}
+                        />
+                      </span>
                     </td>
                   </tr>
+                  {openRep === r.identityKey && (
+                    <tr className="bg-blue-light/20">
+                      <td colSpan={8} className="px-4 pb-4 pt-1">
+                        <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+                          <RepFact label="Title" value={r.title} />
+                          <RepFact label="Region" value={r.region || "—"} />
+                          <RepFact
+                            label="Open pipeline"
+                            value={formatMoney(r.openValue)}
+                            strong
+                          />
+                          <RepFact label="Weighted" value={formatMoney(r.weighted)} />
+                          <RepFact label="Open deals" value={String(r.openCount)} />
+                          <RepFact label="Meetings" value={String(r.meetings)} />
+                          <RepFact label="Email" value={r.email || "—"} />
+                          <RepFact label="Phone" value={r.phone || "—"} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -1033,5 +1075,34 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
       )}
       </div>
     </Card>
+  );
+}
+
+
+/** One labelled fact in an unfolded rep row. */
+function RepFact({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+        {label}
+      </span>
+      <span
+        className={cn(
+          "mt-1 block truncate text-[13.5px]",
+          strong ? "font-bold text-text-primary tnum" : "font-medium text-text-primary"
+        )}
+        title={value}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
