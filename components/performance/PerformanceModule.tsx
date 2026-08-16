@@ -1547,6 +1547,14 @@ function AssignGroupModal({
 
   const body = (
     <div className="space-y-3">
+      {/* The goal moved out of the dialog title, where it was truncated to
+          "Assign Email Prospecting Campaigns Launche…", and into the sentence
+          that needs it anyway. */}
+      <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
+        Giving
+        <b className="text-text-primary">{goal.name}</b>
+        to a department.
+      </p>
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         The group carries the number; its people keep their own targets
         underneath. Nobody logs achievement on a group, because a group&apos;s
@@ -1585,48 +1593,49 @@ function AssignGroupModal({
                   onClick={() => setGroupId(on ? "" : g.id)}
                   aria-pressed={on}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border-2 px-2.5 py-2 text-left transition-all",
+                    "flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
                     on
-                      ? "border-blue-primary bg-blue-light shadow-sm"
-                      : "border-dashed border-blue-subtle bg-white hover:border-blue-primary hover:bg-blue-light/40"
+                      ? "border-blue-primary bg-blue-light/60 shadow-sm"
+                      : "border-border-light bg-white hover:border-blue-subtle hover:bg-surface"
                   )}
                 >
-                  {/* A tick box, so an unpicked chip reads as "choose me"
-                      rather than as a caption. */}
+                  {/* A tick box, so an unpicked card reads as "choose me"
+                      rather than as a caption. Top-aligned, so it lines up
+                      with the group's name and not the middle of the card. */}
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                       on
                         ? "border-blue-primary bg-blue-primary text-white"
-                        : "border-blue-subtle bg-white"
+                        : "border-border-light bg-white"
                     )}
                   >
                     {on && <Check size={10} strokeWidth={3.4} />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <GroupPill name={g.name} />
-                      <span className="text-[11px] text-text-secondary">
+                      <span className="text-[11.5px] text-text-secondary">
                         led by {g.head}
                       </span>
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {roster.slice(0, 8).map((n) => (
-                        <span key={n} className="flex items-center gap-1">
-                          <Avatar name={n} className="h-5 w-5 shrink-0 text-[7.5px]" />
-                          <span className="text-[11px] text-text-secondary">{n}</span>
-                        </span>
-                      ))}
-                      {roster.length > 8 && (
-                        <span className="text-[11px] font-semibold text-text-tertiary">
-                          +{roster.length - 8} more
-                        </span>
-                      )}
+                    {/* Faces, not a wrapping list of names — five names over
+                        two lines was what made this unreadable. Hover a face
+                        for who it is. */}
+                    <span className="mt-1.5 flex items-center gap-2">
+                      <PersonFan
+                        people={roster.map((m) => ({
+                          name: m,
+                          role: m === g.head ? "Group owner" : "In this group",
+                          context: g.name,
+                        }))}
+                        avatarClassName="h-6 w-6 text-[8px]"
+                      />
+                      <span className="text-[11.5px] text-text-tertiary tnum">
+                        {roster.length} {roster.length === 1 ? "person" : "people"}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-bold text-text-secondary tnum">
-                    {roster.length}
                   </span>
                 </button>
               );
@@ -1684,7 +1693,7 @@ function AssignGroupModal({
       </div>
     );
   return (
-    <Modal open={open} onClose={onClose} title={`Assign ${goal.name} to a group`}>
+    <Modal open={open} onClose={onClose} title="Assign to a group" size="wide">
       {body}
     </Modal>
   );

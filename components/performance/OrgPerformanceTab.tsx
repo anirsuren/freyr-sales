@@ -56,6 +56,7 @@ import {
 } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
+import { VerifyGoalModal } from "./VerifyGoalModal";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -811,6 +812,7 @@ function GoalRows({
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
   /** Which column the cursor is on in the chart above (or on a sibling row). */
   const linkedIndex = useDonutSync(syncId);
+  const [verifying, setVerifying] = useState(false);
   const periodDelta =
     goal.measure === "total"
       ? actualValue(actuals, goal, {}, period)
@@ -827,6 +829,15 @@ function GoalRows({
 
   return (
     <Fragment>
+      <VerifyGoalModal
+        open={verifying}
+        goal={goal}
+        state={state}
+        meName={meName}
+        busy={false}
+        run={run}
+        onClose={() => setVerifying(false)}
+      />
       <tr
         onClick={onToggle}
         onMouseEnter={() => donutSyncBroadcast(syncId, index)}
@@ -951,19 +962,12 @@ function GoalRows({
             // able to click on it... what's there to verify?"). Signing off on
             // an empty row would record leadership approving zero. An existing
             // yes stays clickable so it can always be undone.
+            // Opens the review instead of flipping (Anir, Aug 15: "it
+            // shouldn't just instantly change. Whatever I have to see should
+            // pop up").
             onToggle={
               live && (hasActuals(actuals, { goalId: goal.id }) || goal.verified)
-                ? () =>
-                    run(
-                      {
-                        op: "set-verified",
-                        goalId: goal.id,
-                        verified: !goal.verified,
-                      },
-                      goal.verified
-                        ? `${goal.name} marked not verified`
-                        : `${goal.name} verified`
-                    )
+                ? () => setVerifying(true)
                 : undefined
             }
           />

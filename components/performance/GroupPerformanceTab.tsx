@@ -12,7 +12,7 @@ import {
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { GroupPill } from "./bits";
-import { Avatar } from "@/components/ui/Avatar";
+import { PersonFan } from "@/components/ui/PersonFan";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
@@ -130,7 +130,23 @@ export function GroupPerformanceTab({
                 : "border-border-light bg-white hover:bg-surface"
             )}
           >
-            <Avatar name={g.head} className="h-6 w-6 shrink-0 text-[9px]" />
+            {/* THE GROUP'S FACES, ALWAYS ON THE CHIP (Anir, Aug 15: "there's
+                no way here I can see the people in my group... just include the
+                profile pictures of each one and when I hover over the profile
+                picture it'll show me the expanded view"). The owner's face
+                alone told you who runs it, never who is in it. */}
+            <PersonFan
+              people={[
+                ...new Set(
+                  [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
+                ),
+              ].map((m) => ({
+                name: m,
+                role: m === g.head ? "Group owner" : "In this group",
+                context: g.name,
+              }))}
+              avatarClassName="h-6 w-6 text-[8px]"
+            />
             <span className="min-w-0">
               {/* The name IS the pill here too, so a group reads the same on
                   the picker as it does in the headings below it. */}

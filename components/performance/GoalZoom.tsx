@@ -2,11 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Crown, Layers, Paperclip } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  CalendarFold,
+  CalendarRange,
+  CheckCircle2,
+  Crown,
+  Layers,
+  Paperclip,
+} from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { Card } from "@/components/ui/Card";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
 import {
   currentFiscalYear,
@@ -66,6 +78,15 @@ function inRange(a: PerfActual, [s, e]: [number, number]): boolean {
   const t = Date.parse(a.date);
   return !Number.isNaN(t) && t >= s && t < e;
 }
+
+/** A mark per window size, widest to narrowest. */
+const GRAN_META: Record<Granularity, { color: string; icon: typeof CalendarDays }> = {
+  weeks: { color: "#0891B2", icon: CalendarRange },
+  months: { color: "#0071E3", icon: CalendarDays },
+  quarters: { color: "#7C3AED", icon: CalendarClock },
+  halves: { color: "#B4318F", icon: CalendarCheck },
+  years: { color: "#0F766E", icon: CalendarFold },
+};
 
 export function GoalZoom({
   state,
@@ -434,28 +455,30 @@ export function GoalZoom({
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
               three numbered column headings below already say what this is. */}
           {headerAction && <span className="ml-auto shrink-0">{headerAction}</span>}
-          <span className={cn("inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white", !headerAction && "ml-auto")}>
-            {grans
-              .filter((g) => g.allowed)
-              .map((g) => (
-                <button
-                  key={g.key}
-                  type="button"
-                  onClick={() => {
-                    setGran(g.key);
-                    setSelected(null);
-                    setOpenGroup(null);
-                  }}
-                  className={cn(
-                    "cursor-pointer border-r border-border-light px-3.5 py-1.5 text-[12px] font-semibold transition-colors last:border-r-0",
-                    gran === g.key
-                      ? "bg-[rgba(0,113,227,0.10)] text-blue-primary"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {g.label}
-                </button>
-              ))}
+          {/* FIVE BUTTONS BECAME ONE PICKER (Anir, Aug 15: "where you say weeks,
+              months, quarters, etc., let's make that into a single drop-down
+              with icons"). Same five choices, a fifth of the width, and each
+              one carries a mark for how wide a window it is. */}
+          <span className={cn("shrink-0", !headerAction && "ml-auto")}>
+            <ColorSelect
+              value={gran}
+              onChange={(next) => {
+                setGran(next as Granularity);
+                setSelected(null);
+                setOpenGroup(null);
+              }}
+              ariaLabel="Period size"
+              dense
+              minWidth={150}
+              options={grans
+                .filter((g) => g.allowed)
+                .map((g) => ({
+                  value: g.key,
+                  label: g.label,
+                  color: GRAN_META[g.key].color,
+                  icon: GRAN_META[g.key].icon,
+                }))}
+            />
           </span>
         </div>
 
