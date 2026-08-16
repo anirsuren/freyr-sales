@@ -52,14 +52,31 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     member: Member;
     nextRole: string;
   } | null>(null);
+  /** True when the last load failed, so the page can say so. */
+  const [failed, setFailed] = useState(false);
 
+  /**
+   * A DIRECTORY THAT FAILED TO LOAD IS NOT AN EMPTY WORKSPACE (found Aug 16,
+   * opening Admin with no access grant). Every failure — a 403 from an expired
+   * grant, a 500, a dropped connection — used to land in the same setMembers([])
+   * as a genuinely empty list, and the page then announced "Nobody in the
+   * workspace yet." On the one screen whose job is showing who has access,
+   * that reads as everybody being gone.
+   */
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/settings/access", { cache: "no-store" });
-      const data = await res.json();
-      setMembers(res.ok && Array.isArray(data.members) ? data.members : []);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data?.members)) {
+        setFailed(true);
+        setMembers(null);
+        return;
+      }
+      setFailed(false);
+      setMembers(data.members);
     } catch {
-      setMembers([]);
+      setFailed(true);
+      setMembers(null);
     }
   }, []);
   useEffect(() => {
@@ -120,7 +137,21 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      {members === null ? (
+      {failed ? (
+        <div className="mt-3 rounded-lg bg-surface px-4 py-4 text-center">
+          <p className="text-[12.5px] text-text-secondary">
+            The member directory could not be loaded, so this is not a list of
+            who has access. Your sign-in may have expired.
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-2 cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
+          >
+            Try again
+          </button>
+        </div>
+      ) : members === null ? (
         <p className="mt-3 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
           Loading the directory…
         </p>

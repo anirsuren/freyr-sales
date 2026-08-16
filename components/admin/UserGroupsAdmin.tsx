@@ -48,6 +48,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   /** name → workspace role, so the unfolded list can say what each person is
    *  rather than just who they are. Same directory the Team members tab reads. */
   const [roles, setRoles] = useState<Record<string, string>>({});
+  /** True when the last group load failed, so the page can say so. */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -72,14 +74,22 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     };
   }, []);
 
+  // Same rule as the member directory: a load that failed must not be drawn
+  // as "No groups yet", which reads as somebody having deleted them all.
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/performance", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok) setGroups(data.state?.groups ?? []);
-      else setGroups([]);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.state) {
+        setLoadFailed(true);
+        setGroups(null);
+        return;
+      }
+      setLoadFailed(false);
+      setGroups(data.state.groups ?? []);
     } catch {
-      setGroups([]);
+      setLoadFailed(true);
+      setGroups(null);
     }
   }, []);
   useEffect(() => {
@@ -278,7 +288,21 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       </Modal>
 
       <div className="mt-3 space-y-2">
-        {groups === null ? (
+        {loadFailed ? (
+          <div className="rounded-lg bg-surface px-4 py-4 text-center">
+            <p className="text-[12.5px] text-text-secondary">
+              The groups could not be loaded, so this is not a list of your
+              departments. Your sign-in may have expired.
+            </p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-2 cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
+            >
+              Try again
+            </button>
+          </div>
+        ) : groups === null ? (
           <p className="rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
             Loading groups…
           </p>
