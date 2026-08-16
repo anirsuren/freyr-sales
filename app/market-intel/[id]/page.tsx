@@ -144,10 +144,19 @@ export default async function MarketIntelCompanyPage({
         >
           <ArrowLeft size={14} strokeWidth={2} /> {backLabel}
         </SmartBack>
+        {/* NOT TRACKED IS NOT THE SAME AS TRACKED AND QUIET (found Aug 16,
+            opening company links that do not exist). This branch runs when the
+            id matched nothing at all — not the live feed, not the sample set,
+            not the tracked list — and it used to answer "This company is on
+            the watchlist… tracked for signals". So /market-intel/pfizer said
+            Pfizer was being tracked, and so did a typo. In a sales-intelligence
+            product that is a claim somebody repeats in a meeting. The
+            tracked-but-quiet wording it borrowed belongs to the branch below,
+            where the company really is on the list. */}
         <EmptyState
           icon={Radar}
-          title="This company is on the watchlist"
-          description="It is tracked for signals but has no notable activity in the sample window yet. Open one of the companies on the dashboard to see a full briefing."
+          title="Nothing is tracked under this link"
+          description="No company with that address is on your watchlist, in the live feed, or in the sample set. The link may be out of date, or the company was never added. Open one from the dashboard, or add it with “Track a company”."
         />
       </div>
     );
