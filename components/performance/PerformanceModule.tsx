@@ -3171,8 +3171,66 @@ function SubgoalEditorFields({
     if (ok) onDone();
   }
 
+  /**
+   * WHAT THIS SLICE IS PART OF, and how much of the parent is spoken for
+   * (Anir, Aug 16: "this looks really raw"). The dialog asked for a target
+   * with no sense of the number it is a share of, so you had to hold the
+   * goal's total in your head while typing.
+   */
+  const siblingTotal = goal.subgoals
+    .filter((x) => x.id !== editing?.id)
+    .reduce((sum, x) => sum + (x.target || 0), 0);
+  const mine = parsedTarget ?? editing?.target ?? 0;
+  const spoken = siblingTotal + mine;
+  const goalTarget = goal.target;
+
   return (
     <div className="space-y-3">
+      <div className="rounded-xl bg-[var(--surface)] px-3 py-2.5">
+        <p className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-text-secondary">
+          A slice of
+          <b className="text-text-primary">{goal.name}</b>
+          {goalTarget > 0 && (
+            <>
+              <span>·</span>
+              <span className="tnum">
+                {fmtAmount(goal.unit, goalTarget)} in total
+              </span>
+            </>
+          )}
+        </p>
+        {goalTarget > 0 && (
+          <>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+              <span
+                className={cn(
+                  "block h-full rounded-full transition-all",
+                  spoken > goalTarget ? "bg-[color:#C2410C]" : "bg-blue-primary"
+                )}
+                style={{ width: `${Math.min(100, (spoken / goalTarget) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[11.5px] text-text-secondary tnum">
+              Subgoals account for{" "}
+              <b className="text-text-primary">{fmtAmount(goal.unit, spoken)}</b>{" "}
+              of it
+              {spoken < goalTarget && (
+                <span className="text-[color:#0058B0]">
+                  {" "}
+                  · {fmtAmount(goal.unit, goalTarget - spoken)} still unsplit
+                </span>
+              )}
+              {spoken > goalTarget && (
+                <span className="text-[color:#C2410C]">
+                  {" "}
+                  · {fmtAmount(goal.unit, spoken - goalTarget)} over
+                </span>
+              )}
+            </p>
+          </>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <div className="min-w-[200px] flex-1">
           <label className="text-[12px] font-semibold text-text-primary">
