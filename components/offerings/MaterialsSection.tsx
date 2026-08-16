@@ -1122,7 +1122,17 @@ export function MaterialsSection({
             : subFolders.length > 0
               ? "Everything here is inside a folder. Open one above."
               : folder
-                ? "This folder is empty."
+                ? /* A FOLDER FROM A LINK MIGHT NOT EXIST (found Aug 16, deep
+                     linking ?mf=). A shared or mistyped ?mf= drew the name as
+                     an active filter chip and said "This folder is empty",
+                     which reads as a real folder somebody cleared out rather
+                     than a folder that was never here. `folders` is the
+                     complete set — the fixed folders plus every stored and
+                     material-carried path, ancestors included — so anything
+                     outside it genuinely does not exist on this offering. */
+                  folders.includes(folder)
+                  ? "This folder is empty."
+                  : `There is no folder called “${materialFolderLabel(folder)}” on this offering. Check the link, or pick a folder above.`
                 : "No materials yet."}
         </p>
       ) : columns === "table" ? (
