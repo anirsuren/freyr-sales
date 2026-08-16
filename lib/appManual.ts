@@ -82,9 +82,25 @@ group". Everyone in that group is attached to the goal automatically at a
 target of 0, so they can start logging straight away; you then set individual
 targets if you want them.
 
-ASSIGNING A GOAL TO ONE PERSON. Same panel, "Assigned people" → "Assign to a
-person". A person can carry a goal through their group AND carry a different
-goal personally; both show up for them.
+SPLITTING A GROUP TARGET ACROSS ITS PEOPLE. In "Assigned groups", click the
+chevron on a group to unfold it. You get the group's target, how much of it has
+been given out, how much is left, and every person on the goal with their own
+target box — type a number and press Enter. "Split evenly" divides the group
+target across them. The split is reported, not enforced: you are allowed to
+give out more or less than the group target, and the line simply says by how
+much.
+
+TAKING ONE PERSON OFF A GROUP'S GOAL. In that same unfolded group, the × beside
+a person takes them off THIS goal. They stay in the group — it only means this
+goal is not theirs — and they move to "In the group, not on this goal", where
+"Put back on" reverses it. This sticks: re-saving the group will not re-attach
+them.
+
+ASSIGNING A GOAL TO ONE PERSON. Same panel, "Assigned individually" → "Assign
+to a person". That section lists only people attached on their own; a group's
+members are shown inside their group, never repeated underneath. A person can
+carry a goal through their group AND carry a different goal personally; both
+show up for them.
 
 SETTING OR CHANGING A TARGET. On Org/Group/People performance, the TARGET cell
 on a goal's row is a button: click it (a pencil appears on hover) to change or
