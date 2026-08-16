@@ -5,10 +5,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Download,
   Eye,
-  ExternalLink,
-  FileText,
   Hourglass,
   Paperclip,
   PenLine,
@@ -26,7 +23,7 @@ import {
 } from "@/lib/performanceShared";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
-import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
+import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -929,25 +926,9 @@ export function VerifyQueueCard({
                 Proof
               </span>
               {a.evidence?.length ? (
-                <div className="mt-1.5 flex flex-wrap gap-2">
+                <div className="mt-1.5 space-y-2">
                   {a.evidence.map((e) => (
-                    <button
-                      key={e.url}
-                      type="button"
-                      onClick={() => setPreview({ name: e.name, url: e.url })}
-                      title={`Preview ${e.name}`}
-                      className="flex cursor-pointer items-center gap-2 rounded-xl border border-border-light bg-white p-1.5 pr-3 text-left transition-colors hover:border-blue-primary"
-                    >
-                      <EvidenceThumb file={e} />
-                      <span className="min-w-0">
-                        <span className="block max-w-[220px] truncate text-[12px] font-semibold text-text-primary">
-                          {e.name}
-                        </span>
-                        <span className="block text-[10.5px] text-blue-primary">
-                          Click to see it full size
-                        </span>
-                      </span>
-                    </button>
+                    <EvidenceInline key={e.url} file={e} />
                   ))}
                 </div>
               ) : (

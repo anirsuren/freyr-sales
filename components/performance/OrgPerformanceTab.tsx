@@ -716,7 +716,12 @@ export function OrgPerformanceTab({
                       // Verified holds "Not verified" + the VERIFY badge on one
                       // line: 149px of pill plus the cell's 32px of padding.
                       i === 5 && "w-[190px]",
-                      i === 6 && "w-[120px] text-right"
+                      /* NARROW (Anir, Aug 16: "You don't need that much space
+                         for the last column. so that it stays on like one
+                         line"). 120px of Actions was squeezing the Goal cell
+                         until the name, the pace pill and the category
+                         wrapped onto three lines. */
+                      i === 6 && "w-[88px] !px-2 text-right"
                     )}
                   >
                     {i === 6 ? (
@@ -938,8 +943,6 @@ function GoalRows({
       </Modal>
       <tr
         onClick={onToggle}
-        onMouseEnter={() => donutSyncBroadcast(syncId, index)}
-        onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         data-linked={linkedIndex === index ? "true" : undefined}
         className={cn(
           "cursor-pointer transition-all hover:bg-surface",
@@ -1038,7 +1041,16 @@ function GoalRows({
             <span className="text-[12px] text-text-tertiary">—</span>
           )}
         </td>
-        <td className="px-4 py-4">
+        {/* THE SHINE BELONGS TO THE BAR, NOT THE ROW (Anir, Aug 16: "when my
+            mouse moves, it's still doing the shining thing. Only when my mouse
+            is on top of the bar should it do it, or in the area of the bar").
+            The whole row used to broadcast, so crossing any of its seven cells
+            lit the bar and its partner in the chart. */}
+        <td
+          className="px-4 py-4"
+          onMouseEnter={() => donutSyncBroadcast(syncId, index)}
+          onMouseLeave={() => donutSyncBroadcast(syncId, null)}
+        >
           <MiniBar
             actual={actual}
             target={goal.target}
@@ -1070,8 +1082,8 @@ function GoalRows({
             }
           />
         </td>
-        <td className="px-4 py-4">
-          <span className="flex items-center justify-end gap-1">
+        <td className="px-2 py-4">
+          <span className="flex items-center justify-end gap-0.5">
           {/* FULL SCREEN LIVES ON THE ROW (Anir, Aug 16: "Expand it. I don't
               see that button. It should be like a button. It should be an
               action column on this row"). Buried in the drill-down header it

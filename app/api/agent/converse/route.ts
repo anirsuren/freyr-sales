@@ -591,23 +591,36 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000}]}\n```\n' +
     'Types: "bar" (comparisons), "donut" (share of a whole), "area" (trend). Real values only.\n\n' +
 
-    (pageContext
+    /**
+     * WHERE THEY ARE IS NOT CONDITIONAL ON PAGE CONTENT (bug, Aug 16).
+     * The dock sends `path` on every message, but this whole block used to
+     * hang off `pageContext`, so whenever the screen scraped to nothing the
+     * model was never told the path it had been handed — and answered "I can't
+     * see your screen, which page are you on?" to someone standing on
+     * /performance/goal/g-1. The location is a fact we have; only PAGE CONTENT
+     * depends on there being page text to quote.
+     */
+    (onPath || pageContext
       ? (pathChanged
           ? "THEY HAVE MOVED. This question comes from a DIFFERENT page than the last one. " +
             "Everything earlier in this conversation described a page they have left: do not carry " +
             "its records, names or numbers into this answer. Answer only from the PAGE CONTENT below.\n\n"
           : "") +
         `WHERE THEY ARE. The person is on ${onPath || "the app"}${onSubject ? `, looking at ${onSubject}` : ""}. ` +
-        "PAGE CONTENT below is the exact text on their screen right now; treat it as ground truth for questions " +
-        'about "this page", "this company" or anything they can see.' +
-        "\nPAGE CONTENT:\n" + '"""' + "\n" +
-        pageContext +
-        "\n" + '"""' + "\n" +
-        (pageLinks.length
-          ? "LINKS ON THIS PAGE (label — destination). Use these when asked " +
-            "for an article, source or link:\n" +
-            pageLinks.map((l: string) => `- ${l}`).join("\n") +
-            "\n"
+        'Never ask them which page they are on, and never say you cannot see their screen: "this page" means ' +
+        `${onPath || "the page named above"}. Answer for that page, using the MANUAL section for it.\n` +
+        (pageContext
+          ? "PAGE CONTENT below is the exact text on their screen right now; treat it as ground truth for questions " +
+            'about "this page", "this company" or anything they can see.' +
+            "\nPAGE CONTENT:\n" + '"""' + "\n" +
+            pageContext +
+            "\n" + '"""' + "\n" +
+            (pageLinks.length
+              ? "LINKS ON THIS PAGE (label — destination). Use these when asked " +
+                "for an article, source or link:\n" +
+                pageLinks.map((l: string) => `- ${l}`).join("\n") +
+                "\n"
+              : "")
           : "") +
         "\n"
       : "") +

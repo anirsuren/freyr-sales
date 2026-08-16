@@ -731,12 +731,9 @@ export function PaceTimeline({
    * together, and the layout no longer jumps between two arrangements.
    */
   /** Track thickness, and how far the biggest dot reaches past its centre. */
-  const TRACK = compact ? 8 : 10;
-  const DOT = 7;
   const LEADER = LANE - 11;
-  /** Top of the label that hangs UNDER the track: clear of the track itself,
-   *  clear of the dot sitting on it, plus the leader line. */
-  const belowTop = LANE + 8 + TRACK / 2 + DOT + 1;
+  /** Height of a label line, so its lane can be reserved exactly. */
+  const LABEL = compact ? 14 : 17;
 
   return (
     <div className={compact ? "w-full" : "min-w-[380px]"}>
@@ -748,38 +745,8 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            style={{
-              paddingTop: LANE + 8,
-              // Reserve the whole hanging label: clearance + leader + text.
-              paddingBottom: TRACK / 2 + DOT + 1 + LEADER + (compact ? 15 : 18),
-            }}
+            style={{ paddingTop: LANE + 8 }}
           >
-            {/* WHERE YOU ARE — above the track, or under it when the two
-                points are close enough that two lanes would cross. */}
-            <span
-              className="absolute flex -translate-x-1/2 flex-col-reverse items-center"
-              style={{ left: `${clamp(aPct)}%`, top: belowTop }}
-            >
-              <span
-                className={cn(
-                  "whitespace-nowrap font-bold tnum",
-                  compact ? "text-[10px]" : "text-[12px]"
-                )}
-                style={{ color: accent }}
-              >
-                {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
-              </span>
-              <span
-                className="w-px"
-                style={{
-                  height: LEADER,
-                  background: accent,
-                  opacity: 0.35,
-                }}
-                aria-hidden="true"
-              />
-            </span>
-
             {/* WHERE THE CALENDAR SAYS YOU MUST BE. */}
             <span
               className="absolute flex -translate-x-1/2 flex-col items-center"
@@ -833,8 +800,35 @@ export function PaceTimeline({
               />
             </div>
 
+
+            {/* WHERE YOU ARE — its own lane between the track and the end
+                labels, in flow (Anir, Aug 16: "The lines don't line up").
+                Absolutely positioned over the end-label row it landed on top
+                of "$0" and "$900K", and the space reserved for it opened a
+                dead band underneath them. */}
+            <div className="relative" style={{ height: LEADER + LABEL }}>
+              <span
+                className="absolute flex -translate-x-1/2 flex-col-reverse items-center"
+                style={{ left: `${clamp(aPct)}%`, top: 0 }}
+              >
+                <span
+                  className={cn(
+                    "whitespace-nowrap font-bold tnum",
+                    compact ? "text-[10px]" : "text-[12px]"
+                  )}
+                  style={{ color: accent }}
+                >
+                  {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
+                </span>
+                <span
+                  className="w-px"
+                  style={{ height: LEADER, background: accent, opacity: 0.35 }}
+                  aria-hidden="true"
+                />
+              </span>
+            </div>
             {/* WHAT EACH END OF THE TRACK IS WORTH. */}
-            <div className="mt-2 flex items-baseline justify-between gap-2">
+            <div className="mt-1 flex items-baseline justify-between gap-2">
               <span
                 className={cn(
                   "font-semibold text-text-tertiary tnum",

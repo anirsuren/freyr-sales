@@ -594,6 +594,12 @@ export function GoalZoom({
                          groups: click a month, its numbers open underneath it
                          in the column, click again to close. */
                       <Fragment key={r.label}>
+                      <div
+                        className={cn(
+                          shown &&
+                            "overflow-hidden rounded-lg ring-1 ring-inset ring-blue-primary/40"
+                        )}
+                      >
                       <button
                         type="button"
                         aria-expanded={shown}
@@ -603,10 +609,11 @@ export function GoalZoom({
                           setOpenPeriod(shown ? null : i);
                         }}
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all",
-                          active
+                          "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-all",
+                          shown ? "bg-[rgba(0,113,227,0.08)]" : "rounded-lg",
+                          !shown && active
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                            : "hover:bg-surface",
+                            : !shown && "hover:bg-surface",
                           !empty && lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
                           /* THE REST FADE BUT STAY (Anir, Aug 16: "when I click
                              on this, you can kind of fade out the other ones,
@@ -672,7 +679,7 @@ export function GoalZoom({
                         />
                       </button>
                       {shown && (
-                        <div className="tab-panel mb-1.5 mt-0.5 rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                        <div className="tab-panel border-t border-border-light bg-white px-2.5 py-2">
                           <div>
                             <PaceTimeline
                               compact
@@ -686,6 +693,7 @@ export function GoalZoom({
                           </div>
                         </div>
                       )}
+                      </div>
                       </Fragment>
                     );
                   })}
@@ -740,6 +748,17 @@ export function GoalZoom({
                         </button>
                         ) : (
                         <Fragment key={r2.group.id}>
+                        {/* ONE OUTLINE ROUND THE WHOLE THING (Anir, Aug 16:
+                            "It should just be one box, not two boxes"). The
+                            row and what it opens are the same object, so the
+                            border goes round both and the header simply sits
+                            on top of the content. */}
+                        <div
+                          className={cn(
+                            active &&
+                              "overflow-hidden rounded-lg ring-1 ring-inset ring-blue-primary/40"
+                          )}
+                        >
                         {/* THE HOVER CARD IS FOR THE CLOSED ROW ONLY (Anir,
                             Aug 16: "when I'm hovering over the dropdown, when
                             it's not dropped down, then it can do the hover
@@ -767,11 +786,11 @@ export function GoalZoom({
                             setOpenGroup(active ? null : r2.group.id)
                           }
                           className={cn(
-                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
+                            "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
                             active
-                              ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                              : "hover:bg-surface",
-                            lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
+                              ? "bg-[rgba(0,113,227,0.08)]"
+                              : "rounded-lg hover:bg-surface",
+                            !active && lit && "rounded-lg bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
                             /* Same fade as the period column above. */
                             openGroup !== null && !active && "opacity-45 hover:opacity-100"
                           )}
@@ -850,7 +869,7 @@ export function GoalZoom({
                              wasting"). The timeline and the people are the
                              same disclosure, so they share one outline and
                              start at the same left edge as the row above. */
-                          <div className="tab-panel mb-1.5 mt-0.5 rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                          <div className="tab-panel border-t border-border-light bg-white px-2.5 py-2">
                             {/* WHAT THE HOVER CARD USED TO SAY, SAID IN PLACE
                                 (Anir, Aug 16: "all of this data should show up
                                 when I draw the dropdown"). */}
@@ -995,6 +1014,7 @@ export function GoalZoom({
                             })}
                           </div>
                         )}
+                        </div>
                         </Fragment>
                         )
                       );

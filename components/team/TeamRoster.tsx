@@ -16,6 +16,7 @@ import {
   ChevronDown,
   CalendarDays,
   CircleSlash,
+  DollarSign,
   Globe,
   Globe2,
   Layers,
@@ -1059,21 +1060,72 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     </td>
                   </tr>
                   {openRep === r.identityKey && (
-                    <tr className="bg-blue-light/20">
-                      <td colSpan={8} className="px-4 pb-4 pt-1">
-                        <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-                          <RepFact label="Title" value={r.title} />
-                          <RepFact label="Region" value={r.region || "—"} />
-                          <RepFact
-                            label="Open pipeline"
-                            value={formatMoney(r.openValue)}
-                            strong
-                          />
-                          <RepFact label="Weighted" value={formatMoney(r.weighted)} />
-                          <RepFact label="Open deals" value={String(r.openCount)} />
-                          <RepFact label="Meetings" value={String(r.meetings)} />
-                          <RepFact label="Email" value={r.email || "—"} />
-                          <RepFact label="Phone" value={r.phone || "—"} />
+                    <tr className="!border-t-0 bg-surface">
+                      <td
+                        colSpan={8}
+                        className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                      >
+                        {/* THE NUMBERS AS TILES, IN ONE ROW (Anir, Aug 16:
+                            "when I click on the team member, it should show me
+                            something like this instead of whatever you have
+                            right now. Again, remove those separations. its
+                            part of one row right"). Eight identical label/value
+                            pairs made the four numbers that matter look like
+                            metadata. They are tiles now — icon, name, number —
+                            divided by a rule rather than boxed one by one,
+                            because it is one row. */}
+                        <div className="tab-panel rounded-xl bg-white ring-1 ring-inset ring-[color:var(--border-light)]">
+                          <div className="grid grid-cols-2 divide-x divide-border-light sm:grid-cols-4">
+                            {[
+                              { icon: DollarSign, label: "Open pipeline", value: formatMoney(r.openValue), sub: `${r.openCount} live ${r.openCount === 1 ? "deal" : "deals"}` },
+                              { icon: TrendingUp, label: "Weighted forecast", value: formatMoney(r.weighted), sub: "probability-adjusted" },
+                              { icon: Layers, label: "Open deals", value: String(r.openCount), sub: "in the pipeline" },
+                              { icon: CalendarDays, label: "Meetings", value: String(r.meetings), sub: "booked" },
+                            ].map((t) => (
+                              <div key={t.label} className="min-w-0 px-4 py-3">
+                                <span className="flex items-center gap-2">
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                                    <t.icon size={14} strokeWidth={2.2} />
+                                  </span>
+                                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                    {t.label}
+                                  </span>
+                                </span>
+                                <span className="mt-2 flex items-baseline gap-1.5">
+                                  <b className="text-[21px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
+                                    {t.value}
+                                  </b>
+                                  <span className="truncate text-[11.5px] text-text-secondary">
+                                    {t.sub}
+                                  </span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Who they are, under the numbers, on one line. */}
+                          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-border-light px-4 py-2.5 text-[12px]">
+                            <span className="text-text-secondary">{r.title}</span>
+                            <span className="flex items-center gap-1.5 text-text-secondary">
+                              <MapPin size={12} strokeWidth={2.2} className="text-text-tertiary" />
+                              {r.region || "—"}
+                            </span>
+                            {r.email && (
+                              <a
+                                href={`mailto:${r.email}`}
+                                className="flex items-center gap-1.5 text-blue-primary hover:underline"
+                              >
+                                <Mail size={12} strokeWidth={2.2} /> {r.email}
+                              </a>
+                            )}
+                            {r.phone && (
+                              <a
+                                href={`tel:${r.phone}`}
+                                className="flex items-center gap-1.5 text-blue-primary hover:underline"
+                              >
+                                <Phone size={12} strokeWidth={2.2} /> {r.phone}
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -1091,30 +1143,3 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
 }
 
 
-/** One labelled fact in an unfolded rep row. */
-function RepFact({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-        {label}
-      </span>
-      <span
-        className={cn(
-          "mt-1 block truncate text-[13.5px]",
-          strong ? "font-bold text-text-primary tnum" : "font-medium text-text-primary"
-        )}
-        title={value}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
