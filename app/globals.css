@@ -124,12 +124,34 @@ html.dark body {
 .dark .bg-blue-light {
   background-color: rgba(10, 132, 255, 0.18) !important;
 }
+/* AND EVERY FADED VARIANT OF IT (found Aug 16, sweeping dark mode for
+   contrast). Tailwind emits `bg-blue-light/60` as its own class, so the rule
+   above never reached it and those panels kept the light #E8F1FB wash on the
+   dark page — while the text on top DID pick up its dark-mode colour, leaving
+   pale blue on pale blue at 1.9:1. The forecast page's "you" row was the
+   clearest case. Alpha scales with the variant so the wash stays as subtle
+   as it was designed to be. Same treatment the success/warning/error washes
+   below already get. */
+.dark .bg-blue-light\/15 { background-color: rgba(10, 132, 255, 0.03) !important; }
+.dark .bg-blue-light\/20 { background-color: rgba(10, 132, 255, 0.04) !important; }
+.dark .bg-blue-light\/25 { background-color: rgba(10, 132, 255, 0.05) !important; }
+.dark .bg-blue-light\/30 { background-color: rgba(10, 132, 255, 0.05) !important; }
+.dark .bg-blue-light\/35 { background-color: rgba(10, 132, 255, 0.06) !important; }
+.dark .bg-blue-light\/40 { background-color: rgba(10, 132, 255, 0.07) !important; }
+.dark .bg-blue-light\/45 { background-color: rgba(10, 132, 255, 0.08) !important; }
+.dark .bg-blue-light\/50 { background-color: rgba(10, 132, 255, 0.09) !important; }
+.dark .bg-blue-light\/55 { background-color: rgba(10, 132, 255, 0.10) !important; }
+.dark .bg-blue-light\/60 { background-color: rgba(10, 132, 255, 0.11) !important; }
+.dark .bg-blue-light\/70 { background-color: rgba(10, 132, 255, 0.13) !important; }
 /* #0071E3 is tuned for white. On the dark page it lands near 3.9:1, and on
    the dark blue chip wash near 2.9:1, so category chips and links read as
    smudges. This lifts it to a dark-mode blue that clears AA on both. */
 .dark .text-blue-primary {
   color: #6fb6ff !important;
 }
+/* The faded text variants need the lifted blue too, for the same reason. */
+.dark .text-blue-primary\/70 { color: rgba(111, 182, 255, 0.7) !important; }
+.dark .text-blue-primary\/80 { color: rgba(111, 182, 255, 0.8) !important; }
 
 /* Status utilities are used by compact chips across Voice, Campaigns,
    Sequences, Settings, Sessions, and Reports. Their light-mode foregrounds
