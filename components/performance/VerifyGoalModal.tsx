@@ -134,7 +134,7 @@ export function VerifyGoalModal({
                   {a.date}
                 </span>
                 <b className="shrink-0 text-[13px] text-text-primary tnum">
-                  {fmtAmount(goal.unit, a.amount)}
+                  {fmtAmount(goal.unit, a.amount, a.currency)}
                 </b>
                 <span
                   className={cn(

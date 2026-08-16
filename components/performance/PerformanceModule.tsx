@@ -41,6 +41,12 @@ import {
 } from "@/components/ui/SearchPriority";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { useStoredView } from "@/lib/useStoredView";
+import {
+  BASE_CURRENCY,
+  CURRENCIES,
+  currencyMeta,
+  type CurrencyCode,
+} from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import {
   fmtAmount,
@@ -3439,6 +3445,9 @@ function LogActualModal({
   const [componentId, setComponentId] = useState("");
   const [person, setPerson] = useState("");
   const [amount, setAmount] = useState("");
+  /** What this one was signed in. Defaults to the goal's own currency, so a
+   *  euro goal does not quietly collect dollars. */
+  const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(BASE_CURRENCY);
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [customer, setCustomer] = useState("");
@@ -3780,6 +3789,7 @@ function LogActualModal({
             selectedAccount?.deals.find((d) => d.id === dealId)?.label) ||
           undefined,
         evidence: evidence.length ? evidence : undefined,
+        currency: unit === "currency" ? entryCurrency : undefined,
       },
       "Sent for verification. It counts once the group owner locks it"
     );
@@ -3925,22 +3935,47 @@ function LogActualModal({
               Amount
               <InfoHint text="How much this single achievement is worth, in this goal&apos;s unit. It adds onto everything logged before it." />
             </label>
-            <div className="relative mt-1">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
-                {unit === "currency" ? "$" : unit === "percent" ? "%" : "#"}
-              </span>
-              <input
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={
-                  unit === "currency"
-                    ? "e.g. 250K"
+            <div className="relative mt-1 flex gap-2">
+              {/* MONEY CARRIES ITS CURRENCY (Suren, via Anir, Aug 15:
+                  "wherever you have an amount, you always have to have it so
+                  that I can choose the currency"). Freyr signs in dollars,
+                  euros, pounds, rupees and yen; recording all of it as "$" was
+                  a quiet lie about what was signed. */}
+              <span className="relative flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
+                  {unit === "currency"
+                    ? currencyMeta(entryCurrency).symbol
                     : unit === "percent"
-                      ? "e.g. 44"
-                      : "e.g. 12"
-                }
-                className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
-              />
+                      ? "%"
+                      : "#"}
+                </span>
+                <input
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder={
+                    unit === "currency"
+                      ? "e.g. 250K"
+                      : unit === "percent"
+                        ? "e.g. 44"
+                        : "e.g. 12"
+                  }
+                  className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
+                />
+              </span>
+              {unit === "currency" && (
+                <select
+                  value={entryCurrency}
+                  onChange={(e) => setEntryCurrency(e.target.value as CurrencyCode)}
+                  aria-label="Currency this was signed in"
+                  className="h-[40px] shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-subtle"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.symbol.trim()} {c.code}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             {/* Feedback is NOT gated on a goal being picked: typing "dd" in
                 an empty form used to get no reaction at all (Anir, Aug 15,

@@ -360,6 +360,7 @@ export async function POST(req: NextRequest) {
           dealId: body.dealId ? String(body.dealId) : undefined,
           dealLabel: body.dealLabel ? String(body.dealLabel) : undefined,
           evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
+          currency: body.currency ? String(body.currency) : undefined,
           addedBy: me.name,
         });
         break;

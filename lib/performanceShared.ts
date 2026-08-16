@@ -22,6 +22,13 @@
  * screens can use it. Nothing here touches the database or the data mode.
  */
 
+import {
+  BASE_CURRENCY,
+  fmtMoney,
+  type CurrencyCode,
+  type CurrencyRates,
+} from "./currency";
+
 export type GoalUnit = "currency" | "count" | "percent";
 
 /** Running total (sum of actuals) vs latest reported value (ratios, averages). */
@@ -96,6 +103,9 @@ export type PrimaryGoal = {
   /** One of the goal types from the master list (editable, not hard-coded). */
   type: string;
   unit: GoalUnit;
+  /** Money goals only: the currency the TARGET is stated in. A €1M target is
+   *  not a $1M target, so the goal carries its own. */
+  currency?: CurrencyCode;
   measure: GoalMeasure;
   year: number;
   /** The organization target — the big number from the top. 0 = not set yet. */
@@ -165,6 +175,9 @@ export type PerfActual = {
   amount: number;
   /** ISO date (day precision) the result belongs to. */
   date: string;
+  /** What this was actually signed in. Absent = the workspace currency, which
+   *  is what every entry before Aug 16 was. Never rewritten by a conversion. */
+  currency?: CurrencyCode;
   note?: string;
   /** Which customer this came from. Free text historically, now the account
    *  name chosen from the real list — same string every time, so a number can
@@ -197,6 +210,12 @@ export type PerformanceState = {
   goals: PrimaryGoal[];
   groups: PerfGroup[];
   actuals: PerfActual[];
+  /**
+   * Units of each currency that one US dollar buys, set by an admin. Absent
+   * for a currency means "no rate on file", and anything in it is shown as
+   * recorded rather than converted at a guess. See lib/currency.ts.
+   */
+  rates?: CurrencyRates;
 };
 
 /** The goal types exactly as they appear in Suren's goals.xlsx (Aug 11). */
@@ -394,18 +413,18 @@ export function inPeriod(
 /* ------------------------------------------------------------ formatting */
 
 /** $100M / $2.4M / $850K / $12,500 for money; 1,200 for counts; 45% flat. */
-export function fmtAmount(unit: GoalUnit, value: number): string {
+export function fmtAmount(
+  unit: GoalUnit,
+  value: number,
+  /** Money only. Omitted keeps the workspace currency, as it always was. */
+  code: CurrencyCode = BASE_CURRENCY
+): string {
   if (unit === "count") return Math.round(value).toLocaleString("en-US");
   if (unit === "percent") {
     const r = Math.round(value * 10) / 10;
     return `${Number.isInteger(r) ? r.toFixed(0) : r}%`;
   }
-  const v = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (v >= 1e9) return `${sign}$${trim1(v / 1e9)}B`;
-  if (v >= 1e6) return `${sign}$${trim1(v / 1e6)}M`;
-  if (v >= 1e3) return `${sign}$${trim1(v / 1e3)}K`;
-  return `${sign}$${Math.round(v).toLocaleString("en-US")}`;
+  return fmtMoney(value, code);
 }
 
 function trim1(n: number): string {

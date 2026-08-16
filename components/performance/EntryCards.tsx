@@ -387,7 +387,7 @@ export function MyEntriesCard({
                       </td>
                       <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
-                        {goal ? fmtAmount(goal.unit, a.amount) : a.amount}
+                        {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
                       </td>
                       <td className="px-4 py-3.5">
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
@@ -870,7 +870,7 @@ export function VerifyQueueCard({
                       </td>
                       <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
-                        {goal ? fmtAmount(goal.unit, a.amount) : a.amount}
+                        {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
                       </td>
                       <td className="px-4 py-3.5">
                         <CustomerCell customer={a.customer} customerId={a.customerId} />

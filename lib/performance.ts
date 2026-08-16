@@ -1,3 +1,4 @@
+import { isCurrencyCode, normalizeRates, type CurrencyCode } from "./currency";
 import { getDataMode } from "./dataMode";
 import {
   DEFAULT_GOAL_TYPES,
@@ -109,6 +110,10 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
     name,
     type: str(raw.type, 80) || DEFAULT_GOAL_TYPES[0],
     unit,
+    // NAMED, OR DELETED BY THE NEXT WRITE.
+    currency: isCurrencyCode(raw.currency)
+      ? (String(raw.currency).toUpperCase() as CurrencyCode)
+      : undefined,
     measure,
     year,
     target: num(raw.target),
@@ -212,6 +217,7 @@ function normalize(value: unknown): PerformanceState {
         ];
       })
     : [];
+  const rates = normalizeRates((raw as { rates?: unknown }).rates);
   const actuals: PerfActual[] = Array.isArray(raw.actuals)
     ? raw.actuals.flatMap((a) => {
         if (!a || typeof a !== "object") return [];
@@ -232,6 +238,11 @@ function normalize(value: unknown): PerformanceState {
             person,
             amount,
             date: str(ra.date, 40) || new Date().toISOString().slice(0, 10),
+            // Same trap as every other field here: written on the way in and
+            // silently dropped on the way out until it is named.
+            currency: isCurrencyCode(ra.currency)
+              ? (String(ra.currency).toUpperCase() as CurrencyCode)
+              : undefined,
             note: ra.note ? str(ra.note, 400) : undefined,
             customer: ra.customer ? str(ra.customer, 160) : undefined,
             // Carried explicitly: a field this normalizer does not name is
@@ -268,6 +279,7 @@ function normalize(value: unknown): PerformanceState {
       : [],
     groups,
     actuals,
+    rates,
   };
 }
 
@@ -529,6 +541,8 @@ export async function logActual(input: {
   dealId?: string;
   dealLabel?: string;
   evidence?: { name?: unknown; url?: unknown }[];
+  /** What it was signed in. Stored as recorded; never converted on the way in. */
+  currency?: string;
   addedBy: string;
 }): Promise<PerfActual> {
   const person = str(input.person, 80);
@@ -580,6 +594,9 @@ export async function logActual(input: {
     person,
     amount,
     date: dateIso,
+    currency: isCurrencyCode(input.currency)
+      ? (String(input.currency).toUpperCase() as CurrencyCode)
+      : undefined,
     note: input.note ? str(input.note, 400) : undefined,
     customer: input.customer ? str(input.customer, 160) : undefined,
     customerId: input.customerId ? str(input.customerId, 60) : undefined,
