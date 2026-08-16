@@ -883,7 +883,7 @@ export function AgentDock({
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
-              : `fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right ${POPOVER_SURFACE}`
+              : `fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
           )}
         >
           {/* Header */}
@@ -1064,7 +1064,16 @@ export function AgentDock({
           aria-label={open ? "Close your agent" : "Open your agent"}
           className={cn(
             "w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white transition-all",
-            embedded ? "mx-auto mb-5 mt-auto" : "fixed bottom-5 right-5 z-[120]",
+            // NOT ON THE PAPER (found Aug 16, printing the Performance page).
+            // Performance offers "Print / Save as PDF — this page, as it
+            // stands", and the print stylesheet only hides <header> and
+            // <aside>. The dock is neither, so a blue chat bubble was landing
+            // in the corner of every board PDF. The toolbars on the report
+            // page and the agent review page already use print:hidden; the
+            // floating dock simply never got it.
+            embedded
+              ? "mx-auto mb-5 mt-auto"
+              : "fixed bottom-5 right-5 z-[120] print:hidden",
             "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
           )}
         >

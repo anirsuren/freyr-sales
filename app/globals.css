@@ -1001,6 +1001,66 @@ input {
   main {
     overflow: visible !important;
   }
+
+  /**
+   * PAPER IS ALWAYS LIGHT (found Aug 16, printing Performance in dark mode).
+   * Performance offers "Print / Save as PDF" and the customer report page is
+   * built to be printed, but the dark theme followed the page onto the paper:
+   * body #0b0b0d, cards #1c1c1e, text near-white. Both outcomes are bad. With
+   * Chrome's "Background graphics" ON you get a near-black board document;
+   * with it OFF — the default — the backgrounds vanish and near-white text
+   * lands on white paper, so the report prints looking blank.
+   *
+   * Nobody chooses a dark PDF, so print re-declares the light palette rather
+   * than asking anyone to switch themes before exporting. The variables cover
+   * most of the app; the handful of !important dark utilities below need
+   * matching !important, and win because this block comes later in the file.
+   */
+  .dark {
+    color-scheme: light;
+    --bar-veil: 255, 255, 255;
+    --white: #ffffff;
+    --surface: #f5f5f7;
+    --surface-rgb: 245 245 247;
+    --border: #d2d2d7;
+    --border-light: #e8e8ed;
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #86868b;
+    --shadow-card: none;
+  }
+  html.dark,
+  html.dark body {
+    background: #ffffff !important;
+    color: #1d1d1f !important;
+  }
+  .dark .bg-white {
+    background-color: #ffffff !important;
+  }
+  .dark .bg-surface {
+    background-color: #f5f5f7 !important;
+  }
+  .dark .text-text-primary {
+    color: #1d1d1f !important;
+  }
+  .dark .text-text-secondary {
+    color: #6e6e73 !important;
+  }
+  .dark .text-text-tertiary {
+    color: #86868b !important;
+  }
+  .dark .border-border-light {
+    border-color: #e8e8ed !important;
+  }
+  .dark .border-border {
+    border-color: #d2d2d7 !important;
+  }
+  .dark .text-blue-primary {
+    color: #0071e3 !important;
+  }
+  .dark .bg-blue-light {
+    background-color: #e8f1fb !important;
+  }
 }
 
 /* Agent "thinking" — three bars doing an equalizer wave. */
