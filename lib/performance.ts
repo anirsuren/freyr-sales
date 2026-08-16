@@ -1007,6 +1007,37 @@ export async function assignGoalToGroup(input: {
       existing.target = Math.max(0, input.target);
     }
   } else {
+    /**
+     * NO PERSON COUNTS TWICE INSIDE ONE GOAL (Suren, via Anir, Aug 16: "he
+     * can be in two groups, but the goals have to be different, not the same
+     * goal. Two groups cannot have same person within same goal").
+     *
+     * Anyone this goal already counts through an earlier group assignment is
+     * excluded from the new one at the door — first assignment wins. They are
+     * still full members of the group everywhere else, and on any other goal
+     * both groups may count them; this is one goal refusing a double-count.
+     * Taking them off the earlier assignment frees them for this one.
+     */
+    const alreadyCounted = new Set<string>();
+    for (const a of goal.groupAssignments) {
+      const g = state.groups.find((x) => x.id === a.groupId);
+      if (!g) continue;
+      const ex = new Set(
+        (a.excludedPeople ?? []).map((n) => n.trim().toLowerCase())
+      );
+      for (const n of [g.head, ...g.members]) {
+        const key = n.trim().toLowerCase();
+        if (key && !ex.has(key)) alreadyCounted.add(key);
+      }
+    }
+    const joining = state.groups.find((g) => g.id === groupId);
+    const overlap = joining
+      ? [
+          ...new Set(
+            [joining.head, ...joining.members].map((n) => n.trim()).filter(Boolean)
+          ),
+        ].filter((n) => alreadyCounted.has(n.toLowerCase()))
+      : [];
     goal.groupAssignments.push({
       groupId,
       target:
@@ -1016,6 +1047,7 @@ export async function assignGoalToGroup(input: {
       verified: false,
       assignedBy: input.addedBy,
       assignedAt: new Date().toISOString(),
+      ...(overlap.length ? { excludedPeople: overlap } : {}),
     });
   }
 

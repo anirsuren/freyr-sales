@@ -582,6 +582,57 @@ export function knownPeople(state: PerformanceState, extra?: string): string[] {
 }
 
 
+/**
+ * WHICH GROUP COUNTS A PERSON, PER GOAL.
+ *
+ * Anir, Aug 16: "He can be in two groups, but the goals have to be different,
+ * not the same goal. Two groups cannot have same person within same goal."
+ *
+ * A person may belong to several groups, but on any ONE goal their results
+ * count through exactly one of them — otherwise the same money appears under
+ * every group they are in and the rows stop adding up to the organization
+ * (his $250K read as $500K).
+ *
+ * Precedence: the goal's own group assignments first, in the order they were
+ * made (respecting each assignment's excludedPeople); then the remaining
+ * workspace groups in creation order, so the map is total and deterministic
+ * even for goals nobody has formally assigned to a group.
+ */
+export function goalGroupAttribution(
+  state: Pick<PerformanceState, "groups">,
+  goal: Pick<PrimaryGoal, "groupAssignments">
+): Map<string, string> {
+  const map = new Map<string, string>();
+  const claim = (g: PerfGroup, excluded?: string[]) => {
+    const ex = new Set((excluded ?? []).map((n) => n.trim().toLowerCase()));
+    for (const n of new Set(
+      [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
+    )) {
+      const key = n.toLowerCase();
+      if (ex.has(key)) continue;
+      if (!map.has(key)) map.set(key, g.id);
+    }
+  };
+  for (const a of goal.groupAssignments ?? []) {
+    const g = state.groups.find((x) => x.id === a.groupId);
+    if (g) claim(g, a.excludedPeople);
+  }
+  for (const g of state.groups) claim(g);
+  return map;
+}
+
+/** The members of one group that THIS goal counts through it. */
+export function attributedMembers(
+  state: Pick<PerformanceState, "groups">,
+  goal: Pick<PrimaryGoal, "groupAssignments">,
+  group: PerfGroup
+): string[] {
+  const attribution = goalGroupAttribution(state, goal);
+  return [
+    ...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)),
+  ].filter((n) => attribution.get(n.toLowerCase()) === group.id);
+}
+
 /* ------------------------------------------------------- who sees whom */
 
 /**

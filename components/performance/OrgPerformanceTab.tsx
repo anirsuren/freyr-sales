@@ -914,7 +914,6 @@ function GoalRows({
     goal.measure === "total"
       ? actualValue(actuals, goal, {}, period)
       : null;
-  const expectedPct = Math.round(yearElapsed(goal.year) * 100);
 
   const recentLevelEntries =
     goal.measure === "level"
@@ -1085,11 +1084,7 @@ function GoalRows({
             pace={pace}
             lit={linkedIndex === index}
           />
-          {goal.measure === "total" && goal.target > 0 && (
-            <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
-              {expectedPct}% of the year gone
-            </span>
-          )}
+
         </td>
         <td className="px-4 py-4">
           <VerifiedPill

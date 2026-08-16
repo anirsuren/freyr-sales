@@ -17,7 +17,6 @@ import {
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
@@ -34,6 +33,7 @@ import {
   goalFamilyActuals,
   yearElapsed,
   milestoneByNow,
+  attributedMembers,
   headedGroups,
   isComposite,
   type PerfActual,
@@ -614,64 +614,23 @@ export function GoalZoom({
         {(() => {
           const selIdx = selected ?? Math.max(0, rows.findIndex((x) => x.isNow));
           const row = rows[selIdx] ?? rows[0];
+          /* ONE GROUP PER PERSON, PER GOAL (Anir, Aug 16: "He can be in two
+             groups, but the goals have to be different, not the same goal.
+             Two groups cannot have same person within same goal"). Each row
+             counts only the members this goal attributes to it, so the rows
+             always add up to the period and the same money can never appear
+             twice. */
           const inPeriodGroups = state.groups
             .map((g) => {
-              const people = new Set([g.head, ...g.members].map((n) => n.trim()));
+              const people = new Set(attributedMembers(state, goal, g));
               return {
                 group: g,
+                members: [...people],
                 verified: familyValue(state, goal, { range: row.range, people, verifiedOnly: true }),
                 awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
               };
             })
             .sort((a, b) => b.verified - a.verified);
-          /**
-           * THE SAME MONEY CAN LAND IN TWO GROUPS (Anir, Aug 16: "why is it
-           * highlighting both of these... it looks like it's 500k").
-           *
-           * Suren's model says "each person's count becomes their group's
-           * count, and the groups add up to the organization" — which is only
-           * true while nobody is in two groups. Anir is in test AND group1, so
-           * his one $250K is counted in both, the column reads $500K to the
-           * eye, and it does not reconcile with the org number above it.
-           *
-           * Splitting the money between groups would invent fractions nobody
-           * logged, and dropping it from one would hide it from a group that
-           * genuinely contains that person. So both keep it and the row SAYS
-           * it is shared, naming the other group.
-           */
-          /**
-           * FIRST ROW KEEPS THE MONEY, REPEATS ARE STRUCK (Anir, Aug 16: "if
-           * it says 250k and it says 250k twice, that's 500k. Am I wrong?").
-           * In render order, each entry belongs solid to the first group that
-           * shows it; any later group containing the same person shows it
-           * struck through with a "same money as" tag, so nothing reads as
-           * addable twice and nothing reads as counted nowhere.
-           */
-          const entryLedger = new Map<string, string>();
-          const splitAmounts = (g: { name: string; head: string; members: string[] }) => {
-            const names = new Set(
-              [g.head, ...g.members].map((n) => n.trim().toLowerCase())
-            );
-            let fresh = 0;
-            let repeat = 0;
-            const firstSeenIn = new Set<string>();
-            for (const a of familyActuals) {
-              if (!inRange(a, row.range)) continue;
-              if (!names.has(a.person.trim().toLowerCase())) continue;
-              const owner = entryLedger.get(a.id);
-              if (owner === undefined) {
-                entryLedger.set(a.id, g.name);
-                fresh += a.amount;
-              } else if (owner !== g.name) {
-                repeat += a.amount;
-                firstSeenIn.add(owner);
-              } else {
-                fresh += a.amount;
-              }
-            }
-            return { fresh, repeat, firstSeenIn: [...firstSeenIn] };
-          };
-
           const maxG = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
@@ -682,7 +641,7 @@ export function GoalZoom({
           const selGroup =
             inPeriodGroups.find((r2) => r2.group.id === openGroup) ?? null;
           const groupPeople = selGroup
-            ? [...new Set([selGroup.group.head, ...selGroup.group.members].map((n) => n.trim()))]
+            ? selGroup.members
                 .map((name) => ({
                   name,
                   verified: familyValue(state, goal, { range: row.range, person: name, verifiedOnly: true }),
@@ -823,7 +782,9 @@ export function GoalZoom({
                   </span>
                 </div>
                 <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
-                  {rows.map((r, i) => {
+                  {(() => {
+                    const inPeriodAwaiting = rows.some((r) => r.awaiting > 0);
+                    return rows.map((r, i) => {
                     const active = i === selIdx;
                     const shown = openPeriods.has(i);
                     const empty = r.verified === 0 && r.awaiting === 0;
@@ -838,7 +799,12 @@ export function GoalZoom({
                       <div
                         className={cn(
                           shown &&
-                            "overflow-hidden rounded-lg ring-1 ring-inset ring-blue-primary/40"
+                            /* A real border, NOT an inset ring (Anir, Aug 16, third time: "FIX THE
+                                 FUCKING CONTAINER"). ring-inset is a box-shadow painted UNDER the
+                                 children, and the panel's white background covered three sides of it —
+                                 so the box only ever showed around the tinted header. A border cannot
+                                 be painted over. */
+                              "overflow-hidden rounded-lg border border-blue-primary/40"
                         )}
                       >
                       <button
@@ -903,9 +869,19 @@ export function GoalZoom({
                             says 250k waiting, why is that not shown?"). The
                             column showed $0 for a month holding a quarter of a
                             million in unchecked claims. */}
-                        {r.awaiting > 0 && (
-                          <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                            +{fmtAmount(goal.unit, r.awaiting)}
+                        {/* EVERY ROW RESERVES THE BADGE'S SLOT (Anir, Aug 16:
+                            "you can't shorten the progress bar if you have the
+                            number"). A conditional badge stole width from the
+                            bar, so August's bar was shorter than September's
+                            and the columns stopped being comparable. The slot
+                            is there on every row; the badge fills it or not. */}
+                        {inPeriodAwaiting && (
+                          <span className="flex w-[56px] shrink-0 justify-end">
+                            {r.awaiting > 0 && (
+                              <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
+                                +{fmtAmount(goal.unit, r.awaiting)}
+                              </span>
+                            )}
                           </span>
                         )}
                         <ChevronDown
@@ -938,7 +914,8 @@ export function GoalZoom({
                       </div>
                       </Fragment>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
               </div>
 
@@ -961,23 +938,7 @@ export function GoalZoom({
                         ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting`
                         : ""}
                     </span>
-                    {(() => {
-                      const stacked = inPeriodGroups.reduce(
-                        (sum, r2) => sum + r2.verified + r2.awaiting,
-                        0
-                      );
-                      const real = (row?.verified ?? 0) + (row?.awaiting ?? 0);
-                      if (stacked <= real) return null;
-                      return (
-                        <Tooltip
-                          label={`The rows below add up to ${fmtAmount(goal.unit, stacked)} because somebody belongs to more than one group and their result is counted in each. This number counts it once.`}
-                        >
-                          <span className="cursor-help rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED]">
-                            counted once
-                          </span>
-                        </Tooltip>
-                      );
-                    })()}
+
                   </span>
                 </div>
                 <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
@@ -1024,7 +985,12 @@ export function GoalZoom({
                         <div
                           className={cn(
                             active &&
-                              "overflow-hidden rounded-lg ring-1 ring-inset ring-blue-primary/40"
+                              /* A real border, NOT an inset ring (Anir, Aug 16, third time: "FIX THE
+                                 FUCKING CONTAINER"). ring-inset is a box-shadow painted UNDER the
+                                 children, and the panel's white background covered three sides of it —
+                                 so the box only ever showed around the tinted header. A border cannot
+                                 be painted over. */
+                              "overflow-hidden rounded-lg border border-blue-primary/40"
                           )}
                         >
                         {/* THE HOVER CARD IS FOR THE CLOSED ROW ONLY (Anir,
@@ -1081,30 +1047,11 @@ export function GoalZoom({
                                 {fmtAmount(goal.unit, r2.verified)}
                               </span>
                             </b>
-                            {(() => {
-                              const split = splitAmounts(r2.group);
-                              return (
-                                <>
-                                  {split.fresh > 0 && r2.awaiting > 0 && (
-                                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                                      +{fmtAmount(goal.unit, split.fresh)}
-                                    </span>
-                                  )}
-                                  {split.repeat > 0 && (
-                                    <Tooltip
-                                      label={`This ${fmtAmount(goal.unit, split.repeat)} is the SAME money already shown under ${split.firstSeenIn.join(" and ")} — somebody belongs to both groups. Do not add the rows: the organization counts it once.`}
-                                    >
-                                      <span className="shrink-0 cursor-help rounded-full border border-dashed border-[color:#7C3AED]/50 px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED] tnum">
-                                        <s className="decoration-1">
-                                          +{fmtAmount(goal.unit, split.repeat)}
-                                        </s>{" "}
-                                        in {split.firstSeenIn.join(", ")}
-                                      </span>
-                                    </Tooltip>
-                                  )}
-                                </>
-                              );
-                            })()}
+                            {r2.awaiting > 0 && (
+                              <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
+                                +{fmtAmount(goal.unit, r2.awaiting)}
+                              </span>
+                            )}
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
                                 "this is still not a drop-down"). The people
                                 appeared on select with nothing on the row to
@@ -1173,13 +1120,7 @@ export function GoalZoom({
                                 unit={goal.unit}
                               />
                             </div>
-                            {[
-                              ...new Set(
-                                [r2.group.head, ...r2.group.members]
-                                  .map((n) => n.trim())
-                                  .filter(Boolean)
-                              ),
-                            ].map((name) => {
+                            {r2.members.map((name) => {
                               const v = familyValue(state, goal, {
                                 range: row.range,
                                 person: name,
@@ -1368,9 +1309,7 @@ export function GoalZoom({
                           ? null
                           : new Set(
                               selGroup
-                                ? [selGroup.group.head, ...selGroup.group.members].map(
-                                    (n) => n.trim().toLowerCase()
-                                  )
+                                ? selGroup.members.map((n) => n.toLowerCase())
                                 : []
                             ),
                         false
