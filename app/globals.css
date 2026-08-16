@@ -437,6 +437,8 @@ select:focus-visible {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+
+
 /* Toast entrance */
 @keyframes toastIn {
   from {
@@ -1632,6 +1634,27 @@ input {
 
 @media (prefers-reduced-motion: reduce) {
   .bar-lit::after {
+    animation: none;
+  }
+}
+
+/**
+ * THE FOUR THAT KEPT MOVING (found Aug 16, auditing every animation against
+ * prefers-reduced-motion). Thirty-five of this file's thirty-nine animating
+ * classes already stop for someone who has asked the system to reduce motion;
+ * these four were simply missed.
+ *
+ * The shimmer is the one that matters: it loops forever, so a person who set
+ * that preference watched a placeholder pulse the whole time anything was
+ * loading. Stopped, the skeleton is still a skeleton — the gradient just holds
+ * still. The other three are brief one-shot entrances, quietened for
+ * consistency rather than because they were doing harm.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .autotip-in,
+  .drawer-in,
+  .toast-in {
     animation: none;
   }
 }
