@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Download, ExternalLink, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
 
 /**
@@ -93,6 +95,10 @@ export function EvidenceInline({
   file: { name: string; url: string };
   height?: number;
 }) {
+  /** Reserved height with nothing in it reads as broken (Anir, Aug 16: "if ur
+   *  showing it's loading then show that its loading but before this it was
+   *  just blank so i was confused"). */
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const ext = (file.name.split(".").pop() ?? "").toLowerCase();
   const isImage = ["png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp"].includes(ext);
   const isPdf = ext === "pdf";
@@ -125,24 +131,55 @@ export function EvidenceInline({
         /* The frame keeps its height while the file loads, so the dialog does
            not jump the moment the image arrives. */
         <div
-          className="flex items-center justify-center p-2"
+          className="relative flex items-center justify-center p-2"
           style={{ minHeight: Math.min(height, 240) }}
         >
+          {state !== "ready" && (
+            <span className="absolute inset-2 flex flex-col items-center justify-center gap-2 rounded-lg bg-white">
+              {state === "loading" ? (
+                <>
+                  <span className="skeleton-shimmer h-full w-full rounded-lg" />
+                  <span className="absolute text-[11.5px] text-text-tertiary">
+                    Loading the proof…
+                  </span>
+                </>
+              ) : (
+                <span className="flex flex-col items-center gap-1.5 text-center">
+                  <FileText size={22} strokeWidth={1.8} className="text-text-tertiary" />
+                  <span className="text-[12px] text-text-secondary">
+                    This one would not display here. Use Open or Save above.
+                  </span>
+                </span>
+              )}
+            </span>
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={file.url}
             alt={file.name}
+            onLoad={() => setState("ready")}
+            onError={() => setState("failed")}
             style={{ maxHeight: height }}
-            className="w-auto max-w-full object-contain"
+            className={cn(
+              "w-auto max-w-full object-contain transition-opacity",
+              state === "ready" ? "opacity-100" : "opacity-0"
+            )}
           />
         </div>
       ) : isPdf ? (
-        <iframe
-          src={file.url}
-          title={file.name}
-          style={{ height }}
-          className="w-full bg-white"
-        />
+        <div className="relative" style={{ height }}>
+          {state === "loading" && (
+            <span className="absolute inset-0 flex items-center justify-center bg-white text-[11.5px] text-text-tertiary">
+              Loading the proof…
+            </span>
+          )}
+          <iframe
+            src={file.url}
+            title={file.name}
+            onLoad={() => setState("ready")}
+            className="h-full w-full bg-white"
+          />
+        </div>
       ) : (
         <p className="px-3 py-6 text-center text-[12.5px] text-text-secondary">
           {ext ? `.${ext} files` : "This file type"} open in their own app — use

@@ -57,13 +57,27 @@ let performanceWriteQueue: Promise<void> =
 // keep the full plan; everyone else gets a SCOPED copy of the state and a
 // short list of allowed operations. Mock mode never accepts writes.
 
-/** The names this caller may see and act for. Managers/admins → null (all). */
+/**
+ * The names this caller may SEE. Org head → null (all).
+ *
+ * Suren's three tiers, restored (Anir, Aug 16: "if its whatever he said its
+ * fine" — it was not). The rule above says a group owner "sees exactly their
+ * group", but the code handed the whole workspace to anyone with the manager
+ * role, collapsing the org-head tier and the group-owner tier into one. Only
+ * the org head — admin — is the top tier; a manager is a group owner and sees
+ * their own group, which is what visibleNamesFor already returns.
+ *
+ * This is about SEEING only. What a manager may DO is unchanged: shaping the
+ * plan (goals, subgoals, targets, groups) still belongs to managers and
+ * admins, and the goal catalog itself is never scoped, so a manager can still
+ * run the plan they are responsible for.
+ */
 function callerScope(
   state: PerformanceState,
   meName: string,
-  manager: boolean
+  orgHead: boolean
 ): Set<string> | null {
-  if (manager) return null;
+  if (orgHead) return null;
   return visibleNamesFor(state, meName);
 }
 
@@ -103,7 +117,7 @@ export async function GET(req: NextRequest) {
   }
   const me = await getCurrentUser();
   const state = await readPerformance();
-  const visible = callerScope(state, me.name, isManagerOrAdmin(me.role));
+  const visible = callerScope(state, me.name, me.role === "admin");
   return NextResponse.json({
     state: visible ? scopeState(state, visible) : state,
   });
@@ -454,7 +468,7 @@ export async function POST(req: NextRequest) {
     releaseWrite();
   }
   const state = await readPerformance();
-  const visible = callerScope(state, me.name, manager);
+  const visible = callerScope(state, me.name, me.role === "admin");
   return NextResponse.json({
     ok: true,
     state: visible ? scopeState(state, visible) : state,
