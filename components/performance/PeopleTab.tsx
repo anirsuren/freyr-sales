@@ -52,12 +52,34 @@ export function PeopleTab({
   initialPerson?: string | null;
 }) {
   const router = useRouter();
-  const [picked, setPicked] = useState<string | null>(initialPerson);
+  const names = useMemo(() => knownPeople(state, meName), [state, meName]);
+
+  /**
+   * A NAME IN A LINK IS A REQUEST, NOT A FACT (found Aug 16, sweeping the
+   * detail routes for ids that do not exist). `?person=` seeded the selection
+   * with whatever the URL said, unchecked — so
+   * /performance/people?person=ZZ Ghost Person drew that name in the picker,
+   * generated initials for an avatar beside it, and announced "Nothing
+   * assigned to ZZ yet", as though a colleague by that name worked here and
+   * had simply been given no goals. A stale link, a misspelling, or somebody
+   * who has left all produce it.
+   *
+   * The workspace's own list of people is right here, so the link only wins
+   * when it names one of them. Anything else falls back to the documented
+   * default — your own performance — instead of inventing a teammate.
+   */
+  const validInitial = useMemo(() => {
+    const requested = (initialPerson ?? "").trim();
+    if (!requested) return null;
+    return (
+      names.find((n) => n.toLowerCase() === requested.toLowerCase()) ?? null
+    );
+  }, [initialPerson, names]);
+
+  const [picked, setPicked] = useState<string | null>(validInitial);
   const [pickOpen, setPickOpen] = useState(false);
   const person = picked ?? meName;
   const first = person.trim().split(/\s+/)[0] || person;
-
-  const names = useMemo(() => knownPeople(state, meName), [state, meName]);
 
   const scoped = useMemo(
     () => scopeStateToPeople(state, [person]),
