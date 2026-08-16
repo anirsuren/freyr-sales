@@ -503,6 +503,7 @@ export function SequencesView({
               <input
                 value={sequenceQuery}
                 onChange={(event) => setSequenceQuery(event.target.value)}
+                aria-label="Search sequences"
                 placeholder="Search sequences..."
                 className="h-8 w-full rounded-md border border-border bg-surface/50 pl-8 pr-2.5 text-[12px] outline-none focus:border-blue-primary focus:bg-white"
               />
@@ -676,7 +677,7 @@ export function SequencesView({
                 <div className="ml-auto flex items-center gap-2">
                   <div className="relative w-[210px]">
                     <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                    <input value={accountQuery} onChange={(event) => setAccountQuery(event.target.value)} placeholder="Search accounts..." className="h-8 w-full rounded-md border border-border bg-white pl-8 pr-2.5 text-[12px] outline-none focus:border-blue-primary" />
+                    <input value={accountQuery} onChange={(event) => setAccountQuery(event.target.value)} aria-label="Search accounts" placeholder="Search accounts..." className="h-8 w-full rounded-md border border-border bg-white pl-8 pr-2.5 text-[12px] outline-none focus:border-blue-primary" />
                   </div>
                   {advanceable.length > 0 && active.status === "active" && (
                     <Button onClick={() => advance({ sequenceId: active.id }, "advance-all", "Sequence advanced")} loading={busy === "advance-all"} className="h-8 px-3 py-0 text-[12px]">
@@ -995,7 +996,7 @@ export function SequencesView({
       <Modal open={enrollOpen} onClose={() => setEnrollOpen(false)} title={`Enroll accounts${active ? ` · ${active.name}` : ""}`} size="wide">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <input value={enrollQuery} onChange={(event) => setEnrollQuery(event.target.value)} placeholder="Search accounts or industries..." className="h-10 w-full rounded-md border border-border pl-9 pr-3 text-[13px] outline-none focus:border-blue-primary" />
+          <input value={enrollQuery} onChange={(event) => setEnrollQuery(event.target.value)} aria-label="Search accounts or industries" placeholder="Search accounts or industries..." className="h-10 w-full rounded-md border border-border pl-9 pr-3 text-[13px] outline-none focus:border-blue-primary" />
         </div>
         <div className="mt-3 max-h-[360px] overflow-y-auto rounded-md border border-border-light">
           {availableCandidates.map((candidate) => (
