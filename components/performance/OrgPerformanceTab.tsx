@@ -774,6 +774,7 @@ export function OrgPerformanceTab({
               {sorted.map((g, i) => (
                 <GoalRows
                   key={g.id}
+                  onGoToMaster={onGoToMaster}
                   goal={g}
                   index={i}
                   syncId={syncId}
@@ -844,6 +845,7 @@ function MiniBar({
 }
 
 function GoalRows({
+  onGoToMaster,
   goal,
   index,
   syncId,
@@ -881,6 +883,7 @@ function GoalRows({
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
   state: PerformanceState;
   meName: string;
+  onGoToMaster: () => void;
 }) {
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(
@@ -1351,10 +1354,26 @@ function GoalRows({
                     )}
                   </div>
                 ) : (
-                  <p className="rounded-xl border border-dashed border-border-light bg-white px-4 py-3 text-[12.5px] text-text-secondary">
-                    No subgoals yet — split this goal in the Goal Master to
-                    assign teams and people.
-                  </p>
+                  /* NAMING A PLACE IS NOT SENDING SOMEBODY THERE (Anir,
+                     Aug 16: "if ur gonna say this u might as well put a button
+                     to take the user there"). */
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border-light bg-white px-4 py-3">
+                    <p className="min-w-0 flex-1 text-[12.5px] text-text-secondary">
+                      No subgoals yet — split this goal to assign teams and
+                      people.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onGoToMaster();
+                      }}
+                      className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-light px-3.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+                    >
+                      <Layers size={12.5} strokeWidth={2.4} /> Open the Goal
+                      Master
+                    </button>
+                  </div>
                 )
               ) : (
                 goal.subgoals.map((s) => {

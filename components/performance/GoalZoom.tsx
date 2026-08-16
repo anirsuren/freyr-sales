@@ -639,27 +639,37 @@ export function GoalZoom({
            * genuinely contains that person. So both keep it and the row SAYS
            * it is shared, naming the other group.
            */
-          const groupsOfPerson = (name: string) =>
-            state.groups
-              .filter((g) =>
-                [g.head, ...g.members].some(
-                  (m) => m.trim().toLowerCase() === name.trim().toLowerCase()
-                )
-              )
-              .map((g) => g.name);
-          const sharedWith = (g: { head: string; members: string[] }) => {
+          /**
+           * FIRST ROW KEEPS THE MONEY, REPEATS ARE STRUCK (Anir, Aug 16: "if
+           * it says 250k and it says 250k twice, that's 500k. Am I wrong?").
+           * In render order, each entry belongs solid to the first group that
+           * shows it; any later group containing the same person shows it
+           * struck through with a "same money as" tag, so nothing reads as
+           * addable twice and nothing reads as counted nowhere.
+           */
+          const entryLedger = new Map<string, string>();
+          const splitAmounts = (g: { name: string; head: string; members: string[] }) => {
             const names = new Set(
               [g.head, ...g.members].map((n) => n.trim().toLowerCase())
             );
-            const others = new Set<string>();
+            let fresh = 0;
+            let repeat = 0;
+            const firstSeenIn = new Set<string>();
             for (const a of familyActuals) {
               if (!inRange(a, row.range)) continue;
               if (!names.has(a.person.trim().toLowerCase())) continue;
-              for (const other of groupsOfPerson(a.person)) {
-                if (other !== (g as { name?: string }).name) others.add(other);
+              const owner = entryLedger.get(a.id);
+              if (owner === undefined) {
+                entryLedger.set(a.id, g.name);
+                fresh += a.amount;
+              } else if (owner !== g.name) {
+                repeat += a.amount;
+                firstSeenIn.add(owner);
+              } else {
+                fresh += a.amount;
               }
             }
-            return [...others];
+            return { fresh, repeat, firstSeenIn: [...firstSeenIn] };
           };
 
           const maxG = yearTarget > 0
@@ -1071,22 +1081,28 @@ export function GoalZoom({
                                 {fmtAmount(goal.unit, r2.verified)}
                               </span>
                             </b>
-                            {r2.awaiting > 0 && (
-                              <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                                +{fmtAmount(goal.unit, r2.awaiting)}
-                              </span>
-                            )}
                             {(() => {
-                              const also = sharedWith(r2.group);
-                              if (also.length === 0) return null;
+                              const split = splitAmounts(r2.group);
                               return (
-                                <Tooltip
-                                  label={`Somebody in this group is also in ${also.join(" and ")}, so the same money is counted there too. The organization total counts it once.`}
-                                >
-                                  <span className="shrink-0 cursor-help rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED]">
-                                    also in {also.join(", ")}
-                                  </span>
-                                </Tooltip>
+                                <>
+                                  {split.fresh > 0 && r2.awaiting > 0 && (
+                                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
+                                      +{fmtAmount(goal.unit, split.fresh)}
+                                    </span>
+                                  )}
+                                  {split.repeat > 0 && (
+                                    <Tooltip
+                                      label={`This ${fmtAmount(goal.unit, split.repeat)} is the SAME money already shown under ${split.firstSeenIn.join(" and ")} — somebody belongs to both groups. Do not add the rows: the organization counts it once.`}
+                                    >
+                                      <span className="shrink-0 cursor-help rounded-full border border-dashed border-[color:#7C3AED]/50 px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED] tnum">
+                                        <s className="decoration-1">
+                                          +{fmtAmount(goal.unit, split.repeat)}
+                                        </s>{" "}
+                                        in {split.firstSeenIn.join(", ")}
+                                      </span>
+                                    </Tooltip>
+                                  )}
+                                </>
                               );
                             })()}
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
