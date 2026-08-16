@@ -959,19 +959,21 @@ function GoalRows({
         <td className="px-4 py-4">
           <span className="flex items-center gap-3">
             <TypeIconTile type={goal.type} />
-            <span className="flex min-w-0 flex-col gap-2">
+            {/* THE MARKS SHARE ONE LINE (Anir, Aug 16: "this has to be on one
+                line. the 'financial...' thing is below lagging when it should
+                be in line with it"). The pace pill used to sit on the name's
+                line and wrap under it the moment the name was long, which put
+                three stacked rows in a cell that holds two things. */}
+            <span className="flex min-w-0 flex-col gap-1.5">
+              <Link
+                href={`/performance/goal/${goal.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                title="Open this goal: financial years, quarters, months, weeks, groups and people"
+              >
+                {goal.name}
+              </Link>
               <span className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/performance/goal/${goal.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
-                  title="Open this goal: financial years, quarters, months, weeks, groups and people"
-                >
-                  {goal.name}
-                </Link>
-                <PacePill pace={pace} size="sm" />
-              </span>
-              <span className="flex items-center gap-1.5">
                 <TypeChip type={goal.type} size="sm" />
                 <span className="text-[10.5px] text-text-tertiary tnum">
                   {goal.year}
@@ -1051,6 +1053,14 @@ function GoalRows({
           onMouseEnter={() => donutSyncBroadcast(syncId, index)}
           onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         >
+          {/* PACE SITS ON THE BAR IT DESCRIBES (Anir, Aug 16: "just move the
+              'lagging' to right above the progress bar i think it would look
+              good there"). Over in the Goal cell it was a third mark competing
+              with the name and the category; here it labels the one number it
+              is about. */}
+          <span className="mb-1 block">
+            <PacePill pace={pace} size="sm" />
+          </span>
           <MiniBar
             actual={actual}
             target={goal.target}

@@ -62,7 +62,7 @@ export function PeopleTab({
     () => visiblePeople(state, meName, memberRoles?.[meName.trim()]),
     [state, meName, memberRoles]
   );
-  /** Nobody else to look at: the name is a label, not a control. */
+  /** Nobody else you may look at: the name is a label, not a control. */
   const canSwitch = names.length > 1;
 
   /**
@@ -118,9 +118,13 @@ export function PeopleTab({
         <span className="min-w-0">
           <button
             type="button"
-            onClick={() => setPickOpen((v) => !v)}
-            aria-expanded={pickOpen}
-            className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-0.5 -mx-1.5 text-[14px] font-bold text-text-primary transition-colors hover:bg-surface"
+            onClick={() => canSwitch && setPickOpen((v) => !v)}
+            aria-expanded={canSwitch ? pickOpen : undefined}
+            disabled={!canSwitch}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-1.5 py-0.5 -mx-1.5 text-[14px] font-bold text-text-primary transition-colors",
+              canSwitch ? "cursor-pointer hover:bg-surface" : "cursor-default"
+            )}
           >
             {person}
             {person === meName && (
@@ -131,20 +135,26 @@ export function PeopleTab({
             {memberRoles?.[person.trim()] && (
               <RoleChip role={memberRoles[person.trim()]} />
             )}
-            <ChevronDown
-              size={15}
-              strokeWidth={2.4}
-              aria-hidden="true"
-              className={cn(
-                "text-text-tertiary transition-transform",
-                pickOpen && "rotate-180"
-              )}
-            />
+            {/* No chevron when there is nobody else to switch to — an arrow
+                that opens an empty menu is a promise the page cannot keep. */}
+            {canSwitch && (
+              <ChevronDown
+                size={15}
+                strokeWidth={2.4}
+                aria-hidden="true"
+                className={cn(
+                  "text-text-tertiary transition-transform",
+                  pickOpen && "rotate-180"
+                )}
+              />
+            )}
           </button>
           <span className="block text-[11.5px] text-text-secondary">
-            {person === meName
-              ? "your goals — pick a name to see somebody else's"
-              : `viewing ${first}'s goals`}
+            {person !== meName
+              ? `viewing ${first}'s goals`
+              : canSwitch
+                ? "your goals — pick a name to see somebody else's"
+                : "your goals"}
           </span>
         </span>
 

@@ -713,7 +713,21 @@ export function PaceTimeline({
    * the line was stabbing the dot. The label is centred on its dot, which says
    * the same thing with nothing to misalign. */
   const LANE = compact ? 16 : 19;
-  const clamp = (n: number) => Math.min(93, Math.max(7, n));
+  /**
+   * A LABEL NEVER LEAVES THE BOX (Anir, Aug 16: "this looks so weird still why
+   * r u cutting it off", with "must be at" sliced off the right edge).
+   *
+   * Centring every label on its dot pushes half of it outside the track once
+   * the dot nears either end, and the panel clips it. Near an edge the label
+   * anchors to that edge instead of straddling the dot, so it always reads in
+   * full however narrow the column is.
+   */
+  const labelPos = (pct: number): React.CSSProperties => {
+    const at = Math.min(100, Math.max(0, pct));
+    if (at <= 14) return { left: 0 };
+    if (at >= 86) return { right: 0 };
+    return { left: `${at}%`, transform: "translateX(-50%)" };
+  };
   /**
    * TOP AND BOTTOM, NEVER CROSSING (Anir, Aug 16: "you can't intersect, bro.
    * You can utilize the top and the bottom of the slides").
@@ -756,8 +770,8 @@ export function PaceTimeline({
           >
             {/* WHERE THE CALENDAR SAYS YOU MUST BE. */}
             <span
-              className="absolute flex -translate-x-1/2 flex-col items-center"
-              style={{ left: `${clamp(marker)}%`, top: 0 }}
+              className="absolute flex flex-col items-center"
+              style={{ ...labelPos(marker), top: 0 }}
             >
               <span
                 className={cn(
@@ -815,8 +829,8 @@ export function PaceTimeline({
                 dead band underneath them. */}
             <div className="relative" style={{ height: GAP + LABEL }}>
               <span
-                className="absolute -translate-x-1/2"
-                style={{ left: `${clamp(aPct)}%`, top: GAP }}
+                className="absolute"
+                style={{ ...labelPos(aPct), top: GAP }}
               >
                 <span
                   className={cn(
