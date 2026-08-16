@@ -75,70 +75,6 @@ const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
 type Granularity = "weeks" | "months" | "quarters" | "halves" | "years";
 
 /**
- * THE NUMBERS THAT USED TO LIVE IN A HOVER CARD (Anir, Aug 16: "This pop-up is
- * annoying me more than helping me... I want to see it visually").
- *
- * Deliberately not PaceTimeline: that is built for a 420px floating card and
- * its right-hand labels fall off the edge of a drill-down column. Same four
- * figures, stacked, so they fit wherever they are dropped.
- */
-function PaceFacts({
-  verified,
-  awaiting,
-  target,
-  elapsed,
-  unit,
-}: {
-  verified: number;
-  awaiting: number;
-  target: number;
-  /** 0-1. How much of the year the calendar has used up. */
-  elapsed: number;
-  unit: "currency" | "count" | "percent";
-}) {
-  const mustBe = target * elapsed;
-  const gap = verified + awaiting - mustBe;
-  const rows: { label: string; value: number; dot?: "solid" | "faint" }[] = [
-    { label: "Verified, counts now", value: verified, dot: "solid" },
-    { label: "Claimed, not checked yet", value: awaiting, dot: "faint" },
-  ];
-  if (target > 0) {
-    rows.push({ label: "Should be at by now", value: mustBe });
-    rows.push({
-      label: gap >= 0 ? "Ahead of the calendar by" : "Behind the calendar by",
-      value: Math.abs(gap),
-    });
-  }
-  return (
-    <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
-      {rows.map((r) => (
-        <span
-          key={r.label}
-          className="flex items-center gap-2 py-[3px] text-[10px]"
-        >
-          {r.dot ? (
-            <span
-              className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary",
-                r.dot === "faint" && "opacity-[0.28]"
-              )}
-            />
-          ) : (
-            <span className="w-1.5 shrink-0" />
-          )}
-          <span className="min-w-0 flex-1 truncate text-text-secondary">
-            {r.label}
-          </span>
-          <b className="shrink-0 text-text-primary tnum">
-            {fmtAmount(unit, r.value)}
-          </b>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/**
  * A hover card that can be switched off without unmounting what it wraps.
  * Rendering `<HoverCard>` conditionally would remount the button underneath it
  * on every open/close, which drops the click that caused the change.
@@ -703,13 +639,17 @@ export function GoalZoom({
                       </button>
                       {shown && (
                         <div className="tab-panel mb-1.5 ml-5 mt-0.5">
-                          <PaceFacts
-                            verified={r.verified}
-                            awaiting={r.awaiting}
-                            target={yearTarget}
-                            elapsed={yearElapsed(goal.year)}
-                            unit={goal.unit}
-                          />
+                          <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                            <PaceTimeline
+                              compact
+                              title={r.label}
+                              verified={r.verified}
+                              awaiting={r.awaiting}
+                              target={yearTarget}
+                              expectedPct={yearElapsed(goal.year) * 100}
+                              unit={goal.unit}
+                            />
+                          </div>
                         </div>
                       )}
                       </Fragment>
@@ -868,13 +808,17 @@ export function GoalZoom({
                             {/* WHAT THE HOVER CARD USED TO SAY, SAID IN PLACE
                                 (Anir, Aug 16: "all of this data should show up
                                 when I draw the dropdown"). */}
-                            <PaceFacts
-                              verified={r2.verified}
-                              awaiting={r2.awaiting}
-                              target={yearTarget}
-                              elapsed={yearElapsed(goal.year)}
-                              unit={goal.unit}
-                            />
+                            <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                              <PaceTimeline
+                                compact
+                                title={r2.group.name}
+                                verified={r2.verified}
+                                awaiting={r2.awaiting}
+                                target={yearTarget}
+                                expectedPct={yearElapsed(goal.year) * 100}
+                                unit={goal.unit}
+                              />
+                            </div>
                             {[
                               ...new Set(
                                 [r2.group.head, ...r2.group.members]

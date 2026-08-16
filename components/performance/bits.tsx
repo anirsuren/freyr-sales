@@ -668,6 +668,7 @@ export function PaceTimeline({
   expectedPct,
   unit,
   accent = "#0071E3",
+  compact = false,
 }: {
   title: React.ReactNode;
   verified: number;
@@ -677,6 +678,14 @@ export function PaceTimeline({
   expectedPct: number;
   unit: "currency" | "count" | "percent";
   accent?: string;
+  /**
+   * Drawn inside a narrow drill-down column instead of a 420px hover card
+   * (Anir, Aug 16: "whatever you had when I hover over it, that's the same
+   * thing that should show up here. I don't want this text. I want it visually
+   * shown"). Same anatomy, smaller type, no minimum width, and no title — the
+   * row it opens from already names the thing.
+   */
+  compact?: boolean;
 }) {
   const pctOf = (n: number) =>
     target > 0 ? Math.min(100, Math.max(0, (n / target) * 100)) : 0;
@@ -697,19 +706,21 @@ export function PaceTimeline({
    * labelled underneath. No black rule — the calendar is a dot like everything
    * else, and the end of the track carries one too, so the last point does not
    * look unfinished. */
-  const LANE = 19;
+  const LANE = compact ? 16 : 19;
   const clamp = (n: number) => Math.min(93, Math.max(7, n));
   const collide = Math.abs(aPct - marker) < 30;
   const nowLane = collide ? LANE : 0;
 
   return (
-    <div className="min-w-[380px]">
-      <p className="text-[13px] font-semibold text-text-primary">{title}</p>
+    <div className={compact ? "w-full" : "min-w-[380px]"}>
+      {!compact && (
+        <p className="text-[13px] font-semibold text-text-primary">{title}</p>
+      )}
 
       {target > 0 ? (
         <>
           <div
-            className="relative mt-3.5"
+            className={compact ? "relative mt-1" : "relative mt-3.5"}
             style={{ paddingTop: (collide ? 2 : 1) * LANE + 8 }}
           >
             {/* WHERE YOU ARE. */}
@@ -717,7 +728,13 @@ export function PaceTimeline({
               className="absolute flex -translate-x-1/2 flex-col items-center"
               style={{ left: `${clamp(aPct)}%`, top: nowLane }}
             >
-              <span className="whitespace-nowrap text-[12px] font-bold tnum" style={{ color: accent }}>
+              <span
+                className={cn(
+                  "whitespace-nowrap font-bold tnum",
+                  compact ? "text-[10px]" : "text-[12px]"
+                )}
+                style={{ color: accent }}
+              >
                 {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
               </span>
               <span
@@ -736,7 +753,12 @@ export function PaceTimeline({
               className="absolute flex -translate-x-1/2 flex-col items-center"
               style={{ left: `${clamp(marker)}%`, top: 0 }}
             >
-              <span className="whitespace-nowrap text-[12px] font-semibold text-text-secondary tnum">
+              <span
+                className={cn(
+                  "whitespace-nowrap font-semibold text-text-secondary tnum",
+                  compact ? "text-[10px]" : "text-[12px]"
+                )}
+              >
                 must be at {fmtAmount(unit, mustBe)}
               </span>
               <span
@@ -747,7 +769,12 @@ export function PaceTimeline({
             </span>
 
             {/* THE TRACK. */}
-            <div className="relative h-2.5 w-full rounded-full bg-[color:var(--border-light)]">
+            <div
+              className={cn(
+                "relative w-full rounded-full bg-[color:var(--border-light)]",
+                compact ? "h-2" : "h-2.5"
+              )}
+            >
               <span
                 className="absolute inset-y-0 left-0 rounded-full"
                 style={{ width: `${aPct}%`, background: accent, opacity: 0.32 }}
@@ -775,22 +802,42 @@ export function PaceTimeline({
             </div>
 
             {/* WHAT EACH END OF THE TRACK IS WORTH. */}
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-[11px] font-semibold text-text-tertiary tnum">
+            <div className="mt-2 flex items-baseline justify-between gap-2">
+              <span
+                className={cn(
+                  "font-semibold text-text-tertiary tnum",
+                  compact ? "text-[9.5px]" : "text-[11px]"
+                )}
+              >
                 {fmtAmount(unit, 0)}
               </span>
-              <span className="text-right">
-                <b className="block text-[12.5px] font-bold text-text-primary tnum">
+              <span className="min-w-0 text-right">
+                <b
+                  className={cn(
+                    "block font-bold text-text-primary tnum",
+                    compact ? "text-[11px]" : "text-[12.5px]"
+                  )}
+                >
                   {fmtAmount(unit, target)}
                 </b>
-                <span className="block text-[10.5px] text-text-tertiary">
+                <span
+                  className={cn(
+                    "block text-text-tertiary",
+                    compact ? "text-[9px]" : "text-[10.5px]"
+                  )}
+                >
                   target · {Math.round(marker)}% of the year gone
                 </span>
               </span>
             </div>
           </div>
 
-          <div className="mt-3 space-y-1.5 border-t border-border-light pt-2.5">
+          <div
+            className={cn(
+              "border-t border-border-light",
+              compact ? "mt-2 space-y-1 pt-2" : "mt-3 space-y-1.5 pt-2.5"
+            )}
+          >
             <PaceRow
               swatch={accent}
               label="Verified, counts now"

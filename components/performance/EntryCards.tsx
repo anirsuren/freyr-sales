@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Download,
+  Eye,
   ExternalLink,
   FileText,
   Hourglass,
@@ -24,10 +25,10 @@ import {
   type PerformanceState,
 } from "@/lib/performanceShared";
 import { Avatar } from "@/components/ui/Avatar";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
@@ -663,16 +664,19 @@ export function VerifyQueueCard({
   meName: string;
   busy: boolean;
 }) {
-  const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
   /**
-   * VERIFYING ASKS FIRST (Anir, Aug 16: "I pressed the check mark. I was
-   * expecting a pop-up. Why did it just let me do it?"). Locking a claim makes
-   * money count and takes it out of this queue, and the only way back is
-   * hunting the row down in Logged results — too much for a single stray
-   * click on a 32px icon.
+   * ONE WAY IN: REVIEW IT, THEN DECIDE (Anir, Aug 16: "it should just be a
+   * view button, and then it brings up a pop-up, and then I can decline it or
+   * accept it from the pop-up... I should be able to see all the information
+   * about that that I would need to verify").
+   *
+   * Two icons on the row let you lock money without ever opening the proof —
+   * and the first thing he did with them was verify by accident. The claim is
+   * read first now, in full, and both answers live in the same dialog.
    */
-  const [confirmFor, setConfirmFor] = useState<string | null>(null);
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [sendingBack, setSendingBack] = useState(false);
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   /** Twenty claims used to be twenty clicks (Anir, Aug 15: "so many features
    *  people would need that just don't exist"). Customers has select-many;
@@ -836,128 +840,20 @@ export function VerifyQueueCard({
                         <EvidenceLinks entry={a} onOpen={setPreview} />
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {/* TWO ICONS, NAMED ON HOVER (Anir, Aug 16: "it should
-                            just be like a blue check mark or a red loop icon,
-                            and then when I hover over it, that's when it shows
-                            me"). Two full-width labelled buttons pushed the
-                            column past its header and left the row looking
-                            misaligned. */}
-                        <span className="inline-flex items-center justify-end gap-1">
-                          <Tooltip label="Verify and lock this claim so it counts">
-                            <button
-                              type="button"
-                              disabled={busy}
-                              aria-label={`Verify and lock ${a.person}'s ${a.date} claim`}
-                              onClick={() => {
-                                setConfirmFor(confirmFor === a.id ? null : a.id);
-                                setNoteFor(null);
-                              }}
-                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-all hover:opacity-90 active:scale-[0.95] disabled:opacity-50"
-                            >
-                              <Check size={15} strokeWidth={2.8} />
-                            </button>
-                          </Tooltip>
-                          <Tooltip label="Send it back and say what needs fixing">
-                            <button
-                              type="button"
-                              disabled={busy}
-                              aria-label={`Send back ${a.person}'s ${a.date} claim`}
-                              onClick={() => {
-                                setNoteFor(noteFor === a.id ? null : a.id);
-                                setConfirmFor(null);
-                                setNote("");
-                              }}
-                              className={cn(
-                                "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors disabled:opacity-50",
-                                noteFor === a.id
-                                  ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
-                                  : "border-border-light bg-white text-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
-                              )}
-                            >
-                              <RotateCcw size={15} strokeWidth={2.4} />
-                            </button>
-                          </Tooltip>
-                        </span>
+                        {/* ONE BUTTON: READ IT, THEN DECIDE. */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewId(a.id);
+                            setSendingBack(false);
+                            setNote("");
+                          }}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(0,113,227,0.28)] bg-white px-3 py-1.5 text-[12.5px] font-bold text-blue-primary transition-all hover:bg-blue-light active:scale-[0.97]"
+                        >
+                          <Eye size={13} strokeWidth={2.4} /> Review
+                        </button>
                       </td>
                     </tr>
-                    {confirmFor === a.id && (
-                      /* The confirm sits in the row it belongs to and reads
-                         out what is about to happen, in money, so the answer
-                         is not "yes" to a generic question. */
-                      <tr className="bg-surface">
-                        <td colSpan={9} className="px-4 pb-3.5 pt-0">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <span className="text-[12.5px] text-text-secondary">
-                              Lock {a.person}&apos;s{" "}
-                              <b className="text-text-primary tnum">
-                                {fmtAmount(
-                                  state.goals.find((g) => g.id === a.goalId)?.unit ?? "currency",
-                                  a.amount
-                                )}
-                              </b>{" "}
-                              so it counts? Only you can undo it.
-                            </span>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={async () => {
-                                const ok = await run(
-                                  { op: "verify-actual", actualId: a.id },
-                                  "Verified and locked. It counts now"
-                                );
-                                if (ok) setConfirmFor(null);
-                              }}
-                              className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                            >
-                              Verify and lock
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmFor(null)}
-                              className="cursor-pointer rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {noteFor === a.id && (
-                      <tr className="bg-blue-light/20">
-                        <td colSpan={9} className="px-4 pb-3.5 pt-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <input
-                              value={note}
-                              onChange={(e) => setNote(e.target.value)}
-                              autoFocus
-                              placeholder="What needs fixing before you can verify this?"
-                              className="h-[36px] min-w-[260px] flex-1 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-                            />
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={async () => {
-                                const ok = await run(
-                                  { op: "send-back-actual", actualId: a.id, note },
-                                  "Sent back with your note"
-                                );
-                                if (ok) setNoteFor(null);
-                              }}
-                              className="cursor-pointer rounded-lg bg-[color:#0058B0] px-3 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                            >
-                              Send it back
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setNoteFor(null)}
-                              className="cursor-pointer rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </Fragment>
                 );
               })}
@@ -965,6 +861,172 @@ export function VerifyQueueCard({
           </table>
         </div>
       )}
+      {(() => {
+        const a = queue.find((x) => x.id === reviewId);
+        if (!a) return null;
+        const goal = state.goals.find((g) => g.id === a.goalId);
+        const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
+        const close = () => {
+          setReviewId(null);
+          setSendingBack(false);
+          setNote("");
+        };
+        return (
+          /**
+           * EVERYTHING YOU NEED TO MAKE THE CALL, IN ONE PLACE (Anir, Aug 16:
+           * "I should be able to see all the information about that that I
+           * would need to verify. Put yourself in my position where I'm trying
+           * to verify something"). Who claimed it, against which goal and
+           * subgoal, for how much, for whom, when it happened, when it was
+           * entered, what they wrote, and the proof big enough to judge —
+           * then accept or decline without leaving.
+           */
+          <Modal open onClose={close} title="Review this claim" size="workflow">
+            <div className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3">
+              <Avatar name={a.person} className="h-10 w-10 text-[13px]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-bold text-text-primary">
+                  {a.person}
+                </span>
+                <span className="block text-[12px] text-text-secondary">
+                  claimed on {a.date}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <b className="block text-[22px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
+                  {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                </b>
+              </span>
+            </div>
+
+            <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <Fact label="Goal">{goal?.name ?? "Goal removed"}</Fact>
+              <Fact label="Subgoal">
+                {sub?.name ?? (
+                  <span className="text-text-tertiary">logged on the goal itself</span>
+                )}
+              </Fact>
+              <Fact label="Customer">
+                <CustomerCell customer={a.customer} customerId={a.customerId} />
+              </Fact>
+              <Fact label="Result date">{a.date}</Fact>
+              <Fact label="Entered">
+                {a.addedAt.slice(0, 10)}
+                {a.addedBy && a.addedBy !== a.person ? ` by ${a.addedBy}` : ""}
+              </Fact>
+              <Fact label="Deal">
+                {a.dealLabel ?? (
+                  <span className="text-text-tertiary">not tied to a deal</span>
+                )}
+              </Fact>
+              <Fact label="Their note">
+                {a.note ?? <span className="text-text-tertiary">none</span>}
+              </Fact>
+            </div>
+
+            <div className="mt-4">
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+                Proof
+              </span>
+              {a.evidence?.length ? (
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {a.evidence.map((e) => (
+                    <button
+                      key={e.url}
+                      type="button"
+                      onClick={() => setPreview({ name: e.name, url: e.url })}
+                      title={`Preview ${e.name}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-xl border border-border-light bg-white p-1.5 pr-3 text-left transition-colors hover:border-blue-primary"
+                    >
+                      <EvidenceThumb file={e} />
+                      <span className="min-w-0">
+                        <span className="block max-w-[220px] truncate text-[12px] font-semibold text-text-primary">
+                          {e.name}
+                        </span>
+                        <span className="block text-[10.5px] text-blue-primary">
+                          Click to see it full size
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-[12.5px] text-text-secondary">
+                  Nothing attached. Send it back and ask for the contract or SOW.
+                </p>
+              )}
+            </div>
+
+            {sendingBack && (
+              <div className="tab-panel mt-4 rounded-xl border border-border-light bg-surface p-3">
+                <label className="block text-[12px] font-semibold text-text-primary">
+                  What needs fixing before you can verify this?
+                </label>
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  autoFocus
+                  placeholder="They see this note"
+                  className="mt-1.5 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+                />
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              {sendingBack ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSendingBack(false)}
+                    className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      const ok = await run(
+                        { op: "send-back-actual", actualId: a.id, note },
+                        "Sent back with your note"
+                      );
+                      if (ok) close();
+                    }}
+                    className="cursor-pointer rounded-lg bg-[color:#B02020] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:opacity-50"
+                  >
+                    Send it back
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSendingBack(true)}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-4 py-2 text-[13.5px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                  >
+                    <RotateCcw size={14} strokeWidth={2.4} /> Send back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      const ok = await run(
+                        { op: "verify-actual", actualId: a.id },
+                        "Verified and locked. It counts now"
+                      );
+                      if (ok) close();
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Check size={14} strokeWidth={2.8} /> Verify and lock
+                  </button>
+                </>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
+
       {preview && (
         <EvidencePreview file={preview} onClose={() => setPreview(null)} />
       )}
