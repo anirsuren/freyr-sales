@@ -198,6 +198,17 @@ export type PerfActual = {
    *  customer and then maybe I choose a deal"), and the label shown for it. */
   dealId?: string;
   dealLabel?: string;
+  /**
+   * The opportunity this number came out of (Suren, Aug 16: "Ananth has
+   * achieved 500K, but that 500K came from what opportunities, what leads — we
+   * need to know").
+   *
+   * Optional on purpose, and it always will be: he was explicit that "not all
+   * goals can be connected to deals and opportunities, some goals may not be".
+   * A meetings-held or a headcount goal has no deal behind it, and the line
+   * item level simply says so rather than demanding one.
+   */
+  opportunityId?: string;
   /** The proof: signed contract, SOW, opportunity summary (Suren, Aug 13:
    *  "we need evidence"). */
   evidence?: ActualEvidence[];

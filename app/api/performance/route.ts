@@ -361,6 +361,9 @@ export async function POST(req: NextRequest) {
           customer: body.customer ? String(body.customer) : undefined,
           customerId: body.customerId ? String(body.customerId) : undefined,
           dealId: body.dealId ? String(body.dealId) : undefined,
+          opportunityId: body.opportunityId
+            ? String(body.opportunityId)
+            : undefined,
           dealLabel: body.dealLabel ? String(body.dealLabel) : undefined,
           evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
           currency: body.currency ? String(body.currency) : undefined,
@@ -380,6 +383,9 @@ export async function POST(req: NextRequest) {
             body.customer === undefined ? undefined : String(body.customer ?? ""),
           customerId: body.customerId ? String(body.customerId) : undefined,
           dealId: body.dealId ? String(body.dealId) : undefined,
+          opportunityId: body.opportunityId
+            ? String(body.opportunityId)
+            : undefined,
           dealLabel:
             body.dealLabel === undefined ? undefined : String(body.dealLabel ?? ""),
           by: me.name,

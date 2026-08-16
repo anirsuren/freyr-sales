@@ -255,6 +255,9 @@ function normalize(value: unknown): PerformanceState {
             // dropped the next time anything writes this row.
             customerId: ra.customerId ? str(ra.customerId, 60) : undefined,
             dealId: ra.dealId ? str(ra.dealId, 80) : undefined,
+            opportunityId: ra.opportunityId
+              ? str(ra.opportunityId, 80)
+              : undefined,
             dealLabel: ra.dealLabel ? str(ra.dealLabel, 160) : undefined,
             evidence: Array.isArray(ra.evidence)
               ? ra.evidence
@@ -561,6 +564,8 @@ export async function logActual(input: {
   customer?: string;
   customerId?: string;
   dealId?: string;
+  /** The deal this number came out of, when there is one. */
+  opportunityId?: string;
   dealLabel?: string;
   evidence?: { name?: unknown; url?: unknown }[];
   /** What it was signed in. Stored as recorded; never converted on the way in. */
@@ -623,6 +628,9 @@ export async function logActual(input: {
     customer: input.customer ? str(input.customer, 160) : undefined,
     customerId: input.customerId ? str(input.customerId, 60) : undefined,
     dealId: input.dealId ? str(input.dealId, 80) : undefined,
+    opportunityId: input.opportunityId
+      ? str(input.opportunityId, 80)
+      : undefined,
     dealLabel: input.dealLabel ? str(input.dealLabel, 160) : undefined,
     evidence: evidence.length ? evidence : undefined,
     // Everything logged now waits for its group owner. Legacy entries with no
@@ -653,6 +661,8 @@ export async function updateActual(input: {
   customer?: string;
   customerId?: string;
   dealId?: string;
+  /** The deal this number came out of, when there is one. */
+  opportunityId?: string;
   dealLabel?: string;
   by: string;
 }): Promise<void> {
@@ -685,6 +695,9 @@ export async function updateActual(input: {
   if (input.dealLabel !== undefined) {
     entry.dealLabel = input.dealLabel ? str(input.dealLabel, 160) : undefined;
     entry.dealId = input.dealId ? str(input.dealId, 80) : undefined;
+    entry.opportunityId = input.opportunityId
+      ? str(input.opportunityId, 80)
+      : undefined;
   }
   await writeRow(state);
 }
