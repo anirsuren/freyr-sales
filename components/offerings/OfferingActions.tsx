@@ -65,8 +65,25 @@ export function OfferingActions({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  /**
+   * PUT THE KEYBOARD BACK WHERE IT WAS (found Aug 16, tabbing through the
+   * app's dialogs). This popover carries role="dialog" and takes focus into
+   * its search box on open, but nothing gave the focus back on close, so
+   * Escape — or picking a customer — dropped the caret onto <body>. A keyboard
+   * user who opened this, changed their mind, and pressed Escape had to tab
+   * from the top of the page again. The shared Modal has done this since it
+   * was written; this hand-rolled one just never matched it.
+   */
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (open) searchRef.current?.focus();
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      searchRef.current?.focus();
+      return;
+    }
+    const el = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (el && document.contains(el)) el.focus();
   }, [open]);
 
   // Keep the keyboard cursor inside the filtered list.
