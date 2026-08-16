@@ -80,6 +80,40 @@ or change anything in the workspace.`,
 
 const SECTIONS: ManualSection[] = [
   {
+    routes: ["/opportunities"],
+    keywords: [
+      "opportunity", "opportunities", "deal", "deals", "pipeline", "weighted",
+      "confidence", "contract value", "arr", "ots", "sign date", "next steps",
+      "level", "go get", "high confidence", "line item", "line items",
+    ],
+    title: "Opportunities",
+    body: `Opportunities is the live pipeline as records rather than a
+spreadsheet. One row per deal, with the columns from Freyr's own pipeline
+sheet: level (Pipeline / Go get / High confidence), the client, the offerings
+it covers, ARR or OTS, estimated sign date, total contract value, status,
+confidence %, next steps, and Freyr's own opportunity id.
+
+WEIGHTED means value x confidence — the probability-adjusted figure. A $800K
+deal at 60% confidence shows $480K weighted. The tiles at the top give the
+count, the total contract value, the weighted total and the average confidence
+across whatever the filters currently show, so filtering to one level
+re-totals everything beneath it.
+
+ONE DEAL, MANY OFFERINGS. Tick every offering a deal covers on its form;
+anything not in the catalogue yet can be typed as free text so nothing is
+lost.
+
+DEALS FEED GOALS. A deal can name the goals it contributes to. Those goals
+then use it for pacing: "must be at" becomes the deals whose estimated sign
+date has already passed, rather than a straight line. A logged result can also
+name the opportunity it came out of, which is what makes a goal's line items
+able to say which deals produced the number.
+
+Adding, editing and removing all happen here, for managers and admins or the
+deal's own owner. Mock mode shows Freyr's real pipeline as sample data and
+refuses writes.`,
+  },
+  {
     routes: ["/performance"],
     keywords: [
       "goal", "goals", "target", "quota", "actual", "result", "log", "verify",
@@ -174,7 +208,24 @@ EXPORTING. "Export", beside "How this works", offers "Goals as a spreadsheet",
 
 WHO CAN CHANGE WHAT. Only managers and admins change the plan itself — goals,
 subgoals, groups, assignments. Anyone in the module can log their own result,
-and only a group's owner verifies its people's numbers.`,
+and only a group's owner verifies its people's numbers.
+
+GROUPS, OWNERS AND COUNTING (the rules, exactly):
+  - A group OWNER runs the group: they see it and they verify its people's
+    claims. They carry no target and count nothing — unless they add
+    themselves to the group's members, which is allowed.
+  - MEMBERS carry the targets. A person may be a member of any number of
+    groups; there is no limit.
+  - On any ONE goal, a person counts through exactly ONE group. Two groups can
+    both be assigned to the same goal, and that is allowed — but if they share
+    a member, the app warns and counts that person only through the first
+    group, so the same money never appears twice. Different goals are
+    independent: the same person can count through a different group on each.
+
+PACING. A goal's "must be at" comes from the goal's own milestones — figures
+somebody sets, like "$300K by 30 Sep". If no milestone is set the app says "no
+schedule set on this goal", draws no marker, and reports the pace as "No
+schedule" rather than inventing a straight line and calling the goal lagging.`,
   },
   {
     routes: ["/offerings"],
