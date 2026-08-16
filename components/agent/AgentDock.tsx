@@ -582,6 +582,8 @@ export function AgentDock({
     visibleConvos.find((conversation) => conversation.id === activeId) || null;
   const offeringContext = active?.offeringContext ?? pendingOffering;
   const visibleMsgs = active?.messages ?? [];
+  /** Which page the previous question was asked from. */
+  const lastAskedPath = useRef<string | null>(null);
   const focusedSubject =
     offeringContext?.material?.label || offeringContext?.name || subject;
 
@@ -626,7 +628,10 @@ export function AgentDock({
         h1El?.childNodes?.[0]?.textContent?.trim() ||
         h1El?.textContent?.trim() ||
         "";
-      return h1.length > 0 && h1.length < 60 ? h1 : "";
+      // Trim trailing punctuation: the Admin H1 reads "Admin —", which made
+      // the header say "Looking at Admin —" as though it were cut off.
+      const cleaned = h1.replace(/[\s—–-]+$/, "").trim();
+      return cleaned.length > 0 && cleaned.length < 60 ? cleaned : "";
     };
 
     setSubject(readSubject());
@@ -722,6 +727,7 @@ export function AgentDock({
     const controller = new AbortController();
     requestControllerRef.current = controller;
     const timer = setTimeout(() => controller.abort(), 45000);
+    lastAskedPath.current = pathname;
     try {
       const res = await fetch("/api/agent/converse", {
         method: "POST",
@@ -736,6 +742,17 @@ export function AgentDock({
           // about the screen in front of them.
           path: pathname,
           subject: focusedSubject,
+          /**
+           * NAVIGATION INVALIDATES THE LAST ANSWER'S GROUNDING (bug, Aug 16).
+           * The dock keeps one thread across pages and sends fresh PAGE
+           * CONTENT every time — but the history from the previous page was
+           * winning. Asked "what is this page for" on FDL Components right
+           * after a question about the sales floor, it answered about reps
+           * and pipeline, then corrected itself unprompted a paragraph later.
+           * Saying the page moved is enough for the model to drop the stale
+           * context instead of blending it.
+           */
+          pathChanged: lastAskedPath.current !== null && lastAskedPath.current !== pathname,
           pageContext: (document.querySelector("main")?.textContent || "")
             .replace(/\s+/g, " ")
             .slice(0, 5000),

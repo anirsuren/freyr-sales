@@ -91,6 +91,8 @@ export async function POST(req: NextRequest) {
   const onPath = String(body.path || "").slice(0, 200);
   const onSubject = String(body.subject || "").slice(0, 120);
   const pageContext = String(body.pageContext || "").slice(0, 5000);
+  /** The dock keeps one thread across navigation; this says the ground moved. */
+  const pathChanged = body.pathChanged === true;
   // The destinations behind the words on screen. textContent drops every
   // href, so without these the agent can see "Read the article" and honestly
   // cannot tell you where it goes.
@@ -566,7 +568,12 @@ export async function POST(req: NextRequest) {
     'Types: "bar" (comparisons), "donut" (share of a whole), "area" (trend). Real values only.\n\n' +
 
     (pageContext
-      ? `WHERE THEY ARE. The person is on ${onPath || "the app"}${onSubject ? `, looking at ${onSubject}` : ""}. ` +
+      ? (pathChanged
+          ? "THEY HAVE MOVED. This question comes from a DIFFERENT page than the last one. " +
+            "Everything earlier in this conversation described a page they have left: do not carry " +
+            "its records, names or numbers into this answer. Answer only from the PAGE CONTENT below.\n\n"
+          : "") +
+        `WHERE THEY ARE. The person is on ${onPath || "the app"}${onSubject ? `, looking at ${onSubject}` : ""}. ` +
         "PAGE CONTENT below is the exact text on their screen right now; treat it as ground truth for questions " +
         'about "this page", "this company" or anything they can see.' +
         "\nPAGE CONTENT:\n" + '"""' + "\n" +
