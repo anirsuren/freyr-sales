@@ -2055,7 +2055,7 @@ export function BarChart({
                          * look at it.
                          */
                         background:
-                          "repeating-linear-gradient(45deg, rgba(255,255,255,0.80) 0 5px, rgba(255,255,255,0.62) 5px 10px)",
+                          "repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px)",
                       }}
                     />
                   )}

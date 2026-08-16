@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  /* What an "unverified" bar slice is veiled WITH: the colour of the CARD
+     behind the bar, never a hardcoded white. On a dark card, white veils
+     turned a teal bar into a glowing white block (bug, Aug 16). */
+  --bar-veil: 255, 255, 255;
   --blue-primary: #0071e3;
   --blue-hover: #0077ed;
   --blue-light: #e8f1fb;
@@ -62,6 +66,9 @@ body {
    chrome and `text-white` are intentionally left untouched.
 ---------------------------------------------------------------------------- */
 .dark {
+  /* The card colour, so a veiled bar reads as a paler version of its own
+     colour instead of a bright white block on a near-black card. */
+  --bar-veil: 28, 28, 30;
   color-scheme: dark;
   --white: #1c1c1e;
   --surface: #26262a;
