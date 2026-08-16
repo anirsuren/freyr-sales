@@ -420,12 +420,19 @@ export function OrgPerformanceTab({
                         ? Math.round(pctMet(awaiting, g.target))
                         : 0,
                     color: MONEY,
+                    /* THE AMOUNT, NOT A LEDGER (Anir, Aug 16: "Maybe just see
+                       the amount in the bar chart... u dont need to say $0
+                       verified"). Splitting it into verified and waiting put
+                       two numbers over a bar that is one number, and led with
+                       a $0 on every goal nobody had signed off yet. What is
+                       verified is already in the bar itself: solid signed off,
+                       hatched still waiting. */
                     caption:
                       g.target > 0
-                        ? awaiting > 0
-                          ? `${fmtAmount(g.unit, verified)} verified · ${fmtAmount(g.unit, awaiting)} waiting`
-                          : `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
-                        : "no target yet",
+                        ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
+                        : a > 0
+                          ? `${fmtAmount(g.unit, a)} logged`
+                          : "no target yet",
                     tip: g.subgoals.map((s) => {
                       const sa = actualValue(state.actuals, g, { subgoalId: s.id });
                       return {
@@ -905,23 +912,30 @@ function GoalRows({
         run={run}
         onClose={() => setVerifying(false)}
       />
-        <Modal
-          open={full}
-          onClose={() => setFull(false)}
-          title={goal.name}
-          size="viewer"
-        >
-          {/* THE SAME THREE COLUMNS, GIVEN THE WHOLE WINDOW. Nothing
-              else comes with them: no goal table underneath, no tiles,
-              no charts. */}
+      <Modal
+        open={full}
+        onClose={() => setFull(false)}
+        title={goal.name}
+        size="viewer"
+        tall
+        dialogClassName="!h-[calc(100vh-2rem)]"
+      >
+        {/* THE SAME THREE COLUMNS, GIVEN THE WHOLE WINDOW (Anir, Aug 16: "I
+            meant a full-scale pop-up, not this thin one. I shouldn't even have
+            to scroll unless there's just that much data"). Nothing else comes
+            with them, and the columns stretch to the window instead of
+            stopping at 340px with the rest below the fold. */}
+        <div className="flex h-full min-h-0 flex-col">
           <GoalZoom
             state={state}
             goalId={goal.id}
             meName={meName}
             run={run}
             embedded
+            fill
           />
-        </Modal>
+        </div>
+      </Modal>
       <tr
         onClick={onToggle}
         onMouseEnter={() => donutSyncBroadcast(syncId, index)}
@@ -1128,7 +1142,6 @@ function GoalRows({
                   arrives knowing which goal you were reading, which is the
                   whole reason you drilled in. */}
               <GoalZoom
-                onFullScreen={() => setFull(true)}
                 state={state}
                 goalId={goal.id}
                 meName={meName}

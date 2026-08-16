@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Crown,
-  Maximize2,
   Paperclip,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -119,7 +118,7 @@ export function GoalZoom({
   embedded = false,
   headerAction,
   lit = false,
-  onFullScreen,
+  fill = false,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -145,13 +144,13 @@ export function GoalZoom({
    *  row in here that contributes to the number being pointed at. */
   lit?: boolean;
   /**
-   * Offer a "Full screen" button beside the period picker (Anir, Aug 16: "it
-   * might be a good idea to have a full pop-up screen where I can see in more
-   * detail... all the bullshit gets hidden, and I can just see the
-   * organization, the group, and the person. They have three massive tiles").
-   * The host opens this same component in a viewer-sized dialog.
+   * Given the whole window instead of a slot in a page (Anir, Aug 16: "I meant
+   * a full-scale pop-up, not this thin one. I shouldn't even have to scroll
+   * unless there's just that much data"). The three columns stretch to the
+   * height they are handed and only their own lists scroll, so a dozen months
+   * fit without a scrollbar instead of being capped at 340px.
    */
-  onFullScreen?: () => void;
+  fill?: boolean;
 }) {
   const router = useRouter();
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
@@ -328,7 +327,12 @@ export function GoalZoom({
   );
 
   return (
-    <div className={embedded ? "" : "mx-auto max-w-[1500px]"}>
+    <div
+      className={cn(
+        embedded ? "" : "mx-auto max-w-[1500px]",
+        fill && "flex h-full min-h-0 flex-col"
+      )}
+    >
       {!embedded && (
       <SmartBack
         fallback="/performance"
@@ -484,7 +488,12 @@ export function GoalZoom({
           here?... the space is massive"). Inside an expanded row this card is
           transparent and borderless, so its 16px of padding was pure empty
           inset stacked on the row's own padding and the grid's margin. */}
-      <Card className={cn(embedded ? "mt-0 border-transparent bg-transparent p-0 shadow-none" : "mt-4 p-4")}>
+      <Card
+        className={cn(
+          embedded ? "mt-0 border-transparent bg-transparent p-0 shadow-none" : "mt-4 p-4",
+          fill && "flex min-h-0 flex-1 flex-col"
+        )}
+      >
         <div className="flex items-center gap-3">
           <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
             Organization → group → person
@@ -492,19 +501,6 @@ export function GoalZoom({
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
               three numbered column headings below already say what this is. */}
           {headerAction && <span className="ml-auto shrink-0">{headerAction}</span>}
-          {onFullScreen && (
-            <button
-              type="button"
-              onClick={onFullScreen}
-              title="Open the three columns on their own, full width"
-              className={cn(
-                "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary",
-                !headerAction && "ml-auto"
-              )}
-            >
-              <Maximize2 size={12.5} strokeWidth={2.2} /> Full screen
-            </button>
-          )}
           {/* FIVE BUTTONS BECAME ONE PICKER (Anir, Aug 15: "where you say weeks,
               months, quarters, etc., let's make that into a single drop-down
               with icons"). Same five choices, a fifth of the width, and each
@@ -571,7 +567,12 @@ export function GoalZoom({
           const boxHead =
             "flex items-center gap-2 border-b border-border-light bg-surface/60 px-3 py-2";
           return (
-            <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
+            <div
+              className={cn(
+                "mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3",
+                fill && "min-h-0 flex-1"
+              )}
+            >
               {/* -------- Box 1: the organization, period by period */}
               <div className={boxCls}>
                 <div className={boxHead}>
@@ -580,7 +581,7 @@ export function GoalZoom({
                     pick a period
                   </span>
                 </div>
-                <div key={`${gran}-${fy}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
                   {rows.map((r, i) => {
                     const active = i === selIdx;
                     const shown = openPeriod === i;
@@ -671,8 +672,8 @@ export function GoalZoom({
                         />
                       </button>
                       {shown && (
-                        <div className="tab-panel mb-1.5 ml-5 mt-0.5">
-                          <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                        <div className="tab-panel mb-1.5 mt-0.5 rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                          <div>
                             <PaceTimeline
                               compact
                               title={r.label}
@@ -703,7 +704,7 @@ export function GoalZoom({
                     {row && row.awaiting > 0 ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting` : ""}
                   </span>
                 </div>
-                <div key={`g-${gran}-${selIdx}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
                   {inPeriodGroups.length === 0 ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       No groups yet. Once groups exist, this box lists every
@@ -841,11 +842,19 @@ export function GoalZoom({
                         </button>
                         </ConditionalHover>
                         {active && (
-                          <div className="tab-panel mb-1.5 ml-5 mt-0.5 space-y-1">
+                          /* ONE BOX, NOT A STACK OF THEM (Anir, Aug 16: "I
+                             don't like all these boxes. When I click a
+                             dropdown, just have everything within that big
+                             dropdown box, and then also you don't have to
+                             indent it because that's space that you're just
+                             wasting"). The timeline and the people are the
+                             same disclosure, so they share one outline and
+                             start at the same left edge as the row above. */
+                          <div className="tab-panel mb-1.5 mt-0.5 rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
                             {/* WHAT THE HOVER CARD USED TO SAY, SAID IN PLACE
                                 (Anir, Aug 16: "all of this data should show up
                                 when I draw the dropdown"). */}
-                            <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+                            <div>
                               <PaceTimeline
                                 compact
                                 title={r2.group.name}
@@ -890,7 +899,7 @@ export function GoalZoom({
                                  */
                                 <span
                                   key={name}
-                                  className="flex flex-col gap-1 rounded-md border border-border-light bg-white px-2 py-1.5"
+                                  className="flex flex-col gap-1 border-t border-border-light px-0.5 pb-1 pt-2"
                                 >
                                   <span className="flex items-center gap-2">
                                   <Avatar
@@ -1005,7 +1014,7 @@ export function GoalZoom({
                     {selGroup ? fmtAmount(goal.unit, selGroup.verified) : ""}
                   </span>
                 </div>
-                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
+                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[340px]")}>
                   {!selGroup ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       Pick a group in box 2 and its people line up here for the
