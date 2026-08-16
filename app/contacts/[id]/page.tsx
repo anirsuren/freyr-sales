@@ -171,6 +171,20 @@ export default async function ContactDetailPage({
         sublabel={contact.job_title || ""}
         href={`/contacts/${contact.id}`}
       />
+      {/* A CONTACT PROFILE WAS A DEAD END (found Aug 16, walking the detail
+          pages). Every sibling — a customer, an offering, a deal, a voice
+          contact — carries this control, and this page imported SmartBack
+          already but only used it in the "contact not found" branch. So the
+          one screen you reach FROM somewhere (an account's contact list, or
+          "Full contact profile" on the voice page) was the one screen with no
+          way back but the browser button. Same trail-then-fallback control as
+          the customer page, so it returns wherever you actually came from. */}
+      <SmartBack
+        fallback="/contacts"
+        className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+      >
+        <ArrowLeft size={15} strokeWidth={1.8} /> All contacts
+      </SmartBack>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
