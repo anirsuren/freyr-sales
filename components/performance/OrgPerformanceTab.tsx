@@ -46,6 +46,7 @@ import {
   paceVerdict,
   pctMet,
   yearElapsed,
+  milestoneByNow,
   type PerfActual,
   type PerformanceState,
   type PeriodKey,
@@ -76,6 +77,7 @@ import type { RunOp } from "./PerformanceModule";
 const PERIOD_KEYS = ["week", "month", "quarter", "year"] as const;
 
 const PACE_COLOR: Record<string, string> = {
+  unscheduled: "#8E98A8",
   met: "#16A34A",
   ahead: "#0F766E",
   ontrack: "#0071E3",
@@ -83,6 +85,7 @@ const PACE_COLOR: Record<string, string> = {
   unset: "#8AB4E8",
 };
 const PACE_LABEL: Record<string, string> = {
+  unscheduled: "No schedule",
   met: "Target met",
   ahead: "Ahead",
   ontrack: "On track",
@@ -134,6 +137,7 @@ const SORT_KEYS: SortKey[] = ["pace", "met", "target", "actual", "verified", "na
 /** Worst first: lagging, then behind-but-moving, then fine, then done. */
 const PACE_RANK: Record<string, number> = {
   lagging: 0,
+  unscheduled: 3.5,
   ontrack: 1,
   ahead: 2,
   met: 3,
@@ -267,7 +271,7 @@ export function OrgPerformanceTab({
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
     if (paceFilter !== "all") {
       const a = actualValue(state.actuals, g);
-      if (paceVerdict(a, g.target, g.year, g.measure) !== paceFilter)
+      if (paceVerdict(a, g.target, g.year, g.measure, undefined, milestoneByNow(g)) !== paceFilter)
         return false;
     }
     if (verFilter === "verified" && !g.verified) return false;
@@ -306,7 +310,7 @@ export function OrgPerformanceTab({
         return Number(b.verified) - Number(a.verified);
       default: {
         const rank = (g: PrimaryGoal, v: number) =>
-          PACE_RANK[paceVerdict(v, g.target, g.year, g.measure)];
+          PACE_RANK[paceVerdict(v, g.target, g.year, g.measure, undefined, milestoneByNow(g))];
         return rank(a, av) - rank(b, bv);
       }
     }
@@ -321,7 +325,7 @@ export function OrgPerformanceTab({
   ).length;
   const laggingCount = withValue.filter(
     (x) =>
-      paceVerdict(x.actual, x.goal.target, x.goal.year, x.goal.measure) ===
+      paceVerdict(x.actual, x.goal.target, x.goal.year, x.goal.measure, undefined, milestoneByNow(x.goal)) ===
       "lagging"
   ).length;
   const verifiedCount = picked.filter((g) => g.verified).length;
@@ -464,7 +468,7 @@ export function OrgPerformanceTab({
                 syncId="perf-pace"
                 centerLabel={String(picked.length)}
                 centerSub={picked.length === 1 ? noun.replace(/s$/, "") : noun}
-                segments={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
+                segments={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
                   .map((k) => ({
                     label: PACE_LABEL[k],
                     color: PACE_COLOR[k],
@@ -474,7 +478,9 @@ export function OrgPerformanceTab({
                           x.actual,
                           x.goal.target,
                           x.goal.year,
-                          x.goal.measure
+                          x.goal.measure,
+                          undefined,
+                          milestoneByNow(x.goal)
                         ) === k
                     ).length,
                   }))
@@ -484,7 +490,7 @@ export function OrgPerformanceTab({
                 className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-pace"
                 total={picked.length}
-                items={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
+                items={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
                   .map((k) => ({
                     label: PACE_LABEL[k],
                     color: PACE_COLOR[k],
@@ -494,7 +500,9 @@ export function OrgPerformanceTab({
                           x.actual,
                           x.goal.target,
                           x.goal.year,
-                          x.goal.measure
+                          x.goal.measure,
+                          undefined,
+                          milestoneByNow(x.goal)
                         ) === k
                     ).length,
                   }))
@@ -875,7 +883,14 @@ function GoalRows({
   meName: string;
 }) {
   const actual = actualValue(actuals, goal);
-  const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
+  const pace = paceVerdict(
+    actual,
+    goal.target,
+    goal.year,
+    goal.measure,
+    undefined,
+    milestoneByNow(goal)
+  );
   /** Which column the cursor is on in the chart above (or on a sibling row). */
   const linkedIndex = useDonutSync(syncId);
   /** True while this goal's three columns are open on their own, full width

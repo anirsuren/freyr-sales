@@ -186,6 +186,18 @@ export function AppShell({
 
     let active = true;
     let refreshing = false;
+    /**
+     * ONE BAD RESPONSE IS NOT A LOST SESSION (Anir, Aug 16: "this is too
+     * annoying. this should never happen. Whenever you do a change, I think it
+     * always does this").
+     *
+     * A 5xx here means the server could not answer — during a dev hot reload,
+     * a redeploy, or a momentary database blip. Throwing the whole page away
+     * for it lost his place and made every edit look like a sign-out. 401 and
+     * 403 are real answers about who he is and still act immediately; only the
+     * "could not answer" case retries, and only bounces if it keeps failing.
+     */
+    let serverFailures = 0;
     const refreshAccess = async () => {
       if (refreshing) return;
       refreshing = true;
@@ -196,7 +208,11 @@ export function AppShell({
           cache: "no-store",
           headers: { Accept: "application/json" },
         });
-        if (!active || response.ok) return;
+        if (!active) return;
+        if (response.ok) {
+          serverFailures = 0;
+          return;
+        }
 
         const next = `${window.location.pathname}${window.location.search}`;
         if (response.status === 401) {
@@ -204,6 +220,15 @@ export function AppShell({
         } else if (response.status === 403) {
           window.location.assign("/access-pending");
         } else {
+          serverFailures += 1;
+          if (serverFailures < 3) {
+            // Try again shortly rather than tearing the page down.
+            window.setTimeout(() => {
+              refreshing = false;
+              if (active) void refreshAccess();
+            }, 2000);
+            return;
+          }
           window.location.assign("/access-pending?configuration=error");
         }
       } catch {

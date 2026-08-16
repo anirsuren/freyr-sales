@@ -17,6 +17,7 @@ import {
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ import {
   goalCadences,
   goalFamilyActuals,
   yearElapsed,
+  milestoneByNow,
   headedGroups,
   isComposite,
   type PerfActual,
@@ -41,7 +43,7 @@ import {
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
-import { expectedByNow, weightedValue } from "@/lib/opportunitiesShared";
+import { weightedValue } from "@/lib/opportunitiesShared";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -168,11 +170,37 @@ export function GoalZoom({
   const [fy, setFy] = useState(nowFy);
   const [gran, setGran] = useState<Granularity>("months");
   const [selected, setSelected] = useState<number | null>(null);
+  /**
+   * ONE AT A TIME, OR SEVERAL WITH SHIFT (Anir, Aug 16: "when I hold Shift and
+   * click something else, then it should do it, but if I just click on
+   * something else, it can close it"). A plain click is still an accordion, so
+   * the column never fills up by accident; Shift adds to what is open when you
+   * want two months or two groups side by side.
+   */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  /** The group column 3 follows — the last one you opened. */
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const toggleGroup = (id: string, additive: boolean) =>
+    setOpenGroups((prev) => {
+      const open = prev.has(id);
+      const next = additive ? new Set(prev) : new Set<string>();
+      if (open) next.delete(id);
+      else next.add(id);
+      setOpenGroup(open ? null : id);
+      return next;
+    });
   /** Which period row has its own dropdown open (Anir, Aug 16: "when I click
    *  on Organization, it'll have another dropdown within the month"). Separate
    *  from `selected`, which stays put so boxes 2 and 3 always have a period. */
-  const [openPeriod, setOpenPeriod] = useState<number | null>(null);
+  const [openPeriods, setOpenPeriods] = useState<Set<number>>(new Set());
+  const togglePeriod = (i: number, additive: boolean) =>
+    setOpenPeriods((prev) => {
+      const open = prev.has(i);
+      const next = additive ? new Set(prev) : new Set<number>();
+      if (open) next.delete(i);
+      else next.add(i);
+      return next;
+    });
   /**
    * WHOSE LINE ITEMS BOX 3 IS SHOWING.
    *
@@ -192,7 +220,15 @@ export function GoalZoom({
     "person"
   );
   /** Which person is unfolded onto their line items, inside box 3. */
-  const [openPerson, setOpenPerson] = useState<string | null>(null);
+  const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
+  const togglePerson = (name: string, additive: boolean) =>
+    setOpenPeople((prev) => {
+      const open = prev.has(name);
+      const next = additive ? new Set(prev) : new Set<string>();
+      if (open) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   const { opportunities, loading: oppsLoading } = useOpportunities();
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
@@ -215,12 +251,21 @@ export function GoalZoom({
    * are dated November). Falls back to the calendar share for goals with no
    * dated deals behind them.
    */
-  const pacing = expectedByNow(
-    goal.id,
-    yearTarget,
-    opportunities,
-    yearElapsed(goal.year)
-  );
+  /**
+   * The goal's OWN schedule, or nothing (Anir, Aug 16: "shouldn't that be
+   * something that whoever makes the goal has in the goal? ... It shouldn't
+   * be you"). No milestone means the timeline shows no marker at all.
+   */
+  const dueMilestone = milestoneByNow(goal);
+  const pacing = {
+    expected: dueMilestone?.amount,
+    dueLabel: dueMilestone
+      ? new Date(dueMilestone.date).toLocaleDateString("en-US", {
+          day: "numeric",
+          month: "short",
+        })
+      : undefined,
+  };
 
   const now = Date.now();
   const monthLabels = fiscalMonthLabels(fy);
@@ -579,6 +624,44 @@ export function GoalZoom({
               };
             })
             .sort((a, b) => b.verified - a.verified);
+          /**
+           * THE SAME MONEY CAN LAND IN TWO GROUPS (Anir, Aug 16: "why is it
+           * highlighting both of these... it looks like it's 500k").
+           *
+           * Suren's model says "each person's count becomes their group's
+           * count, and the groups add up to the organization" — which is only
+           * true while nobody is in two groups. Anir is in test AND group1, so
+           * his one $250K is counted in both, the column reads $500K to the
+           * eye, and it does not reconcile with the org number above it.
+           *
+           * Splitting the money between groups would invent fractions nobody
+           * logged, and dropping it from one would hide it from a group that
+           * genuinely contains that person. So both keep it and the row SAYS
+           * it is shared, naming the other group.
+           */
+          const groupsOfPerson = (name: string) =>
+            state.groups
+              .filter((g) =>
+                [g.head, ...g.members].some(
+                  (m) => m.trim().toLowerCase() === name.trim().toLowerCase()
+                )
+              )
+              .map((g) => g.name);
+          const sharedWith = (g: { head: string; members: string[] }) => {
+            const names = new Set(
+              [g.head, ...g.members].map((n) => n.trim().toLowerCase())
+            );
+            const others = new Set<string>();
+            for (const a of familyActuals) {
+              if (!inRange(a, row.range)) continue;
+              if (!names.has(a.person.trim().toLowerCase())) continue;
+              for (const other of groupsOfPerson(a.person)) {
+                if (other !== (g as { name?: string }).name) others.add(other);
+              }
+            }
+            return [...others];
+          };
+
           const maxG = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
@@ -732,7 +815,7 @@ export function GoalZoom({
                 <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
                   {rows.map((r, i) => {
                     const active = i === selIdx;
-                    const shown = openPeriod === i;
+                    const shown = openPeriods.has(i);
                     const empty = r.verified === 0 && r.awaiting === 0;
                     return (
                       /* NO POP-UP ON THE PERIOD ROWS EITHER (Anir, Aug 16:
@@ -751,11 +834,9 @@ export function GoalZoom({
                       <button
                         type="button"
                         aria-expanded={shown}
-                        onClick={() => {
+                        onClick={(e) => {
                           setSelected(i);
-                          setOpenGroup(null);
-                          setOpenPerson(null);
-                          setOpenPeriod(shown ? null : i);
+                          togglePeriod(i, e.shiftKey);
                         }}
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-all",
@@ -769,7 +850,7 @@ export function GoalZoom({
                              but I should still be able to see them"). Hovering
                              a faded row brings it back, so nothing is out of
                              reach while one is open. */
-                          openPeriod !== null && !shown && "opacity-45 hover:opacity-100"
+                          openPeriods.size > 0 && !shown && "opacity-45 hover:opacity-100"
                         )}
                       >
                         <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
@@ -838,8 +919,7 @@ export function GoalZoom({
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
-                              expectedBasis={pacing.basis}
-                              expectedCount={pacing.dueCount}
+                                expectedDueLabel={pacing.dueLabel}
                               unit={goal.unit}
                             />
                           </div>
@@ -859,9 +939,35 @@ export function GoalZoom({
                   <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-blue-primary">
                     {row?.label}
                   </span>
-                  <span className="ml-auto text-[10.5px] tnum text-text-tertiary">
-                    {row ? fmtAmount(goal.unit, row.verified) : ""}
-                    {row && row.awaiting > 0 ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting` : ""}
+                  <span className="ml-auto flex items-center gap-1.5 text-[10.5px] tnum text-text-tertiary">
+                    {/* THE COLUMN DOES NOT ALWAYS ADD UP TO THIS, AND IT SHOULD
+                        SAY SO (Anir, Aug 16: "it looks like it's 500k"). When
+                        one person sits in two groups their money appears in
+                        both rows, so the rows sum to more than the period. The
+                        header is the period's real number — counted once. */}
+                    <span>
+                      {row ? fmtAmount(goal.unit, row.verified) : ""}
+                      {row && row.awaiting > 0
+                        ? ` · ${fmtAmount(goal.unit, row.awaiting)} waiting`
+                        : ""}
+                    </span>
+                    {(() => {
+                      const stacked = inPeriodGroups.reduce(
+                        (sum, r2) => sum + r2.verified + r2.awaiting,
+                        0
+                      );
+                      const real = (row?.verified ?? 0) + (row?.awaiting ?? 0);
+                      if (stacked <= real) return null;
+                      return (
+                        <Tooltip
+                          label={`The rows below add up to ${fmtAmount(goal.unit, stacked)} because somebody belongs to more than one group and their result is counted in each. This number counts it once.`}
+                        >
+                          <span className="cursor-help rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED]">
+                            counted once
+                          </span>
+                        </Tooltip>
+                      );
+                    })()}
                   </span>
                 </div>
                 <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
@@ -878,14 +984,14 @@ export function GoalZoom({
                         <button
                           key={r2.group.id}
                           type="button"
-                          onClick={() => setOpenGroup(r2.group.id)}
+                          onClick={(e) => toggleGroup(r2.group.id, e.shiftKey)}
                           className={cn(
                             "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                             active
                               ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                               : "hover:bg-surface",
                             /* Same fade as every other row in this column. */
-                            openGroup !== null && !active && "opacity-45 hover:opacity-100"
+                            openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
                           )}
                         >
                           <span className="flex w-full items-center gap-2.5">
@@ -928,8 +1034,7 @@ export function GoalZoom({
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
-                              expectedBasis={pacing.basis}
-                              expectedCount={pacing.dueCount}
+                                expectedDueLabel={pacing.dueLabel}
                               unit={goal.unit}
                             />
                           }
@@ -937,10 +1042,7 @@ export function GoalZoom({
                         <button
                           type="button"
                           aria-expanded={active}
-                          onClick={() => {
-                            setOpenGroup(active ? null : r2.group.id);
-                            setOpenPerson(null);
-                          }}
+                          onClick={(e) => toggleGroup(r2.group.id, e.shiftKey)}
                           className={cn(
                             "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
                             active
@@ -948,7 +1050,7 @@ export function GoalZoom({
                               : "rounded-lg hover:bg-surface",
                             !active && lit && "rounded-lg bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
                             /* Same fade as the period column above. */
-                            openGroup !== null && !active && "opacity-45 hover:opacity-100"
+                            openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
                           )}
                         >
                           {/* THE BAR GETS ITS OWN LINE (Anir, Aug 15: "that bar
@@ -974,6 +1076,19 @@ export function GoalZoom({
                                 +{fmtAmount(goal.unit, r2.awaiting)}
                               </span>
                             )}
+                            {(() => {
+                              const also = sharedWith(r2.group);
+                              if (also.length === 0) return null;
+                              return (
+                                <Tooltip
+                                  label={`Somebody in this group is also in ${also.join(" and ")}, so the same money is counted there too. The organization total counts it once.`}
+                                >
+                                  <span className="shrink-0 cursor-help rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#7C3AED]">
+                                    also in {also.join(", ")}
+                                  </span>
+                                </Tooltip>
+                              );
+                            })()}
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
                                 "this is still not a drop-down"). The people
                                 appeared on select with nothing on the row to
@@ -1038,8 +1153,7 @@ export function GoalZoom({
                                 target={yearTarget}
                                 expectedPct={yearElapsed(goal.year) * 100}
                                 expected={pacing.expected}
-                                expectedBasis={pacing.basis}
-                                expectedCount={pacing.dueCount}
+                                expectedDueLabel={pacing.dueLabel}
                                 unit={goal.unit}
                               />
                             </div>
@@ -1257,13 +1371,11 @@ export function GoalZoom({
                       <Fragment key={p.name}>
                       <button
                         type="button"
-                        aria-expanded={openPerson === p.name}
-                        onClick={() =>
-                          setOpenPerson(openPerson === p.name ? null : p.name)
-                        }
+                        aria-expanded={openPeople.has(p.name)}
+                        onClick={(e) => togglePerson(p.name, e.shiftKey)}
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                          openPerson === p.name
+                          openPeople.has(p.name)
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                             : "hover:bg-surface"
                         )}
@@ -1281,11 +1393,11 @@ export function GoalZoom({
                           aria-hidden="true"
                           className={cn(
                             "shrink-0 text-text-tertiary transition-transform",
-                            openPerson === p.name && "rotate-180 text-blue-primary"
+                            openPeople.has(p.name) && "rotate-180 text-blue-primary"
                           )}
                         />
                       </button>
-                      {openPerson === p.name && (
+                      {openPeople.has(p.name) && (
                         <div className="tab-panel mb-1">
                           {lineItems(
                             new Set([p.name.trim().toLowerCase()]),
@@ -1308,21 +1420,18 @@ export function GoalZoom({
                             target={yearTarget}
                             expectedPct={yearElapsed(goal.year) * 100}
                             expected={pacing.expected}
-                            expectedBasis={pacing.basis}
-                            expectedCount={pacing.dueCount}
+                                expectedDueLabel={pacing.dueLabel}
                             unit={goal.unit}
                           />
                         }
                       >
                       <button
                         type="button"
-                        aria-expanded={openPerson === p.name}
-                        onClick={() =>
-                          setOpenPerson(openPerson === p.name ? null : p.name)
-                        }
+                        aria-expanded={openPeople.has(p.name)}
+                        onClick={(e) => togglePerson(p.name, e.shiftKey)}
                         className={cn(
                           "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
-                          openPerson === p.name
+                          openPeople.has(p.name)
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                             : "hover:bg-surface",
                           lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
@@ -1377,7 +1486,7 @@ export function GoalZoom({
                         )}
                       </button>
                       </HoverCard>
-                      {openPerson === p.name && (
+                      {openPeople.has(p.name) && (
                         <div className="tab-panel mb-1">
                           {lineItems(
                             new Set([p.name.trim().toLowerCase()]),

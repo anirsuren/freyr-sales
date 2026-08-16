@@ -154,6 +154,21 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
           .map(normalizeSubgoal)
           .filter((s): s is Subgoal => s !== null)
       : [],
+    milestones: Array.isArray((raw as Record<string, unknown>).milestones)
+      ? ((raw as Record<string, unknown>).milestones as unknown[])
+          .map((m) => {
+            const r = (m ?? {}) as Record<string, unknown>;
+            const date = str(r.date, 40);
+            const t = Date.parse(date);
+            if (!date || Number.isNaN(t)) return null;
+            return {
+              date: new Date(t).toISOString().slice(0, 10),
+              amount: num(r.amount),
+            };
+          })
+          .filter((m): m is { date: string; amount: number } => m !== null)
+          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+      : undefined,
     assignments: Array.isArray(raw.assignments)
       ? raw.assignments
           .map((a) => {
@@ -1666,4 +1681,34 @@ function samplePerformance(): PerformanceState {
     actuals,
   };
   return structuredClone(sampleCache);
+}
+
+/**
+ * THE GOAL'S OWN SCHEDULE (Anir, Aug 16: "shouldn't that be something that
+ * whoever makes the goal has in the goal? What if it's like this amount by
+ * this month or this amount by this month?").
+ *
+ * Replaces the whole list, because a schedule is read as a whole: editing one
+ * row and leaving the rest is how you end up with two contradictory
+ * schedules. An empty list clears it, and the app then says nothing about
+ * pacing rather than inventing a line.
+ */
+export async function setGoalMilestones(input: {
+  goalId: string;
+  milestones: { date: string; amount: number }[];
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal no longer exists.");
+  const cleaned = (input.milestones ?? [])
+    .map((m) => {
+      const date = str(m?.date, 40);
+      const t = Date.parse(date);
+      if (!date || Number.isNaN(t)) return null;
+      return { date: new Date(t).toISOString().slice(0, 10), amount: num(m?.amount) };
+    })
+    .filter((m): m is { date: string; amount: number } => m !== null)
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  goal.milestones = cleaned.length ? cleaned : undefined;
+  await writeRow(state);
 }

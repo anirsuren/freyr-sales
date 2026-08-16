@@ -25,6 +25,7 @@ import {
   setGroupGoalExclusion,
   assignSubgoalToGroup,
   setRates,
+  setGoalMilestones,
   unassignSubgoalFromGroup,
   unassignGoalFromGroup,
   updateGoal,
@@ -352,6 +353,17 @@ export async function POST(req: NextRequest) {
         await unassignGoal({
           goalId: String(body.goalId ?? ""),
           person: String(body.person ?? ""),
+        });
+        break;
+      case "set-goal-milestones":
+        await setGoalMilestones({
+          goalId: String(body.goalId ?? ""),
+          milestones: Array.isArray(body.milestones)
+            ? (body.milestones as unknown[]).map((m) => {
+                const r = (m ?? {}) as Record<string, unknown>;
+                return { date: String(r.date ?? ""), amount: Number(r.amount ?? 0) };
+              })
+            : [],
         });
         break;
       case "verify-actual":

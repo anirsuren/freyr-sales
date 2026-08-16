@@ -6,6 +6,7 @@ import {
   Activity,
   BadgeDollarSign,
   Check,
+  CalendarClock,
   CheckCircle2,
   ChevronDown,
   Handshake,
@@ -393,6 +394,10 @@ const PACE_META: Record<
   ontrack: { label: "On track", color: "#0071E3", icon: Activity },
   lagging: { label: "Lagging", color: "#DC2626", icon: TrendingDown },
   unset: null,
+  /* A target with no schedule cannot be behind or ahead of anything. Saying
+     "no schedule" is the honest verdict; the old code called it lagging
+     against a line the app drew itself (Anir, Aug 16). */
+  unscheduled: { label: "No schedule", color: "#8E98A8", icon: CalendarClock },
 };
 
 export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md" }) {
@@ -670,8 +675,7 @@ export function PaceTimeline({
   accent = "#0071E3",
   compact = false,
   expected,
-  expectedBasis = "calendar",
-  expectedCount = 0,
+  expectedDueLabel,
 }: {
   title: React.ReactNode;
   verified: number;
@@ -688,8 +692,8 @@ export function PaceTimeline({
    * the straight line "doesn't make any sense" for deals dated November).
    */
   expected?: number;
-  expectedBasis?: "pipeline" | "calendar";
-  expectedCount?: number;
+  /** When that figure was due, e.g. "30 Sep". */
+  expectedDueLabel?: string;
   /**
    * Drawn inside a narrow drill-down column instead of a 420px hover card
    * (Anir, Aug 16: "whatever you had when I hover over it, that's the same
@@ -703,9 +707,17 @@ export function PaceTimeline({
     target > 0 ? Math.min(100, Math.max(0, (n / target) * 100)) : 0;
   const vPct = pctOf(verified);
   const aPct = pctOf(verified + awaiting);
-  const mustBe = expected ?? (target * Math.min(100, Math.max(0, expectedPct))) / 100;
-  const marker =
-    target > 0 ? Math.min(100, Math.max(0, (mustBe / target) * 100)) : 0;
+  /**
+   * NOTHING IS DRAWN UNLESS SOMEBODY SET IT (Anir, Aug 16: "Who the fuck is
+   * saying 'must be at 375K'? ... It shouldn't be you"). `expected` now comes
+   * from the goal's own milestones. Absent, the track carries no marker and no
+   * caption instead of a line the app made up.
+   */
+  const hasSchedule = expected !== undefined && expected > 0 && target > 0;
+  const mustBe = expected ?? 0;
+  const marker = hasSchedule
+    ? Math.min(100, Math.max(0, (mustBe / target) * 100))
+    : 0;
   const ahead = verified + awaiting - mustBe;
 
   /* THE FDL VERSION TIMELINE, FOR A NUMBER (Anir, Aug 15: "look at what you
@@ -781,7 +793,8 @@ export function PaceTimeline({
             className={compact ? "relative mt-1" : "relative mt-3.5"}
             style={{ paddingTop: LANE + 8 }}
           >
-            {/* WHERE THE CALENDAR SAYS YOU MUST BE. */}
+            {/* WHERE THE GOAL'S OWN SCHEDULE SAYS IT SHOULD BE. */}
+            {hasSchedule && (
             <span
               className="absolute flex flex-col items-center"
               style={{ ...labelPos(marker), top: 0 }}
@@ -794,12 +807,8 @@ export function PaceTimeline({
               >
                 must be at {fmtAmount(unit, mustBe)}
               </span>
-              <span
-                className="w-px bg-text-tertiary/45"
-                style={{ height: LANE - 11 }}
-                aria-hidden="true"
-              />
             </span>
+            )}
 
             {/* THE TRACK. */}
             <div
@@ -822,11 +831,13 @@ export function PaceTimeline({
                 style={{ left: `${aPct}%`, background: accent }}
                 aria-hidden="true"
               />
-              <span
-                className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-text-tertiary"
-                style={{ left: `${marker}%` }}
-                aria-hidden="true"
-              />
+              {hasSchedule && (
+                <span
+                  className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-text-tertiary"
+                  style={{ left: `${marker}%` }}
+                  aria-hidden="true"
+                />
+              )}
               <span
                 className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] bg-white"
                 style={{ left: "100%", borderColor: accent }}
@@ -885,9 +896,9 @@ export function PaceTimeline({
                       source is a number nobody trusts (Anir, Aug 16: "im still
                       utterly confused where ur getting this 'must be' value
                       from"). */}
-                  {expectedBasis === "pipeline"
-                    ? `target · ${expectedCount} ${expectedCount === 1 ? "deal" : "deals"} due by now`
-                    : `target · ${Math.round(expectedPct)}% of the year gone`}
+                  {hasSchedule
+                    ? `target · due ${expectedDueLabel ?? "by now"}`
+                    : "target · no schedule set on this goal"}
                 </span>
               </span>
             </div>
@@ -910,11 +921,17 @@ export function PaceTimeline({
               label="Claimed, not checked yet"
               value={fmtAmount(unit, awaiting)}
             />
-            <PaceRow
-              label={ahead < 0 ? "Behind the calendar by" : "Ahead of the calendar by"}
-              value={fmtAmount(unit, Math.abs(ahead))}
-              strong
-            />
+            {/* NO SCHEDULE, NO VERDICT (Anir, Aug 16: "Who the fuck is saying
+                'must be at 375K'?"). Without a milestone there is nothing to
+                be ahead of or behind, so the row is simply absent rather than
+                measuring against a line the app drew itself. */}
+            {hasSchedule && (
+              <PaceRow
+                label={ahead < 0 ? "Behind schedule by" : "Ahead of schedule by"}
+                value={fmtAmount(unit, Math.abs(ahead))}
+                strong
+              />
+            )}
           </div>
         </>
       ) : (

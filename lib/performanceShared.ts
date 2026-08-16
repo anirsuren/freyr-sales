@@ -123,6 +123,20 @@ export type PrimaryGoal = {
   pickedForOrg: boolean;
   verified: boolean;
   subgoals: Subgoal[];
+  /**
+   * THE SCHEDULE, SET BY WHOEVER OWNS THE GOAL — never by the app.
+   *
+   * Anir, Aug 16: "Who the fuck is saying 'must be at 375K'? Who's saying it?
+   * It's not you. It shouldn't be you... shouldn't that be something that
+   * whoever makes the goal has in the goal? What if it's like this amount by
+   * this month or this amount by this month?"
+   *
+   * Each milestone is a CUMULATIVE figure the goal should have reached by that
+   * date — "$300K by 30 Sep, $700K by 31 Dec". Absent means nobody has set a
+   * schedule, and the app then says nothing about pacing rather than inventing
+   * a straight line and calling a goal lagging against a number nobody agreed.
+   */
+  milestones?: GoalMilestone[];
   /** Person-level attaches from the Goal Master. */
   assignments?: GoalAssignment[];
   /** Group-level attaches from the Goal Master. */
@@ -138,6 +152,32 @@ export type PrimaryGoal = {
   createdBy: string;
   createdAt: string;
 };
+
+export type GoalMilestone = {
+  /** ISO day this figure is due by. */
+  date: string;
+  /** Cumulative target by that date, in the goal's own unit. */
+  amount: number;
+};
+
+/**
+ * The figure the goal was supposed to have reached by now, from its own
+ * schedule. Null when nobody set one — which is the honest answer, not zero
+ * and not a twelfth of the target per month.
+ */
+export function milestoneByNow(
+  goal: Pick<PrimaryGoal, "milestones">,
+  now = new Date()
+): GoalMilestone | null {
+  const t = now.getTime();
+  const due = (goal.milestones ?? [])
+    .filter((m) => {
+      const d = Date.parse(m.date);
+      return !Number.isNaN(d) && d <= t;
+    })
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  return due.length ? due[due.length - 1] : null;
+}
 
 export type Cadence = "weekly" | "monthly" | "quarterly" | "yearly";
 export const ALL_CADENCES: Cadence[] = [
@@ -366,7 +406,14 @@ export function yearElapsed(year: number, now = new Date()): number {
   return Math.min(1, Math.max(0, frac));
 }
 
-export type Pace = "met" | "ahead" | "ontrack" | "lagging" | "unset";
+export type Pace =
+  | "met"
+  | "ahead"
+  | "ontrack"
+  | "lagging"
+  | "unset"
+  /** A target exists but nobody said when any of it is due. */
+  | "unscheduled";
 
 /**
  * His Q2 story, as math: "I'm supposed to at least get 50% of my target; I am
@@ -379,7 +426,14 @@ export function paceVerdict(
   target: number,
   year: number,
   measure: GoalMeasure = "total",
-  now = new Date()
+  now = new Date(),
+  /**
+   * The goal's own schedule. WITHOUT ONE THERE IS NO VERDICT (Anir, Aug 16:
+   * "Who the fuck is saying 'must be at 375K'? ... It shouldn't be you").
+   * Calling a goal lagging against a line the app drew itself is the app
+   * inventing the standard it then judges against.
+   */
+  milestone: GoalMilestone | null = null
 ): Pace {
   if (!target || target <= 0) return "unset";
   if (actual >= target) return "met";
@@ -387,9 +441,8 @@ export function paceVerdict(
   if (measure === "level") {
     return share >= 0.85 ? "ontrack" : "lagging";
   }
-  const elapsed = yearElapsed(year, now);
-  if (elapsed < 0.02) return "ontrack";
-  const ratio = share / elapsed;
+  if (!milestone || milestone.amount <= 0) return "unscheduled";
+  const ratio = actual / milestone.amount;
   if (ratio >= 1.05) return "ahead";
   if (ratio >= 0.85) return "ontrack";
   return "lagging";
