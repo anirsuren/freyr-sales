@@ -2944,6 +2944,36 @@ function GoalEditorFields({
   const parsedTarget = parseAmountInput(target);
   const effType = type === "__new" ? newType.trim() : type;
 
+  /**
+   * A HALF-WRITTEN MILESTONE IS NOT AN EMPTY ONE (Anir, Aug 16: "it's letting
+   * me just save it without creating the milestone draft i just drafted. i
+   * have to fill something in or delete milestone right").
+   *
+   * Saving used to filter incomplete rows out silently, so a row you had
+   * started simply vanished and the goal saved as if you had never added it.
+   * Now it blocks, and says which row and what is missing.
+   */
+  const milestoneProblem = (() => {
+    for (let i = 0; i < milestones.length; i += 1) {
+      const m = milestones[i];
+      const hasDate = !!m.date.trim();
+      const amt = parseAmountInput(m.amount);
+      const hasAmount = amt !== null && amt > 0;
+      if (!hasDate && !hasAmount)
+        return `Milestone ${i + 1} is empty — give it a date and a figure, or remove it.`;
+      if (!hasDate) return `Milestone ${i + 1} needs a date.`;
+      if (!hasAmount) return `Milestone ${i + 1} needs a figure to reach.`;
+    }
+    // Two rows on the same day cannot both be "the figure due by then".
+    const seen = new Set<string>();
+    for (const m of milestones) {
+      const d = m.date.trim();
+      if (d && seen.has(d)) return `Two milestones share ${d} — keep one.`;
+      if (d) seen.add(d);
+    }
+    return null;
+  })();
+
   async function save() {
     const body = {
       name,
@@ -2963,9 +2993,10 @@ function GoalEditorFields({
     // The schedule saves as a whole, and only for a goal that already exists —
     // a new one has no id until the line above returns.
     if (ok && editing) {
-      const clean = milestones
-        .map((m) => ({ date: m.date, amount: parseAmountInput(m.amount) ?? 0 }))
-        .filter((m) => m.date && m.amount > 0);
+      const clean = milestones.map((m) => ({
+        date: m.date,
+        amount: parseAmountInput(m.amount) ?? 0,
+      }));
       const before = JSON.stringify(editing.milestones ?? []);
       if (JSON.stringify(clean) !== before) {
         await run({
@@ -3237,13 +3268,24 @@ function GoalEditorFields({
             <Plus size={12} strokeWidth={2.4} />
             {milestones.length ? "Add another date" : "Add a milestone"}
           </button>
+
+          {milestoneProblem && (
+            <p className="mt-2 text-[11.5px] font-medium text-[color:#C2410C]">
+              {milestoneProblem}
+            </p>
+          )}
         </div>
       )}
 
       <div className="flex items-center justify-end">
         <button
           type="button"
-          disabled={busy || !name.trim() || (type === "__new" && !newType.trim())}
+          disabled={
+            busy ||
+            !name.trim() ||
+            (type === "__new" && !newType.trim()) ||
+            milestoneProblem !== null
+          }
           onClick={save}
           className="cursor-pointer rounded-full bg-blue-primary px-6 py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
         >
