@@ -740,7 +740,10 @@ export function GoalZoom({
                                   strengths, so a bar still measures one thing
                                   while saying how much of it is signed off. */}
                               <span
-                                className="block h-full bg-blue-primary opacity-[0.28]"
+                                className={cn(
+                                  "block h-full bg-blue-primary opacity-[0.28]",
+                                  lit && "bar-lit"
+                                )}
                                 style={{
                                   width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
                                 }}
@@ -769,10 +772,25 @@ export function GoalZoom({
                                 reportedOnly: true,
                               });
                               return (
+                                /**
+                                 * EACH PERSON'S OWN GOAL, AND HOW FAR ALONG
+                                 * THEY ARE (Anir, Aug 16: "it should show me
+                                 * their individual goal if it exists. It
+                                 * should definitely show a progress bar on how
+                                 * big compared to the goal they have
+                                 * contributed").
+                                 *
+                                 * A name and a number said nothing about
+                                 * whether that number was good. The target
+                                 * comes from the goal's own assignment for
+                                 * this person; with none set the row says so
+                                 * rather than drawing a bar against nothing.
+                                 */
                                 <span
                                   key={name}
-                                  className="flex items-center gap-2 px-1 py-0.5"
+                                  className="flex flex-col gap-1 rounded-md border border-border-light bg-white px-2 py-1.5"
                                 >
+                                  <span className="flex items-center gap-2">
                                   <Avatar
                                     name={name}
                                     className="h-5 w-5 shrink-0 text-[7.5px]"
@@ -801,6 +819,45 @@ export function GoalZoom({
                                       +{fmtAmount(goal.unit, w)}
                                     </span>
                                   )}
+                                  </span>
+                                  {(() => {
+                                    const mine = (goal.assignments ?? []).find(
+                                      (a) =>
+                                        a.person.trim().toLowerCase() ===
+                                        name.trim().toLowerCase()
+                                    );
+                                    const tgt = mine?.target ?? 0;
+                                    if (!tgt)
+                                      return (
+                                        <span className="pl-7 text-[9.5px] text-text-tertiary">
+                                          no individual target set
+                                        </span>
+                                      );
+                                    const done = Math.min(100, ((v + w) / tgt) * 100);
+                                    return (
+                                      <span className="flex items-center gap-2 pl-7">
+                                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                          <span
+                                            className={cn(
+                                              "block h-full bg-blue-primary",
+                                              lit && "bar-lit"
+                                            )}
+                                            style={{ width: `${Math.min(100, (v / tgt) * 100)}%` }}
+                                          />
+                                          <span
+                                            className={cn(
+                                              "block h-full bg-blue-primary opacity-[0.28]",
+                                              lit && "bar-lit"
+                                            )}
+                                            style={{ width: `${Math.min(100, (w / tgt) * 100)}%` }}
+                                          />
+                                        </span>
+                                        <span className="shrink-0 text-[9.5px] tnum text-text-tertiary">
+                                          {Math.round(done)}% of {fmtAmount(goal.unit, tgt)}
+                                        </span>
+                                      </span>
+                                    );
+                                  })()}
                                 </span>
                               );
                             })}
@@ -903,7 +960,10 @@ export function GoalZoom({
                               style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
                             />
                             <span
-                              className="block h-full bg-blue-primary opacity-[0.28]"
+                              className={cn(
+                                "block h-full bg-blue-primary opacity-[0.28]",
+                                lit && "bar-lit"
+                              )}
                               style={{
                                 width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
                               }}

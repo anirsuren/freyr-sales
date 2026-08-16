@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, type Db } from "@/lib/db";
 import { escapeRegExp } from "@/lib/utils";
+import { manualFor } from "@/lib/appManual";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
 import { buildDeals, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
@@ -548,6 +549,28 @@ export async function POST(req: NextRequest) {
         "list_accounts (filter the book), search_offerings (anything about offerings, materials, markets, customer types - " +
         "search before answering those, and name the document when you quote one unless it is labelled 'Private AI training material'; never guess or reveal an anonymous source's title, filename, URL or upload metadata), " +
         "and search_market_intel (the live Market Intelligence feed: tracked companies' LinkedIn posts, news, AI signals, followed people and the M&A tracker - search it for anything about what a tracked company or person is doing).\n\n") +
+
+    /**
+     * HOW THE APP ITSELF WORKS (Anir, Aug 16: "if I have questions about the
+     * application, it should do that... How can I do this feature? How can I
+     * add a person to an offering?").
+     *
+     * lib/appManual was written for exactly this and was only ever wired into
+     * /api/agent/assistant, which no screen calls. The dock and the agent page
+     * both post to THIS route, so the manual never reached a single user: the
+     * agent answered "I don't see anything about a log a result feature" and
+     * read "verify someone's number" as a phone number. Both are core flows it
+     * now has the steps for.
+     */
+    `HOW THIS APP WORKS. The product manual below is authoritative for any
+how-to, where-is, or who-can question about Freyr Sales Intelligence itself:
+the pages, the buttons, and the steps. Answer those from it directly and name
+the page and control. Never say a feature does not exist just because it is
+absent from the offerings catalogue or the market intel feed; those hold
+Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
+      onPath,
+      message
+    )}\n"""\n\n` +
 
     // A CHATBOT, NOT AN OPERATOR (Anir, Jul 29: "just have it like a normal
     // chatbot for now. I don't know what kind of features they wanted to do and

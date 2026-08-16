@@ -38,7 +38,6 @@ import {
   actualValue,
   familyValue,
   fmtAmount,
-  fmtIn,
   hasActuals,
   paceVerdict,
   pctMet,
@@ -58,10 +57,6 @@ import {
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { VerifyGoalModal } from "./VerifyGoalModal";
-import {
-  DisplayCurrencyPicker,
-  useDisplayCurrency,
-} from "./CurrencyControls";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
@@ -232,7 +227,6 @@ export function OrgPerformanceTab({
   );
   const [openId, setOpenId] = useState<string | null>(null);
   /** What YOU want to read the numbers in. A lens, never a stored fact. */
-  const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
   /** Channel the chart and the table below it share for linked hover. */
   const syncId = `perf-${scope?.exportLabel ?? "org"}`;
   /** Insertion order told you nothing. Every other list in the app opens with
@@ -547,16 +541,6 @@ export function OrgPerformanceTab({
           )}
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          {/* READ EVERYTHING IN ONE CURRENCY. A lens over the same records,
-              never a rewrite of what was signed. */}
-          <DisplayCurrencyPicker
-            value={displayCurrency}
-            onChange={setDisplayCurrency}
-            rates={state.rates ?? {}}
-            live={live}
-            run={run}
-            canEditRates={live}
-          />
           <ColorSelect
             value={sortBy}
             onChange={(v) => setSortBy(v as SortKey)}
@@ -729,7 +713,6 @@ export function OrgPerformanceTab({
                   goal={g}
                   index={i}
                   syncId={syncId}
-                  displayCurrency={displayCurrency}
                   rates={state.rates ?? {}}
                   dimmed={openId !== null && openId !== g.id}
                   state={state}
@@ -800,7 +783,6 @@ function GoalRows({
   goal,
   index,
   syncId,
-  displayCurrency,
   rates,
   dimmed,
   state,
@@ -820,7 +802,6 @@ function GoalRows({
   /** Position in the same list the chart above draws, for linked hover. */
   index: number;
   syncId: string;
-  displayCurrency: CurrencyCode;
   rates: CurrencyRates;
   /** Another goal is open: step back so the open one reads as the subject. */
   dimmed: boolean;
@@ -842,9 +823,16 @@ function GoalRows({
   /** Which column the cursor is on in the chart above (or on a sibling row). */
   const linkedIndex = useDonutSync(syncId);
   const [verifying, setVerifying] = useState(false);
-  /** Every money figure on this row, read in the viewer's chosen currency. */
-  const money = (v: number, from?: CurrencyCode) =>
-    fmtIn(goal.unit, v, { from, to: displayCurrency, rates });
+  /**
+   * MONEY STAYS IN THE CURRENCY IT WAS SIGNED IN (Anir, Aug 16: "it should be
+   * in their original currency, and it can be different for each one").
+   *
+   * There is no viewing currency any more. A contract signed in euros reads in
+   * euros next to one signed in dollars, because converting them for display
+   * meant either a typed-in rate nobody maintained or a guess, and the rate
+   * dialog put that work on the reader for no benefit.
+   */
+  const money = (v: number, from?: CurrencyCode) => fmtAmount(goal.unit, v, from);
   const periodDelta =
     goal.measure === "total"
       ? actualValue(actuals, goal, {}, period)
@@ -1247,8 +1235,20 @@ function GoalRows({
                       className="rounded-xl border border-border-light bg-white p-3.5"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-bold text-text-primary">
-                          {s.name}
+                        {/* SAY WHAT THIS CARD IS (Anir, Aug 16: "even this was
+                            confusing for me. What is this? What is this
+                            showing? What is Growth Accounts and what is
+                            Focused Accounts AMR, and why are those people
+                            there?"). A bold name with a crown and a table under
+                            it gave no clue it was a piece of the goal you had
+                            just opened rather than a thing in its own right. */}
+                        <span className="flex min-w-0 flex-col">
+                          <span className="text-[13px] font-bold text-text-primary">
+                            {s.name}
+                          </span>
+                          <span className="text-[10.5px] text-text-tertiary">
+                            A piece of {goal.name}, carried by the people below
+                          </span>
                         </span>
                         {s.owners.length > 0 && (
                           <span

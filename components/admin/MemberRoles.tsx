@@ -52,8 +52,8 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     member: Member;
     nextRole: string;
   } | null>(null);
-  /** True when the last load failed, so the page can say so. */
-  const [failed, setFailed] = useState(false);
+  /** null when the last load worked; otherwise why it did not. */
+  const [failed, setFailed] = useState<null | "forbidden" | "error">(null);
 
   /**
    * A DIRECTORY THAT FAILED TO LOAD IS NOT AN EMPTY WORKSPACE (found Aug 16,
@@ -68,14 +68,20 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
       const res = await fetch("/api/settings/access", { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data?.members)) {
-        setFailed(true);
+        /* 403 IS NOT A BROKEN PAGE (Anir, Aug 16: "Can you ever stop this?",
+           on the Admin screen telling him his sign-in may have expired). The
+           endpoint answers 403 to anyone who is not a workspace owner, which
+           is a normal, permanent answer for most people — saying "your sign-in
+           expired" sent them to log in again to fix something logging in
+           cannot fix. */
+        setFailed(res.status === 403 ? "forbidden" : "error");
         setMembers(null);
         return;
       }
-      setFailed(false);
+      setFailed(null);
       setMembers(data.members);
     } catch {
-      setFailed(true);
+      setFailed("error");
       setMembers(null);
     }
   }, []);
@@ -137,11 +143,16 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      {failed ? (
+      {failed === "forbidden" ? (
+        <p className="mt-3 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
+          Only a workspace owner can see who has access. Everything else on
+          this page still works.
+        </p>
+      ) : failed === "error" ? (
         <div className="mt-3 rounded-lg bg-surface px-4 py-4 text-center">
           <p className="text-[12.5px] text-text-secondary">
             The member directory could not be loaded, so this is not a list of
-            who has access. Your sign-in may have expired.
+            who has access.
           </p>
           <button
             type="button"

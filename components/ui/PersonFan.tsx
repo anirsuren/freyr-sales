@@ -33,7 +33,11 @@ export function PersonFan({
   people,
   avatarClassName = "h-6 w-6 text-[8px]",
   overlap = -5,
-  max = 8,
+  /* FIVE FACES, THEN A COUNT (Anir, Aug 16: "if there's like 20 people in a
+     group, how's this gonna look? Cap it at five and then say + however many
+     more right after the last profile picture"). Eight faces already pushed
+     the group chips wide enough to crowd the row. */
+  max = 5,
 }: {
   people: FanPerson[];
   /** Avatar sizing, passed straight through (Avatar styles via className). */

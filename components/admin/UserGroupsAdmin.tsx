@@ -292,7 +292,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           <div className="rounded-lg bg-surface px-4 py-4 text-center">
             <p className="text-[12.5px] text-text-secondary">
               The groups could not be loaded, so this is not a list of your
-              departments. Your sign-in may have expired.
+              departments.
             </p>
             <button
               type="button"
