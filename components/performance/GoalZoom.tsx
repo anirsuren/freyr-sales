@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Crown,
-  Layers,
   Paperclip,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -74,6 +73,70 @@ const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
  * supported halves all along, and is always available.
  */
 type Granularity = "weeks" | "months" | "quarters" | "halves" | "years";
+
+/**
+ * THE NUMBERS THAT USED TO LIVE IN A HOVER CARD (Anir, Aug 16: "This pop-up is
+ * annoying me more than helping me... I want to see it visually").
+ *
+ * Deliberately not PaceTimeline: that is built for a 420px floating card and
+ * its right-hand labels fall off the edge of a drill-down column. Same four
+ * figures, stacked, so they fit wherever they are dropped.
+ */
+function PaceFacts({
+  verified,
+  awaiting,
+  target,
+  elapsed,
+  unit,
+}: {
+  verified: number;
+  awaiting: number;
+  target: number;
+  /** 0-1. How much of the year the calendar has used up. */
+  elapsed: number;
+  unit: "currency" | "count" | "percent";
+}) {
+  const mustBe = target * elapsed;
+  const gap = verified + awaiting - mustBe;
+  const rows: { label: string; value: number; dot?: "solid" | "faint" }[] = [
+    { label: "Verified, counts now", value: verified, dot: "solid" },
+    { label: "Claimed, not checked yet", value: awaiting, dot: "faint" },
+  ];
+  if (target > 0) {
+    rows.push({ label: "Should be at by now", value: mustBe });
+    rows.push({
+      label: gap >= 0 ? "Ahead of the calendar by" : "Behind the calendar by",
+      value: Math.abs(gap),
+    });
+  }
+  return (
+    <div className="rounded-lg bg-white px-2.5 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
+      {rows.map((r) => (
+        <span
+          key={r.label}
+          className="flex items-center gap-2 py-[3px] text-[10px]"
+        >
+          {r.dot ? (
+            <span
+              className={cn(
+                "h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary",
+                r.dot === "faint" && "opacity-[0.28]"
+              )}
+            />
+          ) : (
+            <span className="w-1.5 shrink-0" />
+          )}
+          <span className="min-w-0 flex-1 truncate text-text-secondary">
+            {r.label}
+          </span>
+          <b className="shrink-0 text-text-primary tnum">
+            {fmtAmount(unit, r.value)}
+          </b>
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /**
  * A hover card that can be switched off without unmounting what it wraps.
@@ -157,6 +220,10 @@ export function GoalZoom({
   const [gran, setGran] = useState<Granularity>("months");
   const [selected, setSelected] = useState<number | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  /** Which period row has its own dropdown open (Anir, Aug 16: "when I click
+   *  on Organization, it'll have another dropdown within the month"). Separate
+   *  from `selected`, which stays put so boxes 2 and 3 always have a period. */
+  const [openPeriod, setOpenPeriod] = useState<number | null>(null);
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
 
@@ -342,16 +409,13 @@ export function GoalZoom({
             <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2.5 py-1 text-[11px] font-bold text-blue-primary tnum">
               {fiscalLabel(fy)}
             </span>
-            {composite && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(109,40,217,0.10)] px-2.5 py-1 text-[11px] font-bold text-[color:#6D28D9]">
-                <Layers size={11} strokeWidth={2.4} /> Adds up from{" "}
-                {components.length} bookings, nobody enters it directly
-              </span>
-            )}
+            {/* The purple "adds up from N" chip is gone (Anir, Aug 16: "just
+                remove this"). The sentence underneath already says the goal is
+                the sum of the three below it. */}
           </div>
           <p className="mt-0.5 text-[12.5px] text-text-secondary">
             {composite
-              ? "New business + existing-business expansion + renewals. People log results on the three bookings below; this number is only their sum."
+              ? "New business, expansion and renewals added together. Results get logged on those three goals below, and this number is their sum."
               : "Verified results only; claims still waiting for a group owner never count."}
           </p>
         </div>
@@ -556,64 +620,30 @@ export function GoalZoom({
                 <div key={`${gran}-${fy}`} className="tab-panel max-h-[340px] flex-1 space-y-1 overflow-y-auto p-2">
                   {rows.map((r, i) => {
                     const active = i === selIdx;
+                    const shown = openPeriod === i;
+                    const empty = r.verified === 0 && r.awaiting === 0;
                     return (
-                      r.verified === 0 && r.awaiting === 0 ? (
+                      /* NO POP-UP ON THE PERIOD ROWS EITHER (Anir, Aug 16:
+                         "This pop-up is annoying me more than helping me...
+                         Maybe we should just remove this thing and then put
+                         this in its own dropdown"). Same accordion as the
+                         groups: click a month, its numbers open underneath it
+                         in the column, click again to close. */
+                      <Fragment key={r.label}>
                       <button
-                        key={r.label}
                         type="button"
+                        aria-expanded={shown}
                         onClick={() => {
                           setSelected(i);
                           setOpenGroup(null);
-                        }}
-                        className={cn(
-                          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                          active
-                            ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                            : "hover:bg-surface"
-                        )}
-                      >
-                        <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
-                          {gran === "weeks" ? r.label.replace("Week ", "") : r.label}
-                          {r.isNow && (
-                            <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-blue-primary align-middle" />
-                          )}
-                        </b>
-                        <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]" />
-                        <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
-                          <span className="text-text-tertiary">
-                            {fmtAmount(goal.unit, 0)}
-                          </span>
-                        </b>
-                      </button>
-                      ) : (
-                      <HoverCard
-                        key={r.label}
-                        side="right"
-                        width={420}
-                        delayMs={0}
-                        content={
-                          <PaceTimeline
-                            title={r.sub ? `${r.label} · ${r.sub}` : r.label}
-                            verified={r.verified}
-                            awaiting={r.awaiting}
-                            target={yearTarget}
-                            expectedPct={yearElapsed(goal.year) * 100}
-                            unit={goal.unit}
-                          />
-                        }
-                      >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelected(i);
-                          setOpenGroup(null);
+                          setOpenPeriod(shown ? null : i);
                         }}
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all",
                           active
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
                             : "hover:bg-surface",
-                          lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
+                          !empty && lit && "bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30"
                         )}
                       >
                         <b className="w-[108px] shrink-0 truncate text-[12px] text-text-primary">
@@ -625,32 +655,64 @@ export function GoalZoom({
                         <span
                           className={cn(
                             "flex flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)] transition-all",
-                            lit ? "h-2.5" : "h-1.5"
+                            !empty && lit ? "h-2.5" : "h-1.5"
                           )}
                         >
-                          <span
-                            className={cn("h-full bg-[#16A34A]", lit && "bar-lit")}
-                            style={{
-                              width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
-                              ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-                            }}
-                          />
-                          <span
-                            className={cn(
-                              "h-full bg-blue-primary opacity-[0.28]",
-                              lit && "bar-lit"
-                            )}
-                            style={{ width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%` }}
-                          />
+                          {!empty && (
+                            <>
+                              <span
+                                className={cn("h-full bg-[#16A34A]", lit && "bar-lit")}
+                                style={{
+                                  width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
+                                  ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
+                                }}
+                              />
+                              <span
+                                className={cn(
+                                  "h-full bg-blue-primary opacity-[0.28]",
+                                  lit && "bar-lit"
+                                )}
+                                style={{ width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%` }}
+                              />
+                            </>
+                          )}
                         </span>
                         <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
                           <span className={r.verified > 0 ? "" : "text-text-tertiary"}>
                             {fmtAmount(goal.unit, r.verified)}
                           </span>
                         </b>
+                        {/* WAITING BELONGS ON THE ROW (Anir, Aug 16: "if it
+                            says 250k waiting, why is that not shown?"). The
+                            column showed $0 for a month holding a quarter of a
+                            million in unchecked claims. */}
+                        {r.awaiting > 0 && (
+                          <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
+                            +{fmtAmount(goal.unit, r.awaiting)}
+                          </span>
+                        )}
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={2.4}
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform",
+                            shown && "rotate-180 text-blue-primary"
+                          )}
+                        />
                       </button>
-                      </HoverCard>
-                      )
+                      {shown && (
+                        <div className="tab-panel mb-1.5 ml-5 mt-0.5">
+                          <PaceFacts
+                            verified={r.verified}
+                            awaiting={r.awaiting}
+                            target={yearTarget}
+                            elapsed={yearElapsed(goal.year)}
+                            unit={goal.unit}
+                          />
+                        </div>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </div>
@@ -802,62 +864,17 @@ export function GoalZoom({
                         </button>
                         </ConditionalHover>
                         {active && (
-                          <div className="tab-panel ml-3 mt-0.5 space-y-1 border-l-2 border-blue-primary/25 py-1 pl-2.5">
+                          <div className="tab-panel mb-1.5 ml-5 mt-0.5 space-y-1">
                             {/* WHAT THE HOVER CARD USED TO SAY, SAID IN PLACE
                                 (Anir, Aug 16: "all of this data should show up
-                                when I draw the dropdown"). Not the PaceTimeline
-                                itself: that is built for a 420px card and its
-                                right-hand numbers fall off the edge of this
-                                column. Same four figures, stacked. */}
-                            {(() => {
-                              const mustBe =
-                                (yearTarget * yearElapsed(goal.year) * 100) / 100;
-                              const gap = r2.verified + r2.awaiting - mustBe;
-                              const facts: [string, string, string?][] = [
-                                ["Verified, counts now", fmtAmount(goal.unit, r2.verified), "dot"],
-                                ["Claimed, not checked yet", fmtAmount(goal.unit, r2.awaiting), "faint"],
-                              ];
-                              if (yearTarget > 0) {
-                                facts.push([
-                                  "Should be at by now",
-                                  fmtAmount(goal.unit, mustBe),
-                                ]);
-                                facts.push([
-                                  gap >= 0 ? "Ahead of the calendar by" : "Behind the calendar by",
-                                  fmtAmount(goal.unit, Math.abs(gap)),
-                                ]);
-                              }
-                              return (
-                                <div className="rounded-md border border-border-light bg-white px-2.5 py-2">
-                                  {facts.map(([label, value, kind]) => (
-                                    <span
-                                      key={label}
-                                      className="flex items-center gap-2 py-[3px] text-[10px]"
-                                    >
-                                      {kind && (
-                                        <span
-                                          className={cn(
-                                            "h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary",
-                                            kind === "faint" && "opacity-[0.28]"
-                                          )}
-                                        />
-                                      )}
-                                      <span
-                                        className={cn(
-                                          "min-w-0 flex-1 truncate text-text-secondary",
-                                          !kind && "pl-[14px]"
-                                        )}
-                                      >
-                                        {label}
-                                      </span>
-                                      <b className="shrink-0 text-text-primary tnum">
-                                        {value}
-                                      </b>
-                                    </span>
-                                  ))}
-                                </div>
-                              );
-                            })()}
+                                when I draw the dropdown"). */}
+                            <PaceFacts
+                              verified={r2.verified}
+                              awaiting={r2.awaiting}
+                              target={yearTarget}
+                              elapsed={yearElapsed(goal.year)}
+                              unit={goal.unit}
+                            />
                             {[
                               ...new Set(
                                 [r2.group.head, ...r2.group.members]

@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import {
+  Check,
   CheckCircle2,
   ChevronDown,
   Download,
@@ -23,6 +24,7 @@ import {
   type PerformanceState,
 } from "@/lib/performanceShared";
 import { Avatar } from "@/components/ui/Avatar";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { Card } from "@/components/ui/Card";
@@ -825,32 +827,49 @@ export function VerifyQueueCard({
                       <td className="px-4 py-3.5">
                         <EvidenceLinks entry={a} onOpen={setPreview} />
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() =>
-                              run(
-                                { op: "verify-actual", actualId: a.id },
-                                "Verified and locked. It counts now"
-                              )
-                            }
-                            className="cursor-pointer whitespace-nowrap rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-                          >
-                            Verify and lock ✓
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => {
-                              setNoteFor(noteFor === a.id ? null : a.id);
-                              setNote("");
-                            }}
-                            className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                          >
-                            <RotateCcw size={12} strokeWidth={2.2} /> Send back
-                          </button>
+                      <td className="px-4 py-3.5 text-right">
+                        {/* TWO ICONS, NAMED ON HOVER (Anir, Aug 16: "it should
+                            just be like a blue check mark or a red loop icon,
+                            and then when I hover over it, that's when it shows
+                            me"). Two full-width labelled buttons pushed the
+                            column past its header and left the row looking
+                            misaligned. */}
+                        <span className="inline-flex items-center justify-end gap-1">
+                          <Tooltip label="Verify and lock this claim so it counts">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              aria-label={`Verify and lock ${a.person}'s ${a.date} claim`}
+                              onClick={() =>
+                                run(
+                                  { op: "verify-actual", actualId: a.id },
+                                  "Verified and locked. It counts now"
+                                )
+                              }
+                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-all hover:opacity-90 active:scale-[0.95] disabled:opacity-50"
+                            >
+                              <Check size={15} strokeWidth={2.8} />
+                            </button>
+                          </Tooltip>
+                          <Tooltip label="Send it back and say what needs fixing">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              aria-label={`Send back ${a.person}'s ${a.date} claim`}
+                              onClick={() => {
+                                setNoteFor(noteFor === a.id ? null : a.id);
+                                setNote("");
+                              }}
+                              className={cn(
+                                "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors disabled:opacity-50",
+                                noteFor === a.id
+                                  ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                                  : "border-border-light bg-white text-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+                              )}
+                            >
+                              <RotateCcw size={15} strokeWidth={2.4} />
+                            </button>
+                          </Tooltip>
                         </span>
                       </td>
                     </tr>
