@@ -5,6 +5,7 @@
 // drives the actions (so they're reliable) and is the always-on fallback so the
 // chat never goes silent. Human-led: it never sends anything outward on its own.
 import type { Customer, Contact, Interaction, AgentRun, Outcome } from "./types";
+import { escapeRegExp } from "./utils";
 import { type Deal, ROTTING_DAYS, formatMoney } from "./pipeline";
 import { accountHealth } from "./health";
 
@@ -70,7 +71,7 @@ export function findAccount(msg: string, customers: Customer[]): Customer | null
   if (best) return best;
   for (const c of customers) {
     const w = c.company_name.split(/\s+/)[0].toLowerCase();
-    if (w.length >= 4 && new RegExp(`\\b${w}\\b`).test(m)) return c;
+    if (w.length >= 4 && new RegExp(`\\b${escapeRegExp(w)}\\b`).test(m)) return c;
   }
   return null;
 }
@@ -96,7 +97,8 @@ export function findContact(msg: string, contacts: Contact[]): Contact | null {
       .replace(/^(dr|mr|ms|mrs|prof)\.?\s+/, "")
       .split(/\s+/);
     const last = parts[parts.length - 1];
-    if (last && last.length >= 4 && new RegExp(`\\b${last}\\b`).test(m)) return c;
+    if (last && last.length >= 4 && new RegExp(`\\b${escapeRegExp(last)}\\b`).test(m))
+      return c;
   }
   return null;
 }

@@ -211,3 +211,15 @@ export function titleCase(s: string): string {
 export const POPOVER_SURFACE =
   "border border-border-light ring-1 ring-black/[0.03] " +
   "shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35),0_4px_16px_-8px_rgba(15,23,42,0.2)]";
+
+/**
+ * Make a value safe to drop inside a `new RegExp(...)` template.
+ *
+ * Names reach regexes all over this app — a company's first word, a contact's
+ * surname — and those names come from imports and enrichment, not from a
+ * fixed list. "Bayer( Group" builds /\bbayer(\b/ and throws; "Astra+Zeneca"
+ * builds a quantifier and matches the wrong accounts. Escape first.
+ */
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

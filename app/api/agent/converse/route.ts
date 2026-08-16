@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, type Db } from "@/lib/db";
+import { escapeRegExp } from "@/lib/utils";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
 import { buildDeals, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
@@ -619,7 +620,9 @@ export async function POST(req: NextRequest) {
       if (lc.includes(fn) || fn.includes(lc)) return true;
       return fn
         .split(/\s+/)
-        .some((p) => p.length >= 4 && new RegExp(`\\b${p}\\b`).test(lc));
+        .some(
+          (p) => p.length >= 4 && new RegExp(`\\b${escapeRegExp(p)}\\b`).test(lc)
+        );
     });
     return ct ? customers.find((c) => c.id === ct.customer_id) || null : null;
   };
