@@ -153,6 +153,13 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
               groupId,
               target: num(r.target),
               verified: r.verified === true,
+              // NAMED, OR SILENTLY DROPPED. A field this normalizer does not
+              // list is deleted by the next write.
+              excludedPeople: Array.isArray(r.excludedPeople)
+                ? (r.excludedPeople as unknown[])
+                    .map((n) => str(String(n ?? ""), 80))
+                    .filter(Boolean)
+                : undefined,
               assignedBy: str(r.assignedBy, 80) || "unknown",
               assignedAt:
                 typeof r.assignedAt === "string"
@@ -643,6 +650,55 @@ export async function updateActual(input: {
   await writeRow(state);
 }
 
+/**
+ * TAKE ONE PERSON OFF A GROUP'S GOAL, or put them back.
+ *
+ * They keep their place in the group; this only says whether this particular
+ * goal is theirs. Without the exception list, removing them worked until the
+ * next time anything touched the group assignment, which re-attached everyone.
+ */
+export async function setGroupGoalExclusion(input: {
+  goalId: string;
+  groupId: string;
+  person: string;
+  excluded: boolean;
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  const assignment = (goal.groupAssignments ?? []).find(
+    (a) => a.groupId === input.groupId
+  );
+  if (!assignment) throw new Error("That group does not carry this goal.");
+  const person = str(input.person, 80);
+  if (!person) throw new Error("Name that person.");
+  const key = person.trim().toLowerCase();
+  const list = (assignment.excludedPeople ?? []).filter(
+    (n) => n.trim().toLowerCase() !== key
+  );
+  if (input.excluded) {
+    list.push(person);
+    // Off the goal means off its people list too, so nothing rolls up for them
+    // and their name stops appearing on the goal's screens.
+    goal.assignments = (goal.assignments ?? []).filter(
+      (a) => a.person.trim().toLowerCase() !== key
+    );
+  } else {
+    goal.assignments = goal.assignments ?? [];
+    if (!goal.assignments.some((a) => a.person.trim().toLowerCase() === key)) {
+      goal.assignments.push({
+        person,
+        target: 0,
+        verified: false,
+        assignedBy: "group",
+        assignedAt: new Date().toISOString(),
+      });
+    }
+  }
+  assignment.excludedPeople = list.length ? list : undefined;
+  await writeRow(state);
+}
+
 export async function removeActual(actualId: string): Promise<void> {
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === actualId);
@@ -823,7 +879,15 @@ export async function assignGoalToGroup(input: {
     const roster = [group.head, ...group.members]
       .map((m) => m.trim())
       .filter(Boolean);
+    const off = new Set(
+      (
+        goal.groupAssignments.find((a) => a.groupId === groupId)?.excludedPeople ?? []
+      ).map((n) => n.trim().toLowerCase())
+    );
     for (const person of new Set(roster)) {
+      // Somebody taken off this goal stays off it, however often the group is
+      // re-saved.
+      if (off.has(person.trim().toLowerCase())) continue;
       if (goal.assignments.some((a) => a.person === person)) continue;
       goal.assignments.push({
         person,

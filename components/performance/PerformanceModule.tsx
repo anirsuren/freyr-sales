@@ -1143,6 +1143,262 @@ function MasterTab({
  * Same shape as AssignPersonModal next door, including the no-popup-on-a-popup
  * rule: inside the goal popup this unfolds in place instead of stacking.
  */
+/**
+ * THE GROUP'S SHARE, BROKEN DOWN (Suren, via Anir, Aug 15: "each person within
+ * a goal or group I can give each person a different goal that totals up to
+ * that group goal", and "not all the users in the group need to have the same
+ * goal... you also have the ability to delete that guy").
+ *
+ * Everything about one group carrying one goal lives here, so the question
+ * "who is on this and for how much" is answered in one place instead of
+ * across two stacked sections that both listed names:
+ *
+ *   - the group's target, and what its people add up to against it
+ *   - every person's own target, editable in place
+ *   - taking somebody off this goal without taking them out of the group
+ *
+ * The split is stated, never enforced: leadership is allowed to over- or
+ * under-commit a team on purpose, so the bar reports the gap rather than
+ * refusing the number.
+ */
+function GroupSplitPanel({
+  goal,
+  group,
+  assignment,
+  live,
+  busy,
+  run,
+}: {
+  goal: PrimaryGoal;
+  group: PerformanceState["groups"][number];
+  assignment: NonNullable<PrimaryGoal["groupAssignments"]>[number];
+  live: boolean;
+  busy: boolean;
+  run: RunOp;
+}) {
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [dropFor, setDropFor] = useState<string | null>(null);
+
+  const roster = [
+    ...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)),
+  ];
+  const excluded = new Set(
+    (assignment.excludedPeople ?? []).map((n) => n.trim().toLowerCase())
+  );
+  const on = roster.filter((m) => !excluded.has(m.toLowerCase()));
+  const off = roster.filter((m) => excluded.has(m.toLowerCase()));
+  const targetOf = (person: string) =>
+    (goal.assignments ?? []).find((a) => a.person === person)?.target ?? 0;
+  const split = on.reduce((sum, m) => sum + targetOf(m), 0);
+  const groupTarget = assignment.target;
+  const left = groupTarget - split;
+  const pct = groupTarget > 0 ? Math.min(100, (split / groupTarget) * 100) : 0;
+
+  const saveTarget = async (person: string) => {
+    const raw = draft[person];
+    if (raw === undefined) return;
+    const parsed = parseAmountInput(raw);
+    if (parsed === null) return;
+    const okDone = await run(
+      { op: "assign-goal", goalId: goal.id, person, target: parsed },
+      `${person} now carries ${fmtAmount(goal.unit, parsed)}`
+    );
+    if (okDone) setDraft((d) => ({ ...d, [person]: undefined as unknown as string }));
+  };
+
+  return (
+    <div className="tab-panel border-t border-border-light px-3 py-3">
+      {/* HOW THE GROUP TARGET IS SPLIT. */}
+      {groupTarget > 0 ? (
+        <div className="mb-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              Split of the group target
+            </p>
+            <p className="text-[12px] tnum">
+              <b className="text-text-primary">{fmtAmount(goal.unit, split)}</b>
+              <span className="text-text-secondary">
+                {" "}
+                of {fmtAmount(goal.unit, groupTarget)} given out
+              </span>
+              {Math.abs(left) > 0.005 * groupTarget && (
+                <span
+                  className={cn(
+                    "ml-1.5 font-semibold",
+                    left > 0 ? "text-[color:#0058B0]" : "text-[color:#C2410C]"
+                  )}
+                >
+                  {left > 0
+                    ? `${fmtAmount(goal.unit, left)} still to give`
+                    : `${fmtAmount(goal.unit, -left)} over`}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            <span
+              className={cn(
+                "block h-full rounded-full transition-all",
+                left < 0 ? "bg-[color:#C2410C]" : "bg-blue-primary"
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          {live && on.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                const each = Math.round(groupTarget / on.length);
+                for (const person of on) {
+                  await run(
+                    { op: "assign-goal", goalId: goal.id, person, target: each },
+                    ""
+                  );
+                }
+              }}
+              className="mt-2 cursor-pointer rounded-lg bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-primary hover:text-white disabled:opacity-50"
+            >
+              Split evenly ({fmtAmount(goal.unit, Math.round(groupTarget / on.length))} each)
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="mb-3 text-[11.5px] text-text-secondary">
+          No group target set, so there is nothing to split yet. Each person&apos;s
+          target below still counts towards the goal.
+        </p>
+      )}
+
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+        On this goal · {on.length} of {roster.length} in the group
+      </p>
+      <div className="mt-2 space-y-1.5">
+        {on.map((m) => (
+          <div
+            key={m}
+            className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+          >
+            <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+              {m}
+            </span>
+            {m === group.head && (
+              <Crown
+                size={11}
+                strokeWidth={2.6}
+                aria-label="Group owner"
+                className="shrink-0 text-[color:#7C3AED]"
+              />
+            )}
+            {live ? (
+              <input
+                value={draft[m] ?? (targetOf(m) > 0 ? String(targetOf(m)) : "")}
+                onChange={(e) => setDraft((d) => ({ ...d, [m]: e.target.value }))}
+                onBlur={() => void saveTarget(m)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void saveTarget(m);
+                }}
+                placeholder="their target"
+                aria-label={`${m}'s target on ${goal.name}`}
+                className="h-[30px] w-[120px] shrink-0 rounded-lg border border-border-light bg-white px-2 text-right text-[12px] outline-none transition-colors focus:border-blue-primary tnum"
+              />
+            ) : (
+              <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
+                {targetOf(m) > 0 ? fmtAmount(goal.unit, targetOf(m)) : "no target"}
+              </span>
+            )}
+            {live &&
+              (dropFor === m ? (
+                <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      const okDone = await run(
+                        {
+                          op: "set-group-goal-exclusion",
+                          goalId: goal.id,
+                          groupId: assignment.groupId,
+                          person: m,
+                          excluded: true,
+                        },
+                        `${m} is off ${goal.name}`
+                      );
+                      if (okDone) setDropFor(null);
+                    }}
+                    className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                  >
+                    Take off
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDropFor(null)}
+                    className="cursor-pointer rounded-md border border-border-light px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  title={`Take ${m} off ${goal.name}. They stay in ${group.name}.`}
+                  aria-label={`Take ${m} off this goal`}
+                  onClick={() => setDropFor(m)}
+                  className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                >
+                  <X size={13} strokeWidth={2.4} />
+                </button>
+              ))}
+          </div>
+        ))}
+      </div>
+
+      {off.length > 0 && (
+        <>
+          <p className="mt-3 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+            In the group, not on this goal
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {off.map((m) => (
+              <div
+                key={m}
+                className="flex items-center gap-2.5 rounded-lg border border-dashed border-border-light px-2.5 py-2"
+              >
+                <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px] opacity-60" />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary">
+                  {m}
+                </span>
+                {live && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        {
+                          op: "set-group-goal-exclusion",
+                          goalId: goal.id,
+                          groupId: assignment.groupId,
+                          person: m,
+                          excluded: false,
+                        },
+                        `${m} is back on ${goal.name}`
+                      )
+                    }
+                    className="shrink-0 cursor-pointer rounded-lg bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-primary hover:text-white disabled:opacity-50"
+                  >
+                    Put back on
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AssignGroupModal({
   open,
   inline,
@@ -1536,6 +1792,29 @@ function GoalPopupBody({
   /** Which assigned group is unfolded to show who is in it (Anir, Aug 15:
    *  "it should be like a dropdown and I can see the people inside it"). */
   const [openGroupRow, setOpenGroupRow] = useState<string | null>(null);
+  /**
+   * Everyone this goal reaches THROUGH a group, so the section below can list
+   * only the people attached on their own. Without this the same name appeared
+   * twice — once inside its group, once underneath — and nothing said which
+   * was which (Anir, Aug 15: "the ui should be very intuitive because this is
+   * super confusing").
+   */
+  const viaGroup = new Set(
+    (goal.groupAssignments ?? []).flatMap((assignment) => {
+      const g = state.groups.find((x) => x.id === assignment.groupId);
+      if (!g) return [];
+      const off = new Set(
+        (assignment.excludedPeople ?? []).map((n) => n.trim().toLowerCase())
+      );
+      return [g.head, ...g.members]
+        .map((m) => m.trim())
+        .filter((m) => m && !off.has(m.toLowerCase()))
+        .map((m) => m.toLowerCase());
+    })
+  );
+  const soloAssignments = (goal.assignments ?? []).filter(
+    (a) => !viaGroup.has(a.person.trim().toLowerCase())
+  );
   /** Each group carrying this goal, with what its people add up to — the two
    *  numbers this section reconciles. */
   const groupRows = (goal.groupAssignments ?? []).map((assignment) => {
@@ -2083,52 +2362,14 @@ function GoalPopupBody({
               )}
             </div>
             {openGroupRow === assignment.groupId && group && (
-              <div className="tab-panel border-t border-border-light px-3 py-2.5">
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  In this group
-                </p>
-                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {[
-                    ...new Set(
-                      [group.head, ...group.members]
-                        .map((m) => m.trim())
-                        .filter(Boolean)
-                    ),
-                  ].map((m) => {
-                    const theirs = (goal.assignments ?? []).find(
-                      (a) => a.person === m
-                    );
-                    return (
-                      <div
-                        key={m}
-                        className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
-                      >
-                        <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
-                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                          {m}
-                        </span>
-                        {m === group.head && (
-                          <Crown
-                            size={11}
-                            strokeWidth={2.6}
-                            aria-label="Group owner"
-                            className="shrink-0 text-[color:#7C3AED]"
-                          />
-                        )}
-                        {/* What each of them carries on THIS goal, which is
-                            the question you open the row to answer. */}
-                        <span className="shrink-0 text-[11px] text-text-secondary tnum">
-                          {theirs
-                            ? theirs.target > 0
-                              ? fmtAmount(goal.unit, theirs.target)
-                              : "no target"
-                            : "not assigned"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <GroupSplitPanel
+                goal={goal}
+                group={group}
+                assignment={assignment}
+                live={live}
+                busy={busy}
+                run={run}
+              />
             )}
             </div>
           ))}
@@ -2152,14 +2393,14 @@ function GoalPopupBody({
           their people do) ---------------- */}
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-          Assigned people
-          <InfoHint text={"This goal attached straight to a person from the Goal Master.\nTheir numbers roll into their group and the organization: a department is just its people added up."} />
+          Assigned individually
+          <InfoHint text={"People given this goal on their own, outside any group above.\nA group's people are listed inside their group, with their share of its target — they are not repeated here.\nEverything rolls up the same way: person → group → organization."} />
         </p>
         {/* A PLUS, NOT A SENTENCE (Anir, Aug 15: "it can just be a blue and
             white plus sign on the right side of the assigned people text").
             The words only earn their space in the empty state, where they
             tell you what the section is for. */}
-        {live && (goal.assignments ?? []).length > 0 && (
+        {live && soloAssignments.length > 0 && (
           <Tooltip label="Assign this goal to a person">
             <button
               type="button"
@@ -2172,10 +2413,12 @@ function GoalPopupBody({
           </Tooltip>
         )}
       </div>
-      {(goal.assignments ?? []).length === 0 ? (
+      {soloAssignments.length === 0 ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
           <p className="text-[12.5px] text-text-secondary">
-            Nobody carries this goal individually yet.
+            {(goal.groupAssignments ?? []).length > 0
+              ? "Nobody outside those groups carries this goal."
+              : "Nobody carries this goal individually yet."}
           </p>
           {live && (
             <button
@@ -2189,7 +2432,7 @@ function GoalPopupBody({
         </div>
       ) : (
         <div className="mt-1.5 space-y-1.5">
-          {(goal.assignments ?? []).map((a) => (
+          {soloAssignments.map((a) => (
             <div
               key={a.person}
               className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"

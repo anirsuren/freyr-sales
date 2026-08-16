@@ -22,6 +22,7 @@ import {
   setVerified,
   unassignGoal,
   assignGoalToGroup,
+  setGroupGoalExclusion,
   unassignGoalFromGroup,
   updateGoal,
   updateSubgoal,
@@ -314,6 +315,14 @@ export async function POST(req: NextRequest) {
           groupId: String(body.groupId ?? ""),
           ...(body.target !== undefined ? { target: Number(body.target) } : {}),
           addedBy: me.name,
+        });
+        break;
+      case "set-group-goal-exclusion":
+        await setGroupGoalExclusion({
+          goalId: String(body.goalId ?? ""),
+          groupId: String(body.groupId ?? ""),
+          person: String(body.person ?? ""),
+          excluded: body.excluded === true,
         });
         break;
       case "unassign-goal-group":

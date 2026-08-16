@@ -79,6 +79,15 @@ export type GoalGroupAssignment = {
   verified: boolean;
   assignedBy: string;
   assignedAt: string;
+  /**
+   * People who are in the group but NOT on this goal (Suren, via Anir, Aug 15:
+   * "not all the users in the group need to have the same goal... you also
+   * have the ability to delete that guy"). Handing a goal to a department
+   * attaches everyone in it; this is the exception list, so taking one person
+   * off sticks instead of being undone the next time the group is saved. They
+   * stay in the group — this is about one goal.
+   */
+  excludedPeople?: string[];
 };
 
 export type PrimaryGoal = {
