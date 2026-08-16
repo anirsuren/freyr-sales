@@ -274,11 +274,17 @@ export function GoalZoom({
   const dueMilestone = milestoneByNow(goal);
   const pacing = {
     expected: dueMilestone?.amount,
+    /* An ISO day is a DAY, not an instant. `new Date("2026-07-31")` parses as
+       UTC midnight, which west of Greenwich renders as the 30th — a milestone
+       silently one day early. Split the parts and build it locally. */
     dueLabel: dueMilestone
-      ? new Date(dueMilestone.date).toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "short",
-        })
+      ? (() => {
+          const [y, mo, d] = dueMilestone.date.split("-").map(Number);
+          return new Date(y, (mo ?? 1) - 1, d ?? 1).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+          });
+        })()
       : undefined,
   };
 

@@ -169,13 +169,24 @@ export function milestoneByNow(
   goal: Pick<PrimaryGoal, "milestones">,
   now = new Date()
 ): GoalMilestone | null {
+  /**
+   * An ISO day is a DAY, not an instant. Date.parse("2026-07-31") is UTC
+   * midnight, so west of Greenwich a milestone came due — and was labelled —
+   * a day early. Read the parts and build the local end of that day, which is
+   * what "reach $300K by 31 July" actually means.
+   */
+  const endOfDay = (iso: string): number => {
+    const [y, mo, d] = iso.split("-").map(Number);
+    if (!y || !mo || !d) return NaN;
+    return new Date(y, mo - 1, d, 23, 59, 59, 999).getTime();
+  };
   const t = now.getTime();
   const due = (goal.milestones ?? [])
     .filter((m) => {
-      const d = Date.parse(m.date);
+      const d = endOfDay(m.date);
       return !Number.isNaN(d) && d <= t;
     })
-    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    .sort((a, b) => endOfDay(a.date) - endOfDay(b.date));
   return due.length ? due[due.length - 1] : null;
 }
 

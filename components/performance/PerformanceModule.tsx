@@ -2925,6 +2925,21 @@ function GoalEditorFields({
     editing && editing.target > 0 ? String(editing.target) : ""
   );
   const [picked, setPicked] = useState(editing?.pickedForOrg ?? true);
+  /**
+   * THE GOAL'S OWN SCHEDULE (Suren's model, stated by Anir Aug 16: "shouldn't
+   * that be something that whoever makes the goal has in the goal? What if
+   * it's like this amount by this month or this amount by this month?").
+   *
+   * Cumulative figures due by a date. Nothing here means the app says nothing
+   * about pacing rather than straight-lining the target and calling the goal
+   * lagging against a number nobody agreed.
+   */
+  const [milestones, setMilestones] = useState<{ date: string; amount: string }[]>(
+    (editing?.milestones ?? []).map((m) => ({
+      date: m.date,
+      amount: String(m.amount),
+    }))
+  );
 
   const parsedTarget = parseAmountInput(target);
   const effType = type === "__new" ? newType.trim() : type;
@@ -2945,6 +2960,21 @@ function GoalEditorFields({
           name.trim() + " updated"
         )
       : await run({ op: "add-goal", ...body }, name.trim() + " added to the master");
+    // The schedule saves as a whole, and only for a goal that already exists —
+    // a new one has no id until the line above returns.
+    if (ok && editing) {
+      const clean = milestones
+        .map((m) => ({ date: m.date, amount: parseAmountInput(m.amount) ?? 0 }))
+        .filter((m) => m.date && m.amount > 0);
+      const before = JSON.stringify(editing.milestones ?? []);
+      if (JSON.stringify(clean) !== before) {
+        await run({
+          op: "set-goal-milestones",
+          goalId: editing.id,
+          milestones: clean,
+        });
+      }
+    }
     if (ok) onDone();
   }
 
@@ -3111,6 +3141,105 @@ function GoalEditorFields({
         </span>
         <TrackSwitch on={picked} withLabel onToggle={() => setPicked((p) => !p)} />
       </div>
+      {/* THE SCHEDULE — WHOEVER OWNS THE GOAL SETS IT, NOT THE APP (Anir,
+          Aug 16: "Who the fuck is saying 'must be at 375K'? ... It shouldn't
+          be you"). Cumulative figures due by a date. Left empty, the app says
+          nothing about pace rather than inventing a straight line. Only
+          offered on a goal that already exists, since the milestones attach to
+          its id. */}
+      {editing && (
+        <div className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
+          <span className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Schedule
+            <InfoHint text={"Cumulative figures this goal should have reached by each date, e.g. $300K by 30 Sep, $700K by 31 Dec.\nThe drill-down's \"must be at\" marker reads the latest one that has passed.\nLeave it empty and the app says nothing about pace instead of guessing."} />
+            <span className="ml-1 font-normal text-text-tertiary">
+              optional
+            </span>
+          </span>
+          <p className="mt-0.5 text-[11px] text-text-tertiary">
+            What this goal should have reached by each date. Empty means no
+            pacing line at all.
+          </p>
+
+          {milestones.length > 0 && (
+            <div className="mt-2.5 space-y-1.5">
+              {milestones.map((m, idx) => {
+                const amt = parseAmountInput(m.amount) ?? 0;
+                const over = parsedTarget !== null && parsedTarget > 0 && amt > parsedTarget;
+                return (
+                  <div key={idx} className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={m.date}
+                      onChange={(e) =>
+                        setMilestones((prev) =>
+                          prev.map((x, i) =>
+                            i === idx ? { ...x, date: e.target.value } : x
+                          )
+                        )
+                      }
+                      className="h-[34px] shrink-0 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
+                    />
+                    <span className="text-[11.5px] text-text-tertiary">
+                      reach
+                    </span>
+                    <input
+                      value={m.amount}
+                      onChange={(e) =>
+                        setMilestones((prev) =>
+                          prev.map((x, i) =>
+                            i === idx ? { ...x, amount: e.target.value } : x
+                          )
+                        )
+                      }
+                      inputMode="decimal"
+                      placeholder={unit === "currency" ? "e.g. 300K" : "e.g. 40"}
+                      className={cn(
+                        "h-[34px] w-[120px] rounded-lg border bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle",
+                        over ? "border-[color:#C2410C]" : "border-border-light"
+                      )}
+                    />
+                    {parsedTarget !== null && parsedTarget > 0 && amt > 0 && (
+                      <span
+                        className={cn(
+                          "text-[11px] tnum",
+                          over ? "text-[color:#C2410C]" : "text-text-tertiary"
+                        )}
+                      >
+                        {Math.round((amt / parsedTarget) * 100)}% of target
+                        {over ? " — above it" : ""}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      title="Remove this milestone"
+                      aria-label="Remove this milestone"
+                      onClick={() =>
+                        setMilestones((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                    >
+                      <Trash2 size={13} strokeWidth={2.2} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              setMilestones((prev) => [...prev, { date: "", amount: "" }])
+            }
+            className="mt-2.5 flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-light px-3 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+          >
+            <Plus size={12} strokeWidth={2.4} />
+            {milestones.length ? "Add another date" : "Add a milestone"}
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-end">
         <button
           type="button"
