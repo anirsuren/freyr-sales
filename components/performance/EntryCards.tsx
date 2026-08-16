@@ -246,8 +246,12 @@ export function MyEntriesCard({
           <h3 className="text-[13.5px] font-semibold text-text-primary">
             Logged results
           </h3>
+          {/* NO BAR ON THIS CARD (Anir, Aug 16: "It says the bar only moves
+              once an entry is verified... There's no bar. I don't see a bar
+              here"). The bar it meant is the goal's, one card up. Say the rule
+              itself instead of pointing at something that is not on screen. */}
           <span className="text-[11px] text-text-tertiary">
-            the bar only moves once an entry is verified
+            nothing counts toward a goal until it is verified
           </span>
           <span className="ml-auto text-[11px] text-text-tertiary tnum">
             {mine.length} {mine.length === 1 ? "entry" : "entries"}
@@ -264,7 +268,7 @@ export function MyEntriesCard({
                 <th className="px-4 py-2.5">Date</th>
                 <th className="px-4 py-2.5">Proof</th>
                 <th className="px-4 py-2.5">Status</th>
-                <th className="px-4 py-2.5 text-right w-10" />
+                <th className="px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -273,14 +277,27 @@ export function MyEntriesCard({
                 const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
                 const open = openRow === a.id;
                 const status = entryStatus(a);
+                /** Your own claim, still unlocked: yours to change or drop. */
+                const canEdit =
+                  status === "reported" &&
+                  !!run &&
+                  (a.person === meName || a.addedBy === meName);
                 return (
                   <Fragment key={a.id}>
                     <tr
                       onClick={() => setOpenRow(open ? null : a.id)}
                       aria-expanded={open}
+                      /* THE SAME OPEN STATE AS EVERY OTHER DROPDOWN (Anir,
+                         Aug 16: "this dropdown looks off, just super, super
+                         off. I can't put my finger on it. Maybe it's the
+                         colour"). It was the only one washed in blue; the goal
+                         rows open onto plain surface with a blue rail down the
+                         left, so this now does too. */
                       className={cn(
                         "cursor-pointer transition-colors",
-                        open ? "bg-blue-light/35" : "hover:bg-surface"
+                        open
+                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          : "hover:bg-surface"
                       )}
                     >
                       <td className="px-4 py-3.5">
@@ -323,22 +340,70 @@ export function MyEntriesCard({
                           }
                         />
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <ChevronDown
-                          size={16}
-                          strokeWidth={2.2}
-                          aria-hidden="true"
-                          className={cn(
-                            "text-text-tertiary transition-transform",
-                            open && "rotate-180"
+                      <td className="px-4 py-3.5">
+                        {/* EDIT AND DELETE LIVE IN THE ACTIONS COLUMN (Anir,
+                            Aug 16: "The Edit button and the Delete button
+                            should go in the action column, which should be the
+                            last column instead of putting it here. Just icons
+                            would be a lot better"). They still open the same
+                            forms inside the row; only the way in moved. */}
+                        <span className="flex items-center justify-end gap-1">
+                          {canEdit && (
+                            <>
+                              <button
+                                type="button"
+                                title="Edit this entry"
+                                aria-label={`Edit the ${a.date} entry`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenRow(a.id);
+                                  setEditFor(a.id);
+                                  setDropFor(null);
+                                  setDraft({
+                                    amount: String(a.amount),
+                                    date: a.date,
+                                    customer: a.customer ?? "",
+                                  });
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                              >
+                                <PenLine size={14} strokeWidth={2.2} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete this entry"
+                                aria-label={`Delete the ${a.date} entry`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenRow(a.id);
+                                  setDropFor(a.id);
+                                  setEditFor(null);
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                              >
+                                <Trash2 size={14} strokeWidth={2.2} />
+                              </button>
+                            </>
                           )}
-                        />
+                          <ChevronDown
+                            size={16}
+                            strokeWidth={2.2}
+                            aria-hidden="true"
+                            className={cn(
+                              "ml-0.5 text-text-tertiary transition-transform",
+                              open && "rotate-180"
+                            )}
+                          />
+                        </span>
                       </td>
                     </tr>
                     {open && (
-                      <tr className="bg-blue-light/20">
-                        <td colSpan={8} className="px-4 pb-4 pt-1">
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+                      <tr className="!border-t-0 bg-surface">
+                        <td
+                          colSpan={8}
+                          className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        >
+                          <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
                             <Fact label="Goal">
                               {goal?.name ?? "Goal removed"}
                             </Fact>
@@ -427,9 +492,7 @@ export function MyEntriesCard({
                               should be able to delete it"). The server has
                               always allowed this and always refused it once
                               verified; the row simply never offered it. */}
-                          {status === "reported" &&
-                            !!run &&
-                            (a.person === meName || a.addedBy === meName) && (
+                          {canEdit && (dropFor === a.id || editFor === a.id) && (
                               <div
                                 className="mt-3 flex flex-wrap items-center gap-2"
                                 onClick={(e) => e.stopPropagation()}
@@ -523,32 +586,7 @@ export function MyEntriesCard({
                                       Cancel
                                     </button>
                                   </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditFor(a.id);
-                                        setDropFor(null);
-                                        setDraft({
-                                          amount: String(a.amount),
-                                          date: a.date,
-                                          customer: a.customer ?? "",
-                                        });
-                                      }}
-                                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
-                                    >
-                                      <PenLine size={13} strokeWidth={2.2} /> Edit this entry
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setDropFor(a.id)}
-                                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-[color:#DC2626] hover:text-[color:#DC2626]"
-                                    >
-                                      <Trash2 size={13} strokeWidth={2.2} /> Delete this entry
-                                    </button>
-                                  </>
-                                )}
+                                ) : null}
                               </div>
                             )}
 
