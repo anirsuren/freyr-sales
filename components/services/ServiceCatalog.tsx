@@ -87,15 +87,18 @@ export function ServiceCatalog({
   async function del(idx: number) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/kb/services?index=${idx}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/kb/services?index=${idx}&expect=${encodeURIComponent(
+          services[idx]?.name ?? ""
+        )}`,
+        { method: "DELETE" }
+      );
       const d = await res.json();
       if (d.ok) {
         toast("Service removed");
         setConfirmIdx(null);
         router.refresh();
-      } else toast("Couldn't remove", "error");
+      } else toast(d.error || "Couldn't remove", "error");
     } finally {
       setBusy(false);
     }
@@ -107,7 +110,15 @@ export function ServiceCatalog({
       const res = await fetch("/api/kb/services", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index: idx, name, description }),
+        // Name the service we believe sits at this index, so a list that
+        // shifted under us is refused rather than silently overwriting a
+        // different one.
+        body: JSON.stringify({
+          index: idx,
+          name,
+          description,
+          expectName: services[idx]?.name,
+        }),
       });
       const d = await res.json();
       if (d.ok) {
