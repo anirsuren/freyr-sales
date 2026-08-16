@@ -93,14 +93,16 @@ function ConditionalHover({
   on,
   content,
   children,
+  side = "bottom",
 }: {
   on: boolean;
   content: React.ReactNode;
   children: React.ReactNode;
+  side?: "bottom" | "left";
 }) {
   if (!on) return <>{children}</>;
   return (
-    <HoverCard side="bottom" width={420} delayMs={0} content={content}>
+    <HoverCard side={side} width={420} delayMs={0} content={content}>
       {children}
     </HoverCard>
   );
@@ -130,6 +132,7 @@ export function GoalZoom({
   lit = false,
   fill = false,
   onLinkHover,
+  onSetSchedule,
 }: {
   state: PerformanceState;
   goalId: string;
@@ -171,6 +174,8 @@ export function GoalZoom({
    * row in the table exactly like hovering the chart lights them.
    */
   onLinkHover?: (on: boolean) => void;
+  /** Open this goal's editor so its schedule can be set from here. */
+  onSetSchedule?: () => void;
 }) {
   const router = useRouter();
 
@@ -943,6 +948,7 @@ export function GoalZoom({
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}
+                                onSetSchedule={onSetSchedule}
                               unit={goal.unit}
                             />
                           </div>
@@ -1048,6 +1054,7 @@ export function GoalZoom({
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}
+                                onSetSchedule={onSetSchedule}
                               unit={goal.unit}
                             />
                           }
@@ -1156,6 +1163,7 @@ export function GoalZoom({
                                 expectedPct={yearElapsed(goal.year) * 100}
                                 expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}
+                                onSetSchedule={onSetSchedule}
                                 unit={goal.unit}
                               />
                             </div>
@@ -1429,10 +1437,16 @@ export function GoalZoom({
                             : "border-transparent"
                         )}
                       >
-                      <HoverCard
+                      {/* THE CARD IS FOR THE CLOSED ROW ONLY — the same rule
+                          the period and group rows already follow (Anir,
+                          Aug 16: "It shouldn't show me the popup... Because I
+                          already have it exposed. look what u did on the other
+                          2"). Open, every figure it holds is on screen
+                          underneath, so the card was covering the thing you
+                          had just asked to see. */}
+                      <ConditionalHover
+                        on={!openPeople.has(p.name)}
                         side="left"
-                        width={420}
-                        delayMs={0}
                         content={
                           <PaceTimeline
                             title={`${p.name} · ${row?.label ?? ""}`}
@@ -1442,6 +1456,7 @@ export function GoalZoom({
                             expectedPct={yearElapsed(goal.year) * 100}
                             expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}
+                                onSetSchedule={onSetSchedule}
                             unit={goal.unit}
                           />
                         }
@@ -1535,7 +1550,7 @@ export function GoalZoom({
                           </span>
                           ))}
                       </button>
-                      </HoverCard>
+                      </ConditionalHover>
                       {openPeople.has(p.name) && (
                         <div className="tab-panel border-t border-border-light bg-white px-1 py-1">
                           {lineItems(

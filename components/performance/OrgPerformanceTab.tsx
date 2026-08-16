@@ -1190,6 +1190,7 @@ function GoalRows({
                 onLinkHover={(on) =>
                   donutSyncBroadcast(syncId, on ? index : null)
                 }
+                onSetSchedule={live ? () => onEditGoal(goal) : undefined}
                 embedded
                 headerAction={
                   live ? (

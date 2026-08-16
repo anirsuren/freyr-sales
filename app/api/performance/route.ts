@@ -169,6 +169,11 @@ export async function POST(req: NextRequest) {
       // delete it"). The store checks per entry that it is yours or that you
       // head the group of the person it belongs to, and refuses either once
       // the entry is verified.
+      // A goal's OWNER may set its schedule without being a manager (Anir,
+      // Aug 16: "I should be able to set the milestones... or whoever the
+      // owner is"). The store checks ownership per goal and refuses anyone
+      // else, so this cannot become a way to edit somebody else's plan.
+      "set-goal-milestones",
       "update-actual",
       "remove-actual",
     ]);
@@ -361,6 +366,7 @@ export async function POST(req: NextRequest) {
         break;
       case "set-goal-milestones":
         await setGoalMilestones({
+          ...(manager ? {} : { requireOwner: me.name }),
           goalId: String(body.goalId ?? ""),
           milestones: Array.isArray(body.milestones)
             ? (body.milestones as unknown[]).map((m) => {

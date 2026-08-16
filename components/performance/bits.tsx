@@ -676,6 +676,7 @@ export function PaceTimeline({
   compact = false,
   expected,
   expectedDueLabel,
+  onSetSchedule,
 }: {
   title: React.ReactNode;
   verified: number;
@@ -694,6 +695,10 @@ export function PaceTimeline({
   expected?: number;
   /** When that figure was due, e.g. "30 Sep". */
   expectedDueLabel?: string;
+  /** Offered when there is no schedule, so the sentence that names the gap can
+   *  also close it (Anir, Aug 16: "if ur gonna say this u might as well put a
+   *  button to take the user there"). */
+  onSetSchedule?: () => void;
   /**
    * Drawn inside a narrow drill-down column instead of a 420px hover card
    * (Anir, Aug 16: "whatever you had when I hover over it, that's the same
@@ -899,9 +904,25 @@ export function PaceTimeline({
                       source is a number nobody trusts (Anir, Aug 16: "im still
                       utterly confused where ur getting this 'must be' value
                       from"). */}
-                  {hasSchedule
-                    ? `target · due ${expectedDueLabel ?? "by now"}`
-                    : "target · no schedule set on this goal"}
+                  {hasSchedule ? (
+                    `target · due ${expectedDueLabel ?? "by now"}`
+                  ) : onSetSchedule ? (
+                    <>
+                      target ·{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetSchedule();
+                        }}
+                        className="cursor-pointer font-semibold text-blue-primary underline-offset-2 hover:underline"
+                      >
+                        set a schedule
+                      </button>
+                    </>
+                  ) : (
+                    "target · no schedule set on this goal"
+                  )}
                 </span>
               </span>
             </div>

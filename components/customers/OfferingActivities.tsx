@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { useOpportunities } from "@/lib/useOpportunities";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -169,6 +170,11 @@ export function OfferingActivities({
 }) {
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
+  /** Which deals this activity belongs to (Suren, Aug 16: "offering,
+   *  opportunity and then activity — you need to connect all three"). The
+   *  record already carried these ids; nothing here could pick them. */
+  const [opportunityIds, setOpportunityIds] = useState<string[]>([]);
+  const { opportunities: pipeline } = useOpportunities();
   const [activity, setActivity] = useState<CustomerOfferingActivity>("lead");
   const [status, setStatus] = useState<CustomerOfferingStatus>("initiated");
   const [description, setDescription] = useState("");
@@ -199,6 +205,7 @@ export function OfferingActivities({
     );
     setEndDate(version?.end_date ?? "");
     setCurrency(version?.currency ?? "USD");
+    setOpportunityIds([...(version?.opportunity_ids ?? [])]);
   }
 
   function save() {
@@ -234,7 +241,7 @@ export function OfferingActivities({
       start_date: chosen,
       end_date: endDate || null,
       potential_close_date: existing?.potential_close_date ?? null,
-      opportunity_ids: existing?.opportunity_ids ?? [],
+      opportunity_ids: opportunityIds,
       proposal_ids: existing?.proposal_ids ?? [],
       contract_ids: existing?.contract_ids ?? [],
       created_at: existing?.created_at ?? now,
@@ -573,6 +580,44 @@ export function OfferingActivities({
                 ariaLabel="End date"
               />
             </div>
+            {/* OFFERING -> OPPORTUNITY -> ACTIVITY, wherever an activity is
+                edited (Suren, Aug 16: "you need to connect all three"). The
+                record has always carried these ids; until now nothing on this
+                page could set them. */}
+            {pipeline.length > 0 && (
+              <div className="col-span-full min-w-0">
+                <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+                  Opportunities
+                  <InfoHint text={"The deals this activity belongs to.\nAdd them on the Opportunities page and they become pickable here."} />
+                  <span className="font-normal text-text-tertiary">optional</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
+                  {pipeline.map((o) => {
+                    const on = opportunityIds.includes(o.id);
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() =>
+                          setOpportunityIds((prev) =>
+                            on ? prev.filter((x) => x !== o.id) : [...prev, o.id]
+                          )
+                        }
+                        className={
+                          on
+                            ? "cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white"
+                            : "cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                        }
+                      >
+                        {o.name}
+                        <span className="ml-1 opacity-70">{o.customer}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* CURRENCY FIRST, THEN THE AMOUNT (Anir, Aug 9: "currency on the
                 left, amount on the right"), which is the order money is
                 written and the order it is read back in the table. */}

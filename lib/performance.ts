@@ -1740,10 +1740,33 @@ function samplePerformance(): PerformanceState {
 export async function setGoalMilestones(input: {
   goalId: string;
   milestones: { date: string; amount: number }[];
+  /** When given, the caller must own the goal (or a subgoal of it) to set the
+   *  schedule. Managers and admins pass nothing and are already allowed. */
+  requireOwner?: string;
 }): Promise<void> {
   const state = await readRow();
   const goal = state.goals.find((g) => g.id === input.goalId);
   if (!goal) throw new Error("That goal no longer exists.");
+  /**
+   * THE OWNER SETS THE SCHEDULE (Anir, Aug 16: "I should be able to set the
+   * milestones... or whoever the owner is, etc."). A goal owner is whoever
+   * owns one of its subgoals — the same crown the Goal Master already shows —
+   * so the person accountable for a number can say when it is due without
+   * needing the manager role.
+   */
+  if (input.requireOwner) {
+    const me = input.requireOwner.trim().toLowerCase();
+    const owns =
+      goal.createdBy.trim().toLowerCase() === me ||
+      goal.subgoals.some((sg) =>
+        sg.owners.some((o) => o.trim().toLowerCase() === me)
+      );
+    if (!owns) {
+      throw new Error(
+        "Only this goal's owner, or a manager, can set its schedule."
+      );
+    }
+  }
   const cleaned = (input.milestones ?? [])
     .map((m) => {
       const date = str(m?.date, 40);
