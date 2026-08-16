@@ -131,11 +131,17 @@ export function VerifyGoalModal({
               >
               <div className="flex flex-wrap items-center gap-2.5">
                 <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                {/* A NAME NEVER SQUEEZES BELOW READABLE (Aug 16, found at
+                    390px). Sharing one flex line with the customer, "Anir
+                    Suren" collapsed to "Anir …" and only a hover tooltip —
+                    useless on a phone — could tell you who it was. The name
+                    keeps a floor and the customer wraps to its own line
+                    instead. */}
+                <span className="min-w-[8.5rem] flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                   {a.person}
                 </span>
                 {a.customer && (
-                  <span className="min-w-0 truncate text-[11.5px] text-text-secondary">
+                  <span className="min-w-0 basis-full truncate text-[11.5px] text-text-secondary sm:basis-auto">
                     {a.customer}
                   </span>
                 )}
