@@ -27,6 +27,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { useOpportunities } from "@/lib/useOpportunities";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
@@ -3646,6 +3647,9 @@ function LogActualModal({
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
   const [dealId, setDealId] = useState("");
+  /** The deal this number came out of, so the goal's line items can name it. */
+  const [opportunityId, setOpportunityId] = useState("");
+  const { opportunities: pipeline } = useOpportunities();
   const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   /** One row per file being sent, so a big contract shows a moving bar rather
@@ -3977,6 +3981,9 @@ function LogActualModal({
           (dealId &&
             selectedAccount?.deals.find((d) => d.id === dealId)?.label) ||
           undefined,
+        // Suren, Aug 16: "that 500K came from what opportunities" — this is
+        // what makes the goal's fourth level able to answer him.
+        opportunityId: opportunityId || undefined,
         evidence: evidence.length ? evidence : undefined,
         currency: unit === "currency" ? entryCurrency : undefined,
       },
@@ -3988,6 +3995,7 @@ function LogActualModal({
       setCustomer("");
       setEvidence([]);
       setComponentId("");
+      setOpportunityId("");
       onClose();
     }
   }
@@ -4283,6 +4291,43 @@ function LogActualModal({
                     label: d.label,
                     color: "#0F766E",
                   })),
+                ]}
+              />
+            </div>
+          </div>
+        )}
+        {/* WHICH DEAL THIS CAME OUT OF. Narrowed to the picked account when
+            there is one, because a number on Novartis did not come from a
+            Takeda deal. Optional forever: Suren was explicit that "not all
+            goals can be connected to deals and opportunities". */}
+        {pipeline.length > 0 && (
+          <div>
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+              Opportunity{" "}
+              <span className="font-normal text-text-tertiary">(optional)</span>
+              <InfoHint text={"The deal this number came out of.\nIt shows up as a line item under this goal, so the total can be traced back to the opportunities behind it."} />
+            </label>
+            <div className="mt-1">
+              <ColorSelect
+                value={opportunityId}
+                onChange={setOpportunityId}
+                ariaLabel="Opportunity"
+                minWidth={430}
+                options={[
+                  { value: "", label: "Not from a recorded deal", color: "#8E98A8" },
+                  ...pipeline
+                    .filter(
+                      (o) =>
+                        !customer.trim() ||
+                        o.customer.trim().toLowerCase() ===
+                          customer.trim().toLowerCase()
+                    )
+                    .map((o) => ({
+                      value: o.id,
+                      label: o.name,
+                      description: `${o.customer}${o.status ? ` · ${o.status}` : ""}`,
+                      color: "#0071E3",
+                    })),
                 ]}
               />
             </div>

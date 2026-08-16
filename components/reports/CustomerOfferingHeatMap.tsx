@@ -70,6 +70,7 @@ import {
   usageForOffering,
   type HeatMapOffering,
 } from "@/lib/customerOfferingHeatMap";
+import { useOpportunities } from "@/lib/useOpportunities";
 import { formatMoney } from "@/lib/pipeline";
 import { useStoredView } from "@/lib/useStoredView";
 import type {
@@ -412,6 +413,8 @@ export function CustomerOfferingHeatMap({
   );
   const [editingExisting, setEditingExisting] = useState(false);
   const [draftIsNew, setDraftIsNew] = useState(false);
+  /** The pipeline, so an activity can name the deal it belongs to. */
+  const { opportunities: pipeline } = useOpportunities();
   const [saving, setSaving] = useState(false);
   const [reportVersionId, setReportVersionId] = useState<string | null>(null);
   const [reportSelectionError, setReportSelectionError] = useState(false);
@@ -1578,6 +1581,55 @@ export function CustomerOfferingHeatMap({
                   className="h-10 bg-white text-[13px]"
                 />
               </Field>
+            </div>
+
+            {/* OFFERING -> OPPORTUNITY -> ACTIVITY (Suren, Aug 16: "we had an
+                offering and then activity to offering. Now all I want to do is
+                offering, opportunity and then activity — you need to connect
+                all three"). This engagement already carried opportunity ids as
+                typed CRM strings; they are pickable records now, so the link
+                is real and the goal drill-down can follow it. Typed ids still
+                work for anything that only exists in the old CRM. */}
+            <FormSectionHeading title="Opportunities on this activity" hint="Optional" />
+            <div className="mb-4">
+              {pipeline.length === 0 ? (
+                <p className="text-[12.5px] text-text-secondary">
+                  No opportunities recorded yet. Add one on the Opportunities
+                  page and it becomes pickable here.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
+                  {pipeline.map((o) => {
+                    const on = draft.opportunity_ids.includes(o.id);
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() =>
+                          setDraft((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  opportunity_ids: on
+                                    ? current.opportunity_ids.filter((x) => x !== o.id)
+                                    : [...current.opportunity_ids, o.id],
+                                }
+                              : current
+                          )
+                        }
+                        className={
+                          on
+                            ? "cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white"
+                            : "cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                        }
+                      >
+                        {o.name}
+                        <span className="ml-1 opacity-70">{o.customer}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <FormSectionHeading title="Linked CRM records" hint="Optional" />
