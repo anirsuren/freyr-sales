@@ -58,7 +58,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         if (!alive || !res.ok || !Array.isArray(data.members)) return;
         const map: Record<string, string> = {};
         for (const m of data.members as { name?: string; role?: string }[]) {
-          if (m.name?.trim()) map[m.name.trim()] = m.role || "rep";
+          // No role recorded means no role shown — coercing to "rep" is how
+          // an admin ended up labelled Rep in their own group.
+          if (m.name?.trim() && m.role) map[m.name.trim()] = m.role;
         }
         setRoles(map);
       } catch {
@@ -178,7 +180,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         open={creating}
         onClose={closeEditor}
         title={editing ? `Edit ${editing.name}` : "New user group"}
-        size="wide"
+        size="workflow"
       >
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           A group is a department with an owner. Its members&apos; goals add up
@@ -188,7 +190,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         <div className="mt-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-[12px] font-semibold text-text-primary">
+              <label className="flex h-[18px] items-center text-[12px] font-semibold text-text-primary">
                 Group name
               </label>
               <input
@@ -199,7 +201,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
               />
             </div>
             <div>
-              <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+              <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group owner
                 <Crown size={12} strokeWidth={2.4} className="text-[color:#7C3AED]" />
                 <InfoHint text="The owner runs this group's performance. They see their people's numbers and can verify them." />
@@ -220,7 +222,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-[12px] font-semibold text-text-primary">
+            <label className="flex h-[18px] items-center text-[12px] font-semibold text-text-primary">
               People in the group
             </label>
             {/* THE PICKER SITS ABOVE WHAT IT BUILDS (Anir, Aug 12: "when I add
@@ -325,9 +327,13 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   {/* Say the word "owner" (Anir, Aug 14: "where is the fucking
                       owner"). A crown next to a name reads as just another
                       member unless it is spelled out. */}
+                  {/* The owner wears their own face (Anir, Aug 15: "when you
+                      say owner, put my profile picture of whoever the owner
+                      is"). A name in bold reads like any other name. */}
                   <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                    <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
-                    Owner{" "}
+                    <Crown size={10} strokeWidth={2.6} className="shrink-0 text-[color:#7C3AED]" />
+                    Owner
+                    <Avatar name={g.head} className="h-5 w-5 shrink-0 text-[7.5px]" />
                     <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
                     {roster.length}{" "}
                     {roster.length === 1 ? "person" : "people"}

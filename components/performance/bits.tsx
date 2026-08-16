@@ -595,6 +595,8 @@ const ROLE_META: Record<string, { label: string; color: string; icon: LucideIcon
 };
 
 export function RoleChip({ role }: { role: string }) {
+  // Same rule as RoleTag: an unrecognised role prints nothing, never a guess.
+  if (!role || !role.trim()) return null;
   const meta = ROLE_META[role.trim().toLowerCase()];
   if (!meta) return null;
   const Icon = meta.icon;

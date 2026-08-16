@@ -74,6 +74,16 @@ export function RoleTag({
   className?: string;
   size?: "sm" | "md";
 }) {
+  /**
+   * AN UNKNOWN ROLE IS NOT "REP" (bug, Anir, Aug 15: "in user groups, it says
+   * I'm a rep. What the fuck? That can be very misleading").
+   *
+   * roleKey() falls back to "rep" so callers always get a key, which is right
+   * for logic and wrong for a label: a directory lookup that misses — a name
+   * that does not match, a directory that has not loaded — then printed a
+   * confident "Rep" next to an admin. Nothing is better than wrong here.
+   */
+  if (!role || !role.trim()) return null;
   const meta = ROLE_META[roleKey(role)];
   const Icon = meta.icon;
   return (
