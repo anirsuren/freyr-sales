@@ -861,14 +861,59 @@ export function VerifyQueueCard({
       {(() => {
         const a = queue.find((x) => x.id === reviewId);
         if (!a) return null;
-        const goal = state.goals.find((g) => g.id === a.goalId);
-        const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
-        const close = () => {
-          setReviewId(null);
-          setSendingBack(false);
-          setNote("");
-        };
         return (
+          <ClaimReviewDialog
+            entry={a}
+            state={state}
+            run={run}
+            busy={busy}
+            onClose={() => setReviewId(null)}
+            onPreview={setPreview}
+          />
+        );
+      })()}
+
+      {preview && (
+        <EvidencePreview file={preview} onClose={() => setPreview(null)} />
+      )}
+    </Card>
+  );
+}
+
+
+/**
+ * REVIEW A CLAIM, THEN DECIDE — shared by the verification queue and the
+ * standalone goal page's rail, which until now still had the original
+ * one-click Verify and locked money with no dialog at all (Anir, Aug 16: "it
+ * auto-verified it. It didn't even ask me. It didn't open up any pop-up").
+ *
+ * One copy, so the two can never drift apart again.
+ */
+export function ClaimReviewDialog({
+  entry: a,
+  state,
+  run,
+  busy,
+  onClose,
+  onPreview,
+}: {
+  entry: PerfActual;
+  state: PerformanceState;
+  run: RunOp;
+  busy: boolean;
+  onClose: () => void;
+  onPreview?: (file: { name: string; url: string }) => void;
+}) {
+  const [sendingBack, setSendingBack] = useState(false);
+  const [note, setNote] = useState("");
+  const goal = state.goals.find((g) => g.id === a.goalId);
+  const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
+  const close = () => {
+    setSendingBack(false);
+    setNote("");
+    onClose();
+  };
+  return (
           /**
            * EVERYTHING YOU NEED TO MAKE THE CALL, IN ONE PLACE (Anir, Aug 16:
            * "I should be able to see all the information about that that I
@@ -1006,11 +1051,4 @@ export function VerifyQueueCard({
             </div>
           </Modal>
         );
-      })()}
-
-      {preview && (
-        <EvidencePreview file={preview} onClose={() => setPreview(null)} />
-      )}
-    </Card>
-  );
 }

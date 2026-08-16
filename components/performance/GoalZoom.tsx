@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Crown,
+  Eye,
   Paperclip,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -41,6 +42,7 @@ import {
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
+import { ClaimReviewDialog } from "./EntryCards";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
 import { weightedValue } from "@/lib/opportunitiesShared";
@@ -212,6 +214,31 @@ export function GoalZoom({
   /** Which period row has its own dropdown open (Anir, Aug 16: "when I click
    *  on Organization, it'll have another dropdown within the month"). Separate
    *  from `selected`, which stays put so boxes 2 and 3 always have a period. */
+  /** The claim being reviewed on the standalone page's verification rail. */
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  /**
+   * The standalone goal page renders this component from a SERVER component
+   * and cannot hand down a `run` callback, which is why the old rail posted
+   * straight to the API. The Review dialog needs one, so this is that same
+   * direct post wearing the RunOp shape — the page refreshes instead of
+   * mutating client state it does not own.
+   */
+  const runOrPost: RunOp =
+    run ??
+    (async (body) => {
+      try {
+        const res = await fetch("/api/performance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) return false;
+        router.refresh();
+        return true;
+      } catch {
+        return false;
+      }
+    });
   const [openPeriods, setOpenPeriods] = useState<Set<number>>(new Set());
   const togglePeriod = (i: number, additive: boolean) =>
     setOpenPeriods((prev) => {
@@ -1577,6 +1604,22 @@ export function GoalZoom({
           of the row is still a link to /performance/goal/[id] on every tab, so
           the expansion does not need to repeat it at the bottom. */}
 
+      {/* Same dialog the verification queue uses — one copy, so the two can
+          never drift apart again. */}
+      {!embedded && reviewId && (() => {
+        const entry = state.actuals.find((x) => x.id === reviewId);
+        if (!entry) return null;
+        return (
+          <ClaimReviewDialog
+            entry={entry}
+            state={state}
+            run={runOrPost}
+            busy={false}
+            onClose={() => setReviewId(null)}
+          />
+        );
+      })()}
+
       {!embedded && (
       <div className="mt-4">
       <Card className="overflow-hidden p-0">
@@ -1625,34 +1668,19 @@ export function GoalZoom({
                     <span className="text-[10.5px] text-text-tertiary tnum">
                       {a.date}
                     </span>
+                    {/* REVIEW, THEN DECIDE — never a one-click lock (Anir,
+                        Aug 16: "at the bottom where it auto-verified it. It
+                        didn't even ask me. It didn't open up any pop-up").
+                        This rail still had the original instant Verify button
+                        and bypassed the Review dialog the queue has used since
+                        this morning, so a stray click locked money. */}
                     {amHead && canVerify(a.person) && (
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (run) {
-                            await run(
-                              { op: "verify-actual", actualId: a.id },
-                              "Verified and locked. It counts now"
-                            );
-                            return;
-                          }
-                          const res = await fetch("/api/performance", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              op: "verify-actual",
-                              actualId: a.id,
-                            }),
-                          });
-                          if (res.ok) router.refresh();
-                          else {
-                            const data = await res.json().catch(() => ({}));
-                            alert(data.error ?? "Could not verify");
-                          }
-                        }}
-                        className="ml-auto cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[11.5px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+                        onClick={() => setReviewId(a.id)}
+                        className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(0,113,227,0.28)] bg-white px-3 py-1.5 text-[11.5px] font-bold text-blue-primary transition-all hover:bg-blue-light active:scale-[0.97]"
                       >
-                        Verify ✓
+                        <Eye size={12.5} strokeWidth={2.4} /> Review
                       </button>
                     )}
                   </div>

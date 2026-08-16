@@ -796,11 +796,36 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            /* The label lane above the track only exists when a schedule puts
-               a label in it (Anir, Aug 16: "you're not utilizing the top of
-               the progress bar... you can definitely save some space"). */
-            style={{ paddingTop: hasSchedule ? LANE + 8 : 0 }}
+            /* THE TOP LANE ALWAYS CARRIES SOMETHING (Anir, Aug 16: "I didn't
+               ask you to shorten it. I asked you to actually use it and put
+               some text on top"). With a schedule it holds "must be at"; with
+               none it holds where you are — so the space is used either way
+               and nothing sits on the track. */
+            style={{ paddingTop: LANE + 8 }}
           >
+            {/* WHERE YOU ARE, IN THE LANE ABOVE — when nothing else is using
+                it (Anir, Aug 16: "you're not using the top of the progress
+                bar... I didn't ask you to shorten it. I asked you to actually
+                use it and put some text on top"). With a schedule the top lane
+                belongs to "must be at" and this stays underneath, so the two
+                can never collide. */}
+            {!hasSchedule && (
+              <span
+                className="absolute flex flex-col items-center"
+                style={{ ...labelPos(aPct), top: 0 }}
+              >
+                <span
+                  className={cn(
+                    "whitespace-nowrap font-bold tnum",
+                    compact ? "text-[10px]" : "text-[12px]"
+                  )}
+                  style={{ color: accent }}
+                >
+                  {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
+                </span>
+              </span>
+            )}
+
             {/* WHERE THE GOAL'S OWN SCHEDULE SAYS IT SHOULD BE. */}
             {hasSchedule && (
             <span
@@ -859,7 +884,11 @@ export function PaceTimeline({
                 Absolutely positioned over the end-label row it landed on top
                 of "$0" and "$900K", and the space reserved for it opened a
                 dead band underneath them. */}
-            <div className="relative" style={{ height: GAP + LABEL }}>
+            <div
+              className="relative"
+              style={{ height: hasSchedule ? GAP + LABEL : 0 }}
+            >
+              {hasSchedule && (
               <span
                 className="absolute"
                 style={{ ...labelPos(aPct), top: GAP }}
@@ -874,6 +903,7 @@ export function PaceTimeline({
                   {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
                 </span>
               </span>
+              )}
             </div>
             {/* WHAT EACH END OF THE TRACK IS WORTH. */}
             <div className="mt-1 flex items-baseline justify-between gap-2">
