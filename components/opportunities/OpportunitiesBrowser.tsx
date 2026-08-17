@@ -862,25 +862,44 @@ export function OpportunitiesBrowser({
                                       </span>
                                     )}
                                     <span className="ml-auto flex items-center gap-3">
-                                      <b className="text-[13.5px] text-text-primary tnum">
-                                        {money(line.value)}
-                                      </b>
-                                      {line.confidence !== undefined && (
-                                        <>
-                                          <span className="flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.14)]">
-                                            <span
-                                              className="block h-full rounded-full bg-blue-primary"
-                                              style={{ width: `${line.confidence}%` }}
-                                            />
+                                      {/* THREE LAYERS AGAINST THE WHOLE DEAL
+                                          (Anir, Aug 17): grey track = the
+                                          opportunity's total, light blue =
+                                          this offering's share of it, strong
+                                          blue = the weighted slice. The
+                                          numbers wear their layer's colour. */}
+                                      <span className="relative flex h-2 w-40 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                        <span
+                                          className="absolute inset-y-0 left-0 rounded-full bg-blue-primary opacity-[0.32]"
+                                          style={{
+                                            width: `${o.value > 0 ? Math.min(100, (line.value / o.value) * 100) : 0}%`,
+                                          }}
+                                        />
+                                        <span
+                                          className="absolute inset-y-0 left-0 rounded-full bg-blue-primary"
+                                          style={{
+                                            width: `${o.value > 0 ? Math.min(100, (lineWeighted(line) / o.value) * 100) : 0}%`,
+                                          }}
+                                        />
+                                      </span>
+                                      <span className="whitespace-nowrap text-[12px] tnum">
+                                        <b className="text-blue-primary">
+                                          {line.confidence === undefined
+                                            ? "—"
+                                            : money(lineWeighted(line))}
+                                        </b>{" "}
+                                        <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
+                                          of {money(line.value)}
+                                        </span>{" "}
+                                        <span className="text-text-tertiary">
+                                          of {money(o.value)} deal
+                                        </span>
+                                        {line.confidence !== undefined && (
+                                          <span className="text-text-secondary">
+                                            {" "}· {line.confidence}%
                                           </span>
-                                          <span className="whitespace-nowrap text-[11.5px] text-text-secondary tnum">
-                                            {money(lineWeighted(line))} weighted ·{" "}
-                                            <span className="font-semibold text-[color:#0058B0]">
-                                              {line.confidence}%
-                                            </span>
-                                          </span>
-                                        </>
-                                      )}
+                                        )}
+                                      </span>
                                       {line.status ? (
                                         <span
                                           className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
