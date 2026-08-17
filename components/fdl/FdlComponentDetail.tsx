@@ -780,19 +780,25 @@ export function FdlComponentDetail({
                     }`}
                     style={{ background: release.current ? "#0071E3" : accent }}
                   />
-                  <div className="flex items-center gap-3 px-3.5 py-3">
+                  <div
+                    className="flex cursor-pointer items-center gap-3 px-3.5 py-3"
+                    // THE WHOLE RECTANGLE TOGGLES (Anir, Aug 17: "I should be
+                    // able to click on the whole rectangle... not just the
+                    // left side") — but NOT as one big <button>: that version
+                    // swallowed the date <input> nested inside it (Aug 15).
+                    // The handler sits on the DIV and steps aside for any
+                    // click that began on a real control, so Mark expected,
+                    // the date chip, download and delete all keep themselves.
+                    onClick={(e) => {
+                      const el = e.target as HTMLElement;
+                      if (el.closest("button, input, a, select, label")) return;
+                      toggleVersion(release.id);
+                    }}
+                  >
                     {/* THE WHOLE ROW OPENS THE VERSION — what is in it and who
                         is on it, with its own download (Suren, Aug 8: "for
                         version 4, when it clicks, give those features for
                         version 4 and then download"). */}
-                    {/* THE ROW IS NOT ONE BIG BUTTON ANY MORE.
-                        It used to be, and the date chip lived inside it — an
-                        <input> nested in a <button>, which is invalid HTML and
-                        which the browser resolves by letting the button eat
-                        every click. That is why "Set a date" did nothing at
-                        all (Anir, Aug 15). The chevron and the version name
-                        still toggle the row; the chips beside them are now
-                        ordinary siblings that can carry their own controls. */}
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <button
                         type="button"
@@ -2614,6 +2620,11 @@ export function FdlComponentDetail({
                 ariaLabel="Versions to compare"
                 collapsible={false}
                 minWidth={200}
+                // Room for two full version names — "V1.0.4 (current), V2.0.0"
+                // was ellipsizing at the old width (Anir, Aug 17: "this
+                // dropdown can be much bigger… so it doesn't say ...").
+                // Three or more picks still summarise to "N selected".
+                maxWidth={380}
               />
               {compareRows.length > 0 && (
                 <Tooltip label="Download this comparison">

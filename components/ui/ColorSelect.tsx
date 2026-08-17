@@ -655,11 +655,16 @@ export function MultiColorSelect({
   // growing this track.
   const baseTriggerWidth =
     width ?? Math.max(minWidth, Math.ceil(allLabel.length * 7.2 + 70));
+  // `maxWidth` alone is enough to let the summary grow the trigger — it used
+  // to require `width` too, so "V1.0.4 (current), V2.0.0" ellipsized at the
+  // floor width no matter what the caller allowed (Anir, Aug 17: "it can be
+  // much bigger… so it doesn't say ..."). 7.4px/char is measured-generous for
+  // the 13px face; the clamp is the caller's maxWidth.
   const triggerWidth =
-    width !== undefined && maxWidth !== undefined
+    maxWidth !== undefined
       ? Math.min(
           maxWidth,
-          Math.max(baseTriggerWidth, Math.ceil(summary.length * 6.2 + 61))
+          Math.max(baseTriggerWidth, Math.ceil(summary.length * 7.4 + 61))
         )
       : baseTriggerWidth;
   // Reserve the menu's final width before it opens. A selected row becomes

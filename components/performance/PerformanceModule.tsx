@@ -386,7 +386,14 @@ export function PerformanceModule({
     <div>
       {/* The title just says where you are; the tab bar below does the moving,
           so the heading no longer hides the other destinations behind it. */}
-      <div className="rise-in relative z-40 mb-6">
+      {/* NO ENTRANCE ANIMATION HERE — EVER (Anir, Aug 17, final warning: "the
+          four pills at the top should not animate" when switching rooms).
+          Every /performance/<tab> is a DIFFERENT Next segment, so this whole
+          module REMOUNTS on every switch and any entrance class on this
+          wrapper replays on the pills. The strip must render already-settled;
+          only the keyed tab-panel below animates. Do not put rise-in, page-in,
+          stagger or any keyframe class on this header. */}
+      <div className="relative z-40 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {/* THE SELECTOR IS THE TITLE. It used to be a heading that named the
               room and a tab bar UNDER it naming the same room again, so the
