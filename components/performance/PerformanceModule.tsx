@@ -29,7 +29,13 @@ import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { TargetSlider } from "./TargetSlider";
 import { useOpportunities } from "@/lib/useOpportunities";
-import { weightedValue } from "@/lib/opportunitiesShared";
+import {
+  weightedValue,
+  opportunityValue,
+  opportunityConfidence,
+  lineLabel,
+  lines as oppLines,
+} from "@/lib/opportunitiesShared";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
@@ -3840,6 +3846,11 @@ function LogActualModal({
   /** Real accounts, so the customer on a claim is the same string every time
    *  and a number can be traced back to the company that paid it. */
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  /** Offering id → name, from the same fetch the deal list already makes, so
+   *  an offering row on a deal can say what it is called. */
+  const [offeringNames, setOfferingNames] = useState<Map<string, string>>(
+    new Map()
+  );
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
   /**
@@ -3883,7 +3894,9 @@ function LogActualModal({
             o.offering_name || o.id,
           ])
         );
-        if (!alive || !Array.isArray(data.customers)) return;
+        if (!alive) return;
+        setOfferingNames(offeringName);
+        if (!Array.isArray(data.customers)) return;
         setAccounts(
           data.customers.map(
             (c: {
@@ -4491,13 +4504,33 @@ function LogActualModal({
                 Take the amount from this deal:
               </span>
               {[
-                { key: "value", label: "Contract value", amount: linkedOpp.value },
-                ...(linkedOpp.confidence === undefined
+                {
+                  key: "value",
+                  label:
+                    oppLines(linkedOpp).length > 1
+                      ? "Whole opportunity"
+                      : "Contract value",
+                  amount: opportunityValue(linkedOpp),
+                },
+                // EACH OFFERING ON ITS OWN (Suren, Aug 16: "when they select,
+                // they can select the total opportunity value or the offering
+                // value"). A deal is often signed one offering at a time, so
+                // the row that was actually signed is one click rather than a
+                // subtraction done in someone's head.
+                ...oppLines(linkedOpp).map((line, i) => ({
+                  key: line.id || `line-${i}`,
+                  label: lineLabel(
+                    line,
+                    (id) => offeringNames.get(id)
+                  ),
+                  amount: line.value,
+                })),
+                ...(opportunityConfidence(linkedOpp) === undefined
                   ? []
                   : [
                       {
                         key: "weighted",
-                        label: `Weighted · ${linkedOpp.confidence}%`,
+                        label: `Weighted · ${opportunityConfidence(linkedOpp)}%`,
                         amount: weightedValue(linkedOpp),
                       },
                     ]),
