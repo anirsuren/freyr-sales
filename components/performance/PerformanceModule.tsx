@@ -4498,6 +4498,11 @@ function LogActualModal({
                       (g.componentGoalIds?.length ?? 0) > 0
                         ? `${g.name} · adds up`
                         : g.name,
+                    // The category rides under the name (Anir, Aug 17: "when
+                    // I'm picking a goal, you gotta show me the category
+                    // too") — two goals can share a name across categories,
+                    // and the colour dot alone doesn't say which is which.
+                    description: `${g.type} · ${g.year}`,
                     color: typeMeta(g.type).color,
                     icon: typeMeta(g.type).icon,
                   })),
@@ -4951,11 +4956,10 @@ function LogActualModal({
               ))}
             </div>
           )}
-          {effectiveGoal?.unit === "currency" && evidence.length === 0 && (
-            <p className="mt-1 text-[10.5px] text-[color:#0058B0]">
-              Money claims need the contract attached before they can be submitted.
-            </p>
-          )}
+          {/* No standing helper line under Evidence (Anir, Aug 17: "you can
+              remove this text"). The rule still holds — submit refuses a money
+              claim without a file and says so then — and the hint icon beside
+              the label already explains it to anyone who asks. */}
         </div>
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">

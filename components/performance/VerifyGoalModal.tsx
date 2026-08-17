@@ -70,66 +70,67 @@ export function VerifyGoalModal({
       size="workflow"
       tall
     >
-      {/* THE SAME SHAPE AS REVIEW THIS CLAIM (Anir, Aug 16: "this is ugly. i
-          dont like the way this looks"). Four boxed tiles with wrapping
-          uppercase captions and a red slab under them made a decision screen
-          look like a form. One header strip carries the number, two dot rows
-          say what it is made of, and the proof is drawn rather than linked. */}
-      <div className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3">
-        <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "rgba(15,118,110,0.10)", color: "#0F766E" }}
-        >
-          <ShieldCheck size={19} strokeWidth={2} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-bold text-text-primary">
+      {/* DRAWN, NOT DESCRIBED (Anir, Aug 17: "I don't like the top. I don't
+          like the 'checked by a group owner.' I don't like the weird phrase
+          that says 'still somebody's word'… I need everything visually
+          shown"). The words are gone; the same two-tone bar every other
+          performance screen uses does the talking — solid is approved, washed
+          is waiting, the empty track is the distance to the goal. */}
+      <div className="rounded-xl bg-surface px-4 py-3.5">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <b className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">
             {goal.name}
-          </span>
-          <span className="block text-[12px] text-text-secondary">
-            {undoing ? "removing your sign-off" : "signing off"} · {goal.year}
-          </span>
-        </span>
-        <span className="shrink-0 text-right">
-          <b className="block text-[22px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
-            {fmtAmount(goal.unit, total)}
           </b>
-          <span className="block text-[11px] text-text-tertiary tnum">
-            {goal.target > 0
-              ? `${Math.round(pctMet(total, goal.target))}% of ${fmtAmount(goal.unit, goal.target)}`
-              : "no target set"}
+          <span className="shrink-0 text-right">
+            <b className="text-[22px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
+              {fmtAmount(goal.unit, total)}
+            </b>
+            <span className="ml-1.5 text-[11.5px] text-text-tertiary tnum">
+              logged
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
 
-      <div className="mt-3 rounded-xl bg-white px-3 py-2 ring-1 ring-inset ring-[color:var(--border-light)]">
-        <span className="flex items-center gap-2 py-[3px] text-[12px]">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:#16A34A]" />
-          <span className="min-w-0 flex-1 text-text-secondary">
-            Checked by a group owner
+        <div className="mt-2.5 flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+          <span
+            className="block h-full bg-blue-primary"
+            style={{
+              width: `${goal.target > 0 ? Math.min(100, (verified / goal.target) * 100) : verified > 0 ? (verified / total) * 100 : 0}%`,
+            }}
+          />
+          <span
+            className="block h-full bg-blue-primary opacity-[0.28]"
+            style={{
+              width: `${goal.target > 0 ? Math.min(100, (waiting / goal.target) * 100) : waiting > 0 ? (waiting / total) * 100 : 0}%`,
+            }}
+          />
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+            <span className="h-2 w-2 rounded-full bg-blue-primary" />
+            Approved
+            <b className="text-text-primary tnum">{fmtAmount(goal.unit, verified)}</b>
           </span>
-          <b className="shrink-0 text-text-primary tnum">
-            {fmtAmount(goal.unit, verified)}
-          </b>
-        </span>
-        <span className="flex items-center gap-2 py-[3px] text-[12px]">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.28]" />
-          <span className="min-w-0 flex-1 text-text-secondary">
-            Still somebody&apos;s word
+          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+            <span className="h-2 w-2 rounded-full bg-blue-primary opacity-[0.28]" />
+            Waiting
+            <b className="text-text-primary tnum">{fmtAmount(goal.unit, waiting)}</b>
           </span>
-          <b className="shrink-0 text-text-primary tnum">
-            {fmtAmount(goal.unit, waiting)}
-          </b>
-        </span>
+          {goal.target > 0 && (
+            <span className="ml-auto text-[11.5px] text-text-tertiary tnum">
+              Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
+              {Math.round(pctMet(total, goal.target))}% there
+            </span>
+          )}
+        </div>
       </div>
 
       {waiting > 0 && !undoing && (
-        /* One quiet line, not a slab. */
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
-            Signing off vouches for {fmtAmount(goal.unit, waiting)} nobody has
-            checked yet.
+            Signing off approves the {fmtAmount(goal.unit, waiting)} still
+            waiting below.
           </span>
         </p>
       )}
