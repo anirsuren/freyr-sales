@@ -73,15 +73,17 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /**
- * CONFIDENCE WEARS ITS MEANING (Anir, Aug 17: "color code the confidence").
- * This is exactly what the reserved colours are for — a probability is a
- * verdict, not an identity: green is close to won, amber is genuinely open,
- * red is a long shot. Bands follow the sheet's own habits (10/25/50/90).
+ * THE MONEY CELL IS BLUE-ON-BLUE, NOT A VERDICT WALL. The first cut coloured
+ * confidence red/amber/green and a young pipeline became a page of red —
+ * "red means horrible", and 25% confidence is not horrible, it is early
+ * (Anir, Aug 17: "this isn't what I envision… make it look more premium").
+ * So the cell uses the exact idiom every Performance bar already speaks:
+ * solid blue for the weighted share, washed blue for the rest of the total.
+ * The dropdown's per-row confidence keeps a quiet blue too.
  */
-function confidenceColor(pct: number): string {
-  if (pct >= 75) return "#16A34A";
-  if (pct >= 45) return "#C2410C";
-  return "#DC2626";
+const MONEY_BLUE = "#0071E3";
+function confidenceColor(_pct: number): string {
+  return MONEY_BLUE;
 }
 
 function money(n: number): string {
@@ -729,14 +731,11 @@ export function OpportunitiesBrowser({
                                 </span>
                               </span>
                             </div>
-                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                            <span className="flex h-2 w-full overflow-hidden rounded-full bg-[rgba(0,113,227,0.14)]">
                               {shownConfidence !== undefined && (
                                 <span
-                                  className="block h-full rounded-full"
-                                  style={{
-                                    width: `${shownConfidence}%`,
-                                    background: confidenceColor(shownConfidence),
-                                  }}
+                                  className="block h-full rounded-full bg-blue-primary transition-[width]"
+                                  style={{ width: `${shownConfidence}%` }}
                                 />
                               )}
                             </span>
@@ -746,10 +745,7 @@ export function OpportunitiesBrowser({
                                   no confidence set
                                 </span>
                               ) : (
-                                <span
-                                  className="font-bold"
-                                  style={{ color: confidenceColor(shownConfidence) }}
-                                >
+                                <span className="font-semibold text-[color:#0058B0]">
                                   {shownConfidence}% confident
                                 </span>
                               )}
