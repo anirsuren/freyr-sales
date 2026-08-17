@@ -65,6 +65,7 @@ const LEVEL_COLOR: Record<string, string> = {
   Pipeline: "#0071E3",
   "Go get": "#B4318F",
   "High confidence": "#0F766E",
+  Future: "#7C3AED",
 };
 
 const STATUS_COLOR: Record<string, string> = {

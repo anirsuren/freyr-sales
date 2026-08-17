@@ -27,6 +27,10 @@ export const OPPORTUNITY_LEVELS = [
   "Pipeline",
   "Go get",
   "High confidence",
+  /** Nobody has pitched yet — an intention with a client, an offering and a
+   *  target quarter (the workbook's Future Pipeline sheet). The deal starts
+   *  when someone flips this to Pipeline and fills in the money. */
+  "Future",
 ] as const;
 export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
 
