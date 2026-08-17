@@ -310,6 +310,8 @@ export type OpportunityInput = {
   customerId?: string;
   offeringIds?: string[];
   offeringLabels?: string[];
+  /** The offering rows, raw. normalizeLines is what decides their shape. */
+  lines?: unknown[];
   level?: string;
   status?: string;
   revenueType?: string;

@@ -36,6 +36,10 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     customerId: s(raw.customerId),
     offeringIds: list(raw.offeringIds),
     offeringLabels: list(raw.offeringLabels),
+    // The offering rows. Shape-checked in lib/opportunities (normalizeLines),
+    // which is the one place that decides what a row may contain, so this
+    // hands it the array and nothing more.
+    lines: Array.isArray(raw.lines) ? raw.lines : undefined,
     level: s(raw.level),
     status: s(raw.status),
     revenueType: s(raw.revenueType),
