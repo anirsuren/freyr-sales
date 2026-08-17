@@ -9,6 +9,7 @@ import {
   Check,
   Crown,
   ClipboardList,
+  ListChecks,
   Gauge,
   HelpCircle,
   LayoutGrid,
@@ -181,6 +182,7 @@ export function PerformanceModule({
   memberRoles,
   routeTab,
   routeMaster,
+  routeActivityMaster = false,
 }: {
   initial: PerformanceState;
   live: boolean;
@@ -207,6 +209,9 @@ export function PerformanceModule({
    */
   routeTab: Tab;
   routeMaster: boolean;
+  /** The Activity master is ITS OWN room (Anir, Aug 17: "activity master is
+   *  not goal master"). */
+  routeActivityMaster?: boolean;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -217,6 +222,7 @@ export function PerformanceModule({
   const [state, setState] = useState<PerformanceState>(initial);
   const tab = routeTab;
   const showMaster = routeMaster;
+  const showActivityMaster = routeActivityMaster;
   const chooseTab = (next: Tab) => router.push(`/performance/${next}`);
   const [busy, setBusy] = useState(false);
   // Which rooms this person gets: org for managers, groups when you head
@@ -311,6 +317,7 @@ export function PerformanceModule({
   // between its numbers and the master list, scoped to who you may assign.
   const setMasterFor = (next: Tab | null) =>
     router.push(next === null ? `/performance/${tab}` : "/performance/goal-master");
+  const goActivityMaster = () => router.push("/performance/activity-master");
   const [logOpen, setLogOpen] = useState(false);
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
@@ -404,13 +411,13 @@ export function PerformanceModule({
               the h1 stays for screen readers and the document outline. */}
           <div className="relative">
             <h1 className="sr-only">
-              {showMaster ? "Goal Master" : room.label}
+              {showActivityMaster ? "Activity Master" : showMaster ? "Goal Master" : room.label}
             </h1>
             <div className="inline-flex flex-wrap items-center gap-1 rounded-full bg-surface p-1">
               {visibleTabs.map((key) => {
                 const r = ROOMS[key];
                 const Icon = r.icon;
-                const active = !showMaster && key === tab;
+                const active = !showMaster && !showActivityMaster && key === tab;
                 return (
                   <button
                     key={key}
@@ -439,7 +446,7 @@ export function PerformanceModule({
               })}
               <button
                 type="button"
-                aria-pressed={showMaster}
+                aria-pressed={showMaster && !showActivityMaster}
                 onClick={() => setMasterFor(tab)}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
@@ -455,6 +462,25 @@ export function PerformanceModule({
                   style={showMaster ? { color: "#6D28D9" } : undefined}
                 />
                 Goal Master
+              </button>
+              <button
+                type="button"
+                aria-pressed={showActivityMaster}
+                onClick={goActivityMaster}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
+                  showActivityMaster
+                    ? "bg-white text-text-primary shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <ListChecks
+                  size={16}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={showActivityMaster ? { color: "#0F766E" } : undefined}
+                />
+                Activity Master
               </button>
             </div>
           </div>
@@ -486,8 +512,27 @@ export function PerformanceModule({
             say what is being counted. */}
       </div>
 
-      <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
-        {showMaster ? (
+      <div key={`${tab}-${showActivityMaster ? "activity-master" : showMaster ? "master" : "numbers"}`} className="tab-panel">
+        {showActivityMaster ? (
+          <>
+            <p className="max-w-[72ch] text-[13px] leading-relaxed text-text-secondary">
+              The company&apos;s activity vocabulary: what an activity is, how it
+              counts (a pilot is 1, a contract is its money), from which status
+              it starts counting, and which goals it may feed. Whoever logs an
+              activity picks its goal from the list set here.
+            </p>
+            <ActivityMasterCard
+              goals={state.goals.map((g) => ({
+                id: g.id,
+                name: g.name,
+                year: g.year,
+                type: g.type,
+              }))}
+              live={live}
+              isAdmin={isAdmin}
+            />
+          </>
+        ) : showMaster ? (
           <>
             <MasterTab
               state={state}
@@ -500,19 +545,6 @@ export function PerformanceModule({
               isManager={isManager}
               onNewGoal={() => setGoalModal({ editing: null })}
               onEditGoal={(g) => setGoalModal({ editing: g })}
-            />
-            {/* The activity master lives under the goal list: same idea,
-                entered in one place and read everywhere (Suren, Aug 17: "I
-                think we should keep a master list of these activities"). */}
-            <ActivityMasterCard
-              goals={state.goals.map((g) => ({
-                id: g.id,
-                name: g.name,
-                year: g.year,
-                type: g.type,
-              }))}
-              live={live}
-              isAdmin={isAdmin}
             />
           </>
         ) : tab === "org" ? (
