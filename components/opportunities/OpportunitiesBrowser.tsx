@@ -694,22 +694,41 @@ export function OpportunitiesBrowser({
                             </span>
                           )}
                         </td>
-                        {/* Value, weighted and confidence as ONE picture:
-                            the full track is the contract value, the filled
-                            part is what it is worth once confidence is
-                            applied, and the colour says how sure we are. */}
-                        <td className="px-4 py-3.5 text-right">
-                          <span className="inline-flex w-full max-w-[168px] flex-col items-end gap-1">
-                            <span className="flex w-full items-baseline justify-between gap-2">
-                              <span className="text-[11px] text-text-tertiary tnum">
-                                {shownConfidence !== undefined
-                                  ? money(weightedValue(o))
-                                  : ""}
+                        {/* Value, weighted and confidence as ONE picture —
+                            and each number SAYS which it is (Anir, Aug 17:
+                            "I need to see specifically this much is weighted,
+                            this much is the total. color code, not grey").
+                            Weighted wears the confidence colour, same as the
+                            bar it explains. */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex w-full flex-col gap-1">
+                            <div className="flex items-end justify-between gap-3">
+                              <span className="flex flex-col items-start">
+                                <span className="text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Weighted
+                                </span>
+                                <span
+                                  className="text-[13px] font-bold tnum"
+                                  style={
+                                    shownConfidence === undefined
+                                      ? undefined
+                                      : { color: confidenceColor(shownConfidence) }
+                                  }
+                                >
+                                  {shownConfidence === undefined
+                                    ? "—"
+                                    : money(weightedValue(o))}
+                                </span>
                               </span>
-                              <span className="text-[14px] font-semibold text-text-primary tnum">
-                                {money(o.value)}
+                              <span className="flex flex-col items-end">
+                                <span className="text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Total
+                                </span>
+                                <span className="text-[14px] font-bold text-text-primary tnum">
+                                  {money(o.value)}
+                                </span>
                               </span>
-                            </span>
+                            </div>
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               {shownConfidence !== undefined && (
                                 <span
@@ -721,7 +740,7 @@ export function OpportunitiesBrowser({
                                 />
                               )}
                             </span>
-                            <span className="text-[10.5px] tnum">
+                            <span className="text-right text-[10.5px] tnum">
                               {shownConfidence === undefined ? (
                                 <span className="text-text-tertiary">
                                   no confidence set
@@ -740,7 +759,7 @@ export function OpportunitiesBrowser({
                                 </span>
                               )}
                             </span>
-                          </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3.5">
                           {o.status ? (
