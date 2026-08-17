@@ -153,15 +153,17 @@ export function ActivityMasterCard({
   return (
     <Card className="mt-5 overflow-hidden p-0">
       <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
-        {/* The room's intro says what this is — the old header hint repeated
-            it word for word one line lower. */}
         <b className="text-[13.5px] text-text-primary">Activity master</b>
-        <span className="ml-auto text-[11.5px] text-text-tertiary">
-          {writable
-            ? "Changes apply the next time anyone logs an activity"
-            : live
-              ? "Admins edit this list"
-              : "Sample data — switch to Real mode to change the master"}
+        <span className="ml-auto">
+          {writable ? (
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus size={14} strokeWidth={2.2} /> New activity
+            </Button>
+          ) : (
+            <span className="text-[11.5px] text-text-tertiary">
+              {live ? "Admins edit this list" : "Sample data — switch to Real mode to change the master"}
+            </span>
+          )}
         </span>
       </div>
 
@@ -188,7 +190,7 @@ export function ActivityMasterCard({
                 {state.activities.map((a) => {
                   const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
                   return (
-                    <th key={a.id} className="px-2 py-2.5 text-left">
+                    <th key={a.id} className="border-l border-border-light px-3 py-2.5 text-left">
                       <span className="flex items-center gap-1.5">
                         <span
                           className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
@@ -226,7 +228,7 @@ export function ActivityMasterCard({
                 {state.activities.map((a) => {
                   const cMeta = CONTRIBUTION_STYLE[a.contribution];
                   return (
-                    <td key={a.id} className="px-2 py-3 align-middle">
+                    <td key={a.id} className="border-l border-border-light px-3 py-3 align-middle">
                       {writable ? (
                         <ColorSelect
                           value={a.contribution}
@@ -271,7 +273,7 @@ export function ActivityMasterCard({
                 {state.activities.map((a) => {
                   const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
                   return (
-                    <td key={a.id} className="px-2 py-3 align-middle">
+                    <td key={a.id} className="border-l border-border-light px-3 py-3 align-middle">
                       {a.contribution === "none" ? (
                         <span className="text-[12px] text-text-tertiary">—</span>
                       ) : writable ? (
@@ -319,7 +321,7 @@ export function ActivityMasterCard({
                   </span>
                 </td>
                 {state.activities.map((a) => (
-                  <td key={a.id} className="px-2 py-3 align-top">
+                  <td key={a.id} className="border-l border-border-light px-3 py-3 align-top">
                     <span className="flex min-w-0 flex-col items-start gap-1.5">
                       {a.goalIds.map((gid) => {
                         const g = goalById.get(gid);
@@ -383,6 +385,7 @@ export function ActivityMasterCard({
                           <MultiPicker
                             variant="dropdown"
                             single
+                            side="right"
                             ariaLabel={`Connect a goal to ${a.label}`}
                             placeholder="＋ Connect a goal"
                             emptyLabel="No goals on the master yet."
@@ -415,21 +418,7 @@ export function ActivityMasterCard({
             </tbody>
           </table>
 
-          {writable && (
-            <div className="flex items-center gap-2.5 border-t border-border-light px-4 py-3">
-              {/* A popup like every other add in the app (Anir, Aug 17: "the
-                  add button is bad… it should be a pop-up like all the other
-                  ones"). Adding is Suren's own spec: "you should have the
-                  ability to add more later, yes" — a new activity joins as a
-                  column. */}
-              <Button onClick={() => setAddOpen(true)}>
-                <Plus size={14} strokeWidth={2.2} /> New activity
-              </Button>
-              <span className="text-[11px] text-text-tertiary">
-                The five built-ins stay — history is written in them.
-              </span>
-            </div>
-          )}
+
         </div>
       )}
 

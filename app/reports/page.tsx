@@ -9,6 +9,7 @@ import {
   CalendarClock,
   Grid3X3,
   ArrowRight,
+  Waypoints,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -249,6 +250,36 @@ export default async function ReportsPage() {
             </div>
             <Link
               href="/reports/customer-offering-heat-map"
+              className="group inline-flex h-9 items-center gap-2 rounded-md border border-border bg-white px-3.5 text-[12px] font-semibold text-text-primary transition-[transform,background-color,border-color] hover:border-blue-subtle hover:bg-blue-light active:scale-[0.97]"
+            >
+              Open report
+              <ArrowRight
+                size={14}
+                strokeWidth={2}
+                className="text-blue-primary transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,118,110,0.10)] text-[color:#0F766E]">
+            <Waypoints size={19} strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Activity → Goal flow
+            </h2>
+            <p className="mt-1 max-w-[720px] text-[12px] leading-relaxed text-text-secondary">
+              How much each activity actually poured into each goal — built
+              from results stamped with the activity they came from.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-5">
+            <Link
+              href="/reports/activity-goal-flow"
               className="group inline-flex h-9 items-center gap-2 rounded-md border border-border bg-white px-3.5 text-[12px] font-semibold text-text-primary transition-[transform,background-color,border-color] hover:border-blue-subtle hover:bg-blue-light active:scale-[0.97]"
             >
               Open report

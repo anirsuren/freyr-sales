@@ -100,6 +100,7 @@ function DropdownPicker({
   ariaLabel,
   single = false,
   topOptions = [],
+  side = "bottom",
 }: {
   options: MultiPickerOption[];
   selected: string[];
@@ -111,6 +112,8 @@ function DropdownPicker({
   single?: boolean;
   /** Rows above the categories, picked directly (e.g. "type it yourself"). */
   topOptions?: MultiPickerOption[];
+  /** "right" hangs the panel beside the trigger instead of under it. */
+  side?: "bottom" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -165,10 +168,39 @@ function DropdownPicker({
     const rect = ref.current?.getBoundingClientRect();
     // Wide enough that "Lead Generation and Outreach" never ellipsizes
     // (Anir: "make it longer so there's no ...").
-    if (rect) setMenuStyle(floatingMenuStyle(rect, Math.max(rect.width, 400), 260));
+    if (rect) setMenuStyle(sideStyle(rect));
     setQuery("");
     setLevel(null);
     setOpen(true);
+  };
+
+  /** Panel placement: beside the trigger when side="right" and there is
+   *  room, else the usual below/above from floatingMenuStyle. */
+  const sideStyle = (rect: DOMRect): FloatingMenuStyle => {
+    const width = Math.max(side === "right" ? 400 : rect.width, 400);
+    if (side === "right") {
+      const edge = 12;
+      const maxHeight = Math.min(440, window.innerHeight - edge * 2);
+      if (rect.right + 8 + width <= window.innerWidth - edge) {
+        return {
+          position: "fixed",
+          left: rect.right + 8,
+          top: Math.max(edge, Math.min(rect.top, window.innerHeight - maxHeight - edge)),
+          width,
+          maxHeight,
+        };
+      }
+      if (rect.left - width - 8 >= edge) {
+        return {
+          position: "fixed",
+          left: rect.left - width - 8,
+          top: Math.max(edge, Math.min(rect.top, window.innerHeight - maxHeight - edge)),
+          width,
+          maxHeight,
+        };
+      }
+    }
+    return floatingMenuStyle(rect, width, 260);
   };
 
   useEffect(() => {
@@ -203,10 +235,7 @@ function DropdownPicker({
     const onScroll = () => {
       const rect = ref.current?.getBoundingClientRect();
       if (!rect) return;
-      setMenuStyle((prev) => {
-        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 400);
-        return floatingMenuStyle(rect, width, 260);
-      });
+      setMenuStyle(() => sideStyle(rect));
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
@@ -436,6 +465,7 @@ export function MultiPicker({
   ariaLabel,
   single = false,
   topOptions,
+  side,
 }: {
   options: MultiPickerOption[];
   selected: string[];
@@ -449,6 +479,8 @@ export function MultiPicker({
   single?: boolean;
   /** Dropdown variant only: direct-pick rows above the categories. */
   topOptions?: MultiPickerOption[];
+  /** Dropdown variant only: "right" hangs the panel beside the trigger. */
+  side?: "bottom" | "right";
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -479,6 +511,7 @@ export function MultiPicker({
         ariaLabel={ariaLabel}
         single={single}
         topOptions={topOptions}
+        side={side}
       />
     );
 

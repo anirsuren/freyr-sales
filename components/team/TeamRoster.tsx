@@ -928,7 +928,12 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           </div>
                         }
                       >
-                        <Link href={`/analytics/reps/${r.slug}`} className="flex items-center gap-3 group">
+                        {/* ONLY THE NAME NAVIGATES (Anir, Aug 17: "when my
+                            cursor is on the name, that's the only time it
+                            should take me to the separate page — otherwise
+                            just the dropdown"). Everything else in this cell
+                            falls through to the row's own toggle. */}
+                        <span className="flex items-center gap-3">
                           {r.lastSeenAt !== undefined ? (
                             <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
                               <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
@@ -944,9 +949,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           )}
                           <span className="min-w-0">
                             <span className="flex items-center gap-2">
-                              <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary truncate">
+                              <Link
+                                href={`/analytics/reps/${r.slug}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="truncate text-[14px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+                              >
                                 {r.name}
-                              </span>
+                              </Link>
                               <RoleTag role={r.role} size="sm" className="shrink-0" />
                               {/* WHICH ONE AM I (Anir, Aug 13: "can you
                                   highlight who I am? I think that would be
@@ -977,7 +986,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               />
                             ) : null}
                           </span>
-                        </Link>
+                        </span>
                       </HoverCard>
                     </td>
                     <td className="px-4 py-3.5">

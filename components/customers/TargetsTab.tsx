@@ -64,9 +64,11 @@ export function TargetsTab({
   }, [targets, query, domain, tier]);
 
   const potential = shown.reduce((s, t) => s + (t.potential ?? 0), 0);
-  const owned = shown.filter((t) => t.owner).length;
   const memberSet = new Set(memberNames.map((n) => n.trim().toLowerCase()));
   const inApp = (name: string) => memberSet.has(name.trim().toLowerCase());
+  // Only an app member counts as an owner — sheet names wait for their
+  // accounts (Anir, Aug 17).
+  const owned = shown.filter((t) => t.owner && inApp(t.owner)).length;
   // A CON door at connection 1 or 2 is a warm intro waiting to be used.
   const warm = shown.filter(
     (t) => t.degreeOfConnection && /^[12]/.test(t.degreeOfConnection)
@@ -182,7 +184,10 @@ export function TargetsTab({
                             </span>
                             {t.companyRevenue && (
                               <span className="block text-[11px] text-text-tertiary tnum">
-                                {t.companyRevenue} revenue
+                                {t.companyRevenue.includes("$")
+                                  ? t.companyRevenue
+                                  : t.companyRevenue.replace(/^(~?)\s*/, "$1$$")}{" "}
+                                revenue
                               </span>
                             )}
                           </span>
@@ -213,30 +218,24 @@ export function TargetsTab({
                         )}
                       </td>
                       <td className="px-2 py-2.5">
-                        {t.owner ? (
-                          inApp(t.owner) ? (
-                            <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-primary">
-                              <Avatar name={t.owner} className="h-5 w-5 shrink-0 text-[7px]" />
-                              <span className="truncate">{t.owner}</span>
-                            </span>
-                          ) : (
-                            /* A name from the sheet, NOT an app member (Anir,
-                               Aug 17: "if the owner is not in the app, you
-                               can't just say that — it has to be like real
-                               data"). No member avatar for them — a dashed
-                               ring says exactly what we know. */
-                            <span
-                              className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary"
-                              title={`${t.owner} is named in the sheet but is not in the app yet`}
-                            >
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-dashed border-[color:#B9C0CC] text-text-tertiary">
-                                <UserRound size={11} strokeWidth={2} aria-hidden="true" />
-                              </span>
-                              <span className="truncate">{t.owner}</span>
-                            </span>
-                          )
+                        {t.owner && inApp(t.owner) ? (
+                          <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-primary">
+                            <Avatar name={t.owner} className="h-5 w-5 shrink-0 text-[7px]" />
+                            <span className="truncate">{t.owner}</span>
+                          </span>
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">Unassigned</span>
+                          /* Not an app member = no owner, full stop (Anir,
+                             Aug 17: "if these people don't exist, just say
+                             there's no owner — when they make accounts they
+                             will get assigned by one of us"). The sheet's
+                             name survives only on hover, for the day they
+                             join. */
+                          <span
+                            className="text-[11.5px] text-text-tertiary"
+                            title={t.owner ? `The sheet names ${t.owner}, who is not in the app yet` : undefined}
+                          >
+                            No owner yet
+                          </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">
