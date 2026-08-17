@@ -71,6 +71,7 @@ import {
   type PerformanceState,
   type PrimaryGoal,
   type Subgoal,
+  actualValue,
 } from "@/lib/performanceShared";
 import {
   PersonSelect,
@@ -539,6 +540,11 @@ export function PerformanceModule({
                 name: g.name,
                 year: g.year,
                 type: g.type,
+                // The chip shows how full the goal is OVERALL — context for
+                // wiring, never this activity's own share (Anir, Aug 17:
+                // "you can show how much of the goal is filled, right?").
+                target: g.target ?? 0,
+                actual: actualValue(state.actuals, g),
               }))}
               live={live}
               isAdmin={isAdmin}

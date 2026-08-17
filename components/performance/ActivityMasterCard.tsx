@@ -90,7 +90,15 @@ export function ActivityMasterCard({
   live,
   isAdmin,
 }: {
-  goals: { id: string; name: string; year: number; type: string }[];
+  goals: {
+    id: string;
+    name: string;
+    year: number;
+    type: string;
+    /** The goal's annual target and what is achieved so far, ALL sources. */
+    target?: number;
+    actual?: number;
+  }[];
   live: boolean;
   /** Only admins change the master (Suren, Aug 17: "yes exactly"). */
   isAdmin: boolean;
@@ -317,12 +325,22 @@ export function ActivityMasterCard({
                         const g = goalById.get(gid);
                         if (!g) return null;
                         const t = typeMeta(g.type);
+                        const pct =
+                          g.target && g.target > 0
+                            ? Math.min(100, Math.round(((g.actual ?? 0) / g.target) * 100))
+                            : null;
                         return (
                           <span
                             key={gid}
-                            className="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            title={
+                              pct === null
+                                ? `${g.name} — no target set yet`
+                                : `${g.name} is ${pct}% filled overall — all sources, not just ${a.label}`
+                            }
+                            className="inline-flex max-w-full flex-col gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
                             style={{ background: `${t.color}14`, color: t.color }}
                           >
+                            <span className="flex items-center gap-1">
                             <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
                             <span className="truncate">{g.name}</span>
                             {writable && (
@@ -344,6 +362,15 @@ export function ActivityMasterCard({
                               >
                                 <X size={10.5} strokeWidth={2.8} />
                               </button>
+                            )}
+                            </span>
+                            {pct !== null && (
+                              <span className="relative block h-[3px] w-full overflow-hidden rounded-full bg-white/70">
+                                <span
+                                  className="absolute inset-y-0 left-0 rounded-full"
+                                  style={{ width: `${pct}%`, background: t.color }}
+                                />
+                              </span>
                             )}
                           </span>
                         );

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
 import {
   floatingMenuStyle,
   menuMotionVars,
@@ -80,7 +80,7 @@ function OptionRow({
       ) : (
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
       )}
-      <span className={cn("min-w-0 flex-1 truncate", on && "font-semibold")}>{o.label}</span>
+      <span className={cn("min-w-0 flex-1 whitespace-normal leading-snug", on && "font-semibold")}>{o.label}</span>
       {o.sub && (
         <span className="shrink-0 text-[11px] text-text-tertiary tnum">{o.sub}</span>
       )}
@@ -115,13 +115,13 @@ function DropdownPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
-  // "A dropdown within a dropdown" (Anir, Aug 17): clicking a category in
-  // the first panel flies out a SECOND panel with that category's goals —
-  // never an accordion folding open in place.
-  const [sub, setSub] = useState<{ group: string; style: CSSProperties } | null>(null);
+  // ONE PANEL THAT NAVIGATES (Anir, Aug 17: "when I click on a category it
+  // should go there, not have 2 separate tables — just one table"): clicking
+  // a category swaps the SAME panel to that category's options, with a back
+  // row on top. No fly-out, no accordion.
+  const [level, setLevel] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const subRef = useRef<HTMLDivElement>(null);
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const q = query.trim().toLowerCase();
@@ -146,7 +146,7 @@ function DropdownPicker({
   const pick = (id: string) => {
     onToggle(id);
     if (single) {
-      setSub(null);
+      setLevel(null);
       setOpen(false);
     }
   };
@@ -163,34 +163,12 @@ function DropdownPicker({
       return;
     }
     const rect = ref.current?.getBoundingClientRect();
-    if (rect) setMenuStyle(floatingMenuStyle(rect, Math.max(rect.width, 320), 220));
+    // Wide enough that "Lead Generation and Outreach" never ellipsizes
+    // (Anir: "make it longer so there's no ...").
+    if (rect) setMenuStyle(floatingMenuStyle(rect, Math.max(rect.width, 400), 260));
     setQuery("");
-    setSub(null);
+    setLevel(null);
     setOpen(true);
-  };
-
-  /** Where the fly-out sits: to the right of the first panel when there is
-   *  room, otherwise to its left; top-aligned with the row that opened it. */
-  const flyoutStyle = (rowRect: DOMRect): CSSProperties => {
-    const menuRect = menuRef.current?.getBoundingClientRect();
-    const width = 300;
-    const maxHeight = Math.min(300, window.innerHeight - 24);
-    const edge = 12;
-    const anchor = menuRect ?? rowRect;
-    // Outside right → outside left → and when the first panel is so wide there
-    // is no outside (the goals menu spans the modal), stack it INSIDE along
-    // the panel's right edge, top-aligned with the row that opened it.
-    const left =
-      anchor.right + 4 + width <= window.innerWidth - edge
-        ? anchor.right + 4
-        : anchor.left - width - 4 >= edge
-          ? anchor.left - width - 4
-          : Math.max(edge, anchor.right - width - 8);
-    const top = Math.max(
-      edge,
-      Math.min(rowRect.top, window.innerHeight - maxHeight - edge)
-    );
-    return { position: "fixed", left, top, width, maxHeight };
   };
 
   useEffect(() => {
@@ -200,36 +178,34 @@ function DropdownPicker({
       if (
         ref.current &&
         !ref.current.contains(target) &&
-        !menuRef.current?.contains(target) &&
-        !subRef.current?.contains(target)
+        !menuRef.current?.contains(target)
       ) {
-        setSub(null);
+        setLevel(null);
         setOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // Escape peels one layer: the fly-out first, then the menu.
-      setSub((prev) => {
-        if (prev) return null;
+      // Escape steps BACK first, then closes.
+      setLevel((prev) => {
+        if (prev !== null) return null;
         setOpen(false);
         return null;
       });
     };
     const onResize = () => {
-      setSub(null);
+      setLevel(null);
       setOpen(false);
     };
     // Fixed-position menu, measured at open — re-anchor on scroll so it never
     // strands mid-viewport (same lesson as ColorSelect, Aug 8). The fly-out
     // just closes: its row may have scrolled anywhere.
     const onScroll = () => {
-      setSub(null);
       const rect = ref.current?.getBoundingClientRect();
       if (!rect) return;
       setMenuStyle((prev) => {
-        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 320);
-        return floatingMenuStyle(rect, width, 220);
+        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 400);
+        return floatingMenuStyle(rect, width, 260);
       });
     };
     document.addEventListener("mousedown", onDoc);
@@ -340,7 +316,7 @@ function DropdownPicker({
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
-                    setSub(null);
+                    setLevel(null);
                   }}
                   placeholder="Search…"
                   aria-label={`Search ${ariaLabel ?? "options"}`}
@@ -363,6 +339,28 @@ function DropdownPicker({
                   rowIndex={rowIndex++}
                 />
               ))
+            ) : level !== null ? (
+              <>
+                {/* Inside a category: a back row, then its options — the
+                    SAME panel, navigated. */}
+                <button
+                  type="button"
+                  onClick={() => setLevel(null)}
+                  className="mb-0.5 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-bold uppercase tracking-[0.04em] text-text-secondary transition-colors hover:bg-surface"
+                >
+                  <ChevronLeft size={14} strokeWidth={2.4} className="shrink-0" />
+                  {level}
+                </button>
+                {(groups.find((g) => g.name === level)?.items ?? []).map((o) => (
+                  <OptionRow
+                    key={o.id}
+                    o={o}
+                    on={selected.includes(o.id)}
+                    onPick={() => pick(o.id)}
+                    rowIndex={rowIndex++}
+                  />
+                ))}
+              </>
             ) : (
               <>
                 {topOptions.map((o) => (
@@ -374,35 +372,21 @@ function DropdownPicker({
                     rowIndex={rowIndex++}
                   />
                 ))}
-                {/* One row per category — each row OPENS A SECOND
-                    DROPDOWN beside this one; search on top cuts across all of
-                    them (Anir: "just show me a dropdown of the 4 categories
-                    and then i can click into each one, or of course just
-                    search at the top"). */}
+                {/* One row per category — clicking GOES THERE (Anir: "when I
+                    click on a category it should go there… just one table"),
+                    full names, never an ellipsis. */}
                 {groups.map((g) => {
                   if (!g.name) return null;
                   const pickedHere = g.items.filter((o) => selected.includes(o.id)).length;
                   const head = g.items[0];
                   const accent = head?.color || "#0071E3";
                   const HeadIcon = head?.icon;
-                  const on = sub?.group === g.name;
                   return (
                     <button
                       key={g.name}
                       type="button"
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setSub((prev) =>
-                          prev?.group === g.name
-                            ? null
-                            : { group: g.name, style: flyoutStyle(rect) }
-                        );
-                      }}
-                      aria-expanded={on}
-                      className={cn(
-                        "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface",
-                        on && "bg-surface"
-                      )}
+                      onClick={() => setLevel(g.name)}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
                     >
                       {HeadIcon ? (
                         <span
@@ -414,17 +398,13 @@ function DropdownPicker({
                       ) : (
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
                       )}
-                      <span className="min-w-0 flex-1 truncate text-[12px] font-bold uppercase tracking-[0.04em]" style={{ color: accent }}>
+                      <span className="min-w-0 flex-1 whitespace-normal text-[12px] font-bold uppercase leading-snug tracking-[0.04em]" style={{ color: accent }}>
                         {g.name}
                       </span>
                       <span className="shrink-0 text-[11px] font-semibold text-text-tertiary tnum">
                         {pickedHere > 0 ? `${pickedHere} of ${g.items.length}` : g.items.length}
                       </span>
-                      <ChevronRight
-                        size={13}
-                        strokeWidth={2.2}
-                        className={cn("shrink-0 transition-colors", on ? "text-blue-primary" : "text-text-tertiary")}
-                      />
+                      <ChevronRight size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
                     </button>
                   );
                 })}
@@ -441,28 +421,7 @@ function DropdownPicker({
           document.body
         )}
 
-      {open && sub && typeof document !== "undefined" &&
-        createPortal(
-          <div
-            ref={subRef}
-            role="listbox"
-            aria-label={sub.group}
-            aria-multiselectable
-            className="menu-in z-[111] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
-            style={{ ...sub.style, ["--menu-origin" as string]: "top left", ["--menu-dir" as string]: 1 }}
-          >
-            {(groups.find((g) => g.name === sub.group)?.items ?? []).map((o, i) => (
-              <OptionRow
-                key={o.id}
-                o={o}
-                on={selected.includes(o.id)}
-                onPick={() => pick(o.id)}
-                rowIndex={i}
-              />
-            ))}
-          </div>,
-          document.body
-        )}
+
     </div>
   );
 }
