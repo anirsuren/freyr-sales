@@ -4716,14 +4716,22 @@ function LogActualModal({
                 // value"). A deal is often signed one offering at a time, so
                 // the row that was actually signed is one click rather than a
                 // subtraction done in someone's head.
-                ...oppLines(linkedOpp).map((line, i) => ({
-                  key: line.id || `line-${i}`,
-                  label: lineLabel(
-                    line,
-                    (id) => offeringNames.get(id)
-                  ),
-                  amount: line.value,
-                })),
+                ...oppLines(linkedOpp).map((line, i, all) => {
+                  const label = lineLabel(line, (id) => offeringNames.get(id));
+                  // Two rows of the same offering (ARR + OTS) made two chips
+                  // both saying "GRI" — the revenue type tells them apart.
+                  const dupe = all.filter(
+                    (x) => lineLabel(x, (id) => offeringNames.get(id)) === label
+                  ).length > 1;
+                  return {
+                    key: line.id || `line-${i}`,
+                    label:
+                      dupe && line.revenueType
+                        ? `${label} ${line.revenueType}`
+                        : label,
+                    amount: line.value,
+                  };
+                }),
                 ...(opportunityConfidence(linkedOpp) === undefined
                   ? []
                   : [
