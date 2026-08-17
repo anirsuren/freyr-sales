@@ -89,7 +89,10 @@ export function LiveMarketIntelDashboard({
       >
 
         <>
-      <section className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* The stagger entrance every other page's cards got in the Aug
+          sweep — Market Intel shipped after it and was missed (Anir, Aug 17:
+          "the four cards at the top don't animate at all"). */}
+      <section className="stagger mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           icon={group === "competitor" ? Swords : Building2}
           label={group === "competitor" ? "Competitors tracked" : "Customers tracked"}

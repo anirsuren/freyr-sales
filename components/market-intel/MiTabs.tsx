@@ -122,7 +122,17 @@ export function MiTabs({
           {current.subtitle}
         </p>
       </div>
-      {switching ? <MiContentSkeleton /> : children}
+      {/* The bucket's content ENTERS instead of popping (Anir, Aug 17: the
+          switch to Market Intelligence "is not good. Look at that animation").
+          Keyed by bucket so each pick replays the entrance; the pill row above
+          sits outside and never moves. */}
+      {switching ? (
+        <MiContentSkeleton />
+      ) : (
+        <div key={active} className="tab-panel">
+          {children}
+        </div>
+      )}
     </>
   );
 }
