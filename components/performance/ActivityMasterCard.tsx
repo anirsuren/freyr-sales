@@ -179,244 +179,228 @@ export function ActivityMasterCard({
               horrible."): four aligned columns, one slim row per activity,
               the explanations live in the headers instead of inside every
               control. */}
-          {/* ACTIVITIES ARE THE COLUMNS (Anir, Aug 17: "make these columns
-              instead of rows — don't we have a heatmap of this?"): the same
-              orientation as the customer heat map, activities across the top,
-              their rules down the side. */}
-          <table className="w-full min-w-[980px] table-fixed border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border-light">
-                <th className="w-[150px] px-4 py-2.5" />
-                {state.activities.map((a) => {
-                  const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
-                  return (
-                    <th key={a.id} className="border-l border-border-light px-3 py-2.5 text-left">
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
-                          style={{ background: `${a.color}16`, color: a.color }}
-                        >
-                          <Icon size={12.5} strokeWidth={2.4} aria-hidden="true" />
-                          <span className="truncate">{a.label}</span>
-                        </span>
-                        {writable && !a.builtIn && (
-                          <button
-                            type="button"
-                            title={`Remove ${a.label}`}
-                            aria-label={`Remove ${a.label}`}
-                            disabled={busy}
-                            onClick={() => setConfirmRemove(a)}
-                            className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-                          >
-                            <Trash2 size={12} strokeWidth={2.2} />
-                          </button>
-                        )}
-                      </span>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light">
-              <tr>
-                <td className="px-4 py-3 align-middle text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <span className="flex items-center gap-1">
-                    How it counts
-                    <InfoHint text={"Counts as 1 — each one adds one; a pilot done is 1, the next is 2.\nDollar value — the activity's money is the number.\nPerson types the number — whoever logs it types how much it adds.\nNot counted — logged for the record only."} />
-                  </span>
-                </td>
-                {state.activities.map((a) => {
-                  const cMeta = CONTRIBUTION_STYLE[a.contribution];
-                  return (
-                    <td key={a.id} className="border-l border-border-light px-3 py-3 align-middle">
-                      {writable ? (
-                        <ColorSelect
-                          value={a.contribution}
-                          ariaLabel={`How ${a.label} counts`}
-                          collapsible={false}
-                          dense
-                          minWidth={150}
-                          className="w-full"
-                          onChange={(v) =>
-                            void post(
-                              { op: "update", id: a.id, contribution: v },
-                              `${a.label} now counts as ${CONTRIBUTION_META[v as keyof typeof CONTRIBUTION_META]?.label.toLowerCase() ?? v}`
-                            )
-                          }
-                          options={CONTRIBUTIONS.map((c) => ({
-                            value: c,
-                            label: CONTRIBUTION_META[c].label,
-                            color: CONTRIBUTION_STYLE[c].color,
-                            icon: CONTRIBUTION_STYLE[c].icon,
-                          }))}
-                        />
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                          style={{ background: `${cMeta.color}16`, color: cMeta.color }}
-                        >
-                          <cMeta.icon size={11} strokeWidth={2.6} aria-hidden="true" />
-                          {CONTRIBUTION_META[a.contribution].label}
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-              <tr>
-                <td className="px-4 py-3 align-middle text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <span className="flex items-center gap-1">
-                    Counts from
-                    <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
-                  </span>
-                </td>
-                {state.activities.map((a) => {
-                  const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
-                  return (
-                    <td key={a.id} className="border-l border-border-light px-3 py-3 align-middle">
-                      {a.contribution === "none" ? (
-                        <span className="text-[12px] text-text-tertiary">—</span>
-                      ) : writable ? (
-                        <ColorSelect
-                          value={a.countsFrom}
-                          ariaLabel={`When ${a.label} starts counting`}
-                          collapsible={false}
-                          dense
-                          minWidth={150}
-                          className="w-full"
-                          onChange={(v) =>
-                            void post(
-                              { op: "update", id: a.id, countsFrom: v },
-                              `${a.label} counts ${COUNTS_FROM_META[v as keyof typeof COUNTS_FROM_META]?.label.toLowerCase() ?? v}`
-                            )
-                          }
-                          options={COUNTS_FROM.map((c) => ({
-                            value: c,
-                            label: COUNTS_FROM_META[c].label,
-                            color: COUNTS_FROM_STYLE[c].color,
-                            icon: COUNTS_FROM_STYLE[c].icon,
-                          }))}
-                        />
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                          style={{ background: `${fMeta.color}16`, color: fMeta.color }}
-                        >
-                          {(() => {
-                            const I = fMeta.icon;
-                            return <I size={11} strokeWidth={2.6} aria-hidden="true" />;
-                          })()}
-                          {COUNTS_FROM_META[a.countsFrom].label}
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-              <tr>
-                <td className="px-4 py-3 align-top text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <span className="flex items-center gap-1">
-                    Goals it may feed
-                    <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it — connect several and they choose at logging time."} />
-                  </span>
-                </td>
-                {state.activities.map((a) => (
-                  <td key={a.id} className="border-l border-border-light px-3 py-3 align-top">
-                    <span className="flex min-w-0 flex-col items-start gap-1.5">
-                      {a.goalIds.map((gid) => {
-                        const g = goalById.get(gid);
-                        if (!g) return null;
-                        const t = typeMeta(g.type);
-                        const pct =
-                          g.target && g.target > 0
-                            ? Math.min(100, Math.round(((g.actual ?? 0) / g.target) * 100))
-                            : null;
-                        return (
-                          <span
-                            key={gid}
-                            title={
-                              pct === null
-                                ? `${g.name} — no target set yet`
-                                : `${g.name} is ${pct}% filled overall — all sources, not just ${a.label}`
-                            }
-                            className="inline-flex max-w-full flex-col gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
-                            style={{ background: `${t.color}14`, color: t.color }}
-                          >
-                            <span className="flex items-center gap-1">
-                            <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
-                            <span className="truncate">{g.name}</span>
-                            {writable && (
-                              <button
-                                type="button"
-                                aria-label={`Disconnect ${g.name} from ${a.label}`}
-                                disabled={busy}
-                                onClick={() =>
-                                  void post(
-                                    {
-                                      op: "update",
-                                      id: a.id,
-                                      goalIds: a.goalIds.filter((x) => x !== gid),
-                                    },
-                                    `${g.name} disconnected from ${a.label}`
-                                  )
-                                }
-                                className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
-                              >
-                                <X size={10.5} strokeWidth={2.8} />
-                              </button>
-                            )}
-                            </span>
-                            {pct !== null && (
-                              <span className="relative block h-[3px] w-full overflow-hidden rounded-full bg-white/70">
-                                <span
-                                  className="absolute inset-y-0 left-0 rounded-full"
-                                  style={{ width: `${pct}%`, background: t.color }}
-                                />
-                              </span>
-                            )}
-                          </span>
-                        );
-                      })}
-                      {a.goalIds.length === 0 && (!writable || a.contribution === "none") && (
-                        <span className="text-[11.5px] text-text-tertiary">—</span>
-                      )}
-                      {writable && a.contribution !== "none" && (
-                        <span className="w-full max-w-[190px]">
-                          <MultiPicker
-                            variant="dropdown"
-                            single
-                            side="right"
-                            ariaLabel={`Connect a goal to ${a.label}`}
-                            placeholder="＋ Connect a goal"
-                            emptyLabel="No goals on the master yet."
-                            selected={[]}
-                            onToggle={(id) => {
-                              if (!id || a.goalIds.includes(id)) return;
-                              const g = goalById.get(id);
-                              void post(
-                                { op: "update", id: a.id, goalIds: [...a.goalIds, id] },
-                                g ? `${a.label} now feeds ${g.name}` : undefined
-                              );
-                            }}
-                            options={goals
-                              .filter((g) => !a.goalIds.includes(g.id))
-                              .map((g) => ({
-                                id: g.id,
-                                label: g.name,
-                                sub: String(g.year),
-                                color: typeMeta(g.type).color,
-                                icon: typeMeta(g.type).icon,
-                                group: g.type || "Other",
-                              }))}
-                          />
-                        </span>
-                      )}
+          {/* ONE CARD PER ACTIVITY (Anir, Aug 17: "is a table even the right
+              thing?… what's the point of this page?"). Each card reads like a
+              sentence — what logging this activity MEANS: how it counts, from
+              which status, into which goals. An uncounted activity is one
+              quiet line instead of a row of dashes. */}
+          <div className="grid grid-cols-1 items-stretch gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+            {state.activities.map((a) => {
+              const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
+              const cMeta = CONTRIBUTION_STYLE[a.contribution];
+              const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
+              return (
+                <div
+                  key={a.id}
+                  className="flex h-full flex-col gap-3 rounded-xl border border-border-light bg-white p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12.5px] font-semibold"
+                      style={{ background: `${a.color}16`, color: a.color }}
+                    >
+                      <Icon size={13} strokeWidth={2.4} aria-hidden="true" />
+                      {a.label}
                     </span>
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+                    {writable && !a.builtIn && (
+                      <button
+                        type="button"
+                        title={`Remove ${a.label}`}
+                        aria-label={`Remove ${a.label}`}
+                        disabled={busy}
+                        onClick={() => setConfirmRemove(a)}
+                        className="ml-auto cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                      >
+                        <Trash2 size={13} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      How it counts
+                      <InfoHint text={"Counts as 1 — each one adds one.\nDollar value — the activity's money is the number.\nPerson types the number — typed at logging time.\nNot counted — logged for the record only."} />
+                    </span>
+                    {writable ? (
+                      <ColorSelect
+                        value={a.contribution}
+                        ariaLabel={`How ${a.label} counts`}
+                        collapsible={false}
+                        dense
+                        minWidth={150}
+                        className="w-full"
+                        onChange={(v) =>
+                          void post(
+                            { op: "update", id: a.id, contribution: v },
+                            `${a.label} now counts as ${CONTRIBUTION_META[v as keyof typeof CONTRIBUTION_META]?.label.toLowerCase() ?? v}`
+                          )
+                        }
+                        options={CONTRIBUTIONS.map((c) => ({
+                          value: c,
+                          label: CONTRIBUTION_META[c].label,
+                          color: CONTRIBUTION_STYLE[c].color,
+                          icon: CONTRIBUTION_STYLE[c].icon,
+                        }))}
+                      />
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        style={{ background: `${cMeta.color}16`, color: cMeta.color }}
+                      >
+                        <cMeta.icon size={11} strokeWidth={2.6} aria-hidden="true" />
+                        {CONTRIBUTION_META[a.contribution].label}
+                      </span>
+                    )}
+                  </div>
+
+                  {a.contribution === "none" ? (
+                    <p className="mt-auto rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed text-text-secondary">
+                      Logged for the record — it feeds no goal.
+                    </p>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          Counts from
+                          <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
+                        </span>
+                        {writable ? (
+                          <ColorSelect
+                            value={a.countsFrom}
+                            ariaLabel={`When ${a.label} starts counting`}
+                            collapsible={false}
+                            dense
+                            minWidth={150}
+                            className="w-full"
+                            onChange={(v) =>
+                              void post(
+                                { op: "update", id: a.id, countsFrom: v },
+                                `${a.label} counts ${COUNTS_FROM_META[v as keyof typeof COUNTS_FROM_META]?.label.toLowerCase() ?? v}`
+                              )
+                            }
+                            options={COUNTS_FROM.map((c) => ({
+                              value: c,
+                              label: COUNTS_FROM_META[c].label,
+                              color: COUNTS_FROM_STYLE[c].color,
+                              icon: COUNTS_FROM_STYLE[c].icon,
+                            }))}
+                          />
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                            style={{ background: `${fMeta.color}16`, color: fMeta.color }}
+                          >
+                            {(() => {
+                              const I = fMeta.icon;
+                              return <I size={11} strokeWidth={2.6} aria-hidden="true" />;
+                            })()}
+                            {COUNTS_FROM_META[a.countsFrom].label}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-h-0 flex-1">
+                        <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          Goals it may feed
+                          <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it at logging time."} />
+                        </span>
+                        <span className="flex min-w-0 flex-col items-start gap-1.5">
+                          {a.goalIds.map((gid) => {
+                            const g = goalById.get(gid);
+                            if (!g) return null;
+                            const t = typeMeta(g.type);
+                            const pct =
+                              g.target && g.target > 0
+                                ? Math.min(100, Math.round(((g.actual ?? 0) / g.target) * 100))
+                                : null;
+                            return (
+                              <span
+                                key={gid}
+                                title={
+                                  pct === null
+                                    ? `${g.name} — no target set yet`
+                                    : `${g.name} is ${pct}% filled overall — all sources, not just ${a.label}`
+                                }
+                                className="inline-flex max-w-full flex-col gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
+                                style={{ background: `${t.color}14`, color: t.color }}
+                              >
+                                <span className="flex items-center gap-1">
+                                  <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
+                                  <span className="truncate">{g.name}</span>
+                                  {writable && (
+                                    <button
+                                      type="button"
+                                      aria-label={`Disconnect ${g.name} from ${a.label}`}
+                                      disabled={busy}
+                                      onClick={() =>
+                                        void post(
+                                          {
+                                            op: "update",
+                                            id: a.id,
+                                            goalIds: a.goalIds.filter((x) => x !== gid),
+                                          },
+                                          `${g.name} disconnected from ${a.label}`
+                                        )
+                                      }
+                                      className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
+                                    >
+                                      <X size={10.5} strokeWidth={2.8} />
+                                    </button>
+                                  )}
+                                </span>
+                                {pct !== null && (
+                                  <span className="relative block h-[3px] w-full overflow-hidden rounded-full bg-white/70">
+                                    <span
+                                      className="absolute inset-y-0 left-0 rounded-full"
+                                      style={{ width: `${pct}%`, background: t.color }}
+                                    />
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })}
+                          {a.goalIds.length === 0 && !writable && (
+                            <span className="text-[11.5px] text-text-tertiary">none yet</span>
+                          )}
+                          {writable && (
+                            <span className="w-full max-w-[190px]">
+                              <MultiPicker
+                                variant="dropdown"
+                                single
+                                side="right"
+                                ariaLabel={`Connect a goal to ${a.label}`}
+                                placeholder="＋ Connect a goal"
+                                emptyLabel="No goals on the master yet."
+                                selected={[]}
+                                onToggle={(id) => {
+                                  if (!id || a.goalIds.includes(id)) return;
+                                  const g = goalById.get(id);
+                                  void post(
+                                    { op: "update", id: a.id, goalIds: [...a.goalIds, id] },
+                                    g ? `${a.label} now feeds ${g.name}` : undefined
+                                  );
+                                }}
+                                options={goals
+                                  .filter((g) => !a.goalIds.includes(g.id))
+                                  .map((g) => ({
+                                    id: g.id,
+                                    label: g.name,
+                                    sub: String(g.year),
+                                    color: typeMeta(g.type).color,
+                                    icon: typeMeta(g.type).icon,
+                                    group: g.type || "Other",
+                                  }))}
+                              />
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
 
         </div>
