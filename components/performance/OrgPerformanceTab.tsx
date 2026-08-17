@@ -1102,7 +1102,23 @@ function GoalRows({
               with the name and the category; here it labels the one number it
               is about. */}
           <span className="mb-1 block">
-            <PacePill pace={pace} size="sm" />
+            {/* "No schedule" IS THE WAY IN (Anir, Aug 17: "if it says 'no
+                schedule', I should be able to click on that, and it should
+                open up the edit thing") — straight into the goal editor,
+                where the milestones live. Every other verdict stays a fact,
+                not a control. */}
+            {pace === "unscheduled" && live ? (
+              <button
+                type="button"
+                onClick={() => onEditGoal(goal)}
+                title="No schedule set — click to open this goal and add one"
+                className="cursor-pointer rounded-full transition-[opacity,box-shadow] hover:opacity-80 hover:shadow-[0_0_0_2px_rgba(142,152,168,0.25)]"
+              >
+                <PacePill pace={pace} size="sm" />
+              </button>
+            ) : (
+              <PacePill pace={pace} size="sm" />
+            )}
           </span>
           <MiniBar
             actual={actual}
