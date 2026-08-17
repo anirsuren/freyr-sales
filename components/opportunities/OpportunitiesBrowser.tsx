@@ -561,9 +561,7 @@ export function OpportunitiesBrowser({
                       three columns asking the reader to compute it: the track
                       is the contract value, the fill is the weighted share,
                       the colour is the confidence verdict. */}
-                  <th className="w-[200px] px-4 py-2.5 text-right">
-                    Value · weighted
-                  </th>
+                  <th className="w-[200px] px-4 py-2.5">Value · weighted</th>
                   <th className="w-[132px] px-4 py-2.5">Status</th>
                   <th className="w-[104px] px-4 py-2.5">Est. sign</th>
                   <th className="w-[84px] px-4 py-2.5 text-right">Actions</th>
@@ -702,8 +700,11 @@ export function OpportunitiesBrowser({
                             this much is the total. color code, not grey").
                             Weighted wears the confidence colour, same as the
                             bar it explains. */}
+                        {/* Left-anchored like its neighbours (Anir: "it's
+                            right-aligned. It's not left-aligned"). Fixed
+                            width, so the totals still stack on one line. */}
                         <td className="px-4 py-3.5">
-                          <div className="flex w-full flex-col gap-1">
+                          <div className="flex w-[168px] flex-col gap-1">
                             <div className="flex items-end justify-between gap-3">
                               <span className="flex flex-col items-start">
                                 <span className="text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -739,7 +740,7 @@ export function OpportunitiesBrowser({
                                 />
                               )}
                             </span>
-                            <span className="text-right text-[10.5px] tnum">
+                            <span className="text-[10.5px] tnum">
                               {shownConfidence === undefined ? (
                                 <span className="text-text-tertiary">
                                   no confidence set
