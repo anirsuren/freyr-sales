@@ -72,6 +72,18 @@ const STATUS_COLOR: Record<string, string> = {
   Lost: "#DC2626",
 };
 
+/**
+ * CONFIDENCE WEARS ITS MEANING (Anir, Aug 17: "color code the confidence").
+ * This is exactly what the reserved colours are for — a probability is a
+ * verdict, not an identity: green is close to won, amber is genuinely open,
+ * red is a long shot. Bands follow the sheet's own habits (10/25/50/90).
+ */
+function confidenceColor(pct: number): string {
+  if (pct >= 75) return "#16A34A";
+  if (pct >= 45) return "#C2410C";
+  return "#DC2626";
+}
+
 function money(n: number): string {
   if (!Number.isFinite(n)) return "$0";
   const abs = Math.abs(n);
@@ -540,9 +552,16 @@ export function OpportunitiesBrowser({
                   <th className="w-[21%] px-4 py-2.5">Customer</th>
                   <th className="px-4 py-2.5">Opportunity</th>
                   <th className="w-[13%] px-4 py-2.5">Offerings</th>
-                  <th className="w-[104px] px-4 py-2.5 text-right">Value</th>
-                  <th className="w-[110px] px-4 py-2.5 text-right">Confidence</th>
-                  <th className="w-[96px] px-4 py-2.5 text-right">Weighted</th>
+                  {/* ONE COLUMN FOR THE MONEY (Anir, Aug 17: "does weighted
+                      have any relation to value? you could probably merge the
+                      two… and color-code it, like a bar"). Weighted IS value ×
+                      confidence, so the bar draws the relation instead of
+                      three columns asking the reader to compute it: the track
+                      is the contract value, the fill is the weighted share,
+                      the colour is the confidence verdict. */}
+                  <th className="w-[200px] px-4 py-2.5 text-right">
+                    Value · weighted
+                  </th>
                   <th className="w-[132px] px-4 py-2.5">Status</th>
                   <th className="w-[104px] px-4 py-2.5">Est. sign</th>
                   <th className="w-[84px] px-4 py-2.5 text-right">Actions</th>
@@ -675,46 +694,53 @@ export function OpportunitiesBrowser({
                             </span>
                           )}
                         </td>
-                        {/* THE TOTAL IS THE SUM OF THE ROWS (Anir, Aug 16:
-                            "opportunity value is the total value, but then
-                            each offering has its own opportunity value"), so
-                            it says how many rows made it rather than looking
-                            like a number somebody typed. */}
-                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
-                          {money(o.value)}
-                          {rows.length > 1 ? (
-                            <span className="ml-1 text-[10px] font-bold text-text-tertiary">
-                              {rows.length} rows
-                            </span>
-                          ) : (
-                            o.revenueType && (
-                              <span className="ml-1 text-[10px] font-bold text-text-tertiary">
-                                {o.revenueType}
+                        {/* Value, weighted and confidence as ONE picture:
+                            the full track is the contract value, the filled
+                            part is what it is worth once confidence is
+                            applied, and the colour says how sure we are. */}
+                        <td className="px-4 py-3.5 text-right">
+                          <span className="inline-flex w-full max-w-[168px] flex-col items-end gap-1">
+                            <span className="flex w-full items-baseline justify-between gap-2">
+                              <span className="text-[11px] text-text-tertiary tnum">
+                                {shownConfidence !== undefined
+                                  ? money(weightedValue(o))
+                                  : ""}
                               </span>
-                            )
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] tnum">
-                          {shownConfidence === undefined ? (
-                            <span className="text-text-tertiary">—</span>
-                          ) : (
-                            /* The number, and the number DRAWN (Anir, Aug 17:
-                               "for confidence, can you show that visually?").
-                               Blue like every other measure — confidence is
-                               not a health verdict, so no traffic colours. */
-                            <span className="inline-flex flex-col items-end gap-1">
-                              <span>{shownConfidence}%</span>
-                              <span className="flex h-1 w-16 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                              <span className="text-[14px] font-semibold text-text-primary tnum">
+                                {money(o.value)}
+                              </span>
+                            </span>
+                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                              {shownConfidence !== undefined && (
                                 <span
-                                  className="block h-full rounded-full bg-blue-primary"
-                                  style={{ width: `${shownConfidence}%` }}
+                                  className="block h-full rounded-full"
+                                  style={{
+                                    width: `${shownConfidence}%`,
+                                    background: confidenceColor(shownConfidence),
+                                  }}
                                 />
-                              </span>
+                              )}
                             </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] text-text-secondary tnum">
-                          {shownConfidence === undefined ? "—" : money(weightedValue(o))}
+                            <span className="text-[10.5px] tnum">
+                              {shownConfidence === undefined ? (
+                                <span className="text-text-tertiary">
+                                  no confidence set
+                                </span>
+                              ) : (
+                                <span
+                                  className="font-bold"
+                                  style={{ color: confidenceColor(shownConfidence) }}
+                                >
+                                  {shownConfidence}% confident
+                                </span>
+                              )}
+                              {rows.length > 1 && (
+                                <span className="text-text-tertiary">
+                                  {" "}· {rows.length} rows
+                                </span>
+                              )}
+                            </span>
+                          </span>
                         </td>
                         <td className="px-4 py-3.5">
                           {o.status ? (
@@ -781,7 +807,7 @@ export function OpportunitiesBrowser({
                       {open && (
                         <tr className="!border-t-0 bg-surface">
                           <td
-                            colSpan={9}
+                            colSpan={7}
                             className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                           >
                             {/* THE OFFERING ROWS, IN FULL (Suren, Aug 16:
@@ -837,7 +863,12 @@ export function OpportunitiesBrowser({
                                           {line.confidence === undefined ? (
                                             <span className="text-text-tertiary">—</span>
                                           ) : (
-                                            `${line.confidence}%`
+                                            <span
+                                              className="font-semibold"
+                                              style={{ color: confidenceColor(line.confidence) }}
+                                            >
+                                              {line.confidence}%
+                                            </span>
                                           )}
                                         </td>
                                         <td className="text-right text-[12.5px] text-text-secondary tnum">
