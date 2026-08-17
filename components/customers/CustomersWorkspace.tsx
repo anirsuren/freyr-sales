@@ -73,13 +73,15 @@ export function CustomersWorkspace({
         </div>
       </div>
 
-      {view === "customers" ? (
-        <CustomersBrowser {...customersProps} />
-      ) : (
-        <div key="targets" className="tab-panel">
+      {/* Same entrance the performance rooms play when the tab flips — keyed
+          on the view so BOTH directions animate; the pills above hold still. */}
+      <div key={view} className="tab-panel">
+        {view === "customers" ? (
+          <CustomersBrowser {...customersProps} />
+        ) : (
           <TargetsTab targets={targets} live={live} />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

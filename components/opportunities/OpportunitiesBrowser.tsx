@@ -565,6 +565,9 @@ export function OpportunitiesBrowser({
         </div>
       </div>
 
+      {/* Same entrance the performance rooms play when the tab flips — the
+          pills above hold still, only the content below arrives. */}
+      <div key={pipeView} className="tab-panel">
       {pipeView === "future" ? (
         <FutureSection
           futures={futures}
@@ -1132,6 +1135,7 @@ export function OpportunitiesBrowser({
       </Card>
       </>
       )}
+      </div>
 
       {!live && (
         <p className="mt-3 text-[12px] text-text-tertiary">
@@ -2017,7 +2021,6 @@ function OfferingRowsEditor({
                           options={CURRENCIES.map((c) => ({
                             value: c.code,
                             label: c.code,
-                            description: c.name,
                             color: c.code === "USD" ? "#0071E3" : "#0F766E",
                             short: c.symbol.trim(),
                           }))}
@@ -2058,6 +2061,8 @@ function OfferingRowsEditor({
                           ariaLabel={`Status for row ${i + 1}`}
                           collapsible={false}
                           className="w-full"
+                          minWidth={110}
+                          dense
                           onChange={(val) => set(i, { status: val })}
                           options={[
                             { value: "", label: "Not set", color: "#8E98A8" },
