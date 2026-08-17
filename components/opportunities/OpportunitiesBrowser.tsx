@@ -1395,6 +1395,7 @@ function OfferingRowsEditor({
                           value={r.offeringId}
                           ariaLabel={`Offering for row ${i + 1}`}
                           collapsible={false}
+                          autoOpen={!r.offeringId && !r.offeringLabel}
                           className="w-full"
                           minWidth={360}
                           onChange={(val) =>

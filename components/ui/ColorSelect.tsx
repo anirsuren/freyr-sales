@@ -129,6 +129,7 @@ export function ColorSelect({
   compactTrigger = false,
   triggerLabel,
   dense = false,
+  autoOpen = false,
 }: {
   value: string;
   options: ColorOption[];
@@ -144,12 +145,31 @@ export function ColorSelect({
   triggerLabel?: string;
   /** Reduce internal padding/gaps without hiding the visible label. */
   dense?: boolean;
+  /** Open the menu the moment the select mounts — for flows where picking IS
+   *  the next step (Anir, Aug 17: "my eyes should go there… I don't know
+   *  where to go after I click add offering"). */
+  autoOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   // Long lists get a search box (Anir: "all big dropdowns like this with
   // over 10 things definitely need a search bar").
   const [menuQuery, setMenuQuery] = useState("");
+  // autoOpen: the menu is already up when the control appears, search focused
+  // — clicking "Add another offering" lands you IN the picker, no hunting.
+  useEffect(() => {
+    if (!autoOpen) return;
+    const t = window.setTimeout(() => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (rect) {
+        const desiredWidth = Math.max(rect.width, 240);
+        setMenuStyle(floatingMenuStyle(rect, desiredWidth, 190));
+      }
+      setOpen(true);
+    }, 80);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const searchable = options.length > 10;
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
