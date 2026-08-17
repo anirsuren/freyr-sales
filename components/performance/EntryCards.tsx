@@ -11,6 +11,7 @@ import {
   PenLine,
   RotateCcw,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
 import {
   entryStatus,
@@ -682,22 +683,63 @@ export function VerifyQueueCard({
   const heads = headedGroups(state, meName);
   if (heads.length === 0) return null;
   const queue = verificationQueue(state, meName);
+  /* URGENT WHEN LOADED, QUIET WHEN CLEAR (Anir, Aug 17: "most people are
+     gonna just pass right by it — it has to stick out so they verify it").
+     With claims waiting the card wears the amber attention treatment: a
+     coloured rail, a tinted header, an alert icon and the money-on-hold
+     total. Amber is a status colour used AS a status — action required —
+     never decoration. Empty, it settles back to the calm blue card. */
+  const pending = queue.length > 0;
+  const onHold = queue.reduce((s, q) => s + (q.amount || 0), 0);
   return (
-    <Card className="overflow-hidden border-[rgba(0,113,227,0.35)] p-0">
-      <div className="flex items-center gap-2 border-b border-border-light px-4 py-2.5">
-        <h3 className="text-[13.5px] font-semibold text-text-primary">
-          Waiting for your verification
+    <Card
+      className={cn(
+        "relative overflow-hidden p-0",
+        pending ? "border-[rgba(217,119,6,0.5)]" : "border-[rgba(0,113,227,0.35)]"
+      )}
+    >
+      {pending && (
+        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[5px] bg-[color:#D97706]" />
+      )}
+      <div
+        className={cn(
+          "flex items-center gap-2 border-b px-4 py-2.5",
+          pending
+            ? "border-[rgba(217,119,6,0.25)] bg-[rgba(217,119,6,0.07)]"
+            : "border-border-light"
+        )}
+      >
+        {pending && (
+          <AlertCircle
+            size={16}
+            strokeWidth={2.4}
+            aria-hidden="true"
+            className="shrink-0 text-[color:#B45309]"
+          />
+        )}
+        <h3
+          className={cn(
+            "text-[13.5px] font-semibold",
+            pending ? "text-[color:#92400E]" : "text-text-primary"
+          )}
+        >
+          {pending ? "Action needed — waiting for your verification" : "Waiting for your verification"}
         </h3>
         <span
           className={cn(
             "rounded-full px-2 py-0.5 text-[10.5px] font-bold",
-            queue.length
-              ? "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]"
+            pending
+              ? "bg-[color:#D97706] text-white"
               : "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]"
           )}
         >
           {queue.length || "all clear"}
         </span>
+        {pending && onHold > 0 && (
+          <span className="text-[11.5px] font-semibold text-[color:#B45309] tnum">
+            {fmtAmount("currency", onHold)} on hold until you do
+          </span>
+        )}
         {/* ONE SENTENCE, WITH THE GROUP NAME AS A TAG INSIDE IT (Anir,
             Aug 15). Two goes at this: "you own test. Only you can lock these"
             read like a typo, and pilling the name mid-sentence just turned it

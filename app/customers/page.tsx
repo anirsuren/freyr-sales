@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
-import { CustomersBrowser } from "@/components/customers/CustomersBrowser";
+import { CustomersWorkspace } from "@/components/customers/CustomersWorkspace";
+import { readTargets } from "@/lib/targets";
 import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
@@ -120,11 +121,16 @@ export default async function CustomersPage() {
     })
   );
 
+  const { targets } = await readTargets();
   return (
     <div>
-      <CustomersBrowser
-        customers={enriched}
-        includeDemoTeam={getDataMode() === "mock"}
+      <CustomersWorkspace
+        customersProps={{
+          customers: enriched,
+          includeDemoTeam: getDataMode() === "mock",
+        }}
+        targets={targets}
+        live={getDataMode() !== "mock"}
       />
     </div>
   );
