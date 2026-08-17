@@ -6,6 +6,7 @@ import { readPerformance } from "@/lib/performance";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
+import { visiblePeople } from "@/lib/performanceShared";
 import { getDataMode } from "@/lib/dataMode";
 import { OpportunitiesBrowser } from "@/components/opportunities/OpportunitiesBrowser";
 
@@ -50,6 +51,8 @@ export default async function OpportunitiesPage() {
         year: g.year,
         type: g.type,
       }))}
+      rates={perf.rates ?? {}}
+      people={visiblePeople(perf, me.name, me.role)}
       meName={me.name}
       canEdit={isManagerOrAdmin(me.role)}
       live={getDataMode() === "live"}

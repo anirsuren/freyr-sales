@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn } from "@/lib/utils";
 import { refreshOpportunities } from "@/lib/useOpportunities";
+import { useStoredView } from "@/lib/useStoredView";
 import {
   OPPORTUNITY_LEVELS,
   OPPORTUNITY_STATUSES,
@@ -49,7 +50,7 @@ import {
   offeringTypeColors,
 } from "@/components/ui/OfferingChip";
 import { typeMeta } from "@/components/performance/bits";
-import { CURRENCIES, fmtMoney } from "@/lib/currency";
+import { CURRENCIES, convert, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 
 /**
@@ -107,6 +108,8 @@ type DraftLine = {
   /** A catalogue offering, or "" when it is being typed as free text. */
   offeringId: string;
   offeringLabel: string;
+  /** True only when the person explicitly picked "Not in the catalogue". */
+  offeringOther: boolean;
   revenueType: string;
   value: string;
   /** What the client pays in their own money — display only, USD counts. */
@@ -123,6 +126,11 @@ type Draft = {
   name: string;
   customer: string;
   customerId: string;
+  /** True only when the person explicitly picked "Not on the list" — a fresh
+   *  form shows a neutral "Pick the account…" instead of looking like the
+   *  type-it option chose itself (Anir, Aug 17: "why does it auto select
+   *  not on the list?"). */
+  customerOther: boolean;
   rows: DraftLine[];
   goalIds: string[];
   level: string;
@@ -138,6 +146,7 @@ function blankLine(): DraftLine {
     key: `new-${lineSeq}`,
     offeringId: "",
     offeringLabel: "",
+    offeringOther: false,
     revenueType: "",
     value: "",
     localValue: "",
@@ -153,6 +162,7 @@ const BLANK: Draft = {
   name: "",
   customer: "",
   customerId: "",
+  customerOther: false,
   // Opens on one empty row, because an opportunity with no offering on it is
   // not a thing anyone wants to save.
   rows: [],
@@ -183,6 +193,7 @@ function toDraft(
               ? (resolveOfferingLabel(l.offeringLabel, catalogue) ?? "")
               : ""),
           offeringLabel: l.offeringLabel ?? "",
+          offeringOther: !l.offeringId && !!l.offeringLabel,
           revenueType: l.revenueType ?? "",
           value: l.value ? String(l.value) : "",
           localValue: l.localValue ? String(l.localValue) : "",
@@ -201,6 +212,7 @@ function toDraft(
               ? (resolveOfferingLabel(o.offeringLabels[0], catalogue) ?? "")
               : ""),
           offeringLabel: o.offeringLabels[0] ?? "",
+          offeringOther: o.offeringIds.length === 0 && !!o.offeringLabels[0],
           revenueType: o.revenueType ?? "",
           value: o.value ? String(o.value) : "",
           status: o.status ?? "",
@@ -214,6 +226,7 @@ function toDraft(
     name: o.name,
     customer: o.customer,
     customerId: o.customerId ?? "",
+    customerOther: !o.customerId && !!o.customer,
     rows,
     goalIds: [...(o.goalIds ?? [])],
     level: o.level,
@@ -229,6 +242,8 @@ export function OpportunitiesBrowser({
   offeringTypes = [],
   customers,
   goals,
+  rates = {},
+  people = [],
   meName,
   canEdit,
   live,
@@ -239,12 +254,33 @@ export function OpportunitiesBrowser({
   offeringTypes?: { name: string }[];
   customers: { id: string; name: string }[];
   goals: { id: string; name: string; year: number; type?: string }[];
+  /** Admin-entered FX rates (units per USD) — a EUR entry converts itself. */
+  rates?: CurrencyRates;
+  /** The roster the Owner dropdown offers. */
+  people?: string[];
   meName: string;
   canEdit: boolean;
   live: boolean;
 }) {
   const { toast } = useToast();
   const [list, setList] = useState<Opportunity[]>(opportunities);
+  /** CURRENT | FUTURE — two tabs, one page (Anir, Aug 17: "shouldn't it be
+   *  separate, like a separate tab within the pipeline page?"). Future deals
+   *  have no money yet, so they get their own table instead of $0 rows
+   *  diluting the pipeline's numbers. Remembered per person. */
+  const [pipeView, setPipeView] = useStoredView<"current" | "future">(
+    "freyr.opportunities.view",
+    "current",
+    ["current", "future"]
+  );
+  const futures = useMemo(
+    () => list.filter((o) => o.level === "Future"),
+    [list]
+  );
+  const currentList = useMemo(
+    () => list.filter((o) => o.level !== "Future"),
+    [list]
+  );
   const [query, setQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -321,7 +357,7 @@ export function OpportunitiesBrowser({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return list
+    return currentList
       .filter((o) => levelFilter === "all" || o.level === levelFilter)
       .filter((o) => statusFilter === "all" || (o.status ?? "") === statusFilter)
       .filter(
@@ -342,7 +378,7 @@ export function OpportunitiesBrowser({
           )
       )
       .sort((a, b) => b.value - a.value);
-  }, [list, query, levelFilter, statusFilter, customerFilter, offeringName]);
+  }, [currentList, query, levelFilter, statusFilter, customerFilter, offeringName]);
 
   const totals = useMemo(() => {
     const value = shown.reduce((s, o) => s + o.value, 0);
@@ -479,7 +515,12 @@ export function OpportunitiesBrowser({
               onClick={() =>
                 // Opens on one empty offering row, because that is the first
                 // thing to fill in and an empty list reads as a dead end.
-                setEditing({ ...BLANK, owner: meName, rows: [] })
+                setEditing({
+                  ...BLANK,
+                  owner: meName,
+                  rows: [],
+                  level: pipeView === "future" ? "Future" : "Pipeline",
+                })
               }
             >
               <Plus size={14} strokeWidth={2.2} /> New opportunity
@@ -488,6 +529,57 @@ export function OpportunitiesBrowser({
         }
       />
 
+      {/* Same pill idiom as the performance rooms. NO entrance animation on
+          these — the performance lesson holds here too. */}
+      <div className="relative z-40 mt-4">
+        <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
+          {([
+            { key: "current" as const, label: "Current pipeline", count: currentList.length },
+            { key: "future" as const, label: "Future", count: futures.length },
+          ]).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={pipeView === t.key}
+              onClick={() => setPipeView(t.key)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold tracking-[-0.01em] transition-all",
+                pipeView === t.key
+                  ? "bg-white text-text-primary shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              {t.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
+                  t.key === "future"
+                    ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
+                    : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
+                )}
+              >
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pipeView === "future" ? (
+        <FutureSection
+          futures={futures}
+          writable={writable}
+          offeringName={offeringName}
+          colorForOffering={(o) =>
+            o.offeringIds[0]
+              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "#7C3AED")
+              : "#7C3AED"
+          }
+          onEdit={(o) => setEditing(toDraft(o, offerings))}
+          onRemove={(o) => setConfirmRemove(o)}
+        />
+      ) : (
+      <>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           icon={Briefcase}
@@ -552,7 +644,7 @@ export function OpportunitiesBrowser({
             onChange={setLevelFilter}
             options={[
               { value: "all", label: "All levels" },
-              ...OPPORTUNITY_LEVELS.map((l) => ({
+              ...OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
                 value: l,
                 label: l,
                 color: LEVEL_COLOR[l],
@@ -913,20 +1005,29 @@ export function OpportunitiesBrowser({
                                         Grey = the whole deal, light blue =
                                         this offering, strong blue = weighted. */}
                                     <span className="flex flex-col gap-1">
-                                      <span className="relative flex h-2 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                                        <span
-                                          className="absolute inset-y-0 left-0 rounded-full bg-blue-primary opacity-[0.32]"
-                                          style={{
-                                            width: `${o.value > 0 ? Math.min(100, (line.value / o.value) * 100) : 0}%`,
-                                          }}
-                                        />
-                                        <span
-                                          className="absolute inset-y-0 left-0 rounded-full bg-blue-primary"
-                                          style={{
-                                            width: `${o.value > 0 ? Math.min(100, (lineWeighted(line) / o.value) * 100) : 0}%`,
-                                          }}
-                                        />
-                                      </span>
+                                      {/* A single-offering deal's bar would
+                                          just repeat the row above it (Anir,
+                                          Aug 17: "this is kind of redundant,
+                                          having 2 bars") — the bar and the
+                                          "of the whole deal" only appear when
+                                          there are several offerings to
+                                          compare. */}
+                                      {rows.length > 1 && (
+                                        <span className="relative flex h-2 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                          <span
+                                            className="absolute inset-y-0 left-0 rounded-full bg-blue-primary opacity-[0.32]"
+                                            style={{
+                                              width: `${o.value > 0 ? Math.min(100, (line.value / o.value) * 100) : 0}%`,
+                                            }}
+                                          />
+                                          <span
+                                            className="absolute inset-y-0 left-0 rounded-full bg-blue-primary"
+                                            style={{
+                                              width: `${o.value > 0 ? Math.min(100, (lineWeighted(line) / o.value) * 100) : 0}%`,
+                                            }}
+                                          />
+                                        </span>
+                                      )}
                                       <span className="whitespace-nowrap text-[11px] tnum">
                                         <b className="text-blue-primary">
                                           {line.confidence === undefined
@@ -936,9 +1037,11 @@ export function OpportunitiesBrowser({
                                         <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
                                           {" "}of {money(line.value)}
                                         </span>
-                                        <span className="text-text-tertiary">
-                                          {" "}of {money(o.value)}
-                                        </span>
+                                        {rows.length > 1 && (
+                                          <span className="text-text-tertiary">
+                                            {" "}of {money(o.value)}
+                                          </span>
+                                        )}
                                         {line.confidence !== undefined && (
                                           <span className="text-text-secondary"> · {line.confidence}%</span>
                                         )}
@@ -1027,6 +1130,8 @@ export function OpportunitiesBrowser({
           </div>
         )}
       </Card>
+      </>
+      )}
 
       {!live && (
         <p className="mt-3 text-[12px] text-text-tertiary">
@@ -1059,60 +1164,78 @@ export function OpportunitiesBrowser({
                     (Anir, Aug 17: "shitty dropdown fix it so its our
                     standards") — same ColorSelect as everywhere, logos and
                     all, with the offering rows' free-text escape hatch. */}
-                <ColorSelect
+                {(() => {
                   // Imported deals carry the account NAME but no id — resolve
                   // by name so a real account never greets its editor with
-                  // "Not on the list". Display-side only; the id persists when
-                  // a pick is made, same as the old datalist behaviour.
-                  value={
+                  // "Not on the list". A FRESH form shows a neutral "Pick the
+                  // account…" — the type-it row is an explicit choice, never
+                  // pre-selected (Anir, Aug 17: "why does it auto select not
+                  // on the list?").
+                  const resolvedId =
                     editing.customerId ||
                     (customers.find(
                       (c) =>
                         c.name.trim().toLowerCase() ===
                         editing.customer.trim().toLowerCase()
                     )?.id ??
-                      "")
-                  }
-                  ariaLabel="Customer account"
-                  collapsible={false}
-                  className="w-full"
-                  onChange={(val) => {
-                    const hit = customers.find((c) => c.id === val);
-                    setEditing({
-                      ...editing,
-                      customerId: val,
-                      customer: hit ? hit.name : editing.customer,
-                    });
-                  }}
-                  options={[
-                    {
-                      value: "",
-                      label: "Not on the list — type it",
-                      color: "#8E98A8",
-                      icon: Tag,
-                    },
-                    ...customers.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                      logoName: c.name,
-                    })),
-                  ]}
-                />
-                {!editing.customerId &&
-                  !customers.some(
-                    (c) =>
-                      c.name.trim().toLowerCase() ===
-                      editing.customer.trim().toLowerCase()
-                  ) && (
-                    <input
-                      value={editing.customer}
-                      onChange={(e) =>
-                        setEditing({ ...editing, customer: e.target.value })
-                      }
-                      placeholder="Type the account name…"
-                      className={cn(inputCls, "mt-2")}
-                    />
-                  )}
+                      "");
+                  const selectValue =
+                    resolvedId ||
+                    (editing.customerOther || editing.customer.trim()
+                      ? "__other"
+                      : "");
+                  return (
+                    <>
+                      <ColorSelect
+                        value={selectValue}
+                        ariaLabel="Customer account"
+                        collapsible={false}
+                        className="w-full"
+                        onChange={(val) => {
+                          if (val === "__other") {
+                            setEditing({
+                              ...editing,
+                              customerId: "",
+                              customerOther: true,
+                            });
+                            return;
+                          }
+                          const hit = customers.find((c) => c.id === val);
+                          setEditing({
+                            ...editing,
+                            customerId: val,
+                            customer: hit ? hit.name : val ? editing.customer : "",
+                            customerOther: false,
+                          });
+                        }}
+                        options={[
+                          { value: "", label: "Pick the account…", color: "#C7CDD6" },
+                          {
+                            value: "__other",
+                            label: "Not on the list — type it",
+                            color: "#8E98A8",
+                            icon: Tag,
+                          },
+                          ...customers.map((c) => ({
+                            value: c.id,
+                            label: c.name,
+                            logoName: c.name,
+                          })),
+                        ]}
+                      />
+                      {selectValue === "__other" && (
+                        <input
+                          value={editing.customer}
+                          onChange={(e) =>
+                            setEditing({ ...editing, customer: e.target.value })
+                          }
+                          placeholder="Type the account name…"
+                          className={cn(inputCls, "mt-2")}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </Field>
             </div>
 
@@ -1127,6 +1250,7 @@ export function OpportunitiesBrowser({
               rows={editing.rows}
               offerings={offerings}
               colorForOfferingId={colorForOfferingId}
+              rates={rates}
               onChange={(rows) => setEditing({ ...editing, rows })}
             />
 
@@ -1197,14 +1321,34 @@ export function OpportunitiesBrowser({
                 />
               </Field>
               <Field label="Owner">
-                <input
+                {/* A dropdown like everything else (Anir, Aug 17) — the
+                    roster with faces, plus whatever name an imported deal
+                    already carries so editing never loses it. */}
+                <ColorSelect
                   value={editing.owner}
-                  onChange={(e) => setEditing({ ...editing, owner: e.target.value })}
-                  placeholder="Who is chasing it"
-                  className={inputCls}
+                  ariaLabel="Deal owner"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => setEditing({ ...editing, owner: v })}
+                  options={[
+                    { value: "", label: "Unassigned", color: "#8E98A8" },
+                    ...[...new Set([
+                      ...people,
+                      ...(editing.owner ? [editing.owner] : []),
+                    ])]
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((n) => ({
+                        value: n,
+                        label: n === meName ? `${n} (you)` : n,
+                        avatarName: n,
+                      })),
+                  ]}
                 />
               </Field>
-              <Field label="Opportunity id" hint="Freyr's own reference, when there is one.">
+              <Field
+                label="Opportunity id"
+                hint="The number from Freyr's own CRM (like DO_0026765). It comes from that system, so the app can't invent it — paste it when the deal has one."
+              >
                 <input
                   value={editing.externalId}
                   onChange={(e) =>
@@ -1415,17 +1559,183 @@ function ConfidenceSlider({
   );
 }
 
+/**
+ * THE FUTURE TAB — deals nobody has pitched yet, from the workbook's Future
+ * Pipeline sheet. No money columns: these rows honestly have none. What they
+ * do have: who, which offering, when the first pitch is planned, and the
+ * quarter it targets. Editing one and flipping its level to Pipeline is the
+ * promotion path.
+ */
+function FutureSection({
+  futures,
+  writable,
+  offeringName,
+  colorForOffering,
+  onEdit,
+  onRemove,
+}: {
+  futures: Opportunity[];
+  writable: boolean;
+  offeringName: Map<string, string>;
+  colorForOffering: (o: Opportunity) => string;
+  onEdit: (o: Opportunity) => void;
+  onRemove: (o: Opportunity) => void;
+}) {
+  const dated = futures.filter((o) => o.targetPitchDate);
+  const nextPitch = dated
+    .map((o) => o.targetPitchDate!)
+    .sort()
+    .find((d) => d >= new Date().toISOString().slice(0, 10));
+  return (
+    <>
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatTile
+          icon={Briefcase}
+          label="Future deals"
+          value={String(futures.length)}
+          sub="not pitched yet — no money, honestly"
+          color="#7C3AED"
+        />
+        <StatTile
+          icon={Target}
+          label="With a pitch date"
+          value={`${dated.length} of ${futures.length}`}
+          sub="the rest only name a quarter"
+          color="#7C3AED"
+        />
+        <StatTile
+          icon={TrendingUp}
+          label="Next pitch"
+          value={
+            nextPitch
+              ? new Date(`${nextPitch}T12:00:00`).toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "short",
+                })
+              : "—"
+          }
+          sub={nextPitch ? "the soonest planned pitch" : "no upcoming date set"}
+          color="#7C3AED"
+        />
+      </div>
+
+      <Card className="mt-4 overflow-hidden p-0">
+        {futures.length === 0 ? (
+          <div className="px-4 py-8">
+            <EmptyState
+              icon={Briefcase}
+              title="Nothing queued for the future yet"
+              description="Add a deal with the level Future and it lives here until it is pitched."
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <th className="w-[26%] px-4 py-2.5">Customer</th>
+                  <th className="w-[20%] px-2 py-2.5">Offering</th>
+                  <th className="w-[13%] px-2 py-2.5">Target pitch</th>
+                  <th className="w-[12%] px-2 py-2.5">Target quarter</th>
+                  <th className="px-2 py-2.5">Next steps</th>
+                  {writable && <th className="w-[84px] px-2 py-2.5 pr-4 text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {futures.map((o) => {
+                  const label =
+                    o.offeringIds[0]
+                      ? (offeringName.get(o.offeringIds[0]) ?? o.offeringLabels[0])
+                      : o.offeringLabels[0];
+                  return (
+                    <tr key={o.id} className="transition-colors hover:bg-surface/60">
+                      <td className="px-4 py-2.5">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <CompanyLogo name={o.customer} className="h-7 w-7 shrink-0 text-[9px]" />
+                          <span className="truncate text-[13px] font-semibold text-text-primary">
+                            {o.customer}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-2 py-2.5">
+                        {label ? (
+                          <OfferingChip name={label} color={colorForOffering(o)} size="xs" />
+                        ) : (
+                          <span className="text-[11.5px] text-text-tertiary">—</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2.5 text-[12.5px] text-text-secondary tnum">
+                        {o.targetPitchDate
+                          ? new Date(`${o.targetPitchDate}T12:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
+                          : <span className="text-text-tertiary">not set</span>}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        {o.targetQuarter ? (
+                          <span className="rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#7C3AED]">
+                            {o.targetQuarter}
+                          </span>
+                        ) : (
+                          <span className="text-[11.5px] text-text-tertiary">—</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">
+                        {o.nextSteps ?? <span className="text-text-tertiary">nothing written down</span>}
+                      </td>
+                      {writable && (
+                        <td className="px-2 py-2.5 pr-4 text-right">
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              title={`Edit ${o.name} — flip its level to Pipeline when it is pitched`}
+                              onClick={() => onEdit(o)}
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                            >
+                              <Pencil size={13} strokeWidth={2.2} />
+                            </button>
+                            <button
+                              type="button"
+                              title={`Remove ${o.name}`}
+                              onClick={() => onRemove(o)}
+                              className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                            >
+                              <Trash2 size={13} strokeWidth={2.2} />
+                            </button>
+                          </span>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
 function OfferingRowsEditor({
   rows,
   offerings,
   colorForOfferingId,
+  rates = {},
   onChange,
 }: {
   rows: DraftLine[];
   offerings: { id: string; name: string; type?: string }[];
   colorForOfferingId: Map<string, string>;
+  rates?: CurrencyRates;
   onChange: (rows: DraftLine[]) => void;
 }) {
+  /** The USD figure a local amount is worth, by the admin-entered rate.
+   *  "" when no rate exists — never a silent 1:1 (lib/currency's rule). */
+  const usdFrom = (amountText: string, cur: string): string => {
+    const n = Number(amountText);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    const c = convert(n, cur as CurrencyCode, "USD", rates);
+    return c.exact ? String(Math.round(c.value)) : "";
+  };
   /**
    * EVERY ROW IS A DROPDOWN (Anir, Aug 17: "make the offerings in this
    * opportunity thing like a big dropdown"). Closed, a row is one line —
@@ -1549,6 +1859,14 @@ function OfferingRowsEditor({
                 <span className="ml-auto flex shrink-0 items-center gap-3">
                   {v > 0 && (
                     <span className="text-[12px] tnum">
+                      {/* Entered in the client's money → say both (Anir,
+                          Aug 17: "you're not telling me the currency"). */}
+                      {r.localCurrency && Number(r.localValue) > 0 && (
+                        <span className="text-text-secondary">
+                          {fmtMoney(Number(r.localValue), r.localCurrency as CurrencyCode)}{" "}
+                          →{" "}
+                        </span>
+                      )}
                       <b className="text-text-primary">{money(v)}</b>
                       {c !== null && !Number.isNaN(c) && (
                         <span className="text-text-secondary"> · {c}%</span>
@@ -1584,33 +1902,56 @@ function OfferingRowsEditor({
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                     <div className="min-w-0">
                       <label className={labelCls}>Offering</label>
-                      <div className={cn("mt-1", !r.offeringId && !r.offeringLabel && "rounded-lg ring-2 ring-blue-primary/35")}>
-                        <ColorSelect
-                          value={r.offeringId}
+                      {/* CATEGORIES FIRST, LIKE THE GOALS PICKER (Anir,
+                          Aug 17: "it should have the categories separate and
+                          I click on each category and then see all the
+                          [options] within that category"): each offering type
+                          is a row, its offerings fly out beside it, search on
+                          top cuts across everything. A fresh row shows a
+                          neutral placeholder — "type it" is an explicit
+                          choice, never pre-selected. */}
+                      <div className={cn("mt-1", !r.offeringId && !r.offeringLabel && !r.offeringOther && "rounded-lg ring-2 ring-blue-primary/35")}>
+                        <MultiPicker
+                          variant="dropdown"
+                          single
                           ariaLabel={`Offering for row ${i + 1}`}
-                          collapsible={false}
-                          className="w-full"
-                          minWidth={360}
-                          onChange={(val) =>
-                            set(i, { offeringId: val, offeringLabel: val ? "" : r.offeringLabel })
+                          placeholder="Pick the offering…"
+                          emptyLabel="No offerings in the catalogue yet."
+                          selected={
+                            r.offeringId
+                              ? [r.offeringId]
+                              : r.offeringOther || r.offeringLabel
+                                ? ["__other"]
+                                : []
                           }
-                          options={[
+                          onToggle={(id) => {
+                            if (id === "__other") {
+                              set(i, { offeringId: "", offeringOther: true });
+                              return;
+                            }
+                            set(i, {
+                              offeringId: id,
+                              offeringLabel: "",
+                              offeringOther: false,
+                            });
+                          }}
+                          topOptions={[
                             {
-                              value: "",
+                              id: "__other",
                               label: "Not in the catalogue — type it",
                               color: "#8E98A8",
                               icon: Tag,
                             },
-                            ...offerings.map((o) => ({
-                              value: o.id,
-                              label: o.name,
-                              description: o.type,
-                              color: colorForOfferingId.get(o.id) ?? "#475569",
-                              // The same mark every offering chip wears — the
-                              // menu speaks the chip language, not bare dots.
-                              icon: Sparkles,
-                            })),
                           ]}
+                          options={offerings.map((o) => ({
+                            id: o.id,
+                            label: o.name,
+                            group: o.type || "Other",
+                            color: colorForOfferingId.get(o.id) ?? "#475569",
+                            // The same mark every offering chip wears — the
+                            // menu speaks the chip language, not bare dots.
+                            icon: Sparkles,
+                          }))}
                         />
                       </div>
                     </div>
@@ -1633,7 +1974,7 @@ function OfferingRowsEditor({
                     </div>
                   </div>
 
-                  {!r.offeringId && (
+                  {!r.offeringId && (r.offeringOther || r.offeringLabel) && (
                     <div>
                       <label className={labelCls}>What it&apos;s called</label>
                       <input
@@ -1645,18 +1986,60 @@ function OfferingRowsEditor({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    <div className="min-w-0">
-                      <label className={labelCls}>
-                        Value <span className="font-bold text-text-tertiary">USD</span>
-                      </label>
-                      <input
-                        value={r.value}
-                        onChange={(e) => set(i, { value: e.target.value })}
-                        inputMode="decimal"
-                        placeholder="e.g. 500000"
-                        className={cn(inputCls, "mt-1 tnum")}
-                      />
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+                    <div className="min-w-0 sm:col-span-2">
+                      <label className={labelCls}>Value</label>
+                      {/* ONE amount, in whatever the client pays — the app
+                          converts to USD itself with the admin rates (Anir,
+                          Aug 17: "this shouldn't enter in both USD and euros
+                          — we're supposed to handle that"). */}
+                      <div className="mt-1 flex gap-1.5">
+                        <ColorSelect
+                          value={r.localCurrency || "USD"}
+                          ariaLabel={`Currency for row ${i + 1}`}
+                          collapsible={false}
+                          dense
+                          minWidth={88}
+                          onChange={(cur) => {
+                            if (cur === "USD") {
+                              set(i, {
+                                localCurrency: "",
+                                localValue: "",
+                              });
+                            } else {
+                              set(i, {
+                                localCurrency: cur,
+                                localValue: r.localValue,
+                                value: usdFrom(r.localValue, cur),
+                              });
+                            }
+                          }}
+                          options={CURRENCIES.map((c) => ({
+                            value: c.code,
+                            label: c.code,
+                            description: c.name,
+                            color: c.code === "USD" ? "#0071E3" : "#0F766E",
+                            short: c.symbol.trim(),
+                          }))}
+                        />
+                        <input
+                          value={r.localCurrency ? r.localValue : r.value}
+                          onChange={(e) => {
+                            const text = e.target.value;
+                            if (r.localCurrency) {
+                              set(i, {
+                                localValue: text,
+                                value: usdFrom(text, r.localCurrency),
+                              });
+                            } else {
+                              set(i, { value: text });
+                            }
+                          }}
+                          inputMode="decimal"
+                          placeholder="e.g. 500000"
+                          className={cn(inputCls, "mt-0 min-w-0 flex-1 tnum")}
+                        />
+                      </div>
                     </div>
                     <div className="min-w-0 sm:col-span-2">
                       <label className={labelCls}>Confidence</label>
@@ -1698,54 +2081,19 @@ function OfferingRowsEditor({
                     </div>
                   </div>
 
-                  {/* WHAT THE CLIENT ACTUALLY PAYS (Suren, Aug 17: "an Indian
-                      company will not pay in USD — people should be able to
-                      feed the Indian currency and the USD currency also. But
-                      goals, everything is connected to USD"). Optional; never
-                      summed; the USD value above drives every number. */}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    <div className="min-w-0">
-                      <label className={labelCls}>Local currency</label>
-                      <div className="mt-1">
-                        <ColorSelect
-                          value={r.localCurrency}
-                          ariaLabel={`Local currency for row ${i + 1}`}
-                          collapsible={false}
-                          className="w-full"
-                          onChange={(val) => set(i, { localCurrency: val })}
-                          options={[
-                            { value: "", label: "None — USD only", color: "#8E98A8" },
-                            ...CURRENCIES.filter((c) => c.code !== "USD").map((c) => ({
-                              value: c.code,
-                              label: c.code,
-                              description: c.name,
-                              color: "#0F766E",
-                              short: c.symbol.trim(),
-                            })),
-                          ]}
-                        />
-                      </div>
-                    </div>
-                    {r.localCurrency && (
-                      <div className="min-w-0 sm:col-span-2">
-                        <label className={labelCls}>
-                          Amount in {r.localCurrency}
-                        </label>
-                        <input
-                          value={r.localValue}
-                          onChange={(e) => set(i, { localValue: e.target.value })}
-                          inputMode="decimal"
-                          placeholder={`what the client pays, in ${r.localCurrency}`}
-                          className={cn(inputCls, "mt-1 tnum")}
-                        />
-                      </div>
-                    )}
-                    <div className={cn("flex items-end pb-2", r.localCurrency ? "sm:col-span-2" : "sm:col-span-4")}>
-                      <p className="text-[11px] leading-snug text-text-tertiary">
-                        Goals and totals always count the USD value.
-                      </p>
-                    </div>
-                  </div>
+                  {r.localCurrency && (
+                    <p className="text-[11.5px] leading-snug">
+                      {r.value ? (
+                        <span className="text-text-secondary">
+                          ≈ <b className="text-text-primary tnum">{money(Number(r.value))}</b> at the admin rate — goals and totals count the USD figure.
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-[color:#B45309]">
+                          No {r.localCurrency} rate set yet — an admin adds it on the Performance page; until then this row has no USD value.
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

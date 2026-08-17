@@ -98,6 +98,8 @@ function DropdownPicker({
   placeholder,
   emptyLabel,
   ariaLabel,
+  single = false,
+  topOptions = [],
 }: {
   options: MultiPickerOption[];
   selected: string[];
@@ -105,6 +107,10 @@ function DropdownPicker({
   placeholder: string;
   emptyLabel: string;
   ariaLabel?: string;
+  /** One pick closes the menu; the trigger shows the pick, not chips. */
+  single?: boolean;
+  /** Rows above the categories, picked directly (e.g. "type it yourself"). */
+  topOptions?: MultiPickerOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -136,6 +142,14 @@ function DropdownPicker({
     return out;
   }, [options]);
   const grouped = groups.some((g) => g.name !== "");
+
+  const pick = (id: string) => {
+    onToggle(id);
+    if (single) {
+      setSub(null);
+      setOpen(false);
+    }
+  };
 
   const matches = (o: MultiPickerOption) =>
     !q ||
@@ -244,6 +258,27 @@ function DropdownPicker({
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {selected.length === 0 ? (
             <span className="text-text-tertiary">{placeholder}</span>
+          ) : single ? (
+            (() => {
+              const o =
+                byId.get(selected[0]) ??
+                topOptions.find((t) => t.id === selected[0]);
+              const Icon = o?.icon;
+              const c = o?.color ?? "#0071E3";
+              return (
+                <span className="flex min-w-0 items-center gap-2 text-text-primary">
+                  {Icon && (
+                    <span
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                      style={{ background: c, color: "#fff" }}
+                    >
+                      <Icon size={12} strokeWidth={2.2} />
+                    </span>
+                  )}
+                  <span className="truncate">{o?.label ?? selected[0]}</span>
+                </span>
+              );
+            })()
           ) : (
             selected.map((id) => {
               const o = byId.get(id);
@@ -317,19 +352,28 @@ function DropdownPicker({
             {options.length === 0 ? (
               <p className="px-2.5 py-2 text-[12px] text-text-tertiary">{emptyLabel}</p>
             ) : searching || !grouped ? (
-              // Typing shows every matching goal at once, flat — search cuts
-              // across categories.
-              options.filter(matches).map((o) => (
+              // Typing shows every matching option at once, flat — search
+              // cuts across categories.
+              [...topOptions, ...options].filter(matches).map((o) => (
                 <OptionRow
                   key={o.id}
                   o={o}
                   on={selected.includes(o.id)}
-                  onPick={() => onToggle(o.id)}
+                  onPick={() => pick(o.id)}
                   rowIndex={rowIndex++}
                 />
               ))
             ) : (
               <>
+                {topOptions.map((o) => (
+                  <OptionRow
+                    key={o.id}
+                    o={o}
+                    on={selected.includes(o.id)}
+                    onPick={() => pick(o.id)}
+                    rowIndex={rowIndex++}
+                  />
+                ))}
                 {/* One row per category — each row OPENS A SECOND
                     DROPDOWN beside this one; search on top cuts across all of
                     them (Anir: "just show me a dropdown of the 4 categories
@@ -412,7 +456,7 @@ function DropdownPicker({
                 key={o.id}
                 o={o}
                 on={selected.includes(o.id)}
-                onPick={() => onToggle(o.id)}
+                onPick={() => pick(o.id)}
                 rowIndex={i}
               />
             ))}
@@ -431,6 +475,8 @@ export function MultiPicker({
   emptyLabel,
   variant = "inline",
   ariaLabel,
+  single = false,
+  topOptions,
 }: {
   options: MultiPickerOption[];
   selected: string[];
@@ -440,6 +486,10 @@ export function MultiPicker({
   /** "dropdown" = closed ColorSelect-style trigger + floating grouped menu. */
   variant?: "inline" | "dropdown";
   ariaLabel?: string;
+  /** Dropdown variant only: one pick closes the menu. */
+  single?: boolean;
+  /** Dropdown variant only: direct-pick rows above the categories. */
+  topOptions?: MultiPickerOption[];
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -468,6 +518,8 @@ export function MultiPicker({
         placeholder={placeholder}
         emptyLabel={emptyLabel}
         ariaLabel={ariaLabel}
+        single={single}
+        topOptions={topOptions}
       />
     );
 

@@ -155,6 +155,10 @@ export type Opportunity = {
    * against the master's counts-from threshold is what offers the goal count.
    */
   activities?: OpportunityActivity[];
+  /** Future-level deals only: when the first pitch is planned (ISO day) and
+   *  the sheet's target quarter, e.g. "Q2" or "2027". */
+  targetPitchDate?: string;
+  targetQuarter?: string;
   createdAt: string;
   updatedAt: string;
 };

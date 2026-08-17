@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -231,18 +232,20 @@ export function ActivityGoalPrompt({
           {/* Admins credit anyone, a group owner their people (Suren: "only
               the admin guys and the group owners can do it — otherwise the
               individual only"). Everyone else never sees this select. */}
-          <select
-            value={creditTo}
-            onChange={(e) => setCreditTo(e.target.value)}
-            aria-label="Who this counts for"
-            className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-          >
-            {roster.map((n) => (
-              <option key={n} value={n}>
-                {n === meName ? `${n} (you)` : n}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <ColorSelect
+              value={creditTo}
+              ariaLabel="Who this counts for"
+              collapsible={false}
+              className="w-full"
+              onChange={setCreditTo}
+              options={roster.map((n) => ({
+                value: n,
+                label: n === meName ? `${n} (you)` : n,
+                avatarName: n,
+              }))}
+            />
+          </div>
         </div>
       )}
 

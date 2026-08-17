@@ -263,6 +263,7 @@ export function OpportunityActivities({
         open={logOpen}
         onClose={() => setLogOpen(false)}
         title={`Log an activity on ${opportunity.name}`}
+        size="wide"
       >
         <div className="space-y-3">
           <div>
@@ -318,20 +319,20 @@ export function OpportunityActivities({
               {/* Admins pick anyone, group owners their people, everyone else
                   is themself (Suren: "otherwise the individual only"). */}
               {roster.length > 1 ? (
-                <select
-                  value={draft.person}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, person: e.target.value }))
-                  }
-                  aria-label="Who did this"
-                  className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-                >
-                  {roster.map((n) => (
-                    <option key={n} value={n}>
-                      {n === bridge?.meName ? `${n} (you)` : n}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1">
+                  <ColorSelect
+                    value={draft.person}
+                    ariaLabel="Who did this"
+                    collapsible={false}
+                    className="w-full"
+                    onChange={(v) => setDraft((d) => ({ ...d, person: v }))}
+                    options={roster.map((n) => ({
+                      value: n,
+                      label: n === bridge?.meName ? `${n} (you)` : n,
+                      avatarName: n,
+                    }))}
+                  />
+                </div>
               ) : (
                 <p className="mt-2.5 flex items-center gap-1.5 text-[13px] text-text-primary">
                   <Avatar

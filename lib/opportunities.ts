@@ -189,6 +189,8 @@ function normalizeOne(raw: unknown): Opportunity | null {
     nextSteps: str(r.nextSteps, 600) || undefined,
     goalIds: strList(r.goalIds, 60),
     activities: normalizeActivities(r.activities),
+    targetPitchDate: day(r.targetPitchDate),
+    targetQuarter: str(r.targetQuarter, 40) || undefined,
     createdAt: str(r.createdAt, 40) || now,
     updatedAt: str(r.updatedAt, 40) || now,
   };
