@@ -527,18 +527,25 @@ export function OpportunitiesBrowser({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse">
+            {/* table-fixed, because auto layout poured every spare pixel
+                into the first two columns — 500px for "Novartis" — and shoved
+                Value, Confidence, Status and Actions past a horizontal scroll
+                nobody could see (Anir, Aug 17: "I couldn't even tell that
+                there was more stuff in the table"). Fixed widths on the data
+                columns; Customer and Opportunity share the rest and truncate
+                instead of ballooning. */}
+            <table className="w-full min-w-[1024px] table-fixed border-collapse">
               <thead>
                 <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
-                  <th className="px-4 py-2.5">Customer</th>
+                  <th className="w-[21%] px-4 py-2.5">Customer</th>
                   <th className="px-4 py-2.5">Opportunity</th>
-                  <th className="px-4 py-2.5">Offerings</th>
-                  <th className="px-4 py-2.5 text-right">Value</th>
-                  <th className="px-4 py-2.5 text-right">Confidence</th>
-                  <th className="px-4 py-2.5 text-right">Weighted</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Est. sign</th>
-                  <th className="px-4 py-2.5 text-right">Actions</th>
+                  <th className="w-[13%] px-4 py-2.5">Offerings</th>
+                  <th className="w-[104px] px-4 py-2.5 text-right">Value</th>
+                  <th className="w-[110px] px-4 py-2.5 text-right">Confidence</th>
+                  <th className="w-[96px] px-4 py-2.5 text-right">Weighted</th>
+                  <th className="w-[132px] px-4 py-2.5">Status</th>
+                  <th className="w-[104px] px-4 py-2.5">Est. sign</th>
+                  <th className="w-[84px] px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
