@@ -816,20 +816,24 @@ export function OpportunitiesBrowser({
                   return (
                     <Fragment key={o.id}>
                       {newGroup && gKey !== null && (
-                        <tr className="bg-surface/70">
-                          <td colSpan={7} className="px-4 py-2">
-                            <span className="flex items-center gap-2.5">
+                        /* Same section idiom as the Goal Master (Anir: "same
+                           look"): the identity chip, the count, then a thin
+                           rule running to the edge — air above, no grey band. */
+                        <tr>
+                          <td colSpan={7} className="px-4 pb-1.5 pt-6">
+                            <span className="flex items-center gap-2">
                               {groupBy === "customer" ? (
-                                <CompanyLogo name={gKey} className="h-5 w-5 shrink-0 text-[7px]" />
+                                <>
+                                  <CompanyLogo name={gKey} className="h-6 w-6 shrink-0 text-[8px]" />
+                                  <b className="text-[13px] text-text-primary">{gKey}</b>
+                                </>
                               ) : (
                                 <OfferingChip name={gKey} color={lineColor({ id: "g", offeringLabel: gKey, value: 0 }) ?? "#B4318F"} size="xs" />
                               )}
-                              {groupBy === "customer" && (
-                                <b className="text-[12.5px] text-text-primary">{gKey}</b>
-                              )}
-                              <span className="text-[11.5px] text-text-tertiary tnum">
+                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
                                 {groupRows.length} {groupRows.length === 1 ? "deal" : "deals"} · {money(groupRows.reduce((sum, x) => sum + x.value, 0))} total
                               </span>
+                              <span className="ml-1 h-px min-w-4 flex-1 bg-border-light" aria-hidden />
                             </span>
                           </td>
                         </tr>
