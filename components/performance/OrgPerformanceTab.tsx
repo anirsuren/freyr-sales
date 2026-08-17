@@ -1112,7 +1112,10 @@ function GoalRows({
                 type="button"
                 onClick={() => onEditGoal(goal)}
                 title="No schedule set — click to open this goal and add one"
-                className="cursor-pointer rounded-full transition-[opacity,box-shadow] hover:opacity-80 hover:shadow-[0_0_0_2px_rgba(142,152,168,0.25)]"
+                // Hugs the pill exactly — a block button drew its own bigger
+                // ring around the chip and read as two shapes (Anir: "button
+                // look weird"). The pill IS the button; hover just deepens it.
+                className="inline-flex cursor-pointer rounded-full leading-none transition-opacity hover:opacity-70"
               >
                 <PacePill pace={pace} size="sm" />
               </button>
