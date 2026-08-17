@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
@@ -14,6 +15,7 @@ export const metadata = { title: "Sequences" };
 export const dynamic = "force-dynamic";
 
 export default async function SequencesPage() {
+  await requireModuleAccess("/sequences");
   const db = getDb();
   const sequences = listSequences();
   const primary = sequences.find((sequence) => sequence.id === "reg-exec") || sequences[0];

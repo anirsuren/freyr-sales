@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import {
   PhoneCall,
   PhoneOff,
@@ -89,6 +90,7 @@ const fmtLen = (secs: number) =>
 // need to see how the graphs would look") and swap to live ElevenLabs stats
 // the moment a phone number connects.
 export default async function VoicePage() {
+  await requireModuleAccess("/voice");
   const status = voiceStatus();
   const queue = listVoiceQueue();
   const storedCalls = (await listStoredVoiceConversations(100)).map(storedVoiceCall);

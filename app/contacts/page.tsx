@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { ContactsBrowser, type ContactRow } from "@/components/contacts/ContactsBrowser";
 import type { TipItem } from "@/components/charts/Charts";
@@ -8,6 +9,7 @@ export const metadata = { title: "Contacts" };
 export const dynamic = "force-dynamic";
 
 export default async function ContactsPage() {
+  await requireModuleAccess("/contacts");
   const db = getDb();
   const [contacts, customers, interactions] = await Promise.all([
     db.contacts.list(),

@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { CampaignsView } from "@/components/campaigns/CampaignsView";
 import { listCampaigns } from "@/lib/campaigns";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 // contact list → the blast goes to everyone with an email. Sending is honest —
 // it queues until the email channel is connected.
 export default async function CampaignsPage() {
+  await requireModuleAccess("/campaigns");
   const db = getDb();
   const [contacts, customers] = await Promise.all([
     db.contacts.list(),

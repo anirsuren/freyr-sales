@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { SessionsBrowser, type SessionRow } from "@/components/sessions/SessionsBrowser";
 import { NewSessionLauncher } from "@/components/sessions/NewSessionLauncher";
@@ -7,6 +8,7 @@ export const metadata = { title: "Sessions" };
 export const dynamic = "force-dynamic";
 
 export default async function SessionsPage() {
+  await requireModuleAccess("/sessions");
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),

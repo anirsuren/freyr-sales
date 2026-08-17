@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -79,6 +80,7 @@ function synthDealsForRep(
 }
 
 export default async function ForecastPage() {
+  await requireModuleAccess("/forecast");
   const currentUser = await getCurrentUser();
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([

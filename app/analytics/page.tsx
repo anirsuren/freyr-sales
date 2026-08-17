@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -34,6 +35,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams?: Promise<{ range?: string }>;
 }) {
+  await requireModuleAccess("/analytics");
   const query = await searchParams;
   const currentUser = await getCurrentUser();
   const db = getDb();

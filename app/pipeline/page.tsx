@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -18,6 +19,7 @@ export const metadata = { title: "Pipeline" };
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
+  await requireModuleAccess("/pipeline");
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),

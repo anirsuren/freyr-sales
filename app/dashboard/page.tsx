@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -64,6 +65,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<{ range?: string }>;
 }) {
+  await requireModuleAccess("/dashboard");
   const query = await searchParams;
   const [currentUser, scope] = await Promise.all([
     getCurrentUser(),

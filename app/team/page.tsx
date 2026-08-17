@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import {
   Users,
   Wallet,
@@ -70,6 +71,7 @@ function synthStageDeals(
 }
 
 export default async function TeamPage() {
+  await requireModuleAccess("/team");
   if (getDataMode() === "live") {
     // The REAL team: every active workspace member from the directory, in the
     // exact same page as Mock — stat tiles, roster, charts — with honest

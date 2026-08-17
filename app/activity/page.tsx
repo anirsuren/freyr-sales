@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ActivityFeed, type ActivityItem } from "@/components/activity/ActivityFeed";
@@ -6,6 +7,7 @@ export const metadata = { title: "Activity" };
 export const dynamic = "force-dynamic";
 
 export default async function ActivityPage() {
+  await requireModuleAccess("/activity");
   const db = getDb();
   const [interactions, customers, contacts] = await Promise.all([
     db.interactions.list(),

@@ -1,3 +1,4 @@
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TasksWorkspace } from "@/components/tasks/TasksWorkspace";
@@ -9,6 +10,7 @@ export const metadata = { title: "Tasks" };
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
+  await requireModuleAccess("/tasks");
   const [currentUser, scope] = await Promise.all([
     getCurrentUser(),
     requireServerMemberScope(),
