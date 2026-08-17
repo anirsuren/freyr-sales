@@ -1742,7 +1742,17 @@ function ConfidenceSlider({
       <span className="relative w-[60px] shrink-0">
         <input
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            // Confidence is 0–100, full stop (Anir: "this shouldn't be
+            // allowed" at 145%). Anything typed past the ends snaps to them.
+            const text = e.target.value;
+            const n = Number(text);
+            onChange(
+              text.trim() !== "" && Number.isFinite(n)
+                ? String(Math.max(0, Math.min(100, n)))
+                : text
+            );
+          }}
           inputMode="numeric"
           placeholder="25"
           aria-label="Confidence — type an exact figure"
