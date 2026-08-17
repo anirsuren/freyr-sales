@@ -837,89 +837,74 @@ export function OpportunitiesBrowser({
                                 level, more." */}
                             <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
                             {rows.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 border-b border-border-light px-3 py-2">
-                                  <b className="text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary">
-                                    Offerings in this opportunity
-                                  </b>
-                                  <span className="ml-auto text-[11px] font-semibold text-text-secondary tnum">
-                                    {rows.length} {rows.length === 1 ? "row" : "rows"} · {money(o.value)} total
-                                  </span>
-                                </div>
-                                <table className="w-full border-collapse">
-                                  <thead>
-                                    <tr className="text-left text-[10px] font-bold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-3 [&>th]:py-1.5">
-                                      <th>Offering</th>
-                                      <th>ARR / OTS</th>
-                                      <th className="!text-right">Value</th>
-                                      <th className="!text-right">Confidence</th>
-                                      <th className="!text-right">Weighted</th>
-                                      <th>Status</th>
-                                      <th>Est. sign</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-border-light">
-                                    {rows.map((line) => (
-                                      <tr key={line.id} className="[&>td]:px-3 [&>td]:py-2">
-                                        <td>
-                                          <OfferingChip
-                                            name={lineLabel(line, (id) => offeringName.get(id))}
-                                            color={lineColor(line)}
-                                            size="xs"
-                                          />
-                                        </td>
-                                        <td className="text-[11.5px] font-semibold text-text-secondary">
-                                          {line.revenueType ?? (
-                                            <span className="font-normal text-text-tertiary">not set</span>
-                                          )}
-                                        </td>
-                                        <td className="text-right text-[13px] font-semibold text-text-primary tnum">
-                                          {money(line.value)}
-                                        </td>
-                                        <td className="text-right text-[12.5px] tnum">
-                                          {line.confidence === undefined ? (
-                                            <span className="text-text-tertiary">—</span>
-                                          ) : (
+                              /* No caption, no column headers — each line
+                                 says itself (Anir, Aug 17: "you don't even
+                                 need to say 'offerings in this opportunity',
+                                 just go straight to it… I still don't like
+                                 the way the table looks"): the offering chip,
+                                 its ARR/OTS, the money with the same blue
+                                 weighted bar the row above wears, the status,
+                                 the date. */
+                              <div className="divide-y divide-border-light">
+                                {rows.map((line) => (
+                                  <div
+                                    key={line.id}
+                                    className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2.5"
+                                  >
+                                    <OfferingChip
+                                      name={lineLabel(line, (id) => offeringName.get(id))}
+                                      color={lineColor(line)}
+                                      size="xs"
+                                    />
+                                    {line.revenueType && (
+                                      <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
+                                        {line.revenueType}
+                                      </span>
+                                    )}
+                                    <span className="ml-auto flex items-center gap-3">
+                                      <b className="text-[13.5px] text-text-primary tnum">
+                                        {money(line.value)}
+                                      </b>
+                                      {line.confidence !== undefined && (
+                                        <>
+                                          <span className="flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.14)]">
                                             <span
-                                              className="font-semibold"
-                                              style={{ color: confidenceColor(line.confidence) }}
-                                            >
+                                              className="block h-full rounded-full bg-blue-primary"
+                                              style={{ width: `${line.confidence}%` }}
+                                            />
+                                          </span>
+                                          <span className="whitespace-nowrap text-[11.5px] text-text-secondary tnum">
+                                            {money(lineWeighted(line))} weighted ·{" "}
+                                            <span className="font-semibold text-[color:#0058B0]">
                                               {line.confidence}%
                                             </span>
-                                          )}
-                                        </td>
-                                        <td className="text-right text-[12.5px] text-text-secondary tnum">
-                                          {line.confidence === undefined
-                                            ? "—"
-                                            : money(lineWeighted(line))}
-                                        </td>
-                                        <td>
-                                          {line.status ? (
-                                            <span
-                                              className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
-                                              style={{
-                                                background: `${STATUS_COLOR[line.status]}18`,
-                                                color: STATUS_COLOR[line.status],
-                                              }}
-                                            >
-                                              {line.status}
-                                            </span>
-                                          ) : (
-                                            <span className="text-[11.5px] text-text-tertiary">not set</span>
-                                          )}
-                                        </td>
-                                        <td className="text-[11.5px] text-text-secondary tnum">
-                                          {line.estSignDate ?? (
-                                            <span className="text-text-tertiary">no date</span>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                          </span>
+                                        </>
+                                      )}
+                                      {line.status ? (
+                                        <span
+                                          className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+                                          style={{
+                                            background: `${STATUS_COLOR[line.status]}18`,
+                                            color: STATUS_COLOR[line.status],
+                                          }}
+                                        >
+                                          {line.status}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[11px] text-text-tertiary">
+                                          not set
+                                        </span>
+                                      )}
+                                      <span className="text-[11.5px] text-text-tertiary tnum">
+                                        {line.estSignDate ?? "no date"}
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                             )}
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border-light px-3 py-3 sm:grid-cols-4">
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border-light px-3.5 py-3 sm:grid-cols-2 lg:grid-cols-2">
                               <Fact label="Owner">
                                 {o.owner ? (
                                   <span className="flex items-center gap-1.5">
@@ -931,18 +916,6 @@ export function OpportunitiesBrowser({
                                   </span>
                                 ) : (
                                   <span className="text-text-tertiary">nobody yet</span>
-                                )}
-                              </Fact>
-                              <Fact label="Revenue type">
-                                {o.revenueType ?? (
-                                  <span className="text-text-tertiary">not set</span>
-                                )}
-                              </Fact>
-                              <Fact label="Offerings">
-                                {offeringCount(o) === 0 ? (
-                                  <span className="text-text-tertiary">none linked</span>
-                                ) : (
-                                  names.join(", ")
                                 )}
                               </Fact>
                               <Fact label="Opportunity id">
