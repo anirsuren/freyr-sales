@@ -137,6 +137,8 @@ function normalizeActivities(raw: unknown): OpportunityActivity[] | undefined {
       person: str(r.person, 120),
       note: str(r.note, 400) || undefined,
       date: day(r.date) ?? new Date().toISOString().slice(0, 10),
+      startDate: day(r.startDate),
+      endDate: day(r.endDate),
     });
   }
   return out.length ? out : undefined;
@@ -259,40 +261,33 @@ async function writeRow(state: OpportunitiesState): Promise<void> {
  *   Indivior  GRI        $50K 10% 15 Nov    +  Agent-VIA $150K, no date
  *   Opella    GRI        $14K 50% 15 Aug    +  Agent-VIA $150K, no date
  *
- * The first shape is ONE deal quoted as recurring licence plus one-time
- * services: same account, same offering, same confidence, same sign date, and
- * the pair is always ARR + OTS. The second is two different offerings on
- * different timelines with different confidence, and the Agent-VIA row repeats
- * at exactly $150K across three unrelated accounts — a separate push, not part
- * of anyone's GRI deal.
- *
- * So the rule is: same account AND same offering makes one opportunity, with a
- * row per revenue type. A different offering stays its own opportunity, which
- * is what the money and the dates say it is. Eight pairs merge; 76 rows become
- * 68 opportunities.
- *
- * Grouping here rather than in pipelineSeed.ts keeps that file an honest
- * transcription of what Suren sent, and keeps this judgement call in one place
- * where it can be read and undone.
+ * Aug 16 the same-account-same-offering pairs were merged into multi-row
+ * deals. Suren reversed that on the Aug 17 call: every sheet row is its own
+ * opportunity, one offering each ("if somebody writes a proposal against
+ * multiple opportunities, they can do that").
  */
 function seededMock(): OpportunitiesState {
   const now = "2026-08-16T00:00:00.000Z";
-  const groups = new Map<string, typeof SEED_OPPORTUNITIES>();
+  // ONE ROW = ONE OPPORTUNITY (Suren, Aug 17 call: "don't do multiple
+  // offerings on an opportunity — make it one offering on an opportunity…
+  // we should not even complicate this"). The Aug-16 grouping of ARR+OTS
+  // pairs is UNDONE here, on his direction: the seed is his sheet, verbatim,
+  // 76 rows = 76 opportunities. Pairs that share an account and offering are
+  // told apart by their revenue type in the name.
+  const opportunities: Opportunity[] = [];
+  const dupKey = new Map<string, number>();
   for (const r of SEED_OPPORTUNITIES) {
     const key = `${r.customer.trim().toLowerCase()}::${(r.offering ?? "").trim().toLowerCase()}`;
-    const bucket = groups.get(key);
-    if (bucket) bucket.push(r);
-    else groups.set(key, [r]);
+    dupKey.set(key, (dupKey.get(key) ?? 0) + 1);
   }
-
-  const opportunities: Opportunity[] = [];
   let n = 0;
-  for (const rows of groups.values()) {
+  for (const r of SEED_OPPORTUNITIES) {
     n += 1;
-    // The parent takes the head row's framing and the rows carry the money.
-    const head = rows[0];
-    const lines: OpportunityLine[] = rows.map((r, i) => ({
-      id: `seed-line-${n}-${i + 1}`,
+    const key = `${r.customer.trim().toLowerCase()}::${(r.offering ?? "").trim().toLowerCase()}`;
+    const needsSuffix = (dupKey.get(key) ?? 0) > 1 && r.revenueType;
+    const baseName = r.offering ? `${r.offering} — ${r.customer}` : r.customer;
+    const line: OpportunityLine = {
+      id: `seed-line-${n}-1`,
       offeringLabel: r.offering || undefined,
       revenueType: normalizeRevenueType(r.revenueType),
       value: r.value ?? 0,
@@ -300,31 +295,23 @@ function seededMock(): OpportunitiesState {
       confidence: normalizeConfidence(r.confidence),
       estSignDate: r.estSignDate ?? undefined,
       nextSteps: r.nextSteps ?? undefined,
-    }));
+    };
     opportunities.push({
       id: `seed-opp-${n}`,
-      externalId: rows.find((r) => r.externalId)?.externalId ?? undefined,
-      name: head.offering ? `${head.offering} — ${head.customer}` : head.customer,
-      customer: head.customer,
+      externalId: r.externalId ?? undefined,
+      name: needsSuffix ? `${baseName} (${r.revenueType})` : baseName,
+      customer: r.customer,
       offeringIds: [],
-      offeringLabels: head.offering ? [head.offering] : [],
-      lines,
-      level: normalizeLevel(head.level),
-      // The parent's own status is the one the rows agree on; when they
-      // disagree it stays unset rather than picking a winner, and the rows say
-      // what each offering is actually doing.
-      status: (() => {
-        const set = new Set(
-          lines.map((l) => l.status).filter((s): s is NonNullable<typeof s> => !!s)
-        );
-        return set.size === 1 ? [...set][0] : undefined;
-      })(),
-      revenueType: normalizeRevenueType(head.revenueType),
-      value: lines.reduce((sum, l) => sum + l.value, 0),
-      confidence: normalizeConfidence(head.confidence),
-      estSignDate: head.estSignDate ?? undefined,
+      offeringLabels: r.offering ? [r.offering] : [],
+      lines: [line],
+      level: normalizeLevel(r.level),
+      status: normalizeStatus(r.status),
+      revenueType: normalizeRevenueType(r.revenueType),
+      value: r.value ?? 0,
+      confidence: normalizeConfidence(r.confidence),
+      estSignDate: r.estSignDate ?? undefined,
       owner: undefined,
-      nextSteps: head.nextSteps ?? undefined,
+      nextSteps: r.nextSteps ?? undefined,
       goalIds: [],
       createdAt: now,
       updatedAt: now,

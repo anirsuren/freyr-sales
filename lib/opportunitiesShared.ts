@@ -101,8 +101,12 @@ export type OpportunityActivity = {
   /** Whose activity this is — the credited person. */
   person: string;
   note?: string;
-  /** ISO day. */
+  /** ISO day it was logged/updated. */
   date: string;
+  /** Suren, Aug 17 call: "give the status, and state the start date and end
+   *  date for that particular activity." ISO days. */
+  startDate?: string;
+  endDate?: string;
 };
 
 export type Opportunity = {

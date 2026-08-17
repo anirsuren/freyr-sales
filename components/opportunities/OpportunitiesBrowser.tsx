@@ -137,6 +137,9 @@ type Draft = {
   status: string;
   /** The activity stage this deal is AT (activity-master id). */
   activity: string;
+  activityStatus: string;
+  activityStart: string;
+  activityEnd: string;
   owner: string;
   nextSteps: string;
 };
@@ -165,13 +168,14 @@ const BLANK: Draft = {
   customer: "",
   customerId: "",
   customerOther: false,
-  // Opens on one empty row, because an opportunity with no offering on it is
-  // not a thing anyone wants to save.
   rows: [],
   goalIds: [],
   level: "Pipeline",
   status: "",
   activity: "",
+  activityStatus: "initiated",
+  activityStart: "",
+  activityEnd: "",
   owner: "",
   nextSteps: "",
 };
@@ -236,6 +240,9 @@ function toDraft(
     status: o.status ?? "",
     // The deal's CURRENT stage = the newest entry in its activity history.
     activity: (o.activities ?? []).at(-1)?.activity ?? "",
+    activityStatus: (o.activities ?? []).at(-1)?.status ?? "initiated",
+    activityStart: (o.activities ?? []).at(-1)?.startDate ?? "",
+    activityEnd: (o.activities ?? []).at(-1)?.endDate ?? "",
     owner: o.owner ?? "",
     nextSteps: o.nextSteps ?? "",
   };
@@ -280,6 +287,14 @@ export function OpportunitiesBrowser({
     "freyr.opportunities.view",
     "current",
     ["current", "future"]
+  );
+  /** GROUPING IS A LENS, NOT A STRUCTURE (Suren, Aug 17 call: "bring all the
+   *  opportunities together under one customer… it's just a grouping
+   *  mechanism — every row is an opportunity, I'm not taking that out"). */
+  const [groupBy, setGroupBy] = useStoredView<"none" | "customer" | "offering">(
+    "freyr.opportunities.groupBy",
+    "customer",
+    ["none", "customer", "offering"]
   );
   const futures = useMemo(
     () => list.filter((o) => o.level === "Future"),
@@ -363,6 +378,13 @@ export function OpportunitiesBrowser({
     return [...seen.values()].sort((a, b) => a.localeCompare(b));
   }, [list]);
 
+  const groupKeyOf = (o: Opportunity): string =>
+    groupBy === "customer"
+      ? o.customer
+      : (o.offeringIds[0]
+          ? (offeringName.get(o.offeringIds[0]) ?? o.offeringIds[0])
+          : o.offeringLabels[0]) ?? "No offering";
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return currentList
@@ -387,6 +409,24 @@ export function OpportunitiesBrowser({
       )
       .sort((a, b) => b.value - a.value);
   }, [currentList, query, levelFilter, statusFilter, customerFilter, offeringName]);
+
+  const groupedShown = useMemo(() => {
+    if (groupBy === "none") return shown;
+    const totals = new Map<string, number>();
+    for (const o of shown) {
+      const k = groupKeyOf(o);
+      totals.set(k, (totals.get(k) ?? 0) + o.value);
+    }
+    return [...shown].sort((a, b) => {
+      const ka = groupKeyOf(a), kb = groupKeyOf(b);
+      if (ka !== kb) {
+        const d = (totals.get(kb) ?? 0) - (totals.get(ka) ?? 0);
+        return d !== 0 ? d : ka.localeCompare(kb);
+      }
+      return b.value - a.value;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, groupBy, offeringName]);
 
   const totals = useMemo(() => {
     const value = shown.reduce((s, o) => s + o.value, 0);
@@ -471,18 +511,28 @@ export function OpportunitiesBrowser({
           const existing = editing.id
             ? (list.find((x) => x.id === editing.id)?.activities ?? [])
             : [];
-          const currentStage = existing.at(-1)?.activity ?? "";
-          if (!editing.activity || editing.activity === currentStage)
-            return undefined;
-          return [
-            ...existing,
-            {
-              activity: editing.activity,
-              status: "initiated",
-              person: meName,
-              date: new Date().toISOString().slice(0, 10),
-            },
-          ];
+          const last = existing.at(-1);
+          if (!editing.activity) return undefined;
+          const entry = {
+            activity: editing.activity,
+            status: editing.activityStatus || "initiated",
+            person: last?.activity === editing.activity ? (last.person || meName) : meName,
+            date: new Date().toISOString().slice(0, 10),
+            startDate: editing.activityStart || undefined,
+            endDate: editing.activityEnd || undefined,
+          };
+          if (last?.activity === editing.activity) {
+            // Same stage — its status and dates update in place.
+            if (
+              last.status === entry.status &&
+              (last.startDate ?? "") === (entry.startDate ?? "") &&
+              (last.endDate ?? "") === (entry.endDate ?? "")
+            )
+              return undefined;
+            return [...existing.slice(0, -1), { ...last, ...entry }];
+          }
+          // A new stage appends the next line of the history.
+          return [...existing, entry];
         })(),
       };
       const res = await fetch("/api/opportunities", {
@@ -545,7 +595,9 @@ export function OpportunitiesBrowser({
                 setEditing({
                   ...BLANK,
                   owner: meName,
-                  rows: [],
+                  // ONE offering per opportunity (Suren, Aug 17 call) — the
+                  // form opens with its single offering block ready.
+                  rows: [blankLine()],
                   level: pipeView === "future" ? "Future" : "Pipeline",
                 })
               }
@@ -682,6 +734,16 @@ export function OpportunitiesBrowser({
             ]}
           />
           <ColorSelect
+            value={groupBy}
+            ariaLabel="Group rows"
+            onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
+            options={[
+              { value: "none", label: "No grouping", color: "#8E98A8" },
+              { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
+              { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
+            ]}
+          />
+          <ColorSelect
             value={statusFilter}
             ariaLabel="Filter by status"
             onChange={setStatusFilter}
@@ -735,8 +797,16 @@ export function OpportunitiesBrowser({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {shown.map((o) => {
+                {groupedShown.map((o, gi) => {
                   const open = openRow === o.id;
+                  const gKey = groupBy !== "none" ? groupKeyOf(o) : null;
+                  const newGroup =
+                    gKey !== null &&
+                    (gi === 0 || groupKeyOf(groupedShown[gi - 1]) !== gKey);
+                  const groupRows =
+                    newGroup && gKey !== null
+                      ? groupedShown.filter((x) => groupKeyOf(x) === gKey)
+                      : [];
                   const names = [
                     ...o.offeringIds.map((id) => offeringName.get(id) ?? id),
                     ...o.offeringLabels,
@@ -745,6 +815,25 @@ export function OpportunitiesBrowser({
                   const shownConfidence = opportunityConfidence(o);
                   return (
                     <Fragment key={o.id}>
+                      {newGroup && gKey !== null && (
+                        <tr className="bg-surface/70">
+                          <td colSpan={7} className="px-4 py-2">
+                            <span className="flex items-center gap-2.5">
+                              {groupBy === "customer" ? (
+                                <CompanyLogo name={gKey} className="h-5 w-5 shrink-0 text-[7px]" />
+                              ) : (
+                                <OfferingChip name={gKey} color={lineColor({ id: "g", offeringLabel: gKey, value: 0 }) ?? "#B4318F"} size="xs" />
+                              )}
+                              {groupBy === "customer" && (
+                                <b className="text-[12.5px] text-text-primary">{gKey}</b>
+                              )}
+                              <span className="text-[11.5px] text-text-tertiary tnum">
+                                {groupRows.length} {groupRows.length === 1 ? "deal" : "deals"} · {money(groupRows.reduce((sum, x) => sum + x.value, 0))} total
+                              </span>
+                            </span>
+                          </td>
+                        </tr>
+                      )}
                       <tr
                         onClick={() => setOpenRow(open ? null : o.id)}
                         aria-expanded={open}
@@ -1303,19 +1392,16 @@ export function OpportunitiesBrowser({
               </Field>
             </div>
 
-            {/* ONE ROW PER OFFERING (Suren, Aug 16: "if you have offering 1,
-                then one row will come, then a second row, then a third row,
-                then a fourth row… these things you're setting, you can
-                actually set it at the opportunity level, and you can also set
-                it at the offering level"). Value, status, confidence and sign
-                date all live per row; the total is their sum and is never
-                typed. */}
-            <OfferingRowsEditor
-              rows={editing.rows}
+            {/* ONE OFFERING PER OPPORTUNITY (Suren, Aug 17 call: "don't do
+                multiple offerings on an opportunity — make it one offering on
+                an opportunity… it should be a very simple screen"). A second
+                offering means a second opportunity. */}
+            <SingleOfferingEditor
+              line={editing.rows[0] ?? blankLine()}
               offerings={offerings}
               colorForOfferingId={colorForOfferingId}
               rates={rates}
-              onChange={(rows) => setEditing({ ...editing, rows })}
+              onChange={(line) => setEditing({ ...editing, rows: [line] })}
             />
 
             {/* WHICH GOAL THIS DEAL FEEDS (Anir, Aug 16: the straight-line
@@ -1352,34 +1438,7 @@ export function OpportunitiesBrowser({
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <Field
-                label="Activity"
-                hint="Where this deal stands in the activity flow — the stages come from the Activity master. Separate from the level: the level says how sure we are, the activity says what is happening."
-              >
-                {/* Suren, Aug 17 call: "this opportunity, this customer, and
-                    this is the activity at which this particular opportunity
-                    is — that's where the activity master comes along."
-                    Changing it writes the next line of the deal's activity
-                    history. */}
-                <ColorSelect
-                  value={editing.activity}
-                  ariaLabel="Current activity"
-                  collapsible={false}
-                  className="w-full"
-                  minWidth={110}
-                  dense
-                  onChange={(v) => setEditing({ ...editing, activity: v })}
-                  options={[
-                    { value: "", label: "Not set", color: "#8E98A8" },
-                    ...masterActivities.map((a) => ({
-                      value: a.id,
-                      label: a.label,
-                      color: a.color,
-                    })),
-                  ]}
-                />
-              </Field>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Field label="Level">
                 <ColorSelect
                   value={editing.level}
@@ -1822,19 +1881,29 @@ function FutureSection({
   );
 }
 
-function OfferingRowsEditor({
-  rows,
+/**
+ * THE ONE OFFERING ON THE DEAL (Suren, Aug 17 call: "make it one offering on
+ * an opportunity… a very simple screen"). Flat fields, always open — the
+ * offering with its category fly-out, ARR/OTS, and the money row where the
+ * amount is typed in whatever the client pays and USD is computed by the
+ * admin rates.
+ */
+function SingleOfferingEditor({
+  line,
   offerings,
   colorForOfferingId,
   rates = {},
   onChange,
 }: {
-  rows: DraftLine[];
+  line: DraftLine;
   offerings: { id: string; name: string; type?: string }[];
   colorForOfferingId: Map<string, string>;
   rates?: CurrencyRates;
-  onChange: (rows: DraftLine[]) => void;
+  onChange: (line: DraftLine) => void;
 }) {
+  const labelCls =
+    "flex items-center gap-1 text-[12px] font-semibold text-text-primary";
+  const set = (patch: Partial<DraftLine>) => onChange({ ...line, ...patch });
   /** The USD figure a local amount is worth, by the admin-entered rate.
    *  "" when no rate exists — never a silent 1:1 (lib/currency's rule). */
   const usdFrom = (amountText: string, cur: string): string => {
@@ -1843,384 +1912,159 @@ function OfferingRowsEditor({
     const c = convert(n, cur as CurrencyCode, "USD", rates);
     return c.exact ? String(Math.round(c.value)) : "";
   };
-  /**
-   * EVERY ROW IS A DROPDOWN (Anir, Aug 17: "make the offerings in this
-   * opportunity thing like a big dropdown"). Closed, a row is one line —
-   * the offering, its ARR/OTS, its money — and open, it is the editor.
-   * Rows still missing an offering open themselves; complete rows start
-   * closed, so editing a two-offering deal is two quiet lines rather than
-   * two walls of inputs. The old flat cards also BLED — the type column
-   * overhung the card border by 16px — which this layout removes.
-   */
-  const [openKeys, setOpenKeys] = useState<Set<string>>(
-    () => new Set(rows.filter((r) => !r.offeringId && !r.offeringLabel).map((r) => r.key))
-  );
-  const toggle = (key: string) =>
-    setOpenKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  const total = rows.reduce(
-    (sum, r) => sum + (r.value === "" ? 0 : Number(r.value) || 0),
-    0
-  );
-  const weighted = rows.reduce((sum, r) => {
-    const v = r.value === "" ? 0 : Number(r.value) || 0;
-    const c = r.confidence === "" ? null : Number(r.confidence);
-    return sum + (c === null || Number.isNaN(c) ? 0 : (v * c) / 100);
-  }, 0);
-
-  const set = (i: number, patch: Partial<DraftLine>) =>
-    onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-
-  const labelCls = "flex items-center gap-1 text-[12px] font-semibold text-text-primary";
-
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <label className={labelCls}>
-          Offerings in this opportunity
-          <InfoHint text={"One row per offering, each with its own value, status and confidence.\nThe opportunity's total contract value is the sum of these rows, so it is never typed by hand."} />
-        </label>
-        {rows.length > 0 && (
-          <span className="ml-auto text-[11px] font-semibold text-text-secondary tnum">
-            {money(total)} total
-            {weighted > 0 && (
-              <span className="font-normal text-text-tertiary"> · {money(weighted)} weighted</span>
-            )}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-1.5 space-y-1.5">
-        {rows.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border-light px-3 py-5 text-center">
-            <p className="text-[12px] text-text-secondary">
-              No offerings on this deal yet. Add the first one and its value
-              becomes the opportunity&apos;s total.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                const line = blankLine();
-                onChange([line]);
-                setOpenKeys((prev) => new Set(prev).add(line.key));
+    <div className="space-y-3 rounded-xl border border-border-light bg-white px-3.5 py-3.5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+        <div className="min-w-0">
+          <label className={labelCls}>Offering</label>
+          <div className="mt-1">
+            <MultiPicker
+              variant="dropdown"
+              single
+              ariaLabel="Offering on this opportunity"
+              placeholder="Pick the offering…"
+              emptyLabel="No offerings in the catalogue yet."
+              selected={
+                line.offeringId
+                  ? [line.offeringId]
+                  : line.offeringOther || line.offeringLabel
+                    ? ["__other"]
+                    : []
+              }
+              onToggle={(id) => {
+                if (id === "__other") {
+                  set({ offeringId: "", offeringOther: true });
+                  return;
+                }
+                set({ offeringId: id, offeringLabel: "", offeringOther: false });
               }}
-              className="mt-3 cursor-pointer rounded-full bg-blue-primary px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-[color:#0058B0]"
-            >
-              ＋ Add offering
-            </button>
+              topOptions={[
+                {
+                  id: "__other",
+                  label: "Not in the catalogue — type it",
+                  color: "#8E98A8",
+                  icon: Tag,
+                },
+              ]}
+              options={offerings.map((o) => ({
+                id: o.id,
+                label: o.name,
+                group: o.type || "Other",
+                color: colorForOfferingId.get(o.id) ?? "#475569",
+                icon: Sparkles,
+              }))}
+            />
           </div>
-        )}
-        {rows.map((r, i) => {
-          const open = openKeys.has(r.key);
-          const name =
-            (r.offeringId && offerings.find((o) => o.id === r.offeringId)?.name) ||
-            r.offeringLabel ||
-            "";
-          const chipColor = r.offeringId
-            ? colorForOfferingId.get(r.offeringId)
-            : undefined;
-          const v = r.value === "" ? 0 : Number(r.value) || 0;
-          const c = r.confidence === "" ? null : Number(r.confidence);
-          return (
-            <div
-              key={r.key}
-              className={cn(
-                "overflow-hidden rounded-xl border bg-white transition-colors",
-                open ? "border-blue-primary/40" : "border-border-light"
-              )}
-            >
-              <div
-                role="button"
-                tabIndex={0}
-                aria-expanded={open}
-                onClick={() => toggle(r.key)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggle(r.key);
-                  }
-                }}
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
-                  open ? "bg-surface/60" : "hover:bg-surface"
-                )}
-              >
-                {name ? (
-                  <OfferingChip name={name} color={chipColor} size="xs" className="max-w-[240px]" />
-                ) : (
-                  <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary">
-                    <Plus size={12} strokeWidth={2.6} />
-                    New offering
-                  </span>
-                )}
-                {r.revenueType && (
-                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
-                    {r.revenueType}
-                  </span>
-                )}
-                <span className="ml-auto flex shrink-0 items-center gap-3">
-                  {v > 0 && (
-                    <span className="text-[12px] tnum">
-                      {/* Entered in the client's money → say both (Anir,
-                          Aug 17: "you're not telling me the currency"). */}
-                      {r.localCurrency && Number(r.localValue) > 0 && (
-                        <span className="text-text-secondary">
-                          {fmtMoney(Number(r.localValue), r.localCurrency as CurrencyCode)}{" "}
-                          →{" "}
-                        </span>
-                      )}
-                      <b className="text-text-primary">{money(v)}</b>
-                      {c !== null && !Number.isNaN(c) && (
-                        <span className="text-text-secondary"> · {c}%</span>
-                      )}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`Remove offering ${i + 1}`}
-                    title="Remove this offering"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChange(rows.filter((_, j) => j !== i));
-                    }}
-                    className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-                  >
-                    <Trash2 size={12.5} strokeWidth={2.2} />
-                  </button>
-                  <ChevronDown
-                    size={14}
-                    strokeWidth={2.4}
-                    aria-hidden="true"
-                    className={cn(
-                      "text-text-tertiary transition-transform",
-                      open && "rotate-180 text-blue-primary"
-                    )}
-                  />
-                </span>
-              </div>
-
-              {open && (
-                <div className="space-y-3 border-t border-border-light px-3 py-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
-                    <div className="min-w-0">
-                      <label className={labelCls}>Offering</label>
-                      {/* CATEGORIES FIRST, LIKE THE GOALS PICKER (Anir,
-                          Aug 17: "it should have the categories separate and
-                          I click on each category and then see all the
-                          [options] within that category"): each offering type
-                          is a row, its offerings fly out beside it, search on
-                          top cuts across everything. A fresh row shows a
-                          neutral placeholder — "type it" is an explicit
-                          choice, never pre-selected. */}
-                      <div className={cn("mt-1", !r.offeringId && !r.offeringLabel && !r.offeringOther && "rounded-lg ring-2 ring-blue-primary/35")}>
-                        <MultiPicker
-                          variant="dropdown"
-                          single
-                          ariaLabel={`Offering for row ${i + 1}`}
-                          placeholder="Pick the offering…"
-                          emptyLabel="No offerings in the catalogue yet."
-                          selected={
-                            r.offeringId
-                              ? [r.offeringId]
-                              : r.offeringOther || r.offeringLabel
-                                ? ["__other"]
-                                : []
-                          }
-                          onToggle={(id) => {
-                            if (id === "__other") {
-                              set(i, { offeringId: "", offeringOther: true });
-                              return;
-                            }
-                            set(i, {
-                              offeringId: id,
-                              offeringLabel: "",
-                              offeringOther: false,
-                            });
-                          }}
-                          topOptions={[
-                            {
-                              id: "__other",
-                              label: "Not in the catalogue — type it",
-                              color: "#8E98A8",
-                              icon: Tag,
-                            },
-                          ]}
-                          options={offerings.map((o) => ({
-                            id: o.id,
-                            label: o.name,
-                            group: o.type || "Other",
-                            color: colorForOfferingId.get(o.id) ?? "#475569",
-                            // The same mark every offering chip wears — the
-                            // menu speaks the chip language, not bare dots.
-                            icon: Sparkles,
-                          }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <label className={labelCls}>ARR / OTS</label>
-                      <div className="mt-1">
-                        <ColorSelect
-                          value={r.revenueType}
-                          ariaLabel={`ARR or OTS for row ${i + 1}`}
-                          collapsible={false}
-                          minWidth={140}
-                          className="w-full"
-                          onChange={(val) => set(i, { revenueType: val })}
-                          options={[
-                            { value: "", label: "Not set", color: "#8E98A8" },
-                            ...REVENUE_TYPES.map((t) => ({ value: t, label: t, color: "#0071E3" })),
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {!r.offeringId && (r.offeringOther || r.offeringLabel) && (
-                    <div>
-                      <label className={labelCls}>What it&apos;s called</label>
-                      <input
-                        value={r.offeringLabel}
-                        onChange={(e) => set(i, { offeringLabel: e.target.value })}
-                        placeholder="e.g. Customized solution — Standards IA"
-                        className={cn(inputCls, "mt-1")}
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-                    <div className="min-w-0 sm:col-span-2">
-                      <label className={labelCls}>Value</label>
-                      {/* ONE amount, in whatever the client pays — the app
-                          converts to USD itself with the admin rates (Anir,
-                          Aug 17: "this shouldn't enter in both USD and euros
-                          — we're supposed to handle that"). */}
-                      <div className="mt-1 flex gap-1.5">
-                        <ColorSelect
-                          value={r.localCurrency || "USD"}
-                          ariaLabel={`Currency for row ${i + 1}`}
-                          collapsible={false}
-                          dense
-                          minWidth={88}
-                          onChange={(cur) => {
-                            if (cur === "USD") {
-                              set(i, {
-                                localCurrency: "",
-                                localValue: "",
-                              });
-                            } else {
-                              set(i, {
-                                localCurrency: cur,
-                                localValue: r.localValue,
-                                value: usdFrom(r.localValue, cur),
-                              });
-                            }
-                          }}
-                          options={CURRENCIES.map((c) => ({
-                            value: c.code,
-                            label: c.code,
-                            color: c.code === "USD" ? "#0071E3" : "#0F766E",
-                            short: c.symbol.trim(),
-                          }))}
-                        />
-                        <input
-                          value={r.localCurrency ? r.localValue : r.value}
-                          onChange={(e) => {
-                            const text = e.target.value;
-                            if (r.localCurrency) {
-                              set(i, {
-                                localValue: text,
-                                value: usdFrom(text, r.localCurrency),
-                              });
-                            } else {
-                              set(i, { value: text });
-                            }
-                          }}
-                          inputMode="decimal"
-                          placeholder="e.g. 500000"
-                          className={cn(inputCls, "mt-0 min-w-0 flex-1 tnum")}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <label className={labelCls}>Confidence</label>
-                      <div className="mt-1">
-                        <ConfidenceSlider
-                          value={r.confidence}
-                          onChange={(val) => set(i, { confidence: val })}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <label className={labelCls}>Status</label>
-                      <div className="mt-1">
-                        <ColorSelect
-                          value={r.status}
-                          ariaLabel={`Status for row ${i + 1}`}
-                          collapsible={false}
-                          className="w-full"
-                          minWidth={110}
-                          dense
-                          onChange={(val) => set(i, { status: val })}
-                          options={[
-                            { value: "", label: "Not set", color: "#8E98A8" },
-                            ...OPPORTUNITY_STATUSES.map((st) => ({
-                              value: st,
-                              label: st,
-                              color: STATUS_COLOR[st],
-                            })),
-                          ]}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <label className={labelCls}>Est. sign</label>
-                      <input
-                        type="date"
-                        value={r.estSignDate}
-                        onChange={(e) => set(i, { estSignDate: e.target.value })}
-                        className={cn(inputCls, "mt-1 tnum")}
-                      />
-                    </div>
-                  </div>
-
-                  {r.localCurrency && (
-                    <p className="text-[11.5px] leading-snug">
-                      {r.value ? (
-                        <span className="text-text-secondary">
-                          ≈ <b className="text-text-primary tnum">{money(Number(r.value))}</b> at the admin rate — goals and totals count the USD figure.
-                        </span>
-                      ) : (
-                        <span className="font-semibold text-[color:#B45309]">
-                          No {r.localCurrency} rate set yet — an admin adds it on the Performance page; until then this row has no USD value.
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        </div>
+        <div className="min-w-0">
+          <label className={labelCls}>ARR / OTS</label>
+          <div className="mt-1">
+            <ColorSelect
+              value={line.revenueType}
+              ariaLabel="ARR or OTS"
+              collapsible={false}
+              minWidth={140}
+              className="w-full"
+              onChange={(val) => set({ revenueType: val })}
+              options={[
+                { value: "", label: "Not set", color: "#8E98A8" },
+                ...REVENUE_TYPES.map((t) => ({ value: t, label: t, color: "#0071E3" })),
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
-      {rows.length > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            const line = blankLine();
-            onChange([...rows, line]);
-            setOpenKeys((prev) => new Set(prev).add(line.key));
-          }}
-          className="mt-2 cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-        >
-          ＋ Add another offering
-        </button>
+      {!line.offeringId && (line.offeringOther || line.offeringLabel) && (
+        <div>
+          <label className={labelCls}>What it&apos;s called</label>
+          <input
+            value={line.offeringLabel}
+            onChange={(e) => set({ offeringLabel: e.target.value })}
+            placeholder="e.g. Customized solution — Standards IA"
+            className={cn(inputCls, "mt-1")}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="min-w-0 sm:col-span-2">
+          <label className={labelCls}>Value</label>
+          {/* ONE amount, in whatever the client pays — USD is computed. */}
+          <div className="mt-1 flex gap-1.5">
+            <ColorSelect
+              value={line.localCurrency || "USD"}
+              ariaLabel="Currency"
+              collapsible={false}
+              dense
+              minWidth={88}
+              onChange={(cur) => {
+                if (cur === "USD") {
+                  set({ localCurrency: "", localValue: "" });
+                } else {
+                  set({
+                    localCurrency: cur,
+                    localValue: line.localValue,
+                    value: usdFrom(line.localValue, cur),
+                  });
+                }
+              }}
+              options={CURRENCIES.map((c) => ({
+                value: c.code,
+                label: c.code,
+                color: c.code === "USD" ? "#0071E3" : "#0F766E",
+                short: c.symbol.trim(),
+              }))}
+            />
+            <input
+              value={line.localCurrency ? line.localValue : line.value}
+              onChange={(e) => {
+                const text = e.target.value;
+                if (line.localCurrency) {
+                  set({ localValue: text, value: usdFrom(text, line.localCurrency) });
+                } else {
+                  set({ value: text });
+                }
+              }}
+              inputMode="decimal"
+              placeholder="e.g. 500000"
+              aria-label="Deal value"
+              className={cn(inputCls, "mt-0 min-w-0 flex-1 tnum")}
+            />
+          </div>
+        </div>
+        <div className="min-w-0 sm:col-span-2">
+          <label className={labelCls}>Confidence</label>
+          <div className="mt-1">
+            <ConfidenceSlider
+              value={line.confidence}
+              onChange={(val) => set({ confidence: val })}
+            />
+          </div>
+        </div>
+        <div className="min-w-0">
+          <label className={labelCls}>Est. sign</label>
+          <input
+            type="date"
+            value={line.estSignDate}
+            onChange={(e) => set({ estSignDate: e.target.value })}
+            className={cn(inputCls, "mt-1 tnum")}
+          />
+        </div>
+      </div>
+
+      {line.localCurrency && (
+        <p className="text-[11.5px] leading-snug">
+          {line.value ? (
+            <span className="text-text-secondary">
+              ≈ <b className="text-text-primary tnum">{money(Number(line.value))}</b> at the admin rate — goals and totals count the USD figure.
+            </span>
+          ) : (
+            <span className="font-semibold text-[color:#B45309]">
+              No {line.localCurrency} rate set yet — an admin adds it on the Performance page; until then this deal has no USD value.
+            </span>
+          )}
+        </p>
       )}
     </div>
   );
