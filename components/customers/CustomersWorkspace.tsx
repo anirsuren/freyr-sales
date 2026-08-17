@@ -18,10 +18,13 @@ import type { ComponentProps } from "react";
 export function CustomersWorkspace({
   customersProps,
   targets,
+  memberNames = [],
   live,
 }: {
   customersProps: ComponentProps<typeof CustomersBrowser>;
   targets: TargetAccount[];
+  /** Real app members — sheet-only owners must not dress like them. */
+  memberNames?: string[];
   live: boolean;
 }) {
   const [view, setView] = useStoredView<"customers" | "targets">(
@@ -79,7 +82,7 @@ export function CustomersWorkspace({
         {view === "customers" ? (
           <CustomersBrowser {...customersProps} />
         ) : (
-          <TargetsTab targets={targets} live={live} />
+          <TargetsTab targets={targets} memberNames={memberNames} live={live} />
         )}
       </div>
     </div>

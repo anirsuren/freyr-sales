@@ -7,6 +7,7 @@ import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { TipItem } from "@/components/charts/Charts";
 import { getDataMode } from "@/lib/dataMode";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 
 export const metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
@@ -122,6 +123,23 @@ export default async function CustomersPage() {
   );
 
   const { targets } = await readTargets();
+  // WHO IS ACTUALLY IN THE APP (Anir, Aug 17: "if the owner is not in the
+  // app, you can't just say that — it has to be like real data"). Target
+  // owners come from the sheet; only the ones who are real members may wear
+  // the member treatment.
+  const workspace = process.env.FREYR_WORKSPACE_ID;
+  const directory =
+    getDataMode() !== "mock" && workspace
+      ? await listWorkspaceAccess(workspace).catch(() => null)
+      : null;
+  const memberNames = [
+    ...new Set(
+      (directory?.members ?? [])
+        .filter((m) => m.active && m.accountType === "real")
+        .map((m) => m.name.trim())
+        .filter(Boolean)
+    ),
+  ];
   return (
     <div>
       <CustomersWorkspace
@@ -130,6 +148,7 @@ export default async function CustomersPage() {
           includeDemoTeam: getDataMode() === "mock",
         }}
         targets={targets}
+        memberNames={memberNames}
         live={getDataMode() !== "mock"}
       />
     </div>
