@@ -78,8 +78,46 @@ const LOGOS: Record<string, string> = {
   opella: "/logos/real/opella.png",
 };
 
+/**
+ * THE SAME COMPANY, WRITTEN FIVE WAYS.
+ *
+ * Suren's pipeline sheet carries the account plus whatever the deal was about:
+ * "GSK - RTQ", "Novartis FTE", "Novo Nordisk (LATAM)", "Medisca (expansion)",
+ * "Gedeon Richter (Not in KC)", "BMS - Bristol Myers Squibb". Matched on the
+ * whole string those all missed logos we already have, so Novartis showed its
+ * real mark on one row and an initials tile on the next (Anir, Aug 16: "you
+ * might as well just go find the company logos for all of them. It will just
+ * look a lot better").
+ *
+ * So the lookup tries the name as written first, then again with the trailing
+ * qualifier removed. Only trailing qualifiers are stripped: "Bristol Myers
+ * Squibb" must never be reduced to "Bristol", and a leading token is never
+ * matched on its own for the same reason.
+ */
+function logoKeys(name: string): string[] {
+  const raw = name.trim().toLowerCase();
+  const keys = [raw];
+  // "novo nordisk (latam)" → "novo nordisk"
+  const noParens = raw.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (noParens && noParens !== raw) keys.push(noParens);
+  // "gsk - rtq" → "gsk"; "bms - bristol myers squibb" → "bms"
+  const beforeDash = noParens.split(/\s+[-–—]\s+/)[0].trim();
+  if (beforeDash && !keys.includes(beforeDash)) keys.push(beforeDash);
+  // "novartis fte" → "novartis". Only these known suffixes, so a real
+  // two-word brand is never truncated into a different company.
+  const suffix = beforeDash.replace(
+    /\s+(fte|rtq|expansion|consumer|services)$/,
+    ""
+  );
+  if (suffix && !keys.includes(suffix)) keys.push(suffix);
+  return keys;
+}
+
 function logoFor(name: string): string | null {
-  return LOGOS[name.trim().toLowerCase()] || null;
+  for (const key of logoKeys(name)) {
+    if (LOGOS[key]) return LOGOS[key];
+  }
+  return null;
 }
 
 export function CompanyLogo({
