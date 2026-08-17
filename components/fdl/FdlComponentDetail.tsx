@@ -2994,7 +2994,7 @@ export function FdlComponentDetail({
         open={featureModal !== null}
         onClose={() => setFeatureModal(null)}
         title={featureModal === "" ? "Add a feature" : "Edit feature"}
-        size="wide"
+        size="workflow"
       >
         <form
           onSubmit={(event) => {
