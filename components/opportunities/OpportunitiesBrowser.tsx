@@ -849,26 +849,26 @@ export function OpportunitiesBrowser({
                                 {rows.map((line) => (
                                   <div
                                     key={line.id}
-                                    className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2.5"
+                                    className="grid grid-cols-[minmax(150px,1fr)_230px_130px_110px] items-center gap-x-6 px-3.5 py-2.5"
                                   >
-                                    <OfferingChip
-                                      name={lineLabel(line, (id) => offeringName.get(id))}
-                                      color={lineColor(line)}
-                                      size="xs"
-                                    />
-                                    {line.revenueType && (
-                                      <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
-                                        {line.revenueType}
-                                      </span>
-                                    )}
-                                    <span className="ml-auto flex items-center gap-3">
-                                      {/* THREE LAYERS AGAINST THE WHOLE DEAL
-                                          (Anir, Aug 17): grey track = the
-                                          opportunity's total, light blue =
-                                          this offering's share of it, strong
-                                          blue = the weighted slice. The
-                                          numbers wear their layer's colour. */}
-                                      <span className="relative flex h-2 w-40 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <OfferingChip
+                                        name={lineLabel(line, (id) => offeringName.get(id))}
+                                        color={lineColor(line)}
+                                        size="xs"
+                                      />
+                                      {line.revenueType && (
+                                        <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
+                                          {line.revenueType}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {/* Same shape as the column above it: the
+                                        bar, then the amounts under the bar.
+                                        Grey = the whole deal, light blue =
+                                        this offering, strong blue = weighted. */}
+                                    <span className="flex flex-col gap-1">
+                                      <span className="relative flex h-2 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                                         <span
                                           className="absolute inset-y-0 left-0 rounded-full bg-blue-primary opacity-[0.32]"
                                           style={{
@@ -882,24 +882,24 @@ export function OpportunitiesBrowser({
                                           }}
                                         />
                                       </span>
-                                      <span className="whitespace-nowrap text-[12px] tnum">
+                                      <span className="whitespace-nowrap text-[11px] tnum">
                                         <b className="text-blue-primary">
                                           {line.confidence === undefined
                                             ? "—"
                                             : money(lineWeighted(line))}
-                                        </b>{" "}
+                                        </b>
                                         <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
-                                          of {money(line.value)}
-                                        </span>{" "}
+                                          {" "}of {money(line.value)}
+                                        </span>
                                         <span className="text-text-tertiary">
-                                          of {money(o.value)} deal
+                                          {" "}of {money(o.value)}
                                         </span>
                                         {line.confidence !== undefined && (
-                                          <span className="text-text-secondary">
-                                            {" "}· {line.confidence}%
-                                          </span>
+                                          <span className="text-text-secondary"> · {line.confidence}%</span>
                                         )}
                                       </span>
+                                    </span>
+                                    <span>
                                       {line.status ? (
                                         <span
                                           className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
@@ -911,13 +911,11 @@ export function OpportunitiesBrowser({
                                           {line.status}
                                         </span>
                                       ) : (
-                                        <span className="text-[11px] text-text-tertiary">
-                                          not set
-                                        </span>
+                                        <span className="text-[11px] text-text-tertiary">not set</span>
                                       )}
-                                      <span className="text-[11.5px] text-text-tertiary tnum">
-                                        {line.estSignDate ?? "no date"}
-                                      </span>
+                                    </span>
+                                    <span className="text-right text-[11.5px] text-text-tertiary tnum">
+                                      {line.estSignDate ?? "no date"}
                                     </span>
                                   </div>
                                 ))}
