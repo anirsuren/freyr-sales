@@ -459,7 +459,7 @@ export function OpportunitiesBrowser({
         !editing.customerId && !editing.customer.trim() ? "the customer" : "",
         editing.rows.length === 0 ? "at least one offering" : "",
         editing.rows.some((r) => !r.offeringId && !r.offeringLabel.trim())
-          ? "which offering the unnamed row is"
+          ? "the offering"
           : "",
         // Value is demanded on rows ADDED here and now — five of his real
         // imported deals genuinely carry no value yet, and editing those must
@@ -470,7 +470,7 @@ export function OpportunitiesBrowser({
             (r.offeringId || r.offeringLabel.trim()) &&
             (r.value === "" || !(Number(r.value) > 0))
         )
-          ? "a value on the new offering"
+          ? "a value on the offering"
           : "",
       ].filter(Boolean);
 
