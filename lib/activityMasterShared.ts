@@ -66,8 +66,9 @@ export const COUNTS_FROM = ["initiated", "under_progress", "completed"] as const
 export type ActivityCountsFrom = (typeof COUNTS_FROM)[number];
 
 export const COUNTS_FROM_META: Record<ActivityCountsFrom, { label: string }> = {
-  initiated: { label: "As soon as it's initiated" },
-  under_progress: { label: "Once it's under progress" },
+  // Short enough to never ellipsize in a table column.
+  initiated: { label: "From initiated" },
+  under_progress: { label: "Once under progress" },
   completed: { label: "Only when completed" },
 };
 

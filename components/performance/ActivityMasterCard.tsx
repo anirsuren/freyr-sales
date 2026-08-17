@@ -323,7 +323,7 @@ export function ActivityMasterCard({
                              this isn't what we had in the other place"):
                              categories first, each flying out its goals,
                              search on top. One pick connects and closes. */
-                          <span className="w-[150px]">
+                          <span className="w-[176px]">
                             <MultiPicker
                               variant="dropdown"
                               single
