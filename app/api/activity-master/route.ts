@@ -9,6 +9,7 @@ import {
   removeMasterActivity,
   updateMasterActivity,
 } from "@/lib/activityMaster";
+import { readPerformance } from "@/lib/performance";
 
 /**
  * THE ACTIVITY MASTER over HTTP.
@@ -25,7 +26,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const state = await readActivityMaster();
-  return NextResponse.json({ state });
+  // The goals ride along, light, so the customer page can SAY which goal an
+  // activity feeds ("this counts toward Renewals") without pulling the whole
+  // performance store. And who is asking, because the credit for an activity
+  // goes to whoever logs it (Suren: "that guy adds an activity, then against
+  // his name that goal goes").
+  const me = await getCurrentUser();
+  const perf = await readPerformance().catch(() => null);
+  return NextResponse.json({
+    state,
+    goals: (perf?.goals ?? []).map((g) => ({
+      id: g.id,
+      name: g.name,
+      unit: g.unit,
+      year: g.year,
+      type: g.type,
+    })),
+    me: { name: me.name },
+  });
 }
 
 export async function POST(req: NextRequest) {

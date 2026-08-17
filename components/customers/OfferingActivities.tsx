@@ -28,6 +28,7 @@ import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useOpportunities } from "@/lib/useOpportunities";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { MultiPicker } from "@/components/ui/MultiPicker";
 import { Modal } from "@/components/ui/Modal";
 import {
   CUSTOMER_OFFERING_ACTIVITIES,
@@ -166,7 +167,12 @@ export function OfferingActivities({
   onSave,
 }: {
   versions: CustomerOfferingEngagementVersion[];
-  onSave: (versions: CustomerOfferingEngagementVersion[]) => void;
+  onSave: (
+    versions: CustomerOfferingEngagementVersion[],
+    /** The record just written by the editor — the activity-goal hook reads
+     *  it. Absent on make-current and remove, which complete nothing new. */
+    touched?: CustomerOfferingEngagementVersion
+  ) => void;
 }) {
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
@@ -250,7 +256,14 @@ export function OfferingActivities({
     const next = existing
       ? versions.map((v) => (v.id === record.id ? record : v))
       : versions.map((v) => ({ ...v, linked: false })).concat(record);
-    onSave(next);
+    // The hook cares whether COMPLETED is new news: re-saving an already
+    // completed record must not offer to count the same thing twice.
+    onSave(
+      next,
+      record.status === "completed" && existing?.status !== "completed"
+        ? record
+        : undefined
+    );
     setEditing(null);
   }
 
@@ -591,30 +604,27 @@ export function OfferingActivities({
                   <InfoHint text={"The deals this activity belongs to.\nAdd them on the Opportunities page and they become pickable here."} />
                   <span className="font-normal text-text-tertiary">optional</span>
                 </label>
-                <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
-                  {pipeline.map((o) => {
-                    const on = opportunityIds.includes(o.id);
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() =>
-                          setOpportunityIds((prev) =>
-                            on ? prev.filter((x) => x !== o.id) : [...prev, o.id]
-                          )
-                        }
-                        className={
-                          on
-                            ? "cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white"
-                            : "cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                        }
-                      >
-                        {o.name}
-                        <span className="ml-1 opacity-70">{o.customer}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* SEARCH, NOT A CHIP WALL — the same picker the opportunity
+                    form got when its sixty chips pushed the fields off screen
+                    (Anir, Aug 16: "whateven is this fix it"). This one had
+                    the same wall with the whole pipeline in it. */}
+                <MultiPicker
+                  options={pipeline.map((o) => ({
+                    id: o.id,
+                    label: o.name,
+                    sub: o.customer,
+                  }))}
+                  selected={opportunityIds}
+                  onToggle={(id) =>
+                    setOpportunityIds((prev) =>
+                      prev.includes(id)
+                        ? prev.filter((x) => x !== id)
+                        : [...prev, id]
+                    )
+                  }
+                  placeholder="Search deals…"
+                  emptyLabel="Nothing in the pipeline yet."
+                />
               </div>
             )}
 

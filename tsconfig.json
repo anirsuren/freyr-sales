@@ -31,6 +31,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-3006/types/**/*.ts",
     ".next-assignment-test/types/**/*.ts",
     ".next-auth-test/types/**/*.ts",
     ".next-auth/types/**/*.ts",
@@ -45,7 +46,7 @@
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-3006/types/**/*.ts"
+    ".next-review/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

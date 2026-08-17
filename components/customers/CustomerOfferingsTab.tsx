@@ -10,6 +10,14 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
+import {
+  ActivityGoalPrompt,
+  type PromptGoal,
+} from "@/components/customers/ActivityGoalPrompt";
+import {
+  masterFor,
+  type ActivityMasterState,
+} from "@/lib/activityMasterShared";
 import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -483,6 +491,7 @@ function RevenueSection({
 
 export function CustomerOfferingsTab({
   customerId,
+  customerName = "",
   customerType,
   typeOptions,
   applicable,
@@ -490,6 +499,7 @@ export function CustomerOfferingsTab({
   usage = [],
 }: {
   customerId: string;
+  customerName?: string;
   customerType: string | null;
   typeOptions: string[];
   applicable: TabOffering[];
@@ -504,6 +514,40 @@ export function CustomerOfferingsTab({
   const [busyId, setBusyId] = useState<string | null>(null);
   // Local copy of the revenue lines so add/remove feels instant.
   const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
+  /**
+   * THE ACTIVITY → GOAL BRIDGE (Suren, Aug 17: "whatever goal is connected to
+   * that particular activity, that goal automatically gets connected"). The
+   * master, the goals it can point at and who is signed in, fetched once —
+   * and if the fetch fails, activities save exactly as before and the prompt
+   * simply never appears. A convenience, never a gate.
+   */
+  const [goalBridge, setGoalBridge] = useState<{
+    master: ActivityMasterState;
+    goals: PromptGoal[];
+    meName: string;
+  } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/activity-master", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && d?.state) {
+          setGoalBridge({
+            master: d.state,
+            goals: d.goals ?? [],
+            meName: d.me?.name ?? "",
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [goalPrompt, setGoalPrompt] = useState<{
+    activity: string;
+    dollarValue?: number;
+  } | null>(null);
   // Collapsed by default. Expanding every in-use offering on mount buried the
   // "Opportunities to pitch" list under a stack of revenue panels, so the tab
   // opened on detail nobody had asked for (Anir, Jul 25: "the individual
@@ -547,7 +591,8 @@ export function CustomerOfferingsTab({
    *  current, so this is where its cells actually come from. */
   async function saveActivities(
     offeringId: string,
-    versions: CustomerOfferingEngagementVersion[]
+    versions: CustomerOfferingEngagementVersion[],
+    touched?: CustomerOfferingEngagementVersion
   ) {
     const existing = usageState.find((u) => u.offering_id === offeringId);
     const next = usageState.filter((u) => u.offering_id !== offeringId);
@@ -570,6 +615,22 @@ export function CustomerOfferingsTab({
       if (data.ok) {
         toast("Activity saved.");
         router.refresh();
+        // JUST COMPLETED, AND THE MASTER CONNECTS IT TO A GOAL → offer to
+        // count it, credited to whoever is logging (Suren: "that guy adds an
+        // activity, then against his name that goal goes").
+        if (touched && goalBridge) {
+          const entry = masterFor(goalBridge.master, touched.activity);
+          if (
+            entry &&
+            entry.contribution !== "none" &&
+            entry.goalIds.some((id) => goalBridge.goals.some((g) => g.id === id))
+          ) {
+            setGoalPrompt({
+              activity: touched.activity,
+              dollarValue: touched.dollar_value || undefined,
+            });
+          }
+        }
       } else {
         toast(data.error || "Couldn't save the activity.", "error");
       }
@@ -784,7 +845,9 @@ export function CustomerOfferingsTab({
       {using && (
         <OfferingActivities
           versions={activitiesForOffering(o.id)}
-          onSave={(versions) => void saveActivities(o.id, versions)}
+          onSave={(versions, touched) =>
+            void saveActivities(o.id, versions, touched)
+          }
         />
       )}
 
@@ -1086,6 +1149,22 @@ export function CustomerOfferingsTab({
           </div>
         )}
       </section>
+      {goalPrompt && goalBridge && (() => {
+        const entry = masterFor(goalBridge.master, goalPrompt.activity);
+        if (!entry) return null;
+        return (
+          <ActivityGoalPrompt
+            open
+            activity={goalPrompt.activity}
+            master={entry}
+            goals={goalBridge.goals.filter((g) => entry.goalIds.includes(g.id))}
+            meName={goalBridge.meName}
+            customerName={customerName}
+            dollarValue={goalPrompt.dollarValue}
+            onClose={() => setGoalPrompt(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

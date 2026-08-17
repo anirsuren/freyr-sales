@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
@@ -504,6 +504,11 @@ export function FdlComponentDetail({
   /** The release whose Files panel opened the picker, if any. */
   const [filesForRelease, setFilesForRelease] = useState<string | null>(null);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
+  /** Feature rows open like a dropdown IN the table (Anir, Aug 17: "you can
+   *  probably do a drop-down here… you could definitely do the pop-up still.
+   *  I'm just saying I want a dropdown"). Row click expands; the name still
+   *  opens the reading popup. */
+  const [expandedFeatureId, setExpandedFeatureId] = useState<string | null>(null);
 
   /** Send the picked files to storage, then hold the returned URLs on the
    *  form until Save writes them onto the feature. */
@@ -616,9 +621,38 @@ export function FdlComponentDetail({
   // kind of unclear what I'm supposed to do"). The two newest versions are the
   // comparison anyone wants first, so it starts there and the pills read as
   // what they are: a selection you can change.
-  const [compareIds, setCompareIds] = useState<string[]>(() =>
+  /** REMEMBERED PER PERSON, PER COMPONENT (Anir, Aug 17: "it should save for
+   *  each individual user whatever I was on last… not some kind of hive mind
+   *  thing"). localStorage is this browser's own, so one person's pick can
+   *  never repaint another's screen — same storage every sticky view choice
+   *  in the app already uses. Stored ids are checked against the versions
+   *  that still exist; when none survive, the newest two are the default. */
+  const compareKey = `freyr.fdl.compare.${component.id}`;
+  const [compareIds, setCompareIdsRaw] = useState<string[]>(() =>
     releases.slice(-2).map((r) => r.id)
   );
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        window.localStorage.getItem(compareKey) || "[]"
+      ) as string[];
+      const alive = saved.filter((id) => releases.some((r) => r.id === id));
+      if (alive.length >= 2) setCompareIdsRaw(alive);
+    } catch {
+      /* first visit, or unreadable — the default stands */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareKey]);
+  const setCompareIds = (next: string[] | ((prev: string[]) => string[])) =>
+    setCompareIdsRaw((prev) => {
+      const value = typeof next === "function" ? next(prev) : next;
+      try {
+        window.localStorage.setItem(compareKey, JSON.stringify(value));
+      } catch {
+        /* private mode — it just won't stick */
+      }
+      return value;
+    });
   const compareReleases = releases.filter((r) => compareIds.includes(r.id));
   const compareRows = useMemo(
     () =>
@@ -1950,18 +1984,34 @@ export function FdlComponentDetail({
                 <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   <th className="py-2 pr-4">Feature</th>
                   <th className="py-2 pr-4">In versions</th>
-                  <th className="py-2 pr-4">Customers on it</th>
+                  <th className="py-2 pr-4">Customers</th>
                   <th className="py-2 pr-4">Files</th>
                   {canEdit && <th className="py-2" />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {shownFeatures.map((feature) => (
-                  <tr key={feature.id}>
+                {shownFeatures.map((feature) => {
+                  const rowOpen = expandedFeatureId === feature.id;
+                  return (
+                  <Fragment key={feature.id}>
+                  <tr
+                    onClick={() =>
+                      setExpandedFeatureId(rowOpen ? null : feature.id)
+                    }
+                    aria-expanded={rowOpen}
+                    className={`cursor-pointer transition-colors ${
+                      rowOpen
+                        ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        : "hover:bg-surface"
+                    }`}
+                  >
                     <td className="py-2.5 pr-4">
                       <button
                         type="button"
-                        onClick={() => setReadingFeature(feature)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReadingFeature(feature);
+                        }}
                         className="group/f w-full cursor-pointer text-left"
                       >
                         <p className="text-[13px] font-semibold text-text-primary group-hover/f:text-blue-primary">
@@ -2179,7 +2229,10 @@ export function FdlComponentDetail({
                           <button
                             type="button"
                             aria-label={`Edit ${feature.name}`}
-                            onClick={() => openFeatureModal(feature)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openFeatureModal(feature);
+                            }}
                             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                           >
                             <Pencil size={13} strokeWidth={2} />
@@ -2188,7 +2241,10 @@ export function FdlComponentDetail({
                           <button
                             type="button"
                             aria-label={`Remove ${feature.name}`}
-                            onClick={() => setConfirmFeatureDelete(feature.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmFeatureDelete(feature.id);
+                            }}
                             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
                           >
                             <Trash2 size={13} strokeWidth={2} />
@@ -2208,7 +2264,39 @@ export function FdlComponentDetail({
                       </td>
                     )}
                   </tr>
-                ))}
+                  {rowOpen && (
+                    <tr className="!border-t-0 bg-surface">
+                      <td
+                        colSpan={canEdit ? 5 : 4}
+                        className="pb-4 pl-4 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                      >
+                        <div className="tab-panel">
+                          {feature.description ? (
+                            <p className="max-w-[860px] whitespace-pre-line text-[12.5px] leading-relaxed text-text-primary">
+                              {feature.description}
+                            </p>
+                          ) : (
+                            <p className="text-[12.5px] text-text-tertiary">
+                              No description on this feature yet.
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReadingFeature(feature);
+                            }}
+                            className="mt-2 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
+                          >
+                            Open the full view
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2885,10 +2973,15 @@ export function FdlComponentDetail({
         </form>
       </Modal>
 
+      {/* Wide, same height (Anir, Aug 17: "can you make it wider? I don't
+          know why it's so thin. Keep the height"). Feature names are whole
+          sentences and the description is a user story — both were reading
+          through a letterbox. */}
       <Modal
         open={featureModal !== null}
         onClose={() => setFeatureModal(null)}
         title={featureModal === "" ? "Add a feature" : "Edit feature"}
+        size="wide"
       >
         <form
           onSubmit={(event) => {

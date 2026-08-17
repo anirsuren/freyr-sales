@@ -1396,6 +1396,7 @@ export function CustomerTabs({
         {tab === "offerings" && offeringsCatalog && (
           <CustomerOfferingsTab
             customerId={customer.id}
+            customerName={customer.company_name}
             customerType={customer.customer_type ?? null}
             typeOptions={offeringsCatalog.typeOptions}
             applicable={offeringsCatalog.applicable}

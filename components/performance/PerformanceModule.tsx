@@ -345,7 +345,9 @@ export function PerformanceModule({
       note: searchParams.get("logNote") ?? undefined,
     });
     setLogOpen(true);
-    router.replace(`/performance/${tab}`, { scroll: false });
+    // Scrubbed synchronously: router.replace raced the modal opening and the
+    // params survived, so refresh re-opened a half-done claim.
+    window.history.replaceState(null, "", `/performance/${tab}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

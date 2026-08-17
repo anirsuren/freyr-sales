@@ -133,7 +133,58 @@ async function writeRow(state: ActivityMasterState): Promise<void> {
 }
 
 export async function readActivityMaster(): Promise<ActivityMasterState> {
+  if (isMock()) return seededMock();
   return readRow().catch(() => normalize(null));
+}
+
+function isMock(): boolean {
+  try {
+    return getDataMode() === "mock";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * MOCK COMES PRE-CONNECTED. Sample data must look like the finished thing on
+ * every page, so the demo master shows the loop Suren described instead of
+ * five unmapped rows: Contract feeds the booking goals (his New vs Existing
+ * example — the logger picks one), Pilot and Lead count 1 toward matching
+ * count goals. Resolved by goal NAME at read time so it survives reseeds, and
+ * read-only like every other mock surface.
+ */
+async function seededMock(): Promise<ActivityMasterState> {
+  const base = normalize(null);
+  try {
+    const { readPerformance } = require("./performance") as {
+      readPerformance: () => Promise<{
+        goals: { id: string; name: string; unit: string }[];
+      }>;
+    };
+    const { goals } = await readPerformance();
+    const named = (re: RegExp, unit?: string) =>
+      goals
+        .filter((g) => re.test(g.name) && (!unit || g.unit === unit))
+        .map((g) => g.id)
+        .slice(0, 2);
+    for (const a of base.activities) {
+      if (a.id === "contract") {
+        a.goalIds = named(/booked (new|existing) business/i, "currency");
+        if (a.goalIds.length === 0) a.goalIds = named(/revenue|booked/i, "currency");
+      }
+      if (a.id === "pilot") {
+        a.goalIds = named(/pilot/i, "count");
+        if (a.goalIds.length === 0) a.goalIds = named(/count/i, "count");
+      }
+      if (a.id === "lead") {
+        a.contribution = named(/lead/i, "count").length ? "count" : a.contribution;
+        a.goalIds = named(/lead/i, "count");
+      }
+    }
+  } catch {
+    /* plain defaults are still a working master */
+  }
+  return base;
 }
 
 /** Update one activity's contribution and/or goal connections. */
