@@ -330,6 +330,8 @@ export function PerformanceModule({
     amount?: string;
     customer?: string;
     note?: string;
+    /** The activity a handoff came from — stamped onto the saved actual. */
+    activityId?: string;
   } | null>(null);
 
   /**
@@ -356,6 +358,7 @@ export function PerformanceModule({
       amount: searchParams.get("logAmount") ?? undefined,
       customer: searchParams.get("logCustomer") ?? undefined,
       note: searchParams.get("logNote") ?? undefined,
+      activityId: searchParams.get("logActivity") ?? undefined,
     });
     setLogOpen(true);
     // Scrubbed synchronously: router.replace raced the modal opening and the
@@ -4095,6 +4098,8 @@ function LogActualModal({
     amount?: string;
     customer?: string;
     note?: string;
+    /** The activity a handoff came from — stamped onto the saved actual. */
+    activityId?: string;
   } | null;
   onClose: () => void;
   run: RunOp;
@@ -4524,6 +4529,8 @@ function LogActualModal({
         opportunityId: linkedOpp?.id,
         evidence: evidence.length ? evidence : undefined,
         currency: unit === "currency" ? entryCurrency : undefined,
+        // The stamp a handoff carries: which activity this number came from.
+        activityId: initial?.activityId,
       },
       "Sent for verification. It counts once the group owner locks it"
     );

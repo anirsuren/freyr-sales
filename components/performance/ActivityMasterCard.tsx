@@ -21,6 +21,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -98,6 +100,7 @@ export function ActivityMasterCard({
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<MasterActivity | null>(null);
 
   useEffect(() => {
@@ -386,37 +389,70 @@ export function ActivityMasterCard({
           </table>
 
           {writable && (
-            <form
-              className="flex flex-wrap items-center gap-2 border-t border-border-light px-4 py-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const label = newLabel.trim();
-                if (!label) return;
-                void post({ op: "add", label }, `${label} added to the master`).then(
-                  (ok) => ok && setNewLabel("")
-                );
-              }}
-            >
-              <input
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="Add an activity, e.g. Renewal"
-                className="h-[36px] w-[240px] rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-              />
-              <button
-                type="submit"
-                disabled={busy || !newLabel.trim()}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-50"
-              >
-                <Plus size={12} strokeWidth={2.4} /> Add
-              </button>
+            <div className="flex items-center gap-2.5 border-t border-border-light px-4 py-3">
+              {/* A popup like every other add in the app (Anir, Aug 17: "the
+                  add button is bad… it should be a pop-up like all the other
+                  ones"). Adding is Suren's own spec: "you should have the
+                  ability to add more later, yes" — a new activity joins as a
+                  column. */}
+              <Button onClick={() => setAddOpen(true)}>
+                <Plus size={14} strokeWidth={2.2} /> New activity
+              </Button>
               <span className="text-[11px] text-text-tertiary">
                 The five built-ins stay — history is written in them.
               </span>
-            </form>
+            </div>
           )}
         </div>
       )}
+
+      <Modal
+        open={addOpen}
+        onClose={() => {
+          setAddOpen(false);
+          setNewLabel("");
+        }}
+        title="New activity"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const label = newLabel.trim();
+            if (!label) return;
+            void post({ op: "add", label }, `${label} added to the master`).then(
+              (ok) => {
+                if (ok) {
+                  setNewLabel("");
+                  setAddOpen(false);
+                }
+              }
+            );
+          }}
+        >
+          <label className="block text-[12px] font-semibold text-text-primary">
+            What is the activity called?
+          </label>
+          <input
+            autoFocus
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder="e.g. Renewal"
+            className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary focus:shadow-input-focus"
+          />
+          <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
+            It joins the table as its own column — set how it counts, from
+            which status, and the goals it may feed right after.
+          </p>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy || !newLabel.trim()} loading={busy}>
+              Add it
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <ConfirmDialog
         open={confirmRemove !== null}

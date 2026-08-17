@@ -581,6 +581,7 @@ export async function logActual(input: {
   dealId?: string;
   /** The deal this number came out of, when there is one. */
   opportunityId?: string;
+  activityId?: string;
   dealLabel?: string;
   evidence?: { name?: unknown; url?: unknown }[];
   /** What it was signed in. Stored as recorded; never converted on the way in. */
@@ -646,6 +647,7 @@ export async function logActual(input: {
     opportunityId: input.opportunityId
       ? str(input.opportunityId, 80)
       : undefined,
+    activityId: input.activityId ? str(input.activityId, 60) : undefined,
     dealLabel: input.dealLabel ? str(input.dealLabel, 160) : undefined,
     evidence: evidence.length ? evidence : undefined,
     // Everything logged now waits for its group owner. Legacy entries with no

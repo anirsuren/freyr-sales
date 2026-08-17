@@ -117,6 +117,9 @@ export function ActivityGoalPrompt({
           subgoalId: null,
           person: creditTo,
           amount,
+          // The invisible stamp: which activity this number came from, so
+          // activity→goal flow can be reported later.
+          activityId: master.id,
           customer: customerName,
           note: `${label} on ${customerName} — logged from the activity`,
         }),
@@ -144,6 +147,7 @@ export function ActivityGoalPrompt({
     });
     if (amount > 0) q.set("logAmount", String(amount));
     if (creditTo && creditTo !== meName) q.set("logPerson", creditTo);
+    q.set("logActivity", master.id);
     onClose();
     router.push(`/performance/org?${q.toString()}`);
   }

@@ -400,6 +400,7 @@ export async function POST(req: NextRequest) {
           opportunityId: body.opportunityId
             ? String(body.opportunityId)
             : undefined,
+          activityId: body.activityId ? String(body.activityId) : undefined,
           dealLabel: body.dealLabel ? String(body.dealLabel) : undefined,
           evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
           currency: body.currency ? String(body.currency) : undefined,

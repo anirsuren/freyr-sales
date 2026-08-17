@@ -260,6 +260,11 @@ export type PerfActual = {
    * item level simply says so rather than demanding one.
    */
   opportunityId?: string;
+  /** The master activity this number came FROM (a pilot, a contract) when it
+   *  was logged through an activity prompt. Optional forever — plenty of
+   *  results have no activity behind them. Feeds the future activity→goal
+   *  flow report; nothing is stamped retroactively. */
+  activityId?: string;
   /** The proof: signed contract, SOW, opportunity summary (Suren, Aug 13:
    *  "we need evidence"). */
   evidence?: ActualEvidence[];
