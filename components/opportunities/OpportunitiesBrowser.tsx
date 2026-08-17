@@ -250,7 +250,12 @@ export function OpportunitiesBrowser({
   const colorForOfferingId = useMemo(() => {
     const map = new Map<string, string>();
     for (const o of offerings) {
-      const c = o.type ? typeColor[o.type] : undefined;
+      // The same fallback the Offerings page uses when a type name has
+      // drifted from the types master (its pill goes violet, not gray) —
+      // "Freyr Services" vs the master's spelling left GRI colourless in
+      // Real (Anir, Aug 17: "that has to be color-coded with the tag and
+      // the pill and stuff"). Only truly untyped offerings stay neutral.
+      const c = o.type ? (typeColor[o.type] ?? "#7C3AED") : undefined;
       if (c) map.set(o.id, c);
     }
     return map;
@@ -260,7 +265,7 @@ export function OpportunitiesBrowser({
   const colorForOfferingLabel = useMemo(() => {
     const map = new Map<string, string>();
     for (const o of offerings) {
-      const c = o.type ? typeColor[o.type] : undefined;
+      const c = o.type ? (typeColor[o.type] ?? "#7C3AED") : undefined;
       if (c) map.set(o.name.trim().toLowerCase(), c);
     }
     return map;
@@ -604,33 +609,57 @@ export function OpportunitiesBrowser({
                           {rows.length === 0 && names.length === 0 ? (
                             <span className="text-[12px] text-text-tertiary">—</span>
                           ) : rows.length > 0 ? (
+                            /* One chip per DISTINCT offering — a deal quoted
+                               as ARR + OTS is two rows of the same offering,
+                               and "GRI GRI" said less than "GRI" (the split
+                               lives in the dropdown). */
                             <span className="flex flex-wrap items-center gap-1">
-                              {rows.slice(0, 2).map((line) => (
-                                <OfferingChip
-                                  key={line.id}
-                                  name={lineLabel(line, (id) => offeringName.get(id))}
-                                  color={lineColor(line)}
-                                  size="xs"
-                                  className="max-w-[150px]"
-                                />
-                              ))}
-                              {rows.length > 2 && (
-                                <span className="text-[11px] font-semibold text-text-tertiary">
-                                  +{rows.length - 2}
-                                </span>
-                              )}
+                              {(() => {
+                                const seen = new Map<string, (typeof rows)[number]>();
+                                for (const line of rows) {
+                                  const label = lineLabel(line, (id) => offeringName.get(id));
+                                  if (!seen.has(label)) seen.set(label, line);
+                                }
+                                const uniq = [...seen.entries()];
+                                return (
+                                  <>
+                                    {uniq.slice(0, 2).map(([label, line]) => (
+                                      <OfferingChip
+                                        key={label}
+                                        name={label}
+                                        color={lineColor(line)}
+                                        size="xs"
+                                        className="max-w-[150px]"
+                                      />
+                                    ))}
+                                    {uniq.length > 2 && (
+                                      <span className="text-[11px] font-semibold text-text-tertiary">
+                                        +{uniq.length - 2}
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </span>
                           ) : (
                             <span className="flex flex-wrap items-center gap-1">
-                              {names.slice(0, 2).map((n) => (
-                                <OfferingChip
-                                  key={n}
-                                  name={n}
-                                  color={colorForOfferingLabel.get(n.trim().toLowerCase())}
-                                  size="xs"
-                                  className="max-w-[150px]"
-                                />
-                              ))}
+                              {names.slice(0, 2).map((n) => {
+                                const resolved = resolveOfferingLabel(n, offerings);
+                                return (
+                                  <OfferingChip
+                                    key={n}
+                                    name={n}
+                                    color={
+                                      colorForOfferingLabel.get(n.trim().toLowerCase()) ??
+                                      (resolved
+                                        ? colorForOfferingId.get(resolved)
+                                        : undefined)
+                                    }
+                                    size="xs"
+                                    className="max-w-[150px]"
+                                  />
+                                );
+                              })}
                               {names.length > 2 && (
                                 <span className="text-[11px] font-semibold text-text-tertiary">
                                   +{names.length - 2}
@@ -662,7 +691,19 @@ export function OpportunitiesBrowser({
                           {shownConfidence === undefined ? (
                             <span className="text-text-tertiary">—</span>
                           ) : (
-                            `${shownConfidence}%`
+                            /* The number, and the number DRAWN (Anir, Aug 17:
+                               "for confidence, can you show that visually?").
+                               Blue like every other measure — confidence is
+                               not a health verdict, so no traffic colours. */
+                            <span className="inline-flex flex-col items-end gap-1">
+                              <span>{shownConfidence}%</span>
+                              <span className="flex h-1 w-16 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                <span
+                                  className="block h-full rounded-full bg-blue-primary"
+                                  style={{ width: `${shownConfidence}%` }}
+                                />
+                              </span>
+                            </span>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] text-text-secondary tnum">

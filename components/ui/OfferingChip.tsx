@@ -28,13 +28,22 @@ import { cn } from "@/lib/utils";
 
 const UNTYPED = "#475569";
 
-/** type name → colour, keyed exactly as components/offerings/OfferingsBrowser. */
+/**
+ * type name → colour, keyed by master-list position with the same +3 offset
+ * the Offerings page uses — minus the palette's one NEUTRAL slot. "Freyr
+ * Services" landed exactly on slate, so every GRI chip wore its real type
+ * colour and still read as uncoloured (Anir, Aug 17: "that has to be
+ * color-coded with the tag and the pill and stuff"). An identity chip must
+ * never look gray, so identities draw from the palette without its neutral.
+ */
+const IDENTITY_PALETTE = FILTER_PALETTE.filter((c) => c !== "#475569");
+
 export function offeringTypeColors(
   types: { name: string }[]
 ): Record<string, string> {
   const map: Record<string, string> = {};
   types.forEach((t, i) => {
-    map[t.name] = FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length];
+    map[t.name] = IDENTITY_PALETTE[(i + 3) % IDENTITY_PALETTE.length];
   });
   return map;
 }
