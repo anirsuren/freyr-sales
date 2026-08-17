@@ -835,8 +835,9 @@ export function OpportunitiesBrowser({
                                 is the point: "within that opportunity, this
                                 offering has a better status and confidence
                                 level, more." */}
+                            <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
                             {rows.length > 0 && (
-                              <div className="tab-panel mb-3 overflow-hidden rounded-xl border border-border-light bg-white">
+                              <div>
                                 <div className="flex items-center gap-2 border-b border-border-light px-3 py-2">
                                   <b className="text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary">
                                     Offerings in this opportunity
@@ -918,7 +919,7 @@ export function OpportunitiesBrowser({
                                 </table>
                               </div>
                             )}
-                            <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border-light px-3 py-3 sm:grid-cols-4">
                               <Fact label="Owner">
                                 {o.owner ? (
                                   <span className="flex items-center gap-1.5">
@@ -961,6 +962,7 @@ export function OpportunitiesBrowser({
                                   )}
                                 </p>
                               </div>
+                            </div>
                             </div>
                           </td>
                         </tr>
