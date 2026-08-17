@@ -1982,11 +1982,16 @@ export function FdlComponentDetail({
             <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="py-2 pr-4">Feature</th>
-                  <th className="py-2 pr-4">In versions</th>
-                  <th className="py-2 pr-4">Customers</th>
-                  <th className="py-2 pr-4">Files</th>
-                  {canEdit && <th className="py-2" />}
+                  {/* The right columns wear fixed widths so the table cannot
+                      re-measure when a row opens — hiding the closed row's
+                      description used to narrow Feature and slide every
+                      column left (Anir, Aug 17: "why are the columns
+                      shifting?"). Feature simply takes whatever is left. */}
+                  <th className="py-2 pl-3 pr-4">Feature</th>
+                  <th className="w-[170px] py-2 pr-4">In versions</th>
+                  <th className="w-[140px] py-2 pr-4">Customers</th>
+                  <th className="w-[90px] py-2 pr-4">Files</th>
+                  {canEdit && <th className="w-[76px] py-2" />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -2005,14 +2010,22 @@ export function FdlComponentDetail({
                         : "hover:bg-surface"
                     }`}
                   >
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2.5 pl-3 pr-4">
+                      {/* The popup trigger hugs the WORDS. As a full-width
+                          button it owned the whole Feature column, so every
+                          click in the row's left 70% opened the popup and the
+                          dropdown seemed to not exist (Anir, Aug 17: "when I
+                          click on a feature it still opens popup always").
+                          Same fix as the goal table: name = popup, everywhere
+                          else on the row = dropdown. */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setReadingFeature(feature);
                         }}
-                        className="group/f w-full cursor-pointer text-left"
+                        title="Open the full view"
+                        className="group/f inline-block max-w-full cursor-pointer text-left"
                       >
                         <p className="text-[13px] font-semibold text-text-primary group-hover/f:text-blue-primary">
                           {feature.fid && (
@@ -2022,12 +2035,12 @@ export function FdlComponentDetail({
                           )}
                           {feature.name}
                         </p>
-                        {feature.description && (
-                          <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-text-secondary">
-                            {feature.description}
-                          </p>
-                        )}
                       </button>
+                      {feature.description && !rowOpen && (
+                        <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-text-secondary">
+                          {feature.description}
+                        </p>
+                      )}
                     </td>
                     {/* THE ROW EARNS ITS WIDTH. A name on the left and two
                         icons a thousand pixels away (Anir, Aug 9: "I don't
@@ -2268,7 +2281,7 @@ export function FdlComponentDetail({
                     <tr className="!border-t-0 bg-surface">
                       <td
                         colSpan={canEdit ? 5 : 4}
-                        className="pb-4 pl-4 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        className="pb-4 pl-3 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                       >
                         <div className="tab-panel">
                           {feature.description ? (

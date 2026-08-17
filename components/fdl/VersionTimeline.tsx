@@ -517,6 +517,13 @@ export function VersionTimeline({
             const gapL = index > 0 ? x - xOf(dated[index - 1].ms) : Infinity;
             const gapR = next ? xOf(next.ms) - x : Infinity;
             const roomy = Math.min(gapL, gapR) > 84;
+            /* THREE TIERS, NEVER SILENCE (Anir, Aug 17: "you don't have to
+               say the year… only if there's space — but here you're not even
+               saying anything, so it's a problem"). Room for the full date →
+               "Sep 11, 2026". Tight → the year goes first: "Sep 11". Only
+               dots that practically touch say nothing, because two labels on
+               top of each other say less than none. */
+            const snug = Math.min(gapL, gapR) > 32;
             const facesMax = roomy ? 4 : 2;
             const faces = release.customers ?? [];
             const isHot = hovered === release.id;
@@ -676,16 +683,17 @@ export function VersionTimeline({
                       : "translateX(-50%)",
                   }}
                 />
-                {roomy && (
+                {snug && (
                   <span
                     className="pointer-events-none absolute z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold text-text-secondary"
                     style={{ left: x, top: DATE_TOP }}
                   >
-                    {new Date(release.ms).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {new Date(release.ms).toLocaleDateString(
+                      "en-US",
+                      roomy
+                        ? { month: "short", day: "numeric", year: "numeric" }
+                        : { month: "short", day: "numeric" }
+                    )}
                   </span>
                 )}
                 {/* THE FAN, same mechanic as everywhere else (Anir, Aug 10:
