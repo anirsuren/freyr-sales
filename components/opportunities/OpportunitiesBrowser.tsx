@@ -1125,7 +1125,11 @@ export function OpportunitiesBrowser({
               />
             </Field>
 
-            <div className="flex justify-end gap-2 pt-1">
+            {/* PINNED, so Save never hides below the fold of a tall form
+                (Anir, Aug 17: "the save changes button in the bottom right…
+                doesn't even show up"). Sticky inside the modal's scroller,
+                white over the content it floats above. */}
+            <div className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-border-light bg-white px-5 py-3">
               <Button variant="secondary" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
