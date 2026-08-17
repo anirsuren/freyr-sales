@@ -69,7 +69,7 @@ export const COUNTS_FROM_META: Record<ActivityCountsFrom, { label: string }> = {
   // Short enough to never ellipsize in a table column.
   initiated: { label: "From initiated" },
   under_progress: { label: "Once under progress" },
-  completed: { label: "Only when completed" },
+  completed: { label: "When completed" },
 };
 
 const STATUS_ORDER: Record<string, number> = {
