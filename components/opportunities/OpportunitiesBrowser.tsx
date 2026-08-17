@@ -1238,6 +1238,26 @@ function OfferingRowsEditor({
   colorForOfferingId: Map<string, string>;
   onChange: (rows: DraftLine[]) => void;
 }) {
+  /**
+   * EVERY ROW IS A DROPDOWN (Anir, Aug 17: "make the offerings in this
+   * opportunity thing like a big dropdown"). Closed, a row is one line —
+   * the offering, its ARR/OTS, its money — and open, it is the editor.
+   * Rows still missing an offering open themselves; complete rows start
+   * closed, so editing a two-offering deal is two quiet lines rather than
+   * two walls of inputs. The old flat cards also BLED — the type column
+   * overhung the card border by 16px — which this layout removes.
+   */
+  const [openKeys, setOpenKeys] = useState<Set<string>>(
+    () => new Set(rows.filter((r) => !r.offeringId && !r.offeringLabel).map((r) => r.key))
+  );
+  const toggle = (key: string) =>
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const total = rows.reduce(
     (sum, r) => sum + (r.value === "" ? 0 : Number(r.value) || 0),
     0
@@ -1251,167 +1271,232 @@ function OfferingRowsEditor({
   const set = (i: number, patch: Partial<DraftLine>) =>
     onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
+  const labelCls = "flex items-center gap-1 text-[12px] font-semibold text-text-primary";
+
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <label className="text-[12px] font-semibold text-text-primary">
+        <label className={labelCls}>
           Offerings in this opportunity
+          <InfoHint text={"One row per offering, each with its own value, status and confidence.\nThe opportunity's total contract value is the sum of these rows, so it is never typed by hand."} />
         </label>
-        <InfoHint text={"One row per offering, each with its own value, status and confidence.\nThe opportunity's total contract value is the sum of these rows, so it is never typed by hand."} />
         {rows.length > 0 && (
           <span className="ml-auto text-[11px] font-semibold text-text-secondary tnum">
             {money(total)} total
             {weighted > 0 && (
-              <span className="font-normal text-text-tertiary">
-                {" "}· {money(weighted)} weighted
-              </span>
+              <span className="font-normal text-text-tertiary"> · {money(weighted)} weighted</span>
             )}
           </span>
         )}
       </div>
 
-      <div className="mt-1.5 space-y-2">
+      <div className="mt-1.5 space-y-1.5">
         {rows.length === 0 && (
           <p className="rounded-xl border border-dashed border-border-light px-3 py-4 text-center text-[12px] text-text-secondary">
             No offerings on this deal yet. Add the first one and its value
             becomes the opportunity&apos;s total.
           </p>
         )}
-        {rows.map((r, i) => (
-          <div
-            key={r.key}
-            className="rounded-xl border border-border-light bg-white p-2.5"
-          >
-            <div className="flex items-start gap-2">
-              <span className="mt-2 w-4 shrink-0 text-center text-[11px] font-bold text-text-tertiary tnum">
-                {i + 1}
-              </span>
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_110px]">
-                  <ColorSelect
-                    value={r.offeringId}
-                    ariaLabel={`Offering for row ${i + 1}`}
-                    collapsible={false}
-                    className="w-full"
-                    minWidth={360}
-                    onChange={(v) =>
-                      set(i, { offeringId: v, offeringLabel: v ? "" : r.offeringLabel })
-                    }
-                    options={[
-                      {
-                        value: "",
-                        label: "Not in the catalogue — type it",
-                        color: "#8E98A8",
-                      },
-                      ...offerings.map((o) => ({
-                        value: o.id,
-                        label: o.name,
-                        description: o.type,
-                        color: colorForOfferingId.get(o.id) ?? "#475569",
-                      })),
-                    ]}
-                  />
-                  <ColorSelect
-                    value={r.revenueType}
-                    ariaLabel={`ARR or OTS for row ${i + 1}`}
-                    collapsible={false}
-                    className="w-full"
-                    onChange={(v) => set(i, { revenueType: v })}
-                    options={[
-                      { value: "", label: "ARR / OTS", color: "#8E98A8" },
-                      ...REVENUE_TYPES.map((t) => ({
-                        value: t,
-                        label: t,
-                        color: "#0071E3",
-                      })),
-                    ]}
-                  />
-                </div>
-
-                {!r.offeringId && (
-                  <input
-                    value={r.offeringLabel}
-                    onChange={(e) => set(i, { offeringLabel: e.target.value })}
-                    placeholder="What this offering is called, e.g. Customized solution — Standards IA"
-                    className={inputCls}
-                  />
+        {rows.map((r, i) => {
+          const open = openKeys.has(r.key);
+          const name =
+            (r.offeringId && offerings.find((o) => o.id === r.offeringId)?.name) ||
+            r.offeringLabel ||
+            "";
+          const chipColor = r.offeringId
+            ? colorForOfferingId.get(r.offeringId)
+            : undefined;
+          const v = r.value === "" ? 0 : Number(r.value) || 0;
+          const c = r.confidence === "" ? null : Number(r.confidence);
+          return (
+            <div
+              key={r.key}
+              className="overflow-hidden rounded-xl border border-border-light bg-white"
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={open}
+                onClick={() => toggle(r.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggle(r.key);
+                  }
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
+                  open ? "bg-surface/60" : "hover:bg-surface"
                 )}
-
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <label className="block">
-                    <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                      Value
-                    </span>
-                    <input
-                      value={r.value}
-                      onChange={(e) => set(i, { value: e.target.value })}
-                      inputMode="decimal"
-                      placeholder="e.g. 500000"
-                      className={cn(inputCls, "tnum")}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                      Confidence %
-                    </span>
-                    <input
-                      value={r.confidence}
-                      onChange={(e) => set(i, { confidence: e.target.value })}
-                      inputMode="decimal"
-                      placeholder="e.g. 25"
-                      className={cn(inputCls, "tnum")}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                      Status
-                    </span>
-                    <ColorSelect
-                      value={r.status}
-                      ariaLabel={`Status for row ${i + 1}`}
-                      collapsible={false}
-                      className="w-full"
-                      onChange={(v) => set(i, { status: v })}
-                      options={[
-                        { value: "", label: "Not set", color: "#8E98A8" },
-                        ...OPPORTUNITY_STATUSES.map((st) => ({
-                          value: st,
-                          label: st,
-                          color: STATUS_COLOR[st],
-                        })),
-                      ]}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                      Est. sign
-                    </span>
-                    <input
-                      type="date"
-                      value={r.estSignDate}
-                      onChange={(e) => set(i, { estSignDate: e.target.value })}
-                      className={cn(inputCls, "tnum")}
-                    />
-                  </label>
-                </div>
-              </div>
-              <button
-                type="button"
-                aria-label={`Remove offering row ${i + 1}`}
-                title="Remove this offering"
-                onClick={() => onChange(rows.filter((_, j) => j !== i))}
-                className="mt-1 shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
               >
-                <Trash2 size={13} strokeWidth={2.2} />
-              </button>
+                {name ? (
+                  <OfferingChip name={name} color={chipColor} size="xs" className="max-w-[240px]" />
+                ) : (
+                  <span className="text-[12.5px] font-semibold text-text-tertiary">
+                    Pick an offering…
+                  </span>
+                )}
+                {r.revenueType && (
+                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
+                    {r.revenueType}
+                  </span>
+                )}
+                <span className="ml-auto flex shrink-0 items-center gap-3">
+                  {v > 0 && (
+                    <span className="text-[12px] tnum">
+                      <b className="text-text-primary">{money(v)}</b>
+                      {c !== null && !Number.isNaN(c) && (
+                        <span className="text-text-secondary"> · {c}%</span>
+                      )}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove offering ${i + 1}`}
+                    title="Remove this offering"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange(rows.filter((_, j) => j !== i));
+                    }}
+                    className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                  >
+                    <Trash2 size={12.5} strokeWidth={2.2} />
+                  </button>
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={2.4}
+                    aria-hidden="true"
+                    className={cn(
+                      "text-text-tertiary transition-transform",
+                      open && "rotate-180 text-blue-primary"
+                    )}
+                  />
+                </span>
+              </div>
+
+              {open && (
+                <div className="space-y-3 border-t border-border-light px-3 py-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+                    <div className="min-w-0">
+                      <label className={labelCls}>Offering</label>
+                      <div className="mt-1">
+                        <ColorSelect
+                          value={r.offeringId}
+                          ariaLabel={`Offering for row ${i + 1}`}
+                          collapsible={false}
+                          className="w-full"
+                          minWidth={360}
+                          onChange={(val) =>
+                            set(i, { offeringId: val, offeringLabel: val ? "" : r.offeringLabel })
+                          }
+                          options={[
+                            { value: "", label: "Not in the catalogue — type it", color: "#8E98A8" },
+                            ...offerings.map((o) => ({
+                              value: o.id,
+                              label: o.name,
+                              description: o.type,
+                              color: colorForOfferingId.get(o.id) ?? "#475569",
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <label className={labelCls}>ARR / OTS</label>
+                      <div className="mt-1">
+                        <ColorSelect
+                          value={r.revenueType}
+                          ariaLabel={`ARR or OTS for row ${i + 1}`}
+                          collapsible={false}
+                          minWidth={140}
+                          className="w-full"
+                          onChange={(val) => set(i, { revenueType: val })}
+                          options={[
+                            { value: "", label: "Not set", color: "#8E98A8" },
+                            ...REVENUE_TYPES.map((t) => ({ value: t, label: t, color: "#0071E3" })),
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!r.offeringId && (
+                    <div>
+                      <label className={labelCls}>What it&apos;s called</label>
+                      <input
+                        value={r.offeringLabel}
+                        onChange={(e) => set(i, { offeringLabel: e.target.value })}
+                        placeholder="e.g. Customized solution — Standards IA"
+                        className={cn(inputCls, "mt-1")}
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="min-w-0">
+                      <label className={labelCls}>Value</label>
+                      <input
+                        value={r.value}
+                        onChange={(e) => set(i, { value: e.target.value })}
+                        inputMode="decimal"
+                        placeholder="e.g. 500000"
+                        className={cn(inputCls, "mt-1 tnum")}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label className={labelCls}>Confidence %</label>
+                      <input
+                        value={r.confidence}
+                        onChange={(e) => set(i, { confidence: e.target.value })}
+                        inputMode="decimal"
+                        placeholder="e.g. 25"
+                        className={cn(inputCls, "mt-1 tnum")}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label className={labelCls}>Status</label>
+                      <div className="mt-1">
+                        <ColorSelect
+                          value={r.status}
+                          ariaLabel={`Status for row ${i + 1}`}
+                          collapsible={false}
+                          className="w-full"
+                          onChange={(val) => set(i, { status: val })}
+                          options={[
+                            { value: "", label: "Not set", color: "#8E98A8" },
+                            ...OPPORTUNITY_STATUSES.map((st) => ({
+                              value: st,
+                              label: st,
+                              color: STATUS_COLOR[st],
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <label className={labelCls}>Est. sign</label>
+                      <input
+                        type="date"
+                        value={r.estSignDate}
+                        onChange={(e) => set(i, { estSignDate: e.target.value })}
+                        className={cn(inputCls, "mt-1 tnum")}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <button
         type="button"
-        onClick={() => onChange([...rows, blankLine()])}
+        onClick={() => {
+          const line = blankLine();
+          onChange([...rows, line]);
+          setOpenKeys((prev) => new Set(prev).add(line.key));
+        }}
         className="mt-2 cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
       >
         ＋ Add another offering
@@ -1419,4 +1504,3 @@ function OfferingRowsEditor({
     </div>
   );
 }
-
