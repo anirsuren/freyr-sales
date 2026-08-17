@@ -455,7 +455,19 @@ export function AppShell({
                     page and every tab can move its final row fully above the
                     bottom-right control instead of fixing spacing screen by
                     screen. */}
-                <div key={pathname} className="p-8 pb-28 page-in">
+                {/* The Performance tabs are ONE page wearing four URLs, so
+                    switching Org → Groups must not replay the page entrance —
+                    the pill chooser at the top visibly jumped with it (Anir,
+                    Aug 17: "that tab at the top should stay where it is",
+                    repeat of Aug 16). The module animates its own content
+                    below the chooser; the shell stays still. Every other
+                    navigation keeps the full page-in. */}
+                <div
+                  key={
+                    pathname.startsWith("/performance") ? "/performance" : pathname
+                  }
+                  className="p-8 pb-28 page-in"
+                >
                   {children}
                 </div>
               </main>

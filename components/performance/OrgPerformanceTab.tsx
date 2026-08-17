@@ -1002,10 +1002,16 @@ function GoalRows({
                 line and wrap under it the moment the name was long, which put
                 three stacked rows in a cell that holds two things. */}
             <span className="flex min-w-0 flex-col gap-1.5">
+              {/* self-start, because in a flex COLUMN the link stretched to
+                  the widest line under it — the category chip — so clicking
+                  the empty space beside a short name hit an invisible link
+                  and navigated instead of opening the row (Anir, Aug 17: "it
+                  should always do the drop-down unless I explicitly click on
+                  the text"). Now the hitbox hugs the words. */}
               <Link
                 href={`/performance/goal/${goal.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                className="self-start text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                 title="Open this goal: financial years, quarters, months, weeks, groups and people"
               >
                 {goal.name}

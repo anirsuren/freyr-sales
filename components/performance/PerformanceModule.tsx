@@ -27,7 +27,8 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
-import { TargetSlider } from "./TargetSlider";
+import { TargetSlider, type Allocation } from "./TargetSlider";
+import { ActivityMasterCard } from "./ActivityMasterCard";
 import { useOpportunities } from "@/lib/useOpportunities";
 import {
   weightedValue,
@@ -315,7 +316,38 @@ export function PerformanceModule({
     goalId: string;
     subgoalId: string | null;
     person: string;
+    amount?: string;
+    customer?: string;
+    note?: string;
   } | null>(null);
+
+  /**
+   * ARRIVING FROM AN ACTIVITY (Suren, Aug 17: "whatever goal is connected to
+   * that particular activity, that goal automatically gets connected. They
+   * don't have to enter"). The customer page logs a Contract, the activity
+   * master says which goal that feeds, and this opens the same Log-a-result
+   * popup with the goal, amount and account already filled — the person adds
+   * the evidence and submits. Credited to whoever is logging, which is
+   * whoever is signed in here.
+   *
+   * Read once and scrubbed from the URL, so refresh and back don't re-open a
+   * half-done claim.
+   */
+  useEffect(() => {
+    const goalId = searchParams.get("logGoal");
+    if (!goalId) return;
+    setLogPrefill({
+      goalId,
+      subgoalId: null,
+      person: meName,
+      amount: searchParams.get("logAmount") ?? undefined,
+      customer: searchParams.get("logCustomer") ?? undefined,
+      note: searchParams.get("logNote") ?? undefined,
+    });
+    setLogOpen(true);
+    router.replace(`/performance/${tab}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const people = useMemo(() => {
     if (live && memberNames.length > 0) {
@@ -442,18 +474,33 @@ export function PerformanceModule({
 
       <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
         {showMaster ? (
-          <MasterTab
-            state={state}
-            live={live}
-            run={run}
-            busy={busy}
-            suggestions={people}
-            assignablePeople={assignablePeople}
-            memberRoles={memberRoles}
-            isManager={isManager}
-            onNewGoal={() => setGoalModal({ editing: null })}
-            onEditGoal={(g) => setGoalModal({ editing: g })}
-          />
+          <>
+            <MasterTab
+              state={state}
+              live={live}
+              run={run}
+              busy={busy}
+              suggestions={people}
+              assignablePeople={assignablePeople}
+              memberRoles={memberRoles}
+              isManager={isManager}
+              onNewGoal={() => setGoalModal({ editing: null })}
+              onEditGoal={(g) => setGoalModal({ editing: g })}
+            />
+            {/* The activity master lives under the goal list: same idea,
+                entered in one place and read everywhere (Suren, Aug 17: "I
+                think we should keep a master list of these activities"). */}
+            <ActivityMasterCard
+              goals={state.goals.map((g) => ({
+                id: g.id,
+                name: g.name,
+                year: g.year,
+                type: g.type,
+              }))}
+              live={live}
+              isManager={isManager}
+            />
+          </>
         ) : tab === "org" ? (
           <OrgPerformanceTab
             state={state}
@@ -1545,11 +1592,33 @@ function GroupSplitPanel({
   );
 }
 
+/** Everything a goal has already promised — each group's target and each
+ *  directly-assigned person's — so the target lane can draw the claimed part
+ *  (Anir, Aug 17: "it should take into account all the other people and all
+ *  the other groups"). */
+function promisedElsewhere(
+  state: PerformanceState,
+  goal: PrimaryGoal
+): Allocation[] {
+  return [
+    ...(goal.groupAssignments ?? []).map((a) => ({
+      label:
+        state.groups.find((g) => g.id === a.groupId)?.name ?? "a group",
+      amount: a.target,
+    })),
+    ...(goal.assignments ?? []).map((a) => ({
+      label: a.person,
+      amount: a.target,
+    })),
+  ].filter((a) => a.amount > 0);
+}
+
 function AssignGroupModal({
   open,
   inline,
   goal,
   groups,
+  allocations = [],
   onClose,
   run,
   busy,
@@ -1558,14 +1627,36 @@ function AssignGroupModal({
   inline: boolean;
   goal: PrimaryGoal;
   groups: PerfGroup[];
+  /** What this goal has already promised elsewhere — feeds the target lane. */
+  allocations?: Allocation[];
   onClose: () => void;
   run: RunOp;
   busy: boolean;
 }) {
   const [groupId, setGroupId] = useState("");
   const [target, setTarget] = useState("");
+  /**
+   * WHO IS ACTUALLY IN IT, BY NAME (Anir, Aug 17: "for each of these groups,
+   * we're going to have to have a dropdown so I can actually see, because
+   * just by the profile picture, I can't really see much"). Same disclosure
+   * idiom as the drill-down's column 2: closed to one line, open to a roster.
+   */
+  const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
+  /** Whether the list is scrolled to its end — drives the fade-out below it
+   *  (Anir, Aug 17: "if there's a hundred groups… a faded-out container"). */
+  const [moreBelow, setMoreBelow] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
   const parsed = parseAmountInput(target);
   const picked = groups.find((g) => g.id === groupId);
+
+  const syncFade = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 6);
+  }, []);
+  useEffect(() => {
+    if (open) syncFade();
+  }, [open, groups.length, openPeople, syncFade]);
 
   async function save() {
     if (!groupId) return;
@@ -1585,37 +1676,41 @@ function AssignGroupModal({
     }
   }
 
+  const togglePeople = (id: string) =>
+    setOpenPeople((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   const body = (
-    <div className="space-y-3">
-      {/* The goal moved out of the dialog title, where it was truncated to
-          "Assign Email Prospecting Campaigns Launche…", and into the sentence
-          that needs it anyway. */}
+    <div className={cn("flex min-h-0 flex-col", !inline && "h-full")}>
       <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
         Giving
         <b className="text-text-primary">{goal.name}</b>
-        to a department.
+        to a department. The group carries the number; its people keep their
+        own targets underneath.
       </p>
-      <p className="text-[12.5px] leading-relaxed text-text-secondary">
-        The group carries the number; its people keep their own targets
-        underneath. Nobody logs achievement on a group, because a group&apos;s
-        achievement is its people&apos;s added up.
-      </p>
-      <div>
-        {/* SAY THAT IT IS A CHOICE (Anir, Aug 15: "make it more clear that I
-            have to select it"). One group on screen looked like a label
-            stating which group this was, not a control waiting to be picked,
-            and the disabled button gave no reason for being disabled. */}
-        <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-          Group
-          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
-            Pick one
-          </span>
-        </label>
-        {/* WHO IS ACTUALLY IN IT (Anir, Aug 15: "i cant even see who's in this
-            group so this ui sucks"). Assigning a goal to a department is a
-            decision about PEOPLE, and the chip named the group without naming
-            one of them. Every option now carries its roster. */}
-        <div className="mt-1.5 flex flex-col gap-1.5">
+      <label className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+        Group
+        <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
+          Pick one
+        </span>
+      </label>
+
+      {/* THE LIST SCROLLS, THE DIALOG DOES NOT. A hundred groups stay inside
+          this box, and the fade at its foot says there are more — it clears
+          the moment the last row is reached. */}
+      <div className={cn("relative mt-1.5 min-h-0", !inline && "flex-1")}>
+        <div
+          ref={listRef}
+          onScroll={syncFade}
+          className={cn(
+            "flex h-full flex-col gap-1.5 overflow-y-auto pr-1",
+            inline && "max-h-[300px]"
+          )}
+        >
           {groups.length === 0 ? (
             <p className="text-[12.5px] text-text-tertiary">
               Every group already carries this goal.
@@ -1623,90 +1718,156 @@ function AssignGroupModal({
           ) : (
             groups.map((g) => {
               const on = g.id === groupId;
+              const expanded = openPeople.has(g.id);
               const roster = [
                 ...new Set([g.head, ...g.members].map((m) => m.trim()).filter(Boolean)),
               ];
               return (
-                <button
+                <div
                   key={g.id}
-                  type="button"
-                  onClick={() => setGroupId(on ? "" : g.id)}
+                  role="button"
+                  tabIndex={0}
                   aria-pressed={on}
+                  onClick={() => setGroupId(on ? "" : g.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setGroupId(on ? "" : g.id);
+                    }
+                  }}
                   className={cn(
-                    "flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
+                    "shrink-0 cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all",
                     on
                       ? "border-blue-primary bg-blue-light/60 shadow-sm"
                       : "border-border-light bg-white hover:border-blue-subtle hover:bg-surface"
                   )}
                 >
-                  {/* A tick box, so an unpicked card reads as "choose me"
-                      rather than as a caption. Top-aligned, so it lines up
-                      with the group's name and not the middle of the card. */}
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                      on
-                        ? "border-blue-primary bg-blue-primary text-white"
-                        : "border-border-light bg-white"
-                    )}
-                  >
-                    {on && <Check size={10} strokeWidth={3.4} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <GroupPill name={g.name} />
-                      <span className="text-[11.5px] text-text-secondary">
-                        led by {g.head}
-                      </span>
+                  <span className="flex items-start gap-3">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                        on
+                          ? "border-blue-primary bg-blue-primary text-white"
+                          : "border-border-light bg-white"
+                      )}
+                    >
+                      {on && <Check size={10} strokeWidth={3.4} />}
                     </span>
-                    {/* Faces, not a wrapping list of names — five names over
-                        two lines was what made this unreadable. Hover a face
-                        for who it is. */}
-                    <span className="mt-1.5 flex items-center gap-2">
-                      <PersonFan
-                        people={roster.map((m) => ({
-                          name: m,
-                          role: m === g.head ? "Group owner" : "In this group",
-                          context: g.name,
-                        }))}
-                        avatarClassName="h-6 w-6 text-[8px]"
-                      />
-                      <span className="text-[11.5px] text-text-tertiary tnum">
-                        {roster.length} {roster.length === 1 ? "person" : "people"}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <GroupPill name={g.name} />
+                        <span className="text-[11.5px] text-text-secondary">
+                          led by {g.head}
+                        </span>
                       </span>
+                      {/* One line closed: faces plus the count. A real button,
+                          so opening the roster never picks the group. */}
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePeople(g.id);
+                        }}
+                        className={cn(
+                          "mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-lg py-0.5 text-[11.5px] font-semibold transition-colors",
+                          expanded
+                            ? "text-blue-primary"
+                            : "text-text-secondary hover:text-blue-primary"
+                        )}
+                      >
+                        <ChevronDown
+                          size={12.5}
+                          strokeWidth={2.6}
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 transition-transform",
+                            expanded && "rotate-180"
+                          )}
+                        />
+                        {expanded ? "Hide" : "Show"} {roster.length}{" "}
+                        {roster.length === 1 ? "person" : "people"}
+                        <span className="ml-auto flex items-center pl-1.5">
+                          {roster.slice(0, 5).map((n, i) => (
+                            <Avatar
+                              key={n}
+                              name={n}
+                              className={cn(
+                                "h-5 w-5 text-[7px] ring-1 ring-white",
+                                i > 0 && "-ml-1.5"
+                              )}
+                            />
+                          ))}
+                          {roster.length > 5 && (
+                            <span className="ml-1 text-[10px] font-semibold text-text-tertiary tnum">
+                              +{roster.length - 5}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      {expanded && (
+                        <span className="tab-panel mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2 sm:grid-cols-2">
+                          {roster.map((name) => (
+                            <span key={name} className="flex items-center gap-2">
+                              <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
+                              <span className="min-w-0 truncate text-[12px] text-text-primary">
+                                {name}
+                              </span>
+                              {name === g.head && (
+                                <Crown
+                                  size={10}
+                                  strokeWidth={2.8}
+                                  aria-label="Group owner"
+                                  className="shrink-0 text-[color:#7C3AED]"
+                                />
+                              )}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   </span>
-                </button>
+                </div>
               );
             })
           )}
         </div>
+        <div
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent transition-opacity",
+            moreBelow ? "opacity-100" : "opacity-0"
+          )}
+        />
       </div>
-      <TargetSlider
-        label="Group target"
-        value={target}
-        onChange={setTarget}
-        unit={goal.unit}
-        max={goal.target}
-      />
-      {/* THE HINT SITS ON THE BUTTON LINE (Anir, Aug 16: "put this text in
-          line with the buttons on the right so it doesn't shift up and down
-          and make the popup shift"). On its own line it appeared and vanished
-          with the selection, and the whole dialog moved each time. Sharing the
-          row means picking a group changes nothing but the text. */}
-      <div className="flex flex-nowrap items-center justify-end gap-2 pt-1">
-        {!groupId && groups.length > 0 && (
-          <p className="mr-auto text-[11.5px] text-text-tertiary">
-            Pick a group above to continue.
-          </p>
-        )}
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button onClick={save} disabled={!groupId} loading={busy}>
-          {picked ? `Assign to ${picked.name}` : "Assign to group"}
-        </Button>
+
+      {/* THE FOOT BELONGS TO THE TARGET (Anir, Aug 17: "the bottom is
+          reserved for the limit or whatever the goal or target is"). Pinned
+          under the list, full width, drawn against what the other groups and
+          people already hold. */}
+      <div className="mt-3 shrink-0 border-t border-border-light pt-3">
+        <TargetSlider
+          label="Group target"
+          value={target}
+          onChange={setTarget}
+          unit={goal.unit}
+          max={goal.target}
+          allocations={allocations}
+        />
+        <div className="mt-3 flex flex-nowrap items-center justify-end gap-2">
+          {!groupId && groups.length > 0 && (
+            <p className="mr-auto text-[11.5px] text-text-tertiary">
+              Pick a group above to continue.
+            </p>
+          )}
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={!groupId} loading={busy}>
+            {picked ? `Assign to ${picked.name}` : "Assign to group"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1719,7 +1880,14 @@ function AssignGroupModal({
       </div>
     );
   return (
-    <Modal open={open} onClose={onClose} title="Assign to a group" size="wide">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Assign to a group"
+      size="wide"
+      tall
+      dialogClassName="!h-[min(780px,calc(100vh-3rem))]"
+    >
       {body}
     </Modal>
   );
@@ -1731,10 +1899,13 @@ function AssignPersonModal({
   goal,
   options,
   roles,
+  allocations = [],
   onClose,
   run,
   busy,
 }: {
+  /** What this goal has already promised elsewhere — feeds the target lane. */
+  allocations?: Allocation[];
   open: boolean;
   /** Already inside a popup → unfold here instead of stacking a second one
    *  (Anir, Aug 12, twice: no popup on a popup, ever). */
@@ -1773,7 +1944,13 @@ function AssignPersonModal({
         The goal lands on this person directly. Their logged numbers roll into
         their group and the organization automatically.
       </p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+      {/* THE TARGET GETS THE WHOLE WIDTH (Anir, Aug 17: "it has to be full…
+          it should take into account all the other people and all the other
+          groups… a full thing that goes from left to right"). It was a 40px
+          stub in a 180px side column, drawn as if nobody else had a share of
+          the goal. Now it is the same full-width allocation lane the group
+          dialog uses, with everything already promised marked on it. */}
+      <div className="mt-3 space-y-3">
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
@@ -1795,6 +1972,7 @@ function AssignPersonModal({
           onChange={setTarget}
           unit={goal.unit}
           max={goal.target}
+          allocations={allocations}
           placeholder={goal.unit === "currency" ? "e.g. 250K" : "e.g. 40"}
         />
       </div>
@@ -2535,6 +2713,7 @@ function GoalPopupBody({
         groups={state.groups.filter(
           (g) => !(goal.groupAssignments ?? []).some((a) => a.groupId === g.id)
         )}
+        allocations={promisedElsewhere(state, goal)}
         onClose={() => setGroupAssignOpen(false)}
         run={run}
         busy={busy}
@@ -2683,6 +2862,7 @@ function GoalPopupBody({
         options={assignablePeople.filter(
           (name) => !(goal.assignments ?? []).some((a) => a.person === name)
         )}
+        allocations={promisedElsewhere(state, goal)}
         roles={memberRoles}
         onClose={() => setAssignOpen(false)}
         run={run}
@@ -3827,7 +4007,14 @@ function LogActualModal({
   state: PerformanceState;
   meName: string;
   suggestions: string[];
-  initial?: { goalId: string; subgoalId: string | null; person: string } | null;
+  initial?: {
+    goalId: string;
+    subgoalId: string | null;
+    person: string;
+    amount?: string;
+    customer?: string;
+    note?: string;
+  } | null;
   onClose: () => void;
   run: RunOp;
   busy: boolean;
@@ -3952,6 +4139,11 @@ function LogActualModal({
     setGoalId(initial.goalId);
     setSubgoalId(initial.subgoalId ?? "");
     setPerson(initial.person);
+    // Arriving from an activity: the amount and account came off the record
+    // that was just logged, so they land filled in rather than retyped.
+    if (initial.amount !== undefined) setAmount(initial.amount);
+    if (initial.customer !== undefined) setCustomer(initial.customer);
+    if (initial.note !== undefined) setNote(initial.note);
   }, [open, initial]);
 
   const goal = state.goals.find((g) => g.id === goalId) ?? null;
