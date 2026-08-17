@@ -1337,56 +1337,84 @@ export function OpportunitiesBrowser({
                     (editing.customerOther || editing.customer.trim()
                       ? "__other"
                       : "");
-                  return (
-                    <>
-                      <ColorSelect
-                        value={selectValue}
-                        ariaLabel="Customer account"
-                        collapsible={false}
-                        className="w-full"
-                        onChange={(val) => {
-                          if (val === "__other") {
-                            setEditing({
-                              ...editing,
-                              customerId: "",
-                              customerOther: true,
-                            });
-                            return;
-                          }
-                          const hit = customers.find((c) => c.id === val);
+                  return selectValue === "__other" ? (
+                    /* TYPING HAPPENS IN THE CONTROL ITSELF (Anir, Aug 17:
+                       "you can't have the customer name have its own line —
+                       if I select new, I'll enter it right there in the
+                       dropdown"). One line: the input wears the trigger's
+                       clothes; the chevron goes back to the list. */
+                    <span className="relative block">
+                      <Tag
+                        size={14}
+                        strokeWidth={2.2}
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                      />
+                      <input
+                        autoFocus
+                        value={editing.customer}
+                        onChange={(e) =>
+                          setEditing({ ...editing, customer: e.target.value })
+                        }
+                        placeholder="Type the account name…"
+                        aria-label="Customer account name"
+                        className={cn(inputCls, "pl-9 pr-10")}
+                      />
+                      <button
+                        type="button"
+                        title="Back to the account list"
+                        aria-label="Back to the account list"
+                        onClick={() =>
                           setEditing({
                             ...editing,
-                            customerId: val,
-                            customer: hit ? hit.name : val ? editing.customer : "",
+                            customer: "",
+                            customerId: "",
                             customerOther: false,
+                          })
+                        }
+                        className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                      >
+                        <ChevronDown size={15} strokeWidth={2} />
+                      </button>
+                    </span>
+                  ) : (
+                    <ColorSelect
+                      value={selectValue}
+                      ariaLabel="Customer account"
+                      collapsible={false}
+                      className="w-full"
+                      onChange={(val) => {
+                        if (val === "__other") {
+                          setEditing({
+                            ...editing,
+                            customerId: "",
+                            customerOther: true,
                           });
-                        }}
-                        options={[
-                          { value: "", label: "Pick the account…", color: "#C7CDD6" },
-                          {
-                            value: "__other",
-                            label: "Not on the list — type it",
-                            color: "#8E98A8",
-                            icon: Tag,
-                          },
-                          ...customers.map((c) => ({
-                            value: c.id,
-                            label: c.name,
-                            logoName: c.name,
-                          })),
-                        ]}
-                      />
-                      {selectValue === "__other" && (
-                        <input
-                          value={editing.customer}
-                          onChange={(e) =>
-                            setEditing({ ...editing, customer: e.target.value })
-                          }
-                          placeholder="Type the account name…"
-                          className={cn(inputCls, "mt-2")}
-                        />
-                      )}
-                    </>
+                          return;
+                        }
+                        const hit = customers.find((c) => c.id === val);
+                        setEditing({
+                          ...editing,
+                          customerId: val,
+                          customer: hit ? hit.name : val ? editing.customer : "",
+                          customerOther: false,
+                        });
+                      }}
+                      options={[
+                        { value: "", label: "Pick the account…", color: "#C7CDD6" },
+                        {
+                          value: "__other",
+                          label: "Not on the list — type it",
+                          color: "#8E98A8",
+                          icon: Tag,
+                        },
+                        ...customers.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                          logoName: c.name,
+                        })),
+                      ]}
+                    />
                   );
                 })()}
               </Field>
@@ -1708,16 +1736,19 @@ function ConfidenceSlider({
           className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
         />
       </span>
-      <span className="relative w-[76px] shrink-0">
+      {/* Just big enough for "100 %" — the wide box beside a thin
+          slider read as a mistake (Anir: "the rectangle doesn't need to
+          be that big"). */}
+      <span className="relative w-[60px] shrink-0">
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           inputMode="numeric"
           placeholder="25"
           aria-label="Confidence — type an exact figure"
-          className={cn(inputCls, "pr-6 text-right tnum")}
+          className={cn(inputCls, "px-1.5 pr-5 text-right tnum")}
         />
-        <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[12px] font-semibold text-text-tertiary">
+        <span className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[11px] font-semibold text-text-tertiary">
           %
         </span>
       </span>
