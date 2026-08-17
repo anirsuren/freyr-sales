@@ -142,8 +142,9 @@ export function ActivityMasterCard({
   return (
     <Card className="mt-5 overflow-hidden p-0">
       <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
+        {/* The room's intro says what this is — the old header hint repeated
+            it word for word one line lower. */}
         <b className="text-[13.5px] text-text-primary">Activity master</b>
-        <InfoHint text={"Which goal each activity feeds, and how it counts.\nLog a Contract on a customer and its dollar value goes toward the connected goal, credited to whoever logged it. A Pilot adds 1 to a count goal.\nConnect several goals and the person picks one when logging."} />
         <span className="ml-auto text-[11.5px] text-text-tertiary">
           {writable
             ? "Changes apply the next time anyone logs an activity"
@@ -165,48 +166,56 @@ export function ActivityMasterCard({
               horrible."): four aligned columns, one slim row per activity,
               the explanations live in the headers instead of inside every
               control. */}
-          <table className="w-full min-w-[880px] table-fixed border-collapse text-left">
+          {/* ACTIVITIES ARE THE COLUMNS (Anir, Aug 17: "make these columns
+              instead of rows — don't we have a heatmap of this?"): the same
+              orientation as the customer heat map, activities across the top,
+              their rules down the side. */}
+          <table className="w-full min-w-[980px] table-fixed border-collapse text-left">
             <thead>
-              <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <th className="w-[150px] px-4 py-2.5">Activity</th>
-                <th className="w-[190px] px-2 py-2.5">
-                  <span className="flex items-center gap-1">
-                    How it counts
-                    <InfoHint text={"Counts as 1 — each one adds one; a pilot done is 1, the next is 2.\nDollar value — the activity's money is the number; a $500K contract adds $500K.\nPerson types the number — whoever logs it types how much it adds.\nNot counted — logged for the record only."} />
-                  </span>
-                </th>
-                <th className="w-[200px] px-2 py-2.5">
-                  <span className="flex items-center gap-1">
-                    Counts from
-                    <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
-                  </span>
-                </th>
-                <th className="px-2 py-2.5">
-                  <span className="flex items-center gap-1">
-                    Goals it may feed
-                    <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it — connect several and they choose at logging time."} />
-                  </span>
-                </th>
-                {writable && <th className="w-[56px] px-2 py-2.5" />}
+              <tr className="border-b border-border-light">
+                <th className="w-[150px] px-4 py-2.5" />
+                {state.activities.map((a) => {
+                  const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
+                  return (
+                    <th key={a.id} className="px-2 py-2.5 text-left">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
+                          style={{ background: `${a.color}16`, color: a.color }}
+                        >
+                          <Icon size={12.5} strokeWidth={2.4} aria-hidden="true" />
+                          <span className="truncate">{a.label}</span>
+                        </span>
+                        {writable && !a.builtIn && (
+                          <button
+                            type="button"
+                            title={`Remove ${a.label}`}
+                            aria-label={`Remove ${a.label}`}
+                            disabled={busy}
+                            onClick={() => setConfirmRemove(a)}
+                            className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                          >
+                            <Trash2 size={12} strokeWidth={2.2} />
+                          </button>
+                        )}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {state.activities.map((a) => {
-                const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
-                const cMeta = CONTRIBUTION_STYLE[a.contribution];
-                const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
-                return (
-                  <tr key={a.id}>
-                    <td className="px-4 py-3 align-middle">
-                      <span
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
-                        style={{ background: `${a.color}16`, color: a.color }}
-                      >
-                        <Icon size={12.5} strokeWidth={2.4} aria-hidden="true" />
-                        <span className="truncate">{a.label}</span>
-                      </span>
-                    </td>
-                    <td className="px-2 py-3 align-middle">
+              <tr>
+                <td className="px-4 py-3 align-middle text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <span className="flex items-center gap-1">
+                    How it counts
+                    <InfoHint text={"Counts as 1 — each one adds one; a pilot done is 1, the next is 2.\nDollar value — the activity's money is the number.\nPerson types the number — whoever logs it types how much it adds.\nNot counted — logged for the record only."} />
+                  </span>
+                </td>
+                {state.activities.map((a) => {
+                  const cMeta = CONTRIBUTION_STYLE[a.contribution];
+                  return (
+                    <td key={a.id} className="px-2 py-3 align-middle">
                       {writable ? (
                         <ColorSelect
                           value={a.contribution}
@@ -238,7 +247,20 @@ export function ActivityMasterCard({
                         </span>
                       )}
                     </td>
-                    <td className="px-2 py-3 align-middle">
+                  );
+                })}
+              </tr>
+              <tr>
+                <td className="px-4 py-3 align-middle text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <span className="flex items-center gap-1">
+                    Counts from
+                    <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
+                  </span>
+                </td>
+                {state.activities.map((a) => {
+                  const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
+                  return (
+                    <td key={a.id} className="px-2 py-3 align-middle">
                       {a.contribution === "none" ? (
                         <span className="text-[12px] text-text-tertiary">—</span>
                       ) : writable ? (
@@ -247,7 +269,7 @@ export function ActivityMasterCard({
                           ariaLabel={`When ${a.label} starts counting`}
                           collapsible={false}
                           dense
-                          minWidth={160}
+                          minWidth={150}
                           className="w-full"
                           onChange={(v) =>
                             void post(
@@ -275,107 +297,91 @@ export function ActivityMasterCard({
                         </span>
                       )}
                     </td>
-                    <td className="px-2 py-3 align-middle">
-                      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                        {a.goalIds.map((gid) => {
-                          const g = goalById.get(gid);
-                          if (!g) return null;
-                          const t = typeMeta(g.type);
-                          return (
-                            <span
-                              key={gid}
-                              className="inline-flex max-w-[220px] items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                              style={{ background: `${t.color}14`, color: t.color }}
-                            >
-                              <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
-                              <span className="truncate">{g.name}</span>
-                              {writable && (
-                                <button
-                                  type="button"
-                                  aria-label={`Disconnect ${g.name} from ${a.label}`}
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void post(
-                                      {
-                                        op: "update",
-                                        id: a.id,
-                                        goalIds: a.goalIds.filter((x) => x !== gid),
-                                      },
-                                      `${g.name} disconnected from ${a.label}`
-                                    )
-                                  }
-                                  className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
-                                >
-                                  <X size={10.5} strokeWidth={2.8} />
-                                </button>
-                              )}
-                            </span>
-                          );
-                        })}
-                        {a.goalIds.length === 0 && !writable && (
-                          <span className="text-[11.5px] text-text-tertiary">
-                            {a.contribution === "none" ? "—" : "none yet"}
-                          </span>
-                        )}
-                        {writable && a.contribution !== "none" && (
-                          /* THE SAME PICKER AS EVERYWHERE GOALS ARE PICKED
-                             (Anir, Aug 17: "you're not doing it consistently —
-                             this isn't what we had in the other place"):
-                             categories first, each flying out its goals,
-                             search on top. One pick connects and closes. */
-                          <span className="w-[176px]">
-                            <MultiPicker
-                              variant="dropdown"
-                              single
-                              ariaLabel={`Connect a goal to ${a.label}`}
-                              placeholder="＋ Connect a goal"
-                              emptyLabel="No goals on the master yet."
-                              selected={[]}
-                              onToggle={(id) => {
-                                if (!id || a.goalIds.includes(id)) return;
-                                const g = goalById.get(id);
-                                void post(
-                                  { op: "update", id: a.id, goalIds: [...a.goalIds, id] },
-                                  g ? `${a.label} now feeds ${g.name}` : undefined
-                                );
-                              }}
-                              options={goals
-                                .filter((g) => !a.goalIds.includes(g.id))
-                                .map((g) => ({
-                                  id: g.id,
-                                  label: g.name,
-                                  sub: String(g.year),
-                                  color: typeMeta(g.type).color,
-                                  icon: typeMeta(g.type).icon,
-                                  group: g.type || "Other",
-                                }))}
-                            />
-                          </span>
-                        )}
-                        {writable && a.contribution === "none" && a.goalIds.length === 0 && (
-                          <span className="text-[11.5px] text-text-tertiary">—</span>
-                        )}
-                      </span>
-                    </td>
-                    {writable && (
-                      <td className="px-2 py-3 text-right align-middle">
-                        {!a.builtIn && (
-                          <button
-                            type="button"
-                            title={`Remove ${a.label}`}
-                            aria-label={`Remove ${a.label}`}
-                            disabled={busy}
-                            onClick={() => setConfirmRemove(a)}
-                            className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                  );
+                })}
+              </tr>
+              <tr>
+                <td className="px-4 py-3 align-top text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <span className="flex items-center gap-1">
+                    Goals it may feed
+                    <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it — connect several and they choose at logging time."} />
+                  </span>
+                </td>
+                {state.activities.map((a) => (
+                  <td key={a.id} className="px-2 py-3 align-top">
+                    <span className="flex min-w-0 flex-col items-start gap-1.5">
+                      {a.goalIds.map((gid) => {
+                        const g = goalById.get(gid);
+                        if (!g) return null;
+                        const t = typeMeta(g.type);
+                        return (
+                          <span
+                            key={gid}
+                            className="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{ background: `${t.color}14`, color: t.color }}
                           >
-                            <Trash2 size={13} strokeWidth={2.2} />
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
+                            <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
+                            <span className="truncate">{g.name}</span>
+                            {writable && (
+                              <button
+                                type="button"
+                                aria-label={`Disconnect ${g.name} from ${a.label}`}
+                                disabled={busy}
+                                onClick={() =>
+                                  void post(
+                                    {
+                                      op: "update",
+                                      id: a.id,
+                                      goalIds: a.goalIds.filter((x) => x !== gid),
+                                    },
+                                    `${g.name} disconnected from ${a.label}`
+                                  )
+                                }
+                                className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
+                              >
+                                <X size={10.5} strokeWidth={2.8} />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                      {a.goalIds.length === 0 && (!writable || a.contribution === "none") && (
+                        <span className="text-[11.5px] text-text-tertiary">—</span>
+                      )}
+                      {writable && a.contribution !== "none" && (
+                        <span className="w-full max-w-[190px]">
+                          <MultiPicker
+                            variant="dropdown"
+                            single
+                            ariaLabel={`Connect a goal to ${a.label}`}
+                            placeholder="＋ Connect a goal"
+                            emptyLabel="No goals on the master yet."
+                            selected={[]}
+                            onToggle={(id) => {
+                              if (!id || a.goalIds.includes(id)) return;
+                              const g = goalById.get(id);
+                              void post(
+                                { op: "update", id: a.id, goalIds: [...a.goalIds, id] },
+                                g ? `${a.label} now feeds ${g.name}` : undefined
+                              );
+                            }}
+                            options={goals
+                              .filter((g) => !a.goalIds.includes(g.id))
+                              .map((g) => ({
+                                id: g.id,
+                                label: g.name,
+                                sub: String(g.year),
+                                color: typeMeta(g.type).color,
+                                icon: typeMeta(g.type).icon,
+                                group: g.type || "Other",
+                              }))}
+                          />
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                ))}
+              </tr>
             </tbody>
           </table>
 

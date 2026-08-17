@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -515,11 +516,19 @@ export function PerformanceModule({
       <div key={`${tab}-${showActivityMaster ? "activity-master" : showMaster ? "master" : "numbers"}`} className="tab-panel">
         {showActivityMaster ? (
           <>
-            <p className="max-w-[72ch] text-[13px] leading-relaxed text-text-secondary">
-              The company&apos;s activity vocabulary: what an activity is, how it
-              counts (a pilot is 1, a contract is its money), from which status
-              it starts counting, and which goals it may feed. Whoever logs an
-              activity picks its goal from the list set here.
+            <p className="max-w-[70ch] text-[13px] leading-relaxed text-text-secondary">
+              When someone logs an activity — a pilot, a contract — this table
+              decides what it is worth and which goal it can count toward. Set
+              the rules once; every log in the app follows them.{" "}
+              {/* The rulebook points at the scoreboard (Anir, Aug 17: "we
+                  already have this [on Reports]… what's the difference?"). */}
+              <Link
+                href="/reports/customer-offering-heat-map"
+                className="font-semibold text-blue-primary hover:underline"
+              >
+                The heat map on Reports
+              </Link>{" "}
+              shows these activities live, per customer and offering.
             </p>
             <ActivityMasterCard
               goals={state.goals.map((g) => ({
@@ -593,7 +602,7 @@ export function PerformanceModule({
         )}
       </div>
 
-      <HowItWorksModal open={howOpen} onClose={() => setHowOpen(false)} />
+      <HowItWorksModal open={howOpen} onClose={() => setHowOpen(false)} room={showActivityMaster ? "activity-master" : showMaster ? "goal-master" : tab} />
       <Modal
         tall
         open={goalModal !== null}
@@ -660,34 +669,60 @@ export function PerformanceModule({
 function HowItWorksModal({
   open,
   onClose,
+  room = "org",
 }: {
   open: boolean;
   onClose: () => void;
+  /** Which of the five rooms the person is standing in. */
+  room?: "org" | "groups" | "people" | "goal-master" | "activity-master";
 }) {
-  const steps = [
-    {
-      title: "Every goal lives on the Goal Master",
-      body: "The one master list — goal types, goals, and their subgoals (like Booked Revenue split into Growth Accounts / Focused Account AMR / Focused Account EUA).",
+  const CONTENT: Record<string, { title: string; steps: { title: string; body: string }[]; foot?: string }> = {
+    org: {
+      title: "How Org performance works",
+      steps: [
+        { title: "Only tracked goals appear here", body: "The Goal Master decides what is on the plan; this room shows those goals with their targets and the numbers achieved so far." },
+        { title: "Numbers roll one way", body: "A result is always entered against a person. Person rolls into group, group rolls into organization — never the other way." },
+        { title: "Pace compares against the calendar", body: "Lagging / On track / Ahead measure achieved against where the goal's own schedule says it should be today. No schedule set — click the chip and add one." },
+      ],
     },
-    {
-      title: "Flip Tracking ON to put a goal on the plan",
-      body: "Tracking means the goal is counted and shown on Org performance. Goals with Tracking off just wait on the master list.",
+    groups: {
+      title: "How Group performance works",
+      steps: [
+        { title: "One group at a time", body: "Pick the group up top; its goals, its people and their shares are what you see." },
+        { title: "The group's number is its people's", body: "Assign a slice to each person; the group achieves what its members log, summed. The owner carries the group without needing a target of their own." },
+        { title: "Owners verify their people's claims", body: "A logged result waits in the owner's queue until reviewed — the amber strip at the top is that queue." },
+      ],
     },
-    {
-      title: "Set the targets",
-      body: "The big annual number on the goal, split across its subgoals, split again across the people responsible. Goal owners are responsible for a subgoal overall.",
+    people: {
+      title: "How People performance works",
+      steps: [
+        { title: "Your goals, your numbers", body: "Everything assigned to you or picked up by you, with how far along each one is. Pick a name up top to see somebody else's (if your role allows)." },
+        { title: "Log a result when something lands", body: "Money needs its evidence attached; a count logs in one click. Your group owner reviews it before it locks." },
+      ],
     },
-    {
-      title: "Log results — the numbers roll up on their own",
-      body: "A result is ALWAYS entered against a person. There is no group entry and no organization entry — each person's number becomes their group's number, and the groups add up to the organization. It only ever runs one way: person → group → organization.",
+    "goal-master": {
+      title: "How the Goal Master works",
+      steps: [
+        { title: "Every goal lives here", body: "Goal types, goals and their subgoals — entered once, read everywhere." },
+        { title: "Tracking puts a goal on the plan", body: "Tracking ON means it is counted and shown in the performance rooms. OFF means it waits here." },
+        { title: "Targets split downward", body: "The annual number on the goal, split across subgoals, split again across the people responsible." },
+      ],
     },
-    {
-      title: "Verified is leadership's stamp",
-      body: "Every goal, subgoal and person carries a manual Verified yes/no. Numbers count either way — verified just says leadership has confirmed them.",
+    "activity-master": {
+      title: "How the Activity Master works",
+      steps: [
+        { title: "This table gives activities their meaning", body: "When someone logs an activity anywhere in the app — a pilot, a contract — these rules decide what it is worth." },
+        { title: "How it counts", body: "A pilot counts as 1. A contract counts its dollar value. Some activities are logged for the record and count nothing." },
+        { title: "When it starts counting", body: "A contract counts only when completed; a pilot already counts once it is under progress." },
+        { title: "Which goals it may feed", body: "Connect the allowed goals here. Whoever logs the activity picks exactly one of them at logging time — nothing attaches by itself." },
+      ],
+      foot: "Only admins change this table. Changes apply the next time anyone logs an activity.",
     },
-  ];
+  };
+  const c = CONTENT[room] ?? CONTENT.org;
+  const steps = c.steps;
   return (
-    <Modal open={open} onClose={onClose} title="How Performance works">
+    <Modal open={open} onClose={onClose} title={c.title}>
       <div className="space-y-2.5">
         {steps.map((s, i) => (
           <div
@@ -707,11 +742,11 @@ function HowItWorksModal({
             </span>
           </div>
         ))}
-        <p className="rounded-lg bg-surface px-3.5 py-2.5 text-[11.5px] leading-relaxed text-text-secondary">
-          Lagging / On track / Ahead compare what&apos;s achieved against where
-          the calendar says you should be by today — the small dark tick on
-          every bar.
-        </p>
+        {c.foot && (
+          <p className="rounded-lg bg-surface px-3.5 py-2.5 text-[11.5px] leading-relaxed text-text-secondary">
+            {c.foot}
+          </p>
+        )}
       </div>
     </Modal>
   );
