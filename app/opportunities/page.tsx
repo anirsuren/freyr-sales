@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
 import { listOfferings } from "@/lib/offerings";
+import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -33,7 +34,15 @@ export default async function OpportunitiesPage() {
   return (
     <OpportunitiesBrowser
       opportunities={opportunities}
-      offerings={offerings.map((o) => ({ id: o.id, name: o.offering_name }))}
+      // The type rides along so an offering wears the SAME colour here as on
+      // its own card (Anir, Aug 16: "the offering has to have the color, the
+      // icon, etc., to make sure it's completely accurate").
+      offerings={offerings.map((o) => ({
+        id: o.id,
+        name: o.offering_name,
+        type: o.offering_type,
+      }))}
+      offeringTypes={listOfferingTypes().map((t) => ({ name: t.name }))}
       customers={customers.map((c) => ({ id: c.id, name: c.company_name }))}
       goals={perf.goals.map((g) => ({ id: g.id, name: g.name, year: g.year }))}
       meName={me.name}

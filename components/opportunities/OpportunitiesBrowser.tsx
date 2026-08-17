@@ -33,8 +33,18 @@ import {
   REVENUE_TYPES,
   offeringCount,
   weightedValue,
+  lines as linesOf,
+  lineLabel,
+  lineWeighted,
+  opportunityConfidence,
+  resolveOfferingLabel,
   type Opportunity,
+  type OpportunityLine,
 } from "@/lib/opportunitiesShared";
+import {
+  OfferingChip,
+  offeringTypeColors,
+} from "@/components/ui/OfferingChip";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -130,6 +140,7 @@ function toDraft(o: Opportunity): Draft {
 export function OpportunitiesBrowser({
   opportunities,
   offerings,
+  offeringTypes = [],
   customers,
   goals,
   meName,
@@ -137,7 +148,9 @@ export function OpportunitiesBrowser({
   live,
 }: {
   opportunities: Opportunity[];
-  offerings: { id: string; name: string }[];
+  offerings: { id: string; name: string; type?: string }[];
+  /** Ordered, so an offering's colour matches its card on the Offerings page. */
+  offeringTypes?: { name: string }[];
   customers: { id: string; name: string }[];
   goals: { id: string; name: string; year: number }[];
   meName: string;
@@ -149,6 +162,10 @@ export function OpportunitiesBrowser({
   const [query, setQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  /** Suren, Aug 16: "I need two column names where you can filter based on
+   *  customer… it's like how you do customers, and within the customers,
+   *  certain opportunities are coming." */
+  const [customerFilter, setCustomerFilter] = useState("all");
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<Opportunity | null>(null);
@@ -159,11 +176,68 @@ export function OpportunitiesBrowser({
     [offerings]
   );
 
+  /**
+   * EVERY OFFERING WEARS ITS OWN COLOUR (Anir, Aug 16: "the offering has to
+   * have the color, the icon, etc., to make sure it's completely accurate").
+   * Resolved by type, the same way the Offerings page does it, so the two
+   * screens never disagree about what colour an offering is. Free-text
+   * offerings from the sheet have no type, so they get no colour rather than
+   * borrowing one that means something else.
+   */
+  const typeColor = useMemo(
+    () => offeringTypeColors(offeringTypes),
+    [offeringTypes]
+  );
+  const colorForOfferingId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of offerings) {
+      const c = o.type ? typeColor[o.type] : undefined;
+      if (c) map.set(o.id, c);
+    }
+    return map;
+  }, [offerings, typeColor]);
+  /** Free text off the sheet: match it to the catalogue by name when we can,
+   *  so "GRI" is not colourless just because it arrived as words. */
+  const colorForOfferingLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of offerings) {
+      const c = o.type ? typeColor[o.type] : undefined;
+      if (c) map.set(o.name.trim().toLowerCase(), c);
+    }
+    return map;
+  }, [offerings, typeColor]);
+  const lineColor = (line: OpportunityLine): string | undefined => {
+    if (line.offeringId) return colorForOfferingId.get(line.offeringId);
+    if (!line.offeringLabel) return undefined;
+    const direct = colorForOfferingLabel.get(line.offeringLabel.trim().toLowerCase());
+    if (direct) return direct;
+    // "GRI" is Regulatory Intelligence Services said the way the team says it,
+    // so it wears that offering's colour rather than reading as untyped.
+    const resolved = resolveOfferingLabel(line.offeringLabel, offerings);
+    return resolved ? colorForOfferingId.get(resolved) : undefined;
+  };
+
+  /** Every account with a deal on it, for the filter. Names as they are
+   *  stored, so an account that arrived from the sheet is reachable too. */
+  const customersInPipeline = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const o of list) {
+      const name = o.customer.trim();
+      if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [list]);
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return list
       .filter((o) => levelFilter === "all" || o.level === levelFilter)
       .filter((o) => statusFilter === "all" || (o.status ?? "") === statusFilter)
+      .filter(
+        (o) =>
+          customerFilter === "all" ||
+          o.customer.trim().toLowerCase() === customerFilter.toLowerCase()
+      )
       .filter(
         (o) =>
           !q ||
@@ -177,7 +251,7 @@ export function OpportunitiesBrowser({
           )
       )
       .sort((a, b) => b.value - a.value);
-  }, [list, query, levelFilter, statusFilter, offeringName]);
+  }, [list, query, levelFilter, statusFilter, customerFilter, offeringName]);
 
   const totals = useMemo(() => {
     const value = shown.reduce((s, o) => s + o.value, 0);
@@ -321,6 +395,25 @@ export function OpportunitiesBrowser({
             placeholder="Search deals, accounts, offerings, owners…"
             className="min-w-[240px] flex-1"
           />
+          {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
+              "it's like how you do customers, and within the customers,
+              certain opportunities are coming"), so it leads the filters. */}
+          <ColorSelect
+            value={customerFilter}
+            ariaLabel="Filter by customer"
+            onChange={setCustomerFilter}
+            minWidth={210}
+            options={[
+              { value: "all", label: "All customers" },
+              // THE ACCOUNT'S OWN MARK, not a row of identical blue dots
+              // (Anir, Aug 16: "here you need to have the company logo").
+              ...customersInPipeline.map((c) => ({
+                value: c,
+                label: c,
+                logoName: c,
+              })),
+            ]}
+          />
           <ColorSelect
             value={levelFilter}
             ariaLabel="Filter by level"
@@ -361,9 +454,10 @@ export function OpportunitiesBrowser({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse">
+            <table className="w-full min-w-[1100px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
+                  <th className="px-4 py-2.5">Customer</th>
                   <th className="px-4 py-2.5">Opportunity</th>
                   <th className="px-4 py-2.5">Offerings</th>
                   <th className="px-4 py-2.5 text-right">Value</th>
@@ -381,6 +475,8 @@ export function OpportunitiesBrowser({
                     ...o.offeringIds.map((id) => offeringName.get(id) ?? id),
                     ...o.offeringLabels,
                   ];
+                  const rows = linesOf(o);
+                  const shownConfidence = opportunityConfidence(o);
                   return (
                     <Fragment key={o.id}>
                       <tr
@@ -393,74 +489,116 @@ export function OpportunitiesBrowser({
                             : "hover:bg-surface"
                         )}
                       >
+                        {/* THE ACCOUNT GETS ITS OWN COLUMN (Suren, Aug 16:
+                            "where is the customer name? I need two column
+                            names where you can filter based on customer"). It
+                            was a grey subtitle under the deal name, so the one
+                            thing you scan a pipeline by could not be scanned. */}
                         <td className="px-4 py-3.5">
                           <span className="flex min-w-0 items-center gap-2.5">
                             <CompanyLogo
                               name={o.customer}
                               className="h-8 w-8 shrink-0 text-[10px]"
                             />
-                            <span className="min-w-0">
-                              <span className="block truncate text-[13.5px] font-semibold text-text-primary">
-                                {o.name}
-                              </span>
-                              <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
-                                <span className="truncate">{o.customer}</span>
-                                <span
-                                  className="rounded-full px-1.5 py-0.5 text-[9.5px] font-bold"
-                                  style={{
-                                    background: `${LEVEL_COLOR[o.level]}18`,
-                                    color: LEVEL_COLOR[o.level],
-                                  }}
-                                >
-                                  {o.level}
-                                </span>
-                                {o.externalId && (
-                                  <span className="text-[10px] text-text-tertiary tnum">
-                                    {o.externalId}
-                                  </span>
-                                )}
-                              </span>
+                            <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary">
+                              {o.customer}
                             </span>
                           </span>
                         </td>
                         <td className="px-4 py-3.5">
-                          {names.length === 0 ? (
+                          <span className="block min-w-0">
+                            <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                              {o.name}
+                            </span>
+                            <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
+                              <span
+                                className="rounded-full px-1.5 py-0.5 text-[9.5px] font-bold"
+                                style={{
+                                  background: `${LEVEL_COLOR[o.level]}18`,
+                                  color: LEVEL_COLOR[o.level],
+                                }}
+                              >
+                                {o.level}
+                              </span>
+                              {o.externalId && (
+                                <span className="text-[10px] text-text-tertiary tnum">
+                                  {o.externalId}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        </td>
+                        {/* THE OFFERINGS, IN THEIR OWN COLOURS. A row per
+                            offering when the deal has rows, so "which
+                            offerings does this cover" is answered without
+                            opening anything. */}
+                        <td className="px-4 py-3.5">
+                          {rows.length === 0 && names.length === 0 ? (
                             <span className="text-[12px] text-text-tertiary">—</span>
+                          ) : rows.length > 0 ? (
+                            <span className="flex flex-wrap items-center gap-1">
+                              {rows.slice(0, 2).map((line) => (
+                                <OfferingChip
+                                  key={line.id}
+                                  name={lineLabel(line, (id) => offeringName.get(id))}
+                                  color={lineColor(line)}
+                                  size="xs"
+                                  className="max-w-[150px]"
+                                />
+                              ))}
+                              {rows.length > 2 && (
+                                <span className="text-[11px] font-semibold text-text-tertiary">
+                                  +{rows.length - 2}
+                                </span>
+                              )}
+                            </span>
                           ) : (
                             <span className="flex flex-wrap items-center gap-1">
                               {names.slice(0, 2).map((n) => (
-                                <span
+                                <OfferingChip
                                   key={n}
-                                  className="max-w-[150px] truncate rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-blue-primary"
-                                >
-                                  {n}
-                                </span>
+                                  name={n}
+                                  color={colorForOfferingLabel.get(n.trim().toLowerCase())}
+                                  size="xs"
+                                  className="max-w-[150px]"
+                                />
                               ))}
                               {names.length > 2 && (
-                                <span className="text-[11px] text-text-tertiary">
+                                <span className="text-[11px] font-semibold text-text-tertiary">
                                   +{names.length - 2}
                                 </span>
                               )}
                             </span>
                           )}
                         </td>
+                        {/* THE TOTAL IS THE SUM OF THE ROWS (Anir, Aug 16:
+                            "opportunity value is the total value, but then
+                            each offering has its own opportunity value"), so
+                            it says how many rows made it rather than looking
+                            like a number somebody typed. */}
                         <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
                           {money(o.value)}
-                          {o.revenueType && (
+                          {rows.length > 1 ? (
                             <span className="ml-1 text-[10px] font-bold text-text-tertiary">
-                              {o.revenueType}
+                              {rows.length} rows
                             </span>
+                          ) : (
+                            o.revenueType && (
+                              <span className="ml-1 text-[10px] font-bold text-text-tertiary">
+                                {o.revenueType}
+                              </span>
+                            )
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] tnum">
-                          {o.confidence === undefined ? (
+                          {shownConfidence === undefined ? (
                             <span className="text-text-tertiary">—</span>
                           ) : (
-                            `${o.confidence}%`
+                            `${shownConfidence}%`
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] text-text-secondary tnum">
-                          {o.confidence === undefined ? "—" : money(weightedValue(o))}
+                          {shownConfidence === undefined ? "—" : money(weightedValue(o))}
                         </td>
                         <td className="px-4 py-3.5">
                           {o.status ? (
@@ -527,9 +665,96 @@ export function OpportunitiesBrowser({
                       {open && (
                         <tr className="!border-t-0 bg-surface">
                           <td
-                            colSpan={8}
+                            colSpan={9}
                             className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                           >
+                            {/* THE OFFERING ROWS, IN FULL (Suren, Aug 16:
+                                "under opportunity, offering 1 value, offering
+                                2 value, offering 3 value… all the values
+                                together will become the total opportunity
+                                value"). Each row carries its own money, its
+                                own status and its own confidence, because that
+                                is the point: "within that opportunity, this
+                                offering has a better status and confidence
+                                level, more." */}
+                            {rows.length > 0 && (
+                              <div className="tab-panel mb-3 overflow-hidden rounded-xl border border-border-light bg-white">
+                                <div className="flex items-center gap-2 border-b border-border-light px-3 py-2">
+                                  <b className="text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary">
+                                    Offerings in this opportunity
+                                  </b>
+                                  <span className="ml-auto text-[11px] font-semibold text-text-secondary tnum">
+                                    {rows.length} {rows.length === 1 ? "row" : "rows"} · {money(o.value)} total
+                                  </span>
+                                </div>
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr className="text-left text-[10px] font-bold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-3 [&>th]:py-1.5">
+                                      <th>Offering</th>
+                                      <th>ARR / OTS</th>
+                                      <th className="!text-right">Value</th>
+                                      <th className="!text-right">Confidence</th>
+                                      <th className="!text-right">Weighted</th>
+                                      <th>Status</th>
+                                      <th>Est. sign</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border-light">
+                                    {rows.map((line) => (
+                                      <tr key={line.id} className="[&>td]:px-3 [&>td]:py-2">
+                                        <td>
+                                          <OfferingChip
+                                            name={lineLabel(line, (id) => offeringName.get(id))}
+                                            color={lineColor(line)}
+                                            size="xs"
+                                          />
+                                        </td>
+                                        <td className="text-[11.5px] font-semibold text-text-secondary">
+                                          {line.revenueType ?? (
+                                            <span className="font-normal text-text-tertiary">not set</span>
+                                          )}
+                                        </td>
+                                        <td className="text-right text-[13px] font-semibold text-text-primary tnum">
+                                          {money(line.value)}
+                                        </td>
+                                        <td className="text-right text-[12.5px] tnum">
+                                          {line.confidence === undefined ? (
+                                            <span className="text-text-tertiary">—</span>
+                                          ) : (
+                                            `${line.confidence}%`
+                                          )}
+                                        </td>
+                                        <td className="text-right text-[12.5px] text-text-secondary tnum">
+                                          {line.confidence === undefined
+                                            ? "—"
+                                            : money(lineWeighted(line))}
+                                        </td>
+                                        <td>
+                                          {line.status ? (
+                                            <span
+                                              className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+                                              style={{
+                                                background: `${STATUS_COLOR[line.status]}18`,
+                                                color: STATUS_COLOR[line.status],
+                                              }}
+                                            >
+                                              {line.status}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[11.5px] text-text-tertiary">not set</span>
+                                          )}
+                                        </td>
+                                        <td className="text-[11.5px] text-text-secondary tnum">
+                                          {line.estSignDate ?? (
+                                            <span className="text-text-tertiary">no date</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                             <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
                               <Fact label="Owner">
                                 {o.owner ? (

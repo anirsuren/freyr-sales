@@ -10,6 +10,7 @@ import {
   useSearchPriority,
 } from "@/components/ui/SearchPriority";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 
 export type ColorOption = {
@@ -19,6 +20,11 @@ export type ColorOption = {
   icon?: LucideIcon;
   /** Render a real person avatar instead of a generic icon or colour dot. */
   avatarName?: string;
+  /** Render the company's own logo mark. Same idea as avatarName, for
+   *  accounts (Anir, Aug 16: "here you need to have the company logo"). A
+   *  filter listing sixty-five customers as sixty-five identical blue dots
+   *  said nothing about which one you were picking. */
+  logoName?: string;
   description?: string;
   badge?: string;
   badgeColor?: string;
@@ -221,6 +227,16 @@ export function ColorSelect({
     solo?: boolean;
   }) => {
     const Icon = o.icon;
+    if (o.logoName)
+      return (
+        <CompanyLogo
+          name={o.logoName}
+          className={cn(
+            "shrink-0",
+            prominent ? "h-8 w-8 text-[10px]" : "h-5 w-5 text-[7px]"
+          )}
+        />
+      );
     if (o.avatarName)
       return (
         <Avatar
@@ -692,7 +708,12 @@ export function MultiColorSelect({
           {/* This leading slot is always 20px wide. Swapping an unrestricted
               icon for one/two/three selection dots cannot move the label. */}
           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {picked.length === 1 && picked[0].avatarName ? (
+            {picked.length === 1 && picked[0].logoName ? (
+              <CompanyLogo
+                name={picked[0].logoName}
+                className="h-5 w-5 shrink-0 text-[7px]"
+              />
+            ) : picked.length === 1 && picked[0].avatarName ? (
               <Avatar
                 name={picked[0].avatarName}
                 className="h-5 w-5 shrink-0 text-[7px]"
@@ -829,7 +850,12 @@ export function MultiColorSelect({
                 >
                   {on && <Check size={11} strokeWidth={3} />}
                 </span>
-                {o.avatarName ? (
+                {o.logoName ? (
+                  <CompanyLogo
+                    name={o.logoName}
+                    className="h-5 w-5 shrink-0 text-[7px]"
+                  />
+                ) : o.avatarName ? (
                   <Avatar
                     name={o.avatarName}
                     className="h-5 w-5 shrink-0 text-[7px]"
