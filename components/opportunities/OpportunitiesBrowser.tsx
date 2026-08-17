@@ -1311,7 +1311,10 @@ function OfferingRowsEditor({
           return (
             <div
               key={r.key}
-              className="overflow-hidden rounded-xl border border-border-light bg-white"
+              className={cn(
+                "overflow-hidden rounded-xl border bg-white transition-colors",
+                open ? "border-blue-primary/40" : "border-border-light"
+              )}
             >
               <div
                 role="button"
@@ -1332,8 +1335,9 @@ function OfferingRowsEditor({
                 {name ? (
                   <OfferingChip name={name} color={chipColor} size="xs" className="max-w-[240px]" />
                 ) : (
-                  <span className="text-[12.5px] font-semibold text-text-tertiary">
-                    Pick an offering…
+                  <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary">
+                    <Plus size={12} strokeWidth={2.6} />
+                    New offering
                   </span>
                 )}
                 {r.revenueType && (
@@ -1378,8 +1382,15 @@ function OfferingRowsEditor({
                 <div className="space-y-3 border-t border-border-light px-3 py-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                     <div className="min-w-0">
-                      <label className={labelCls}>Offering</label>
-                      <div className="mt-1">
+                      <label className={labelCls}>
+                        Offering
+                        {!r.offeringId && !r.offeringLabel && (
+                          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
+                            Start here
+                          </span>
+                        )}
+                      </label>
+                      <div className={cn("mt-1", !r.offeringId && !r.offeringLabel && "rounded-lg ring-2 ring-blue-primary/35")}>
                         <ColorSelect
                           value={r.offeringId}
                           ariaLabel={`Offering for row ${i + 1}`}
