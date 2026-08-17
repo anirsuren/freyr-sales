@@ -315,12 +315,18 @@ export function SupabaseLoginForm({
       // email before the person can, which burned single-use reset links
       // (Veda, Aug 17 — "expired" within a minute, four times). A typed code
       // cannot be pre-clicked.
-      setMessage(
-        "Check your email for an 8-digit reset code, then enter it on the reset page."
-      );
-      window.setTimeout(() => {
-        window.location.assign("/auth/reset-password");
-      }, 2500);
+      //
+      // Straight to the code page, no delay. The first version showed a
+      // message and then jumped 2.5 seconds later, which read as a glitch
+      // (Anir, Aug 17: "it glitched out, and then it went here"). The email
+      // rides along in sessionStorage — never the URL — so the code page has
+      // it filled in already.
+      try {
+        window.sessionStorage.setItem("freyr.reset.email", normalizedEmail);
+      } catch {
+        /* private-mode storage failures just mean retyping the email */
+      }
+      window.location.assign("/auth/reset-password");
     } catch (caught) {
       setError(friendlyAuthError(caught));
     } finally {

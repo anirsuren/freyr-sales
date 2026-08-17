@@ -77,6 +77,18 @@ export default function ResetPasswordPage() {
           // This is also where a burned or expired link lands, and the code
           // box is a better answer than a dead end: the person types the
           // code from the same email and carries on.
+          //
+          // The sign-in page stashes the address it just sent the code to, so
+          // arriving here means typing eight digits, not your email again.
+          try {
+            const stashed = window.sessionStorage.getItem("freyr.reset.email");
+            if (stashed) {
+              setEmail(stashed);
+              window.sessionStorage.removeItem("freyr.reset.email");
+            }
+          } catch {
+            /* nothing stashed is fine — the field is right there */
+          }
           setState("code");
           return;
         }
@@ -206,7 +218,7 @@ export default function ResetPasswordPage() {
               Work email
               <input
                 required
-                autoFocus
+                autoFocus={email === ""}
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -219,6 +231,7 @@ export default function ResetPasswordPage() {
               Reset code
               <input
                 required
+                autoFocus={email !== ""}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 value={code}
