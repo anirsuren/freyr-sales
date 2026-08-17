@@ -976,15 +976,15 @@ export function OpportunitiesBrowser({
                                 offering has a better status and confidence
                                 level, more." */}
                             <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
-                            {rows.length > 0 && (
+                            {rows.length > 1 && (
                               /* No caption, no column headers — each line
-                                 says itself (Anir, Aug 17: "you don't even
-                                 need to say 'offerings in this opportunity',
-                                 just go straight to it… I still don't like
-                                 the way the table looks"): the offering chip,
-                                 its ARR/OTS, the money with the same blue
-                                 weighted bar the row above wears, the status,
-                                 the date. */
+                                 says itself: the offering chip, its ARR/OTS,
+                                 the money with the same blue weighted bar the
+                                 row above wears, the status, the date. ONLY
+                                 when there are several offerings — a single
+                                 offering's line just restated the row above
+                                 it (Anir, Aug 17: "you don't have to say
+                                 250k, 1 million, 25% again"). */
                               <div className="divide-y divide-border-light">
                                 {rows.map((line) => (
                                   <div
@@ -1032,21 +1032,29 @@ export function OpportunitiesBrowser({
                                         </span>
                                       )}
                                       <span className="whitespace-nowrap text-[11px] tnum">
-                                        <b className="text-blue-primary">
-                                          {line.confidence === undefined
-                                            ? "—"
-                                            : money(lineWeighted(line))}
-                                        </b>
-                                        <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
-                                          {" "}of {money(line.value)}
-                                        </span>
+                                        {/* One offering = the header above
+                                            already says all three numbers
+                                            (Anir, Aug 17: "you don't have to
+                                            say 250k, 1 million, 25% again").
+                                            Only several offerings earn their
+                                            own money lines. */}
                                         {rows.length > 1 && (
-                                          <span className="text-text-tertiary">
-                                            {" "}of {money(o.value)}
-                                          </span>
-                                        )}
-                                        {line.confidence !== undefined && (
-                                          <span className="text-text-secondary"> · {line.confidence}%</span>
+                                          <>
+                                            <b className="text-blue-primary">
+                                              {line.confidence === undefined
+                                                ? "—"
+                                                : money(lineWeighted(line))}
+                                            </b>
+                                            <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
+                                              {" "}of {money(line.value)}
+                                            </span>
+                                            <span className="text-text-tertiary">
+                                              {" "}of {money(o.value)}
+                                            </span>
+                                            {line.confidence !== undefined && (
+                                              <span className="text-text-secondary"> · {line.confidence}%</span>
+                                            )}
+                                          </>
                                         )}
                                         {line.localValue && line.localCurrency && (
                                           // What the client actually pays, in
@@ -1080,45 +1088,70 @@ export function OpportunitiesBrowser({
                                 ))}
                               </div>
                             )}
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border-light px-3.5 py-3 sm:grid-cols-2 lg:grid-cols-2">
-                              <Fact label="Owner">
-                                {o.owner ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <Avatar
-                                      name={o.owner}
-                                      className="h-5 w-5 shrink-0 text-[7px]"
-                                    />
-                                    {o.owner}
-                                  </span>
-                                ) : (
-                                  <span className="text-text-tertiary">nobody yet</span>
-                                )}
-                              </Fact>
-                              <Fact label="Opportunity id">
-                                {o.externalId ?? (
-                                  <span className="text-text-tertiary">none</span>
-                                )}
-                              </Fact>
-                              <OpportunityActivities
-                                opportunity={o}
-                                canEdit={canEdit && live}
-                                onSaved={(saved) =>
-                                  setList((prev) =>
-                                    prev.map((x) => (x.id === saved.id ? saved : x))
-                                  )
-                                }
-                              />
-                              <div className="col-span-2 min-w-0 sm:col-span-4">
-                                <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+                            {/* SUBSTANCE FIRST (Anir, Aug 17: "the stuff
+                                below the row, in the container in the
+                                dropdown, looks bad"): next steps lead as the
+                                widest thing on the panel, the owner and the
+                                CRM id sit in a quiet rail beside them, and
+                                the activities strip gets the full width
+                                under a divider. No half-empty label grid. */}
+                            <div className={cn("grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_230px]", rows.length > 1 && "border-t border-border-light")}>
+                              <div className="min-w-0">
+                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                   Next steps
                                 </span>
-                                <p className="mt-1 text-[13px] text-text-primary">
+                                <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-primary">
                                   {o.nextSteps ?? (
                                     <span className="text-text-tertiary">
                                       Nothing written down yet.
                                     </span>
                                   )}
                                 </p>
+                              </div>
+                              <div className="min-w-0 space-y-3.5 sm:border-l sm:border-border-light sm:pl-8">
+                                <div>
+                                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                    Owner
+                                  </span>
+                                  {o.owner ? (
+                                    <span className="mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                                      <Avatar
+                                        name={o.owner}
+                                        className="h-6 w-6 shrink-0 text-[8px]"
+                                      />
+                                      {o.owner}
+                                    </span>
+                                  ) : (
+                                    <span className="mt-1.5 block text-[12.5px] text-text-tertiary">
+                                      Nobody yet
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                    Opportunity id
+                                  </span>
+                                  {o.externalId ? (
+                                    <span className="mt-1.5 inline-block rounded-md bg-surface px-2 py-0.5 text-[12px] font-semibold text-text-secondary tnum">
+                                      {o.externalId}
+                                    </span>
+                                  ) : (
+                                    <span className="mt-1.5 block text-[12.5px] text-text-tertiary">
+                                      none
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="border-t border-border-light pt-3.5 sm:col-span-2">
+                                <OpportunityActivities
+                                  opportunity={o}
+                                  canEdit={canEdit && live}
+                                  onSaved={(saved) =>
+                                    setList((prev) =>
+                                      prev.map((x) => (x.id === saved.id ? saved : x))
+                                    )
+                                  }
+                                />
                               </div>
                             </div>
                             </div>

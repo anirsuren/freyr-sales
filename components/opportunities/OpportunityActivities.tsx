@@ -163,8 +163,8 @@ export function OpportunityActivities({
   }
 
   return (
-    <div className="col-span-2 min-w-0 sm:col-span-4">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+    <div className="min-w-0">
+      <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
         Activities
       </span>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
