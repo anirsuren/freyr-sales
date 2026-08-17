@@ -4,6 +4,8 @@ import { Fragment, useMemo, useState } from "react";
 import {
   Briefcase,
   ChevronDown,
+  Sparkles,
+  Tag,
   Pencil,
   Plus,
   Trash2,
@@ -1402,12 +1404,20 @@ function OfferingRowsEditor({
                             set(i, { offeringId: val, offeringLabel: val ? "" : r.offeringLabel })
                           }
                           options={[
-                            { value: "", label: "Not in the catalogue — type it", color: "#8E98A8" },
+                            {
+                              value: "",
+                              label: "Not in the catalogue — type it",
+                              color: "#8E98A8",
+                              icon: Tag,
+                            },
                             ...offerings.map((o) => ({
                               value: o.id,
                               label: o.name,
                               description: o.type,
                               color: colorForOfferingId.get(o.id) ?? "#475569",
+                              // The same mark every offering chip wears — the
+                              // menu speaks the chip language, not bare dots.
+                              icon: Sparkles,
                             })),
                           ]}
                         />
