@@ -3,6 +3,7 @@ import { readOpportunities } from "@/lib/opportunities";
 import { listOfferings } from "@/lib/offerings";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
+import { readActivityMaster } from "@/lib/activityMaster";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
@@ -23,11 +24,12 @@ export const dynamic = "force-dynamic";
  */
 export default async function OpportunitiesPage() {
   await requireModuleAccess("/opportunities");
-  const [{ opportunities }, offerings, perf, me] = await Promise.all([
+  const [{ opportunities }, offerings, perf, me, master] = await Promise.all([
     readOpportunities(),
     listOfferings(),
     readPerformance(),
     getCurrentUser(),
+    readActivityMaster(),
   ]);
   const db = getDb();
   const customers = await db.customers.list();
@@ -50,6 +52,14 @@ export default async function OpportunitiesPage() {
         name: g.name,
         year: g.year,
         type: g.type,
+      }))}
+      // The stage vocabulary (Suren, Aug 17 call: "this opportunity, this
+      // customer, and this is the activity at which this particular
+      // opportunity is — that's where the activity master comes along").
+      masterActivities={master.activities.map((a) => ({
+        id: a.id,
+        label: a.label,
+        color: a.color,
       }))}
       rates={perf.rates ?? {}}
       people={visiblePeople(perf, me.name, me.role)}

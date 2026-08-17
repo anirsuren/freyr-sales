@@ -135,6 +135,8 @@ type Draft = {
   goalIds: string[];
   level: string;
   status: string;
+  /** The activity stage this deal is AT (activity-master id). */
+  activity: string;
   owner: string;
   nextSteps: string;
 };
@@ -169,6 +171,7 @@ const BLANK: Draft = {
   goalIds: [],
   level: "Pipeline",
   status: "",
+  activity: "",
   owner: "",
   nextSteps: "",
 };
@@ -231,6 +234,8 @@ function toDraft(
     goalIds: [...(o.goalIds ?? [])],
     level: o.level,
     status: o.status ?? "",
+    // The deal's CURRENT stage = the newest entry in its activity history.
+    activity: (o.activities ?? []).at(-1)?.activity ?? "",
     owner: o.owner ?? "",
     nextSteps: o.nextSteps ?? "",
   };
@@ -242,6 +247,7 @@ export function OpportunitiesBrowser({
   offeringTypes = [],
   customers,
   goals,
+  masterActivities = [],
   rates = {},
   people = [],
   meName,
@@ -254,6 +260,8 @@ export function OpportunitiesBrowser({
   offeringTypes?: { name: string }[];
   customers: { id: string; name: string }[];
   goals: { id: string; name: string; year: number; type?: string }[];
+  /** The activity master's stages — the deal says which one it is AT. */
+  masterActivities?: { id: string; label: string; color: string }[];
   /** Admin-entered FX rates (units per USD) — a EUR entry converts itself. */
   rates?: CurrencyRates;
   /** The roster the Owner dropdown offers. */
@@ -457,6 +465,25 @@ export function OpportunitiesBrowser({
         status: editing.status || undefined,
         owner: editing.owner || undefined,
         nextSteps: editing.nextSteps || undefined,
+        // Picking a different stage APPENDS to the deal's activity history —
+        // the list stays the record, its last entry is where the deal is.
+        activities: (() => {
+          const existing = editing.id
+            ? (list.find((x) => x.id === editing.id)?.activities ?? [])
+            : [];
+          const currentStage = existing.at(-1)?.activity ?? "";
+          if (!editing.activity || editing.activity === currentStage)
+            return undefined;
+          return [
+            ...existing,
+            {
+              activity: editing.activity,
+              status: "initiated",
+              person: meName,
+              date: new Date().toISOString().slice(0, 10),
+            },
+          ];
+        })(),
       };
       const res = await fetch("/api/opportunities", {
         method: "POST",
@@ -1325,13 +1352,42 @@ export function OpportunitiesBrowser({
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Field
+                label="Activity"
+                hint="Where this deal stands in the activity flow — the stages come from the Activity master. Separate from the level: the level says how sure we are, the activity says what is happening."
+              >
+                {/* Suren, Aug 17 call: "this opportunity, this customer, and
+                    this is the activity at which this particular opportunity
+                    is — that's where the activity master comes along."
+                    Changing it writes the next line of the deal's activity
+                    history. */}
+                <ColorSelect
+                  value={editing.activity}
+                  ariaLabel="Current activity"
+                  collapsible={false}
+                  className="w-full"
+                  minWidth={110}
+                  dense
+                  onChange={(v) => setEditing({ ...editing, activity: v })}
+                  options={[
+                    { value: "", label: "Not set", color: "#8E98A8" },
+                    ...masterActivities.map((a) => ({
+                      value: a.id,
+                      label: a.label,
+                      color: a.color,
+                    })),
+                  ]}
+                />
+              </Field>
               <Field label="Level">
                 <ColorSelect
                   value={editing.level}
                   ariaLabel="Opportunity level"
                   collapsible={false}
                   className="w-full"
+                  minWidth={110}
+                  dense
                   onChange={(v) => setEditing({ ...editing, level: v })}
                   options={OPPORTUNITY_LEVELS.map((l) => ({
                     value: l,
@@ -1346,6 +1402,8 @@ export function OpportunitiesBrowser({
                   ariaLabel="Opportunity status"
                   collapsible={false}
                   className="w-full"
+                  minWidth={110}
+                  dense
                   onChange={(v) => setEditing({ ...editing, status: v })}
                   options={[
                     { value: "", label: "Not set", color: "#8E98A8" },
@@ -1414,6 +1472,18 @@ export function OpportunitiesBrowser({
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
             <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 py-3">
+              {editing.id && canEdit && live && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const full = list.find((x) => x.id === editing.id);
+                    if (full) setConfirmRemove(full);
+                  }}
+                  className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                >
+                  <Trash2 size={13} strokeWidth={2.2} /> Remove this opportunity
+                </button>
+              )}
               {missing.length > 0 && (
                 <p className="min-w-0 flex-1 truncate text-right text-[12px] text-text-tertiary">
                   Still needed: {missing.join(", ")}.
