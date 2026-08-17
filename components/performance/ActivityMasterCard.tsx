@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MultiPicker } from "@/components/ui/MultiPicker";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
@@ -159,188 +160,228 @@ export function ActivityMasterCard({
       ) : !state ? (
         <p className="px-4 py-5 text-[12.5px] text-text-secondary">Loading…</p>
       ) : (
-        <div className="divide-y divide-border-light">
-          {state.activities.map((a) => {
-            const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
-            const cMeta = CONTRIBUTION_STYLE[a.contribution];
-            return (
-              <div
-                key={a.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
-              >
-                {/* The activity, wearing its heat-map colour and icon. */}
-                <span
-                  className="inline-flex w-[128px] shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
-                  style={{ background: `${a.color}16`, color: a.color }}
-                >
-                  <Icon size={12.5} strokeWidth={2.4} aria-hidden="true" />
-                  <span className="truncate">{a.label}</span>
-                </span>
-
-                {/* How it counts. */}
-                {writable ? (
-                  <ColorSelect
-                    value={a.contribution}
-                    ariaLabel={`How ${a.label} counts`}
-                    collapsible={false}
-                    minWidth={190}
-                    onChange={(v) =>
-                      void post(
-                        { op: "update", id: a.id, contribution: v },
-                        `${a.label} now counts as ${CONTRIBUTION_META[v as keyof typeof CONTRIBUTION_META]?.label.toLowerCase() ?? v}`
-                      )
-                    }
-                    options={CONTRIBUTIONS.map((c) => ({
-                      value: c,
-                      label: CONTRIBUTION_META[c].label,
-                      description: CONTRIBUTION_META[c].hint,
-                      color: CONTRIBUTION_STYLE[c].color,
-                      icon: CONTRIBUTION_STYLE[c].icon,
-                    }))}
-                  />
-                ) : (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                    style={{ background: `${cMeta.color}16`, color: cMeta.color }}
-                  >
-                    <cMeta.icon size={11} strokeWidth={2.6} aria-hidden="true" />
-                    {CONTRIBUTION_META[a.contribution].label}
+        <div className="overflow-x-auto">
+          {/* A TABLE, NOT A PILE (Anir, Aug 17: "I'm lost. This is
+              horrible."): four aligned columns, one slim row per activity,
+              the explanations live in the headers instead of inside every
+              control. */}
+          <table className="w-full min-w-[880px] table-fixed border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <th className="w-[150px] px-4 py-2.5">Activity</th>
+                <th className="w-[190px] px-2 py-2.5">
+                  <span className="flex items-center gap-1">
+                    How it counts
+                    <InfoHint text={"Counts as 1 — each one adds one; a pilot done is 1, the next is 2.\nDollar value — the activity's money is the number; a $500K contract adds $500K.\nPerson types the number — whoever logs it types how much it adds.\nNot counted — logged for the record only."} />
                   </span>
-                )}
-
-                {/* WHEN it starts counting. A contract counts only once it's
-                    completed; a pilot already counts while under progress. */}
-                {a.contribution !== "none" &&
-                  (writable ? (
-                    <ColorSelect
-                      value={a.countsFrom}
-                      ariaLabel={`When ${a.label} starts counting`}
-                      collapsible={false}
-                      minWidth={196}
-                      onChange={(v) =>
-                        void post(
-                          { op: "update", id: a.id, countsFrom: v },
-                          `${a.label} counts ${COUNTS_FROM_META[v as keyof typeof COUNTS_FROM_META]?.label.toLowerCase() ?? v}`
-                        )
-                      }
-                      options={COUNTS_FROM.map((c) => ({
-                        value: c,
-                        label: COUNTS_FROM_META[c].label,
-                        color: COUNTS_FROM_STYLE[c].color,
-                        icon: COUNTS_FROM_STYLE[c].icon,
-                      }))}
-                    />
-                  ) : (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                      style={{
-                        background: `${COUNTS_FROM_STYLE[a.countsFrom].color}16`,
-                        color: COUNTS_FROM_STYLE[a.countsFrom].color,
-                      }}
-                    >
-                      {(() => {
-                        const I = COUNTS_FROM_STYLE[a.countsFrom].icon;
-                        return <I size={11} strokeWidth={2.6} aria-hidden="true" />;
-                      })()}
-                      {COUNTS_FROM_META[a.countsFrom].label}
-                    </span>
-                  ))}
-
-                {/* The goals it feeds. */}
-                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-                  {a.goalIds.map((gid) => {
-                    const g = goalById.get(gid);
-                    if (!g) return null;
-                    const t = typeMeta(g.type);
-                    return (
+                </th>
+                <th className="w-[200px] px-2 py-2.5">
+                  <span className="flex items-center gap-1">
+                    Counts from
+                    <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
+                  </span>
+                </th>
+                <th className="px-2 py-2.5">
+                  <span className="flex items-center gap-1">
+                    Goals it may feed
+                    <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it — connect several and they choose at logging time."} />
+                  </span>
+                </th>
+                {writable && <th className="w-[56px] px-2 py-2.5" />}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {state.activities.map((a) => {
+                const Icon = ACTIVITY_ICONS[a.id] ?? Tag;
+                const cMeta = CONTRIBUTION_STYLE[a.contribution];
+                const fMeta = COUNTS_FROM_STYLE[a.countsFrom];
+                return (
+                  <tr key={a.id}>
+                    <td className="px-4 py-3 align-middle">
                       <span
-                        key={gid}
-                        className="inline-flex max-w-[240px] items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ background: `${t.color}14`, color: t.color }}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold"
+                        style={{ background: `${a.color}16`, color: a.color }}
                       >
-                        <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
-                        <span className="truncate">{g.name}</span>
-                        {writable && (
-                          <button
-                            type="button"
-                            aria-label={`Disconnect ${g.name} from ${a.label}`}
-                            disabled={busy}
-                            onClick={() =>
-                              void post(
-                                {
-                                  op: "update",
-                                  id: a.id,
-                                  goalIds: a.goalIds.filter((x) => x !== gid),
-                                },
-                                `${g.name} disconnected from ${a.label}`
-                              )
-                            }
-                            className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
-                          >
-                            <X size={10.5} strokeWidth={2.8} />
-                          </button>
+                        <Icon size={12.5} strokeWidth={2.4} aria-hidden="true" />
+                        <span className="truncate">{a.label}</span>
+                      </span>
+                    </td>
+                    <td className="px-2 py-3 align-middle">
+                      {writable ? (
+                        <ColorSelect
+                          value={a.contribution}
+                          ariaLabel={`How ${a.label} counts`}
+                          collapsible={false}
+                          dense
+                          minWidth={150}
+                          className="w-full"
+                          onChange={(v) =>
+                            void post(
+                              { op: "update", id: a.id, contribution: v },
+                              `${a.label} now counts as ${CONTRIBUTION_META[v as keyof typeof CONTRIBUTION_META]?.label.toLowerCase() ?? v}`
+                            )
+                          }
+                          options={CONTRIBUTIONS.map((c) => ({
+                            value: c,
+                            label: CONTRIBUTION_META[c].label,
+                            color: CONTRIBUTION_STYLE[c].color,
+                            icon: CONTRIBUTION_STYLE[c].icon,
+                          }))}
+                        />
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                          style={{ background: `${cMeta.color}16`, color: cMeta.color }}
+                        >
+                          <cMeta.icon size={11} strokeWidth={2.6} aria-hidden="true" />
+                          {CONTRIBUTION_META[a.contribution].label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-3 align-middle">
+                      {a.contribution === "none" ? (
+                        <span className="text-[12px] text-text-tertiary">—</span>
+                      ) : writable ? (
+                        <ColorSelect
+                          value={a.countsFrom}
+                          ariaLabel={`When ${a.label} starts counting`}
+                          collapsible={false}
+                          dense
+                          minWidth={160}
+                          className="w-full"
+                          onChange={(v) =>
+                            void post(
+                              { op: "update", id: a.id, countsFrom: v },
+                              `${a.label} counts ${COUNTS_FROM_META[v as keyof typeof COUNTS_FROM_META]?.label.toLowerCase() ?? v}`
+                            )
+                          }
+                          options={COUNTS_FROM.map((c) => ({
+                            value: c,
+                            label: COUNTS_FROM_META[c].label,
+                            color: COUNTS_FROM_STYLE[c].color,
+                            icon: COUNTS_FROM_STYLE[c].icon,
+                          }))}
+                        />
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                          style={{ background: `${fMeta.color}16`, color: fMeta.color }}
+                        >
+                          {(() => {
+                            const I = fMeta.icon;
+                            return <I size={11} strokeWidth={2.6} aria-hidden="true" />;
+                          })()}
+                          {COUNTS_FROM_META[a.countsFrom].label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-3 align-middle">
+                      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {a.goalIds.map((gid) => {
+                          const g = goalById.get(gid);
+                          if (!g) return null;
+                          const t = typeMeta(g.type);
+                          return (
+                            <span
+                              key={gid}
+                              className="inline-flex max-w-[220px] items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{ background: `${t.color}14`, color: t.color }}
+                            >
+                              <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
+                              <span className="truncate">{g.name}</span>
+                              {writable && (
+                                <button
+                                  type="button"
+                                  aria-label={`Disconnect ${g.name} from ${a.label}`}
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void post(
+                                      {
+                                        op: "update",
+                                        id: a.id,
+                                        goalIds: a.goalIds.filter((x) => x !== gid),
+                                      },
+                                      `${g.name} disconnected from ${a.label}`
+                                    )
+                                  }
+                                  className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
+                                >
+                                  <X size={10.5} strokeWidth={2.8} />
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })}
+                        {a.goalIds.length === 0 && !writable && (
+                          <span className="text-[11.5px] text-text-tertiary">
+                            {a.contribution === "none" ? "—" : "none yet"}
+                          </span>
+                        )}
+                        {writable && a.contribution !== "none" && (
+                          /* THE SAME PICKER AS EVERYWHERE GOALS ARE PICKED
+                             (Anir, Aug 17: "you're not doing it consistently —
+                             this isn't what we had in the other place"):
+                             categories first, each flying out its goals,
+                             search on top. One pick connects and closes. */
+                          <span className="w-[150px]">
+                            <MultiPicker
+                              variant="dropdown"
+                              single
+                              ariaLabel={`Connect a goal to ${a.label}`}
+                              placeholder="＋ Connect a goal"
+                              emptyLabel="No goals on the master yet."
+                              selected={[]}
+                              onToggle={(id) => {
+                                if (!id || a.goalIds.includes(id)) return;
+                                const g = goalById.get(id);
+                                void post(
+                                  { op: "update", id: a.id, goalIds: [...a.goalIds, id] },
+                                  g ? `${a.label} now feeds ${g.name}` : undefined
+                                );
+                              }}
+                              options={goals
+                                .filter((g) => !a.goalIds.includes(g.id))
+                                .map((g) => ({
+                                  id: g.id,
+                                  label: g.name,
+                                  sub: String(g.year),
+                                  color: typeMeta(g.type).color,
+                                  icon: typeMeta(g.type).icon,
+                                  group: g.type || "Other",
+                                }))}
+                            />
+                          </span>
+                        )}
+                        {writable && a.contribution === "none" && a.goalIds.length === 0 && (
+                          <span className="text-[11.5px] text-text-tertiary">—</span>
                         )}
                       </span>
-                    );
-                  })}
-                  {a.goalIds.length === 0 && (
-                    <span className="text-[11.5px] text-text-tertiary">
-                      {a.contribution === "none"
-                        ? "Feeds no goal"
-                        : "No goal connected yet — logging this counts toward nothing"}
-                    </span>
-                  )}
-                  {writable && (
-                    <ColorSelect
-                      value=""
-                      ariaLabel={`Connect a goal to ${a.label}`}
-                      collapsible={false}
-                      compactTrigger
-                      triggerLabel="＋ Connect a goal"
-                      minWidth={300}
-                      onChange={(v) => {
-                        if (!v || a.goalIds.includes(v)) return;
-                        const g = goalById.get(v);
-                        void post(
-                          { op: "update", id: a.id, goalIds: [...a.goalIds, v] },
-                          g ? `${a.label} now feeds ${g.name}` : undefined
-                        );
-                      }}
-                      options={[
-                        { value: "", label: "＋ Connect a goal", color: "#8E98A8" },
-                        ...goals
-                          .filter((g) => !a.goalIds.includes(g.id))
-                          .map((g) => ({
-                            value: g.id,
-                            label: g.name,
-                            description: String(g.year),
-                            color: typeMeta(g.type).color,
-                            icon: typeMeta(g.type).icon,
-                          })),
-                      ]}
-                    />
-                  )}
-                </span>
-
-                {writable && !a.builtIn && (
-                  <button
-                    type="button"
-                    title={`Remove ${a.label}`}
-                    aria-label={`Remove ${a.label}`}
-                    disabled={busy}
-                    onClick={() => setConfirmRemove(a)}
-                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-                  >
-                    <Trash2 size={13} strokeWidth={2.2} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+                    </td>
+                    {writable && (
+                      <td className="px-2 py-3 text-right align-middle">
+                        {!a.builtIn && (
+                          <button
+                            type="button"
+                            title={`Remove ${a.label}`}
+                            aria-label={`Remove ${a.label}`}
+                            disabled={busy}
+                            onClick={() => setConfirmRemove(a)}
+                            className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                          >
+                            <Trash2 size={13} strokeWidth={2.2} />
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
           {writable && (
             <form
-              className="flex flex-wrap items-center gap-2 px-4 py-3"
+              className="flex flex-wrap items-center gap-2 border-t border-border-light px-4 py-3"
               onSubmit={(e) => {
                 e.preventDefault();
                 const label = newLabel.trim();
