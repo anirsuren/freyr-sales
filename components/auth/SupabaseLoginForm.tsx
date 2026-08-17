@@ -311,9 +311,16 @@ export function SupabaseLoginForm({
       if (!response.ok) {
         throw new Error(body.error || "Could not send the reset email.");
       }
+      // A CODE, not a link: company mail security opens every link in an
+      // email before the person can, which burned single-use reset links
+      // (Veda, Aug 17 — "expired" within a minute, four times). A typed code
+      // cannot be pre-clicked.
       setMessage(
-        "Password reset email sent. Open the newest email from Freyr Sales to choose a new password."
+        "Check your email for an 8-digit reset code, then enter it on the reset page."
       );
+      window.setTimeout(() => {
+        window.location.assign("/auth/reset-password");
+      }, 2500);
     } catch (caught) {
       setError(friendlyAuthError(caught));
     } finally {
