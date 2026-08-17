@@ -44,7 +44,12 @@ export default async function OpportunitiesPage() {
       }))}
       offeringTypes={listOfferingTypes().map((t) => ({ name: t.name }))}
       customers={customers.map((c) => ({ id: c.id, name: c.company_name }))}
-      goals={perf.goals.map((g) => ({ id: g.id, name: g.name, year: g.year }))}
+      goals={perf.goals.map((g) => ({
+        id: g.id,
+        name: g.name,
+        year: g.year,
+        type: g.type,
+      }))}
       meName={me.name}
       canEdit={isManagerOrAdmin(me.role)}
       live={getDataMode() === "live"}

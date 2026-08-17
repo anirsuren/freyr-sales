@@ -38,7 +38,7 @@ export type ColorOption = {
 const SP_MOTION =
   "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 
-type FloatingMenuStyle = CSSProperties & {
+export type FloatingMenuStyle = CSSProperties & {
   left: number;
   width: number;
   maxHeight: number;
@@ -49,7 +49,7 @@ type FloatingMenuStyle = CSSProperties & {
  * has to expand upward out of that trigger, or the motion reads as the menu
  * sliding through the control it belongs to.
  */
-function menuMotionVars(style: FloatingMenuStyle | null): CSSProperties {
+export function menuMotionVars(style: FloatingMenuStyle | null): CSSProperties {
   const opensUp = style ? style.bottom !== undefined : false;
   return {
     ["--menu-origin" as string]: opensUp ? "bottom left" : "top left",
@@ -57,7 +57,7 @@ function menuMotionVars(style: FloatingMenuStyle | null): CSSProperties {
   };
 }
 
-function floatingMenuStyle(
+export function floatingMenuStyle(
   trigger: DOMRect,
   desiredWidth: number,
   minimumRoom: number

@@ -1675,11 +1675,13 @@ input {
   height: 15px;
   width: 15px;
   border-radius: 9999px;
-  background: var(--blue-primary);
+  /* The thumb wears the same colour as the fill it leads — a blue thumb on a
+     red bar read as two unrelated controls. */
+  background: var(--range-color, var(--blue-primary));
   border: 2.5px solid #fff;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
   cursor: grab;
-  transition: transform 0.12s ease;
+  transition: transform 0.12s ease, background-color 0.2s ease;
 }
 .freyr-range::-webkit-slider-thumb:hover {
   transform: scale(1.15);
@@ -1692,7 +1694,7 @@ input {
   height: 15px;
   width: 15px;
   border-radius: 9999px;
-  background: var(--blue-primary);
+  background: var(--range-color, var(--blue-primary));
   border: 2.5px solid #fff;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
   cursor: grab;

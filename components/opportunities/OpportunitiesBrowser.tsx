@@ -48,6 +48,7 @@ import {
   OfferingChip,
   offeringTypeColors,
 } from "@/components/ui/OfferingChip";
+import { typeMeta } from "@/components/performance/bits";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -227,7 +228,7 @@ export function OpportunitiesBrowser({
   /** Ordered, so an offering's colour matches its card on the Offerings page. */
   offeringTypes?: { name: string }[];
   customers: { id: string; name: string }[];
-  goals: { id: string; name: string; year: number }[];
+  goals: { id: string; name: string; year: number; type?: string }[];
   meName: string;
   canEdit: boolean;
   live: boolean;
@@ -436,7 +437,7 @@ export function OpportunitiesBrowser({
               onClick={() =>
                 // Opens on one empty offering row, because that is the first
                 // thing to fill in and an empty list reads as a dead end.
-                setEditing({ ...BLANK, owner: meName, rows: [blankLine()] })
+                setEditing({ ...BLANK, owner: meName, rows: [] })
               }
             >
               <Plus size={14} strokeWidth={2.2} /> New opportunity
@@ -995,28 +996,64 @@ export function OpportunitiesBrowser({
                 />
               </Field>
               <Field label="Customer" hint="The account. Pick one of ours, or type a name that is not on the list yet.">
-                <input
-                  value={editing.customer}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    const hit = customers.find(
-                      (c) => c.name.toLowerCase() === name.trim().toLowerCase()
-                    );
+                {/* The browser-native datalist looked nothing like the app
+                    (Anir, Aug 17: "shitty dropdown fix it so its our
+                    standards") — same ColorSelect as everywhere, logos and
+                    all, with the offering rows' free-text escape hatch. */}
+                <ColorSelect
+                  // Imported deals carry the account NAME but no id — resolve
+                  // by name so a real account never greets its editor with
+                  // "Not on the list". Display-side only; the id persists when
+                  // a pick is made, same as the old datalist behaviour.
+                  value={
+                    editing.customerId ||
+                    (customers.find(
+                      (c) =>
+                        c.name.trim().toLowerCase() ===
+                        editing.customer.trim().toLowerCase()
+                    )?.id ??
+                      "")
+                  }
+                  ariaLabel="Customer account"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(val) => {
+                    const hit = customers.find((c) => c.id === val);
                     setEditing({
                       ...editing,
-                      customer: name,
-                      customerId: hit?.id ?? "",
+                      customerId: val,
+                      customer: hit ? hit.name : editing.customer,
                     });
                   }}
-                  list="freyr-opportunity-customers"
-                  placeholder="Start typing an account…"
-                  className={inputCls}
+                  options={[
+                    {
+                      value: "",
+                      label: "Not on the list — type it",
+                      color: "#8E98A8",
+                      icon: Tag,
+                    },
+                    ...customers.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                      logoName: c.name,
+                    })),
+                  ]}
                 />
-                <datalist id="freyr-opportunity-customers">
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.name} />
-                  ))}
-                </datalist>
+                {!editing.customerId &&
+                  !customers.some(
+                    (c) =>
+                      c.name.trim().toLowerCase() ===
+                      editing.customer.trim().toLowerCase()
+                  ) && (
+                    <input
+                      value={editing.customer}
+                      onChange={(e) =>
+                        setEditing({ ...editing, customer: e.target.value })
+                      }
+                      placeholder="Type the account name…"
+                      className={cn(inputCls, "mt-2")}
+                    />
+                  )}
               </Field>
             </div>
 
@@ -1044,10 +1081,15 @@ export function OpportunitiesBrowser({
               hint="Its value counts toward the pacing line on every goal you pick, once its estimated sign date has passed."
             >
               <MultiPicker
+                variant="dropdown"
+                ariaLabel="Goals this deal feeds"
                 options={goals.map((g) => ({
                   id: g.id,
                   label: g.name,
                   sub: String(g.year),
+                  color: typeMeta(g.type ?? "").color,
+                  icon: typeMeta(g.type ?? "").icon,
+                  group: g.type ?? "Other",
                 }))}
                 selected={editing.goalIds}
                 onToggle={(id) =>
@@ -1058,7 +1100,7 @@ export function OpportunitiesBrowser({
                       : [...editing.goalIds, id],
                   })
                 }
-                placeholder="Search goals…"
+                placeholder="Pick the goals this deal feeds…"
                 emptyLabel="No goals on the master yet."
               />
             </Field>
@@ -1229,6 +1271,86 @@ function Fact({
  * in a separate comma-separated field, so the sheet's wording keeps its money
  * and its dates instead of being dumped in a bucket at the bottom of the form.
  */
+/**
+ * CONFIDENCE AS A 0-100 SLIDER, colour-coded (Anir, Aug 17: "make this a
+ * progress bar, like a 0 to 100 thing that's color-coded"). Drag for the
+ * shape, type for the exact number — same contract as the target slider.
+ * The colour says what the number means while you set it: green when it is
+ * nearly won, caution in the middle, red for a long shot.
+ */
+function ConfidenceSlider({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  // Dragging is CONTINUOUS and the stored number snaps to 5s; typing is exact
+  // (Anir, Aug 17: "the bar moves smoothly but the numbers go every 5 but i
+  // can still enter in 72"). `drag` holds the thumb's true position while the
+  // pointer is down so the bar glides instead of chunking through 5% steps.
+  const [drag, setDrag] = useState<number | null>(null);
+  const n = value === "" ? null : Number(value);
+  const committed =
+    n === null || Number.isNaN(n) ? null : Math.max(0, Math.min(100, n));
+  const pct = drag ?? committed ?? 0;
+  const color =
+    committed === null && drag === null
+      ? "#8E98A8"
+      : pct >= 75
+        ? "#16A34A"
+        : pct >= 45
+          ? "#EAB308"
+          : "#DC2626";
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="relative flex h-4 min-w-0 flex-1 items-center"
+        style={{ ["--range-color" as string]: color }}
+      >
+        <span className="pointer-events-none absolute inset-x-0 h-[6px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
+          <span
+            className="block h-full rounded-full transition-[background-color] duration-200"
+            style={{
+              width: `${pct}%`,
+              background: `linear-gradient(90deg, ${color}B8, ${color})`,
+            }}
+          />
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={pct}
+          onChange={(e) => {
+            const raw = Number(e.target.value);
+            setDrag(raw);
+            onChange(String(Math.round(raw / 5) * 5));
+          }}
+          onPointerUp={() => setDrag(null)}
+          onBlur={() => setDrag(null)}
+          aria-label="Confidence — drag to set"
+          className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
+        />
+      </span>
+      <span className="relative w-[76px] shrink-0">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          inputMode="numeric"
+          placeholder="25"
+          aria-label="Confidence — type an exact figure"
+          className={cn(inputCls, "pr-6 text-right tnum")}
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[12px] font-semibold text-text-tertiary">
+          %
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function OfferingRowsEditor({
   rows,
   offerings,
@@ -1294,10 +1416,23 @@ function OfferingRowsEditor({
 
       <div className="mt-1.5 space-y-1.5">
         {rows.length === 0 && (
-          <p className="rounded-xl border border-dashed border-border-light px-3 py-4 text-center text-[12px] text-text-secondary">
-            No offerings on this deal yet. Add the first one and its value
-            becomes the opportunity&apos;s total.
-          </p>
+          <div className="rounded-xl border border-dashed border-border-light px-3 py-5 text-center">
+            <p className="text-[12px] text-text-secondary">
+              No offerings on this deal yet. Add the first one and its value
+              becomes the opportunity&apos;s total.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const line = blankLine();
+                onChange([line]);
+                setOpenKeys((prev) => new Set(prev).add(line.key));
+              }}
+              className="mt-3 cursor-pointer rounded-full bg-blue-primary px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-[color:#0058B0]"
+            >
+              ＋ Add offering
+            </button>
+          </div>
         )}
         {rows.map((r, i) => {
           const open = openKeys.has(r.key);
@@ -1384,20 +1519,12 @@ function OfferingRowsEditor({
                 <div className="space-y-3 border-t border-border-light px-3 py-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                     <div className="min-w-0">
-                      <label className={labelCls}>
-                        Offering
-                        {!r.offeringId && !r.offeringLabel && (
-                          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
-                            Start here
-                          </span>
-                        )}
-                      </label>
+                      <label className={labelCls}>Offering</label>
                       <div className={cn("mt-1", !r.offeringId && !r.offeringLabel && "rounded-lg ring-2 ring-blue-primary/35")}>
                         <ColorSelect
                           value={r.offeringId}
                           ariaLabel={`Offering for row ${i + 1}`}
                           collapsible={false}
-                          autoOpen={!r.offeringId && !r.offeringLabel}
                           className="w-full"
                           minWidth={360}
                           onChange={(val) =>
@@ -1454,7 +1581,7 @@ function OfferingRowsEditor({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                     <div className="min-w-0">
                       <label className={labelCls}>Value</label>
                       <input
@@ -1465,15 +1592,14 @@ function OfferingRowsEditor({
                         className={cn(inputCls, "mt-1 tnum")}
                       />
                     </div>
-                    <div className="min-w-0">
-                      <label className={labelCls}>Confidence %</label>
-                      <input
-                        value={r.confidence}
-                        onChange={(e) => set(i, { confidence: e.target.value })}
-                        inputMode="decimal"
-                        placeholder="e.g. 25"
-                        className={cn(inputCls, "mt-1 tnum")}
-                      />
+                    <div className="min-w-0 sm:col-span-2">
+                      <label className={labelCls}>Confidence</label>
+                      <div className="mt-1">
+                        <ConfidenceSlider
+                          value={r.confidence}
+                          onChange={(val) => set(i, { confidence: val })}
+                        />
+                      </div>
                     </div>
                     <div className="min-w-0">
                       <label className={labelCls}>Status</label>
@@ -1512,17 +1638,19 @@ function OfferingRowsEditor({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          const line = blankLine();
-          onChange([...rows, line]);
-          setOpenKeys((prev) => new Set(prev).add(line.key));
-        }}
-        className="mt-2 cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-      >
-        ＋ Add another offering
-      </button>
+      {rows.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            const line = blankLine();
+            onChange([...rows, line]);
+            setOpenKeys((prev) => new Set(prev).add(line.key));
+          }}
+          className="mt-2 cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+        >
+          ＋ Add another offering
+        </button>
+      )}
     </div>
   );
 }
