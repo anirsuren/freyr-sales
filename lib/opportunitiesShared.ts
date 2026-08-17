@@ -73,13 +73,32 @@ export type OpportunityLine = {
   /** Free text for an offering that is not in the catalogue yet. */
   offeringLabel?: string;
   revenueType?: RevenueType;
+  /** ALWAYS USD — totals, weighting and goals run on this number only
+   *  (Suren, Aug 17: "every connection is only in USD"). */
   value: number;
+  /** What the client actually pays, in their own money (Suren: "an Indian
+   *  company will not pay in USD — people should be able to feed the Indian
+   *  currency and the USD currency also"). Display-side, never summed. */
+  localValue?: number;
+  localCurrency?: CurrencyCode;
   status?: OpportunityStatus;
   /** 0-100. */
   confidence?: number;
   /** ISO day. */
   estSignDate?: string;
   nextSteps?: string;
+};
+
+export type OpportunityActivity = {
+  id: string;
+  /** Master activity id — lead, pilot, contract, or a custom one. */
+  activity: string;
+  status: "initiated" | "under_progress" | "completed";
+  /** Whose activity this is — the credited person. */
+  person: string;
+  note?: string;
+  /** ISO day. */
+  date: string;
 };
 
 export type Opportunity = {
@@ -125,6 +144,13 @@ export type Opportunity = {
    * signed by today.
    */
   goalIds?: string[];
+  /**
+   * SALES ACTIVITIES ON THE DEAL (Suren, Aug 17 answers: "you should have an
+   * activity at the opportunity level… the data entry should be in the
+   * opportunity page"). Each one wears the master's vocabulary; its status
+   * against the master's counts-from threshold is what offers the goal count.
+   */
+  activities?: OpportunityActivity[];
   createdAt: string;
   updatedAt: string;
 };

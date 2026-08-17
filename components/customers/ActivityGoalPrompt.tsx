@@ -47,6 +47,7 @@ export function ActivityGoalPrompt({
   master,
   goals,
   meName,
+  people,
   customerName,
   dollarValue,
   onClose,
@@ -57,6 +58,10 @@ export function ActivityGoalPrompt({
   /** Only the goals this activity actually feeds. */
   goals: PromptGoal[];
   meName: string;
+  /** Everyone this person may log credit for. Just [meName] for a rep;
+   *  admins get the whole roster, group owners their group (Suren: "only
+   *  the admin guys and the group owners can do it"). */
+  people?: string[];
   customerName: string;
   /** The engagement's own money, for a dollar-counting activity. */
   dollarValue?: number;
@@ -66,7 +71,12 @@ export function ActivityGoalPrompt({
   const { toast } = useToast();
   const [goalId, setGoalId] = useState(goals.length === 1 ? goals[0].id : "");
   const [busy, setBusy] = useState(false);
+  const [creditTo, setCreditTo] = useState(meName);
+  /** For a "person types the number" activity — the master's third kind. */
+  const [typedAmount, setTypedAmount] = useState("");
   const picked = goals.find((g) => g.id === goalId) ?? null;
+  const roster = people && people.length > 0 ? people : [meName];
+  const canPickPerson = roster.length > 1;
 
   const activityMeta =
     activity in CUSTOMER_OFFERING_ACTIVITIES
@@ -76,7 +86,13 @@ export function ActivityGoalPrompt({
   const label = activityMeta?.label ?? master.label;
 
   const isCount = master.contribution === "count";
-  const amount = isCount ? 1 : (dollarValue ?? 0);
+  const isTyped = master.contribution === "typed";
+  const typedNumber = Number(typedAmount);
+  const typedOk = typedAmount.trim() !== "" && Number.isFinite(typedNumber) && typedNumber > 0;
+  const amount = isCount ? 1 : isTyped ? (typedOk ? typedNumber : 0) : (dollarValue ?? 0);
+  /** Counts and typed numbers log right here; only dollar activities carry
+   *  the deal's own money through Log a result. */
+  const logsDirectly = isCount || isTyped;
 
   const amountLine = useMemo(() => {
     if (!picked) return "";
@@ -85,10 +101,10 @@ export function ActivityGoalPrompt({
       : `Adds ${fmtAmount(picked.unit, amount)} to ${picked.name}`;
   }, [picked, isCount, amount]);
 
-  /** A count is one click: no money, no evidence rule, logged and queued for
-   *  the group owner like anything else. */
-  async function logCount() {
-    if (!picked) return;
+  /** Counts and typed numbers are one click: logged and queued for the group
+   *  owner like anything else, credited to whoever is chosen above. */
+  async function logDirect() {
+    if (!picked || (isTyped && !typedOk)) return;
     setBusy(true);
     try {
       const res = await fetch("/api/performance", {
@@ -98,8 +114,8 @@ export function ActivityGoalPrompt({
           op: "log-actual",
           goalId: picked.id,
           subgoalId: null,
-          person: meName,
-          amount: 1,
+          person: creditTo,
+          amount,
           customer: customerName,
           note: `${label} on ${customerName} — logged from the activity`,
         }),
@@ -107,7 +123,7 @@ export function ActivityGoalPrompt({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "That didn't save.");
       toast(
-        `1 added to ${picked.name}. It counts once the group owner verifies it.`
+        `${amount} added to ${picked.name}. It counts once the group owner verifies it.`
       );
       onClose();
     } catch (error) {
@@ -117,7 +133,7 @@ export function ActivityGoalPrompt({
     }
   }
 
-  /** Money goes through Log a result, where the contract gets attached. */
+  /** The deal's money goes through Log a result, prefilled. */
   function handOffDollar() {
     if (!picked) return;
     const q = new URLSearchParams({
@@ -126,6 +142,7 @@ export function ActivityGoalPrompt({
       logNote: `${label} on ${customerName} — logged from the activity`,
     });
     if (amount > 0) q.set("logAmount", String(amount));
+    if (creditTo && creditTo !== meName) q.set("logPerson", creditTo);
     onClose();
     router.push(`/performance/org?${q.toString()}`);
   }
@@ -190,17 +207,55 @@ export function ActivityGoalPrompt({
         })}
       </div>
 
+      {isTyped && (
+        <div className="mt-3">
+          <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+            How much does it add?
+          </label>
+          <input
+            value={typedAmount}
+            onChange={(e) => setTypedAmount(e.target.value)}
+            inputMode="numeric"
+            placeholder="e.g. 3"
+            aria-label="Amount this activity adds"
+            className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary focus:shadow-input-focus tnum"
+          />
+        </div>
+      )}
+
+      {canPickPerson && (
+        <div className="mt-3">
+          <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+            Counts for
+          </label>
+          {/* Admins credit anyone, a group owner their people (Suren: "only
+              the admin guys and the group owners can do it — otherwise the
+              individual only"). Everyone else never sees this select. */}
+          <select
+            value={creditTo}
+            onChange={(e) => setCreditTo(e.target.value)}
+            aria-label="Who this counts for"
+            className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+          >
+            {roster.map((n) => (
+              <option key={n} value={n}>
+                {n === meName ? `${n} (you)` : n}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <p className="mt-3 text-[12px] leading-relaxed text-text-secondary">
         {picked ? (
           <>
             <b className="text-text-primary">{amountLine}</b>, credited to{" "}
-            <b className="text-text-primary">{meName}</b> — the goal goes
-            against whoever logs the activity.
-            {!isCount &&
-              " Money needs the signed contract attached, so the next screen is the usual Log a result with everything filled in."}
+            <b className="text-text-primary">{creditTo}</b>.
+            {!logsDirectly &&
+              " The next screen is the usual Log a result with everything filled in."}
           </>
         ) : (
-          "Pick which goal this one counts toward."
+          "Pick which goal this one counts toward — only the goals on the master's list for this activity are offered."
         )}
       </p>
 
@@ -208,9 +263,15 @@ export function ActivityGoalPrompt({
         <Button variant="secondary" onClick={onClose}>
           Not now
         </Button>
-        {isCount ? (
-          <Button onClick={logCount} disabled={!picked} loading={busy}>
-            {picked ? `Add 1 to ${picked.name}` : "Count it"}
+        {logsDirectly ? (
+          <Button
+            onClick={logDirect}
+            disabled={!picked || (isTyped && !typedOk)}
+            loading={busy}
+          >
+            {picked
+              ? `Add ${isTyped ? (typedOk ? amount : "…") : 1} to ${picked.name}`
+              : "Count it"}
           </Button>
         ) : (
           <Button onClick={handOffDollar} disabled={!picked}>

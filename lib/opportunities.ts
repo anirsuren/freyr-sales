@@ -1,4 +1,5 @@
 import { isCurrencyCode, type CurrencyCode } from "./currency";
+import type { OpportunityActivity } from "./opportunitiesShared";
 import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import {
@@ -93,12 +94,18 @@ function normalizeLines(raw: unknown): OpportunityLine[] {
     const offeringLabel = str(r.offeringLabel, 160) || undefined;
     const value = num(r.value);
     if (!offeringId && !offeringLabel && value === 0) continue;
+    const localValue = num(r.localValue);
+    const localCurrency = isCurrencyCode(r.localCurrency)
+      ? ((r.localCurrency as string).toUpperCase() as CurrencyCode)
+      : undefined;
     out.push({
       id: str(r.id, 60) || `line-${out.length}-${Math.random().toString(36).slice(2, 7)}`,
       offeringId,
       offeringLabel,
       revenueType: normalizeRevenueType(r.revenueType),
       value,
+      localValue: localValue > 0 && localCurrency ? localValue : undefined,
+      localCurrency: localValue > 0 && localCurrency ? localCurrency : undefined,
       status: normalizeStatus(r.status),
       confidence: normalizeConfidence(r.confidence),
       estSignDate: day(r.estSignDate),
@@ -106,6 +113,33 @@ function normalizeLines(raw: unknown): OpportunityLine[] {
     });
   }
   return out;
+}
+
+const ACTIVITY_STATUSES = ["initiated", "under_progress", "completed"] as const;
+
+function normalizeActivities(raw: unknown): OpportunityActivity[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: OpportunityActivity[] = [];
+  for (const item of raw.slice(0, 100)) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const activity = str(r.activity, 60);
+    if (!activity) continue;
+    const status = (ACTIVITY_STATUSES as readonly string[]).includes(
+      String(r.status ?? "")
+    )
+      ? (String(r.status) as OpportunityActivity["status"])
+      : "initiated";
+    out.push({
+      id: str(r.id, 60) || `act-${out.length}-${Math.random().toString(36).slice(2, 7)}`,
+      activity,
+      status,
+      person: str(r.person, 120),
+      note: str(r.note, 400) || undefined,
+      date: day(r.date) ?? new Date().toISOString().slice(0, 10),
+    });
+  }
+  return out.length ? out : undefined;
 }
 
 function normalizeOne(raw: unknown): Opportunity | null {
@@ -154,6 +188,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
     owner: str(r.owner, 120) || undefined,
     nextSteps: str(r.nextSteps, 600) || undefined,
     goalIds: strList(r.goalIds, 60),
+    activities: normalizeActivities(r.activities),
     createdAt: str(r.createdAt, 40) || now,
     updatedAt: str(r.updatedAt, 40) || now,
   };
@@ -322,6 +357,7 @@ export type OpportunityInput = {
   owner?: string;
   nextSteps?: string;
   goalIds?: string[];
+  activities?: unknown[];
 };
 
 export async function addOpportunity(input: OpportunityInput): Promise<Opportunity> {

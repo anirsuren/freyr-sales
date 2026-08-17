@@ -50,6 +50,9 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     owner: s(raw.owner),
     nextSteps: s(raw.nextSteps),
     goalIds: list(raw.goalIds),
+    // Shape-checked in lib/opportunities (normalizeActivities), same deal as
+    // the offering rows above.
+    activities: Array.isArray(raw.activities) ? raw.activities : undefined,
   };
 }
 

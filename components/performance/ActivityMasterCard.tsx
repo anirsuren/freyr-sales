@@ -7,7 +7,10 @@ import {
   DollarSign,
   FileCheck2,
   Hash,
+  Loader,
   MinusCircle,
+  PenLine,
+  Play,
   Plus,
   Send,
   Sparkles,
@@ -27,6 +30,8 @@ import { typeMeta } from "./bits";
 import {
   CONTRIBUTION_META,
   CONTRIBUTIONS,
+  COUNTS_FROM,
+  COUNTS_FROM_META,
   type ActivityMasterState,
   type MasterActivity,
 } from "@/lib/activityMasterShared";
@@ -65,17 +70,27 @@ const CONTRIBUTION_STYLE: Record<
 > = {
   dollar: { color: "#0071E3", icon: DollarSign },
   count: { color: "#7C3AED", icon: Hash },
+  typed: { color: "#0F766E", icon: PenLine },
   none: { color: "#8E98A8", icon: MinusCircle },
+};
+
+/** When the activity starts counting — Suren's "a pilot in progress should
+ *  count as one" lives in this control. */
+const COUNTS_FROM_STYLE: Record<string, { color: string; icon: LucideIcon }> = {
+  initiated: { color: "#0071E3", icon: Play },
+  under_progress: { color: "#7C3AED", icon: Loader },
+  completed: { color: "#0F766E", icon: CheckCircle2 },
 };
 
 export function ActivityMasterCard({
   goals,
   live,
-  isManager,
+  isAdmin,
 }: {
   goals: { id: string; name: string; year: number; type: string }[];
   live: boolean;
-  isManager: boolean;
+  /** Only admins change the master (Suren, Aug 17: "yes exactly"). */
+  isAdmin: boolean;
 }) {
   const { toast } = useToast();
   const [state, setState] = useState<ActivityMasterState | null>(null);
@@ -100,7 +115,7 @@ export function ActivityMasterCard({
     [goals]
   );
 
-  const writable = live && isManager;
+  const writable = live && isAdmin;
 
   async function post(body: Record<string, unknown>, done?: string) {
     setBusy(true);
@@ -132,7 +147,7 @@ export function ActivityMasterCard({
           {writable
             ? "Changes apply the next time anyone logs an activity"
             : live
-              ? "Managers and admins edit this list"
+              ? "Admins edit this list"
               : "Sample data — switch to Real mode to change the master"}
         </span>
       </div>
@@ -192,6 +207,44 @@ export function ActivityMasterCard({
                     {CONTRIBUTION_META[a.contribution].label}
                   </span>
                 )}
+
+                {/* WHEN it starts counting. A contract counts only once it's
+                    completed; a pilot already counts while under progress. */}
+                {a.contribution !== "none" &&
+                  (writable ? (
+                    <ColorSelect
+                      value={a.countsFrom}
+                      ariaLabel={`When ${a.label} starts counting`}
+                      collapsible={false}
+                      minWidth={196}
+                      onChange={(v) =>
+                        void post(
+                          { op: "update", id: a.id, countsFrom: v },
+                          `${a.label} counts ${COUNTS_FROM_META[v as keyof typeof COUNTS_FROM_META]?.label.toLowerCase() ?? v}`
+                        )
+                      }
+                      options={COUNTS_FROM.map((c) => ({
+                        value: c,
+                        label: COUNTS_FROM_META[c].label,
+                        color: COUNTS_FROM_STYLE[c].color,
+                        icon: COUNTS_FROM_STYLE[c].icon,
+                      }))}
+                    />
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{
+                        background: `${COUNTS_FROM_STYLE[a.countsFrom].color}16`,
+                        color: COUNTS_FROM_STYLE[a.countsFrom].color,
+                      }}
+                    >
+                      {(() => {
+                        const I = COUNTS_FROM_STYLE[a.countsFrom].icon;
+                        return <I size={11} strokeWidth={2.6} aria-hidden="true" />;
+                      })()}
+                      {COUNTS_FROM_META[a.countsFrom].label}
+                    </span>
+                  ))}
 
                 {/* The goals it feeds. */}
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">

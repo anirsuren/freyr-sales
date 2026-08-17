@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { isManagerOrAdmin } from "@/lib/moduleAccess";
+import { visiblePeople } from "@/lib/performanceShared";
 import { getDataMode } from "@/lib/dataMode";
 import {
   addMasterActivity,
@@ -16,8 +16,9 @@ import { readPerformance } from "@/lib/performance";
  *
  * Reading is open to anyone signed in — the customer page needs the mappings
  * to say "this counts toward Renewals" at logging time. Changing which goal an
- * activity feeds routes money, so writes are managers and admins, the same
- * line the performance route draws. Mock never accepts a write.
+ * activity feeds routes money, so writes are ADMINS ONLY (Suren, Aug 17
+ * answers: "should only admins be able to change the activity master —
+ * yes exactly"). Mock never accepts a write.
  */
 
 export async function GET(req: NextRequest) {
@@ -33,6 +34,13 @@ export async function GET(req: NextRequest) {
   // his name that goal goes").
   const me = await getCurrentUser();
   const perf = await readPerformance().catch(() => null);
+  // Who this person may log credit FOR (Suren, Aug 17 answers: "only the
+  // admin guys and the group owners can do it — otherwise the individual
+  // only"). visiblePeople already draws that exact line: admin = everyone,
+  // group head = their group, everyone else = just themself.
+  const people = perf
+    ? visiblePeople(perf, me.name, me.role)
+    : [me.name];
   return NextResponse.json({
     state,
     goals: (perf?.goals ?? []).map((g) => ({
@@ -42,7 +50,8 @@ export async function GET(req: NextRequest) {
       year: g.year,
       type: g.type,
     })),
-    me: { name: me.name },
+    me: { name: me.name, role: me.role },
+    people,
   });
 }
 
@@ -58,9 +67,9 @@ export async function POST(req: NextRequest) {
     );
   }
   const me = await getCurrentUser();
-  if (!isManagerOrAdmin(me.role)) {
+  if (me.role !== "admin") {
     return NextResponse.json(
-      { error: "Only managers and admins change the activity master." },
+      { error: "Only admins change the activity master." },
       { status: 403 }
     );
   }
@@ -80,6 +89,8 @@ export async function POST(req: NextRequest) {
               body.contribution === undefined
                 ? undefined
                 : String(body.contribution),
+            countsFrom:
+              body.countsFrom === undefined ? undefined : String(body.countsFrom),
             goalIds: body.goalIds,
           })
         : op === "add"
@@ -90,6 +101,8 @@ export async function POST(req: NextRequest) {
                 body.contribution === undefined
                   ? undefined
                   : String(body.contribution),
+              countsFrom:
+                body.countsFrom === undefined ? undefined : String(body.countsFrom),
               goalIds: body.goalIds,
             })
           : op === "remove"

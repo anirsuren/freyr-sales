@@ -170,8 +170,11 @@ export function OfferingActivities({
   onSave: (
     versions: CustomerOfferingEngagementVersion[],
     /** The record just written by the editor — the activity-goal hook reads
-     *  it. Absent on make-current and remove, which complete nothing new. */
-    touched?: CustomerOfferingEngagementVersion
+     *  it. Absent on make-current and remove, which change no status. */
+    touched?: CustomerOfferingEngagementVersion,
+    /** Its status before this save (null = brand new), so the hook can tell
+     *  whether the master's counting threshold was newly reached. */
+    prevStatus?: string | null
   ) => void;
 }) {
   /** null = closed; "" = adding; otherwise the id being edited. */
@@ -256,13 +259,15 @@ export function OfferingActivities({
     const next = existing
       ? versions.map((v) => (v.id === record.id ? record : v))
       : versions.map((v) => ({ ...v, linked: false })).concat(record);
-    // The hook cares whether COMPLETED is new news: re-saving an already
-    // completed record must not offer to count the same thing twice.
+    // The hook cares whether a status is NEW news — the master decides which
+    // status starts counting (Suren: "a pilot in progress should count as
+    // one"), so every transition goes up with its prior status and the hook
+    // compares both against the threshold. Re-saving unchanged must not offer
+    // to count the same thing twice.
     onSave(
       next,
-      record.status === "completed" && existing?.status !== "completed"
-        ? record
-        : undefined
+      record.status !== (existing?.status ?? null) ? record : undefined,
+      existing?.status ?? null
     );
     setEditing(null);
   }

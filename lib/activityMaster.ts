@@ -2,7 +2,9 @@ import { getDataMode } from "./dataMode";
 import {
   builtInActivities,
   CONTRIBUTIONS,
+  COUNTS_FROM,
   type ActivityContribution,
+  type ActivityCountsFrom,
   type ActivityMasterState,
   type MasterActivity,
 } from "./activityMasterShared";
@@ -55,6 +57,13 @@ function contribution(v: unknown): ActivityContribution {
     : "none";
 }
 
+function countsFrom(v: unknown, fallback: ActivityCountsFrom): ActivityCountsFrom {
+  const s = str(v, 20).toLowerCase();
+  return (COUNTS_FROM as readonly string[]).includes(s)
+    ? (s as ActivityCountsFrom)
+    : fallback;
+}
+
 function goalIds(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
   const out: string[] = [];
@@ -90,6 +99,7 @@ function normalize(raw: unknown): ActivityMasterState {
     return {
       ...b,
       contribution: s.contribution === undefined ? b.contribution : contribution(s.contribution),
+      countsFrom: s.countsFrom === undefined ? b.countsFrom : countsFrom(s.countsFrom, b.countsFrom),
       goalIds: goalIds(s.goalIds),
     };
   });
@@ -103,6 +113,7 @@ function normalize(raw: unknown): ActivityMasterState {
       label,
       color: color(s.color),
       contribution: contribution(s.contribution),
+      countsFrom: countsFrom(s.countsFrom, "completed"),
       goalIds: goalIds(s.goalIds),
       builtIn: false,
     });
@@ -191,6 +202,7 @@ async function seededMock(): Promise<ActivityMasterState> {
 export async function updateMasterActivity(input: {
   id: string;
   contribution?: string;
+  countsFrom?: string;
   goalIds?: unknown;
 }): Promise<ActivityMasterState> {
   const id = str(input.id, 60).toLowerCase();
@@ -199,6 +211,9 @@ export async function updateMasterActivity(input: {
   if (!hit) throw new Error("That activity is not on the master.");
   if (input.contribution !== undefined) {
     hit.contribution = contribution(input.contribution);
+  }
+  if (input.countsFrom !== undefined) {
+    hit.countsFrom = countsFrom(input.countsFrom, hit.countsFrom);
   }
   if (input.goalIds !== undefined) {
     hit.goalIds = goalIds(input.goalIds);
@@ -212,6 +227,7 @@ export async function addMasterActivity(input: {
   label: string;
   color?: string;
   contribution?: string;
+  countsFrom?: string;
   goalIds?: unknown;
 }): Promise<ActivityMasterState> {
   const label = str(input.label, 60);
@@ -230,6 +246,7 @@ export async function addMasterActivity(input: {
     label,
     color: color(input.color),
     contribution: contribution(input.contribution),
+    countsFrom: countsFrom(input.countsFrom, "completed"),
     goalIds: goalIds(input.goalIds),
     builtIn: false,
   });

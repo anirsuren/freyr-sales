@@ -49,6 +49,8 @@ import {
   offeringTypeColors,
 } from "@/components/ui/OfferingChip";
 import { typeMeta } from "@/components/performance/bits";
+import { CURRENCIES, fmtMoney } from "@/lib/currency";
+import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -106,6 +108,9 @@ type DraftLine = {
   offeringLabel: string;
   revenueType: string;
   value: string;
+  /** What the client pays in their own money — display only, USD counts. */
+  localValue: string;
+  localCurrency: string;
   status: string;
   confidence: string;
   estSignDate: string;
@@ -134,6 +139,8 @@ function blankLine(): DraftLine {
     offeringLabel: "",
     revenueType: "",
     value: "",
+    localValue: "",
+    localCurrency: "",
     status: "",
     confidence: "",
     estSignDate: "",
@@ -177,6 +184,8 @@ function toDraft(
           offeringLabel: l.offeringLabel ?? "",
           revenueType: l.revenueType ?? "",
           value: l.value ? String(l.value) : "",
+          localValue: l.localValue ? String(l.localValue) : "",
+          localCurrency: l.localCurrency ?? "",
           status: l.status ?? "",
           confidence: l.confidence === undefined ? "" : String(l.confidence),
           estSignDate: l.estSignDate ?? "",
@@ -351,6 +360,35 @@ export function OpportunitiesBrowser({
     };
   }, [shown]);
 
+  /**
+   * WHAT AN OPPORTUNITY CANNOT SAVE WITHOUT (Anir, Aug 17: "why is it letting
+   * me add this stuff if i didn't fill out the fields"): a name, a customer,
+   * at least one offering, and every offering row named and carrying money.
+   * Status, confidence and dates can genuinely be unknown — his own imported
+   * deals have blanks there — so those stay optional.
+   */
+  const missing: string[] = !editing
+    ? []
+    : [
+        !editing.name.trim() ? "a name for the opportunity" : "",
+        !editing.customerId && !editing.customer.trim() ? "the customer" : "",
+        editing.rows.length === 0 ? "at least one offering" : "",
+        editing.rows.some((r) => !r.offeringId && !r.offeringLabel.trim())
+          ? "which offering the unnamed row is"
+          : "",
+        // Value is demanded on rows ADDED here and now — five of his real
+        // imported deals genuinely carry no value yet, and editing those must
+        // not trap him behind a rule about a number nobody has.
+        editing.rows.some(
+          (r) =>
+            r.key.startsWith("new-") &&
+            (r.offeringId || r.offeringLabel.trim()) &&
+            (r.value === "" || !(Number(r.value) > 0))
+        )
+          ? "a value on the new offering"
+          : "",
+      ].filter(Boolean);
+
   async function save() {
     if (!editing) return;
     setBusy(true);
@@ -370,6 +408,9 @@ export function OpportunitiesBrowser({
           offeringLabel: r.offeringId ? undefined : r.offeringLabel || undefined,
           revenueType: r.revenueType || undefined,
           value: r.value === "" ? 0 : Number(r.value),
+          localValue:
+            r.localValue === "" ? undefined : Number(r.localValue) || undefined,
+          localCurrency: r.localCurrency || undefined,
           status: r.status || undefined,
           confidence: r.confidence === "" ? undefined : Number(r.confidence),
           estSignDate: r.estSignDate || undefined,
@@ -900,6 +941,14 @@ export function OpportunitiesBrowser({
                                         {line.confidence !== undefined && (
                                           <span className="text-text-secondary"> · {line.confidence}%</span>
                                         )}
+                                        {line.localValue && line.localCurrency && (
+                                          // What the client actually pays, in
+                                          // their money. Reference only — the
+                                          // USD number is what counts.
+                                          <span className="text-text-tertiary">
+                                            {" "}· {fmtMoney(line.localValue, line.localCurrency)} local
+                                          </span>
+                                        )}
                                       </span>
                                     </span>
                                     <span>
@@ -943,6 +992,15 @@ export function OpportunitiesBrowser({
                                   <span className="text-text-tertiary">none</span>
                                 )}
                               </Fact>
+                              <OpportunityActivities
+                                opportunity={o}
+                                canEdit={canEdit && live}
+                                onSaved={(saved) =>
+                                  setList((prev) =>
+                                    prev.map((x) => (x.id === saved.id ? saved : x))
+                                  )
+                                }
+                              />
                               <div className="col-span-2 min-w-0 sm:col-span-4">
                                 <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
                                   Next steps
@@ -1173,11 +1231,16 @@ export function OpportunitiesBrowser({
                 (Anir, Aug 17: "the save changes button in the bottom right…
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
-            <div className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-border-light bg-white px-5 py-3">
+            <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 py-3">
+              {missing.length > 0 && (
+                <p className="min-w-0 flex-1 truncate text-right text-[12px] text-text-tertiary">
+                  Still needed: {missing.join(", ")}.
+                </p>
+              )}
               <Button variant="secondary" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
-              <Button onClick={save} loading={busy}>
+              <Button onClick={save} loading={busy} disabled={missing.length > 0}>
                 {editing.id ? "Save changes" : "Add opportunity"}
               </Button>
             </div>
@@ -1583,7 +1646,9 @@ function OfferingRowsEditor({
 
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                     <div className="min-w-0">
-                      <label className={labelCls}>Value</label>
+                      <label className={labelCls}>
+                        Value <span className="font-bold text-text-tertiary">USD</span>
+                      </label>
                       <input
                         value={r.value}
                         onChange={(e) => set(i, { value: e.target.value })}
@@ -1629,6 +1694,55 @@ function OfferingRowsEditor({
                         onChange={(e) => set(i, { estSignDate: e.target.value })}
                         className={cn(inputCls, "mt-1 tnum")}
                       />
+                    </div>
+                  </div>
+
+                  {/* WHAT THE CLIENT ACTUALLY PAYS (Suren, Aug 17: "an Indian
+                      company will not pay in USD — people should be able to
+                      feed the Indian currency and the USD currency also. But
+                      goals, everything is connected to USD"). Optional; never
+                      summed; the USD value above drives every number. */}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    <div className="min-w-0">
+                      <label className={labelCls}>Local currency</label>
+                      <div className="mt-1">
+                        <ColorSelect
+                          value={r.localCurrency}
+                          ariaLabel={`Local currency for row ${i + 1}`}
+                          collapsible={false}
+                          className="w-full"
+                          onChange={(val) => set(i, { localCurrency: val })}
+                          options={[
+                            { value: "", label: "None — USD only", color: "#8E98A8" },
+                            ...CURRENCIES.filter((c) => c.code !== "USD").map((c) => ({
+                              value: c.code,
+                              label: c.code,
+                              description: c.name,
+                              color: "#0F766E",
+                              short: c.symbol.trim(),
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    {r.localCurrency && (
+                      <div className="min-w-0 sm:col-span-2">
+                        <label className={labelCls}>
+                          Amount in {r.localCurrency}
+                        </label>
+                        <input
+                          value={r.localValue}
+                          onChange={(e) => set(i, { localValue: e.target.value })}
+                          inputMode="decimal"
+                          placeholder={`what the client pays, in ${r.localCurrency}`}
+                          className={cn(inputCls, "mt-1 tnum")}
+                        />
+                      </div>
+                    )}
+                    <div className={cn("flex items-end pb-2", r.localCurrency ? "sm:col-span-2" : "sm:col-span-4")}>
+                      <p className="text-[11px] leading-snug text-text-tertiary">
+                        Goals and totals always count the USD value.
+                      </p>
                     </div>
                   </div>
                 </div>

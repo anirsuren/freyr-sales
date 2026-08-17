@@ -176,6 +176,7 @@ export function PerformanceModule({
   live,
   meName,
   isManager,
+  isAdmin = false,
   memberNames,
   memberRoles,
   routeTab,
@@ -187,6 +188,8 @@ export function PerformanceModule({
   /** Admins and editors run the whole plan; everyone else is scoped
    *  (Suren, Aug 12: org head / group owner / individual). */
   isManager: boolean;
+  /** The activity master is ADMIN-only (Suren, Aug 17: "only admins"). */
+  isAdmin?: boolean;
   /** Real workspace accounts — the only names suggested in live mode. */
   memberNames: string[];
   /** Name → workspace role, so a person reads as a person rather than a bare
@@ -339,7 +342,9 @@ export function PerformanceModule({
     setLogPrefill({
       goalId,
       subgoalId: null,
-      person: meName,
+      // Privileged handoffs (an admin or group owner crediting someone else
+      // from an activity) carry the person; everyone else logs as themself.
+      person: searchParams.get("logPerson") ?? meName,
       amount: searchParams.get("logAmount") ?? undefined,
       customer: searchParams.get("logCustomer") ?? undefined,
       note: searchParams.get("logNote") ?? undefined,
@@ -500,7 +505,7 @@ export function PerformanceModule({
                 type: g.type,
               }))}
               live={live}
-              isManager={isManager}
+              isAdmin={isAdmin}
             />
           </>
         ) : tab === "org" ? (

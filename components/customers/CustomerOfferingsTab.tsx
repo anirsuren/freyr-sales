@@ -16,6 +16,7 @@ import {
 } from "@/components/customers/ActivityGoalPrompt";
 import {
   masterFor,
+  statusCounts,
   type ActivityMasterState,
 } from "@/lib/activityMasterShared";
 import { Avatar } from "@/components/ui/Avatar";
@@ -525,6 +526,8 @@ export function CustomerOfferingsTab({
     master: ActivityMasterState;
     goals: PromptGoal[];
     meName: string;
+    /** Who this person may log credit for — themself, or more with privilege. */
+    people: string[];
   } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -536,6 +539,7 @@ export function CustomerOfferingsTab({
             master: d.state,
             goals: d.goals ?? [],
             meName: d.me?.name ?? "",
+            people: Array.isArray(d.people) ? d.people : [],
           });
         }
       })
@@ -592,7 +596,8 @@ export function CustomerOfferingsTab({
   async function saveActivities(
     offeringId: string,
     versions: CustomerOfferingEngagementVersion[],
-    touched?: CustomerOfferingEngagementVersion
+    touched?: CustomerOfferingEngagementVersion,
+    prevStatus?: string | null
   ) {
     const existing = usageState.find((u) => u.offering_id === offeringId);
     const next = usageState.filter((u) => u.offering_id !== offeringId);
@@ -615,14 +620,18 @@ export function CustomerOfferingsTab({
       if (data.ok) {
         toast("Activity saved.");
         router.refresh();
-        // JUST COMPLETED, AND THE MASTER CONNECTS IT TO A GOAL → offer to
-        // count it, credited to whoever is logging (Suren: "that guy adds an
-        // activity, then against his name that goal goes").
+        // THE MASTER'S THRESHOLD WAS JUST CROSSED → offer to count it. Each
+        // activity says which status starts counting (Suren: "a contract
+        // value is completed and then you do that, but a pilot in progress
+        // should count as one"), and only a FRESH crossing prompts — saving
+        // an already-counting record again offers nothing twice.
         if (touched && goalBridge) {
           const entry = masterFor(goalBridge.master, touched.activity);
           if (
             entry &&
             entry.contribution !== "none" &&
+            statusCounts(touched.status, entry.countsFrom) &&
+            !(prevStatus && statusCounts(prevStatus, entry.countsFrom)) &&
             entry.goalIds.some((id) => goalBridge.goals.some((g) => g.id === id))
           ) {
             setGoalPrompt({
@@ -845,8 +854,8 @@ export function CustomerOfferingsTab({
       {using && (
         <OfferingActivities
           versions={activitiesForOffering(o.id)}
-          onSave={(versions, touched) =>
-            void saveActivities(o.id, versions, touched)
+          onSave={(versions, touched, prevStatus) =>
+            void saveActivities(o.id, versions, touched, prevStatus)
           }
         />
       )}
@@ -1159,6 +1168,7 @@ export function CustomerOfferingsTab({
             master={entry}
             goals={goalBridge.goals.filter((g) => entry.goalIds.includes(g.id))}
             meName={goalBridge.meName}
+            people={goalBridge.people}
             customerName={customerName}
             dollarValue={goalPrompt.dollarValue}
             onClose={() => setGoalPrompt(null)}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Search, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
 import {
   floatingMenuStyle,
   menuMotionVars,
@@ -109,9 +109,13 @@ function DropdownPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  // "A dropdown within a dropdown" (Anir, Aug 17): clicking a category in
+  // the first panel flies out a SECOND panel with that category's goals —
+  // never an accordion folding open in place.
+  const [sub, setSub] = useState<{ group: string; style: CSSProperties } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const subRef = useRef<HTMLDivElement>(null);
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const q = query.trim().toLowerCase();
@@ -147,7 +151,32 @@ function DropdownPicker({
     const rect = ref.current?.getBoundingClientRect();
     if (rect) setMenuStyle(floatingMenuStyle(rect, Math.max(rect.width, 320), 220));
     setQuery("");
+    setSub(null);
     setOpen(true);
+  };
+
+  /** Where the fly-out sits: to the right of the first panel when there is
+   *  room, otherwise to its left; top-aligned with the row that opened it. */
+  const flyoutStyle = (rowRect: DOMRect): CSSProperties => {
+    const menuRect = menuRef.current?.getBoundingClientRect();
+    const width = 300;
+    const maxHeight = Math.min(300, window.innerHeight - 24);
+    const edge = 12;
+    const anchor = menuRect ?? rowRect;
+    // Outside right → outside left → and when the first panel is so wide there
+    // is no outside (the goals menu spans the modal), stack it INSIDE along
+    // the panel's right edge, top-aligned with the row that opened it.
+    const left =
+      anchor.right + 4 + width <= window.innerWidth - edge
+        ? anchor.right + 4
+        : anchor.left - width - 4 >= edge
+          ? anchor.left - width - 4
+          : Math.max(edge, anchor.right - width - 8);
+    const top = Math.max(
+      edge,
+      Math.min(rowRect.top, window.innerHeight - maxHeight - edge)
+    );
+    return { position: "fixed", left, top, width, maxHeight };
   };
 
   useEffect(() => {
@@ -157,15 +186,31 @@ function DropdownPicker({
       if (
         ref.current &&
         !ref.current.contains(target) &&
-        !menuRef.current?.contains(target)
-      )
+        !menuRef.current?.contains(target) &&
+        !subRef.current?.contains(target)
+      ) {
+        setSub(null);
         setOpen(false);
+      }
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    const onResize = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Escape peels one layer: the fly-out first, then the menu.
+      setSub((prev) => {
+        if (prev) return null;
+        setOpen(false);
+        return null;
+      });
+    };
+    const onResize = () => {
+      setSub(null);
+      setOpen(false);
+    };
     // Fixed-position menu, measured at open — re-anchor on scroll so it never
-    // strands mid-viewport (same lesson as ColorSelect, Aug 8).
+    // strands mid-viewport (same lesson as ColorSelect, Aug 8). The fly-out
+    // just closes: its row may have scrolled anywhere.
     const onScroll = () => {
+      setSub(null);
       const rect = ref.current?.getBoundingClientRect();
       if (!rect) return;
       setMenuStyle((prev) => {
@@ -258,7 +303,10 @@ function DropdownPicker({
                 <input
                   autoFocus
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSub(null);
+                  }}
                   placeholder="Search…"
                   aria-label={`Search ${ariaLabel ?? "options"}`}
                   className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
@@ -268,80 +316,106 @@ function DropdownPicker({
 
             {options.length === 0 ? (
               <p className="px-2.5 py-2 text-[12px] text-text-tertiary">{emptyLabel}</p>
+            ) : searching || !grouped ? (
+              // Typing shows every matching goal at once, flat — search cuts
+              // across categories.
+              options.filter(matches).map((o) => (
+                <OptionRow
+                  key={o.id}
+                  o={o}
+                  on={selected.includes(o.id)}
+                  onPick={() => onToggle(o.id)}
+                  rowIndex={rowIndex++}
+                />
+              ))
             ) : (
-              groups.map((g) => {
-                const visible = g.items.filter(matches);
-                if (visible.length === 0) return null;
-                const pickedHere = g.items.filter((o) => selected.includes(o.id)).length;
-                // While searching, every matching category stands open — a hit
-                // hidden behind a closed header reads as "no results".
-                const expanded = searching || !grouped || openGroups.has(g.name);
-                const head = g.items[0];
-                const accent = head?.color || "#0071E3";
-                const HeadIcon = head?.icon;
-                return (
-                  <div key={g.name || "__flat"}>
-                    {grouped && g.name && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenGroups((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(g.name)) next.delete(g.name);
-                            else next.add(g.name);
-                            return next;
-                          })
-                        }
-                        aria-expanded={expanded}
-                        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
-                      >
-                        {HeadIcon ? (
-                          <span
-                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                            style={{ background: `${accent}16`, color: accent }}
-                          >
-                            <HeadIcon size={12} strokeWidth={2.4} />
-                          </span>
-                        ) : (
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
-                        )}
-                        <span className="min-w-0 flex-1 truncate text-[12px] font-bold uppercase tracking-[0.04em]" style={{ color: accent }}>
-                          {g.name}
+              <>
+                {/* One row per category — each row OPENS A SECOND
+                    DROPDOWN beside this one; search on top cuts across all of
+                    them (Anir: "just show me a dropdown of the 4 categories
+                    and then i can click into each one, or of course just
+                    search at the top"). */}
+                {groups.map((g) => {
+                  if (!g.name) return null;
+                  const pickedHere = g.items.filter((o) => selected.includes(o.id)).length;
+                  const head = g.items[0];
+                  const accent = head?.color || "#0071E3";
+                  const HeadIcon = head?.icon;
+                  const on = sub?.group === g.name;
+                  return (
+                    <button
+                      key={g.name}
+                      type="button"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setSub((prev) =>
+                          prev?.group === g.name
+                            ? null
+                            : { group: g.name, style: flyoutStyle(rect) }
+                        );
+                      }}
+                      aria-expanded={on}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface",
+                        on && "bg-surface"
+                      )}
+                    >
+                      {HeadIcon ? (
+                        <span
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                          style={{ background: `${accent}16`, color: accent }}
+                        >
+                          <HeadIcon size={12} strokeWidth={2.4} />
                         </span>
-                        <span className="shrink-0 text-[11px] font-semibold text-text-tertiary tnum">
-                          {pickedHere > 0 ? `${pickedHere} of ${g.items.length}` : g.items.length}
-                        </span>
-                        <ChevronDown
-                          size={13}
-                          strokeWidth={2.2}
-                          className={cn(
-                            "shrink-0 text-text-tertiary transition-transform duration-[200ms]",
-                            expanded && "rotate-180"
-                          )}
-                        />
-                      </button>
-                    )}
-                    {expanded &&
-                      visible.map((o) => (
-                        <OptionRow
-                          key={o.id}
-                          o={o}
-                          on={selected.includes(o.id)}
-                          onPick={() => onToggle(o.id)}
-                          rowIndex={rowIndex++}
-                        />
-                      ))}
-                  </div>
-                );
-              })
+                      ) : (
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-bold uppercase tracking-[0.04em]" style={{ color: accent }}>
+                        {g.name}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-text-tertiary tnum">
+                        {pickedHere > 0 ? `${pickedHere} of ${g.items.length}` : g.items.length}
+                      </span>
+                      <ChevronRight
+                        size={13}
+                        strokeWidth={2.2}
+                        className={cn("shrink-0 transition-colors", on ? "text-blue-primary" : "text-text-tertiary")}
+                      />
+                    </button>
+                  );
+                })}
+              </>
             )}
             {options.length > 0 &&
               searching &&
-              groups.every((g) => g.items.filter(matches).length === 0) && (
+              options.filter(matches).length === 0 && (
                 <p className="px-2.5 py-2 text-[12px] text-text-tertiary">
                   Nothing matches &quot;{query.trim()}&quot;.
                 </p>
               )}
+          </div>,
+          document.body
+        )}
+
+      {open && sub && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={subRef}
+            role="listbox"
+            aria-label={sub.group}
+            aria-multiselectable
+            className="menu-in z-[111] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            style={{ ...sub.style, ["--menu-origin" as string]: "top left", ["--menu-dir" as string]: 1 }}
+          >
+            {(groups.find((g) => g.name === sub.group)?.items ?? []).map((o, i) => (
+              <OptionRow
+                key={o.id}
+                o={o}
+                on={selected.includes(o.id)}
+                onPick={() => onToggle(o.id)}
+                rowIndex={i}
+              />
+            ))}
           </div>,
           document.body
         )}

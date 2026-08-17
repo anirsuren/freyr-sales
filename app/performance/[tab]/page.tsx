@@ -107,6 +107,7 @@ export default async function PerformanceTabPage({
       live={live}
       meName={me.name}
       isManager={manager}
+      isAdmin={role === "admin"}
       memberNames={memberNames}
       memberRoles={memberRoles}
     />
