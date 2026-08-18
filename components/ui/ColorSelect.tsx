@@ -586,6 +586,18 @@ export function MultiColorSelect({
   fluid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Long lists get a search box here too, same 10-row line the single select
+  // draws (Anir, Aug 18: "you have to look at all the things and make sure
+  // you have search bars for the big dropdowns").
+  const [query, setQuery] = useState("");
+  const searchable = options.length > 10;
+  const q = query.trim().toLowerCase();
+  const visibleOptions = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q))
+    : options;
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -816,6 +828,21 @@ export function MultiColorSelect({
           )}
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
+          {searchable && (
+            <div className="sticky -top-1.5 z-10 -mx-1.5 -mt-1.5 mb-1 border-b border-border-light bg-white p-1.5">
+              <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
+                <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search…"
+                  aria-label="Search options"
+                  className="w-full bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
+                />
+              </div>
+            </div>
+          )}
           {/* "All" clears every pick — reads as the unrestricted state. */}
           <button
             type="button"
@@ -845,7 +872,7 @@ export function MultiColorSelect({
             )}
             {allLabel}
           </button>
-          {options.map((o, rowIndex) => {
+          {visibleOptions.map((o, rowIndex) => {
             const on = values.includes(o.value);
             const accent = o.color || "#0071E3";
             const Icon = o.icon;
@@ -906,6 +933,11 @@ export function MultiColorSelect({
               </button>
             );
           })}
+          {searchable && visibleOptions.length === 0 && (
+            <p className="px-2.5 py-3 text-[12.5px] text-text-secondary">
+              Nothing matches &quot;{query.trim()}&quot;.
+            </p>
+          )}
         </div>,
         document.body
       )}

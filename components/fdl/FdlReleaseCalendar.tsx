@@ -10,6 +10,8 @@ import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { FDL_TYPE_META } from "./FdlComponentsBrowser";
 
@@ -132,6 +134,13 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
    * THIS month.
    */
   const [cross, setCross] = useState<{ row: string; col: number } | null>(null);
+  /** The version a chip opened — a popup, not a page jump (Anir, Aug 18:
+   *  "it should not take me to the version page… a pop-up that shows it,
+   *  kind of like the heat map"). */
+  const [peek, setPeek] = useState<{
+    component: FdlComponent;
+    release: FdlComponent["releases"][number];
+  } | null>(null);
   /* And it ends where the window ends, like the heat map. */
   const { ref: gridRef, height: gridHeight } = useFillHeight(96, 320);
   const [fullScreen, setFullScreen] = useState(false);
@@ -356,15 +365,16 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                 const chip = (r: FdlComponent["releases"][number]) => {
                   const status = releaseStatus(r);
                   return (
-                    <Link
+                    <button
                       key={r.id}
-                      href={`/components/${component.id}?from=/components/release-calendar`}
+                      type="button"
+                      onClick={() => setPeek({ component, release: r })}
                       title={`${withV(r.version)} · ${STATUS_META[status].label} · ${fmtDay(r.date)}`}
                       className="step-in inline-flex cursor-pointer items-center rounded-full px-2.5 py-1 text-[11px] font-bold text-white transition-all hover:-translate-y-px hover:opacity-90"
                       style={{ background: STATUS_META[status].color }}
                     >
                       {withV(r.version)}
-                    </Link>
+                    </button>
                   );
                 };
                 return (
@@ -442,6 +452,82 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
         Click any version to open its component. The per-component timeline
         stays on each component&apos;s page.
       </p>
+
+      <Modal
+        open={peek !== null}
+        onClose={() => setPeek(null)}
+        title={peek ? `${peek.component.name} — ${withV(peek.release.version)}` : ""}
+      >
+        {peek && (() => {
+          const status = releaseStatus(peek.release);
+          const inVersion = peek.component.features.filter((f) =>
+            f.versionIds.includes(peek.release.id)
+          );
+          return (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
+                  style={{ background: STATUS_META[status].color }}
+                >
+                  {STATUS_META[status].label}
+                </span>
+                {peek.release.date && (
+                  <span className="text-[12.5px] text-text-secondary tnum">
+                    {fmtDay(peek.release.date)}
+                  </span>
+                )}
+                {peek.release.current && (
+                  <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-blue-primary">
+                    The version sellers quote today
+                  </span>
+                )}
+              </div>
+
+              {inVersion.length > 0 ? (
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    What ships in it
+                  </p>
+                  <ul className="space-y-1.5">
+                    {inVersion.map((f) => (
+                      <li
+                        key={f.id}
+                        className="flex items-start gap-2 rounded-lg border border-border-light bg-white px-3 py-2"
+                      >
+                        {f.fid && (
+                          <span className="mt-0.5 shrink-0 rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[10px] font-bold text-[color:#0040A0] tnum">
+                            {f.fid}
+                          </span>
+                        )}
+                        <span className="min-w-0 text-[12.5px] leading-snug text-text-primary">
+                          {f.name}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-[12.5px] text-text-secondary">
+                  No features are pinned to this version yet.
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="secondary" onClick={() => setPeek(null)}>
+                  Close
+                </Button>
+                <Link
+                  href={`/components/${peek.component.id}?from=/components/release-calendar`}
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-blue-primary px-5 py-2.5 text-[14px] font-semibold text-white transition-all hover:bg-blue-hover active:scale-[0.97]"
+                >
+                  Open the component
+                </Link>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
     </div>
   );
 }
