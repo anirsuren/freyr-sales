@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MultiPicker } from "@/components/ui/MultiPicker";
 import { useFillHeight } from "@/components/ui/useFillHeight";
 import { IndustryTag } from "@/components/ui/IndustryTag";
 import { FullScreenButton } from "@/components/ui/FullScreenPanel";
@@ -1598,37 +1599,33 @@ export function CustomerOfferingHeatMap({
                   page and it becomes pickable here.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5 rounded-lg border border-border-light bg-white p-2">
-                  {pipeline.map((o) => {
-                    const on = draft.opportunity_ids.includes(o.id);
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() =>
-                          setDraft((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  opportunity_ids: on
-                                    ? current.opportunity_ids.filter((x) => x !== o.id)
-                                    : [...current.opportunity_ids, o.id],
-                                }
-                              : current
-                          )
-                        }
-                        className={
-                          on
-                            ? "cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white"
-                            : "cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                        }
-                      >
-                        {o.name}
-                        <span className="ml-1 opacity-70">{o.customer}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                /* ONE DROPDOWN, not a hundred-chip wall — the third home of
+                   this same picker (Anir's screenshot, Aug 19: the whole
+                   pipeline as chips again, here). Logos and search included. */
+                <MultiPicker
+                  variant="dropdown"
+                  options={pipeline.map((o) => ({
+                    id: o.id,
+                    label: o.name,
+                    sub: o.customer,
+                    logoName: o.customer,
+                  }))}
+                  selected={draft.opportunity_ids}
+                  onToggle={(id) =>
+                    setDraft((current) =>
+                      current
+                        ? {
+                            ...current,
+                            opportunity_ids: current.opportunity_ids.includes(id)
+                              ? current.opportunity_ids.filter((x) => x !== id)
+                              : [...current.opportunity_ids, id],
+                          }
+                        : current
+                    )
+                  }
+                  placeholder="Pick the deals…"
+                  emptyLabel="Nothing in the pipeline yet."
+                />
               )}
             </div>
 

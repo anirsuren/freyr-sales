@@ -364,7 +364,10 @@ export function CustomersBrowser({
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const current = Math.min(page, pageCount);
-  const start = (current - 1) * PER_PAGE;
+  // "All on one page" is Infinity, and (page - 1) * Infinity is NaN — which
+  // sliced the list to NOTHING and printed "NaN-NaN of 16" (Anir's morning
+  // find, Aug 19; my overnight sweeps only checked the page answered 200).
+  const start = Number.isFinite(PER_PAGE) ? (current - 1) * PER_PAGE : 0;
   const paged = filtered.slice(start, start + PER_PAGE);
   const selectedInScope = useMemo(
     () => paged.filter((customer) => selected.has(customer.id)),
@@ -383,7 +386,9 @@ export function CustomersBrowser({
     });
   }, [visibleIdsKey]);
   const rangeStart = filtered.length === 0 ? 0 : start + 1;
-  const rangeEnd = Math.min(start + PER_PAGE, filtered.length);
+  const rangeEnd = Number.isFinite(PER_PAGE)
+    ? Math.min(start + PER_PAGE, filtered.length)
+    : filtered.length;
 
   function rowsToCsv(list: EnrichedCustomer[]) {
     return toCSV(

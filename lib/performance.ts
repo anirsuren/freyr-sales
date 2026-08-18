@@ -1581,6 +1581,7 @@ function samplePerformance(): PerformanceState {
           date: i === mock.levelSeries!.values.length - 1 ? `${MOCK_YEAR}-08-05` : date,
           addedBy: mock.levelSeries!.person,
           addedAt: createdAt,
+          ...(i % 3 !== 2 ? { activityId: i % 3 === 0 ? "contract" : "pilot" } : {}),
         });
       });
       continue;
@@ -1611,6 +1612,24 @@ function samplePerformance(): PerformanceState {
               : Math.max(0, Math.round(amount));
           logged += amount;
           if (amount <= 0) continue;
+          /* Stamped with a source activity, so the Activity -> Goal flow
+             report glows in Mock (Anir, Aug 19: "Why is there nothing here
+             in Mock-mode?"). A slice stays unstamped, like real history. */
+          const roll = rand();
+          const activityId =
+            roll < 0.18
+              ? undefined
+              : mock.unit === "currency"
+                ? roll < 0.62
+                  ? "contract"
+                  : roll < 0.82
+                    ? "delivery"
+                    : "pilot"
+                : roll < 0.45
+                  ? "lead"
+                  : roll < 0.75
+                    ? "opportunity"
+                    : "pilot";
           actuals.push({
             id: `${sub.id}-${person.split(" ")[0]}-${e}`,
             goalId: mock.id,
@@ -1620,6 +1639,7 @@ function samplePerformance(): PerformanceState {
             date,
             addedBy: person,
             addedAt: createdAt,
+            ...(activityId ? { activityId } : {}),
           });
         }
       }

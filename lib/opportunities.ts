@@ -313,6 +313,36 @@ function seededMock(): OpportunitiesState {
       owner: undefined,
       nextSteps: r.nextSteps ?? undefined,
       goalIds: [],
+      // EVERY MOCK PAGE LOOKS WORKED-IN (Anir, Aug 19: "Why is there nothing
+      // here in Mock-mode? same for every other page") — most sample deals
+      // carry an activity or two, by the same mock people the performance
+      // pages use. Deterministic from the row number, like everything mock.
+      activities:
+        n % 5 === 4
+          ? undefined
+          : [
+              {
+                id: `seed-act-${n}-1`,
+                activity: (["lead", "opportunity", "pilot", "contract", "delivery"] as const)[n % 5],
+                status: (["initiated", "under_progress", "completed"] as const)[n % 3],
+                person: ["Audrey Kingsley", "Daniel Foster", "Grace Lockwood", "Hannah Schmidt"][n % 4],
+                date: `2026-0${(n % 6) + 2}-${String((n % 27) + 1).padStart(2, "0")}`,
+                ...(n % 3 === 0
+                  ? { note: ["Demo done, security review next", "Waiting on their legal", "Second market added to scope"][n % 3 === 0 ? (n / 3) % 3 | 0 : 0] }
+                  : {}),
+              },
+              ...(n % 4 === 0
+                ? [
+                    {
+                      id: `seed-act-${n}-2`,
+                      activity: "lead" as const,
+                      status: "completed" as const,
+                      person: ["Clara Middleton", "Gordon Ashby"][n % 2],
+                      date: `2026-01-${String((n % 25) + 1).padStart(2, "0")}`,
+                    },
+                  ]
+                : []),
+            ],
       createdAt: now,
       updatedAt: now,
     });
