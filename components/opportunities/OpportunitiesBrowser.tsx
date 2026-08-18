@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/OfferingChip";
 import { typeMeta } from "@/components/performance/bits";
 import { CURRENCIES, convert, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
+import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 
 /**
@@ -233,7 +234,11 @@ function toDraft(
     name: o.name,
     customer: o.customer,
     customerId: o.customerId ?? "",
-    customerOther: !o.customerId && !!o.customer,
+    // A typed name opens as the SELECTED chip in the list — typing mode is
+    // only ever the person's explicit choice (Anir, Aug 18: clicking the
+    // dropdown on a custom name "resets it… it shouldn't even be
+    // resetting").
+    customerOther: false,
     rows,
     goalIds: [...(o.goalIds ?? [])],
     level: o.level,
@@ -1435,12 +1440,9 @@ export function OpportunitiesBrowser({
                         editing.customer.trim().toLowerCase()
                     )?.id ??
                       "");
-                  const selectValue =
-                    resolvedId ||
-                    (editing.customerOther || editing.customer.trim()
-                      ? "__other"
-                      : "");
-                  return selectValue === "__other" ? (
+                  const customName = !resolvedId && editing.customer.trim();
+                  const selectValue = resolvedId || (customName ? "__custom" : "");
+                  return editing.customerOther ? (
                     /* TYPING HAPPENS IN THE CONTROL ITSELF (Anir, Aug 17:
                        "you can't have the customer name have its own line —
                        if I select new, I'll enter it right there in the
@@ -1467,13 +1469,11 @@ export function OpportunitiesBrowser({
                         type="button"
                         title="Back to the account list"
                         aria-label="Back to the account list"
+                        // KEEPS what was typed — the name rides back to the
+                        // list as the selected chip. Wiping it here was the
+                        // reset Anir hit on Aug 18.
                         onClick={() =>
-                          setEditing({
-                            ...editing,
-                            customer: "",
-                            customerId: "",
-                            customerOther: false,
-                          })
+                          setEditing({ ...editing, customerOther: false })
                         }
                         className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
                       >
@@ -1487,6 +1487,7 @@ export function OpportunitiesBrowser({
                       collapsible={false}
                       className="w-full"
                       onChange={(val) => {
+                        if (val === "__custom") return; // re-picked their own name
                         if (val === "__other") {
                           setEditing({
                             ...editing,
@@ -1505,9 +1506,23 @@ export function OpportunitiesBrowser({
                       }}
                       options={[
                         { value: "", label: "Pick the account…", color: "#C7CDD6" },
+                        // The typed name is a first-class row while it is the
+                        // pick, so reopening the list never loses it.
+                        ...(customName
+                          ? [
+                              {
+                                value: "__custom",
+                                label: editing.customer.trim(),
+                                color: "#0071E3",
+                                icon: Tag,
+                              },
+                            ]
+                          : []),
                         {
                           value: "__other",
-                          label: "Not on the list — type it",
+                          label: customName
+                            ? "Type a different name"
+                            : "Not on the list — type it",
                           color: "#8E98A8",
                           icon: Tag,
                         },
@@ -2066,7 +2081,20 @@ function SingleOfferingEditor({
     return c.exact ? String(Math.round(c.value)) : "";
   };
   return (
-    <div className="space-y-3 rounded-xl border border-border-light bg-white px-3.5 py-3.5">
+    /* ITS OWN ROOM IN THE FORM (Anir, Aug 18: "make it more clear that this
+       is the offering… make it look good"): a whisper of blue behind the
+       whole block and a named header, so the eye reads one bounded thing —
+       the offering and its money — without anything moving. */
+    <div className="space-y-3 rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+          <Sparkles size={13} strokeWidth={2.2} aria-hidden="true" />
+        </span>
+        <span className="text-[12.5px] font-bold text-text-primary">
+          What&rsquo;s being sold
+        </span>
+        <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
         <div className="min-w-0">
           <label className={labelCls}>Offering</label>
@@ -2167,6 +2195,7 @@ function SingleOfferingEditor({
                 label: c.code,
                 color: c.code === "USD" ? "#0071E3" : "#0F766E",
                 short: c.symbol.trim(),
+                icon: currencyGlyph(c.symbol),
               }))}
             />
             <input

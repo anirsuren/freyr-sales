@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Plus, Package, X } from "lucide-react";
+import { ChevronRight, Plus, Package, Trash2, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -60,6 +61,10 @@ export function CustomerActivityTab({
     });
   }
   const [picking, setPicking] = useState(false);
+  /** Offering section pending removal (Anir, Aug 18: "How do I delete them?
+   *  There's no button… only a button to delete the activity, not the
+   *  offering"). */
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   const byId = new Map(offerings.map((o) => [o.id, o]));
   // Offerings with a history, newest activity first, so the account's live
@@ -122,6 +127,28 @@ export function CustomerActivityTab({
         engagement_draft: null,
       },
     ]);
+  }
+
+  async function removeOffering(offeringId: string) {
+    setConfirmRemove(null);
+    const next = state.filter((u) => u.offering_id !== offeringId);
+    setState(next);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offering_usage: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast("Offering removed from this account.");
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't remove that.", "error");
+      }
+    } catch {
+      toast("Couldn't remove that.", "error");
+    }
   }
 
   const started = state.filter((u) => byId.has(u.offering_id));
@@ -218,6 +245,30 @@ export function CustomerActivityTab({
                       <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-text-secondary tnum">
                         {logged} {logged === 1 ? "activity" : "activities"}
                       </span>
+                      {canEdit && (
+                        /* Inside the header BUTTON, so it is a span with a
+                           button role — nested <button>s are invalid HTML. */
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Remove ${offering.name} from this account`}
+                          title="Remove this offering from the account"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmRemove(u.offering_id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setConfirmRemove(u.offering_id);
+                            }
+                          }}
+                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                        >
+                          <Trash2 size={14} strokeWidth={2.1} />
+                        </span>
+                      )}
                     </button>
                     {open && (
                       <div className="tab-panel">
@@ -246,6 +297,23 @@ export function CustomerActivityTab({
           {children}
         </section>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => confirmRemove && void removeOffering(confirmRemove)}
+        title="Remove this offering from the account?"
+        body={(() => {
+          if (!confirmRemove) return "";
+          const u = state.find((x) => x.offering_id === confirmRemove);
+          const n = u?.engagement_versions?.length || 0;
+          const name = byId.get(confirmRemove)?.name ?? "this offering";
+          return n > 0
+            ? `${name} and its ${n} logged ${n === 1 ? "activity" : "activities"} come off this account. The offering itself stays in the catalogue.`
+            : `${name} comes off this account. Nothing has been logged on it, so nothing else is lost.`;
+        })()}
+        confirmLabel="Remove it"
+      />
 
       <Modal
         open={picking}

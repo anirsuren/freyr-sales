@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -4883,8 +4884,9 @@ function LogActualModal({
                   onChange={(v) => setEntryCurrency(v as CurrencyCode)}
                   options={CURRENCIES.map((c) => ({
                     value: c.code,
-                    label: `${c.symbol.trim()} ${c.code}`,
+                    label: c.code,
                     color: "#0071E3",
+                    icon: currencyGlyph(c.symbol),
                   }))}
                 />
               )}

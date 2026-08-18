@@ -59,9 +59,9 @@ const LOGOS: Record<string, string> = {
   // own site and committed, so nothing is loaded from a third party at runtime.
   // Sources are the companies' own logo files on Wikipedia, rendered at 960px —
   // favicons were the first attempt and they upscaled to mush (Anir, Aug 8:
-  // "these are fucking cheap-ass logos"). CuraTeQ, Pierre Fabre, Zydus and
-  // Gideon keep the generated mark: no logo file exists for them and guessing
-  // at which company a name refers to is not something to do to a real account.
+  // "these are fucking cheap-ass logos"). CuraTeQ keeps the generated
+  // mark; Pierre Fabre, Zydus and Gedeon Richter got real marks from their
+  // verified LinkedIn pages on Aug 18.
   gilead: "/logos/real/gilead.png",
   gsk: "/logos/real/gsk.png",
   incyte: "/logos/real/incyte.png",
@@ -76,6 +76,79 @@ const LOGOS: Record<string, string> = {
   vertex: "/logos/real/vertex.png",
   galderma: "/logos/real/galderma.png",
   opella: "/logos/real/opella.png",
+
+  // THE PIPELINE'S OWN BRANDS, from each company's LinkedIn page (Anir,
+  // Aug 18: "go find these guys on LinkedIn and get the profile pictures").
+  // Every file was fetched ONLY after the LinkedIn page's own title named the
+  // company — a real account never wears a guessed mark. Apotex, Astellas,
+  // Bausch + Lomb, CJ Cheiljedang, Fresenius SE and Therakos would not
+  // verify, so they keep the initials tile. Files are JPEG bytes with a .png
+  // name, which every browser reads by content, not extension.
+  abbvie: "/logos/real/abbvie.png",
+  "advanz pharma": "/logos/real/advanz-pharma.png",
+  "amgen inc": "/logos/real/amgen.png",
+  amgen: "/logos/real/amgen.png",
+  amneal: "/logos/real/amneal.png",
+  astrazeneca: "/logos/real/astrazeneca.png",
+  bms: "/logos/real/bristol-myers-squibb.png",
+  "bavarian nordic": "/logos/real/bavarian-nordic.png",
+  "becton, dickinson and company": "/logos/real/becton-dickinson.png",
+  beiersdorf: "/logos/real/beiersdorf.png",
+  blackmores: "/logos/real/blackmores.png",
+  cipla: "/logos/real/cipla.png",
+  deephealth: "/logos/real/deephealth.png",
+  "dr reddy’s": "/logos/real/dr-reddys.png",
+  "dr reddy's": "/logos/real/dr-reddys.png",
+  enovis: "/logos/real/enovis.png",
+  essity: "/logos/real/essity.png",
+  "estee lauder": "/logos/real/estee-lauder.png",
+  esteve: "/logos/real/esteve.png",
+  "esteve pharma": "/logos/real/esteve.png",
+  "eva pharma": "/logos/real/eva-pharma.png",
+  fortrea: "/logos/real/fortrea.png",
+  "fresenius medical care": "/logos/real/fresenius-medical-care.png",
+  fujifilm: "/logos/real/fujifilm.png",
+  "gedeon richter": "/logos/real/gedeon-richter.png",
+  haleon: "/logos/real/haleon.png",
+  hartmann: "/logos/real/hartmann.png",
+  hikma: "/logos/real/hikma.png",
+  "hikma pharmaceuticals": "/logos/real/hikma.png",
+  indivior: "/logos/real/indivior.png",
+  ipsen: "/logos/real/ipsen.png",
+  jamieson: "/logos/real/jamieson.png",
+  jubilant: "/logos/real/jubilant.png",
+  "kimberly clark": "/logos/real/kimberly-clark.png",
+  "kenvue/kc": "/logos/real/kenvue.png",
+  lavazza: "/logos/real/lavazza.png",
+  livanova: "/logos/real/livanova.png",
+  lonza: "/logos/real/lonza.png",
+  "lotus pharmaceutical": "/logos/real/lotus-pharmaceutical.png",
+  medisca: "/logos/real/medisca.png",
+  merz: "/logos/real/merz.png",
+  millipore: "/logos/real/millipore.png",
+  "novo nordisk": "/logos/real/novo-nordisk.png",
+  olaplex: "/logos/real/olaplex.png",
+  philips: "/logos/real/philips.png",
+  "pierre fabre": "/logos/real/pierre-fabre.png",
+  pricesmart: "/logos/real/pricesmart.png",
+  protalix: "/logos/real/protalix.png",
+  sandoz: "/logos/real/sandoz.png",
+  sanofi: "/logos/real/sanofi.png",
+  // The sheet spells it "Healthneers"; the key matches the data as written.
+  "siemens healthneers": "/logos/real/siemens-healthineers.png",
+  "siemens healthineers": "/logos/real/siemens-healthineers.png",
+  "sirtex medical": "/logos/real/sirtex-medical.png",
+  sony: "/logos/real/sony.png",
+  sumitomo: "/logos/real/sumitomo-pharma.png",
+  "sun pharma": "/logos/real/sun-pharma.png",
+  taiho: "/logos/real/taiho.png",
+  taisho: "/logos/real/taisho.png",
+  terumo: "/logos/real/terumo.png",
+  teva: "/logos/real/teva.png",
+  tiofarma: "/logos/real/tiofarma.png",
+  "west pharma": "/logos/real/west-pharma.png",
+  "zydus group": "/logos/real/zydus.png",
+  "zydus lifesciences": "/logos/real/zydus.png",
 };
 
 /**

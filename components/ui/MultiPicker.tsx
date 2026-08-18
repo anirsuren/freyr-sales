@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
 import {
@@ -32,6 +33,9 @@ export type MultiPickerOption = {
    *  icon, never plain gray). */
   color?: string;
   icon?: LucideIcon;
+  /** Company whose logo fronts the row — deals wear their account's mark
+   *  (Anir, Aug 18: "that's ugly. I need colors, logos, etc."). */
+  logoName?: string;
   /** Category this option lives under in the dropdown variant. */
   group?: string;
 };
@@ -69,7 +73,9 @@ function OptionRow({
         ["--row" as string]: rowIndex,
       }}
     >
-      {o.icon ? (
+      {o.logoName ? (
+        <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
+      ) : o.icon ? (
         <o.icon
           size={13}
           strokeWidth={2.4}
@@ -532,7 +538,11 @@ export function MultiPicker({
                 className={cnChip(c)}
                 style={c ? { background: `${c}16`, color: c } : undefined}
               >
-                {Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />}
+                {o?.logoName ? (
+                  <CompanyLogo name={o.logoName} className="h-4 w-4 text-[6px]" />
+                ) : (
+                  Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                )}
                 {o?.label ?? id}
                 <X size={11} strokeWidth={2.8} className="opacity-70 group-hover:opacity-100" />
               </button>
@@ -571,7 +581,9 @@ export function MultiPicker({
                 }}
                 className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
               >
-                {o.icon ? (
+                {o.logoName ? (
+                  <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
+                ) : o.icon ? (
                   <o.icon
                     size={13}
                     strokeWidth={2.4}

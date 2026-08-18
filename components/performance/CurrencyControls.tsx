@@ -87,7 +87,7 @@ export function DisplayCurrencyPicker({
           >
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.code}
+                {c.symbol.trim()} {c.code}
               </option>
             ))}
           </select>
