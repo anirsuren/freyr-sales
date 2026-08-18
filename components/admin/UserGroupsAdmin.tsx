@@ -9,6 +9,8 @@ import {
   Trash2,
   UsersRound,
   X,
+  ClipboardList,
+  ArrowUpRight,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -21,7 +23,9 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { RoleTag, roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
-import type { PerfGroup } from "@/lib/performanceShared";
+import Link from "next/link";
+import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
+import { actualValue, entryStatus } from "@/lib/performanceShared";
 
 /**
  * USER GROUPS LIVE IN ADMIN, NOT IN PERFORMANCE (Suren, Aug 12: "creating
@@ -33,6 +37,8 @@ import type { PerfGroup } from "@/lib/performanceShared";
 export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const { toast } = useToast();
   const [groups, setGroups] = useState<PerfGroup[] | null>(null);
+  /** The same performance state the rooms read, for the glance chips. */
+  const [perf, setPerf] = useState<PerformanceState | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [head, setHead] = useState("");
@@ -89,6 +95,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       }
       setLoadFailed(false);
       setGroups(data.state.groups ?? []);
+      setPerf(data.state as PerformanceState);
     } catch {
       setLoadFailed(true);
       setGroups(null);
@@ -97,6 +104,50 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** WHAT THE GROUP IS CARRYING (Anir, Aug 19: "aren't they each tied to
+   *  goals or something?") — a glance, not a second dashboard: goals its
+   *  people hold, the money goals' member target vs achieved, and how many
+   *  results wait on the owner. Same state and same actualValue math as
+   *  Group performance, so the chips can never disagree with the room. */
+  function rollup(g: PerfGroup) {
+    if (!perf) return null;
+    const people = new Set(
+      [g.head, ...g.members].map((n) => n.trim().toLowerCase())
+    );
+    const inGroup = (name: string) => people.has(name.trim().toLowerCase());
+    const held = perf.goals.filter(
+      (goal) =>
+        goal.pickedForOrg !== false &&
+        (goal.subgoals.some((s) => s.people.some((p) => inGroup(p.name))) ||
+          (goal.assignments ?? []).some((a) => inGroup(a.person)))
+    );
+    let target = 0;
+    let achieved = 0;
+    for (const goal of held) {
+      if (goal.unit !== "currency") continue;
+      for (const sub of goal.subgoals)
+        for (const p of sub.people) if (inGroup(p.name)) target += p.target || 0;
+      for (const a of goal.assignments ?? [])
+        if (inGroup(a.person)) target += a.target || 0;
+      for (const name of [g.head, ...g.members]) {
+        achieved += actualValue(perf.actuals, goal, { person: name });
+      }
+    }
+    const waiting = perf.actuals.filter(
+      (a) => inGroup(a.person) && entryStatus(a) === "reported"
+    ).length;
+    return { held: held.length, target, achieved, waiting };
+  }
+
+  function chipMoney(n: number): string {
+    if (n >= 1_000_000) {
+      const m = n / 1_000_000;
+      return `$${m >= 10 ? Math.round(m) : Math.round(m * 10) / 10}M`;
+    }
+    if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+    return `$${Math.round(n)}`;
+  }
 
   async function run(body: Record<string, unknown>, ok: string) {
     setBusy(true);
@@ -380,12 +431,49 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
                     {roster.length}{" "}
                     {roster.length === 1 ? "person" : "people"}
+                    {(() => {
+                      const r = rollup(g);
+                      if (!r) return null;
+                      return (
+                        <>
+                          {" · "}
+                          <span className="inline-flex items-center gap-1 font-semibold text-blue-primary">
+                            <ClipboardList size={10} strokeWidth={2.4} />
+                            {r.held} {r.held === 1 ? "goal" : "goals"}
+                          </span>
+                          {r.target > 0 && (
+                            <>
+                              {" · "}
+                              <span className="font-semibold text-[color:#0F766E] tnum">
+                                {chipMoney(r.achieved)} of {chipMoney(r.target)}
+                              </span>
+                            </>
+                          )}
+                          {r.waiting > 0 && (
+                            <>
+                              {" · "}
+                              <span className="font-semibold text-[color:#B45309] tnum">
+                                {r.waiting} to verify
+                              </span>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </span>
                 </span>
               </button>
               {/* The faces fan apart on hover, the same mechanic as Offerings
                   and the campaigns row (Anir, Aug 15: "do the same thing with
                   the profile pictures... that animation I like"). */}
+              <Link
+                href={`/performance/groups?group=${encodeURIComponent(g.name)}`}
+                title="See group performance"
+                aria-label={`See ${g.name} on Group performance`}
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+              >
+                <ArrowUpRight size={14} strokeWidth={2.2} />
+              </Link>
               <span className="shrink-0">
                 <PersonFan
                   people={roster.map((m) => ({
