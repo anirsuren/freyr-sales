@@ -1723,7 +1723,21 @@ export function OfferingsBrowser({
                               window.location.href = `/offerings/${o.id}#materials`;
                             }}
                             onOpenMaterial={(material: OfferingMaterial) => {
-                              if (material.url) {
+                              // An UPLOADED file opens on its own viewer page
+                              // in a new tab — the same in-app viewer the
+                              // Sales Materials page uses, which renders Word
+                              // and PowerPoint as HTML instead of dropping a
+                              // file in Downloads (Anir, Aug 18: "why the fuck
+                              // is it downloading"). A pasted link opens where
+                              // it points; only a row with neither falls back
+                              // to the offering's materials tab.
+                              if (material.docsPath) {
+                                window.open(
+                                  `/offerings/${o.id}/materials/${encodeURIComponent(material.id)}`,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                );
+                              } else if (material.url) {
                                 window.open(
                                   material.url,
                                   "_blank",
