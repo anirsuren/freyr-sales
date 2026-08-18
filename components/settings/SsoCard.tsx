@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SsoStatus } from "@/lib/ssoStatus";
 
@@ -70,7 +70,7 @@ export function SsoCard({
 
       <div className="mt-3 space-y-2">
         <div className="flex items-center gap-2.5 rounded-lg bg-surface px-3 py-2">
-          <KeyRound size={14} strokeWidth={2.2} className="shrink-0 text-text-secondary" />
+          <Fingerprint size={15} strokeWidth={2} className="shrink-0 text-blue-primary" />
           <span className="min-w-0 flex-1 text-[12.5px] text-text-primary">
             Email &amp; password / Touch&nbsp;ID
           </span>
@@ -86,7 +86,18 @@ export function SsoCard({
         </div>
 
         <div className="flex items-center gap-2.5 rounded-lg bg-surface px-3 py-2">
-          <ShieldCheck size={14} strokeWidth={2.2} className="shrink-0 text-text-secondary" />
+          {/* The real Microsoft mark — four brand-colored squares. These are
+              Microsoft's own colors on Microsoft's own logo, not status hues. */}
+          <svg
+            viewBox="0 0 21 21"
+            aria-hidden="true"
+            className="h-[14px] w-[14px] shrink-0"
+          >
+            <rect x="0" y="0" width="10" height="10" fill="#F25022" />
+            <rect x="11" y="0" width="10" height="10" fill="#7FBA00" />
+            <rect x="0" y="11" width="10" height="10" fill="#00A4EF" />
+            <rect x="11" y="11" width="10" height="10" fill="#FFB900" />
+          </svg>
           <span className="min-w-0 flex-1 text-[12.5px] text-text-primary">
             Microsoft (Freyr sign-in)
           </span>
