@@ -1,10 +1,14 @@
 "use client";
 
-import { ShieldCheck, UsersRound } from "lucide-react";
+import { useEffect } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ListChecks, ShieldCheck, UsersRound } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { MemberRoles } from "./MemberRoles";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
+import { ActivityMasterCard } from "@/components/performance/ActivityMasterCard";
 
 /**
  * ADMIN, ONE SCREEN AT A TIME.
@@ -36,16 +40,52 @@ const TABS: (PageTab & { subtitle: string })[] = [
     subtitle:
       "The departments people belong to. A group has one head and its members' goals add up to it on Group performance.",
   },
+  // Configuration lives with the other admin controls (Suren, Aug 18: "I
+  // think you should have admin module where all these are configured").
+  {
+    key: "activity",
+    label: "Activity master",
+    icon: ListChecks,
+    color: "#0F766E",
+    subtitle:
+      "When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
+  },
 ];
 
-const KEYS = ["members", "groups"] as const;
+const KEYS = ["members", "groups", "activity"] as const;
 
-export function AdminTabs({ memberNames }: { memberNames: string[] }) {
+export function AdminTabs({
+  memberNames,
+  activityGoals,
+  live,
+}: {
+  memberNames: string[];
+  /** Each goal with its overall progress, for the Activity Master's chips. */
+  activityGoals: {
+    id: string;
+    name: string;
+    year: number;
+    type: string;
+    target: number;
+    actual: number;
+  }[];
+  live: boolean;
+}) {
   const [tab, setTab] = useStoredView<(typeof KEYS)[number]>(
     "freyr.admin.tab",
     "members",
     KEYS
   );
+  // A link can land you on a specific screen (?tab=activity) — the redirect
+  // from the old /performance/activity-master address uses this.
+  const searchParams = useSearchParams();
+  const wanted = searchParams.get("tab");
+  useEffect(() => {
+    if (wanted && (KEYS as readonly string[]).includes(wanted)) {
+      setTab(wanted as (typeof KEYS)[number]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted]);
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   return (
@@ -67,8 +107,22 @@ export function AdminTabs({ memberNames }: { memberNames: string[] }) {
       <div key={current.key} className="tab-panel">
         {current.key === "members" ? (
           <MemberRoles canEdit />
-        ) : (
+        ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />
+        ) : (
+          <>
+            <p className="max-w-[70ch] text-[13px] leading-relaxed text-text-secondary">
+              {/* The rulebook points at the scoreboard (Anir, Aug 17). */}
+              <Link
+                href="/reports/customer-offering-heat-map"
+                className="font-semibold text-blue-primary hover:underline"
+              >
+                The heat map on Reports
+              </Link>{" "}
+              shows these activities live, per customer and offering.
+            </p>
+            <ActivityMasterCard goals={activityGoals} live={live} isAdmin />
+          </>
         )}
       </div>
     </div>

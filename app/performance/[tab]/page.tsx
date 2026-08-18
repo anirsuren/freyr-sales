@@ -32,11 +32,11 @@ export default async function PerformanceTabPage({
 }) {
   const { tab: raw } = await params;
   const master = raw === "goal-master";
-  // Its own address, because it is its own master (Anir, Aug 17: "activity
-  // master is not goal master") — Suren went looking for it and it was
-  // buried inside the goal list.
-  const activityMaster = raw === "activity-master";
-  if (!master && !activityMaster && !ROUTE_TABS.includes(raw as RouteTab)) notFound();
+  // The Activity Master lives on the Admin page now (Suren, Aug 18: "you
+  // should have admin module where all these are configured"). The old
+  // address keeps working for anyone who bookmarked it.
+  if (raw === "activity-master") redirect("/admin?tab=activity");
+  if (!master && !ROUTE_TABS.includes(raw as RouteTab)) notFound();
   await requireModuleAccess("/performance");
   await requireServerMemberScope();
   const live = getDataMode() === "live";
@@ -100,14 +100,13 @@ export default async function PerformanceTabPage({
     : iHeadAGroup
       ? ["groups", "people"]
       : ["people"];
-  if (!master && !activityMaster && !allowed.includes(raw as RouteTab))
+  if (!master && !allowed.includes(raw as RouteTab))
     redirect(`/performance/${allowed[0]}`);
 
   return (
     <PerformanceModule
-      routeTab={master || activityMaster ? allowed[0] : (raw as RouteTab)}
+      routeTab={master ? allowed[0] : (raw as RouteTab)}
       routeMaster={master}
-      routeActivityMaster={activityMaster}
       initial={scoped}
       live={live}
       meName={me.name}

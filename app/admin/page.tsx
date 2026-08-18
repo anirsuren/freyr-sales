@@ -3,6 +3,9 @@ import { AdminTabs } from "@/components/admin/AdminTabs";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getRole } from "@/lib/role";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { readPerformance } from "@/lib/performance";
+import { actualValue } from "@/lib/performanceShared";
+import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
@@ -31,6 +34,19 @@ export default async function AdminPage() {
     ),
   ].sort((a, b) => a.localeCompare(b));
 
+  // The Activity Master's goal chips need each goal's target and overall
+  // progress — read once here, exactly as the Performance page computed it.
+  const perf = role === "admin" ? await readPerformance().catch(() => null) : null;
+  const activityGoals = (perf?.goals ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    year: g.year,
+    type: g.type,
+    target: g.target ?? 0,
+    actual: perf ? actualValue(perf.actuals, g) : 0,
+  }));
+  const live = getDataMode() === "live";
+
   return (
     <div>
       {role === "admin" ? (
@@ -38,7 +54,7 @@ export default async function AdminPage() {
         // same segmented selector Performance and Market Intel use (Anir,
         // Aug 15). The selector carries the page name, so there is no
         // PageHeader above it repeating it.
-        <AdminTabs memberNames={memberNames} />
+        <AdminTabs memberNames={memberNames} activityGoals={activityGoals} live={live} />
       ) : (
         <>
         <PageHeader

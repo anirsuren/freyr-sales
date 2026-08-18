@@ -10,7 +10,6 @@ import {
   Check,
   Crown,
   ClipboardList,
-  ListChecks,
   Gauge,
   HelpCircle,
   LayoutGrid,
@@ -30,7 +29,6 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { TargetSlider, type Allocation } from "./TargetSlider";
-import { ActivityMasterCard } from "./ActivityMasterCard";
 import { useOpportunities } from "@/lib/useOpportunities";
 import {
   weightedValue,
@@ -184,7 +182,6 @@ export function PerformanceModule({
   memberRoles,
   routeTab,
   routeMaster,
-  routeActivityMaster = false,
 }: {
   initial: PerformanceState;
   live: boolean;
@@ -211,9 +208,6 @@ export function PerformanceModule({
    */
   routeTab: Tab;
   routeMaster: boolean;
-  /** The Activity master is ITS OWN room (Anir, Aug 17: "activity master is
-   *  not goal master"). */
-  routeActivityMaster?: boolean;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -224,7 +218,6 @@ export function PerformanceModule({
   const [state, setState] = useState<PerformanceState>(initial);
   const tab = routeTab;
   const showMaster = routeMaster;
-  const showActivityMaster = routeActivityMaster;
   const chooseTab = (next: Tab) => router.push(`/performance/${next}`);
   const [busy, setBusy] = useState(false);
   // Which rooms this person gets: org for managers, groups when you head
@@ -319,7 +312,6 @@ export function PerformanceModule({
   // between its numbers and the master list, scoped to who you may assign.
   const setMasterFor = (next: Tab | null) =>
     router.push(next === null ? `/performance/${tab}` : "/performance/goal-master");
-  const goActivityMaster = () => router.push("/performance/activity-master");
   const [logOpen, setLogOpen] = useState(false);
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
@@ -416,13 +408,13 @@ export function PerformanceModule({
               the h1 stays for screen readers and the document outline. */}
           <div className="relative">
             <h1 className="sr-only">
-              {showActivityMaster ? "Activity Master" : showMaster ? "Goal Master" : room.label}
+              {showMaster ? "Goal Master" : room.label}
             </h1>
             <div className="inline-flex flex-wrap items-center gap-1 rounded-full bg-surface p-1">
               {visibleTabs.map((key) => {
                 const r = ROOMS[key];
                 const Icon = r.icon;
-                const active = !showMaster && !showActivityMaster && key === tab;
+                const active = !showMaster && key === tab;
                 return (
                   <button
                     key={key}
@@ -451,7 +443,7 @@ export function PerformanceModule({
               })}
               <button
                 type="button"
-                aria-pressed={showMaster && !showActivityMaster}
+                aria-pressed={showMaster}
                 onClick={() => setMasterFor(tab)}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
@@ -467,25 +459,6 @@ export function PerformanceModule({
                   style={showMaster ? { color: "#6D28D9" } : undefined}
                 />
                 Goal Master
-              </button>
-              <button
-                type="button"
-                aria-pressed={showActivityMaster}
-                onClick={goActivityMaster}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
-                  showActivityMaster
-                    ? "bg-white text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                <ListChecks
-                  size={16}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  style={showActivityMaster ? { color: "#0F766E" } : undefined}
-                />
-                Activity Master
               </button>
             </div>
           </div>
@@ -517,40 +490,8 @@ export function PerformanceModule({
             say what is being counted. */}
       </div>
 
-      <div key={`${tab}-${showActivityMaster ? "activity-master" : showMaster ? "master" : "numbers"}`} className="tab-panel">
-        {showActivityMaster ? (
-          <>
-            <p className="max-w-[70ch] text-[13px] leading-relaxed text-text-secondary">
-              When someone logs an activity — a pilot, a contract — this table
-              decides what it is worth and which goal it can count toward. Set
-              the rules once; every log in the app follows them.{" "}
-              {/* The rulebook points at the scoreboard (Anir, Aug 17: "we
-                  already have this [on Reports]… what's the difference?"). */}
-              <Link
-                href="/reports/customer-offering-heat-map"
-                className="font-semibold text-blue-primary hover:underline"
-              >
-                The heat map on Reports
-              </Link>{" "}
-              shows these activities live, per customer and offering.
-            </p>
-            <ActivityMasterCard
-              goals={state.goals.map((g) => ({
-                id: g.id,
-                name: g.name,
-                year: g.year,
-                type: g.type,
-                // The chip shows how full the goal is OVERALL — context for
-                // wiring, never this activity's own share (Anir, Aug 17:
-                // "you can show how much of the goal is filled, right?").
-                target: g.target ?? 0,
-                actual: actualValue(state.actuals, g),
-              }))}
-              live={live}
-              isAdmin={isAdmin}
-            />
-          </>
-        ) : showMaster ? (
+      <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
+        {showMaster ? (
           <>
             <MasterTab
               state={state}
@@ -611,7 +552,7 @@ export function PerformanceModule({
         )}
       </div>
 
-      <HowItWorksModal open={howOpen} onClose={() => setHowOpen(false)} room={showActivityMaster ? "activity-master" : showMaster ? "goal-master" : tab} />
+      <HowItWorksModal open={howOpen} onClose={() => setHowOpen(false)} room={showMaster ? "goal-master" : tab} />
       <Modal
         tall
         open={goalModal !== null}
@@ -683,7 +624,7 @@ function HowItWorksModal({
   open: boolean;
   onClose: () => void;
   /** Which of the five rooms the person is standing in. */
-  room?: "org" | "groups" | "people" | "goal-master" | "activity-master";
+  room?: "org" | "groups" | "people" | "goal-master";
 }) {
   const CONTENT: Record<string, { title: string; steps: { title: string; body: string }[]; foot?: string }> = {
     org: {
@@ -716,16 +657,6 @@ function HowItWorksModal({
         { title: "Tracking puts a goal on the plan", body: "Tracking ON means it is counted and shown in the performance rooms. OFF means it waits here." },
         { title: "Targets split downward", body: "The annual number on the goal, split across subgoals, split again across the people responsible." },
       ],
-    },
-    "activity-master": {
-      title: "How the Activity Master works",
-      steps: [
-        { title: "This table gives activities their meaning", body: "When someone logs an activity anywhere in the app — a pilot, a contract — these rules decide what it is worth." },
-        { title: "How it counts", body: "A pilot counts as 1. A contract counts its dollar value. Some activities are logged for the record and count nothing." },
-        { title: "When it starts counting", body: "A contract counts only when completed; a pilot already counts once it is under progress." },
-        { title: "Which goals it may feed", body: "Connect the allowed goals here. Whoever logs the activity picks exactly one of them at logging time — nothing attaches by itself." },
-      ],
-      foot: "Only admins change this table. Changes apply the next time anyone logs an activity.",
     },
   };
   const c = CONTENT[room] ?? CONTENT.org;
