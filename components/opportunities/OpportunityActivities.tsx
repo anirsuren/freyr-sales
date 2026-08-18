@@ -24,6 +24,7 @@ import {
   type PromptGoal,
 } from "@/components/customers/ActivityGoalPrompt";
 import {
+  builtInActivities,
   masterFor,
   statusCounts,
   type ActivityMasterState,
@@ -89,6 +90,8 @@ export function OpportunityActivities({
     note: "",
   });
   const [prompt, setPrompt] = useState<{ activity: string } | null>(null);
+  /** Which row's note is being edited inline, by activity id. */
+  const [noteEdit, setNoteEdit] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -111,6 +114,13 @@ export function OpportunityActivities({
   }, []);
 
   const acts = opportunity.activities ?? [];
+  /** Until the master arrives, the five built-ins carry their real label and
+   *  colour — the chip used to paint as a grey raw id for a beat and then
+   *  flip to the styled tag (Anir, Aug 18: "the 'opportunity' text glitches
+   *  and shows up like normal text and then with the tag"). */
+  const masterNow: ActivityMasterState = bridge?.master ?? {
+    activities: builtInActivities(),
+  };
   const roster =
     bridge && bridge.people.length > 0
       ? bridge.people
@@ -167,74 +177,167 @@ export function OpportunityActivities({
       <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
         Activities
       </span>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        {acts.map((a) => {
-          const entry = bridge ? masterFor(bridge.master, a.activity) : null;
-          const color = entry?.color ?? "#8E98A8";
-          const label = entry?.label ?? a.activity;
-          const Icon = ACTIVITY_ICONS[a.activity] ?? Tag;
-          const sMeta = STATUS_META[a.status];
-          return (
-            <span
-              key={a.id}
-              title={a.note || undefined}
-              className="inline-flex items-center gap-2 rounded-full border border-border-light bg-white py-1 pl-1.5 pr-2.5"
-            >
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                style={{ background: `${color}16`, color }}
-              >
-                <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
-                {label}
-              </span>
-              {canEdit && bridge ? (
-                <ColorSelect
-                  value={a.status}
-                  ariaLabel={`Status of ${label}`}
-                  collapsible={false}
-                  dense
-                  minWidth={140}
-                  onChange={(v) => {
-                    if (v === a.status) return;
-                    const nextAct = {
-                      ...a,
-                      status: v as OpportunityActivity["status"],
-                      date: new Date().toISOString().slice(0, 10),
-                    };
-                    void persist(
-                      acts.map((x) => (x.id === a.id ? nextAct : x)),
-                      nextAct,
-                      a.status
-                    );
-                  }}
-                  options={(
-                    Object.keys(STATUS_META) as OpportunityActivity["status"][]
-                  ).map((k) => ({
-                    value: k,
-                    label: STATUS_META[k].label,
-                    color: STATUS_META[k].color,
-                    icon: STATUS_META[k].icon,
-                  }))}
-                />
-              ) : (
-                <span
-                  className="inline-flex items-center gap-1 text-[11px] font-bold"
-                  style={{ color: sMeta.color }}
-                >
-                  <sMeta.icon size={11} strokeWidth={2.5} aria-hidden="true" />
-                  {sMeta.label}
-                </span>
-              )}
-              {a.person && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
-                  <Avatar name={a.person} className="h-4 w-4 text-[6px]" />
-                  {a.person}
-                </span>
-              )}
-              <span className="text-[10.5px] text-text-tertiary tnum">{a.date}</span>
-            </span>
-          );
-        })}
+      {/* A PROPER TABLE, not a row of pills (Anir, Aug 18: "make it look
+          like a proper table and each activity should have an optional
+          description/note"). One line per activity: what, where it stands,
+          who, when, and the note — editable in place. */}
+      {acts.length > 0 && (
+        <div className="mt-2 overflow-x-auto rounded-lg border border-border-light">
+          <table className="w-full min-w-[640px]">
+            <thead>
+              <tr className="border-b border-border-light bg-surface/60 text-left text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                <th className="px-3 py-2">Activity</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Done by</th>
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Note</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {acts.map((a) => {
+                const entry = masterFor(masterNow, a.activity);
+                const color = entry?.color ?? "#8E98A8";
+                const label = entry?.label ?? a.activity;
+                const Icon = ACTIVITY_ICONS[a.activity] ?? Tag;
+                const sMeta = STATUS_META[a.status];
+                return (
+                  <tr key={a.id} className="bg-white">
+                    <td className="px-3 py-2">
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        style={{ background: `${color}16`, color }}
+                      >
+                        <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                        {label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {canEdit ? (
+                        <ColorSelect
+                          value={a.status}
+                          ariaLabel={`Status of ${label}`}
+                          collapsible={false}
+                          dense
+                          minWidth={150}
+                          onChange={(v) => {
+                            if (v === a.status) return;
+                            const nextAct = {
+                              ...a,
+                              status: v as OpportunityActivity["status"],
+                              date: new Date().toISOString().slice(0, 10),
+                            };
+                            void persist(
+                              acts.map((x) => (x.id === a.id ? nextAct : x)),
+                              nextAct,
+                              a.status
+                            );
+                          }}
+                          options={(
+                            Object.keys(STATUS_META) as OpportunityActivity["status"][]
+                          ).map((k) => ({
+                            value: k,
+                            label: STATUS_META[k].label,
+                            color: STATUS_META[k].color,
+                            icon: STATUS_META[k].icon,
+                          }))}
+                        />
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] font-bold"
+                          style={{ color: sMeta.color }}
+                        >
+                          <sMeta.icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                          {sMeta.label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {a.person ? (
+                        <span className="inline-flex items-center gap-1.5 text-[12px] text-text-primary">
+                          <Avatar name={a.person} className="h-5 w-5 text-[7px]" />
+                          {a.person}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-[12px] text-text-secondary tnum whitespace-nowrap">
+                      {a.date}
+                    </td>
+                    <td className="px-3 py-2">
+                      {noteEdit === a.id ? (
+                        <input
+                          autoFocus
+                          defaultValue={a.note ?? ""}
+                          placeholder="e.g. Demo done, security review next"
+                          onKeyDown={(e) => {
+                            // The save unmounts this input mid-keystroke, so
+                            // the Enter would reach the topbar with nothing
+                            // focused and open the command palette on top of
+                            // the page. The keystroke belongs to this field.
+                            e.stopPropagation();
+                            if (e.key === "Escape") setNoteEdit(null);
+                            if (e.key === "Enter") {
+                              const v = (e.target as HTMLInputElement).value.trim();
+                              setNoteEdit(null);
+                              if (v === (a.note ?? "")) return;
+                              const nextAct = { ...a, note: v || undefined };
+                              // Same status → the goal prompt never re-fires.
+                              void persist(
+                                acts.map((x) => (x.id === a.id ? nextAct : x)),
+                                nextAct,
+                                a.status
+                              );
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            setNoteEdit(null);
+                            if (v === (a.note ?? "")) return;
+                            const nextAct = { ...a, note: v || undefined };
+                            void persist(
+                              acts.map((x) => (x.id === a.id ? nextAct : x)),
+                              nextAct,
+                              a.status
+                            );
+                          }}
+                          className="h-8 w-full min-w-[180px] rounded-lg border border-blue-primary bg-white px-2.5 text-[12.5px] outline-none"
+                        />
+                      ) : a.note ? (
+                        canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => setNoteEdit(a.id)}
+                            title="Edit this note"
+                            className="block w-full cursor-pointer rounded px-1 py-0.5 text-left text-[12.5px] leading-snug text-text-primary transition-colors hover:bg-blue-light/40"
+                          >
+                            {a.note}
+                          </button>
+                        ) : (
+                          <span className="text-[12.5px] leading-snug text-text-primary">
+                            {a.note}
+                          </span>
+                        )
+                      ) : canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => setNoteEdit(a.id)}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11.5px] font-semibold text-text-tertiary transition-colors hover:text-blue-primary"
+                        >
+                          <Plus size={11} strokeWidth={2.6} /> Add note
+                        </button>
+                      ) : (
+                        <span className="text-[12px] text-text-tertiary">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="mt-2 flex items-center gap-2">
         {acts.length === 0 && (
           <span className="text-[12px] text-text-tertiary">
             Nothing logged on this deal yet.
@@ -346,7 +449,7 @@ export function OpportunityActivities({
           </div>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-              Note <span className="font-semibold normal-case">(optional)</span>
+              Description / note <span className="font-semibold normal-case">(optional)</span>
             </label>
             <input
               value={draft.note}

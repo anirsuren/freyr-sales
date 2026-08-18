@@ -1339,8 +1339,41 @@ export function OpportunitiesBrowser({
                     <OfferingChip name={key} color={lineColor({ id: "g", offeringLabel: key, value: 0 }) ?? "#B4318F"} size="xs" />
                   )}
                   <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                    {sectionRows.length} {sectionRows.length === 1 ? "deal" : "deals"} · {money(sectionRows.reduce((sum, x) => sum + x.value, 0))} total
+                    {sectionRows.length} {sectionRows.length === 1 ? "deal" : "deals"}
                   </span>
+                  {/* THE BAR, not a money sentence (Anir, Aug 18: "instead of
+                      saying 8.1 million or whatever show me the total progress
+                      bar") — same picture as every row: track = total value,
+                      fill = the weighted share. */}
+                  {(() => {
+                    const total = sectionRows.reduce((sum, x) => sum + x.value, 0);
+                    const weighted = sectionRows.reduce(
+                      (sum, x) => sum + weightedValue(x),
+                      0
+                    );
+                    const pct =
+                      total > 0
+                        ? Math.min(100, Math.round((weighted / total) * 100))
+                        : 0;
+                    return (
+                      <span className="ml-1 inline-flex min-w-0 items-center gap-2">
+                        <span className="flex h-2 w-36 shrink-0 overflow-hidden rounded-full bg-[rgba(0,113,227,0.14)]">
+                          {pct > 0 && (
+                            <span
+                              className="block h-full rounded-full bg-blue-primary"
+                              style={{ width: `${pct}%` }}
+                            />
+                          )}
+                        </span>
+                        <span className="text-[11px] font-bold tnum text-[color:#0058B0]">
+                          {money(weighted)}
+                        </span>
+                        <span className="text-[11px] tnum text-text-tertiary">
+                          of {money(total)}
+                        </span>
+                      </span>
+                    );
+                  })()}
                 </button>
                 {!shut && (
                   <div className="tab-panel overflow-x-auto border-t border-border-light">
