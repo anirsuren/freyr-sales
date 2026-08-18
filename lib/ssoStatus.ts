@@ -38,15 +38,19 @@ export async function ssoStatusForEmail(email: string | null): Promise<SsoStatus
     let passwordLogin = false;
     for (const user of data.users) {
       if ((user.email ?? "").trim().toLowerCase() !== wanted) continue;
-      for (const identity of user.identities ?? []) {
-        const provider = (identity.provider ?? "").toLowerCase();
-        if (provider === "email") passwordLogin = true;
-        // SAML identities arrive as "sso:<provider-id>"; OAuth Azure would be
-        // "azure". Either counts as the Microsoft door.
-        if (provider.startsWith("sso") || provider === "azure") {
-          connected = true;
-          connectedAt = identity.created_at ?? user.created_at ?? null;
-        }
+      // listUsers doesn't hydrate `identities` — the providers live in
+      // app_metadata: ["email"] for password accounts, ["sso:<id>"] for the
+      // SAML sign-in (verified against the live auth server, Aug 17).
+      const meta = user.app_metadata ?? {};
+      const providers: string[] = [
+        ...(Array.isArray(meta.providers) ? meta.providers : []),
+        ...(typeof meta.provider === "string" ? [meta.provider] : []),
+        ...(user.identities ?? []).map((i) => i.provider ?? ""),
+      ].map((x) => String(x).toLowerCase());
+      if (providers.includes("email")) passwordLogin = true;
+      if (providers.some((x) => x.startsWith("sso") || x === "azure")) {
+        connected = true;
+        connectedAt = user.created_at ?? null;
       }
     }
     return { connected, connectedAt, passwordLogin };
