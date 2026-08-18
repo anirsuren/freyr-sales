@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Building2, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -55,6 +55,11 @@ const HQ_FLAGS: Record<string, string> = {
 function hqFlag(hq: string | undefined): string | null {
   if (!hq) return null;
   return HQ_FLAGS[hq.trim().toLowerCase().replace(/\s+/g, " ")] ?? null;
+}
+
+/** "250000" reads as "250,000" while you type; stored bare. */
+function withCommas(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 const BLANK_TARGET = {
@@ -395,145 +400,172 @@ export function TargetsTab({
         size="wide"
       >
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Company
-              </label>
-              <input
-                autoFocus
-                value={draft.name}
-                onChange={(e) => set({ name: e.target.value })}
-                placeholder="e.g. Boehringer Ingelheim"
-                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-              />
+          {/* SECTIONED, NOT STUFFED (Anir, Aug 18: "you can't just do two
+              columns and stuff them all in there. Maybe you have a section
+              and then another section and then notes"). First who they are,
+              then how we chase them, then notes. */}
+          <div className="rounded-xl border border-border-light bg-white px-3.5 py-3.5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                <Building2 size={13} strokeWidth={2.2} aria-hidden="true" />
+              </span>
+              <span className="text-[12.5px] font-bold text-text-primary">
+                Who they are
+              </span>
+              <span className="h-px min-w-4 flex-1 bg-border-light" aria-hidden />
             </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Domain
-              </label>
-              <ColorSelect
-                value={draft.domain}
-                ariaLabel="Target domain"
-                collapsible={false}
-                className="w-full"
-                onChange={(v) => set({ domain: v })}
-                options={TARGET_DOMAINS.map((d) => ({
-                  value: d,
-                  label: TARGET_DOMAIN_META[d].label,
-                  color: TARGET_DOMAIN_META[d].color,
-                  icon: TARGET_DOMAIN_META[d].icon,
-                }))}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                HQ country
-              </label>
-              <input
-                value={draft.hq}
-                onChange={(e) => set({ hq: e.target.value })}
-                placeholder="e.g. Germany"
-                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Tier
-              </label>
-              <ColorSelect
-                value={draft.tier}
-                ariaLabel="Tier"
-                collapsible={false}
-                className="w-full"
-                onChange={(v) => set({ tier: v })}
-                options={[
-                  { value: "", label: "No tier yet", color: "#C7CDD6" },
-                  ...[...new Set(["Tier 1", "Tier 2", "Tier 3", ...tiers])].map(
-                    (t) => ({ value: t, label: t, color: tierColor(t) })
-                  ),
-                ]}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Owner
-              </label>
-              {/* Only real app accounts — a name without an account waits
-                  (Anir, Aug 17: "when they make accounts they will get
-                  assigned"). */}
-              <PersonSelect
-                value={draft.owner}
-                onChange={(v) => set({ owner: v })}
-                people={memberNames}
-                placeholder="No owner yet…"
-                allowFree={false}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Estimated potential (USD)
-              </label>
-              <input
-                value={draft.potential}
-                onChange={(e) =>
-                  set({ potential: e.target.value.replace(/[^0-9]/g, "") })
-                }
-                inputMode="numeric"
-                placeholder="e.g. 250000"
-                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary tnum"
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Target quarter
-              </label>
-              <ColorSelect
-                value={draft.quarter}
-                ariaLabel="Target quarter"
-                collapsible={false}
-                className="w-full"
-                onChange={(v) => set({ quarter: v })}
-                options={[
-                  { value: "", label: "Not planned yet", color: "#C7CDD6" },
-                  ...["Q1", "Q2", "Q3", "Q4"].map((q) => ({
-                    value: q,
-                    label: q,
-                    color: "#0071E3",
-                  })),
-                ]}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Connection
-              </label>
-              <ColorSelect
-                value={draft.degreeOfConnection}
-                ariaLabel="Degree of connection"
-                collapsible={false}
-                className="w-full"
-                onChange={(v) => set({ degreeOfConnection: v })}
-                options={[
-                  { value: "", label: "No intro yet", color: "#C7CDD6" },
-                  { value: "1", label: "1. Direct contact", color: "#0F766E" },
-                  { value: "2", label: "2. A warm intro exists", color: "#0071E3" },
-                  { value: "3", label: "3. Cold", color: "#8E98A8" },
-                ]}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Company revenue
-              </label>
-              <input
-                value={draft.companyRevenue}
-                onChange={(e) => set({ companyRevenue: e.target.value })}
-                placeholder={'e.g. ~$3B'}
-                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-              />
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Company
+                </label>
+                <input
+                  autoFocus
+                  value={draft.name}
+                  onChange={(e) => set({ name: e.target.value })}
+                  placeholder="e.g. Boehringer Ingelheim"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Domain
+                </label>
+                <ColorSelect
+                  value={draft.domain}
+                  ariaLabel="Target domain"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => set({ domain: v })}
+                  options={TARGET_DOMAINS.map((d) => ({
+                    value: d,
+                    label: TARGET_DOMAIN_META[d].label,
+                    color: TARGET_DOMAIN_META[d].color,
+                    icon: TARGET_DOMAIN_META[d].icon,
+                  }))}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  HQ country
+                </label>
+                <input
+                  value={draft.hq}
+                  onChange={(e) => set({ hq: e.target.value })}
+                  placeholder="e.g. Germany"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Company revenue
+                </label>
+                <input
+                  value={draft.companyRevenue}
+                  onChange={(e) => set({ companyRevenue: e.target.value })}
+                  placeholder={'e.g. ~$3B'}
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+                />
+              </div>
             </div>
           </div>
+
+          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                <Crosshair size={13} strokeWidth={2.2} aria-hidden="true" />
+              </span>
+              <span className="text-[12.5px] font-bold text-text-primary">
+                The pursuit
+              </span>
+              <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
+            </div>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Owner
+                </label>
+                <PersonSelect
+                  value={draft.owner}
+                  onChange={(v) => set({ owner: v })}
+                  people={memberNames}
+                  placeholder="No owner yet…"
+                  allowFree={false}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Tier
+                </label>
+                <ColorSelect
+                  value={draft.tier}
+                  ariaLabel="Tier"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => set({ tier: v })}
+                  options={[
+                    { value: "", label: "No tier yet", color: "#C7CDD6" },
+                    ...[...new Set(["Tier 1", "Tier 2", "Tier 3", ...tiers])].map(
+                      (t) => ({ value: t, label: t, color: tierColor(t) })
+                    ),
+                  ]}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Target quarter
+                </label>
+                <ColorSelect
+                  value={draft.quarter}
+                  ariaLabel="Target quarter"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => set({ quarter: v })}
+                  options={[
+                    { value: "", label: "Not planned yet", color: "#C7CDD6" },
+                    ...["Q1", "Q2", "Q3", "Q4"].map((q) => ({
+                      value: q,
+                      label: q,
+                      color: "#0071E3",
+                    })),
+                  ]}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Connection
+                </label>
+                <ColorSelect
+                  value={draft.degreeOfConnection}
+                  ariaLabel="Degree of connection"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => set({ degreeOfConnection: v })}
+                  options={[
+                    { value: "", label: "No intro yet", color: "#C7CDD6" },
+                    { value: "1", label: "1, direct contact", color: "#0F766E" },
+                    { value: "2", label: "2, a warm intro exists", color: "#0071E3" },
+                    { value: "3", label: "3, cold", color: "#8E98A8" },
+                  ]}
+                />
+              </div>
+              <div className="min-w-0 sm:col-span-2">
+                <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                  Estimated potential (USD)
+                </label>
+                <input
+                  value={withCommas(draft.potential)}
+                  onChange={(e) =>
+                    set({ potential: e.target.value.replace(/[^0-9]/g, "") })
+                  }
+                  inputMode="numeric"
+                  placeholder="e.g. 250,000"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary tnum"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="mb-1 block text-[12px] font-semibold text-text-primary">
               Notes <span className="font-normal text-text-tertiary">optional</span>
@@ -546,6 +578,7 @@ export function TargetsTab({
               className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
             />
           </div>
+
           <div className="flex items-center justify-end gap-2">
             <Button variant="secondary" onClick={() => setAdding(false)}>
               Cancel
