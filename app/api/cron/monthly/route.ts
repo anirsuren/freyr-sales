@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
+  buildMemberDigestEmail,
   buildOwnerRefreshEmails,
   buildRepUsageEmails,
   type PreparedEmail,
@@ -106,8 +107,14 @@ async function run(request: NextRequest) {
       )
     );
     if (mine.length === 0) {
+      // Not in the monthly batches (a manager, or nothing due) — build their
+      // digest on demand so any member can be test-sent their own note.
+      const built = await buildMemberDigestEmail(testOf, nowMs);
+      if (built) mine.push(built);
+    }
+    if (mine.length === 0) {
       return NextResponse.json(
-        { error: `No prepared email is addressed to ${testOf}.` },
+        { error: `${testOf} is not an active member with an email.` },
         { status: 404 }
       );
     }

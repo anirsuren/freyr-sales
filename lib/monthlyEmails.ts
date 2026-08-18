@@ -200,6 +200,55 @@ export async function buildOwnerRefreshEmails(
  * no recorded activity still get theirs — a month of zeros is the finding, and
  * hiding it would defeat the point of the head asking for the report.
  */
+type DigestContext = {
+  counters: Awaited<ReturnType<typeof readUsageCounters>>;
+  opps: Awaited<ReturnType<typeof readOpportunities>> | null;
+  targets: Awaited<ReturnType<typeof readTargets>> | null;
+  perf: Awaited<ReturnType<typeof readPerformance>> | null;
+  master: Awaited<ReturnType<typeof readActivityMaster>> | null;
+  cc: string[];
+  period: string;
+  nowMs: number;
+};
+
+async function digestContext(nowMs: number, workspace: string): Promise<DigestContext> {
+  const counters = await readUsageCounters(workspace);
+  const [opps, targets, perf, master] = await Promise.all([
+    readOpportunities().catch(() => null),
+    readTargets().catch(() => null),
+    readPerformance().catch(() => null),
+    readActivityMaster().catch(() => null),
+  ]);
+  const cc = (process.env.SALES_HEAD_EMAIL || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const since = [...counters.values()].map((c) => c.since).find(Boolean);
+  const period = since
+    ? `since ${monthLabel(new Date(since))}`
+    : monthLabel(new Date(nowMs));
+  return { counters, opps, targets, perf, master, cc, period, nowMs };
+}
+
+/** One member's digest — the whole monthly note for one person. Used by the
+ *  reps run and by the test hook (which may point at any active member). */
+export async function buildMemberDigestEmail(
+  email: string,
+  nowMs: number
+): Promise<PreparedEmail | null> {
+  const workspace = process.env.FREYR_WORKSPACE_ID;
+  if (!workspace) return null;
+  const directory = await listWorkspaceAccess(workspace).catch(() => null);
+  const member = directory?.members.find(
+    (m) =>
+      m.active &&
+      (m.email ?? "").trim().toLowerCase() === email.trim().toLowerCase()
+  );
+  if (!member?.email) return null;
+  const ctx = await digestContext(nowMs, workspace);
+  return digestFor(member as { id: string; name: string; email: string }, ctx);
+}
+
 export async function buildRepUsageEmails(
   nowMs: number
 ): Promise<PreparedEmail[]> {
@@ -208,30 +257,25 @@ export async function buildRepUsageEmails(
   const directory = await listWorkspaceAccess(workspace).catch(() => null);
   if (!directory) return [];
 
-  const counters = await readUsageCounters(workspace);
-  // EVERYTHING A SALES AGENT WOULD NEED (Anir, Aug 18: "shouldn't it be more
-  // information… think everything a sales agent would need"): their pipeline,
-  // their activities, their goals, their target accounts — all read from the
-  // same stores the app itself shows, never computed specially for the email.
-  const [opps, targets, perf, master] = await Promise.all([
-    readOpportunities().catch(() => null),
-    readTargets().catch(() => null),
-    readPerformance().catch(() => null),
-    readActivityMaster().catch(() => null),
-  ]);
-
-  const cc = (process.env.SALES_HEAD_EMAIL || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
+  const ctx = await digestContext(nowMs, workspace);
   const reps = directory.members.filter(
     (m) => m.active && m.email && m.role === "rep"
   );
-  const since = [...counters.values()].map((c) => c.since).find(Boolean);
-  const period = since ? `since ${monthLabel(new Date(since))}` : monthLabel(new Date(nowMs));
+  return reps.map((rep) =>
+    digestFor(rep as { id: string; name: string; email: string }, ctx)
+  );
+}
 
-  return reps.map((rep) => {
+/** EVERYTHING A SALES AGENT WOULD NEED (Anir, Aug 18: "shouldn't it be more
+ *  information… think everything a sales agent would need"): their pipeline,
+ *  their activities, their goals, their target accounts — all read from the
+ *  same stores the app itself shows, never computed specially for the email. */
+function digestFor(
+  rep: { id: string; name: string; email: string },
+  ctx: DigestContext
+): PreparedEmail {
+  const { counters, opps, targets, perf, master, cc, period, nowMs } = ctx;
+  {
     const me = rep.name.trim().toLowerCase();
     const t: UsageCounters = counters.get(rep.id) ?? emptyUsageCounters();
 
@@ -390,5 +434,5 @@ export async function buildRepUsageEmails(
       text,
       reason: `${rep.name}: ${mine.length} deals ${usd(pipeValue)}, ${acts.length} activities, ${t.logins} sign-ins`,
     };
-  });
+  }
 }
