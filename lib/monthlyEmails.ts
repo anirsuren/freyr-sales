@@ -397,6 +397,7 @@ function digestFor(
       row("Times you signed in", String(t.logins)),
       row("Files you opened", String(t.opened)),
       row("Files you downloaded", String(t.downloaded)),
+      row("Questions to the AI agent", String(t.agent)),
     ].join("");
 
     const html = emailShell(
@@ -421,7 +422,7 @@ function digestFor(
       ...(acts.length ? [`Activities logged: ${acts.length}`] : []),
       ...goalRows.map((g) => `Goal ${g.name}: ${g.mineAmt} ${g.goal}`),
       ...(myTargets.length ? [`Target accounts: ${myTargets.length}`] : []),
-      `App: ${t.logins} sign-ins, ${t.opened} files opened, ${t.downloaded} downloaded`,
+      `App: ${t.logins} sign-ins, ${t.opened} files opened, ${t.downloaded} downloaded, ${t.agent} agent questions`,
       "",
       appUrl("/opportunities"),
     ].join("\n");

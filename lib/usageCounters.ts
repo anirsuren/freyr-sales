@@ -20,12 +20,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * email.
  */
 
-export type UsageField = "login" | "open" | "download";
+export type UsageField = "login" | "open" | "download" | "agent";
 
 export type UsageCounters = {
   logins: number;
   opened: number;
   downloaded: number;
+  /** Questions asked to the AI agent (Anir, Aug 18). */
+  agent: number;
   since: string | null;
 };
 
@@ -66,7 +68,7 @@ export async function readUsageCounters(
     const { data, error } = await client
       .from("app_users")
       .select(
-        "id, login_count, files_opened, files_downloaded, usage_period_start"
+        "id, login_count, files_opened, files_downloaded, agent_interactions, usage_period_start"
       )
       .eq("workspace_id", workspaceId);
     if (error || !data) return out;
@@ -75,12 +77,14 @@ export async function readUsageCounters(
       login_count: number | null;
       files_opened: number | null;
       files_downloaded: number | null;
+      agent_interactions: number | null;
       usage_period_start: string | null;
     }[]) {
       out.set(row.id, {
         logins: row.login_count ?? 0,
         opened: row.files_opened ?? 0,
         downloaded: row.files_downloaded ?? 0,
+        agent: row.agent_interactions ?? 0,
         since: row.usage_period_start,
       });
     }
@@ -104,6 +108,7 @@ export async function resetUsageCounters(workspaceId: string): Promise<void> {
         login_count: 0,
         files_opened: 0,
         files_downloaded: 0,
+        agent_interactions: 0,
         usage_period_start: new Date().toISOString(),
       })
       .eq("workspace_id", workspaceId);
@@ -114,5 +119,5 @@ export async function resetUsageCounters(workspaceId: string): Promise<void> {
 }
 
 export function emptyUsageCounters(): UsageCounters {
-  return { logins: 0, opened: 0, downloaded: 0, since: null };
+  return { logins: 0, opened: 0, downloaded: 0, agent: 0, since: null };
 }

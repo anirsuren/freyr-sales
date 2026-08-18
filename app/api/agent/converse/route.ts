@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bumpUsage } from "@/lib/usageCounters";
 import { getDb, type Db } from "@/lib/db";
 import { escapeRegExp } from "@/lib/utils";
 import { manualFor } from "@/lib/appManual";
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
+  // Counted for the monthly note (Anir, Aug 18: "interactions with the AI
+  // agent"). Fire-and-forget, after validation so refusals never count.
+  bumpUsage(actor.userId, "agent");
   // Where the person is standing and what their screen shows, sent by the
   // dock on every message (Anir, Aug 11: "it'll know what page I'm on").
   const onPath = String(body.path || "").slice(0, 200);

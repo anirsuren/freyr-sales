@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bumpUsage } from "@/lib/usageCounters";
 import { getDb } from "@/lib/db";
 import { answerAccountQuestion, type AccountContext } from "@/lib/agent";
 import { agentAnswer } from "@/lib/claude";
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
   if (!customerId || !question || !context.company) {
     return NextResponse.json({ error: "Missing question or context" }, { status: 400 });
   }
+  // Counted for the monthly note (Anir, Aug 18). After validation, so a
+  // malformed request never counts as an interaction.
+  bumpUsage(scope.userId, "agent");
 
   const db = getDb();
 
