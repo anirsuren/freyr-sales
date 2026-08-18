@@ -4,7 +4,7 @@ import {
   buildRepUsageEmails,
   type PreparedEmail,
 } from "@/lib/monthlyEmails";
-import { mailerConfigured } from "@/lib/mailer";
+import { mailerConfigured, sendMail } from "@/lib/mailer";
 import { sendMonthlyEmails } from "@/lib/monthlyEmailRun";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +84,53 @@ async function run(request: NextRequest) {
       { error: "RESEND_API_KEY is not set; nothing was sent." },
       { status: 503 }
     );
+  }
+
+  /**
+   * TEST SEND TO ONE PERSON (Anir, Aug 18: "send me and only me a test
+   * automated email — I wanna see how it works"). `?to=` sends ONLY the
+   * prepared emails addressed to that person, exactly as the monthly run
+   * would build them — and touches neither the once-a-month lock nor the
+   * usage counters, so a test never eats the real send.
+   */
+  const testTo = url.searchParams.get("to")?.trim().toLowerCase();
+  if (testTo) {
+    // `of=` picks WHOSE prepared email to use when the delivery inbox differs
+    // from the address the run built it for (a sandboxed mail account can
+    // only deliver to its owner). Content is exactly the monthly build.
+    const testOf =
+      url.searchParams.get("of")?.trim().toLowerCase() || testTo;
+    const mine = batches.flatMap((b) =>
+      b.emails.filter((e) =>
+        e.to.some((addr) => addr.toLowerCase() === testOf)
+      )
+    );
+    if (mine.length === 0) {
+      return NextResponse.json(
+        { error: `No prepared email is addressed to ${testOf}.` },
+        { status: 404 }
+      );
+    }
+    const failed: string[] = [];
+    let sent = 0;
+    for (const email of mine) {
+      const result = await sendMail({
+        ...email,
+        to: [testTo],
+        cc: undefined,
+        subject: `[Test] ${email.subject}`,
+      });
+      if (result.ok) sent += 1;
+      else failed.push(result.error);
+    }
+    return NextResponse.json({
+      ok: failed.length === 0,
+      test: true,
+      to: testTo,
+      sent,
+      subjects: mine.map((e) => e.subject),
+      failed,
+    });
   }
 
   const result = await sendMonthlyEmails({

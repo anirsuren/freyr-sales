@@ -64,7 +64,10 @@ export async function sendMail(message: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: FROM,
+        // CALL it — passing the function serialized to nothing, the `from`
+        // field vanished, and Resend refused every message this app ever
+        // tried to send (caught by Anir's test send, Aug 18).
+        from: FROM(),
         to: message.to,
         ...(message.cc?.length ? { cc: message.cc } : {}),
         subject: message.subject,
