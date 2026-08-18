@@ -48,7 +48,7 @@ function client() {
   );
 }
 
-async function readRow(id: string): Promise<any | null> {
+export async function readRow(id: string): Promise<any | null> {
   const { data, error } = await client()
     .from("offering_catalog_state")
     .select("catalog")
@@ -58,7 +58,7 @@ async function readRow(id: string): Promise<any | null> {
   return data?.catalog ?? null;
 }
 
-async function writeRow(id: string, catalog: unknown): Promise<void> {
+export async function writeRow(id: string, catalog: unknown): Promise<void> {
   const { error } = await client()
     .from("offering_catalog_state")
     .upsert({ id, catalog, updated_at: new Date().toISOString() });
@@ -66,20 +66,30 @@ async function writeRow(id: string, catalog: unknown): Promise<void> {
 }
 
 /** Same shape as the Market Intel lock: claim, then read back, because two
- *  instances that upsert in the same instant both believe they won. */
-async function claimLock(): Promise<string | null> {
+ *  instances that upsert in the same instant both believe they won. Row-
+ *  parametric so the announcements run can hold its own lock. */
+export async function claimStoreLock(
+  lockRow: string = LOCK_ROW
+): Promise<string | null> {
   const token = Math.random().toString(36).slice(2);
   const now = Date.now();
-  const existing = await readRow(LOCK_ROW).catch(() => null);
+  const existing = await readRow(lockRow).catch(() => null);
   if (existing?.until && existing.until > now) return null;
-  await writeRow(LOCK_ROW, { token, until: now + LOCK_MS });
-  const confirmed = await readRow(LOCK_ROW).catch(() => null);
+  await writeRow(lockRow, { token, until: now + LOCK_MS });
+  const confirmed = await readRow(lockRow).catch(() => null);
   return confirmed?.token === token ? token : null;
 }
 
-async function releaseLock(token: string): Promise<void> {
-  const current = await readRow(LOCK_ROW).catch(() => null);
-  if (current?.token === token) await writeRow(LOCK_ROW, { token, until: 0 });
+export async function releaseStoreLock(
+  token: string,
+  lockRow: string = LOCK_ROW
+): Promise<void> {
+  const current = await readRow(lockRow).catch(() => null);
+  if (current?.token === token) await writeRow(lockRow, { token, until: 0 });
+}
+
+export function storeEnvReady(): boolean {
+  return hasEnv();
 }
 
 /** "2026-08" — the unit the send is once-per. */
@@ -171,7 +181,7 @@ export async function runMonthlyEmailsIfDue(options?: {
   if (!options?.force && state?.lastSentMonth === month)
     return { sent: false, reason: "already sent this month", month };
 
-  const token = await claimLock();
+  const token = await claimStoreLock();
   if (!token)
     return { sent: false, reason: "another send is running", month };
   try {
@@ -191,6 +201,6 @@ export async function runMonthlyEmailsIfDue(options?: {
     }
     return { ...result, month };
   } finally {
-    await releaseLock(token);
+    await releaseStoreLock(token);
   }
 }

@@ -38,18 +38,31 @@ export function armMonthlyEmailSchedule(): void {
   g[ARMED_KEY] = true;
 
   const tick = async () => {
+    const firstCheck = !g[LOGGED_KEY];
+    g[LOGGED_KEY] = true;
     try {
       const { runMonthlyEmailsIfDue } = await import("./monthlyEmailRun");
       const result = await runMonthlyEmailsIfDue();
       // Quiet by default: this no-ops ~730 times between sends, and a log line
       // an hour would bury anything worth reading. The first check after a
       // boot is logged so "is this armed?" has an answer in the logs.
-      if (result.sent || !g[LOGGED_KEY]) {
-        g[LOGGED_KEY] = true;
+      if (result.sent || firstCheck) {
         console.log(`[monthly-emails] check: ${JSON.stringify(result)}`);
       }
     } catch (error) {
       console.error("[monthly-emails] scheduled send failed:", error);
+    }
+    // Same tick carries the release announcements (Anir, Aug 18: a major
+    // update "should be automated" — the deploy that ships a major release
+    // note is the trigger, this timer is the postman).
+    try {
+      const { sendAnnouncementsIfDue } = await import("./announcementEmails");
+      const ann = await sendAnnouncementsIfDue();
+      if (ann.sent || firstCheck) {
+        console.log(`[announcements] check: ${JSON.stringify(ann)}`);
+      }
+    } catch (error) {
+      console.error("[announcements] scheduled send failed:", error);
     }
   };
 
