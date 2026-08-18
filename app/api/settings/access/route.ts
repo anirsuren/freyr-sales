@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { autoApproveEmailDomains } from "@/lib/authEmailPolicy";
 import { ACCESS_COOKIE, type WorkspaceRole, verifyAccessGrant, normalizeWorkspaceRole } from "@/lib/accessControl";
 import {
   inviteWorkspaceUser,
@@ -37,6 +38,27 @@ export async function POST(request: NextRequest) {
   try {
     let invitationDelivery = null;
     if (body.action === "invite") {
+      /* COMPANY ADDRESSES ONLY (Anir, Aug 18: "I shouldn't be able to invite
+         people with the Gmail account… it has to be freyrsolutions.com").
+         Enforced HERE, not just in the form — the form is a courtesy, the
+         server is the rule. Domains come from the same policy that auto-joins
+         staff; with none configured the company domain is the floor. */
+      const allowed = (() => {
+        const configured = autoApproveEmailDomains();
+        return configured.length > 0 ? configured : ["freyrsolutions.com"];
+      })();
+      const domain = String(body.email || "")
+        .trim()
+        .toLowerCase()
+        .split("@")[1] ?? "";
+      if (!allowed.includes(domain)) {
+        return NextResponse.json(
+          {
+            error: `Invitations are for company addresses only — use an @${allowed[0]} email.`,
+          },
+          { status: 400 }
+        );
+      }
       invitationDelivery = await inviteWorkspaceUser(
         grant.workspaceId,
         grant.userId,

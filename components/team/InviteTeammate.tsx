@@ -58,6 +58,12 @@ export function InviteTeammate({
       toast("Full name and work email are both needed", "error");
       return;
     }
+    // Same rule the server enforces (Anir, Aug 18: "it has to be
+    // freyrsolutions.com") — caught here so the answer is instant.
+    if (!/@freyrsolutions\.com$/i.test(email.trim())) {
+      toast("Invitations are for @freyrsolutions.com addresses only", "error");
+      return;
+    }
     setBusy(true);
     try {
       const response = await fetch("/api/settings/access", {

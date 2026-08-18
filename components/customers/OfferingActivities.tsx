@@ -499,6 +499,10 @@ export function OfferingActivities({
         open={editing !== null}
         onClose={() => setEditing(null)}
         title={editing === "" ? "Add an activity" : "Edit activity"}
+        /* Same clothes as every other editor — the 440px default read as a
+           strip (Anir, Aug 18: "Why is it so thin? Just make it like the
+           other pop-ups"). */
+        size="wide"
       >
         <form
           onSubmit={(event) => {
@@ -613,7 +617,11 @@ export function OfferingActivities({
                     form got when its sixty chips pushed the fields off screen
                     (Anir, Aug 16: "whateven is this fix it"). This one had
                     the same wall with the whole pipeline in it. */}
+                {/* ONE DROPDOWN, like every other picker (Anir, Aug 18:
+                    "why are there two text boxes within a text box? Just
+                    make it a simple drop-down"). */}
                 <MultiPicker
+                  variant="dropdown"
                   options={pipeline.map((o) => ({
                     id: o.id,
                     label: o.name,
@@ -628,7 +636,7 @@ export function OfferingActivities({
                         : [...prev, id]
                     )
                   }
-                  placeholder="Search deals…"
+                  placeholder="Pick the deals…"
                   emptyLabel="Nothing in the pipeline yet."
                 />
               </div>

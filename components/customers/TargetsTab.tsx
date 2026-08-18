@@ -31,6 +31,27 @@ function money(n: number): string {
   return `$${n}`;
 }
 
+
+/** THE COUNTRY'S FLAG BESIDE ITS NAME (Anir, Aug 18: "put flags too").
+ *  Keys cover the sheet's data as written — US states and the sheet's own
+ *  "Finalnd" typo resolve to their country; a value with no clear country
+ *  ("Oct") gets no flag rather than a guess. */
+const HQ_FLAGS: Record<string, string> = {
+  bangladesh: "🇧🇩", belgium: "🇧🇪", brazil: "🇧🇷", canada: "🇨🇦",
+  china: "🇨🇳", denmark: "🇩🇰", finland: "🇫🇮", finalnd: "🇫🇮",
+  france: "🇫🇷", germany: "🇩🇪", greece: "🇬🇷", india: "🇮🇳",
+  ireland: "🇮🇪", italy: "🇮🇹", japan: "🇯🇵", luxembourg: "🇱🇺",
+  mexico: "🇲🇽", netherlands: "🇳🇱", "south korea": "🇰🇷", spain: "🇪🇸",
+  sweden: "🇸🇪", switzerland: "🇨🇭", turkey: "🇹🇷", uae: "🇦🇪",
+  uk: "🇬🇧", usa: "🇺🇸", "united states": "🇺🇸", "united kingdom": "🇬🇧",
+  california: "🇺🇸", minnesota: "🇺🇸", "new jersey": "🇺🇸",
+};
+
+function hqFlag(hq: string | undefined): string | null {
+  if (!hq) return null;
+  return HQ_FLAGS[hq.trim().toLowerCase().replace(/\s+/g, " ")] ?? null;
+}
+
 export function TargetsTab({
   targets,
   memberNames = [],
@@ -237,7 +258,16 @@ export function TargetsTab({
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">
-                        {t.hq ?? <span className="text-text-tertiary">—</span>}
+                        {t.hq ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            {hqFlag(t.hq) && (
+                              <span aria-hidden="true">{hqFlag(t.hq)}</span>
+                            )}
+                            {t.hq}
+                          </span>
+                        ) : (
+                          <span className="text-text-tertiary">—</span>
+                        )}
                       </td>
                       <td className="px-2 py-2.5 text-right text-[12.5px] font-semibold text-text-primary tnum">
                         {t.potential ? (
