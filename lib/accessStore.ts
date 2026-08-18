@@ -221,6 +221,82 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   }
   const existing = await activeUser(client, workspace, provider, user.id);
 
+  /**
+   * ONE PERSON, MANY WAYS IN (Anir, Aug 17: signing in with Microsoft minted
+   * a second, empty "Anir S" — "where the fuck is all my data? … make sure
+   * the next time I sign in with Microsoft it recognizes that that email is
+   * the same as my email-password login and it links").
+   *
+   * Every sign-in method carries its own provider subject, but a VERIFIED
+   * email names one person — the same trust domain auto-join already stands
+   * on ("provider sign-in only completes after email confirmation"). The
+   * OLDEST active membership with this email is canonical, whichever subject
+   * arrives. SSO stays optional: both subjects keep resolving to that one
+   * membership, and an accidental duplicate a subject minted earlier folds
+   * itself away the next time that subject signs in.
+   */
+  type MemberRow = {
+    id: string;
+    display_name: string;
+    app_role: WorkspaceRole;
+    active: boolean;
+  };
+  let canonical: MemberRow | null = null;
+  if (email) {
+    const byEmail = await client
+      .from("app_users")
+      .select("id, display_name, app_role, active")
+      .eq("workspace_id", workspace)
+      .eq("email", email)
+      .eq("active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (byEmail.error) throw new Error(byEmail.error.message);
+    canonical = (byEmail.data as MemberRow | null) ?? null;
+  }
+
+  // A LOCAL DEBUG SESSION MUST NEVER WRITE MEMBERSHIP (see the longer note
+  // below) — it may READ its way to the canonical member, nothing more.
+  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
+    const devMember = existing?.active ? existing : canonical;
+    return devMember
+      ? {
+          status: "approved",
+          workspaceId: workspace,
+          userId: devMember.id,
+          role: normalizeWorkspaceRole(devMember.app_role) ?? "rep",
+          displayName: devMember.display_name,
+        }
+      : { status: "pending", workspaceId: workspace };
+  }
+
+  if (canonical && (!existing || existing.id !== canonical.id)) {
+    if (existing && existing.active) {
+      // Self-heal: this subject owns a newer duplicate of the same person —
+      // fold it away rather than leaving a ghost on the Team page.
+      const folded = await client
+        .from("app_users")
+        .update({ active: false })
+        .eq("id", existing.id)
+        .eq("workspace_id", workspace);
+      if (folded.error) throw new Error(folded.error.message);
+    }
+    const seen = await client
+      .from("app_users")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", canonical.id)
+      .eq("workspace_id", workspace);
+    if (seen.error) throw new Error(seen.error.message);
+    return {
+      status: "approved",
+      workspaceId: workspace,
+      userId: canonical.id,
+      role: normalizeWorkspaceRole(canonical.app_role) ?? "rep",
+      displayName: canonical.display_name,
+    };
+  }
+
   if (existing?.active) {
     const synced = await client
       .from("app_users")
@@ -289,24 +365,10 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
         : null;
   }
 
-  // A LOCAL DEBUG SESSION MUST NEVER MINT A REAL MEMBER. The unauthenticated
-  // dev harness fabricates an identity carrying Anir's company address, which
-  // walked straight into domain auto-join below and inserted a second "Anir
-  // Suren" into the shared directory — two of him on the Team page, from a
-  // laptop (Anir, Aug 9: "why the fuck are there always two of me?"). The
-  // bypass exists to render pages, never to write membership.
-  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
-    return existing
-      ? {
-          status: "approved",
-          workspaceId: workspace,
-          userId: existing.id,
-          role: normalizeWorkspaceRole(existing.app_role) ?? "rep",
-          displayName: existing.display_name,
-        }
-      : { status: "pending", workspaceId: workspace };
-  }
-
+  // (The unauthenticated dev harness already returned above — the guard that
+  // used to sit here, born of "why the fuck are there always two of me?"
+  // (Anir, Aug 9), moved up so a debug session can read its way to the
+  // canonical member but still never writes membership.)
   const bootstrapOwner = isBootstrapOwner(user);
   // Company-domain auto-join (Suren): a colleague signing in with a VERIFIED
   // company email already belongs here — the domain itself is the invitation.
