@@ -8,6 +8,12 @@ import {
   readUsageCounters,
   type UsageCounters,
 } from "./usageCounters";
+import { readOpportunities } from "./opportunities";
+import { readTargets } from "./targets";
+import { readPerformance } from "./performance";
+import { weightedValue } from "./opportunitiesShared";
+import { readActivityMaster } from "./activityMaster";
+import { masterFor } from "./activityMasterShared";
 
 /**
  * THE TWO MONTHLY NOTES (Suren, Aug 13, on a call with Anir).
@@ -53,8 +59,41 @@ function monthLabel(d: Date): string {
 }
 
 function appUrl(path: string): string {
-  const base = (process.env.APP_PUBLIC_URL || "").replace(/\/$/, "");
-  return base ? `${base}${path}` : path;
+  // ALWAYS absolute. A bare "/offerings" in an email rendered as literal
+  // "[/offerings]" text in Outlook (Anir, Aug 18: "Why does it say
+  // /offerings?") — a mail client has no origin to resolve against.
+  const base = (
+    process.env.APP_PUBLIC_URL || "https://freyrsales.dev.freyrapps.com"
+  ).replace(/\/$/, "");
+  return `${base}${path}`;
+}
+
+function usd(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `$${m >= 10 ? Math.round(m) : Math.round(m * 10) / 10}M`;
+  }
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+  return `$${Math.round(n)}`;
+}
+
+const ACTIVITY_STATUS_LABEL: Record<string, string> = {
+  initiated: "Initiated",
+  under_progress: "Under progress",
+  completed: "Completed",
+};
+
+/** One email section: a small caps heading and rows. */
+function section(title: string, rowsHtml: string): string {
+  return `<div style="margin:18px 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#55637a;">${title}</div>
+<table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>`;
+}
+
+function row(left: string, right: string): string {
+  return `<tr>
+    <td style="padding:7px 0;border-bottom:1px solid #e3e9f2;">${left}</td>
+    <td style="padding:7px 0;border-bottom:1px solid #e3e9f2;text-align:right;font-weight:700;white-space:nowrap;">${right}</td>
+  </tr>`;
 }
 
 /**
@@ -170,9 +209,17 @@ export async function buildRepUsageEmails(
   if (!directory) return [];
 
   const counters = await readUsageCounters(workspace);
+  // EVERYTHING A SALES AGENT WOULD NEED (Anir, Aug 18: "shouldn't it be more
+  // information… think everything a sales agent would need"): their pipeline,
+  // their activities, their goals, their target accounts — all read from the
+  // same stores the app itself shows, never computed specially for the email.
+  const [opps, targets, perf, master] = await Promise.all([
+    readOpportunities().catch(() => null),
+    readTargets().catch(() => null),
+    readPerformance().catch(() => null),
+    readActivityMaster().catch(() => null),
+  ]);
 
-  // The head who gets a copy. Configured rather than guessed: picking the
-  // "most senior looking" person out of the directory would be a fabrication.
   const cc = (process.env.SALES_HEAD_EMAIL || "")
     .split(",")
     .map((s) => s.trim())
@@ -181,51 +228,167 @@ export async function buildRepUsageEmails(
   const reps = directory.members.filter(
     (m) => m.active && m.email && m.role === "rep"
   );
-  // The window is whatever the counters have actually been running for, not an
-  // assumed calendar month — the first send after this ships covers a few days,
-  // and saying "August" over four days of counting would be a lie.
   const since = [...counters.values()].map((c) => c.since).find(Boolean);
   const period = since ? `since ${monthLabel(new Date(since))}` : monthLabel(new Date(nowMs));
 
   return reps.map((rep) => {
+    const me = rep.name.trim().toLowerCase();
     const t: UsageCounters = counters.get(rep.id) ?? emptyUsageCounters();
-    const rows: [string, number][] = [
-      ["Times you signed in", t.logins],
-      ["Files you opened", t.opened],
-      ["Files you downloaded", t.downloaded],
-    ];
-    const html = emailShell(
-      `Your activity ${period}`,
-      `<p>Hi ${rep.name.split(" ")[0]},</p>
-       <p>Here is what you did in the app last month.</p>
-       <table style="width:100%;border-collapse:collapse;margin:14px 0;">
-         ${rows
-           .map(
-             ([label, value]) => `<tr>
-               <td style="padding:8px 0;border-bottom:1px solid #e3e9f2;">${label}</td>
-               <td style="padding:8px 0;border-bottom:1px solid #e3e9f2;text-align:right;font-weight:700;font-size:16px;">${value}</td>
-             </tr>`
-           )
-           .join("")}
-       </table>
-       <p><a href="${appUrl("/offerings")}" style="color:#0071e3;font-weight:600;">Open Freyr Sales</a></p>`
+
+    // --- Their pipeline: the deals with their name on them. ---
+    const all = opps?.opportunities ?? [];
+    const mine = all.filter(
+      (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level !== "Future"
     );
+    const pipeValue = mine.reduce((sum, o) => sum + o.value, 0);
+    const pipeWeighted = mine.reduce((sum, o) => sum + weightedValue(o), 0);
+    const futureCount = all.filter(
+      (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level === "Future"
+    ).length;
+    const nextSign = mine
+      .flatMap((o) =>
+        (o.lines ?? [])
+          .map((l) => l.estSignDate)
+          .filter((d): d is string => Boolean(d))
+          .map((d) => ({ deal: o.name, date: d }))
+      )
+      .filter((x) => new Date(x.date).getTime() >= nowMs - 7 * DAY)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+    // --- Activities logged in their name, anywhere in the pipeline. ---
+    const acts = all
+      .flatMap((o) =>
+        (o.activities ?? [])
+          .filter((a) => (a.person ?? "").trim().toLowerCase() === me)
+          .map((a) => ({ ...a, deal: o.name }))
+      )
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
+    // --- Goals with their results on them. ---
+    const goalRows = (() => {
+      if (!perf) return [] as { name: string; mineAmt: string; goal: string }[];
+      const byGoal = new Map<string, number>();
+      for (const a of perf.actuals) {
+        if (a.person.trim().toLowerCase() !== me) continue;
+        byGoal.set(a.goalId, (byGoal.get(a.goalId) ?? 0) + a.amount);
+      }
+      return [...byGoal.entries()]
+        .map(([goalId, sum]) => {
+          const g = perf.goals.find((x) => x.id === goalId);
+          if (!g) return null;
+          const fmt = (n: number) =>
+            g.unit === "currency"
+              ? usd(n)
+              : g.unit === "percent"
+                ? `${Math.round(n)}%`
+                : String(Math.round(n));
+          return {
+            name: `${g.name} (${g.year})`,
+            mineAmt: fmt(sum),
+            goal: g.target > 0 ? `of the ${fmt(g.target)} target` : "no target set yet",
+          };
+        })
+        .filter((x): x is { name: string; mineAmt: string; goal: string } => x !== null)
+        .slice(0, 6);
+    })();
+
+    // --- Target accounts carrying their name. ---
+    const myTargets = (targets?.targets ?? []).filter(
+      (x) => (x.owner ?? "").trim().toLowerCase() === me
+    );
+    const targetPotential = myTargets.reduce((s, x) => s + (x.potential ?? 0), 0);
+
+    const pipelineRows =
+      mine.length === 0
+        ? `<tr><td style="padding:7px 0;color:#55637a;">No open deals on your name yet — pick one up on the Opportunities page.</td></tr>`
+        : [
+            row("Open deals you own", String(mine.length)),
+            row("Total contract value", usd(pipeValue)),
+            row("Weighted (value × confidence)", usd(pipeWeighted)),
+            ...(nextSign
+              ? [row(`Next signing: ${nextSign.deal}`, nextSign.date)]
+              : []),
+            ...(futureCount > 0
+              ? [row("Future deals waiting on a pitch", String(futureCount))]
+              : []),
+          ].join("");
+
+    const activityRows =
+      acts.length === 0
+        ? ""
+        : acts
+            .slice(0, 6)
+            .map((a) => {
+              const label = master
+                ? (masterFor(master, a.activity)?.label ?? a.activity)
+                : a.activity;
+              return row(
+                `${label} · ${a.deal}`,
+                `${ACTIVITY_STATUS_LABEL[a.status] ?? a.status} · ${a.date ?? ""}`
+              );
+            })
+            .join("") +
+          (acts.length > 6
+            ? `<tr><td style="padding:7px 0;color:#55637a;">and ${acts.length - 6} more in the app</td></tr>`
+            : "");
+
+    const goalHtml =
+      goalRows.length === 0
+        ? ""
+        : goalRows
+            .map((g) => row(g.name, `${g.mineAmt} <span style="font-weight:400;color:#55637a;">${g.goal}</span>`))
+            .join("");
+
+    const targetRows =
+      myTargets.length === 0
+        ? ""
+        : [
+            row("Accounts on your name", String(myTargets.length)),
+            ...(targetPotential > 0
+              ? [row("Estimated potential", usd(targetPotential))]
+              : []),
+          ].join("");
+
+    const usageRows = [
+      row("Times you signed in", String(t.logins)),
+      row("Files you opened", String(t.opened)),
+      row("Files you downloaded", String(t.downloaded)),
+    ].join("");
+
+    const html = emailShell(
+      `Your month at Freyr Sales`,
+      `<p>Hi ${rep.name.split(" ")[0]},</p>
+       <p>Here is where your book stands ${period}.</p>
+       ${section("Your pipeline", pipelineRows)}
+       ${activityRows ? section("Activities you logged", activityRows) : ""}
+       ${goalHtml ? section("Your goals", goalHtml) : ""}
+       ${targetRows ? section("Your target accounts", targetRows) : ""}
+       ${section("Your app activity", usageRows)}
+       <p style="margin-top:18px;"><a href="${appUrl("/opportunities")}" style="color:#0071e3;font-weight:600;">Open your pipeline</a></p>`
+    );
+
     const text = [
       `Hi ${rep.name.split(" ")[0]},`,
       "",
-      `Your Freyr Sales activity ${period}:`,
-      ...rows.map(([label, value]) => `  ${label}: ${value}`),
+      `Your book ${period}:`,
       "",
-      appUrl("/offerings"),
+      `Pipeline: ${mine.length} open deal(s), ${usd(pipeValue)} total, ${usd(pipeWeighted)} weighted`,
+      ...(nextSign ? [`Next signing: ${nextSign.deal} on ${nextSign.date}`] : []),
+      ...(acts.length ? [`Activities logged: ${acts.length}`] : []),
+      ...goalRows.map((g) => `Goal ${g.name}: ${g.mineAmt} ${g.goal}`),
+      ...(myTargets.length ? [`Target accounts: ${myTargets.length}`] : []),
+      `App: ${t.logins} sign-ins, ${t.opened} files opened, ${t.downloaded} downloaded`,
+      "",
+      appUrl("/opportunities"),
     ].join("\n");
 
     return {
       to: [rep.email as string],
       ...(cc.length ? { cc } : {}),
-      subject: `Your activity ${period}`,
+      subject: `Your month at Freyr Sales`,
       html,
       text,
-      reason: `${rep.name}: ${t.logins} sign-ins, ${t.opened} opened, ${t.downloaded} downloaded`,
+      reason: `${rep.name}: ${mine.length} deals ${usd(pipeValue)}, ${acts.length} activities, ${t.logins} sign-ins`,
     };
   });
 }
