@@ -13,15 +13,16 @@ import { RELEASE_NOTES, type ReleaseNote } from "./releaseNotes";
 import type { PreparedEmail } from "./monthlyEmails";
 
 /**
- * MAJOR UPDATES ANNOUNCE THEMSELVES (Anir, Aug 18: "if there is ever a major
- * update in the app, emails should be going out to users... This should be
- * automated").
+ * RELEASE ANNOUNCEMENT EMAILS — SENT ON ANIR'S WORD, NEVER ON A TIMER.
  *
- * The trigger is the release itself: a deploy that ships a lib/releaseNotes
- * entry with major: true gets emailed to every active member, once, the first
- * time a production container ticks after boot. The once-only ledger and the
- * lock live in the same store rows pattern as the monthly notes, so two
- * containers can never double-send.
+ * The flow he set (Aug 18): "when deploying I will specifically say that u
+ * should send out an email and then when it deploys u make sure its good and
+ * THEN after its good send the email. u wont have to figure out for urself
+ * if an email should be sent out." So: the release ships a lib/releaseNotes
+ * entry with major: true, the deploy is verified working, and only then does
+ * a person fire /api/cron/announce (CRON_SECRET) to send it. Nothing here is
+ * armed on boot. The once-only ledger and lock still guard against a double
+ * fire.
  */
 
 const STATE_ROW = "app-announcements:state";
@@ -69,31 +70,16 @@ export function announcementEmailFor(
   };
 }
 
-/** ONE EMAIL PER HUMAN INBOX. The directory can hold several rows that all
- *  land in the same mailbox — a duplicate membership, or +tag aliases like
- *  anir.s+3@ used for test sign-ins. An announcement mailed per ROW would put
- *  four copies in one inbox, so recipients collapse on the canonical mailbox
- *  (local part without the +tag), keeping the untagged row's name. */
-function canonicalMailbox(email: string): string {
-  const [local, domain] = email.toLowerCase().split("@");
-  return `${(local ?? "").split("+")[0]}@${domain ?? ""}`;
-}
-
+/** Every active real member with an email, exactly as the directory holds
+ *  them (Anir, Aug 18: "it should send to all emails it's fine"). */
 export async function recipients(): Promise<{ name: string; email: string }[]> {
   const workspace = process.env.FREYR_WORKSPACE_ID;
   if (!workspace) return [];
   const directory = await listWorkspaceAccess(workspace).catch(() => null);
-  const byInbox = new Map<string, { name: string; email: string }>();
-  for (const m of directory?.members ?? []) {
-    if (!m.active || !m.email || m.accountType !== "real") continue;
-    const key = canonicalMailbox(m.email);
-    const existing = byInbox.get(key);
-    const untagged = !m.email.includes("+");
-    if (!existing || (untagged && existing.email.includes("+"))) {
-      byInbox.set(key, { name: m.name, email: key });
-    }
-  }
-  return [...byInbox.values()].sort((a, b) => a.email.localeCompare(b.email));
+  return (directory?.members ?? [])
+    .filter((m) => m.active && m.email && m.accountType === "real")
+    .map((m) => ({ name: m.name, email: m.email as string }))
+    .sort((a, b) => a.email.localeCompare(b.email));
 }
 
 export async function pendingAnnouncements(): Promise<ReleaseNote[]> {
@@ -111,12 +97,11 @@ export type AnnouncementRunResult = {
 export async function sendAnnouncementsIfDue(options?: {
   force?: boolean;
 }): Promise<AnnouncementRunResult> {
-  // Production-only, same near-miss reasoning as the monthly run: a dev
-  // server holds the real mailer key, and an armed timer must never turn a
-  // laptop boot into a company-wide email. Deliberate sends go through the
-  // CRON_SECRET endpoint with force.
-  if (process.env.NODE_ENV !== "production" && !options?.force)
-    return { sent: false, reason: "scheduled send is production-only" };
+  // Only the CRON_SECRET endpoint calls this, always with force — a
+  // deliberate act by a person, after Anir said to send and the deploy was
+  // verified. The guard stays so no future caller can quietly automate it.
+  if (!options?.force)
+    return { sent: false, reason: "announcements only send when a person fires them" };
   if (!storeEnvReady()) return { sent: false, reason: "missing env (database)" };
   if (!mailerConfigured())
     return { sent: false, reason: "RESEND_API_KEY is not set" };

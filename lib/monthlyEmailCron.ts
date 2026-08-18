@@ -52,18 +52,6 @@ export function armMonthlyEmailSchedule(): void {
     } catch (error) {
       console.error("[monthly-emails] scheduled send failed:", error);
     }
-    // Same tick carries the release announcements (Anir, Aug 18: a major
-    // update "should be automated" — the deploy that ships a major release
-    // note is the trigger, this timer is the postman).
-    try {
-      const { sendAnnouncementsIfDue } = await import("./announcementEmails");
-      const ann = await sendAnnouncementsIfDue();
-      if (ann.sent || firstCheck) {
-        console.log(`[announcements] check: ${JSON.stringify(ann)}`);
-      }
-    } catch (error) {
-      console.error("[announcements] scheduled send failed:", error);
-    }
   };
 
   setInterval(tick, CHECK_MS);
