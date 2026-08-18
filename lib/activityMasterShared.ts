@@ -38,11 +38,11 @@ export const CONTRIBUTION_META: Record<
 > = {
   dollar: {
     label: "Dollar value",
-    hint: "The activity's money is the number — a $500K contract adds $500K.",
+    hint: "The activity's money is the number. A $500K contract adds $500K.",
   },
   count: {
     label: "Counts as 1",
-    hint: "Each one adds one — a pilot done is 1, the next pilot is 2. Nobody types a number.",
+    hint: "Each one adds one. A pilot done is 1, the next pilot is 2. Nobody types a number.",
   },
   typed: {
     // Suren, Aug 17 answers: "set it up in the master that something is a one,

@@ -17,19 +17,19 @@ export const MOCK_LINKEDIN_PROFILE = {
     {
       title: "VP Regulatory Affairs",
       company: "BioNex Therapeutics",
-      duration: "2019 – Present",
+      duration: "2019. Present",
       description:
         "Leading global regulatory strategy for a pipeline of 8 biologics and 3 small molecules.",
     },
     {
       title: "Director, Regulatory Affairs",
       company: "Novartis",
-      duration: "2014 – 2019",
+      duration: "2014-2019",
     },
     {
       title: "Regulatory Reviewer",
       company: "US FDA (CDER)",
-      duration: "2008 – 2014",
+      duration: "2008-2014",
     },
   ],
   education: [

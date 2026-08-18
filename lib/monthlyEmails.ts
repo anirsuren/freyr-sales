@@ -179,7 +179,7 @@ export async function buildOwnerRefreshEmails(
       `Hi ${who.name.split(" ")[0]},`,
       "",
       "These offerings you own have not had a new file in a while:",
-      ...lines.map((l) => `  • ${l.name} — ${l.when} (${l.files} files)`),
+      ...lines.map((l) => `  • ${l.name}. ${l.when} (${l.files} files)`),
       "",
       appUrl("/offerings"),
     ].join("\n");
@@ -344,7 +344,7 @@ function digestFor(
 
     const pipelineRows =
       mine.length === 0
-        ? `<tr><td style="padding:7px 0;color:#55637a;">No open deals on your name yet — pick one up on the Opportunities page.</td></tr>`
+        ? `<tr><td style="padding:7px 0;color:#55637a;">No open deals on your name yet. Pick one up on the Opportunities page.</td></tr>`
         : [
             row("Open deals you own", String(mine.length)),
             row("Total contract value", usd(pipeValue)),

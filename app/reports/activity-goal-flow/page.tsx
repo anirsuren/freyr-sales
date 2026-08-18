@@ -70,15 +70,15 @@ export default async function ActivityGoalFlowPage() {
       <SmartBack fallback="/reports">Reports</SmartBack>
       <PageHeader
         title="What each activity earned"
-        subtitle="When someone logs a result through an activity — a pilot, a contract — it lands here: one row per activity, one column per goal, and the money or count that activity put into that goal."
+        subtitle="When someone logs a result through an activity (a pilot, a contract), it lands here: one row per activity, one column per goal, and the money or count that activity put into that goal."
       />
 
       {totalEntries === 0 ? (
         <Card className="p-8">
           <EmptyState
             icon={Waypoints}
-            title="Nothing here yet — and that's normal"
-            description="This page fills in on its own as the team works. Example: someone marks a Contract completed for $50K and points it at the Renewals goal — a $50K box appears here where Contract meets Renewals. Nobody has logged a result through an activity yet, so there is nothing to add up. Older results never said which activity they came from, so they stay out instead of being guessed."
+            title="Nothing here yet, and that's normal"
+            description="This page fills in on its own as the team works. Example: someone marks a Contract completed for $50K and points it at the Renewals goal. A $50K box appears here where Contract meets Renewals. Nobody has logged a result through an activity yet, so there is nothing to add up. Older results never said which activity they came from, so they stay out instead of being guessed."
           />
         </Card>
       ) : (

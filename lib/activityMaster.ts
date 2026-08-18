@@ -263,7 +263,7 @@ export async function removeMasterActivity(id: string): Promise<ActivityMasterSt
   if (!hit) throw new Error("That activity is not on the master.");
   if (hit.builtIn) {
     throw new Error(
-      `${hit.label} is part of the app's activity vocabulary and cannot be removed — disconnect its goals instead.`
+      `${hit.label} is part of the app's activity vocabulary and cannot be removed. Disconnect its goals instead.`
     );
   }
   state.activities = state.activities.filter((a) => a !== hit);

@@ -29,7 +29,7 @@ export async function PATCH(
     const market = await commitOfferingsChange(() => updateMarket(id, name));
     if (!market)
       return NextResponse.json(
-        { error: `Could not rename to "${name}" — that market may already exist.` },
+        { error: `Could not rename to "${name}". That market may already exist.` },
         { status: 409 }
       );
     return NextResponse.json({ ok: true, market });

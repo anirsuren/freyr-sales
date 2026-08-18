@@ -121,7 +121,7 @@ export function ActivityGoalPrompt({
           // activity→goal flow can be reported later.
           activityId: master.id,
           customer: customerName,
-          note: `${label} on ${customerName} — logged from the activity`,
+          note: `${label} on ${customerName}. Logged from the activity`,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -143,7 +143,7 @@ export function ActivityGoalPrompt({
     const q = new URLSearchParams({
       logGoal: picked.id,
       logCustomer: customerName,
-      logNote: `${label} on ${customerName} — logged from the activity`,
+      logNote: `${label} on ${customerName}. Logged from the activity`,
     });
     if (amount > 0) q.set("logAmount", String(amount));
     if (creditTo && creditTo !== meName) q.set("logPerson", creditTo);
@@ -162,7 +162,7 @@ export function ActivityGoalPrompt({
         >
           {label}
         </span>
-        on <b className="text-text-primary">{customerName}</b> — and {label}
+        on <b className="text-text-primary">{customerName}</b>, and {label}
         {goals.length === 1 ? " feeds a goal." : " feeds these goals."}
       </p>
 
@@ -262,7 +262,7 @@ export function ActivityGoalPrompt({
               " The next screen is the usual Log a result with everything filled in."}
           </>
         ) : (
-          "Pick which goal this one counts toward — only the goals on the master's list for this activity are offered."
+          "Pick which goal this one counts toward. Only the goals on the master's list for this activity are offered."
         )}
       </p>
 

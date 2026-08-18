@@ -132,7 +132,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           Member roles
           <InfoHint
             text={
-              "Rep, Manager or Admin — what each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
+              "Rep, Manager or Admin. What each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
             }
           />
         </p>

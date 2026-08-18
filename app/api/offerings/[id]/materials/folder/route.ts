@@ -72,7 +72,7 @@ export async function PATCH(
     );
     if (!result)
       return NextResponse.json(
-        { error: `Could not rename to "${to}" — a folder by that name may already exist.` },
+        { error: `Could not rename to "${to}". A folder by that name may already exist.` },
         { status: 409 }
       );
     /**

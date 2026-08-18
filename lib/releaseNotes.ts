@@ -33,9 +33,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     summary:
       "The Opportunities page now groups your deals under each customer, deal activities take notes, and the app now sends you a monthly summary of your book.",
     points: [
-      "Opportunities: deals are grouped under each customer with its own card — fold a customer away, and see each group's weighted progress at a glance.",
+      "Opportunities: deals are grouped under each customer with its own card. Fold a customer away, and see each group's weighted progress at a glance.",
       "Filters across the app are multi-select now: pick two levels, three statuses, or several customers at once.",
-      "Deal activities are a proper table and each activity can carry a note — click a note to edit it in place.",
+      "Deal activities are a proper table and each activity can carry a note. Click a note to edit it in place.",
       "The Activity Master (which goal each activity feeds) now lives on the Admin page.",
       "Once a month the app emails you your own numbers: your pipeline, activities, goals and target accounts.",
     ],

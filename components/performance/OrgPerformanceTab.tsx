@@ -722,7 +722,7 @@ export function OrgPerformanceTab({
                     { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
                     { h: "Met", hint: "Met means the actual has reached the target." },
                     { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
-                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged — with nothing logged there is nothing to sign off." },
+                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged. With nothing logged there is nothing to sign off." },
                     { h: "Actions" },
                   ] as { h: string; hint?: string }[]
                 ).map((col, i) => (
@@ -858,7 +858,7 @@ function MiniBar({
         />
       </span>
       <span className="text-[12px] font-semibold tnum" style={{ color }}>
-        {target > 0 ? `${Math.round(pctMet(actual, target))}%` : "—"}
+        {target > 0 ? `${Math.round(pctMet(actual, target))}%` : ", "}
       </span>
     </span>
   );
@@ -1065,7 +1065,7 @@ function GoalRows({
               Set target
             </button>
           ) : (
-            <span className="text-[13px] text-text-tertiary">—</span>
+            <span className="text-[13px] text-text-tertiary">, </span>
           )}
         </td>
         <td className="whitespace-nowrap px-4 py-4">
@@ -1083,7 +1083,7 @@ function GoalRows({
           {goal.target > 0 ? (
             <MetPill met={actual >= goal.target} size="sm" />
           ) : (
-            <span className="text-[12px] text-text-tertiary">—</span>
+            <span className="text-[12px] text-text-tertiary">, </span>
           )}
         </td>
         {/* THE SHINE BELONGS TO THE BAR, NOT THE ROW (Anir, Aug 16: "when my
@@ -1111,7 +1111,7 @@ function GoalRows({
               <button
                 type="button"
                 onClick={() => onEditGoal(goal)}
-                title="No schedule set — click to open this goal and add one"
+                title="No schedule set. Click to open this goal and add one"
                 // Hugs the pill exactly — a block button drew its own bigger
                 // ring around the chip and read as two shapes (Anir: "button
                 // look weird"). The pill IS the button; hover just deepens it.
@@ -1167,7 +1167,7 @@ function GoalRows({
                 e.stopPropagation();
                 onEditGoal(goal);
               }}
-              title={`Edit ${goal.name} — target, schedule, tracking`}
+              title={`Edit ${goal.name}. Target, schedule, tracking`}
               aria-label={`Edit ${goal.name}`}
               className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
             >
@@ -1315,7 +1315,7 @@ function GoalRows({
                               </span>
                             </td>
                             <td className="whitespace-nowrap py-2.5 pr-3 tnum">
-                              {a.target > 0 ? fmtAmount(goal.unit, a.target) : "—"}
+                              {a.target > 0 ? fmtAmount(goal.unit, a.target) : ", "}
                             </td>
                             <td className="whitespace-nowrap py-2.5 pr-3 font-bold text-text-primary tnum">
                               {fmtAmount(goal.unit, aActual)}
@@ -1348,7 +1348,7 @@ function GoalRows({
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-text-tertiary">—</span>
+                                <span className="text-text-tertiary">, </span>
                               )}
                             </td>
                             <td className="py-2.5">
@@ -1509,7 +1509,7 @@ function GoalRows({
                               of{" "}
                               {s.target > 0
                                 ? fmtAmount(goal.unit, s.target)
-                                : "—"}
+                                : ", "}
                             </span>
                             <MiniBar
                               actual={subActual}
@@ -1620,7 +1620,7 @@ function GoalRows({
                                   <td className="whitespace-nowrap px-2 py-2 text-[12.5px] text-text-secondary tnum">
                                     {p.target > 0
                                       ? fmtAmount(goal.unit, p.target)
-                                      : "—"}
+                                      : ", "}
                                   </td>
                                   <td className="whitespace-nowrap px-2 py-2">
                                     <span className="text-[12.5px] font-semibold text-text-primary tnum">

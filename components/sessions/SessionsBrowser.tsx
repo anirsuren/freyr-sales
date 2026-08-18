@@ -62,7 +62,7 @@ export interface SessionRow {
 const SORTS = [
   { key: "recent", label: "Newest", icon: CalendarClock, color: "#0F766E" },
   { key: "oldest", label: "Oldest", icon: History, color: "#7C3AED" },
-  { key: "company", label: "Company A–Z", icon: Building2, color: "#0071E3" },
+  { key: "company", label: "Company A, Z", icon: Building2, color: "#0071E3" },
 ];
 
 /**

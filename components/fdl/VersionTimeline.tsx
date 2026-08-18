@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Maximize2 } from "lucide-react";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
 import { HoverCard } from "@/components/ui/HoverCard";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { withV } from "@/lib/version";
 import type { FdlRelease } from "@/lib/offerings";
 
@@ -128,11 +126,15 @@ function pillWidth(release: TimelineRelease) {
 export function VersionTimeline({
   releases,
   onOpen,
+  onFitReady,
   selectedIds = [],
 }: {
   releases: TimelineRelease[];
   /** Clicking a marker opens the versions popup with this one unfolded. */
   onOpen?: (releaseId: string) => void;
+  /** Hands the parent the fit-everything call so the control can live in the
+   *  card header, on the same line as Add version (Anir, Aug 18). */
+  onFitReady?: (fit: () => void) => void;
   /** Versions whose panel is open — their pills wear a ring. */
   selectedIds?: string[];
 }) {
@@ -227,6 +229,10 @@ export function VersionTimeline({
     fit();
     setReady(true);
   }, [ready, width, fit]);
+
+  useEffect(() => {
+    onFitReady?.(fit);
+  }, [fit, onFitReady]);
 
   const msPerPx = DAY / pxPerDay;
   const xOf = useCallback(
@@ -400,27 +406,9 @@ export function VersionTimeline({
 
   return (
     <div className="mt-3.5">
-      {/* NO LEGEND (Anir, Aug 12: "you don't need the three tags… save some
-          space"). Each pill says its own status, so a colour key you had to
-          look up and translate is three chips of pure overhead. */}
-      <div className="mb-2 flex flex-wrap items-center justify-end gap-3">
-        <div className="flex items-center gap-2.5">
-          <p className="hidden text-[11.5px] text-text-tertiary sm:block">
-            Swipe or drag to pan · pinch to zoom
-          </p>
-          <Tooltip label="Fit every version">
-            <button
-              type="button"
-              aria-label="Fit every version"
-              onClick={fit}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-            >
-              <Maximize2 size={13} strokeWidth={2.2} />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
+      {/* NO LEGEND and no toolbar row: the Fit control moved up beside Add
+          version, and the pan/zoom hint said what dragging already teaches
+          (Anir, Aug 18: "you don't need to say Swipe or drag"). */}
       <div
         ref={shellRef}
         onPointerDown={onPointerDown}
@@ -662,6 +650,10 @@ export function VersionTimeline({
                     </button>
                   </HoverCard>
                 </div>
+                {/* The dot LOOKS 14px but the button is a 36px circle — the
+                    pixel-hunt was real (Anir, Aug 18: "my cursor is clearly
+                    over it… it's just a small circle"). The hit area is
+                    invisible; only the inner dot draws. */}
                 <button
                   type="button"
                   aria-label={`Open ${withV(release.version)}`}
@@ -669,20 +661,21 @@ export function VersionTimeline({
                   onClick={() => onOpen?.(release.id)}
                   onMouseEnter={() => setHovered(release.id)}
                   onMouseLeave={() => setHovered(null)}
-                  className="absolute z-20 h-3.5 w-3.5 -translate-x-1/2 cursor-pointer rounded-full transition-transform duration-200 hover:scale-[1.35] active:scale-95"
-                  style={{
-                    left: x,
-                    top: DOT_TOP,
-                    background: tone.dot,
-                    border: "3px solid var(--white)",
-                    boxShadow: isHot
-                      ? `0 0 0 3px ${tone.dot}, 0 0 0 9px ${tone.bar}`
-                      : `0 0 0 2px ${tone.dot}`,
-                    transform: isHot
-                      ? "translateX(-50%) scale(1.15)"
-                      : "translateX(-50%)",
-                  }}
-                />
+                  className="absolute z-20 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full"
+                  style={{ left: x, top: DOT_TOP + 7 }}
+                >
+                  <span
+                    className="block h-3.5 w-3.5 rounded-full transition-transform duration-200"
+                    style={{
+                      background: tone.dot,
+                      border: "3px solid var(--white)",
+                      boxShadow: isHot
+                        ? `0 0 0 3px ${tone.dot}, 0 0 0 9px ${tone.bar}`
+                        : `0 0 0 2px ${tone.dot}`,
+                      transform: isHot ? "scale(1.35)" : undefined,
+                    }}
+                  />
+                </button>
                 {snug && (
                   <span
                     className="pointer-events-none absolute z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold text-text-secondary"

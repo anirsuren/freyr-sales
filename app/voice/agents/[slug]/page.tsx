@@ -213,8 +213,8 @@ export default async function VoiceAgentPage({
   // duration_secs. Shorter → longer, warm → green, never a yellow band.
   const LENGTH_BUCKETS: { label: string; min: number; max: number; color: string }[] = [
     { label: "Under 1 min", min: 0, max: 60, color: "#C2410C" },
-    { label: "1–2 min", min: 60, max: 120, color: VIZ.sky },
-    { label: "2–4 min", min: 120, max: 240, color: VIZ.blue },
+    { label: "1-2 min", min: 60, max: 120, color: VIZ.sky },
+    { label: "2-4 min", min: 120, max: 240, color: VIZ.blue },
     { label: "4 min+", min: 240, max: Number.POSITIVE_INFINITY, color: VIZ.green },
   ];
   const lengthBuckets: LengthBucket[] = LENGTH_BUCKETS.map((bucket) => {

@@ -153,7 +153,7 @@ export function PeopleTab({
             {person !== meName
               ? `viewing ${first}'s goals`
               : canSwitch
-                ? "your goals — pick a name to see somebody else's"
+                ? "your goals. Pick a name to see somebody else's"
                 : "your goals"}
           </span>
         </span>

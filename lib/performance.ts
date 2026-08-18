@@ -604,7 +604,7 @@ export async function logActual(input: {
     // Composite goals are only ever a sum (Suren, Aug 13: "people enter only
     // the sub-level, and people do not enter the main level").
     throw new Error(
-      "Nobody logs on this goal directly — it adds up from its components. Log the result on the right component."
+      "Nobody logs on this goal directly. It adds up from its components. Log the result on the right component."
     );
   }
   let subgoalId: string | null = null;
@@ -1060,7 +1060,7 @@ export async function assignGoalToGroup(input: {
       const named = overlap
         .map((n) => `${n} (counts through ${countedIn.get(n.toLowerCase())})`)
         .join(", ");
-      overlapWarning = `Heads up: on this goal, ${named} — the same person never counts twice.`;
+      overlapWarning = `Heads up: on this goal, ${named}. The same person never counts twice.`;
     }
   }
 

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       if (!allowed.includes(domain)) {
         return NextResponse.json(
           {
-            error: `Invitations are for company addresses only — use an @${allowed[0]} email.`,
+            error: `Invitations are for company addresses only. Use an @${allowed[0]} email.`,
           },
           { status: 400 }
         );

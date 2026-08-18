@@ -432,7 +432,7 @@ export function offeringsAnswer(
       (c) => c.family === famKey && (!sizeKey || c.size === sizeKey)
     );
     const ids = new Set(types.map((c) => c.id));
-    const label = sizeKey ? `${famKey} – ${sizeKey}` : famKey;
+    const label = sizeKey ? `${famKey}. ${sizeKey}` : famKey;
     const matches = offs.filter((o) =>
       o.customer_type_ids.some((id) => ids.has(id))
     );

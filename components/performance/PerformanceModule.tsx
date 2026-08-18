@@ -559,7 +559,7 @@ export function PerformanceModule({
         open={goalModal !== null}
         onClose={() => setGoalModal(null)}
         title={
-          goalModal?.editing ? `Edit goal — ${goalModal.editing.name}` : "New goal"
+          goalModal?.editing ? `Edit goal. ${goalModal.editing.name}` : "New goal"
         }
         size="wide"
       >
@@ -580,7 +580,7 @@ export function PerformanceModule({
           onClose={() => setSubModal(null)}
           title={
             subModal.editing
-              ? `Edit subgoal — ${subModal.editing.name}`
+              ? `Edit subgoal. ${subModal.editing.name}`
               : `Add a subgoal to ${subModal.goal.name}`
           }
           size="workflow"
@@ -632,8 +632,8 @@ function HowItWorksModal({
       title: "How Org performance works",
       steps: [
         { title: "Only tracked goals appear here", body: "The Goal Master decides what is on the plan; this room shows those goals with their targets and the numbers achieved so far." },
-        { title: "Numbers roll one way", body: "A result is always entered against a person. Person rolls into group, group rolls into organization — never the other way." },
-        { title: "Pace compares against the calendar", body: "Lagging / On track / Ahead measure achieved against where the goal's own schedule says it should be today. No schedule set — click the chip and add one." },
+        { title: "Numbers roll one way", body: "A result is always entered against a person. Person rolls into group, group rolls into organization. Never the other way." },
+        { title: "Pace compares against the calendar", body: "Lagging / On track / Ahead measure achieved against where the goal's own schedule says it should be today. No schedule set. Click the chip and add one." },
       ],
     },
     groups: {
@@ -641,7 +641,7 @@ function HowItWorksModal({
       steps: [
         { title: "One group at a time", body: "Pick the group up top; its goals, its people and their shares are what you see." },
         { title: "The group's number is its people's", body: "Assign a slice to each person; the group achieves what its members log, summed. The owner carries the group without needing a target of their own." },
-        { title: "Owners verify their people's claims", body: "A logged result waits in the owner's queue until reviewed — the amber strip at the top is that queue." },
+        { title: "Owners verify their people's claims", body: "A logged result waits in the owner's queue until reviewed. The amber strip at the top is that queue." },
       ],
     },
     people: {
@@ -654,7 +654,7 @@ function HowItWorksModal({
     "goal-master": {
       title: "How the Goal Master works",
       steps: [
-        { title: "Every goal lives here", body: "Goal types, goals and their subgoals — entered once, read everywhere." },
+        { title: "Every goal lives here", body: "Goal types, goals and their subgoals. Entered once, read everywhere." },
         { title: "Tracking puts a goal on the plan", body: "Tracking ON means it is counted and shown in the performance rooms. OFF means it waits here." },
         { title: "Targets split downward", body: "The annual number on the goal, split across subgoals, split again across the people responsible." },
       ],
@@ -1111,7 +1111,7 @@ function MasterTab({
                             ))}
                           </span>
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">—</span>
+                          <span className="text-[11.5px] text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-4 py-4">
@@ -1513,7 +1513,7 @@ function GroupSplitPanel({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void saveTarget(m);
                   }}
-                  placeholder="—"
+                  placeholder=", "
                   aria-label={`${m}'s target on ${goal.name}`}
                   className="h-[30px] w-[96px] rounded-lg border border-border-light bg-white px-2 text-right text-[12px] text-text-primary outline-none transition-colors focus:border-blue-primary tnum"
                 />
@@ -2750,7 +2750,7 @@ function GoalPopupBody({
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned individually
-          <InfoHint text={"People given this goal on their own, outside any group above.\nA group's people are listed inside their group, with their share of its target — they are not repeated here.\nEverything rolls up the same way: person → group → organization."} />
+          <InfoHint text={"People given this goal on their own, outside any group above.\nA group's people are listed inside their group, with their share of its target. They are not repeated here.\nEverything rolls up the same way: person → group → organization."} />
         </p>
         {/* A PLUS, NOT A SENTENCE (Anir, Aug 15: "it can just be a blue and
             white plus sign on the right side of the assigned people text").
@@ -3150,7 +3150,7 @@ function GoalEditorFields({
       const amt = parseAmountInput(m.amount);
       const hasAmount = amt !== null && amt > 0;
       if (!hasDate && !hasAmount)
-        return `Milestone ${i + 1} is empty — give it a date and a figure, or remove it.`;
+        return `Milestone ${i + 1} is empty. Give it a date and a figure, or remove it.`;
       if (!hasDate) return `Milestone ${i + 1} needs a date.`;
       if (!hasAmount) return `Milestone ${i + 1} needs a figure to reach.`;
     }
@@ -3158,7 +3158,7 @@ function GoalEditorFields({
     const seen = new Set<string>();
     for (const m of milestones) {
       const d = m.date.trim();
-      if (d && seen.has(d)) return `Two milestones share ${d} — keep one.`;
+      if (d && seen.has(d)) return `Two milestones share ${d}. Keep one.`;
       if (d) seen.add(d);
     }
     return null;
@@ -3453,7 +3453,7 @@ function GoalEditorFields({
                         )}
                       >
                         {Math.round((amt / parsedTarget) * 100)}% of target
-                        {over ? " — above it" : ""}
+                        {over ? ". Above it" : ""}
                       </span>
                     )}
                     <button
@@ -3820,7 +3820,7 @@ function SubgoalEditorFields({
           <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Groups on this subgoal
-              <InfoHint text={"A whole department carrying this slice. Its people are added below automatically at a target of 0, so they can log straight away.\nSave the subgoal first, then assign — a group needs something to attach to."} />
+              <InfoHint text={"A whole department carrying this slice. Its people are added below automatically at a target of 0, so they can log straight away.\nSave the subgoal first, then assign. A group needs something to attach to."} />
             </label>
             <div className="mt-2 space-y-1.5">
               {(editing.groupAssignments ?? []).length === 0 ? (
@@ -4833,7 +4833,7 @@ function LogActualModal({
               <p className="mt-1.5 text-[11px] text-text-tertiary">
                 No opportunities recorded on {customer.trim()} yet
                 {(selectedAccount?.deals.length ?? 0) > 0
-                  ? " — the engagements on the account are still listed above."
+                  ? ". The engagements on the account are still listed above."
                   : "."}
               </p>
             )

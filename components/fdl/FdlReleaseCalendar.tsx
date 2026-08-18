@@ -328,19 +328,23 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           >
             <thead>
               <tr>
-                <th className="sticky left-0 z-20 w-[240px] border-b border-r border-border-light bg-surface px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+                {/* PINNED BOTH WAYS (Anir, Aug 18: "the left side's always
+                    getting pinned, but why is the top side not?"). The month
+                    header rides the vertical scroll exactly like the name
+                    column rides the horizontal one — nothing to toggle. */}
+                <th className="sticky left-0 top-0 z-30 w-[240px] border-b border-r border-border-light bg-surface px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
                   Component ↓ <span className="text-blue-primary">Month →</span>
                 </th>
                 {monthRange.map((m) => (
                   <th
                     key={m}
                     className={cn(
-                      "min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em] transition-colors duration-150",
-                      m === nowIndex
-                        ? "bg-blue-light/60 text-blue-primary"
-                        : cross?.col === m
-                          ? "bg-blue-light/45 text-blue-primary"
-                          : "text-text-tertiary"
+                      // Solid backgrounds only: a translucent sticky header
+                      // lets rows read straight through it mid-scroll.
+                      "sticky top-0 z-20 min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em] transition-colors duration-150",
+                      m === nowIndex || cross?.col === m
+                        ? "bg-blue-light text-blue-primary"
+                        : "bg-white text-text-tertiary"
                     )}
                   >
                     {monthLabel(m)}
@@ -456,7 +460,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
       <Modal
         open={peek !== null}
         onClose={() => setPeek(null)}
-        title={peek ? `${peek.component.name} — ${withV(peek.release.version)}` : ""}
+        title={peek ? `${peek.component.name}. ${withV(peek.release.version)}` : ""}
       >
         {peek && (() => {
           const status = releaseStatus(peek.release);

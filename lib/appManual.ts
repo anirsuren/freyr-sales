@@ -33,7 +33,7 @@ export type ManualSection = {
 const GLOBAL: ManualSection = {
   routes: [""],
   keywords: [],
-  title: "Freyr Sales Intelligence — the basics",
+  title: "Freyr Sales Intelligence. The basics",
   body: `This is Freyr's internal sales platform. The left rail in the live
 workspace is: Agent, Offerings, FDL Components, Customers, Team, Reports,
 Performance, Market Intel, Admin. Settings and Notifications are reached from

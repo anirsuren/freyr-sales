@@ -598,7 +598,7 @@ export function CustomersBrowser({
               // Dark teal, not amber: this label is drawn in its own colour, and
               // it must not echo the caution orange in the health filter beside it.
               { value: "recent", label: "Newest", icon: CalendarClock, color: "#0F766E" },
-              { value: "company", label: "Company A–Z", icon: ArrowDownAZ, color: "#0071E3" },
+              { value: "company", label: "Company A, Z", icon: ArrowDownAZ, color: "#0071E3" },
               { value: "size", label: "Opportunity", icon: Target, color: "#7C3AED" },
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
@@ -723,7 +723,7 @@ export function CustomersBrowser({
           <p className="text-[13px] text-text-secondary tnum">
             Showing{" "}
             <span className="font-semibold text-text-primary">
-              {rangeStart}–{rangeEnd}
+              {rangeStart}-{rangeEnd}
             </span>{" "}
             of <span className="font-semibold text-text-primary">{filtered.length}</span>{" "}
             {filtered.length === 1 ? "account" : "accounts"}

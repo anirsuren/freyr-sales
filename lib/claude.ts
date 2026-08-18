@@ -345,7 +345,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
       why_this_contact:
         "Dr. Mehta is a former FDA CDER reviewer who has led 12 NDA/MAA approvals; she will value submission expertise from former agency reviewers over generic outsourcing.",
       pitch_angle:
-        "Accelerate the upcoming NDA with CTD dossier preparation handled by former FDA/EMA reviewers, cutting prep time 30–40%.",
+        "Accelerate the upcoming NDA with CTD dossier preparation handled by former FDA/EMA reviewers, cutting prep time 30-40%.",
       freyr_language_to_use: [
         "accelerate your regulatory journey",
         "global dossier expertise",

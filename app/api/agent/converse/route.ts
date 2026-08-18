@@ -620,7 +620,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
             pageContext +
             "\n" + '"""' + "\n" +
             (pageLinks.length
-              ? "LINKS ON THIS PAGE (label — destination). Use these when asked " +
+              ? "LINKS ON THIS PAGE (label, then destination). Use these when asked " +
                 "for an article, source or link:\n" +
                 pageLinks.map((l: string) => `- ${l}`).join("\n") +
                 "\n"

@@ -226,7 +226,7 @@ export function FolderBrowserSelect({
                         </span>
                         <span className="block text-[10.5px] text-text-tertiary">
                           {parent
-                            ? `${kids} ${kids === 1 ? "subfolder" : "subfolders"} inside — open to pick one`
+                            ? `${kids} ${kids === 1 ? "subfolder" : "subfolders"} inside. Open to pick one`
                             : `${files} ${files === 1 ? "file" : "files"}`}
                         </span>
                       </span>

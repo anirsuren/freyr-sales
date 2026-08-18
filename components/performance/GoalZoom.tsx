@@ -371,7 +371,7 @@ export function GoalZoom({
         const y = nowFy - 4 + i;
         return build(
           fiscalLabel(y),
-          `Apr ${String(y).slice(2)} – Mar ${String(y + 1).slice(2)}`,
+          `Apr ${String(y).slice(2)}. Mar ${String(y + 1).slice(2)}`,
           fiscalRange(y, "year"),
           y === nowFy
         );
@@ -393,7 +393,7 @@ export function GoalZoom({
         const range = fiscalRange(fy, "half", h);
         return build(
           `H${h + 1}`,
-          `${monthLabels[h * 6].slice(0, 3)} – ${monthLabels[h * 6 + 5].slice(0, 3)}`,
+          `${monthLabels[h * 6].slice(0, 3)}. ${monthLabels[h * 6 + 5].slice(0, 3)}`,
           range,
           now >= range[0] && now < range[1]
         );

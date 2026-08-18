@@ -113,7 +113,7 @@ export function TargetSlider({
               step={step}
               value={Math.min(amount, max)}
               onChange={(e) => onChange(e.target.value)}
-              aria-label={`${label} — drag to set`}
+              aria-label={`${label}. Drag to set`}
               className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
             />
           </span>
@@ -148,7 +148,7 @@ export function TargetSlider({
             onChange={(e) => onChange(e.target.value)}
             inputMode="decimal"
             placeholder={placeholder ?? (unit === "currency" ? "e.g. 900k" : "e.g. 120")}
-            aria-label={`${label} — type an exact figure`}
+            aria-label={`${label}. Type an exact figure`}
             className={cn(
               "h-[38px] w-full rounded-lg border bg-white pr-3 text-[13.5px] outline-none tnum focus:border-blue-primary",
               symbol ? "pl-7" : "px-3",

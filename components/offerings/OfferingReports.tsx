@@ -946,7 +946,7 @@ export function OfferingReports({
                       <td className="px-4 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">{line?.revenue_type === "license" && line.num_licenses ? line.num_licenses : "-"}</td>
                       <td className="px-4 py-3 text-[11.5px] text-text-secondary whitespace-nowrap">
                         {line && (line.start_date || line.end_date)
-                          ? `${formatDate(line.start_date)} – ${formatDate(line.end_date)}`
+                          ? `${formatDate(line.start_date)}. ${formatDate(line.end_date)}`
                           : "-"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

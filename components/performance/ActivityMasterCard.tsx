@@ -161,7 +161,7 @@ export function ActivityMasterCard({
             </Button>
           ) : (
             <span className="text-[11.5px] text-text-tertiary">
-              {live ? "Admins edit this list" : "Sample data — switch to Real mode to change the master"}
+              {live ? "Admins edit this list" : "Sample data. Switch to Real mode to change the master"}
             </span>
           )}
         </span>
@@ -219,7 +219,7 @@ export function ActivityMasterCard({
                   <div>
                     <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                       How it counts
-                      <InfoHint text={"Counts as 1 — each one adds one.\nDollar value — the activity's money is the number.\nPerson types the number — typed at logging time.\nNot counted — logged for the record only."} />
+                      <InfoHint text={"Counts as 1. Each one adds one.\nDollar value. The activity's money is the number.\nPerson types the number. Typed at logging time.\nNot counted. Logged for the record only."} />
                     </span>
                     {writable ? (
                       <ColorSelect
@@ -318,8 +318,8 @@ export function ActivityMasterCard({
                                 key={gid}
                                 title={
                                   pct === null
-                                    ? `${g.name} — no target set yet`
-                                    : `${g.name} is ${pct}% filled overall — all sources, not just ${a.label}`
+                                    ? `${g.name}. No target set yet`
+                                    : `${g.name} is ${pct}% filled overall. All sources, not just ${a.label}`
                                 }
                                 className="inline-flex max-w-full flex-col gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
                                 style={{ background: `${t.color}14`, color: t.color }}

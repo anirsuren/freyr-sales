@@ -719,7 +719,7 @@ export function OpportunitiesBrowser({
                             opening anything. */}
                         <td className="px-4 py-3.5">
                           {rows.length === 0 && names.length === 0 ? (
-                            <span className="text-[12px] text-text-tertiary">—</span>
+                            <span className="text-[12px] text-text-tertiary">, </span>
                           ) : rows.length > 0 ? (
                             /* One chip per DISTINCT offering — a deal quoted
                                as ARR + OTS is two rows of the same offering,
@@ -805,7 +805,7 @@ export function OpportunitiesBrowser({
                                   }
                                 >
                                   {shownConfidence === undefined
-                                    ? "—"
+                                    ? ", "
                                     : money(weightedValue(o))}
                                 </span>
                               </span>
@@ -862,7 +862,7 @@ export function OpportunitiesBrowser({
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                          {o.estSignDate ?? "—"}
+                          {o.estSignDate ?? ", "}
                         </td>
                         <td className="px-2 py-3.5">
                           <span className="flex items-center justify-end gap-0.5">
@@ -988,7 +988,7 @@ export function OpportunitiesBrowser({
                                           <>
                                             <b className="text-blue-primary">
                                               {line.confidence === undefined
-                                                ? "—"
+                                                ? ", "
                                                 : money(lineWeighted(line))}
                                             </b>
                                             <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
@@ -1219,7 +1219,7 @@ export function OpportunitiesBrowser({
         <StatTile
           icon={Percent}
           label="Average confidence"
-          value={totals.avgConfidence === null ? "—" : `${totals.avgConfidence}%`}
+          value={totals.avgConfidence === null ? ", " : `${totals.avgConfidence}%`}
           sub={
             totals.avgConfidence === null
               ? "none recorded yet"
@@ -1416,7 +1416,7 @@ export function OpportunitiesBrowser({
                   onChange={(e) =>
                     setEditing({ ...editing, name: e.target.value })
                   }
-                  placeholder="e.g. GRI platform — Novartis"
+                  placeholder="e.g. GRI platform. Novartis"
                   className={inputCls}
                 />
               </Field>
@@ -1522,7 +1522,7 @@ export function OpportunitiesBrowser({
                           value: "__other",
                           label: customName
                             ? "Type a different name"
-                            : "Not on the list — type it",
+                            : "Not on the list. Type it",
                           color: "#8E98A8",
                           icon: Tag,
                         },
@@ -1647,7 +1647,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Opportunity id"
-                hint="The number from Freyr's own CRM (like DO_0026765). It comes from that system, so the app can't invent it — paste it when the deal has one."
+                hint="The number from Freyr's own CRM (like DO_0026765). It comes from that system, so the app can't invent it. Paste it when the deal has one."
               >
                 <input
                   value={editing.externalId}
@@ -1807,6 +1807,14 @@ function Fact({
  * The colour says what the number means while you set it: green when it is
  * nearly won, caution in the middle, red for a long shot.
  */
+
+/** "1000000" reads as "1,000,000" while you type (Anir, Aug 18: "if I type
+ *  1000, it should automatically add the comma"). Display only — the stored
+ *  value stays bare digits. */
+function withCommas(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 function ConfidenceSlider({
   value,
   onChange,
@@ -1823,26 +1831,34 @@ function ConfidenceSlider({
   const committed =
     n === null || Number.isNaN(n) ? null : Math.max(0, Math.min(100, n));
   const pct = drag ?? committed ?? 0;
-  const color =
-    committed === null && drag === null
-      ? "#8E98A8"
-      : pct >= 75
-        ? "#16A34A"
-        : pct >= 45
-          ? "#EAB308"
-          : "#DC2626";
+  // ONE CONTINUOUS SWEEP from red through amber to green (Anir, Aug 18:
+  // "a gradual red-to-green thing, not just red, yellow, or green") — the
+  // hue tracks the value degree by degree instead of snapping at bands.
+  const active = !(committed === null && drag === null);
+  const color = active
+    ? `hsl(${Math.round(pct * 1.2)}, 76%, ${Math.round(44 - pct * 0.06)}%)`
+    : "#8E98A8";
+  const dragging = drag !== null;
   return (
-    <div className="flex items-center gap-2.5">
+    /* STACKED, NOT SIDE-BY-SIDE (Anir, Aug 18: "it would look so much better
+       if the textbox was underneath… make it look premium"): the track gets
+       the whole width, and the number sits under its right end as a bare
+       bold figure in the same colour — still typeable, still exact. */
+    <div className="space-y-1">
       <span
-        className="relative flex h-4 min-w-0 flex-1 items-center"
+        className="relative flex h-5 min-w-0 items-center"
         style={{ ["--range-color" as string]: color }}
       >
         <span className="pointer-events-none absolute inset-x-0 h-[6px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
           <span
-            className="block h-full rounded-full transition-[background-color] duration-200"
+            className={cn(
+              "block h-full rounded-full transition-[filter] duration-200",
+              dragging && "brightness-110"
+            )}
             style={{
               width: `${pct}%`,
-              background: `linear-gradient(90deg, ${color}B8, ${color})`,
+              background: `linear-gradient(90deg, hsl(4, 76%, 48%), ${color})`,
+              boxShadow: dragging ? `0 0 10px ${color}66` : undefined,
             }}
           />
         </span>
@@ -1859,36 +1875,35 @@ function ConfidenceSlider({
           }}
           onPointerUp={() => setDrag(null)}
           onBlur={() => setDrag(null)}
-          aria-label="Confidence — drag to set"
-          className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
+          aria-label="Confidence. Drag to set"
+          className="freyr-range relative z-[1] h-5 w-full cursor-pointer appearance-none bg-transparent"
         />
       </span>
-      {/* Just big enough for "100 %" — the wide box beside a thin
-          slider read as a mistake (Anir: "the rectangle doesn't need to
-          be that big"). */}
-      <span className="relative w-[60px] shrink-0">
+      <div className="flex items-center justify-end gap-0.5">
         <input
           value={value}
           onChange={(e) => {
             // Confidence is 0–100, full stop (Anir: "this shouldn't be
             // allowed" at 145%). Anything typed past the ends snaps to them.
             const text = e.target.value;
-            const n = Number(text);
+            const typed = Number(text);
             onChange(
-              text.trim() !== "" && Number.isFinite(n)
-                ? String(Math.max(0, Math.min(100, n)))
+              text.trim() !== "" && Number.isFinite(typed)
+                ? String(Math.max(0, Math.min(100, typed)))
                 : text
             );
           }}
           inputMode="numeric"
           placeholder="25"
-          aria-label="Confidence — type an exact figure"
-          className={cn(inputCls, "px-1.5 pr-5 text-right tnum")}
+          aria-label="Confidence. Type an exact figure"
+          className={cn(
+            "w-[44px] border-0 bg-transparent p-0 text-right text-[16px] font-bold tnum outline-none transition-transform duration-150 placeholder:text-text-tertiary",
+            dragging && "origin-right scale-110"
+          )}
+          style={{ color }}
         />
-        <span className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[11px] font-semibold text-text-tertiary">
-          %
-        </span>
-      </span>
+        <span className="text-[11.5px] font-semibold text-text-tertiary">%</span>
+      </div>
     </div>
   );
 }
@@ -1927,7 +1942,7 @@ function FutureSection({
           icon={Briefcase}
           label="Future deals"
           value={String(futures.length)}
-          sub="not pitched yet — no money, honestly"
+          sub="not pitched yet. No money, honestly"
           color="#7C3AED"
         />
         <StatTile
@@ -1946,7 +1961,7 @@ function FutureSection({
                   day: "numeric",
                   month: "short",
                 })
-              : "—"
+              : ", "
           }
           sub={nextPitch ? "the soonest planned pitch" : "no upcoming date set"}
           color="#7C3AED"
@@ -1995,7 +2010,7 @@ function FutureSection({
                         {label ? (
                           <OfferingChip name={label} color={colorForOffering(o)} size="xs" />
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">—</span>
+                          <span className="text-[11.5px] text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary tnum">
@@ -2009,7 +2024,7 @@ function FutureSection({
                             {o.targetQuarter}
                           </span>
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">—</span>
+                          <span className="text-[11.5px] text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">
@@ -2020,7 +2035,7 @@ function FutureSection({
                           <span className="inline-flex items-center gap-1">
                             <button
                               type="button"
-                              title={`Edit ${o.name} — flip its level to Pipeline when it is pitched`}
+                              title={`Edit ${o.name}. Flip its level to Pipeline when it is pitched`}
                               onClick={() => onEdit(o)}
                               className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
                             >
@@ -2122,7 +2137,7 @@ function SingleOfferingEditor({
               topOptions={[
                 {
                   id: "__other",
-                  label: "Not in the catalogue — type it",
+                  label: "Not in the catalogue. Type it",
                   color: "#8E98A8",
                   icon: Tag,
                 },
@@ -2162,7 +2177,7 @@ function SingleOfferingEditor({
           <input
             value={line.offeringLabel}
             onChange={(e) => set({ offeringLabel: e.target.value })}
-            placeholder="e.g. Customized solution — Standards IA"
+            placeholder="e.g. Customized solution. Standards IA"
             className={cn(inputCls, "mt-1")}
           />
         </div>
@@ -2199,9 +2214,11 @@ function SingleOfferingEditor({
               }))}
             />
             <input
-              value={line.localCurrency ? line.localValue : line.value}
+              value={withCommas(
+                String(line.localCurrency ? line.localValue : line.value)
+              )}
               onChange={(e) => {
-                const text = e.target.value;
+                const text = e.target.value.replace(/[^0-9]/g, "");
                 if (line.localCurrency) {
                   set({ localValue: text, value: usdFrom(text, line.localCurrency) });
                 } else {

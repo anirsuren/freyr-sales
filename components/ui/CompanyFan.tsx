@@ -40,7 +40,7 @@ export function CompanyFan({
 }) {
   const [expanded, setExpanded] = useState(false);
   if (companies.length === 0) {
-    return <span className="text-[13px] text-text-tertiary">—</span>;
+    return <span className="text-[13px] text-text-tertiary">, </span>;
   }
   const visible = companies.slice(0, max);
   const hidden = Math.max(companies.length - visible.length, 0);

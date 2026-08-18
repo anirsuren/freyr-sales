@@ -656,7 +656,7 @@ export function OfferingOverviewMain({
           <SectionHeading
             icon={Layers}
             title="Related offerings"
-            description={`The rest of ${o.offering_category} — the offerings that solve neighbouring problems for this account.`}
+            description={`The rest of ${o.offering_category}. The offerings that solve neighbouring problems for this account.`}
           />
           {/* Floating pill cards, not hairline rows (Anir, Jul 28: "make it
               look better, like pill-like floating pills"). Each related

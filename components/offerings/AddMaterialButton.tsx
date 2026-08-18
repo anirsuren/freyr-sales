@@ -518,7 +518,7 @@ export function AddMaterialButton({
     }
     if (folderOptions.includes(name)) {
       if (selectableFolders.includes(name)) setFolder(name);
-      else toast("That's a parent folder — pick one of its subfolders.", "error");
+      else toast("That's a parent folder. Pick one of its subfolders.", "error");
       setFolderName("");
       setCreatingFolder(false);
       return;
@@ -1726,7 +1726,7 @@ export function AddMaterialButton({
                       progress.status === "done"
                         ? "Uploaded"
                         : progress.status === "failed"
-                          ? "Failed — retry from the form"
+                          ? "Failed. Retry from the form"
                           : progress.status === "waiting"
                             ? "Waiting its turn"
                             : progress.percent >= 100
@@ -1771,7 +1771,7 @@ export function AddMaterialButton({
                               progress.status === "failed" ? "text-error" : "text-text-secondary"
                             }`}
                           >
-                            {progress.status === "failed" ? "—" : `${progress.percent}%`}
+                            {progress.status === "failed" ? ", " : `${progress.percent}%`}
                           </span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">

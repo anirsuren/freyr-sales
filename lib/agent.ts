@@ -177,7 +177,7 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       `Target: ${c.company} (${c.healthLabel}, ${c.openValue} open).`,
       `Primary contact: ${c.topContact || `to identify, only ${c.contactCount} mapped`}.`,
       c.contactCount < 2
-        ? `Gap: single-threaded: map 2–3 more stakeholders to de-risk.`
+        ? `Gap: single-threaded: map 2-3 more stakeholders to de-risk.`
         : null,
       ``,
       `Recommended motion:`,

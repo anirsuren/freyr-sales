@@ -603,7 +603,7 @@ export function ConnectedComponents({
           {(() => {
             const c = connected.find((x) => x.id === confirmDisconnect);
             return c
-              ? `${c.name} stops being part of this offering. The component itself, its versions and its files are untouched — you can connect it again any time.`
+              ? `${c.name} stops being part of this offering. The component itself, its versions and its files are untouched. You can connect it again any time.`
               : "";
           })()}
         </p>

@@ -48,7 +48,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: ListChecks,
     color: "#0F766E",
     subtitle:
-      "When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
+      "When someone logs an activity. A pilot, a contract. These rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
   },
 ];
 
@@ -93,7 +93,7 @@ export function AdminTabs({
       <div className="rise-in relative z-40 mb-6">
         {/* The pills carry the page name; a heading above them would say it
             twice. Kept for screen readers and the document outline. */}
-        <h1 className="sr-only">Admin — {current.label}</h1>
+        <h1 className="sr-only">Admin: {current.label}</h1>
         <PageTabs
           tabs={TABS}
           active={current.key}

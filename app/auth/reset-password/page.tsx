@@ -95,7 +95,7 @@ export default function ResetPasswordPage() {
         setState("ready");
       } catch {
         setDetail(
-          "That reset link could not be used. Enter the code from the email instead — it is typed here, so it always works."
+          "That reset link could not be used. Enter the code from the email instead. It is typed here, so it always works."
         );
         setState("code");
       }
@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
     if (error) {
       setDetail(
         /expired|invalid/i.test(error.message)
-          ? "That code did not match or has expired. Request a fresh one from the sign-in page — codes last an hour."
+          ? "That code did not match or has expired. Request a fresh one from the sign-in page. Codes last an hour."
           : error.message || "Could not verify the code."
       );
       setState("code");

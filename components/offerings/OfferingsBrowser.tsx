@@ -1378,7 +1378,7 @@ export function OfferingsBrowser({
             className="w-[150px] shrink-0"
             options={[
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
-              { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
               { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
               { value: "mapped", label: "Most complete", color: "#059669", icon: SortComplete },

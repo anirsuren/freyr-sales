@@ -844,7 +844,7 @@ export function currentFiscalYear(now = new Date()): number {
 }
 
 export function fiscalLabel(fy: number): string {
-  return `FY ${fy}–${String(fy + 1).slice(2)}`;
+  return `FY ${fy}, ${String(fy + 1).slice(2)}`;
 }
 
 export type FiscalLevel = "year" | "half" | "quarter" | "month" | "week";
@@ -883,7 +883,7 @@ export function fiscalWeeks(
     const fmt = (d: Date) =>
       d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     out.push({
-      label: `Week ${fmt(from)} – ${fmt(to)}`,
+      label: `Week ${fmt(from)}. ${fmt(to)}`,
       range: [Math.max(weekStart, monthStart), Math.min(weekEnd, monthEnd)],
     });
     cursor.setDate(cursor.getDate() + 7);

@@ -102,7 +102,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Top right",
     title: "Your account lives here",
     description:
-      "Settings, light or dark, switching to another account, and signing out. This is where Settings is — not the sidebar.",
+      "Settings, light or dark, switching to another account, and signing out. This is where Settings is. Not the sidebar.",
     targets: ['[data-tour="account-menu"]', '[data-tour="topbar"]'],
     placement: "bottom",
     roles: ALL_ROLES,
@@ -237,7 +237,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Performance",
     title: "Goals and how they are tracking",
     description:
-      "The goals the company set, who owns each one, and the numbers against them. Empty until targets are filled in — nothing here is guessed.",
+      "The goals the company set, who owns each one, and the numbers against them. Empty until targets are filled in. Nothing here is guessed.",
     targets: pageTargets(['input[placeholder^="Search goals"]']),
     placement: "bottom",
     roles: MANAGERS,
@@ -282,7 +282,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Settings",
     title: "Run this again whenever",
     description:
-      "The walkthrough lives here. Nothing to remember — come back and start it again any time.",
+      "The walkthrough lives here. Nothing to remember. Come back and start it again any time.",
     targets: pageTargets([
       '[data-tour="settings-product-tour"]',
       'a[href="/onboarding"]',
@@ -320,7 +320,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Forecast",
     title: "What is likely to land",
     description:
-      "Best case, what you are committing to, and progress against quota — early enough to still do something about it.",
+      "Best case, what you are committing to, and progress against quota. Early enough to still do something about it.",
     targets: pageTargets(['[data-tour="forecast-summary"]']),
     roles: ALL_ROLES,
   },
@@ -388,7 +388,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Voice agents",
     title: "Calls made for you",
     description:
-      "Who was called, what was said, and what came of it — kept on the customer's record.",
+      "Who was called, what was said, and what came of it. Kept on the customer's record.",
     targets: pageTargets(['[data-tour="voice-lifecycle"]']),
     roles: ALL_ROLES,
   },

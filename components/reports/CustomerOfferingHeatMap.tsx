@@ -1224,7 +1224,7 @@ export function CustomerOfferingHeatMap({
                 const dateSummary = version.potential_close_date
                   ? `Close ${formatDate(version.potential_close_date)}`
                   : version.start_date && version.end_date
-                    ? `${formatDate(version.start_date)} – ${formatDate(version.end_date)}`
+                    ? `${formatDate(version.start_date)}. ${formatDate(version.end_date)}`
                     : version.start_date
                       ? `From ${formatDate(version.start_date)}`
                       : "None";

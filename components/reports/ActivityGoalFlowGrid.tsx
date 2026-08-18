@@ -98,7 +98,7 @@ export function ActivityGoalFlowGrid({
                             {fmtAmount(g.unit as GoalUnit, amount)}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-tertiary">—</span>
+                          <span className="text-[11px] text-text-tertiary">, </span>
                         )}
                       </td>
                     );

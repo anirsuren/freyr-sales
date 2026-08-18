@@ -225,8 +225,8 @@ export function ContactsBrowser({
             options={[
               // One icon for both sorts made them identical once collapsed —
               // each sort now owns a distinct glyph and colour.
-              { value: "name", label: "Name A–Z", icon: ArrowDownAZ, color: "#0071E3" },
-              { value: "company", label: "Company A–Z", icon: Building2, color: "#7C3AED" },
+              { value: "name", label: "Name A, Z", icon: ArrowDownAZ, color: "#0071E3" },
+              { value: "company", label: "Company A, Z", icon: Building2, color: "#7C3AED" },
             ]}
           />
           {/* Grid ↔ list view (Suren: "we need a grid view on this or whatever

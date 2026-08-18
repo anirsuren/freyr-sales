@@ -285,7 +285,7 @@ function seededMock(): OpportunitiesState {
     n += 1;
     const key = `${r.customer.trim().toLowerCase()}::${(r.offering ?? "").trim().toLowerCase()}`;
     const needsSuffix = (dupKey.get(key) ?? 0) > 1 && r.revenueType;
-    const baseName = r.offering ? `${r.offering} — ${r.customer}` : r.customer;
+    const baseName = r.offering ? `${r.offering}. ${r.customer}` : r.customer;
     const line: OpportunityLine = {
       id: `seed-line-${n}-1`,
       offeringLabel: r.offering || undefined,

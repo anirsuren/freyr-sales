@@ -339,8 +339,8 @@ export function TrackSwitch({
         aria-label={on ? "Tracking on Org performance" : "Not tracked"}
         title={
           on
-            ? "Tracking — counted and shown on Org performance. Click to stop tracking."
-            : "Not tracked — master list only. Click to start tracking it on Org performance."
+            ? "Tracking. Counted and shown on Org performance. Click to stop tracking."
+            : "Not tracked. Master list only. Click to start tracking it on Org performance."
         }
         disabled={disabled || !onToggle}
         onClick={(e) => {
@@ -484,7 +484,7 @@ export function VerifiedPill({
       }}
       title={
         verified
-          ? "Leadership has signed this off — click to undo"
+          ? "Leadership has signed this off. Click to undo"
           : "Click when leadership has checked this number"
       }
       className={cn(
@@ -584,7 +584,7 @@ export function GoalBar({
           <span className="font-semibold text-text-primary">
             {fmtAmount(unit, actual)}
           </span>{" "}
-          of {target > 0 ? fmtAmount(unit, target) : "— (no target yet)"}
+          of {target > 0 ? fmtAmount(unit, target) : ", (no target yet)"}
         </span>
         {target > 0 && (
           <span className="tnum font-semibold" style={{ color }}>

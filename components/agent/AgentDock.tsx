@@ -771,7 +771,7 @@ export function AgentDock({
               if (seen.has(href)) continue;
               seen.add(href);
               const label = (a.textContent || "").replace(/\s+/g, " ").trim();
-              out.push(label ? `${label.slice(0, 80)} — ${href}` : href);
+              out.push(label ? `${label.slice(0, 80)}. ${href}` : href);
               if (out.length >= 30) break;
             }
             return out;

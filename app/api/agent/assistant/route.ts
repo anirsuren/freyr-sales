@@ -186,7 +186,7 @@ export async function POST(req: Request) {
     (knowledge
       ? `CATALOGUE (records from the app that match their question):\n"""\n${knowledge}\n"""\n\n`
       : "") +
-    `HOW THIS APP WORKS (the product manual — use it for any how-to, where-is or who-can question):\n"""\n${manualFor(path, question)}\n"""\n\n` +
+    `HOW THIS APP WORKS (the product manual: use it for any how-to, where-is or who-can question):\n"""\n${manualFor(path, question)}\n"""\n\n` +
     `Their question: ${question}`;
 
   const llm = await agentAnswer(system, user);

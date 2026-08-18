@@ -26,14 +26,14 @@ export function friendlyAuthError(error: unknown): string {
 
   // Project-wide cap on the built-in email sender.
   if (/email rate limit exceeded|over_email_send_rate_limit/i.test(text)) {
-    return "Too many sign-in emails have gone out in the last hour, so this one was not sent. The link already in the inbox still works — check spam too.";
+    return "Too many sign-in emails have gone out in the last hour, so this one was not sent. The link already in the inbox still works. Check spam too.";
   }
 
   // Per-address cooldown: "For security purposes, you can only request this
   // after 47 seconds."
   const cooldown = text.match(/only request this after (\d+) seconds?/i);
   if (cooldown) {
-    return `The last email only just went out — another can be sent in ${cooldown[1]} seconds. The link already in the inbox still works.`;
+    return `The last email only just went out. Another can be sent in ${cooldown[1]} seconds. The link already in the inbox still works.`;
   }
   if (/rate limit|too many requests/i.test(text)) {
     return "Too many attempts in a short time. Wait a minute and try again.";
@@ -43,7 +43,7 @@ export function friendlyAuthError(error: unknown): string {
     return "That email and password don't match an account here. Check the password, or use the reset link below.";
   }
   if (/email not confirmed/i.test(text)) {
-    return "This account still needs confirming — the sign-in link is in the inbox.";
+    return "This account still needs confirming. The sign-in link is in the inbox.";
   }
   if (/user already registered/i.test(text)) {
     return "There is already an account on this address. Sign in with the password instead.";

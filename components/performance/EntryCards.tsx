@@ -64,7 +64,7 @@ function EvidenceLinks({
 }) {
   if (!entry.evidence?.length) {
     return (
-      <span className="text-[13px] text-text-tertiary">—</span>
+      <span className="text-[13px] text-text-tertiary">, </span>
     );
   }
   return (
@@ -723,7 +723,7 @@ export function VerifyQueueCard({
             pending ? "text-[color:#92400E]" : "text-text-primary"
           )}
         >
-          {pending ? "Action needed — waiting for your verification" : "Waiting for your verification"}
+          {pending ? "Action needed. Waiting for your verification" : "Waiting for your verification"}
         </h3>
         <span
           className={cn(

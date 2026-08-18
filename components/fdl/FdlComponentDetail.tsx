@@ -26,6 +26,7 @@ import {
   Paperclip,
   Pencil,
   Plus,
+  Maximize2,
   Rocket,
   Table2,
   Trash2,
@@ -430,6 +431,8 @@ export function FdlComponentDetail({
   // ---- features ----------------------------------------------------------
   /** null = closed; "" = adding; otherwise the feature id being edited. */
   const [featureModal, setFeatureModal] = useState<string | null>(null);
+  /** The timeline's fit-everything call, held for the header button. */
+  const fitTimeline = useRef<(() => void) | null>(null);
   const [featName, setFeatName] = useState("");
   const [featFid, setFeatFid] = useState("");
   const [featDesc, setFeatDesc] = useState("");
@@ -1392,7 +1395,7 @@ export function FdlComponentDetail({
                                     <button
                                       type="button"
                                       onClick={() => setPreviewing(file)}
-                                      title={`${file.name} — on ${feature}`}
+                                      title={`${file.name}. On ${feature}`}
                                       className="w-full cursor-pointer overflow-hidden rounded-lg border border-border-light text-left transition-colors hover:border-blue-subtle"
                                     >
                                       {file.kind === "image" ? (
@@ -1846,6 +1849,18 @@ export function FdlComponentDetail({
                 <Plus size={14} strokeWidth={2.2} /> Add version
               </Button>
             )}
+            {releases.length > 0 && versionsView === "timeline" && (
+              <Tooltip label="Fit every version">
+                <button
+                  type="button"
+                  aria-label="Fit every version"
+                  onClick={() => fitTimeline.current?.()}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                >
+                  <Maximize2 size={14} strokeWidth={2.2} />
+                </button>
+              </Tooltip>
+            )}
             {releases.length > 0 && (
               <ViewSelect
                 value={versionsView}
@@ -1881,6 +1896,9 @@ export function FdlComponentDetail({
           <div key={versionsView} className="tab-panel">
           {versionsView === "timeline" && (
           <VersionTimeline
+            onFitReady={(f) => {
+              fitTimeline.current = f;
+            }}
             releases={releases.map((release) => ({
               ...release,
               customers: customersOnVersion(release.id).map((c) => ({

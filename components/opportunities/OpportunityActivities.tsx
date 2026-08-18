@@ -258,7 +258,7 @@ export function OpportunityActivities({
                           {a.person}
                         </span>
                       ) : (
-                        <span className="text-[12px] text-text-tertiary">—</span>
+                        <span className="text-[12px] text-text-tertiary">, </span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-[12px] text-text-secondary tnum whitespace-nowrap">
@@ -327,7 +327,7 @@ export function OpportunityActivities({
                           <Plus size={11} strokeWidth={2.6} /> Add note
                         </button>
                       ) : (
-                        <span className="text-[12px] text-text-tertiary">—</span>
+                        <span className="text-[12px] text-text-tertiary">, </span>
                       )}
                     </td>
                   </tr>

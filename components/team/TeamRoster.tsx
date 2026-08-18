@@ -431,7 +431,7 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
  *  thing mean... when I hover over that circle, it tells me what that means"). */
 function presenceTip(lastSeenAt: string | null | undefined): string {
   const meta = PRESENCE_META[presenceOf(lastSeenAt ?? null, Date.now())];
-  return `${meta.label} — ${meta.title}`;
+  return `${meta.label}. ${meta.title}`;
 }
 
 export function TeamRoster({ reps }: { reps: RosterRep[] }) {
@@ -1116,7 +1116,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             <span className="text-text-secondary">{r.title}</span>
                             <span className="flex items-center gap-1.5 text-text-secondary">
                               <MapPin size={12} strokeWidth={2.2} className="text-text-tertiary" />
-                              {r.region || "—"}
+                              {r.region || ", "}
                             </span>
                             {r.email && (
                               <a

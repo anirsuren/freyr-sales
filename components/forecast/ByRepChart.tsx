@@ -49,7 +49,7 @@ const SORTS: ColorOption[] = [
   },
   {
     value: "name",
-    label: "Name A–Z",
+    label: "Name A, Z",
     description: "Alphabetical teammate order",
     color: "#64748B",
     icon: ArrowDownAZ,

@@ -187,7 +187,7 @@ export function TargetsTab({
           icon={DoorOpen}
           label="Warm doors"
           value={String(warm)}
-          sub="Connection of 1 or 2 — an intro exists"
+          sub="Connection of 1 or 2. An intro exists"
         />
       </div>
 
@@ -301,7 +301,7 @@ export function TargetsTab({
                             {t.tier}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-tertiary">—</span>
+                          <span className="text-[11px] text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5">
@@ -334,14 +334,14 @@ export function TargetsTab({
                             {t.hq}
                           </span>
                         ) : (
-                          <span className="text-text-tertiary">—</span>
+                          <span className="text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] font-semibold text-text-primary tnum">
                         {t.potential ? (
                           money(t.potential)
                         ) : (
-                          <span className="font-normal text-text-tertiary">—</span>
+                          <span className="font-normal text-text-tertiary">, </span>
                         )}
                       </td>
                       <td className="px-2 py-2.5">
@@ -350,7 +350,7 @@ export function TargetsTab({
                             {t.quarter}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-tertiary">—</span>
+                          <span className="text-[11px] text-text-tertiary">, </span>
                         )}
                       </td>
                       {showConnection && (
@@ -370,12 +370,12 @@ export function TargetsTab({
                                     ? "#0058B0"
                                     : "#59616E",
                               }}
-                              title="Degree of connection — 1 is a warm intro, 3 is cold"
+                              title="Degree of connection. 1 is a warm intro, 3 is cold"
                             >
                               {t.degreeOfConnection}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-text-tertiary">—</span>
+                            <span className="text-[11px] text-text-tertiary">, </span>
                           )}
                         </td>
                       )}
@@ -516,9 +516,9 @@ export function TargetsTab({
                 onChange={(v) => set({ degreeOfConnection: v })}
                 options={[
                   { value: "", label: "No intro yet", color: "#C7CDD6" },
-                  { value: "1", label: "1 — direct contact", color: "#0F766E" },
-                  { value: "2", label: "2 — a warm intro exists", color: "#0071E3" },
-                  { value: "3", label: "3 — cold", color: "#8E98A8" },
+                  { value: "1", label: "1. Direct contact", color: "#0F766E" },
+                  { value: "2", label: "2. A warm intro exists", color: "#0071E3" },
+                  { value: "3", label: "3. Cold", color: "#8E98A8" },
                 ]}
               />
             </div>

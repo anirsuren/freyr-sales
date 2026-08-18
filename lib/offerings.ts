@@ -367,7 +367,7 @@ export interface OfferingOwner {
 const FOCUS_SMALL =
   "Focused on R&D / discovery; often single-asset or niche-pipeline companies.";
 const FOCUS_MID =
-  "Growing pipeline; typically have 1–2 commercial products; mid-market infrastructure.";
+  "Growing pipeline; typically have 1-2 commercial products; mid-market infrastructure.";
 const FOCUS_LARGE =
   "Global commercial footprint; massive R&D portfolios; often involve complex manufacturing networks.";
 const PROD_PHARMA =
@@ -401,13 +401,13 @@ function ct(
 function seedCustomerTypes(): CustomerType[] {
   return [
     ct("ct-pharma-s", "Pharmaceutical", "Small", PROD_PHARMA, "Under $500M", "< 500", FOCUS_SMALL),
-    ct("ct-pharma-m", "Pharmaceutical", "Mid size", PROD_PHARMA, "$500M – $5B", "500 – 5,000", FOCUS_MID),
+    ct("ct-pharma-m", "Pharmaceutical", "Mid size", PROD_PHARMA, "$500M. $5B", "500-5,000", FOCUS_MID),
     ct("ct-pharma-l", "Pharmaceutical", "Large", PROD_PHARMA, "$5B+", "5,000+", FOCUS_LARGE),
     ct("ct-bio-s", "Biologics", "Small", PROD_BIO, "Under $500M", "< 500", FOCUS_SMALL),
-    ct("ct-bio-m", "Biologics", "Mid size", PROD_BIO, "$500M – $5B", "500 – 5,000", FOCUS_MID),
+    ct("ct-bio-m", "Biologics", "Mid size", PROD_BIO, "$500M. $5B", "500-5,000", FOCUS_MID),
     ct("ct-bio-l", "Biologics", "Large", PROD_BIO, "$5B+", "5,000+", FOCUS_LARGE),
     ct("ct-biopharma-s", "Bio Pharmaceutical", "Small", PROD_BIOPHARMA, "Under $500M", "< 500", FOCUS_SMALL),
-    ct("ct-biopharma-m", "Bio Pharmaceutical", "Mid size", PROD_BIOPHARMA, "$500M – $5B", "500 – 5,000", FOCUS_MID),
+    ct("ct-biopharma-m", "Bio Pharmaceutical", "Mid size", PROD_BIOPHARMA, "$500M. $5B", "500-5,000", FOCUS_MID),
     ct("ct-biopharma-l", "Bio Pharmaceutical", "Large", PROD_BIOPHARMA, "$5B+", "5,000+", FOCUS_LARGE),
     ct("ct-meddev-s", "Medical Devices", "Small", "", "", "", ""),
     ct("ct-meddev-m", "Medical Devices", "Mid size", "", "", "", ""),
@@ -1072,7 +1072,7 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-019", SERVICE, "Regulatory Affairs Strategy", "Strategic consulting services that help customers define the optimal regulatory pathway for products and portfolios while transforming regulatory organizations for future readiness. The offering spans product-level regulatory strategy, portfolio planning, regulatory intelligence, and health authority engagement, alongside regulatory operating model and process consulting to optimize people, processes, governance, and technology across the regulatory function.\n\nProduct & Portfolio Strategy\n  – Regulatory pathway selection\n  – Global development strategy\n  – Market prioritization\n  – Regulatory due diligence\n  – Regulatory gap assessments\n  – Health authority engagement strategy\n  – Scientific advice planning and support\n  – Portfolio optimization\n  – Regulatory intelligence & policy monitoring\n\nRegulatory Transformation & Process Consulting\n  – Process design and optimization\n  – Governance framework design\n  – Regulatory organization design\n  – Digital transformation and technology enablement\n  – Labeling operating model design\n  – Due diligence process design\n  – Change management and implementation support", {
+    off("of-019", SERVICE, "Regulatory Affairs Strategy", "Strategic consulting services that help customers define the optimal regulatory pathway for products and portfolios while transforming regulatory organizations for future readiness. The offering spans product-level regulatory strategy, portfolio planning, regulatory intelligence, and health authority engagement, alongside regulatory operating model and process consulting to optimize people, processes, governance, and technology across the regulatory function.\n\nProduct & Portfolio Strategy\n. Regulatory pathway selection\n. Global development strategy\n. Market prioritization\n. Regulatory due diligence\n. Regulatory gap assessments\n. Health authority engagement strategy\n. Scientific advice planning and support\n. Portfolio optimization\n. Regulatory intelligence & policy monitoring\n\nRegulatory Transformation & Process Consulting\n. Process design and optimization\n. Governance framework design\n. Regulatory organization design\n. Digital transformation and technology enablement\n. Labeling operating model design\n. Due diligence process design\n. Change management and implementation support", {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in major markets via in-house delivery team. Can be supported by Freyr-X for other regions.",
@@ -1080,7 +1080,7 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-020", SERVICE, "Regulatory Affairs - Initial Applications & Market Access", "End-to-end regulatory support for obtaining initial marketing authorizations and enabling successful product launches across global markets. The offering covers regulatory planning, dossier preparation, submission execution, health authority interactions, and local market entry support, ensuring efficient approvals and timely commercialization.\n\nInitial Registration & Submission Services\n  – Regulatory submission strategy\n  – Global submission planning and coordination\n  – Marketing Authorization Applications (MAA/NDA/BLA/ANDA)\n  – Initial registration submissions\n  – Dossier authoring and compilation\n  – eCTD publishing and validation\n  – Submission management\n  – Health authority submission support\n  – Agency meeting coordination\n\nMarket Entry & Affiliate Support\n  – Local affiliate coordination\n  – MAH and Local Legal Representative services\n  – Country-specific application support\n  – GMP certificate support\n  – Market entry regulatory support", {
+    off("of-020", SERVICE, "Regulatory Affairs - Initial Applications & Market Access", "End-to-end regulatory support for obtaining initial marketing authorizations and enabling successful product launches across global markets. The offering covers regulatory planning, dossier preparation, submission execution, health authority interactions, and local market entry support, ensuring efficient approvals and timely commercialization.\n\nInitial Registration & Submission Services\n. Regulatory submission strategy\n. Global submission planning and coordination\n. Marketing Authorization Applications (MAA/NDA/BLA/ANDA)\n. Initial registration submissions\n. Dossier authoring and compilation\n. ECTD publishing and validation\n. Submission management\n. Health authority submission support\n. Agency meeting coordination\n\nMarket Entry & Affiliate Support\n. Local affiliate coordination\n. MAH and Local Legal Representative services\n. Country-specific application support\n. GMP certificate support\n. Market entry regulatory support", {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in major markets via in-house delivery team. Can be supported by Freyr-X for other regions.",
@@ -1088,7 +1088,7 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-021", SERVICE, "Local Regulatory Affairs", "Comprehensive country- and region-specific regulatory services that ensure products remain compliant with local regulatory requirements throughout their commercial lifecycle. The offering provides dedicated affiliate support for regulatory execution, health authority engagement, license maintenance, and market-specific compliance activities.\n\nServices include:\n  – Local regulatory submissions\n  – Health authority interactions\n  – Affiliate regulatory support\n  – Regulatory correspondence management\n  – Local dossier maintenance\n  – Country-specific regulatory execution\n  – Regulatory commitment tracking\n  – License maintenance\n  – MAH maintenance services\n  – Local Labeling services\n  – Artwork coordination\n  – Translation and localization support\n  – Legalization and notarization\n  – Local regulatory intelligence", {
+    off("of-021", SERVICE, "Local Regulatory Affairs", "Comprehensive country- and region-specific regulatory services that ensure products remain compliant with local regulatory requirements throughout their commercial lifecycle. The offering provides dedicated affiliate support for regulatory execution, health authority engagement, license maintenance, and market-specific compliance activities.\n\nServices include:\n. Local regulatory submissions\n. Health authority interactions\n. Affiliate regulatory support\n. Regulatory correspondence management\n. Local dossier maintenance\n. Country-specific regulatory execution\n. Regulatory commitment tracking\n. License maintenance\n. MAH maintenance services\n. Local Labeling services\n. Artwork coordination\n. Translation and localization support\n. Legalization and notarization\n. Local regulatory intelligence", {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX",
@@ -1096,7 +1096,7 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-022", SERVICE, "Post-Approval Regulatory Affairs", "End-to-end lifecycle management services that support regulatory compliance following product approval. The offering enables efficient management of post-approval changes through strategic planning, submission execution, publishing, and coordination across global and local markets while ensuring continued regulatory compliance.\n\nLifecycle Submission Management\n  – Global lifecycle management\n  – Variation management (IA/IB/II, CBE, PAS, etc.)\n  – Renewals\n  – Annual reports\n  – Change management\n  – CMC lifecycle management\n  – Line extensions\n  – Product transfers\n  – Marketing authorization transfers\n  – Withdrawal submissions\n\nRegulatory Operations & Compliance\n  – Health authority query responses\n  – Submission management\n  – eCTD publishing\n  – Regulatory publishing QC\n  – Regulatory data management\n  – RIMS support\n  – Commitment tracking\n  – Global coordination\n  – Regulatory metrics and reporting", {
+    off("of-022", SERVICE, "Post-Approval Regulatory Affairs", "End-to-end lifecycle management services that support regulatory compliance following product approval. The offering enables efficient management of post-approval changes through strategic planning, submission execution, publishing, and coordination across global and local markets while ensuring continued regulatory compliance.\n\nLifecycle Submission Management\n. Global lifecycle management\n. Variation management (IA/IB/II, CBE, PAS, etc.)\n. Renewals\n. Annual reports\n. Change management\n. CMC lifecycle management\n. Line extensions\n. Product transfers\n. Marketing authorization transfers\n. Withdrawal submissions\n\nRegulatory Operations & Compliance\n. Health authority query responses\n. Submission management\n. ECTD publishing\n. Regulatory publishing QC\n. Regulatory data management\n. RIMS support\n. Commitment tracking\n. Global coordination\n. Regulatory metrics and reporting", {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Can be provided globally through Freyr central team (India, Poland, Colombia)",

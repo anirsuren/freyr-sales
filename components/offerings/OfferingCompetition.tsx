@@ -527,7 +527,7 @@ export function OfferingCompetition({
           setConfirmCompetitor(false);
           setConfirmMaterial(null);
         }}
-        title={openRow ? `${openRow.company} — ${openRow.product}` : ""}
+        title={openRow ? `${openRow.company}. ${openRow.product}` : ""}
         size="workflow"
         tall
       >

@@ -596,13 +596,13 @@ export async function runMarketIntelRefresh(options?: {
         // rotation skipped it for 11 hours. Keep the old stamp: the 30-minute
         // tick retries it, and the Updated time only moves when data does.
         console.error(
-          `[market-intel] ${source.id}: posts AND news scrapes failed — keeping previous data, will retry next tick`
+          `[market-intel] ${source.id}: posts AND news scrapes failed. Keeping previous data, will retry next tick`
         );
         continue;
       }
       if (postsResult.failed || newsResult.failed) {
         console.warn(
-          `[market-intel] ${source.id}: ${postsResult.failed ? "posts" : "news"} scrape failed this run — stored what worked`
+          `[market-intel] ${source.id}: ${postsResult.failed ? "posts" : "news"} scrape failed this run. Stored what worked`
         );
       }
       const entry: FeedCompany = {
@@ -646,7 +646,7 @@ export async function runMarketIntelRefresh(options?: {
       spent += result.cost;
       if (result.failed) {
         console.error(
-          `[market-intel] person ${person.id}: scrape failed — keeping previous data, will retry next tick`
+          `[market-intel] person ${person.id}: scrape failed. Keeping previous data, will retry next tick`
         );
         continue;
       }

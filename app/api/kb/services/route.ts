@@ -75,7 +75,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json(
       {
         error:
-          "This list changed while you were editing — somebody added or removed a service. Reload and try again.",
+          "This list changed while you were editing. Somebody added or removed a service. Reload and try again.",
       },
       { status: 409 }
     );
@@ -110,7 +110,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json(
       {
         error:
-          "This list changed while you were looking at it — somebody added or removed a service. Reload and try again.",
+          "This list changed while you were looking at it. Somebody added or removed a service. Reload and try again.",
       },
       { status: 409 }
     );

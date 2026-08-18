@@ -3839,7 +3839,7 @@ test.describe("Freyr Sales Intelligence Platform: Full Verification", () => {
     // <select>) — the deep-link contract is the same, asserted via its label.
     const sortBtn = page.getByRole("button", { name: "Sort offerings" });
     await page.goto(`${BASE}/offerings?sort=name`);
-    await expect(sortBtn).toContainText("Name (A–Z)");
+    await expect(sortBtn).toContainText("Name (A, Z)");
     await page.goto(`${BASE}/offerings?sort=type`);
     await expect(sortBtn).toContainText("By type");
     // an unknown sort value falls back to catalog order
