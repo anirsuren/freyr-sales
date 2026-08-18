@@ -129,6 +129,32 @@ async function writeRow(state: TargetsState): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Add a target by hand (Anir, Aug 18: "someone has to add targets, right?
+ *  Can you put that entire flow in"). Appended, so the sheet's own order
+ *  stays intact above it. */
+export async function addTarget(
+  input: Record<string, unknown>
+): Promise<TargetsState> {
+  const { data, error } = await client()
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", activeRowId())
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const state = normalize(data?.catalog);
+  const created = normalizeOne(
+    {
+      ...input,
+      id: `tgt-new-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    },
+    state.targets.length
+  );
+  if (!created) throw new Error("A target needs at least a company name.");
+  state.targets.push(created);
+  await writeRow(state);
+  return state;
+}
+
 /** Patch one target's pursuit fields (owner, tier, quarter, notes…). */
 export async function updateTarget(
   id: string,

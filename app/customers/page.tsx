@@ -1,5 +1,7 @@
 import { getDb } from "@/lib/db";
 import { CustomersWorkspace } from "@/components/customers/CustomersWorkspace";
+import { getRole } from "@/lib/role";
+import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { readTargets } from "@/lib/targets";
 import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries } from "@/lib/health";
@@ -150,6 +152,7 @@ export default async function CustomersPage() {
         targets={targets}
         memberNames={memberNames}
         live={getDataMode() !== "mock"}
+        canEditTargets={isManagerOrAdmin(await getRole())}
       />
     </div>
   );

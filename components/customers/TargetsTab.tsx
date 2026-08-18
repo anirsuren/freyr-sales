@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crosshair, DollarSign, UserRound, DoorOpen } from "lucide-react";
+import { Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { PersonSelect } from "@/components/performance/bits";
+import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -52,15 +57,73 @@ function hqFlag(hq: string | undefined): string | null {
   return HQ_FLAGS[hq.trim().toLowerCase().replace(/\s+/g, " ")] ?? null;
 }
 
+const BLANK_TARGET = {
+  name: "",
+  domain: "MPR",
+  hq: "",
+  tier: "",
+  owner: "",
+  potential: "",
+  quarter: "",
+  degreeOfConnection: "",
+  companyRevenue: "",
+  notes: "",
+};
+
 export function TargetsTab({
   targets,
   memberNames = [],
   live,
+  canEdit = false,
 }: {
   targets: TargetAccount[];
   memberNames?: string[];
   live: boolean;
+  /** Managers and admins add targets — the same line the server draws. */
+  canEdit?: boolean;
 }) {
+  const { toast } = useToast();
+  /** The list is live state: adding a target shows it without a reload. */
+  const [list, setList] = useState<TargetAccount[]>(targets);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ ...BLANK_TARGET });
+  const [busy, setBusy] = useState(false);
+  const set = (patch: Partial<typeof BLANK_TARGET>) =>
+    setDraft((d) => ({ ...d, ...patch }));
+
+  async function saveTarget() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          op: "add",
+          name: draft.name.trim(),
+          domain: draft.domain,
+          hq: draft.hq.trim() || undefined,
+          tier: draft.tier || undefined,
+          owner: draft.owner.trim() || undefined,
+          potential: draft.potential ? Number(draft.potential) : undefined,
+          quarter: draft.quarter || undefined,
+          degreeOfConnection: draft.degreeOfConnection || undefined,
+          companyRevenue: draft.companyRevenue.trim() || undefined,
+          notes: draft.notes.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "That didn't save.");
+      setList(data.state.targets);
+      setAdding(false);
+      setDraft({ ...BLANK_TARGET });
+      toast(`${draft.name.trim()} is on the target list.`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const [query, setQuery] = useState("");
   // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
   // MPR and MDV together; an empty pick means everything.
@@ -69,13 +132,13 @@ export function TargetsTab({
 
   const tiers = useMemo(
     () =>
-      [...new Set(targets.map((t) => t.tier).filter(Boolean))].sort() as string[],
-    [targets]
+      [...new Set(list.map((t) => t.tier).filter(Boolean))].sort() as string[],
+    [list]
   );
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return targets.filter(
+    return list.filter(
       (t) =>
         (domains.length === 0 || domains.includes(t.domain)) &&
         (tierPick.length === 0 || (t.tier != null && tierPick.includes(t.tier))) &&
@@ -84,7 +147,7 @@ export function TargetsTab({
           (t.owner ?? "").toLowerCase().includes(q) ||
           (t.hq ?? "").toLowerCase().includes(q))
     );
-  }, [targets, query, domains, tierPick]);
+  }, [list, query, domains, tierPick]);
 
   const potential = shown.reduce((s, t) => s + (t.potential ?? 0), 0);
   const memberSet = new Set(memberNames.map((n) => n.trim().toLowerCase()));
@@ -155,6 +218,11 @@ export function TargetsTab({
             allLabel="All tiers"
             options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t) }))}
           />
+          {live && canEdit && (
+            <Button className="ml-auto shrink-0" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={2.2} /> Add target
+            </Button>
+          )}
           {!live && (
             <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
               Sample targets — switch to Real mode for the live list
@@ -180,7 +248,7 @@ export function TargetsTab({
                   <th className="w-[9%] px-2 py-2.5">Tier</th>
                   <th className="w-[17%] px-2 py-2.5">Owner</th>
                   <th className="w-[11%] px-2 py-2.5">HQ</th>
-                  <th className="w-[11%] px-2 py-2.5 text-right">Potential</th>
+                  <th className="w-[11%] px-2 py-2.5">Potential</th>
                   <th className={cn("px-2 py-2.5", showConnection ? "w-[7%]" : "w-[11%]")}>
                     Quarter
                   </th>
@@ -269,7 +337,7 @@ export function TargetsTab({
                           <span className="text-text-tertiary">—</span>
                         )}
                       </td>
-                      <td className="px-2 py-2.5 text-right text-[12.5px] font-semibold text-text-primary tnum">
+                      <td className="px-2 py-2.5 text-[12.5px] font-semibold text-text-primary tnum">
                         {t.potential ? (
                           money(t.potential)
                         ) : (
@@ -319,6 +387,179 @@ export function TargetsTab({
           </div>
         )}
       </Card>
+
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Add a target"
+        size="wide"
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Company
+              </label>
+              <input
+                autoFocus
+                value={draft.name}
+                onChange={(e) => set({ name: e.target.value })}
+                placeholder="e.g. Boehringer Ingelheim"
+                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Domain
+              </label>
+              <ColorSelect
+                value={draft.domain}
+                ariaLabel="Target domain"
+                collapsible={false}
+                className="w-full"
+                onChange={(v) => set({ domain: v })}
+                options={TARGET_DOMAINS.map((d) => ({
+                  value: d,
+                  label: TARGET_DOMAIN_META[d].label,
+                  color: TARGET_DOMAIN_META[d].color,
+                  icon: TARGET_DOMAIN_META[d].icon,
+                }))}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                HQ country
+              </label>
+              <input
+                value={draft.hq}
+                onChange={(e) => set({ hq: e.target.value })}
+                placeholder="e.g. Germany"
+                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Tier
+              </label>
+              <ColorSelect
+                value={draft.tier}
+                ariaLabel="Tier"
+                collapsible={false}
+                className="w-full"
+                onChange={(v) => set({ tier: v })}
+                options={[
+                  { value: "", label: "No tier yet", color: "#C7CDD6" },
+                  ...[...new Set(["Tier 1", "Tier 2", "Tier 3", ...tiers])].map(
+                    (t) => ({ value: t, label: t, color: tierColor(t) })
+                  ),
+                ]}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Owner
+              </label>
+              {/* Only real app accounts — a name without an account waits
+                  (Anir, Aug 17: "when they make accounts they will get
+                  assigned"). */}
+              <PersonSelect
+                value={draft.owner}
+                onChange={(v) => set({ owner: v })}
+                people={memberNames}
+                placeholder="No owner yet…"
+                allowFree={false}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Estimated potential (USD)
+              </label>
+              <input
+                value={draft.potential}
+                onChange={(e) =>
+                  set({ potential: e.target.value.replace(/[^0-9]/g, "") })
+                }
+                inputMode="numeric"
+                placeholder="e.g. 250000"
+                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary tnum"
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Target quarter
+              </label>
+              <ColorSelect
+                value={draft.quarter}
+                ariaLabel="Target quarter"
+                collapsible={false}
+                className="w-full"
+                onChange={(v) => set({ quarter: v })}
+                options={[
+                  { value: "", label: "Not planned yet", color: "#C7CDD6" },
+                  ...["Q1", "Q2", "Q3", "Q4"].map((q) => ({
+                    value: q,
+                    label: q,
+                    color: "#0071E3",
+                  })),
+                ]}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Connection
+              </label>
+              <ColorSelect
+                value={draft.degreeOfConnection}
+                ariaLabel="Degree of connection"
+                collapsible={false}
+                className="w-full"
+                onChange={(v) => set({ degreeOfConnection: v })}
+                options={[
+                  { value: "", label: "No intro yet", color: "#C7CDD6" },
+                  { value: "1", label: "1 — direct contact", color: "#0F766E" },
+                  { value: "2", label: "2 — a warm intro exists", color: "#0071E3" },
+                  { value: "3", label: "3 — cold", color: "#8E98A8" },
+                ]}
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Company revenue
+              </label>
+              <input
+                value={draft.companyRevenue}
+                onChange={(e) => set({ companyRevenue: e.target.value })}
+                placeholder={'e.g. ~$3B'}
+                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] font-semibold text-text-primary">
+              Notes <span className="font-normal text-text-tertiary">optional</span>
+            </label>
+            <textarea
+              value={draft.notes}
+              onChange={(e) => set({ notes: e.target.value })}
+              rows={2}
+              placeholder="e.g. Met their RA director at DIA; wants a GRI demo in October."
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setAdding(false)}>
+              Cancel
+            </Button>
+            <Button
+              loading={busy}
+              disabled={!draft.name.trim()}
+              onClick={() => void saveTarget()}
+            >
+              <Plus size={14} strokeWidth={2.2} /> Add target
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

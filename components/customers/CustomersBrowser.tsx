@@ -173,12 +173,13 @@ export function CustomersBrowser({
   );
   const [page, setPage] = useState(1);
   const [loadedListUserId, setLoadedListUserId] = useState<string | null>(null);
-  // How many rows per page — user's choice, remembered (Suren: "let me decide how
-  // many to show per page, on every page"). Defaults to 12 (6 rows in the 2-col
-  // grid) instead of a cramped 8.
-  const [perPage, setPerPage] = useState(12);
+  // ONE PAGE BY DEFAULT (Anir, Aug 18: "there is no point in doing multiple
+  // pages here… it's literally like two extra rows"). The per-page chooser
+  // Suren asked for stays for anyone who wants shorter pages, with "All" as
+  // the default; the pager only appears once a choice makes it needed.
+  const [perPage, setPerPage] = useState(Number.POSITIVE_INFINITY);
   useEffect(() => {
-    setPerPage(12);
+    setPerPage(Number.POSITIVE_INFINITY);
     setPage(1);
     const urlValue = Number(
       new URLSearchParams(window.location.search).get("per_page")
@@ -188,11 +189,12 @@ export function CustomersBrowser({
     if (v && [8, 12, 24, 48].includes(v)) setPerPage(v);
   }, [perPageStorageKey]);
   function changePerPage(v: string) {
-    const n = Number(v);
+    const n = v === "all" ? Number.POSITIVE_INFINITY : Number(v);
     setPerPage(n);
     setPage(1);
     try {
-      localStorage.setItem(perPageStorageKey, String(n));
+      if (v === "all") localStorage.removeItem(perPageStorageKey);
+      else localStorage.setItem(perPageStorageKey, String(n));
     } catch {}
   }
   const PER_PAGE = perPage;
@@ -305,7 +307,7 @@ export function CustomersBrowser({
     setOrDelete("sort", sort, "recent");
     setOrDelete("view", view, "grid");
     url.searchParams.delete("page");
-    setOrDelete("per_page", String(perPage), "12");
+    setOrDelete("per_page", Number.isFinite(perPage) ? String(perPage) : "all", "all");
     window.history.replaceState(null, "", url.toString());
   }, [
     currentUser.id,
@@ -602,10 +604,18 @@ export function CustomersBrowser({
             ] satisfies ColorOption[]}
           />
           <ColorSelect
-            value={String(perPage)}
+            value={Number.isFinite(perPage) ? String(perPage) : "all"}
             onChange={changePerPage}
             minWidth={120}
-            options={[8, 12, 24, 48].map<ColorOption>((n) => ({
+            options={[
+              {
+                value: "all",
+                label: "All on one page",
+                icon: Rows3,
+                short: "All",
+                color: "#0071E3",
+              },
+              ...[8, 12, 24, 48].map<ColorOption>((n) => ({
               value: String(n),
               label: `${n} / page`,
               icon: Rows3,
@@ -613,7 +623,8 @@ export function CustomersBrowser({
               // glyph, so the compressed square shows the number itself.
               short: String(n),
               color: "#0071E3",
-            }))}
+            })),
+            ]}
           />
           {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
               thing should be last. The download button and the select button:

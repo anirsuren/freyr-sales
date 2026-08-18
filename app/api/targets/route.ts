@@ -3,7 +3,7 @@ import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
-import { readTargets, removeTarget, updateTarget } from "@/lib/targets";
+import { addTarget, readTargets, removeTarget, updateTarget } from "@/lib/targets";
 
 /**
  * TARGET ACCOUNTS over HTTP. Reading is anyone signed in; changing who owns a
@@ -41,6 +41,27 @@ export async function POST(req: NextRequest) {
   if (!body) return NextResponse.json({ error: "Bad request." }, { status: 400 });
   try {
     const op = String(body.op ?? "");
+    if (op === "add") {
+      if (!String(body.name ?? "").trim()) {
+        return NextResponse.json(
+          { error: "The company name is the one thing a target must have." },
+          { status: 400 }
+        );
+      }
+      const state = await addTarget({
+        name: body.name,
+        domain: body.domain,
+        hq: body.hq,
+        tier: body.tier,
+        owner: body.owner,
+        potential: body.potential,
+        quarter: body.quarter,
+        degreeOfConnection: body.degreeOfConnection,
+        companyRevenue: body.companyRevenue,
+        notes: body.notes,
+      });
+      return NextResponse.json({ state });
+    }
     if (op === "update") {
       const state = await updateTarget(String(body.id ?? ""), {
         owner: body.owner === undefined ? undefined : String(body.owner),

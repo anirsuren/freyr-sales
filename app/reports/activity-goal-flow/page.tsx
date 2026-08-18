@@ -69,16 +69,16 @@ export default async function ActivityGoalFlowPage() {
     <div className="space-y-5 pb-24">
       <SmartBack fallback="/reports">Reports</SmartBack>
       <PageHeader
-        title="Activity → Goal flow"
-        subtitle="How much each activity actually poured into each goal — from results stamped with the activity they came from."
+        title="What each activity earned"
+        subtitle="When someone logs a result through an activity — a pilot, a contract — it lands here: one row per activity, one column per goal, and the money or count that activity put into that goal."
       />
 
       {totalEntries === 0 ? (
         <Card className="p-8">
           <EmptyState
             icon={Waypoints}
-            title="Nothing stamped yet — the counting just started"
-            description="Results carry their source activity from Aug 17 onward. Log a pilot or a contract through an activity and its number lands here, activity by activity, goal by goal. History from before the stamp stays out rather than being guessed."
+            title="Nothing here yet — and that's normal"
+            description="This page fills in on its own as the team works. Example: someone marks a Contract completed for $50K and points it at the Renewals goal — a $50K box appears here where Contract meets Renewals. Nobody has logged a result through an activity yet, so there is nothing to add up. Older results never said which activity they came from, so they stay out instead of being guessed."
           />
         </Card>
       ) : (
@@ -86,21 +86,21 @@ export default async function ActivityGoalFlowPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <StatTile
               icon={Waypoints}
-              label="Stamped results"
+              label="Results counted"
               value={String(totalEntries)}
-              sub="logged through an activity"
+              sub="each one logged through an activity"
             />
             <StatTile
               icon={Waypoints}
-              label="Activities flowing"
+              label="Activities earning"
               value={String(cells.filter((c) => c.goals.some((g) => g.entries > 0)).length)}
-              sub="of the master's vocabulary"
+              sub="of the five kinds of activity"
             />
             <StatTile
               icon={Waypoints}
-              label="Goals fed"
+              label="Goals receiving"
               value={String(goalsWithFlow.length)}
-              sub="received at least one stamped result"
+              sub="got at least one result this way"
             />
           </div>
           <ActivityGoalFlowGrid

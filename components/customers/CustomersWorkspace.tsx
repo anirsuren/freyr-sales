@@ -20,12 +20,14 @@ export function CustomersWorkspace({
   targets,
   memberNames = [],
   live,
+  canEditTargets = false,
 }: {
   customersProps: ComponentProps<typeof CustomersBrowser>;
   targets: TargetAccount[];
   /** Real app members — sheet-only owners must not dress like them. */
   memberNames?: string[];
   live: boolean;
+  canEditTargets?: boolean;
 }) {
   const [view, setView] = useStoredView<"customers" | "targets">(
     "freyr.customers.workspace",
@@ -82,7 +84,7 @@ export function CustomersWorkspace({
         {view === "customers" ? (
           <CustomersBrowser {...customersProps} />
         ) : (
-          <TargetsTab targets={targets} memberNames={memberNames} live={live} />
+          <TargetsTab targets={targets} memberNames={memberNames} live={live} canEdit={canEditTargets} />
         )}
       </div>
     </div>
