@@ -1804,7 +1804,7 @@ export function OfferingForm({
                     </div>
                   </div>
                 )}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setAddingCap(null)}>
                     Done
                   </Button>

@@ -18,7 +18,7 @@ import {
   Newspaper,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -56,19 +56,22 @@ function dealValueUsd(v: string | null): number | null {
 }
 
 export function MnaTracker({ board }: { board: MnaBoard | null }) {
-  const [status, setStatus] = useState<"all" | "announced" | "completed">("all");
-  const [division, setDivision] = useState<"all" | MnaItem["division"]>("all");
+  // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
+  // several statuses, divisions, sizes or sources at once; empty = all. Time
+  // stays single: two overlapping windows are one window.
+  const [status, setStatus] = useState<string[]>([]);
+  const [division, setDivision] = useState<string[]>([]);
   const [timeFilter, setTimeFilter] = useState<"all" | "30" | "90" | "year">("all");
-  const [sizeFilter, setSizeFilter] = useState<"all" | "big" | "small" | "undisclosed">("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sizeFilter, setSizeFilter] = useState<string[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
   const items = board?.items ?? [];
   const q = query.trim().toLowerCase();
   const sources = [...new Set(items.map((d) => d.sourceLabel).filter(Boolean))].sort();
   const shown = items.filter((deal) => {
-    if (status !== "all" && deal.status !== status) return false;
-    if (division !== "all" && deal.division !== division) return false;
+    if (status.length > 0 && !status.includes(deal.status)) return false;
+    if (division.length > 0 && !division.includes(deal.division)) return false;
     if (timeFilter !== "all") {
       if (!deal.date) return false;
       const t = Date.parse(deal.date);
@@ -77,13 +80,13 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
       if (timeFilter === "90" && t < now - 90 * 86400e3) return false;
       if (timeFilter === "year" && new Date(t).getFullYear() !== new Date().getFullYear()) return false;
     }
-    if (sizeFilter !== "all") {
+    if (sizeFilter.length > 0) {
       const v = dealValueUsd(deal.valueLabel);
-      if (sizeFilter === "undisclosed" && v !== null) return false;
-      if (sizeFilter === "big" && (v === null || v < 1e9)) return false;
-      if (sizeFilter === "small" && (v === null || v >= 1e9)) return false;
+      const bucket = v === null ? "undisclosed" : v >= 1e9 ? "big" : "small";
+      if (!sizeFilter.includes(bucket)) return false;
     }
-    if (sourceFilter !== "all" && deal.sourceLabel !== sourceFilter) return false;
+    if (sourceFilter.length > 0 && !sourceFilter.includes(deal.sourceLabel ?? ""))
+      return false;
     return (
       !q ||
       [deal.acquirer, deal.target, deal.summary, deal.sourceLabel]
@@ -151,24 +154,26 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex flex-wrap items-center gap-2">
-          <ColorSelect
-            value={status}
-            onChange={(v) => setStatus(v as typeof status)}
+          <MultiColorSelect
+            values={status}
+            onChange={setStatus}
             ariaLabel="Filter by deal status"
             minWidth={150}
+            allLabel="All statuses"
+            allIcon={Handshake}
             options={[
-              { value: "all", label: "All statuses", icon: Handshake },
               { value: "announced", label: "Announced", color: "#0071E3", icon: Megaphone },
               { value: "completed", label: "Completed", color: "#1A7A35", icon: CheckCircle2 },
             ]}
           />
-          <ColorSelect
-            value={division}
-            onChange={(v) => setDivision(v as typeof division)}
+          <MultiColorSelect
+            values={division}
+            onChange={setDivision}
             ariaLabel="Filter by division"
             minWidth={190}
+            allLabel="All divisions"
+            allIcon={Layers}
             options={[
-              { value: "all", label: "All divisions", icon: Layers },
               { value: "Medicinal Products", label: "Medicinal Products", color: "#0071E3", icon: Pill },
               { value: "Medical Devices", label: "Medical Devices", color: "#0F766E", icon: Stethoscope },
               { value: "Consumer", label: "Consumer", color: "#C2410C", icon: ShoppingBag },
@@ -186,32 +191,32 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
               { value: "year", label: "This year", color: "#0F766E", icon: CalendarClock },
             ]}
           />
-          <ColorSelect
-            value={sizeFilter}
-            onChange={(v) => setSizeFilter(v as typeof sizeFilter)}
+          <MultiColorSelect
+            values={sizeFilter}
+            onChange={setSizeFilter}
             ariaLabel="Filter by deal size"
             minWidth={160}
+            allLabel="Any deal size"
+            allIcon={BadgeDollarSign}
             options={[
-              { value: "all", label: "Any deal size", icon: BadgeDollarSign },
               { value: "big", label: "$1B and up", color: "#0F766E", icon: BadgeDollarSign },
               { value: "small", label: "Under $1B", color: "#0071E3", icon: BadgeDollarSign },
               { value: "undisclosed", label: "Undisclosed", color: "#8AB4E8", icon: BadgeDollarSign },
             ]}
           />
-          <ColorSelect
-            value={sourceFilter}
+          <MultiColorSelect
+            values={sourceFilter}
             onChange={setSourceFilter}
             ariaLabel="Filter by source"
             minWidth={170}
-            options={[
-              { value: "all", label: "All sources", icon: Newspaper },
-              ...sources.map((src) => ({
-                value: src,
-                label: src,
-                color: "#6D28D9",
-                icon: Newspaper,
-              })),
-            ]}
+            allLabel="All sources"
+            allIcon={Newspaper}
+            options={sources.map((src) => ({
+              value: src,
+              label: src,
+              color: "#6D28D9",
+              icon: Newspaper,
+            }))}
           />
         </span>
       </SearchPriority>

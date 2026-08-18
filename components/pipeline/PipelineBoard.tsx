@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SizeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ColorSelect, type ColorOption , MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   SearchPriority,
   PrioritySearchInput,
@@ -62,16 +62,16 @@ const VIEWS_KEY = "freyr.pipeline.views.v1";
 const BOARD_MIN_H = 460;
 const COLUMN_BODY_MIN_H = 320;
 
-type SavedView = { name: string; q: string; size: string; mine: boolean };
+type SavedView = { name: string; q: string; size: string[]; mine: boolean };
 const BUILTIN_VIEWS: SavedView[] = [
-  { name: "All deals", q: "", size: "all", mine: false },
-  { name: "My deals", q: "", size: "all", mine: true },
-  { name: "Large deals", q: "", size: "large", mine: false },
-  { name: "Mid-market", q: "", size: "mid", mine: false },
+  { name: "All deals", q: "", size: [], mine: false },
+  { name: "My deals", q: "", size: [], mine: true },
+  { name: "Large deals", q: "", size: ["large"], mine: false },
+  { name: "Mid-market", q: "", size: ["mid"], mine: false },
   // Small was simply missing — you could jump to large and mid deals but never
   // small ones (Anir, Jul 26: "I can't even sort by the small deals… I think
   // you just forgot about it").
-  { name: "Small deals", q: "", size: "small", mine: false },
+  { name: "Small deals", q: "", size: ["small"], mine: false },
 ];
 
 // Colour + icon per view, same standard as every ColorSelect menu — the
@@ -136,7 +136,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const viewsStorageKey = userScopedStorageKey(VIEWS_KEY, currentUser.id);
   const [deals, setDeals] = useState<Deal[]>(initial);
   const [q, setQ] = useState("");
-  const [size, setSize] = useState("all");
+  const [size, setSize] = useState<string[]>([]);
   const [mine, setMine] = useState(false); // team vs my-deals (#27)
 
   // saved views (V2 #4)
@@ -180,7 +180,21 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       const w = localStorage.getItem(wipStorageKey);
       if (w) setWip(JSON.parse(w));
       const v = localStorage.getItem(viewsStorageKey);
-      if (v) setSavedViews(JSON.parse(v));
+      if (v) {
+        // Views saved before the size filter went multiselect carry a string —
+        // fold "all" to the empty pick and any single tier into a one-item list.
+        const parsed = (JSON.parse(v) as (Omit<SavedView, "size"> & { size: string | string[] })[]).map(
+          (view) => ({
+            ...view,
+            size: Array.isArray(view.size)
+              ? view.size
+              : view.size === "all"
+                ? []
+                : [view.size],
+          })
+        );
+        setSavedViews(parsed);
+      }
     } catch {}
   }, [viewsStorageKey, wipStorageKey]);
 
@@ -283,7 +297,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   useEffect(() => {
     setDeals(initial);
     setQ("");
-    setSize("all");
+    setSize([]);
     setMine(false);
     setViewsOpen(false);
     setShowSaveView(false);
@@ -303,7 +317,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     () =>
       deals.filter(
         (d) =>
-          (size === "all" || d.sizeTier === size) &&
+          (size.length === 0 || (d.sizeTier != null && size.includes(d.sizeTier))) &&
           (!mine ||
             ownedByCurrentUser(d, currentUser.memberId)) &&
           (!q ||
@@ -555,28 +569,29 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             "choosing by company size should be in a dropdown, just like for
             views, because it's just taking up a lot of space"). Each option
             keeps its size colour + glyph and its live count. */}
-        <ColorSelect
-          value={size}
+        <MultiColorSelect
+          values={size}
           ariaLabel="Filter deals by company size"
           minWidth={168}
-          onChange={(v) => {
+          allLabel="All sizes"
+          allIcon={Layers}
+          onChange={(next) => {
             keepScroll();
-            setSize(v);
+            setSize(next);
           }}
-          options={SIZE_FILTERS.map<ColorOption>((f) => {
-            const meta =
-              f.key === "all"
-                ? { color: "#0071E3", icon: Layers }
-                : SIZE_TIER_META[f.key];
-            return {
-              value: f.key,
-              label: f.key === "all" ? "All sizes" : `${f.label} deals`,
-              color: meta.color,
-              icon: meta.icon,
-              badge: String(sizeCounts[f.key] || 0),
-              badgeColor: meta.color,
-            };
-          })}
+          options={SIZE_FILTERS.filter((f) => f.key !== "all").map<ColorOption>(
+            (f) => {
+              const meta = SIZE_TIER_META[f.key];
+              return {
+                value: f.key,
+                label: `${f.label} deals`,
+                color: meta.color,
+                icon: meta.icon,
+                badge: String(sizeCounts[f.key] || 0),
+                badgeColor: meta.color,
+              };
+            }
+          )}
         />
         <div className="ml-auto flex flex-wrap items-center gap-2.5">
           {/* The board's running total, built as a control-height read-out so it

@@ -5,7 +5,7 @@ import { Crosshair, DollarSign, UserRound, DoorOpen } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
@@ -41,8 +41,10 @@ export function TargetsTab({
   live: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [domain, setDomain] = useState("all");
-  const [tier, setTier] = useState("all");
+  // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
+  // MPR and MDV together; an empty pick means everything.
+  const [domains, setDomains] = useState<string[]>([]);
+  const [tierPick, setTierPick] = useState<string[]>([]);
 
   const tiers = useMemo(
     () =>
@@ -54,14 +56,14 @@ export function TargetsTab({
     const q = query.trim().toLowerCase();
     return targets.filter(
       (t) =>
-        (domain === "all" || t.domain === domain) &&
-        (tier === "all" || t.tier === tier) &&
+        (domains.length === 0 || domains.includes(t.domain)) &&
+        (tierPick.length === 0 || (t.tier != null && tierPick.includes(t.tier))) &&
         (!q ||
           t.name.toLowerCase().includes(q) ||
           (t.owner ?? "").toLowerCase().includes(q) ||
           (t.hq ?? "").toLowerCase().includes(q))
     );
-  }, [targets, query, domain, tier]);
+  }, [targets, query, domains, tierPick]);
 
   const potential = shown.reduce((s, t) => s + (t.potential ?? 0), 0);
   const memberSet = new Set(memberNames.map((n) => n.trim().toLowerCase()));
@@ -113,28 +115,24 @@ export function TargetsTab({
             placeholder="Search targets, owners, countries…"
             ariaLabel="Search targets"
           />
-          <ColorSelect
-            value={domain}
+          <MultiColorSelect
+            values={domains}
             ariaLabel="Domain"
-            onChange={setDomain}
-            options={[
-              { value: "all", label: "All domains", color: "#0071E3" },
-              ...TARGET_DOMAINS.map((d) => ({
-                value: d,
-                label: TARGET_DOMAIN_META[d].label,
-                color: TARGET_DOMAIN_META[d].color,
-                icon: TARGET_DOMAIN_META[d].icon,
-              })),
-            ]}
+            onChange={setDomains}
+            allLabel="All domains"
+            options={TARGET_DOMAINS.map((d) => ({
+              value: d,
+              label: TARGET_DOMAIN_META[d].label,
+              color: TARGET_DOMAIN_META[d].color,
+              icon: TARGET_DOMAIN_META[d].icon,
+            }))}
           />
-          <ColorSelect
-            value={tier}
+          <MultiColorSelect
+            values={tierPick}
             ariaLabel="Tier"
-            onChange={setTier}
-            options={[
-              { value: "all", label: "All tiers", color: "#0071E3" },
-              ...tiers.map((t) => ({ value: t, label: t, color: tierColor(t) })),
-            ]}
+            onChange={setTierPick}
+            allLabel="All tiers"
+            options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t) }))}
           />
           {!live && (
             <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">

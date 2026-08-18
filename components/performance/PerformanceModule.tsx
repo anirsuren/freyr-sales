@@ -3232,6 +3232,31 @@ function GoalEditorFields({
     return null;
   })();
 
+  /** Editing with nothing changed → Save stays grey (Anir, Aug 18: "That
+   *  should be greyed out unless I change anything. This goes for all
+   *  pop-ups"). Field-by-field against the goal as it opened. */
+  const unchanged =
+    editing !== null &&
+    name.trim() === editing.name &&
+    effType === editing.type &&
+    unit === editing.unit &&
+    measure === editing.measure &&
+    (Number(year) || 0) === editing.year &&
+    (parsedTarget ?? 0) === editing.target &&
+    picked === (editing.pickedForOrg ?? true) &&
+    JSON.stringify(
+      milestones.map((m) => ({
+        date: m.date,
+        amount: parseAmountInput(m.amount) ?? 0,
+      }))
+    ) ===
+      JSON.stringify(
+        (editing.milestones ?? []).map((m) => ({
+          date: m.date,
+          amount: m.amount,
+        }))
+      );
+
   async function save() {
     const body = {
       name,
@@ -3542,7 +3567,8 @@ function GoalEditorFields({
             busy ||
             !name.trim() ||
             (type === "__new" && !newType.trim()) ||
-            milestoneProblem !== null
+            milestoneProblem !== null ||
+            unchanged
           }
           onClick={save}
           className="cursor-pointer rounded-full bg-blue-primary px-6 py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"

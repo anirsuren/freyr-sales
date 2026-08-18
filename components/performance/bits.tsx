@@ -138,6 +138,7 @@ export function PersonSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
+  const [listMax, setListMax] = useState(320);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -149,12 +150,20 @@ export function PersonSelect({
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     const spaceBelow = window.innerHeight - rect.bottom;
+    const below = spaceBelow > 300;
+    // The LIST fits the space that is actually there. A fixed 320px cap let
+    // the menu run past the bottom of the screen and slice the last person in
+    // half (Anir, Aug 18: "this last guy is clearly getting cut off") — now
+    // the panel stops short of the edge and the roster scrolls inside it.
+    const room = (below ? spaceBelow : rect.top) - 18;
+    const searchRow = people.length > 6 ? 41 : 0;
+    setListMax(Math.max(180, Math.min(320, room - searchRow)));
     setMenuStyle({
       position: "fixed",
       left: rect.left,
       width: rect.width,
-      top: spaceBelow > 300 ? rect.bottom + 6 : undefined,
-      bottom: spaceBelow > 300 ? undefined : window.innerHeight - rect.top + 6,
+      top: below ? rect.bottom + 6 : undefined,
+      bottom: below ? undefined : window.innerHeight - rect.top + 6,
       zIndex: 200,
     });
   };
@@ -246,7 +255,7 @@ export function PersonSelect({
               />
             </div>
           )}
-          <div className="max-h-[320px] overflow-y-auto p-1">
+          <div style={{ maxHeight: listMax }} className="overflow-y-auto p-1">
             {matches.map((p) => (
               <button
                 key={p}

@@ -281,7 +281,17 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         <div className="mt-4 flex items-center justify-end">
           <Button
             onClick={save}
-            disabled={!name.trim() || !head || members.length === 0}
+            disabled={
+              !name.trim() ||
+              !head ||
+              members.length === 0 ||
+              // Editing but nothing changed → nothing to save (Anir, Aug 18:
+              // "That should be greyed out unless I change anything").
+              (editing !== null &&
+                name.trim() === editing.name &&
+                head === editing.head &&
+                JSON.stringify(members) === JSON.stringify(editing.members))
+            }
             loading={busy}
           >
             {editing ? "Save changes" : "Create group"}

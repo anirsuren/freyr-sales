@@ -1565,6 +1565,10 @@ export function FdlComponentDetail({
         open={!!readingFeature}
         onClose={() => setReadingFeature(null)}
         title={readingFeature?.name || "Feature"}
+        /* Room to actually read: a long user story plus screenshots was
+           squeezed into the 440px default (Anir, Aug 18: "make the pop-up
+           bigger. It's too small if there's a lot of information"). */
+        size="workflow"
       >
         {readingFeature && (
           <div className="space-y-4">
@@ -1645,7 +1649,7 @@ export function FdlComponentDetail({
               </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setReadingFeature(null)}>
                 Close
               </Button>
@@ -3157,7 +3161,27 @@ export function FdlComponentDetail({
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={!featName.trim() || featVersions.length === 0}
+              disabled={
+                !featName.trim() ||
+                featVersions.length === 0 ||
+                // Editing with nothing changed → nothing to save (Anir,
+                // Aug 18: "greyed out unless I change anything").
+                (() => {
+                  const original = featureModal
+                    ? component.features.find((f) => f.id === featureModal)
+                    : null;
+                  if (!original) return false;
+                  return (
+                    featName.trim() === (original.name ?? "") &&
+                    featFid.trim() === (original.fid ?? "") &&
+                    featDesc.trim() === (original.description ?? "") &&
+                    JSON.stringify(featVersions) ===
+                      JSON.stringify(original.versionIds ?? []) &&
+                    JSON.stringify(featFiles) ===
+                      JSON.stringify(original.attachments ?? [])
+                  );
+                })()
+              }
               loading={busy}
             >
               {featureModal === "" ? (

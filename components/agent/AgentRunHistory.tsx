@@ -28,7 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
@@ -80,10 +80,8 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
   const [open, setOpen] = useState<string | null>(runs[0]?.id ?? null);
   const [replaying, setReplaying] = useState<string | null>(null);
   const [undoing, setUndoing] = useState<string | null>(null);
-  const [kindFilter, setKindFilter] = useState<AgentRun["kind"] | "all">("all");
-  const [outcomeFilter, setOutcomeFilter] = useState<AgentRun["outcome"] | "all">(
-    "all"
-  );
+  const [kindFilter, setKindFilter] = useState<string[]>([]);
+  const [outcomeFilter, setOutcomeFilter] = useState<string[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -93,8 +91,8 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
   const showFilters = runs.length > 2 && (kinds.length > 1 || outcomes.length > 1);
   const visible = runs.filter(
     (r) =>
-      (kindFilter === "all" || r.kind === kindFilter) &&
-      (outcomeFilter === "all" || r.outcome === outcomeFilter)
+      (kindFilter.length === 0 || kindFilter.includes(r.kind)) &&
+      (outcomeFilter.length === 0 || outcomeFilter.includes(r.outcome))
   );
 
   async function undo(run: AgentRun) {
@@ -146,37 +144,35 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
     <div>
       {showFilters && (
         <div className="flex items-center gap-2 mb-3">
-          <ColorSelect
+          <MultiColorSelect
             ariaLabel="Filter runs by kind"
             collapsible={false}
             minWidth={150}
-            value={kindFilter}
-            onChange={(v) => setKindFilter(v as AgentRun["kind"] | "all")}
-            options={[
-              { value: "all", label: "All kinds", icon: ListFilter },
-              ...kinds.map((k) => ({
-                value: k,
-                label: KIND_LABEL[k],
-                color: KIND_ACCENT[k].color,
-                icon: KIND_ACCENT[k].icon,
-              })),
-            ]}
+            values={kindFilter}
+            onChange={setKindFilter}
+            allLabel="All kinds"
+            allIcon={ListFilter}
+            options={kinds.map((k) => ({
+              value: k,
+              label: KIND_LABEL[k],
+              color: KIND_ACCENT[k].color,
+              icon: KIND_ACCENT[k].icon,
+            }))}
           />
-          <ColorSelect
+          <MultiColorSelect
             ariaLabel="Filter runs by outcome"
             collapsible={false}
             minWidth={160}
-            value={outcomeFilter}
-            onChange={(v) => setOutcomeFilter(v as AgentRun["outcome"] | "all")}
-            options={[
-              { value: "all", label: "All outcomes", icon: ListFilter },
-              ...outcomes.map((o) => ({
-                value: o,
-                label: o.charAt(0).toUpperCase() + o.slice(1),
-                color: OUTCOME_ACCENT[o].color,
-                icon: OUTCOME_ACCENT[o].icon,
-              })),
-            ]}
+            values={outcomeFilter}
+            onChange={setOutcomeFilter}
+            allLabel="All outcomes"
+            allIcon={ListFilter}
+            options={outcomes.map((o) => ({
+              value: o,
+              label: o.charAt(0).toUpperCase() + o.slice(1),
+              color: OUTCOME_ACCENT[o].color,
+              icon: OUTCOME_ACCENT[o].icon,
+            }))}
           />
           <span className="text-[12px] text-text-tertiary tnum ml-auto">
             {visible.length} of {runs.length}

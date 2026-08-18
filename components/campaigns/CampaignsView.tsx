@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ColorSelect, type ColorOption , MultiColorSelect } from "@/components/ui/ColorSelect";
 import { offeringMark } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -282,7 +282,7 @@ export function CampaignsView({
   const [body, setBody] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [audienceQuery, setAudienceQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [scheduleMode, setScheduleMode] = useState<"draft" | "now" | "later">("draft");
   const [scheduledAt, setScheduledAt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -301,7 +301,7 @@ export function CampaignsView({
     setBody("");
     setPicked(new Set());
     setAudienceQuery("");
-    setRoleFilter("all");
+    setRoleFilter([]);
     setScheduleMode("draft");
     setScheduledAt("");
     setBusy(false);
@@ -315,7 +315,7 @@ export function CampaignsView({
     const query = audienceQuery.trim().toLowerCase();
     return emailable.filter(
       (contact) =>
-        (roleFilter === "all" || contact.role === roleFilter) &&
+        (roleFilter.length === 0 || roleFilter.includes(contact.role)) &&
         (!query ||
           `${contact.name} ${contact.company} ${contact.title} ${contact.industry}`
             .toLowerCase()
@@ -345,7 +345,7 @@ export function CampaignsView({
     setBody("");
     setPicked(new Set());
     setAudienceQuery("");
-    setRoleFilter("all");
+    setRoleFilter([]);
     setScheduleMode("draft");
     setScheduledAt("");
     setComposerStep(0);
@@ -667,7 +667,7 @@ export function CampaignsView({
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input value={audienceQuery} onChange={(event) => setAudienceQuery(event.target.value)} placeholder="Search people, accounts, titles, or industries..." className="h-9 w-full rounded-md border border-border pl-8 pr-3 text-[12px] outline-none focus:border-blue-primary" />
                   </div>
-                  <ColorSelect ariaLabel="Filter campaign audience by role" collapsible={false} minWidth={180} value={roleFilter} onChange={setRoleFilter} options={[{ value: "all", label: "All roles", icon: ListFilter }, ...roles.map((role) => ({ value: role, label: role, icon: BadgeCheck, color: "#7C3AED" }))]} />
+                  <MultiColorSelect ariaLabel="Filter campaign audience by role" collapsible={false} minWidth={180} values={roleFilter} onChange={setRoleFilter} allLabel="All roles" allIcon={ListFilter} options={roles.map((role) => ({ value: role, label: role, icon: BadgeCheck, color: "#7C3AED" }))} />
                   <button onClick={() => setPicked((current) => visibleAudience.every((contact) => current.has(contact.id)) ? new Set(Array.from(current).filter((id) => !visibleAudience.some((contact) => contact.id === id))) : new Set([...Array.from(current), ...visibleAudience.map((contact) => contact.id)]))} className="h-9 rounded-md border border-border px-3 text-[11.5px] font-semibold text-blue-primary hover:bg-blue-light">
                     {visibleAudience.length && visibleAudience.every((contact) => picked.has(contact.id)) ? "Clear visible" : "Select visible"}
                   </button>

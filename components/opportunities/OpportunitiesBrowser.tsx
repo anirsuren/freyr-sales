@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   ChevronDown,
@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -305,14 +305,31 @@ export function OpportunitiesBrowser({
     [list]
   );
   const [query, setQuery] = useState("");
-  const [levelFilter, setLevelFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // MULTISELECT filters (Anir, Aug 18: "multiselect. wherever this applies…
+  // across other pages and dropdowns too") — empty pick means everything.
+  const [levelFilter, setLevelFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   /** Suren, Aug 16: "I need two column names where you can filter based on
    *  customer… it's like how you do customers, and within the customers,
    *  certain opportunities are coming." */
-  const [customerFilter, setCustomerFilter] = useState("all");
+  const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
+  /** The draft exactly as the editor opened — Save stays greyed out until the
+   *  form actually differs from it (Anir, Aug 18: "I didn't change anything,
+   *  so why is it asking me to save?"). Null while adding a NEW deal, where
+   *  saving is always a change. */
+  const [editBaseline, setEditBaseline] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editing) {
+      setEditBaseline(null);
+      return;
+    }
+    if (editing.id) setEditBaseline(JSON.stringify(editing));
+    // Snapshot only when the editor OPENS or switches deals — field edits
+    // must not move the baseline under the comparison.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing !== null, editing?.id]);
   const [confirmRemove, setConfirmRemove] = useState<Opportunity | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -388,12 +405,16 @@ export function OpportunitiesBrowser({
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return currentList
-      .filter((o) => levelFilter === "all" || o.level === levelFilter)
-      .filter((o) => statusFilter === "all" || (o.status ?? "") === statusFilter)
+      .filter((o) => levelFilter.length === 0 || levelFilter.includes(o.level))
+      .filter(
+        (o) => statusFilter.length === 0 || statusFilter.includes(o.status ?? "")
+      )
       .filter(
         (o) =>
-          customerFilter === "all" ||
-          o.customer.trim().toLowerCase() === customerFilter.toLowerCase()
+          customerFilter.length === 0 ||
+          customerFilter.some(
+            (c) => o.customer.trim().toLowerCase() === c.toLowerCase()
+          )
       )
       .filter(
         (o) =>
@@ -427,6 +448,21 @@ export function OpportunitiesBrowser({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, groupBy, offeringName]);
+
+  /** Which grouped cards are folded shut — session-local, exactly like the
+   *  Goal Master's categories. */
+  const [shutGroups, setShutGroups] = useState<string[]>([]);
+
+  const groupSections = useMemo(() => {
+    if (groupBy === "none") return [] as { key: string; rows: Opportunity[] }[];
+    const sections = new Map<string, Opportunity[]>();
+    for (const o of groupedShown) {
+      const k = groupKeyOf(o);
+      sections.set(k, [...(sections.get(k) ?? []), o]);
+    }
+    return [...sections.entries()].map(([key, rows]) => ({ key, rows }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedShown, groupBy]);
 
   const totals = useMemo(() => {
     const value = shown.reduce((s, o) => s + o.value, 0);
@@ -581,195 +617,11 @@ export function OpportunitiesBrowser({
 
   const writable = canEdit && live;
 
-  return (
-    <div>
-      <PageHeader
-        title="Opportunities"
-        subtitle="Every live deal: what it is worth, who it is with, which offerings it covers, and how sure we are."
-        action={
-          writable ? (
-            <Button
-              onClick={() =>
-                // Opens on one empty offering row, because that is the first
-                // thing to fill in and an empty list reads as a dead end.
-                setEditing({
-                  ...BLANK,
-                  owner: meName,
-                  // ONE offering per opportunity (Suren, Aug 17 call) — the
-                  // form opens with its single offering block ready.
-                  rows: [blankLine()],
-                  level: pipeView === "future" ? "Future" : "Pipeline",
-                })
-              }
-            >
-              <Plus size={14} strokeWidth={2.2} /> New opportunity
-            </Button>
-          ) : undefined
-        }
-      />
-
-      {/* Same pill idiom as the performance rooms. NO entrance animation on
-          these — the performance lesson holds here too. */}
-      <div className="relative z-40 mt-4">
-        <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
-          {([
-            { key: "current" as const, label: "Current pipeline", count: currentList.length },
-            { key: "future" as const, label: "Future", count: futures.length },
-          ]).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              aria-pressed={pipeView === t.key}
-              onClick={() => setPipeView(t.key)}
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold tracking-[-0.01em] transition-all",
-                pipeView === t.key
-                  ? "bg-white text-text-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              {t.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
-                  t.key === "future"
-                    ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
-                    : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
-                )}
-              >
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Same entrance the performance rooms play when the tab flips — the
-          pills above hold still, only the content below arrives. */}
-      <div key={pipeView} className="tab-panel">
-      {pipeView === "future" ? (
-        <FutureSection
-          futures={futures}
-          writable={writable}
-          offeringName={offeringName}
-          colorForOffering={(o) =>
-            o.offeringIds[0]
-              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "#7C3AED")
-              : "#7C3AED"
-          }
-          onEdit={(o) => setEditing(toDraft(o, offerings))}
-          onRemove={(o) => setConfirmRemove(o)}
-        />
-      ) : (
-      <>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          icon={Briefcase}
-          label="Opportunities"
-          value={String(totals.count)}
-          sub={levelFilter === "all" ? "in the pipeline" : levelFilter.toLowerCase()}
-        />
-        <StatTile
-          icon={Target}
-          label="Total value"
-          value={money(totals.value)}
-          sub="contract value"
-        />
-        <StatTile
-          icon={TrendingUp}
-          label="Weighted"
-          value={money(totals.weighted)}
-          sub="value × confidence"
-        />
-        <StatTile
-          icon={Percent}
-          label="Average confidence"
-          value={totals.avgConfidence === null ? "—" : `${totals.avgConfidence}%`}
-          sub={
-            totals.avgConfidence === null
-              ? "none recorded yet"
-              : "across those that have one"
-          }
-        />
-      </div>
-
-      <Card className="mt-4 overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
-          <PrioritySearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Search deals, accounts, offerings, owners…"
-            className="min-w-[240px] flex-1"
-          />
-          {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
-              "it's like how you do customers, and within the customers,
-              certain opportunities are coming"), so it leads the filters. */}
-          <ColorSelect
-            value={customerFilter}
-            ariaLabel="Filter by customer"
-            onChange={setCustomerFilter}
-            minWidth={210}
-            options={[
-              { value: "all", label: "All customers" },
-              // THE ACCOUNT'S OWN MARK, not a row of identical blue dots
-              // (Anir, Aug 16: "here you need to have the company logo").
-              ...customersInPipeline.map((c) => ({
-                value: c,
-                label: c,
-                logoName: c,
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={levelFilter}
-            ariaLabel="Filter by level"
-            onChange={setLevelFilter}
-            options={[
-              { value: "all", label: "All levels" },
-              ...OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
-                value: l,
-                label: l,
-                color: LEVEL_COLOR[l],
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={groupBy}
-            ariaLabel="Group rows"
-            onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
-            options={[
-              { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
-              { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
-            ]}
-          />
-          <ColorSelect
-            value={statusFilter}
-            ariaLabel="Filter by status"
-            onChange={setStatusFilter}
-            options={[
-              { value: "all", label: "Any status" },
-              ...OPPORTUNITY_STATUSES.map((s) => ({
-                value: s,
-                label: s,
-                color: STATUS_COLOR[s],
-              })),
-            ]}
-          />
-        </div>
-
-        {shown.length === 0 ? (
-          <EmptyState
-            icon={Briefcase}
-            title={list.length === 0 ? "No opportunities yet" : "Nothing matches"}
-            description={
-              list.length === 0
-                ? "Add the first deal and it shows up here, on its account, and as a line item under any goal it feeds."
-                : "Clear the search or the filters to see the rest of the pipeline."
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
+  /** THE ONE TABLE SHELL, shared by the flat list and the grouped cards —
+   *  same columns everywhere, so separate cards still read as one table
+   *  (the Goal Master trick). */
+  const pipeTable = (rowsToShow: Opportunity[]) => (
+    <>
             {/* table-fixed, because auto layout poured every spare pixel
                 into the first two columns — 500px for "Novartis" — and shoved
                 Value, Confidence, Status and Actions past a horizontal scroll
@@ -797,16 +649,8 @@ export function OpportunitiesBrowser({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {groupedShown.map((o, gi) => {
+                {rowsToShow.map((o) => {
                   const open = openRow === o.id;
-                  const gKey = groupBy !== "none" ? groupKeyOf(o) : null;
-                  const newGroup =
-                    gKey !== null &&
-                    (gi === 0 || groupKeyOf(groupedShown[gi - 1]) !== gKey);
-                  const groupRows =
-                    newGroup && gKey !== null
-                      ? groupedShown.filter((x) => groupKeyOf(x) === gKey)
-                      : [];
                   const names = [
                     ...o.offeringIds.map((id) => offeringName.get(id) ?? id),
                     ...o.offeringLabels,
@@ -815,29 +659,6 @@ export function OpportunitiesBrowser({
                   const shownConfidence = opportunityConfidence(o);
                   return (
                     <Fragment key={o.id}>
-                      {newGroup && gKey !== null && (
-                        /* Same section idiom as the Goal Master (Anir: "same
-                           look"): the identity chip, the count, then a thin
-                           rule running to the edge — air above, no grey band. */
-                        <tr>
-                          <td colSpan={7} className="px-4 pb-1.5 pt-6">
-                            <span className="flex items-center gap-2">
-                              {groupBy === "customer" ? (
-                                <>
-                                  <CompanyLogo name={gKey} className="h-6 w-6 shrink-0 text-[8px]" />
-                                  <b className="text-[13px] text-text-primary">{gKey}</b>
-                                </>
-                              ) : (
-                                <OfferingChip name={gKey} color={lineColor({ id: "g", offeringLabel: gKey, value: 0 }) ?? "#B4318F"} size="xs" />
-                              )}
-                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                                {groupRows.length} {groupRows.length === 1 ? "deal" : "deals"} · {money(groupRows.reduce((sum, x) => sum + x.value, 0))} total
-                              </span>
-                              <span className="ml-1 h-px min-w-4 flex-1 bg-border-light" aria-hidden />
-                            </span>
-                          </td>
-                        </tr>
-                      )}
                       <tr
                         onClick={() => setOpenRow(open ? null : o.id)}
                         aria-expanded={open}
@@ -1283,9 +1104,254 @@ export function OpportunitiesBrowser({
                 })}
               </tbody>
             </table>
-          </div>
-        )}
+    </>
+  );
+
+  return (
+    <div>
+      <PageHeader
+        title="Opportunities"
+        subtitle="Every live deal: what it is worth, who it is with, which offerings it covers, and how sure we are."
+        action={
+          writable ? (
+            <Button
+              onClick={() =>
+                // Opens on one empty offering row, because that is the first
+                // thing to fill in and an empty list reads as a dead end.
+                setEditing({
+                  ...BLANK,
+                  owner: meName,
+                  // ONE offering per opportunity (Suren, Aug 17 call) — the
+                  // form opens with its single offering block ready.
+                  rows: [blankLine()],
+                  level: pipeView === "future" ? "Future" : "Pipeline",
+                })
+              }
+            >
+              <Plus size={14} strokeWidth={2.2} /> New opportunity
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* Same pill idiom as the performance rooms. NO entrance animation on
+          these — the performance lesson holds here too. */}
+      <div className="relative z-40 mt-4">
+        <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
+          {([
+            { key: "current" as const, label: "Current pipeline", count: currentList.length },
+            { key: "future" as const, label: "Future", count: futures.length },
+          ]).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={pipeView === t.key}
+              onClick={() => setPipeView(t.key)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold tracking-[-0.01em] transition-all",
+                pipeView === t.key
+                  ? "bg-white text-text-primary shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              {t.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
+                  t.key === "future"
+                    ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
+                    : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
+                )}
+              >
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Same entrance the performance rooms play when the tab flips — the
+          pills above hold still, only the content below arrives. */}
+      <div key={pipeView} className="tab-panel">
+      {pipeView === "future" ? (
+        <FutureSection
+          futures={futures}
+          writable={writable}
+          offeringName={offeringName}
+          colorForOffering={(o) =>
+            o.offeringIds[0]
+              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "#7C3AED")
+              : "#7C3AED"
+          }
+          onEdit={(o) => setEditing(toDraft(o, offerings))}
+          onRemove={(o) => setConfirmRemove(o)}
+        />
+      ) : (
+      <>
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          icon={Briefcase}
+          label="Opportunities"
+          value={String(totals.count)}
+          sub={
+            levelFilter.length === 0
+              ? "in the pipeline"
+              : levelFilter.map((l) => l.toLowerCase()).join(", ")
+          }
+        />
+        <StatTile
+          icon={Target}
+          label="Total value"
+          value={money(totals.value)}
+          sub="contract value"
+        />
+        <StatTile
+          icon={TrendingUp}
+          label="Weighted"
+          value={money(totals.weighted)}
+          sub="value × confidence"
+        />
+        <StatTile
+          icon={Percent}
+          label="Average confidence"
+          value={totals.avgConfidence === null ? "—" : `${totals.avgConfidence}%`}
+          sub={
+            totals.avgConfidence === null
+              ? "none recorded yet"
+              : "across those that have one"
+          }
+        />
+      </div>
+
+      <Card className="mt-4 overflow-hidden p-0">
+        <div className={cn("flex flex-wrap items-center gap-2 px-4 py-3", (shown.length === 0 || groupBy === "none") && "border-b border-border-light")}>
+          <PrioritySearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search deals, accounts, offerings, owners…"
+            className="min-w-[240px] flex-1"
+          />
+          {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
+              "it's like how you do customers, and within the customers,
+              certain opportunities are coming"), so it leads the filters. */}
+          <MultiColorSelect
+            values={customerFilter}
+            ariaLabel="Filter by customer"
+            onChange={setCustomerFilter}
+            minWidth={210}
+            allLabel="All customers"
+            options={
+              // THE ACCOUNT'S OWN MARK, not a row of identical blue dots
+              // (Anir, Aug 16: "here you need to have the company logo").
+              customersInPipeline.map((c) => ({
+                value: c,
+                label: c,
+                logoName: c,
+              }))
+            }
+          />
+          <MultiColorSelect
+            values={levelFilter}
+            ariaLabel="Filter by level"
+            onChange={setLevelFilter}
+            allLabel="All levels"
+            options={OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
+              value: l,
+              label: l,
+              color: LEVEL_COLOR[l],
+            }))}
+          />
+          <ColorSelect
+            value={groupBy}
+            ariaLabel="Group rows"
+            onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
+            options={[
+              { value: "none", label: "No grouping", color: "#8E98A8" },
+              { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
+              { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
+            ]}
+          />
+          <MultiColorSelect
+            values={statusFilter}
+            ariaLabel="Filter by status"
+            onChange={setStatusFilter}
+            allLabel="Any status"
+            options={OPPORTUNITY_STATUSES.map((s) => ({
+              value: s,
+              label: s,
+              color: STATUS_COLOR[s],
+            }))}
+          />
+        </div>
+
+        {shown.length === 0 ? (
+          <EmptyState
+            icon={Briefcase}
+            title={list.length === 0 ? "No opportunities yet" : "Nothing matches"}
+            description={
+              list.length === 0
+                ? "Add the first deal and it shows up here, on its account, and as a line item under any goal it feeds."
+                : "Clear the search or the filters to see the rest of the pipeline."
+            }
+          />
+        ) : groupBy === "none" ? (
+          <div className="overflow-x-auto">{pipeTable(groupedShown)}</div>
+        ) : null}
       </Card>
+
+      {/* SEPARATE CARDS, NOT ONE LONG TABLE — the Goal Master idiom exactly
+          (Anir, Aug 18: "Look at performance goal master and separate it
+          like that"): each customer or offering is its own card with a
+          tinted header that folds it away; what lies between the cards is
+          the page itself. */}
+      {shown.length > 0 && groupBy !== "none" && (
+        <div className="mt-4 space-y-4">
+          {groupSections.map(({ key, rows: sectionRows }) => {
+            const shut = shutGroups.includes(key);
+            return (
+              <Card key={key} className="overflow-hidden p-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShutGroups((current) =>
+                      current.includes(key)
+                        ? current.filter((k) => k !== key)
+                        : [...current, key]
+                    )
+                  }
+                  aria-expanded={!shut}
+                  className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"
+                >
+                  <ChevronDown
+                    size={15}
+                    strokeWidth={2.2}
+                    className={cn(
+                      "shrink-0 text-text-tertiary transition-transform duration-200",
+                      shut && "-rotate-90"
+                    )}
+                  />
+                  {groupBy === "customer" ? (
+                    <>
+                      <CompanyLogo name={key} className="h-6 w-6 shrink-0 text-[8px]" />
+                      <b className="text-[13px] text-text-primary">{key}</b>
+                    </>
+                  ) : (
+                    <OfferingChip name={key} color={lineColor({ id: "g", offeringLabel: key, value: 0 }) ?? "#B4318F"} size="xs" />
+                  )}
+                  <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                    {sectionRows.length} {sectionRows.length === 1 ? "deal" : "deals"} · {money(sectionRows.reduce((sum, x) => sum + x.value, 0))} total
+                  </span>
+                </button>
+                {!shut && (
+                  <div className="tab-panel overflow-x-auto border-t border-border-light">
+                    {pipeTable(sectionRows)}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
       </>
       )}
       </div>
@@ -1583,7 +1649,16 @@ export function OpportunitiesBrowser({
               <Button variant="secondary" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
-              <Button onClick={save} loading={busy} disabled={missing.length > 0}>
+              <Button
+                onClick={save}
+                loading={busy}
+                disabled={
+                  missing.length > 0 ||
+                  (!!editing.id &&
+                    (editBaseline === null ||
+                      JSON.stringify(editing) === editBaseline))
+                }
+              >
                 {editing.id ? "Save changes" : "Add opportunity"}
               </Button>
             </div>
