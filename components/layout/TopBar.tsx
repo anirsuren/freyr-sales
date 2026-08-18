@@ -212,6 +212,42 @@ export function TopBar({
       router.prefetch("/notifications");
     } catch {}
   }, [notifOpen, panelItems, router]);
+  /* WHAT WAS NEW WHEN THE PANEL OPENED. Opening the panel IS seeing the
+     notifications, so the bell badge clears the moment it opens (Anir,
+     Aug 18: "if i click on it it should stop the #1 popup") — but the rows
+     keep their new-dot for this open via `freshIds`, or the panel would
+     pretend nothing had ever been new. */
+  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set());
+  const markedOnOpen = useRef(false);
+  useEffect(() => {
+    if (!notifOpen) {
+      markedOnOpen.current = false;
+      return;
+    }
+    if (markedOnOpen.current || !notificationStateReady) return;
+    markedOnOpen.current = true;
+    const fresh = visibleNotifs
+      .filter((n) => !visibleReadIds.has(n.id))
+      .map((n) => n.id);
+    setFreshIds(new Set(fresh));
+    if (fresh.length === 0) return;
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      for (const id of fresh) next.add(id);
+      return next;
+    });
+    persistNotifRead(notificationReadKey, fresh);
+  }, [
+    notifOpen,
+    notificationStateReady,
+    visibleNotifs,
+    visibleReadIds,
+    notificationReadKey,
+  ]);
+  const panelNew = visibleNotifs.filter(
+    (n) => freshIds.has(n.id) || !visibleReadIds.has(n.id)
+  ).length;
+
   const markRead = useCallback(
     (id: string) => {
       if (!notificationStateReady) return;
@@ -361,7 +397,7 @@ export function TopBar({
             data-tour="notifications"
             aria-label="Notifications"
             onClick={() => setNotifOpen((o) => !o)}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
+            className="relative z-50 w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
           >
             <Bell size={19} strokeWidth={1.5} />
             {unread > 0 && (
@@ -388,9 +424,9 @@ export function TopBar({
                   )}
                 >
                   <span className="text-[14px] font-semibold text-text-primary">Notifications</span>
-                  {unread > 0 && (
+                  {panelNew > 0 && (
                     <span className="text-[11px] font-semibold text-blue-primary tnum whitespace-nowrap">
-                      {unread} new
+                      {panelNew} new
                     </span>
                   )}
                 </div>
@@ -433,7 +469,7 @@ export function TopBar({
                               >
                                 <NotificationRow
                                   notification={n}
-                                  unread={!isRead}
+                                  unread={!isRead || freshIds.has(n.id)}
                                 />
                               </Link>
                             </li>
