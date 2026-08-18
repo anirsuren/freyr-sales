@@ -44,7 +44,7 @@ export const REP_MODULES = ["/agent", "/offerings", "/team"] as const;
  * flag is the only thing holding it back, so finishing the page is one line:
  * set this to false.
  */
-export const TEAM_ADMIN_ONLY = true;
+export const TEAM_ADMIN_ONLY = false;
 
 export function isManagerOrAdmin(role: UserIdentityRole): boolean {
   return role === "admin" || role === "manager";
