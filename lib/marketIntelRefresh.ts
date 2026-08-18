@@ -552,6 +552,29 @@ export async function runMarketIntelRefresh(options?: {
       if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
     }
 
+    // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
+    // working?" — it was 101 hours behind while companies were 3 hours
+    // fresh). The company queue drained the run's budget every time, so the
+    // ~$0.15 M&A pull never got a turn. Same twice-daily rhythm, same cap —
+    // just no longer last in line.
+    if (
+      options?.force ||
+      !feed.mna?.fetchedAt ||
+      Date.now() - Date.parse(feed.mna.fetchedAt) > COMPANY_FRESH_MS
+    ) {
+      try {
+        const mnaCost = await refreshMna(feed);
+        spent += mnaCost;
+        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + mnaCost) * 1000) / 1000;
+        feed.updatedAt = new Date().toISOString();
+        await writeRow(FEED_ROW, feed);
+      } catch (error) {
+        // Logged, never fatal: the tracker keeps its last board, but a
+        // repeating failure must be visible instead of reading as "stale".
+        console.error("[market-intel] M&A refresh failed:", error);
+      }
+    }
+
     for (const source of sources) {
       if (spent > RUN_CAP_USD) break;
       const existing: FeedCompany | undefined = feed.companies[source.id];
@@ -608,24 +631,6 @@ export async function runMarketIntelRefresh(options?: {
         (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
         (Date.parse(feed.people[b.id]?.fetchedAt ?? "") || 0)
     );
-    // The M&A board refreshes on the same twice-daily rhythm.
-    if (
-      spent < RUN_CAP_USD &&
-      (options?.force ||
-        !feed.mna?.fetchedAt ||
-        Date.now() - Date.parse(feed.mna.fetchedAt) > COMPANY_FRESH_MS)
-    ) {
-      try {
-        const mnaCost = await refreshMna(feed);
-        spent += mnaCost;
-        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + mnaCost) * 1000) / 1000;
-        feed.updatedAt = new Date().toISOString();
-        await writeRow(FEED_ROW, feed);
-      } catch {
-        /* the tracker keeps its last board */
-      }
-    }
-
     for (const person of peopleQueue) {
       if (spent > RUN_CAP_USD) break;
       if (!person.linkedinUrl) continue;

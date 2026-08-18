@@ -44,7 +44,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   /** Which group is unfolded to show who is actually in it (Anir, Aug 15:
    *  "it's not even showing me the groups, like who's in this group"). A row
    *  that only counts heads makes you open the editor to answer that. */
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Several groups open at once (Anir, Aug 17: "I should be able to open up
+  // multiple of these — it shouldn't close").
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   /** name → workspace role, so the unfolded list can say what each person is
    *  rather than just who they are. Same directory the Team members tab reads. */
   const [roles, setRoles] = useState<Record<string, string>>({});
@@ -312,7 +314,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           </p>
         ) : (
           groups.map((g) => {
-            const open = openId === g.id;
+            const open = openIds.has(g.id);
             // The owner belongs in the roster whether or not they were also
             // added as a member; they are the one person guaranteed to be in
             // the group.
@@ -331,7 +333,14 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   here" without sending you into the editor to find out. */}
               <button
                 type="button"
-                onClick={() => setOpenId(open ? null : g.id)}
+                onClick={() =>
+                  setOpenIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(g.id)) next.delete(g.id);
+                    else next.add(g.id);
+                    return next;
+                  })
+                }
                 aria-expanded={open}
                 className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left"
               >

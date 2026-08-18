@@ -6,12 +6,19 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 import { getDataMode, isDataModeLocked } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
 import { isOfferingsOnly } from "@/lib/release";
+import { getCurrentUser } from "@/lib/currentUser";
+import { ssoStatusForEmail } from "@/lib/ssoStatus";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const services = getServiceStatus();
+  // Whose settings these are, and whether their email already has a
+  // Microsoft sign-in behind it (Anir, Aug 17: "I should be able to see if
+  // I'm already connected to SSO").
+  const me = await getCurrentUser();
+  const ssoStatus = await ssoStatusForEmail(me.email ?? null);
   const dataMode = getDataMode();
   // Settings stays reachable during the offerings-only rollout, so it must not
   // carry the other modules' data with it. The CRM mirror counts companies,
@@ -55,6 +62,8 @@ export default async function SettingsPage() {
           authMode: process.env.AUTH_MODE || "local",
           approvalEnabled: isApprovalGateEnabled(),
         }}
+        ssoStatus={ssoStatus}
+        meEmail={me.email ?? null}
       />
     </div>
   );

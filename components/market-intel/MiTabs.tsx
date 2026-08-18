@@ -96,7 +96,13 @@ export function MiTabs({
 
   return (
     <>
-      <div className="rise-in relative z-40 mb-6">
+      {/* NO ENTRANCE ANIMATION HERE — EVER (the performance-pills lesson,
+          Aug 17). The market bucket renders a DIFFERENT tree than the other
+          two, so switching to or from it REMOUNTS this whole component; any
+          entrance class here replays on the pill strip and "everything goes
+          haywire". The strip renders already-settled; only the keyed
+          tab-panel below animates. */}
+      <div className="relative z-40 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="relative">
           {/* The pills carry the page name, so the visible h1 would say it

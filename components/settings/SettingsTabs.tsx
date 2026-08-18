@@ -18,6 +18,8 @@ import {
 import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PasskeySetup } from "@/components/settings/PasskeySetup";
+import { SsoCard } from "@/components/settings/SsoCard";
+import type { SsoStatus } from "@/lib/ssoStatus";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -291,6 +293,8 @@ export function SettingsTabs({
   initialDataMode,
   initialDataModeLocked,
   authConfig,
+  ssoStatus = null,
+  meEmail = null,
   offeringsOnly = false,
 }: {
   services: Record<string, boolean>;
@@ -298,6 +302,8 @@ export function SettingsTabs({
   initialDataMode: "mock" | "live";
   initialDataModeLocked: boolean;
   authConfig: { authMode: string; approvalEnabled: boolean };
+  ssoStatus?: SsoStatus | null;
+  meEmail?: string | null;
   /** True while only the Offerings module is released — see lib/release.ts. */
   offeringsOnly?: boolean;
 }) {
@@ -1336,6 +1342,7 @@ export function SettingsTabs({
                 passkey is an extra key to your own account — never a way to
                 claim one (Anir, Aug 7: "I hate logging in, I want Touch ID"). */}
             <PasskeySetup />
+            <SsoCard status={ssoStatus} email={meEmail} />
 
             {profileDirty && (
               <div className="page-in">
