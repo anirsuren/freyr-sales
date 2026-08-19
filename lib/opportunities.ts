@@ -476,6 +476,16 @@ export async function updateOpportunity(
     updatedAt: new Date().toISOString(),
   });
   if (!merged) throw new Error("That opportunity could not be saved.");
+  // A DEAL THAT PREDATES NUMBERING GETS ITS NUMBER THE MOMENT IT IS TOUCHED.
+  // The form promises "OPP-0001 on save" on every record without one, and
+  // assigning only on create left that promise unkept for the whole imported
+  // pipeline: you edited a deal, saved, and the id field still said it was
+  // coming. Numbers already imported from Freyr's CRM are never overwritten.
+  if (!merged.externalId) {
+    merged.externalId = nextOpportunityId(
+      state.opportunities.filter((_, i) => i !== idx)
+    );
+  }
   state.opportunities[idx] = merged;
   await writeRow(state);
   return merged;
