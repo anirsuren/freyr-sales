@@ -11,7 +11,7 @@ import {
   type OpportunityInput,
 } from "@/lib/opportunities";
 import type { Opportunity } from "@/lib/opportunitiesShared";
-import { logActual, removeActual } from "@/lib/performance";
+import { logActual, readPerformance, removeActual } from "@/lib/performance";
 
 export const dynamic = "force-dynamic";
 
@@ -79,9 +79,45 @@ async function settleMetGoals(
   const next = [...links];
   let changed = false;
 
+  /**
+   * THE GUARD CANNOT LIVE IN THE PAYLOAD (found testing, Aug 19).
+   *
+   * "A re-save never double-counts" held only while the client echoed the
+   * link's `actualId` back. Any save that rebuilt the rows without it — a
+   * stale tab, a second device, anything posting the same deal twice — wrote
+   * a SECOND performance entry for the same deal and goal, and the money was
+   * counted twice. The entries themselves know which deal and goal they came
+   * from, so the server can answer this without being told.
+   */
+  const existingForLink = await (async () => {
+    if (!next.some((l) => l.met && !l.actualId)) return new Map<string, string>();
+    const perf = await readPerformance();
+    const found = new Map<string, string>();
+    for (const a of perf.actuals) {
+      if (a.opportunityId !== after.id) continue;
+      const key = `${a.goalId}::${a.person.trim().toLowerCase()}`;
+      if (!found.has(key)) found.set(key, a.id);
+    }
+    return found;
+  })();
+
   for (let i = 0; i < next.length; i++) {
     const link = next[i];
     if (link.met && !link.actualId && (link.value ?? 0) > 0) {
+      // Already counted once for this deal, goal and person: adopt that entry
+      // instead of writing a second one.
+      const already = existingForLink.get(
+        `${link.goalId}::${(link.person || after.owner || meName).trim().toLowerCase()}`
+      );
+      if (already) {
+        next[i] = {
+          ...link,
+          actualId: already,
+          metAt: link.metAt ?? new Date().toISOString().slice(0, 10),
+        };
+        changed = true;
+        continue;
+      }
       try {
         const entry = await logActual({
           goalId: link.goalId,
