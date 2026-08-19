@@ -623,6 +623,11 @@ export type TipItem = {
    *  text — but it also can't be recognised from a bare string (offering names
    *  are user data, not a fixed vocabulary), so a caller must state it here. */
   service?: string;
+  /** How big this record is against the whole — drawn as a bar under the
+   *  subject line (Anir, Aug 19: "When I hover over that, I need to see a
+   *  progress bar... Make it more visual"). A list of amounts makes the
+   *  reader do the division; the bar is that division, already done. */
+  bar?: { pct: number; color?: string; caption?: string };
 };
 
 /** The clause left over once the person's own name is lifted out of `sub`.
@@ -845,6 +850,27 @@ function TipBreakdown({
                   </span>
                 )}
               </div>
+              {t.bar && (
+                <div
+                  className="mt-1.5 flex items-center gap-2"
+                  style={mark ? { paddingLeft: TIP_MARK_INDENT } : undefined}
+                >
+                  <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface)]">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{
+                        width: `${Math.max(2, Math.min(100, t.bar.pct))}%`,
+                        background: t.bar.color || VIZ.blue,
+                      }}
+                    />
+                  </span>
+                  {t.bar.caption && (
+                    <span className="shrink-0 text-[10px] font-semibold text-text-tertiary tnum">
+                      {t.bar.caption}
+                    </span>
+                  )}
+                </div>
+              )}
               {hasDetail && (
                 // Everything under the subject is secondary, and it says so by
                 // starting on the name's left edge rather than the logo's —
@@ -1926,18 +1952,18 @@ export function BarChart({
             }}
           >
             {/* Hover breakdown — portaled so it's never clipped by the card.
-                It clears the WHOLE plot, above it or below it, never over it
-                (Anir, Aug 15: "I can't be doing the pop-up right over the
-                graph. It should always do it on top or below").
-                `nearPoint` used to hug this bar's own value label, which reads
-                well on a tall area chart where the point is deep inside the
-                plot — but on a column chart the label sits ON the data, so the
-                card landed across the bars it was describing whenever the
-                chart was high in the viewport. */}
+                It sits directly above (or below) THIS bar's value label
+                (Anir, Aug 19: "Why is this pop-up so far away from the chart?
+                It should be right above the number 25"). It used to clear the
+                whole plot box, which on a short chart parked the card halfway
+                up the page, nowhere near the bar it described. `nearPoint`
+                anchors it to the bar's own label, and the card still goes
+                above or below that label, never across it. */}
             {hover === i && (
               <PortalTip
                 anchor={mouse}
                 wide
+                nearPoint
                 interactive={barInteractive}
                 onEnter={keepOpen}
                 onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}

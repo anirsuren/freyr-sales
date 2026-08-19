@@ -352,6 +352,7 @@ export async function POST(req: NextRequest) {
           subgoalId: body.subgoalId ? String(body.subgoalId) : undefined,
           person: body.person ? String(body.person) : undefined,
           verified: body.verified === true,
+          by: me.name,
         });
         break;
       case "assign-goal":

@@ -1805,9 +1805,24 @@ export function GoalZoom({
                   strokeWidth={2.4}
                   className="shrink-0 text-[#16A34A]"
                 />
+                <Avatar
+                  name={a.person}
+                  className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                />
                 <b>{a.person}</b> · {fmtAmount(goal.unit, a.amount)}
-                {a.customer ? ` · ${a.customer}` : ""}. Verified by{" "}
-                {a.verifiedBy}, locked
+                {a.customer ? ` · ${a.customer}` : ""}. Verified by
+                {a.verifiedBy ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Avatar
+                      name={a.verifiedBy}
+                      className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                    />
+                    {a.verifiedBy}
+                  </span>
+                ) : (
+                  " the group owner"
+                )}
+                , locked
               </p>
             ))}
           </div>

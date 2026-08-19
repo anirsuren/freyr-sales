@@ -540,6 +540,8 @@ export async function setVerified(input: {
   subgoalId?: string;
   person?: string;
   verified: boolean;
+  /** Who pressed the button, so the claims it sweeps up carry a signature. */
+  by?: string;
 }): Promise<void> {
   const state = await readRow();
   const goal = state.goals.find((g) => g.id === input.goalId);
@@ -552,11 +554,19 @@ export async function setVerified(input: {
   // moves with the decision. Taking a sign-off back only clears the flag:
   // un-counting money that people already banked on is a separate, louder act.
   if (flag) {
+    // Stamped the same way a one-by-one sign-off is, so the timeline on the
+    // entry can say who locked it and when instead of leaving that step blank.
+    const now = new Date().toISOString();
     for (const a of state.actuals) {
       if (a.goalId !== input.goalId) continue;
       if (input.subgoalId && a.subgoalId !== input.subgoalId) continue;
       if (input.person && a.person !== input.person) continue;
-      if ((a.status ?? "verified") === "reported") a.status = "verified";
+      if ((a.status ?? "verified") === "reported") {
+        a.status = "verified";
+        a.verifiedBy = input.by || a.verifiedBy;
+        a.verifiedAt = now;
+        a.managerNote = undefined;
+      }
     }
   }
   if (!input.subgoalId) {

@@ -16,6 +16,7 @@ import {
   Search,
   ShieldCheck,
   ShieldQuestion,
+  ShieldX,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -498,6 +499,20 @@ export function VerifiedPill({
   }
   // Clickable: dress like a real button — border, shadow, hover fill, a
   // visible action (Anir, Aug 12: "this doesn't even look like a button").
+  //
+  // ONE LABEL AT A TIME (Anir, Aug 19: "it shouldn't say 'undo' and
+  // 'verified' on the same thing. When I hover over it, it'll say it"). The
+  // pill used to print its state AND its action side by side, so a signed-off
+  // row read "Verified UNDO" — two contradictory words on one badge. Now the
+  // resting label is the state and the hover label is what the click does,
+  // and undoing turns the pill red because that is what it is: taking money
+  // back out of the count.
+  //
+  // Both labels live in the same grid cell, so the pill is already as wide as
+  // its widest word and swapping them cannot resize it mid-hover (Anir, Aug
+  // 19 on the same swap in the claims table: "it glitches out, so it
+  // shouldn't even be moving the table").
+  const HoverIcon = verified ? ShieldX : ShieldCheck;
   return (
     <button
       type="button"
@@ -511,29 +526,32 @@ export function VerifiedPill({
           : "Click when leadership has checked this number"
       }
       className={cn(
-        // whitespace-nowrap for the same reason as the read-only chip above:
-        // "Not verified" plus the VERIFY badge is three words in a narrow
-        // column, and it wrapped mid-label.
         "group/vp inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
+        verified
+          ? "border-[rgba(22,163,74,0.35)] text-[#16A34A] hover:border-[rgba(220,38,38,0.45)] hover:text-[#DC2626]"
+          : "border-[rgba(0,113,227,0.35)] text-[#0058B0]",
         size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
       )}
-      style={
-        verified
-          ? { color: "#16A34A", borderColor: "rgba(22,163,74,0.35)" }
-          : { color: "#0058B0", borderColor: "rgba(0,113,227,0.35)" }
-      }
     >
-      <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
-      {verified ? "Verified" : "Not verified"}
-      <span
-        className={cn(
-          "rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.04em] transition-colors",
-          verified
-            ? "bg-[rgba(22,163,74,0.10)] group-hover/vp:bg-[rgba(22,163,74,0.18)]"
-            : "bg-[rgba(0,113,227,0.10)] group-hover/vp:bg-[rgba(0,113,227,0.18)]"
-        )}
-      >
-        {verified ? "Undo" : "Verify"}
+      <span className="grid shrink-0 place-items-center">
+        <Icon
+          size={size === "sm" ? 10 : 11}
+          strokeWidth={2.4}
+          className="col-start-1 row-start-1 group-hover/vp:opacity-0"
+        />
+        <HoverIcon
+          size={size === "sm" ? 10 : 11}
+          strokeWidth={2.4}
+          className="col-start-1 row-start-1 opacity-0 group-hover/vp:opacity-100"
+        />
+      </span>
+      <span className="grid">
+        <span className="col-start-1 row-start-1 group-hover/vp:opacity-0">
+          {verified ? "Verified" : "Not verified"}
+        </span>
+        <span className="col-start-1 row-start-1 opacity-0 group-hover/vp:opacity-100">
+          {verified ? "Undo sign-off" : "Verify"}
+        </span>
       </span>
     </button>
   );

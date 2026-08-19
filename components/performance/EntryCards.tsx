@@ -213,6 +213,144 @@ export function StatusPill({
   );
 }
 
+/**
+ * WHAT HAPPENED TO THIS CLAIM, IN ORDER (Anir, Aug 19: "I want a timeline...
+ * I need to know when it was verified. It's telling me the date when I had an
+ * idea"). The row used to show only the result date, so a claim that had been
+ * checked and locked looked identical to one nobody had touched.
+ */
+function EntryTimeline({
+  entry,
+  person,
+}: {
+  entry: PerfActual;
+  person: string;
+}) {
+  const steps: {
+    label: string;
+    who?: string;
+    when?: string;
+    done: boolean;
+    note?: string;
+    /** Shown in place of a date when that step never recorded one. */
+    fallback?: string;
+  }[] = [
+    {
+      label: "Result happened",
+      when: entry.date,
+      done: true,
+    },
+    {
+      label: "Logged",
+      who: entry.addedBy || person,
+      when: entry.addedAt?.slice(0, 10),
+      done: true,
+    },
+  ];
+  if (entry.managerNote) {
+    steps.push({
+      label: "Sent back",
+      note: entry.managerNote,
+      done: true,
+    });
+  }
+  steps.push(
+    entryStatus(entry) === "verified"
+      ? {
+          label: "Verified and locked",
+          who: entry.verifiedBy,
+          when: entry.verifiedAt?.slice(0, 10),
+          // A handful of claims were signed off before sign-off recorded a
+          // date. Saying so beats a blank line under the step, and beats
+          // borrowing another step's date and calling it the verification.
+          fallback: entry.verifiedAt ? undefined : "date not recorded",
+          done: true,
+        }
+      : {
+          label: "Waiting to be verified",
+          done: false,
+        }
+  );
+
+  // NEWEST FIRST (Anir, Aug 19: "Most recent at the top"). The list is built
+  // oldest-to-newest because that is how the events happen; it is read the
+  // other way round, the way every other feed in the app runs.
+  steps.reverse();
+
+  return (
+    <div className="min-w-0">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+        Timeline
+      </span>
+      <ol className="mt-2 space-y-0">
+        {steps.map((step, i) => (
+          <li key={step.label} className="flex gap-2.5">
+            {/* The rail: a dot per step, a line joining them. */}
+            <span className="flex flex-col items-center">
+              <span
+                className={cn(
+                  "mt-[3px] h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                  step.done
+                    ? "border-blue-primary bg-blue-primary"
+                    : "border-border-light bg-white"
+                )}
+              />
+              {i < steps.length - 1 && (
+                <span className="w-[2px] flex-1 bg-[color:var(--border-light)]" />
+              )}
+            </span>
+            <span className={cn("min-w-0 pb-3", i === steps.length - 1 && "pb-0")}>
+              <span
+                className={cn(
+                  "block text-[12.5px] font-semibold",
+                  step.done ? "text-text-primary" : "text-text-tertiary"
+                )}
+              >
+                {step.label}
+              </span>
+              {/* A NAME IN THIS APP COMES WITH A FACE (Anir, Aug 19: "I need
+                  profile pictures, bro, when u say my name or whoever"). The
+                  rest of the row already pairs the two; a bare string here
+                  read like a different kind of thing. */}
+              <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
+                <span className={cn(!step.when && "italic text-text-tertiary", "tnum")}>
+                  {step.when ?? step.fallback ?? (step.done ? "" : "not yet")}
+                </span>
+                {step.who && (
+                  <>
+                    {step.when && <span aria-hidden>·</span>}
+                    <span className="inline-flex items-center gap-1.5">
+                      <Avatar
+                        name={step.who}
+                        className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                      />
+                      {step.who}
+                    </span>
+                  </>
+                )}
+              </span>
+              {step.note && (
+                <span className="mt-0.5 block text-[11.5px] italic text-text-secondary">
+                  &ldquo;{step.note}&rdquo;
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** The date this claim last moved: verified beats logged beats happened. */
+function lastMoved(entry: PerfActual): string {
+  return (
+    entry.verifiedAt?.slice(0, 10) ??
+    entry.addedAt?.slice(0, 10) ??
+    entry.date
+  );
+}
+
 /** One labelled fact in the expanded row. */
 function Fact({
   label,
@@ -299,8 +437,14 @@ export function MyEntriesCard({
               once an entry is verified... There's no bar. I don't see a bar
               here"). The bar it meant is the goal's, one card up. Say the rule
               itself instead of pointing at something that is not on screen. */}
+          {/* State, not a lecture (Anir, Aug 19: "why are you saying that
+              nothing counts toward a goal until it is verified here? That's
+              throwing me off: is this done or not?"). The rule only needs
+              saying while something is still waiting. */}
           <span className="text-[11px] text-text-tertiary">
-            nothing counts toward a goal until it is verified
+            {mine.some((e) => entryStatus(e) !== "verified")
+              ? "nothing counts toward a goal until it is verified"
+              : "all verified and counting"}
           </span>
           <span className="ml-auto text-[11px] text-text-tertiary tnum">
             {mine.length} {mine.length === 1 ? "entry" : "entries"}
@@ -365,7 +509,14 @@ export function MyEntriesCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        {a.date}
+                        <span className="block">{lastMoved(a)}</span>
+                        <span className="block text-[10.5px] text-text-tertiary">
+                          {entryStatus(a) === "verified" && a.verifiedAt
+                            ? "verified"
+                            : a.addedAt
+                              ? "logged"
+                              : "result date"}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5">
                         <EvidenceLinks entry={a} onOpen={setPreview} />
@@ -474,11 +625,7 @@ export function MyEntriesCard({
                                 </span>
                               )}
                             </Fact>
-                            <Fact label="Result date">{a.date}</Fact>
-                            <Fact label="Entered">
-                              {a.addedAt.slice(0, 10)}
-                              {a.addedBy && a.addedBy !== a.person ? ` by ${a.addedBy}` : ""}
-                            </Fact>
+
                             <Fact label="Customer">
                               <CustomerCell customer={a.customer} customerId={a.customerId} />
                             </Fact>
@@ -487,15 +634,7 @@ export function MyEntriesCard({
                                 <span className="text-text-tertiary">not tied to a deal</span>
                               )}
                             </Fact>
-                            <Fact label="Status">
-                              {status === "verified"
-                                ? `Locked${a.verifiedBy ? ` by ${a.verifiedBy}` : ""}${
-                                    a.verifiedAt ? ` on ${a.verifiedAt.slice(0, 10)}` : ""
-                                  }`
-                                : iOwnThisPerson
-                                  ? "Waiting for you to check the proof and lock it"
-                                  : "Waiting for the group owner to check the proof"}
-                            </Fact>
+                            <EntryTimeline entry={a} person={person} />
                             <Fact label="Note">
                               {a.note ?? (
                                 <span className="text-text-tertiary">none</span>
@@ -1118,11 +1257,6 @@ export function ClaimReviewDialog({
               <Fact label="Customer">
                 <CustomerCell customer={a.customer} customerId={a.customerId} />
               </Fact>
-              <Fact label="Result date">{a.date}</Fact>
-              <Fact label="Entered">
-                {a.addedAt.slice(0, 10)}
-                {a.addedBy && a.addedBy !== a.person ? ` by ${a.addedBy}` : ""}
-              </Fact>
               <Fact label="Deal">
                 {a.dealLabel ?? (
                   <span className="text-text-tertiary">not tied to a deal</span>
@@ -1131,6 +1265,14 @@ export function ClaimReviewDialog({
               <Fact label="Their note">
                 {a.note ?? <span className="text-text-tertiary">none</span>}
               </Fact>
+            </div>
+
+            {/* THE SAME TIMELINE THE ROW SHOWS (Anir, Aug 19: "When I press
+                Verify, it looks the same everywhere"). This used to be two
+                loose dates — "Result date" and "Entered" — which answered
+                when it happened but never when it was checked. */}
+            <div className="mt-4">
+              <EntryTimeline entry={a} person={a.person} />
             </div>
 
             <div className="mt-4">

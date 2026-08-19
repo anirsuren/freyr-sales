@@ -20,6 +20,7 @@ import {
   CalendarRange,
   Layers,
   Maximize2,
+  ShieldX,
   Target,
   TrendingDown,
   TrendingUp,
@@ -40,7 +41,9 @@ import { cn } from "@/lib/utils";
 import {
   PERIODS,
   actualValue,
+  entryStatus,
   familyValue,
+  goalFamilyActuals,
   fmtAmount,
   hasActuals,
   paceVerdict,
@@ -428,6 +431,7 @@ export function OrgPerformanceTab({
                 height={190}
                 fillCard={20}
                 format="percent"
+                tipRecordsLabel="What this is made of"
                 syncId={syncId}
                 data={sorted.map((g) => {
                   const a = actualValue(state.actuals, g);
@@ -466,20 +470,71 @@ export function OrgPerformanceTab({
                         : a > 0
                           ? `${fmtAmount(g.unit, a)} logged`
                           : "no target yet",
-                    tip: g.subgoals.map((s) => {
-                      const sa = actualValue(state.actuals, g, { subgoalId: s.id });
-                      return {
-                        name: s.name,
-                        value:
-                          s.target > 0
-                            ? `${Math.round(pctMet(sa, s.target))}%`
-                            : fmtAmount(g.unit, sa),
-                        sub:
-                          s.target > 0
-                            ? `${fmtAmount(g.unit, sa)} of ${fmtAmount(g.unit, s.target)}`
-                            : "no target set",
-                      };
-                    }),
+                    /**
+                     * WHERE THE MONEY CAME FROM, NOT WHAT IT WAS FILED UNDER
+                     * (Anir, Aug 19: "where the fuck is that money coming
+                     * from? That's not giving me that idea right now").
+                     *
+                     * This used to list the goal's subgoals, so a bar reading
+                     * $250K opened onto a subgoal at $0 with no target — the
+                     * cabinet the money is filed in, never the money. Now
+                     * every entry that adds up to the bar is named: the
+                     * customer it came from, who logged it, and whether it
+                     * has been signed off yet.
+                     */
+                    tip: goalFamilyActuals(state, g)
+                      .slice()
+                      .sort((x, y) => y.amount - x.amount)
+                      .map((entry) => {
+                        const loggedOn = state.goals.find(
+                          (x) => x.id === entry.goalId
+                        );
+                        const from =
+                          entry.customer ??
+                          entry.dealLabel ??
+                          loggedOn?.name ??
+                          entry.note ??
+                          "Logged result";
+                        const waiting = entryStatus(entry) !== "verified";
+                        const share =
+                          g.target > 0
+                            ? pctMet(entry.amount, g.target)
+                            : a > 0
+                              ? (entry.amount / a) * 100
+                              : 0;
+                        return {
+                          name: from,
+                          value: fmtAmount(g.unit, entry.amount),
+                          // The faces and the marks the rest of the app uses
+                          // (Anir, Aug 19: "I need to see the people's profile
+                          // pictures and the logos"). The customer carries the
+                          // company mark; the person travels with their name.
+                          logo: entry.customer ?? undefined,
+                          avatar: entry.person,
+                          bar: {
+                            pct: share,
+                            color: waiting ? "#C2410C" : MONEY,
+                            caption:
+                              g.target > 0
+                                ? `${Math.round(share)}% of target`
+                                : `${Math.round(share)}% of this bar`,
+                          },
+                          // On a rollup goal the money was logged somewhere
+                          // else and came up, so name that goal: without it
+                          // the row says who and when but never which goal
+                          // fed the total.
+                          sub: [
+                            entry.person,
+                            loggedOn && loggedOn.id !== g.id
+                              ? `via ${loggedOn.name}`
+                              : null,
+                            entry.date,
+                            waiting ? "waiting to be verified" : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · "),
+                        };
+                      }),
                   };
                 })}
               />
@@ -1220,6 +1275,25 @@ function GoalRows({
               className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
             >
               <Pencil size={13.5} strokeWidth={2.2} />
+            </button>
+          )}
+          {/* THE OTHER WAY BACK (Anir, Aug 19: "I also want a red icon in the
+              actions column that sets it back"). The pill's own hover state
+              undoes a sign-off too; this is the version you can find without
+              hovering the thing you want to change, and it only exists while
+              there is a sign-off to take back. */}
+          {live && goal.verified && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setVerifying(true);
+              }}
+              title={`Undo the sign-off on ${goal.name}. It stops counting until it is verified again`}
+              aria-label={`Undo the sign-off on ${goal.name}`}
+              className="cursor-pointer rounded-md p-1 text-[#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+            >
+              <ShieldX size={13.5} strokeWidth={2.2} />
             </button>
           )}
           {/* FULL SCREEN LIVES ON THE ROW (Anir, Aug 16: "Expand it. I don't

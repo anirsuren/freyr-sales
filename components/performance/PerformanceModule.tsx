@@ -13,10 +13,10 @@ import {
   ClipboardList,
   Gauge,
   HelpCircle,
-  LayoutGrid,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Pencil,
   Plus,
-  Table2,
   Trash2,
   UsersRound,
   X,
@@ -52,7 +52,6 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
-import { useStoredView } from "@/lib/useStoredView";
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -109,7 +108,6 @@ import { GroupPerformanceTab } from "./GroupPerformanceTab";
  */
 
 const TABS = ["org", "groups", "people"] as const;
-const MASTER_VIEWS = ["cards", "table"] as const;
 
 /** A piece of Goal Master UI state that survives leaving the page: filters
  *  and collapsed sections come back exactly as you left them (Anir, Aug 13:
@@ -728,21 +726,6 @@ function MasterTab({
   const [trackFilter, setTrackFilter] = useStickyValue("freyr.performance.master.f.track", "all");
   const [unitFilter, setUnitFilter] = useStickyValue("freyr.performance.master.f.unit", "all");
   const [yearFilter, setYearFilter] = useStickyValue("freyr.performance.master.f.year", "all");
-  const [view, chooseView] = useStoredView<(typeof MASTER_VIEWS)[number]>(
-    "freyr.performance.master.view",
-    "cards",
-    MASTER_VIEWS
-  );
-  const [viewOpen, setViewOpen] = useState(false);
-  const viewRef = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!viewOpen) return;
-    const close = (e: MouseEvent) => {
-      if (!viewRef.current?.contains(e.target as Node)) setViewOpen(false);
-    };
-    document.addEventListener("click", close, true);
-    return () => document.removeEventListener("click", close, true);
-  }, [viewOpen]);
   const [openId, setOpenId] = useState<string | null>(null);
   const openGoal = state.goals.find((g) => g.id === openId) ?? null;
   /** Table rows expand IN PLACE like a dropdown — no popup over the list
@@ -791,6 +774,11 @@ function MasterTab({
       filtered.map((g) => g.type).filter((t) => !state.types.includes(t))
     ),
   ].map((t) => ({ type: t, goals: filtered.filter((g) => g.type === t) }));
+
+  /** Every category on screen right now, and whether any of them is open —
+   *  what the one Open all / Close all button switches on. */
+  const shownTypes = [...byType, ...strayTypes].map((s) => s.type);
+  const anyTypeOpen = shownTypes.some((t) => !shutTypes.has(t));
 
   return (
     <div>
@@ -863,65 +851,27 @@ function MasterTab({
                 })),
             ]}
           />
-          <span className="relative" ref={viewRef}>
+          {/* THE SAME ONE BUTTON THE OTHER TABS HAVE (Anir, Aug 19: "i need
+              the open all close all here too"). It replaces the layout picker
+              that used to sit here: the tiles view is gone ("just remove the
+              tiles view, it doesn't look good"), so there is nothing left to
+              choose between and this is what the space is for. */}
+          {shownTypes.length > 0 && (
             <button
               type="button"
-              onClick={() => setViewOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={viewOpen}
-              aria-label="Layout"
-              title="Layout"
-              className="flex h-[36px] cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2 transition-colors hover:border-blue-subtle"
+              onClick={() =>
+                setShutList(anyTypeOpen ? shownTypes : [])
+              }
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
-                {view === "cards" ? (
-                  <LayoutGrid size={14} strokeWidth={2.2} />
-                ) : (
-                  <Table2 size={14} strokeWidth={2.2} />
-                )}
-              </span>
-              <ChevronDown
-                size={12}
-                strokeWidth={2.2}
-                className={cn(
-                  "text-text-tertiary transition-transform",
-                  viewOpen && "rotate-180 text-blue-primary"
-                )}
-              />
+              {anyTypeOpen ? (
+                <ChevronsDownUp size={14} strokeWidth={2.2} />
+              ) : (
+                <ChevronsUpDown size={14} strokeWidth={2.2} />
+              )}
+              {anyTypeOpen ? "Close all" : "Open all"}
             </button>
-            {viewOpen && (
-              <span
-                role="menu"
-                className="menu-in absolute right-0 top-full z-50 mt-2 flex gap-1 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
-              >
-                {MASTER_VIEWS.map((v) => {
-                  const VIcon = v === "cards" ? LayoutGrid : Table2;
-                  return (
-                    <button
-                      key={v}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={view === v}
-                      aria-label={v}
-                      title={v}
-                      onClick={() => {
-                        chooseView(v);
-                        setViewOpen(false);
-                      }}
-                      className={cn(
-                        "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
-                        view === v
-                          ? "bg-[rgba(0,113,227,0.12)] text-blue-primary"
-                          : "text-text-tertiary hover:bg-surface hover:text-text-primary"
-                      )}
-                    >
-                      <VIcon size={16} strokeWidth={2.2} />
-                    </button>
-                  );
-                })}
-              </span>
-            )}
-          </span>
+          )}
           <button
             type="button"
             onClick={onNewGoal}
@@ -955,9 +905,8 @@ function MasterTab({
         </p>
       ) : null}
 
-      {/* keyed on the layout so switching cards ⇄ table animates in */}
-      <div key={view} className="tab-panel">
-        {state.goals.length > 0 && filtered.length > 0 && view === "table" ? (
+      <div className="tab-panel">
+        {state.goals.length > 0 && filtered.length > 0 ? (
           /* SEPARATE TABLES, NOT ONE LONG ONE (Anir, Aug 13: "I told you it
              has to be kind of separate tables… This space in the middle should
              just be white. There shouldn't be another line there"). A gap row
@@ -1245,30 +1194,7 @@ function MasterTab({
                 );
               })}
           </div>
-        ) : (
-          [...byType, ...strayTypes].map(({ type, goals }) => (
-            <div key={type} className="mt-7">
-              <div className="flex items-center gap-2">
-                <TypeChip type={type} />
-                <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                  {goals.length} {goals.length === 1 ? "goal" : "goals"}
-                </span>
-                <span className="ml-1 h-px min-w-4 flex-1 bg-border-light" aria-hidden />
-              </div>
-              <div className="mt-2.5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 stagger">
-                {goals.map((g) => (
-                  <GoalCard
-                    key={g.id}
-                    goal={g}
-                    live={live}
-                    run={run}
-                    onOpen={() => setOpenId(g.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
-        )}
+        ) : null}
       </div>
 
       {/* ------------------------------------------- goal detail popup */}
@@ -1817,8 +1743,13 @@ function AssignGroupModal({
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <GroupPill name={g.name} />
-                        <span className="text-[11.5px] text-text-secondary">
-                          led by {g.head}
+                        <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                          led by
+                          <Avatar
+                            name={g.head}
+                            className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                          />
+                          {g.head}
                         </span>
                       </span>
                       {/* One line closed: faces plus the count. A real button,
@@ -3102,143 +3033,6 @@ function PickedPill({
   );
 }
 
-/** One goal on the master — an Offerings-style card. Cards WITH subgoals do
- *  the scale-up hover that reveals them (Anir's ask); cards without stay
- *  plain — expanding into an empty panel read as broken. */
-function GoalCard({
-  goal,
-  live,
-  run,
-  onOpen,
-}: {
-  goal: PrimaryGoal;
-  live: boolean;
-  run: RunOp;
-  onOpen: () => void;
-}) {
-  const owners = [...new Set(goal.subgoals.flatMap((s) => s.owners))];
-  const face = (
-    <div>
-      <span className="flex w-full items-start justify-between gap-2">
-        <TypeIconTile type={goal.type} />
-        <PickedPill goal={goal} live={live} run={run} />
-      </span>
-      <span className="mt-2.5 block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
-        {goal.name}
-      </span>
-      {(goal.componentGoalIds?.length ?? 0) > 0 && (
-        <span className="mt-1.5 inline-flex rounded-full bg-[rgba(109,40,217,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#6D28D9]">
-          ⧉ adds up from {goal.componentGoalIds?.length} goals. Nobody enters here
-        </span>
-      )}
-      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <UnitChip unit={goal.unit} />
-        {goal.measure === "level" && (
-          <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
-            latest value
-          </span>
-        )}
-        <span className="text-[10.5px] text-text-tertiary tnum">
-          {goal.year}
-        </span>
-      </span>
-      <span className="mt-3 flex w-full items-center justify-between gap-2 border-t border-border-light pt-2.5">
-        {goal.target > 0 ? (
-          <span className="text-[11.5px] text-text-tertiary tnum">
-            Target{" "}
-            <span className="font-bold text-text-primary">
-              {fmtAmount(goal.unit, goal.target)}
-            </span>
-          </span>
-        ) : (
-          <span className="text-[11.5px] font-semibold text-blue-primary">
-            Set the target →
-          </span>
-        )}
-        <span className="flex items-center gap-1.5">
-          {owners.length > 0 && (
-            <span className="flex -space-x-1.5">
-              {owners.slice(0, 3).map((o) => (
-                <Avatar
-                  key={o}
-                  name={o}
-                  tooltip={"Goal owner: " + o}
-                  className="h-5 w-5 border-2 border-white text-[8px]"
-                />
-              ))}
-            </span>
-          )}
-          <span className="text-[10.5px] text-text-tertiary tnum">
-            {goal.subgoals.length}{" "}
-            {goal.subgoals.length === 1 ? "subgoal" : "subgoals"}
-          </span>
-        </span>
-      </span>
-    </div>
-  );
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/35"
-    >
-      {goal.subgoals.length === 0 ? (
-        <div className="min-h-full rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]">
-          {face}
-        </div>
-      ) : (
-        <HoverExpandCard
-          summary={face}
-          extra={
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                Subgoals
-              </p>
-              <div className="mt-1.5 space-y-1.5">
-                {goal.subgoals.map((sub) => (
-                  <div key={sub.id} className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 whitespace-normal text-[12px] font-medium leading-snug text-text-primary">
-                      {sub.name}
-                    </span>
-                    {sub.owners.length > 0 && (
-                      <span className="flex -space-x-1">
-                        {sub.owners.slice(0, 2).map((o) => (
-                          <Avatar
-                            key={o}
-                            name={o}
-                            tooltip={"Goal owner: " + o}
-                            className="h-4 w-4 border border-white text-[7px]"
-                          />
-                        ))}
-                      </span>
-                    )}
-                    <span className="shrink-0 text-[10.5px] text-text-tertiary tnum">
-                      {sub.target > 0
-                        ? fmtAmount(goal.unit, sub.target)
-                        : "no target"}
-                      {" · "}
-                      {sub.people.length}{" "}
-                      {sub.people.length === 1 ? "person" : "people"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          }
-        />
-      )}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------ goal editor form */
 
 /**
@@ -4001,8 +3795,17 @@ function SubgoalEditorFields({
                       className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5"
                     >
                       <GroupPill name={g?.name ?? "Group removed"} size="sm" />
-                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-secondary">
-                        {g ? `led by ${g.head}` : ""}
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                        {g && (
+                          <>
+                            led by
+                            <Avatar
+                              name={g.head}
+                              className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                            />
+                            <span className="truncate">{g.head}</span>
+                          </>
+                        )}
                       </span>
                       <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
                         {a.target > 0 ? fmtAmount(goal.unit, a.target) : "no target"}
