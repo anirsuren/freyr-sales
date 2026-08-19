@@ -5110,6 +5110,31 @@ function LogActualModal({
             className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
           />
         </div>
+        {/* SAY WHAT IS MISSING. A money goal cannot be claimed without proof
+            attached, which is right, but the only sign of it was a dead grey
+            button: everything filled in and nothing telling you why it would
+            not go. Same line the deal form shows. */}
+        {(() => {
+          const missing: string[] = [];
+          if (!goalId) missing.push("the goal");
+          if (composite && !componentId) missing.push("which goal it feeds");
+          if (
+            effectiveGoal !== null &&
+            effectiveGoal.subgoals.length > 0 &&
+            !subgoalId
+          )
+            missing.push("the subgoal");
+          if (!person.trim()) missing.push("whose number it is");
+          if (parsed === null) missing.push("the amount");
+          if (effectiveGoal?.unit === "currency" && evidence.length === 0)
+            missing.push("proof attached (money always needs evidence)");
+          if (missing.length === 0) return null;
+          return (
+            <p className="text-[11.5px] leading-relaxed text-text-tertiary">
+              Still needed: {missing.join(", ")}.
+            </p>
+          );
+        })()}
         <button
           type="button"
           disabled={
