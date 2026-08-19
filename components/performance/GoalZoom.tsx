@@ -262,10 +262,17 @@ export function GoalZoom({
    *  putting on the right side? put the ones on the left side that we
    *  need"). Declared order otherwise, so the three always read in the same
    *  sequence once they are all live. */
+  /**
+   * GREYED CARDS GO RIGHT (Anir, Aug 19: "the ones that are grayed out should
+   * be on the right"). One rule, driven by the same flag that greys them, so
+   * the order and the styling can never disagree — and deliberately no
+   * further tie-breaking beneath it ("it shouldn't be hard folded").
+   */
   const components = [
     ...componentsDeclared.filter((c) => state.goals.some((g) => g.id === c.id)),
     ...componentsDeclared.filter((c) => !state.goals.some((g) => g.id === c.id)),
   ];
+
   /** Everyone who carries a goal, for the greyed cards to name. */
   const carriedBy = (c: PrimaryGoal) => [
     ...new Set([

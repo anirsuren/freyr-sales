@@ -1312,8 +1312,21 @@ function GoalRows({
             // Opens the review instead of flipping (Anir, Aug 15: "it
             // shouldn't just instantly change. Whatever I have to see should
             // pop up").
+            /**
+             * A ROLLUP'S MONEY LIVES ON ITS COMPONENTS (Anir, Aug 19: "why can
+             * I only click on the first one but not the other three? That has
+             * to be clear to you — they would get confused").
+             *
+             * The gate asked whether anything was logged against THIS goal id.
+             * A rollup never is: its $250K sits on the component below it. So
+             * the row showed $250K and a dead pill, while the row above it
+             * with the same $250K was clickable. Family actuals answer the
+             * question the reader is actually asking — is there money here.
+             */
+            nothingToVerify={goalFamilyActuals({ actuals }, goal).length === 0}
             onToggle={
-              live && (hasActuals(actuals, { goalId: goal.id }) || goal.verified)
+              live &&
+              (goalFamilyActuals({ actuals }, goal).length > 0 || goal.verified)
                 ? () => setVerifying(true)
                 : undefined
             }

@@ -3,6 +3,7 @@ import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 import { readOpportunities, updateOpportunity } from "@/lib/opportunities";
 import {
   addGoal,
@@ -148,6 +149,46 @@ export async function POST(req: NextRequest) {
   const manager = isManagerOrAdmin(me.role);
   const body = await req.json().catch(() => ({}));
   const op = String(body.op ?? "");
+
+  /**
+   * A GOAL CANNOT BE GIVEN TO SOMEBODY WHO DOES NOT WORK HERE (found testing,
+   * Aug 19: assigning "Nobody McGhost" was accepted).
+   *
+   * The pickers only ever offer real colleagues, so this never happened
+   * through the UI — but the server took any string, and a typo'd or stale
+   * name became a phantom assignee: someone who can never log in, never log a
+   * result, never be verified, and whose unverified row holds the group's
+   * sign-off open forever.
+   *
+   * Checked against the workspace directory, plus the names already in the
+   * plan so nothing that already exists is suddenly rejected.
+   */
+  const assertRealPerson = async (name: string) => {
+    const clean = name.trim();
+    if (!clean) throw new Error("Which person?");
+    const workspace = process.env.FREYR_WORKSPACE_ID;
+    if (getDataMode() !== "live" || !workspace) return;
+    const directory = await listWorkspaceAccess(workspace).catch(() => null);
+    if (!directory) return; // directory unreachable: do not block real work
+    const known = new Set(
+      directory.members
+        .filter((m) => m.active)
+        .map((m) => m.name.trim().toLowerCase())
+    );
+    const state = await readPerformance();
+    for (const g of state.goals) {
+      for (const a of g.assignments ?? []) known.add(a.person.trim().toLowerCase());
+      for (const sub of g.subgoals)
+        for (const p of sub.people) known.add(p.name.trim().toLowerCase());
+    }
+    for (const g of state.groups) {
+      known.add(g.head.trim().toLowerCase());
+      for (const m of g.members) known.add(m.trim().toLowerCase());
+    }
+    if (!known.has(clean.toLowerCase())) {
+      throw new Error(`${clean} is not in this workspace.`);
+    }
+  };
   /** A non-fatal note for the toast, e.g. a member counted in two groups. */
   let warning: string | undefined;
 
@@ -356,6 +397,7 @@ export async function POST(req: NextRequest) {
         });
         break;
       case "assign-goal":
+        await assertRealPerson(String(body.person ?? ""));
         await assignGoal({
           goalId: String(body.goalId ?? ""),
           person: String(body.person ?? ""),
