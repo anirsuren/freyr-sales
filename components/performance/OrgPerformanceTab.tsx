@@ -1652,112 +1652,129 @@ function GoalRows({
                         </span>
                       </div>
                       {s.people.length > 0 && (
-                        <table className="mt-2.5 w-full">
-                          <thead>
-                            <tr className="border-b border-border-light">
-                              {["Person", "Target", "Actual", "% met", "Verified"].map(
-                                (h) => (
-                                  <th
-                                    key={h}
-                                    className="px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
-                                  >
-                                    {h}
-                                  </th>
-                                )
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-light">
-                            {s.people.map((p) => {
-                              const pActual = actualValue(actuals, goal, {
-                                subgoalId: s.id,
-                                person: p.name,
-                              });
-                              const pPace = paceVerdict(
-                                pActual,
-                                p.target,
-                                goal.year,
-                                goal.measure
-                              );
-                              const pDelta =
-                                goal.measure === "total"
-                                  ? actualValue(
-                                      actuals,
-                                      goal,
-                                      { subgoalId: s.id, person: p.name },
-                                      period
-                                    )
-                                  : null;
-                              return (
-                                <tr key={p.name}>
-                                  <td className="px-2 py-2">
-                                    <span className="flex items-center gap-2">
-                                      <Avatar
-                                        name={p.name}
-                                        className="h-6 w-6 text-[9px]"
-                                      />
-                                      <span className="text-[12.5px] font-medium text-text-primary">
-                                        {p.name}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td className="whitespace-nowrap px-2 py-2 text-[12.5px] text-text-secondary tnum">
-                                    {p.target > 0
-                                      ? fmtAmount(goal.unit, p.target)
-                                      : "·"}
-                                  </td>
-                                  <td className="whitespace-nowrap px-2 py-2">
-                                    <span className="text-[12.5px] font-semibold text-text-primary tnum">
-                                      {fmtAmount(goal.unit, pActual)}
-                                    </span>
+                        /* ONE CARD PER PERSON, the same shape the goal-level
+                           list uses. A subgoal's people were still wearing the
+                           old five-column table - person, target, actual,
+                           % met, verified - which is exactly the redundancy
+                           Anir asked to collapse into a single lane. */
+                        <div className="mt-2.5 space-y-2">
+                          {s.people.map((p) => {
+                            const pActual = actualValue(actuals, goal, {
+                              subgoalId: s.id,
+                              person: p.name,
+                            });
+                            const pShare =
+                              p.target > 0
+                                ? Math.min(100, pctMet(pActual, p.target))
+                                : null;
+                            const pDelta =
+                              goal.measure === "total"
+                                ? actualValue(
+                                    actuals,
+                                    goal,
+                                    { subgoalId: s.id, person: p.name },
+                                    period
+                                  )
+                                : null;
+                            return (
+                              <div
+                                key={p.name}
+                                className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5"
+                              >
+                                <span className="flex min-w-[170px] flex-1 items-center gap-2">
+                                  <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
+                                  <span className="truncate text-[12.5px] font-semibold text-text-primary">
+                                    {p.name}
+                                  </span>
+                                </span>
+
+                                <span className="block min-w-[210px] flex-1">
+                                  <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">
+                                    {fmtAmount(goal.unit, pActual)}
+                                    {pShare !== null && (
+                                      <>
+                                        <span className="text-text-tertiary">·</span>
+                                        <span
+                                          style={{
+                                            color:
+                                              pShare >= 85
+                                                ? "#15803D"
+                                                : pShare >= 55
+                                                  ? "#0071E3"
+                                                  : "#DC2626",
+                                          }}
+                                        >
+                                          {Math.round(pShare)}%
+                                        </span>
+                                      </>
+                                    )}
                                     {pDelta !== null && pDelta > 0 && (
-                                      <span className="ml-1.5 text-[10px] text-text-tertiary tnum">
-                                        +{fmtAmount(goal.unit, pDelta)}{" "}
-                                        {periodLabel.toLowerCase()}
+                                      <span className="text-[10px] font-normal text-text-tertiary tnum">
+                                        +{fmtAmount(goal.unit, pDelta)} {periodLabel.toLowerCase()}
                                       </span>
                                     )}
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    <MiniBar
-                                      actual={pActual}
-                                      target={p.target}
-                                      pace={pPace}
-                                    />
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    <VerifiedPill
-                                      verified={p.verified}
-                                      size="sm"
-                                      onToggle={
-                                        live &&
-                                        (hasActuals(actuals, {
-                                          goalId: goal.id,
-                                          subgoalId: s.id,
-                                          person: p.name,
-                                        }) ||
-                                          p.verified)
-                                          ? () =>
-                                              run(
-                                                {
-                                                  op: "set-verified",
-                                                  goalId: goal.id,
-                                                  subgoalId: s.id,
-                                                  person: p.name,
-                                                  verified: !p.verified,
-                                                },
-                                                p.verified
-                                                  ? `${p.name} marked not verified`
-                                                  : `${p.name} verified on ${s.name}`
-                                              )
-                                          : undefined
-                                      }
-                                    />
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                  </span>
+                                  {pShare !== null ? (
+                                    <>
+                                      <span className="relative mt-1.5 block h-3">
+                                        <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                          <span
+                                            className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
+                                            style={{ width: `${pShare}%` }}
+                                          />
+                                        </span>
+                                        <span
+                                          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+                                          style={{ left: `clamp(6px, ${pShare}%, calc(100% - 6px))` }}
+                                        />
+                                      </span>
+                                      <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
+                                        <span>{fmtAmount(goal.unit, 0)}</span>
+                                        <span className="font-semibold text-text-secondary">
+                                          {fmtAmount(goal.unit, p.target)} target
+                                        </span>
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="mt-1 block text-[10.5px] text-text-tertiary">
+                                      No personal target set
+                                    </span>
+                                  )}
+                                </span>
+
+                                <span className="shrink-0">
+                                  <VerifiedPill
+                                    verified={p.verified}
+                                    size="sm"
+                                    onToggle={
+                                      live &&
+                                      (hasActuals(actuals, {
+                                        goalId: goal.id,
+                                        subgoalId: s.id,
+                                        person: p.name,
+                                      }) ||
+                                        p.verified)
+                                        ? () =>
+                                            run(
+                                              {
+                                                op: "set-verified",
+                                                goalId: goal.id,
+                                                subgoalId: s.id,
+                                                person: p.name,
+                                                verified: !p.verified,
+                                              },
+                                              p.verified
+                                                ? `${p.name} marked not verified`
+                                                : `${p.name} verified on ${s.name}`
+                                            )
+                                        : undefined
+                                    }
+                                  />
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                       {s.people.length === 0 && (
                         // A real empty state, centred (Anir, Aug 12: "make
@@ -1780,12 +1797,12 @@ function GoalRows({
                                   {s.owners.join(" and ")}
                                 </span>{" "}
                                 {s.owners.length === 1 ? "owns" : "own"} this
-                                subgoal. No one carries a personal target yet —
+                                subgoal. No one carries a personal target yet;
                                 owners can be assigned one too.
                               </>
                             ) : (
                               <>
-                                No people on this subgoal yet — each person
+                                No people on this subgoal yet. Each person
                                 gets their own target.
                               </>
                             )}
