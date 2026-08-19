@@ -1294,8 +1294,64 @@ export async function updateGroup(input: {
     ...new Set([head, ...listed].map((m) => str(m, 80)).filter(Boolean)),
   ];
   if (members.length === 0) throw new Error("Add at least one person.");
+  const before = new Set(group.members.map((m) => m.trim().toLowerCase()));
   group.head = head || members[0];
   group.members = members;
+
+  /**
+   * THE ROSTER AND THE GOALS IT CARRIES STAY IN STEP (found testing, Aug 19).
+   *
+   * Assigning a goal to a group writes one row per member. Editing the roster
+   * afterwards changed only the group, so somebody added to a department did
+   * not inherit that department's goals — they were a member of a group
+   * carrying a $500K goal while owning no part of it, invisible on every goal
+   * screen until somebody thought to re-assign the group. And somebody removed
+   * from the roster kept their rows forever.
+   *
+   * Only rows the group itself created are touched; a hand-made assignment
+   * survives leaving the group, because somebody chose it deliberately.
+   */
+  const now = new Set(members.map((m) => m.trim().toLowerCase()));
+  const joined = members.filter((m) => !before.has(m.trim().toLowerCase()));
+  const left = [...before].filter((m) => !now.has(m));
+  for (const goal of state.goals) {
+    const assignment = (goal.groupAssignments ?? []).find(
+      (a) => a.groupId === group.id
+    );
+    if (!assignment) continue;
+    const excluded = new Set(
+      (assignment.excludedPeople ?? []).map((n) => n.trim().toLowerCase())
+    );
+    goal.assignments = goal.assignments ?? [];
+    for (const person of joined) {
+      if (excluded.has(person.trim().toLowerCase())) continue;
+      if (goal.assignments.some((a) => a.person === person)) continue;
+      goal.assignments.push({
+        person,
+        target: 0,
+        verified: false,
+        assignedBy: "group",
+        assignedAt: new Date().toISOString(),
+      });
+    }
+    if (left.length > 0) {
+      goal.assignments = goal.assignments.filter(
+        (a) =>
+          a.assignedBy !== "group" ||
+          !left.includes(a.person.trim().toLowerCase()) ||
+          // still here through another group on the same goal
+          (goal.groupAssignments ?? []).some((other) => {
+            if (other.groupId === group.id) return false;
+            const g2 = state.groups.find((x) => x.id === other.groupId);
+            return g2
+              ? [g2.head, ...g2.members].some(
+                  (m) => m.trim().toLowerCase() === a.person.trim().toLowerCase()
+                )
+              : false;
+          })
+      );
+    }
+  }
 
   await writeRow(state);
   return group;
@@ -1308,6 +1364,10 @@ export async function removeGroup(groupId: string): Promise<void> {
   if (!state.groups.some((g) => g.id === groupId)) {
     throw new Error("That group is gone. Refresh and retry.");
   }
+  const gone = state.groups.find((g) => g.id === groupId)!;
+  const goneRoster = new Set(
+    [gone.head, ...gone.members].map((m) => m.trim().toLowerCase())
+  );
   state.groups = state.groups.filter((g) => g.id !== groupId);
   /**
    * NOTHING KEEPS PROMISING TO A GROUP THAT NO LONGER EXISTS. A goal held its
@@ -1327,6 +1387,26 @@ export async function removeGroup(groupId: string): Promise<void> {
         (a) => a.groupId !== groupId
       );
     }
+    /**
+     * AND THE PEOPLE IT PUT ON THE GOAL GO WITH IT (found testing, Aug 19).
+     *
+     * Deleting a group released its target but left one row per member behind
+     * — people sitting on a goal because of a department that no longer
+     * exists, with nothing on screen to explain why. Same rule as taking the
+     * group off a single goal: only rows the group created, only if no other
+     * group on that goal still covers the person, never a hand-made one.
+     */
+    goal.assignments = (goal.assignments ?? []).filter((a) => {
+      if (a.assignedBy !== "group") return true;
+      const who = a.person.trim().toLowerCase();
+      if (!goneRoster.has(who)) return true;
+      return (goal.groupAssignments ?? []).some((other) => {
+        const g2 = state.groups.find((x) => x.id === other.groupId);
+        return g2
+          ? [g2.head, ...g2.members].some((m) => m.trim().toLowerCase() === who)
+          : false;
+      });
+    });
   }
   await writeRow(state);
 }
