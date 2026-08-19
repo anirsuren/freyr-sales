@@ -2818,25 +2818,43 @@ function GoalPopupBody({
             a.target > 0 ? Math.min(100, Math.round((done / a.target) * 100)) : 0;
           const isOpen = openPerson === a.person;
           return (
-            <div key={a.person} className="overflow-hidden rounded-xl bg-surface">
-            <div className="flex items-center gap-2.5 px-3 py-2">
-              {/* The row OPENS (Anir, Aug 19: "I definitely think you need a
-                  dropdown… it should be pretty extensive"). */}
-              <button
-                type="button"
-                onClick={() => setOpenPerson(isOpen ? null : a.person)}
-                aria-expanded={isOpen}
-                aria-label={`${isOpen ? "Hide" : "Show"} ${a.person}'s numbers`}
-                className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
-              >
-                <ChevronDown
-                  size={15}
-                  strokeWidth={2.2}
-                  className={cn("transition-transform duration-200", !isOpen && "-rotate-90")}
-                />
-              </button>
-              <Avatar name={a.person} className="h-7 w-7 text-[10px]" />
-              <span className="flex min-w-0 flex-1 items-center gap-2">
+            <div
+              key={a.person}
+              className={cn(
+                "overflow-hidden rounded-xl border transition-colors",
+                isOpen ? "border-blue-subtle bg-white" : "border-border-light bg-white"
+              )}
+            >
+            {/* THE WHOLE ROW IS THE CONTROL and the lane is the same one the
+                org table and the subgoal lists draw. This was the third
+                presentation of one idea on one screen; now there is one. */}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={isOpen}
+              onClick={() => setOpenPerson(isOpen ? null : a.person)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpenPerson(isOpen ? null : a.person);
+                }
+              }}
+              className={cn(
+                "flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2.5 transition-colors",
+                isOpen ? "bg-blue-light/40" : "hover:bg-surface"
+              )}
+            >
+              <ChevronDown
+                size={15}
+                strokeWidth={2.2}
+                aria-hidden="true"
+                className={cn(
+                  "shrink-0 transition-transform duration-200",
+                  isOpen ? "text-blue-primary" : "-rotate-90 text-text-tertiary"
+                )}
+              />
+              <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
+              <span className="flex min-w-[150px] flex-1 items-center gap-2">
                 <span className="truncate text-[13px] font-semibold text-text-primary">
                   {a.person}
                 </span>
@@ -2845,26 +2863,53 @@ function GoalPopupBody({
                   <RoleChip role={memberRoles[a.person.trim()]} />
                 )}
               </span>
-              {/* HOW MUCH THEY HAVE DONE, not just what they owe (Anir,
-                  Aug 19: "I want to see a progress bar that shows how much
-                  they've done"). */}
-              {a.target > 0 && (
-                <span className="hidden shrink-0 items-center gap-2 sm:flex">
-                  <span className="h-1.5 w-[92px] overflow-hidden rounded-full bg-white">
-                    <span
-                      className="block h-full rounded-full bg-blue-primary transition-[width] duration-300"
-                      style={{ width: `${donePct}%` }}
-                    />
-                  </span>
-                  <span className="text-[11px] font-bold text-blue-primary tnum">
-                    {donePct}%
-                  </span>
+              <span className="block min-w-[200px] flex-1">
+                <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">
+                  {fmtAmount(goal.unit, done)}
+                  {a.target > 0 && (
+                    <>
+                      <span className="text-text-tertiary">·</span>
+                      <span
+                        style={{
+                          color:
+                            donePct >= 85
+                              ? "#15803D"
+                              : donePct >= 55
+                                ? "#0071E3"
+                                : "#DC2626",
+                        }}
+                      >
+                        {donePct}%
+                      </span>
+                    </>
+                  )}
                 </span>
-              )}
-              <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
-                {a.target > 0
-                  ? `${fmtAmount(goal.unit, done)} of ${fmtAmount(goal.unit, a.target)}`
-                  : "No personal target"}
+                {a.target > 0 ? (
+                  <>
+                    <span className="relative mt-1.5 block h-3">
+                      <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                        <span
+                          className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
+                          style={{ width: `${donePct}%` }}
+                        />
+                      </span>
+                      <span
+                        className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+                        style={{ left: `clamp(6px, ${donePct}%, calc(100% - 6px))` }}
+                      />
+                    </span>
+                    <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
+                      <span>{fmtAmount(goal.unit, 0)}</span>
+                      <span className="font-semibold text-text-secondary">
+                        {fmtAmount(goal.unit, a.target)} target
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <span className="mt-1 block text-[10.5px] text-text-tertiary">
+                    No personal target set
+                  </span>
+                )}
               </span>
               <VerifiedPill
                 verified={a.verified}
