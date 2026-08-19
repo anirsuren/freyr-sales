@@ -25,7 +25,11 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
-import { actualValue, isPending } from "@/lib/performanceShared";
+import {
+  actualValue,
+  isPending,
+  scopeStateToPeople,
+} from "@/lib/performanceShared";
 
 /**
  * USER GROUPS LIVE IN ADMIN, NOT IN PERFORMANCE (Suren, Aug 12: "creating
@@ -112,32 +116,42 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
    *  Group performance, so the chips can never disagree with the room. */
   function rollup(g: PerfGroup) {
     if (!perf) return null;
-    const people = new Set(
-      [g.head, ...g.members].map((n) => n.trim().toLowerCase())
-    );
-    const inGroup = (name: string) => people.has(name.trim().toLowerCase());
-    const held = perf.goals.filter(
-      (goal) =>
-        goal.pickedForOrg !== false &&
-        (goal.subgoals.some((s) => s.people.some((p) => inGroup(p.name))) ||
-          (goal.assignments ?? []).some((a) => inGroup(a.person)))
-    );
+    /**
+     * THE SAME NUMBERS THE GROUP PAGE SHOWS, from the same function (found
+     * testing, Aug 19: Admin said this group carried 2 goals while Group
+     * performance said 4).
+     *
+     * The comment above has always claimed the two agree; they did not. This
+     * counted goals held by the head OR a member, only if tracked on the org
+     * plan, and ignored goals assigned to the group itself. Group performance
+     * scopes by MEMBERS (an owner carries no target unless they joined the
+     * roster), counts tracked and untracked alike, and does include a goal
+     * given to the group. Three differences, one of them enough to disagree.
+     *
+     * Deriving both from scopeStateToPeople means the chips cannot drift from
+     * the room again, whichever way that function changes.
+     */
+    const members = [...new Set(g.members.map((m) => m.trim()).filter(Boolean))];
+    const scoped = scopeStateToPeople(perf, members, g.id);
+    const inGroup = (name: string) =>
+      members.some((m) => m.toLowerCase() === name.trim().toLowerCase());
     let target = 0;
     let achieved = 0;
-    for (const goal of held) {
+    const present = new Set(scoped.goals.map((x) => x.id));
+    for (const goal of scoped.goals) {
       if (goal.unit !== "currency") continue;
-      for (const sub of goal.subgoals)
-        for (const p of sub.people) if (inGroup(p.name)) target += p.target || 0;
-      for (const a of goal.assignments ?? [])
-        if (inGroup(a.person)) target += a.target || 0;
-      for (const name of [g.head, ...g.members]) {
-        achieved += actualValue(perf.actuals, goal, { person: name });
-      }
+      // A rollup and its components are both in this list, and the rollup IS
+      // the components — adding both counted the same money and the same
+      // target twice. Skip the rollup when what it sums is already here.
+      const parts = goal.componentGoalIds ?? [];
+      if (parts.length > 0 && parts.some((id) => present.has(id))) continue;
+      target += goal.target || 0;
+      achieved += actualValue(scoped.actuals, goal);
     }
     const waiting = perf.actuals.filter(
       (a) => inGroup(a.person) && isPending(a)
     ).length;
-    return { held: held.length, target, achieved, waiting };
+    return { held: scoped.goals.length, target, achieved, waiting };
   }
 
   function chipMoney(n: number): string {
