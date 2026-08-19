@@ -986,7 +986,7 @@ export function OpportunitiesBrowser({
                                   }
                                 >
                                   {shownConfidence === undefined
-                                    ? ", "
+                                    ? "·"
                                     : money(weightedValue(o))}
                                 </span>
                               </span>
@@ -1043,7 +1043,7 @@ export function OpportunitiesBrowser({
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                          {o.estSignDate ?? ", "}
+                          {o.estSignDate ?? "·"}
                         </td>
                         <td className="px-2 py-3.5">
                           <span className="flex items-center justify-end gap-0.5">
@@ -1169,7 +1169,7 @@ export function OpportunitiesBrowser({
                                           <>
                                             <b className="text-blue-primary">
                                               {line.confidence === undefined
-                                                ? ", "
+                                                ? "·"
                                                 : money(lineWeighted(line))}
                                             </b>
                                             <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
@@ -1403,7 +1403,7 @@ export function OpportunitiesBrowser({
         <StatTile
           icon={Percent}
           label="Average confidence"
-          value={totals.avgConfidence === null ? ", " : `${totals.avgConfidence}%`}
+          value={totals.avgConfidence === null ? "·" : `${totals.avgConfidence}%`}
           sub={
             totals.avgConfidence === null
               ? "none recorded yet"
@@ -2409,7 +2409,7 @@ function FutureSection({
                   day: "numeric",
                   month: "short",
                 })
-              : ", "
+              : "None"
           }
           sub={nextPitch ? "the soonest planned pitch" : "no upcoming date set"}
           color="#7C3AED"

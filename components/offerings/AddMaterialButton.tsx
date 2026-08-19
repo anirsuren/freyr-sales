@@ -1771,7 +1771,7 @@ export function AddMaterialButton({
                               progress.status === "failed" ? "text-error" : "text-text-secondary"
                             }`}
                           >
-                            {progress.status === "failed" ? ", " : `${progress.percent}%`}
+                            {progress.status === "failed" ? "Failed" : `${progress.percent}%`}
                           </span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">

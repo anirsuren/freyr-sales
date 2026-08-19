@@ -94,6 +94,29 @@ export async function getCurrentUser(): Promise<UserIdentity> {
     // "I'm in this account and it doesn't recognize that I'm the one who owns
     // it"). Prod already resolves the id from the signed grant; this makes a
     // developer's session behave the same way instead of near-enough.
+    /**
+     * A SECOND PERSONA, FOR TESTING ONLY. Two accounts have to be driven side
+     * by side to prove that what an admin does is what a rep sees (Anir,
+     * Aug 19: "you have one account with my admin access and another account
+     * with my other thing… you have to do it in Chrome"). This branch is
+     * already fenced to a local, unauthenticated workspace: production and any
+     * deployment carrying an AUTH_MODE never reaches it, so no real deployment
+     * can be talked into wearing someone else's name.
+     */
+    const asEmail = process.env.FREYR_LOCAL_IDENTITY_EMAIL?.trim();
+    if (asEmail) {
+      const member = await memberForEmail(asEmail);
+      if (member) {
+        return {
+          id: member.id,
+          memberId: member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          title: titleForUserRole(member.role),
+        };
+      }
+    }
     const memberId = await memberIdForEmail(DEFAULT_LOCAL_USER_IDENTITY.email);
     return memberId
       ? { ...DEFAULT_LOCAL_USER_IDENTITY, memberId }
@@ -107,6 +130,39 @@ export async function getCurrentUser(): Promise<UserIdentity> {
  * there is no such member. Cached for the life of the process: a member's id
  * never changes, and this sits on every request.
  */
+
+/** The workspace row behind an email, for the local persona override above. */
+async function memberForEmail(email: string): Promise<{
+  id: string;
+  name: string;
+  email: string;
+  role: UserIdentityRole;
+} | null> {
+  if (!hasSupabase()) return null;
+  try {
+    const { data } = await createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+      .from("app_users")
+      .select("id,display_name,email,app_role")
+      .eq("email", email.toLowerCase())
+      .eq("active", true)
+      .maybeSingle();
+    if (!data?.id) return null;
+    const raw = String(data.app_role ?? "rep");
+    const role = raw === "admin" ? "admin" : raw === "manager" ? "manager" : "rep";
+    return {
+      id: String(data.id),
+      name: String(data.display_name ?? email),
+      email: String(data.email ?? email),
+      role: role as UserIdentityRole,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function memberIdForEmail(email: string | null): Promise<string | null> {
   if (!email || !hasSupabase()) return null;
   const key = email.toLowerCase();

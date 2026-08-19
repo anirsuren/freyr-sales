@@ -882,7 +882,7 @@ function MiniBar({
         />
       </span>
       <span className="text-[12px] font-semibold tnum" style={{ color }}>
-        {target > 0 ? `${Math.round(pctMet(actual, target))}%` : ", "}
+        {target > 0 ? `${Math.round(pctMet(actual, target))}%` : "·"}
       </span>
     </span>
   );
@@ -1593,7 +1593,7 @@ function GoalRows({
                               of{" "}
                               {s.target > 0
                                 ? fmtAmount(goal.unit, s.target)
-                                : ", "}
+                                : "·"}
                             </span>
                             <MiniBar
                               actual={subActual}
@@ -1704,7 +1704,7 @@ function GoalRows({
                                   <td className="whitespace-nowrap px-2 py-2 text-[12.5px] text-text-secondary tnum">
                                     {p.target > 0
                                       ? fmtAmount(goal.unit, p.target)
-                                      : ", "}
+                                      : "·"}
                                   </td>
                                   <td className="whitespace-nowrap px-2 py-2">
                                     <span className="text-[12.5px] font-semibold text-text-primary tnum">

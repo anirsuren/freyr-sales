@@ -42,11 +42,12 @@
     ".next-local-preview/types/**/*.ts",
     ".next-nodocs/types/**/*.ts",
     ".next-onboarding-test/types/**/*.ts",
+    ".next-review/types/**/*.ts",
     ".next-test/types/**/*.ts",
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-review/types/**/*.ts"
+    ".next-rep/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
