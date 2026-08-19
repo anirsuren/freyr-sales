@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import {
+  CalendarCheck2,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -10,8 +11,10 @@ import {
   Paperclip,
   PenLine,
   RotateCcw,
+  ShieldCheck,
   Trash2,
   AlertCircle,
+  type LucideIcon,
 } from "lucide-react";
 import {
   actualValue,
@@ -170,6 +173,38 @@ export function StatusPill({
       </span>
     );
   }
+  /* SENT BACK BEATS EVERY OTHER READING OF "not verified". Somebody looked at
+     this claim and rejected it: that is a person waiting on a fix, not a queue
+     waiting its turn, and the row has to say so before it says anything else.
+     Red and an exclamation, the two things Anir asked for by name. */
+  if (wasSentBack(entry)) {
+    const pill = (
+      <>
+        <AlertCircle size={13} strokeWidth={2.6} />
+        Sent back &middot; needs a fix
+      </>
+    );
+    if (onVerify && waitingOnMe) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onVerify();
+          }}
+          title="You sent this back. Open it to check the fix and sign it off"
+          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.14)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.22)]"
+        >
+          {pill}
+        </button>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.14)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020]">
+        {pill}
+      </span>
+    );
+  }
   /* IF IT IS WAITING ON YOU, SIGN IT OFF FROM HERE (Anir, Aug 19: "I'm
      scrolling down to that exact spot. It should let me verify from there
      too. Why only at the top?"). Same hover-swap as the locked pill. */
@@ -226,6 +261,14 @@ function EntryTimeline({
   entry: PerfActual;
   person: string;
 }) {
+  /**
+   * A MARK AND A COLOUR PER STEP (Anir, Aug 19: "each of them should have a
+   * different color/icon. A log should have a color, a result happening
+   * should have an icon"). Four identical blue dots said only "something
+   * happened" four times. The colours are the ones this app already assigns:
+   * green is signed off, orange is waiting, red is a problem, blue is a
+   * person's own action, teal is the event out in the world.
+   */
   const steps: {
     label: string;
     who?: string;
@@ -234,17 +277,25 @@ function EntryTimeline({
     note?: string;
     /** Shown in place of a date when that step never recorded one. */
     fallback?: string;
+    /** This step is a problem, not a milestone — drawn red. */
+    alert?: boolean;
+    icon: LucideIcon;
+    color: string;
   }[] = [
     {
       label: "Result happened",
       when: entry.date,
       done: true,
+      icon: CalendarCheck2,
+      color: "#0E7490",
     },
     {
       label: "Logged",
       who: entry.addedBy || person,
       when: entry.addedAt?.slice(0, 10),
       done: true,
+      icon: PenLine,
+      color: "#0071E3",
     },
   ];
   if (entry.managerNote) {
@@ -252,6 +303,11 @@ function EntryTimeline({
       label: "Sent back",
       note: entry.managerNote,
       done: true,
+      // The one step on the rail that is a problem, so it is the one step
+      // that is red.
+      alert: wasSentBack(entry),
+      icon: AlertCircle,
+      color: "#DC2626",
     });
   }
   steps.push(
@@ -265,10 +321,14 @@ function EntryTimeline({
           // borrowing another step's date and calling it the verification.
           fallback: entry.verifiedAt ? undefined : "date not recorded",
           done: true,
+          icon: ShieldCheck,
+          color: "#16A34A",
         }
       : {
           label: "Waiting to be verified",
           done: false,
+          icon: Hourglass,
+          color: "#C2410C",
         }
   );
 
@@ -285,25 +345,37 @@ function EntryTimeline({
       <ol className="mt-2 space-y-0">
         {steps.map((step, i) => (
           <li key={step.label} className="flex gap-2.5">
-            {/* The rail: a dot per step, a line joining them. */}
+            {/* The rail: each step's own mark in its own colour, on a tinted
+                disc so the icons read as one family, joined by a line. A step
+                that has not happened yet is drawn hollow and grey — the shape
+                still says which step it is. */}
             <span className="flex flex-col items-center">
               <span
-                className={cn(
-                  "mt-[3px] h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full"
+                style={
                   step.done
-                    ? "border-blue-primary bg-blue-primary"
-                    : "border-border-light bg-white"
-                )}
-              />
+                    ? { background: `${step.color}1F`, color: step.color }
+                    : {
+                        boxShadow: "inset 0 0 0 1.5px var(--border-light)",
+                        color: "var(--text-tertiary)",
+                      }
+                }
+              >
+                <step.icon size={12.5} strokeWidth={2.5} />
+              </span>
               {i < steps.length - 1 && (
                 <span className="w-[2px] flex-1 bg-[color:var(--border-light)]" />
               )}
             </span>
-            <span className={cn("min-w-0 pb-3", i === steps.length - 1 && "pb-0")}>
+            <span className={cn("min-w-0 pb-3 pt-0.5", i === steps.length - 1 && "pb-0")}>
               <span
                 className={cn(
                   "block text-[12.5px] font-semibold",
-                  step.done ? "text-text-primary" : "text-text-tertiary"
+                  step.alert
+                    ? "text-[color:#B02020]"
+                    : step.done
+                      ? "text-text-primary"
+                      : "text-text-tertiary"
                 )}
               >
                 {step.label}
@@ -330,7 +402,12 @@ function EntryTimeline({
                 )}
               </span>
               {step.note && (
-                <span className="mt-0.5 block text-[11.5px] italic text-text-secondary">
+                <span
+                  className={cn(
+                    "mt-0.5 block text-[11.5px] italic",
+                    step.alert ? "text-[color:#B02020]" : "text-text-secondary"
+                  )}
+                >
                   &ldquo;{step.note}&rdquo;
                 </span>
               )}
@@ -340,6 +417,20 @@ function EntryTimeline({
       </ol>
     </div>
   );
+}
+
+/**
+ * SENT BACK IS ITS OWN STATE, AND IT SHOUTS (Anir, Aug 19: "if it's sent back
+ * it has to look more prominent than this. it's super important if it's sent
+ * back... exclamation mark for sure. and make it red").
+ *
+ * The data has only two statuses — reported and verified — so a claim the
+ * group owner rejected looked exactly like one nobody had opened yet: a blue
+ * "waiting" pill and a pale note at the bottom of the panel. The note on a
+ * reported claim is the rejection, and that is the loudest thing on the row.
+ */
+export function wasSentBack(entry: PerfActual): boolean {
+  return entryStatus(entry) === "reported" && !!entry.managerNote;
 }
 
 /** The date this claim last moved: verified beats logged beats happened. */
@@ -442,11 +533,27 @@ export function MyEntriesCard({
               nothing counts toward a goal until it is verified here? That's
               throwing me off: is this done or not?"). The rule only needs
               saying while something is still waiting. */}
-          <span className="text-[11px] text-text-tertiary">
-            {mine.some((e) => entryStatus(e) !== "verified")
-              ? "nothing counts toward a goal until it is verified"
-              : "all verified and counting"}
-          </span>
+          {(() => {
+            // A rejection outranks the general rule: if something was sent
+            // back, the card says THAT, in red, before it says anything about
+            // how verification works.
+            const back = mine.filter(wasSentBack).length;
+            if (back > 0) {
+              return (
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[color:#B02020]">
+                  <AlertCircle size={13} strokeWidth={2.6} />
+                  {back} sent back and waiting on a fix
+                </span>
+              );
+            }
+            return (
+              <span className="text-[11px] text-text-tertiary">
+                {mine.some((e) => entryStatus(e) !== "verified")
+                  ? "nothing counts toward a goal until it is verified"
+                  : "all verified and counting"}
+              </span>
+            );
+          })()}
           <span className="ml-auto text-[11px] text-text-tertiary tnum">
             {mine.length} {mine.length === 1 ? "entry" : "entries"}
           </span>
@@ -471,6 +578,7 @@ export function MyEntriesCard({
                 const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
                 const open = openRow === a.id;
                 const status = entryStatus(a);
+                const sentBack = wasSentBack(a);
                 /** Your own claim, still unlocked: yours to change or drop. */
                 const canEdit =
                   status === "reported" &&
@@ -489,9 +597,14 @@ export function MyEntriesCard({
                          left, so this now does too. */
                       className={cn(
                         "cursor-pointer transition-colors",
-                        open
-                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                          : "hover:bg-surface"
+                        /* A rejected claim wears its rail whether the row is
+                           open or not — closed is exactly when it needs to be
+                           spotted from across the table. */
+                        sentBack
+                          ? "bg-[rgba(220,38,38,0.05)] [box-shadow:inset_3px_0_0_0_#DC2626] hover:bg-[rgba(220,38,38,0.09)]"
+                          : open
+                            ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                            : "hover:bg-surface"
                       )}
                     >
                       <td className="px-4 py-3.5">
@@ -630,11 +743,44 @@ export function MyEntriesCard({
                       </td>
                     </tr>
                     {open && (
-                      <tr className="!border-t-0 bg-surface">
+                      <tr
+                        className={cn(
+                          "!border-t-0",
+                          sentBack ? "bg-[rgba(220,38,38,0.05)]" : "bg-surface"
+                        )}
+                      >
                         <td
                           colSpan={8}
-                          className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          className={cn(
+                            "pb-4 pl-7 pr-4 pt-1",
+                            sentBack
+                              ? "[box-shadow:inset_3px_0_0_0_#DC2626]"
+                              : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          )}
                         >
+                          {/* THE REJECTION LEADS (Anir, Aug 19: "if it's sent
+                              back it has to look more prominent than this").
+                              It used to be a pale blue strip under everything
+                              else, read last if at all — on the one claim
+                              where somebody is waiting for the person to act. */}
+                          {sentBack && (
+                            <div className="mb-3 mt-2 flex items-start gap-2.5 rounded-xl border border-[rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.08)] px-3.5 py-3">
+                              <AlertCircle
+                                size={18}
+                                strokeWidth={2.5}
+                                className="mt-px shrink-0 text-[color:#DC2626]"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-[13px] font-bold text-[color:#B02020]">
+                                  Sent back &mdash; this does not count until it is
+                                  fixed and verified
+                                </span>
+                                <span className="mt-0.5 block text-[12.5px] leading-snug text-[color:#B02020]">
+                                  &ldquo;{a.managerNote}&rdquo;
+                                </span>
+                              </span>
+                            </div>
+                          )}
                           {/* THE TIMELINE GETS ITS OWN COLUMN (Anir, Aug 19:
                               "fix this ui so the timeline doesn't extend so
                               far down, maybe it deserves its own column"). It
@@ -722,11 +868,6 @@ export function MyEntriesCard({
                             </div>
                           </div>
 
-                          {a.managerNote && status === "reported" && (
-                            <p className="mt-3 rounded-lg bg-[rgba(0,113,227,0.07)] px-3 py-2 text-[13px] leading-snug text-[color:#0058B0]">
-                              Sent back: {a.managerNote}
-                            </p>
-                          )}
 
                           {/* YOUR OWN CLAIM IS YOURS UNTIL SOMEBODY LOCKS IT
                               (Anir, Aug 15: "if I was the one who did this, I
