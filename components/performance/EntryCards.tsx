@@ -259,6 +259,8 @@ export function MyEntriesCard({
 }) {
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  /** The claim whose review popup is open, by entry id. */
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [undoFor, setUndoFor] = useState<string | null>(null);
   const [undoNote, setUndoNote] = useState("");
   const [dropFor, setDropFor] = useState<string | null>(null);
@@ -386,17 +388,14 @@ export function MyEntriesCard({
                               : undefined
                           }
                           onVerify={
-                            /* Opens the row so the proof is in front of you,
-                               then signs it off — the same op the queue at the
-                               top runs, reachable from where you are standing. */
+                            /* OPENS THE REVIEW POPUP. It must never sign off
+                               on the click itself (Anir, Aug 16 and again
+                               Aug 19: "it auto-verified it. It didn't even
+                               ask me. It didn't open up any pop-up") — the
+                               dialog shows the proof and the goal's progress,
+                               and Verify and lock lives in there. */
                             iOwnThisPerson && status !== "verified"
-                              ? () => {
-                                  setOpenRow(a.id);
-                                  void run?.(
-                                    { op: "verify-actual", actualId: a.id },
-                                    "Verified and locked. It counts now"
-                                  );
-                                }
+                              ? () => setReviewing(a.id)
                               : undefined
                           }
                         />
@@ -703,6 +702,24 @@ export function MyEntriesCard({
           </table>
         </div>
       </Card>
+      {/* THE SAME REVIEW POPUP THE QUEUE OPENS. One dialog for signing a
+          claim off, wherever you happen to be standing when you decide to. */}
+      {reviewing &&
+        run &&
+        (() => {
+          const a = state.actuals.find((x) => x.id === reviewing);
+          if (!a) return null;
+          return (
+            <ClaimReviewDialog
+              entry={a}
+              state={state}
+              run={run}
+              busy={busy}
+              onClose={() => setReviewing(null)}
+              onPreview={setPreview}
+            />
+          );
+        })()}
       {preview && (
         <EvidencePreview file={preview} onClose={() => setPreview(null)} />
       )}
