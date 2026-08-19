@@ -203,7 +203,7 @@ export function VerifyGoalModal({
                 ) : (
                   <p className="mt-1 flex items-center gap-1.5 pl-8 text-[11.5px] text-[color:#C2410C]">
                     <Paperclip size={11} strokeWidth={2.4} />
-                    Nothing attached — there is no proof to read for this one.
+                    Nothing attached. There is no proof to read for this one.
                   </p>
                 )}
               </div>

@@ -182,7 +182,7 @@ export function EvidenceInline({
         </div>
       ) : (
         <p className="px-3 py-6 text-center text-[12.5px] text-text-secondary">
-          {ext ? `.${ext} files` : "This file type"} open in their own app — use
+          {ext ? `.${ext} files` : "This file type"} open in their own app. Use
           Open or Save above.
         </p>
       )}

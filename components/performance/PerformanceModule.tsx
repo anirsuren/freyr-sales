@@ -3412,7 +3412,7 @@ function GoalEditorFields({
         <label className="text-[12px] font-semibold text-text-primary">
           Annual target{" "}
           <span className="font-normal text-text-tertiary">
-            (the big number from the top — leave empty to set later)
+            (the big number from the top. Leave it empty to set later)
           </span>
         </label>
         <div className="relative mt-1">

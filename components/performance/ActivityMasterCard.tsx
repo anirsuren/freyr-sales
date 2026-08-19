@@ -255,7 +255,7 @@ export function ActivityMasterCard({
 
                   {a.contribution === "none" ? (
                     <p className="mt-auto rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed text-text-secondary">
-                      Logged for the record — it feeds no goal.
+                      Logged for the record. It feeds no goal.
                     </p>
                   ) : (
                     <>
@@ -440,7 +440,7 @@ export function ActivityMasterCard({
             className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary focus:shadow-input-focus"
           />
           <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
-            It joins the table as its own column — set how it counts, from
+            It joins the table as its own column. Set how it counts, from
             which status, and the goals it may feed right after.
           </p>
           <div className="mt-4 flex items-center justify-end gap-2">
