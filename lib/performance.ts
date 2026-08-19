@@ -1197,6 +1197,25 @@ export async function removeGroup(groupId: string): Promise<void> {
     throw new Error("That group is gone. Refresh and retry.");
   }
   state.groups = state.groups.filter((g) => g.id !== groupId);
+  /**
+   * NOTHING KEEPS PROMISING TO A GROUP THAT NO LONGER EXISTS. A goal held its
+   * assignment after the group went, which the UI drew as a "Group removed"
+   * row and, worse, still counted: a $1M goal with $936K spoken for read
+   * "$986K already promised, $14K unclaimed" because a deleted group's $50K
+   * was still holding headroom nobody could ever use.
+   */
+  for (const goal of state.goals) {
+    if (!goal.groupAssignments?.length) continue;
+    goal.groupAssignments = goal.groupAssignments.filter(
+      (a) => a.groupId !== groupId
+    );
+    for (const sub of goal.subgoals) {
+      if (!sub.groupAssignments?.length) continue;
+      sub.groupAssignments = sub.groupAssignments.filter(
+        (a) => a.groupId !== groupId
+      );
+    }
+  }
   await writeRow(state);
 }
 
