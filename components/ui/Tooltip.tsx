@@ -126,13 +126,21 @@ export function Tooltip({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
+    // A click ANYWHERE dismisses the hint (Anir, Aug 19: "I can't get rid of
+    // it") — except on its own trigger, where the press is about to refocus
+    // and re-show it, which would read as a flicker.
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!triggerRef.current?.contains(event.target as Node)) close();
+    };
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", close, true);
     window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("pointerdown", closeOnPointerDown, true);
     return () => {
       window.removeEventListener("resize", reposition);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("pointerdown", closeOnPointerDown, true);
     };
     // captureAnchor and hide deliberately read the latest refs/state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,7 +156,15 @@ export function Tooltip({
       className={cn("freyr-hover-trigger relative inline-flex items-center", className)}
       onMouseEnter={() => show(false)}
       onMouseLeave={hide}
-      onFocusCapture={() => show(true)}
+      onFocusCapture={(event) => {
+        /* Only KEYBOARD focus pins the hint open. Click and programmatic
+           focus (a dropdown closing and handing focus back) used to show a
+           tooltip the mouse had never entered — so no mouseleave would ever
+           come, and it sat there over the form (Anir, Aug 19: "why is this
+           thing popping up like that? I can't get rid of it"). */
+        const el = event.target as HTMLElement;
+        if (el?.matches?.(":focus-visible")) show(true);
+      }}
       onBlurCapture={hide}
     >
       {children}

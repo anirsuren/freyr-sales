@@ -629,6 +629,19 @@ export function OpportunitiesBrowser({
    * Status, confidence and dates can genuinely be unknown — his own imported
    * deals have blanks there — so those stay optional.
    */
+  // The NEXT deal number, shown before saving (Anir, Aug 19: "Show me the
+  // opportunity ID, don't just say 'assigned automatically'"). The server
+  // still assigns authoritatively at save time; two people saving at once
+  // simply take consecutive numbers.
+  const nextOppId = useMemo(() => {
+    let max = 0;
+    for (const o of list) {
+      const m = /^OPP-(\d+)$/.exec(o.externalId ?? "");
+      if (m) max = Math.max(max, Number(m[1]));
+    }
+    return `OPP-${String(max + 1).padStart(4, "0")}`;
+  }, [list]);
+
   const missing: string[] = !editing
     ? []
     : [
@@ -1727,7 +1740,7 @@ export function OpportunitiesBrowser({
                 touches performance until Met is on and the form is saved. */}
             <Field
               label="Goals this deal feeds"
-              hint="Pick a goal from the Goal Master, say whose credit it is and for how much. Nothing counts on performance until you mark it met and save."
+              hint="Nothing counts on performance until a row is marked met and saved."
             >
               <div className="space-y-2">
                 {editing.goalRows.map((r, i) => (
@@ -1800,7 +1813,7 @@ export function OpportunitiesBrowser({
                       inputMode="numeric"
                       placeholder="Value"
                       aria-label={`Goal ${i + 1} value`}
-                      className={cn(inputCls, "!w-[130px] text-right tnum")}
+                      className={cn(inputCls, "!w-[104px] tnum")}
                     />
                     {/* GREEN IS EARNED HERE: met is a real state, not identity. */}
                     <button
@@ -1935,8 +1948,9 @@ export function OpportunitiesBrowser({
                     {editing.externalId}
                   </p>
                 ) : (
-                  <p className={cn(inputCls, "flex items-center bg-surface/60 text-[12.5px] text-text-tertiary")}>
-                    Assigned automatically on save
+                  <p className={cn(inputCls, "flex items-center gap-1.5 bg-surface/60 tnum")}>
+                    <span className="font-semibold text-text-secondary">{nextOppId}</span>
+                    <span className="text-[11px] text-text-tertiary">on save</span>
                   </p>
                 )}
               </Field>
@@ -2191,7 +2205,9 @@ function Fact({
  *  1000, it should automatically add the comma"). Display only — the stored
  *  value stays bare digits. */
 function withCommas(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // Letters never belong in a money box (Anir, Aug 19: "why am I able to
+  // write jjj?") — strip anything that is not a digit before grouping.
+  return digits.replace(/[^\d]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function ConfidenceSlider({
@@ -2214,8 +2230,14 @@ function ConfidenceSlider({
   // "a gradual red-to-green thing, not just red, yellow, or green") — the
   // hue tracks the value degree by degree instead of snapping at bands.
   const active = !(committed === null && drag === null);
+  // The middle of the sweep must actually look YELLOW (Anir, Aug 19: "there's
+  // not enough yellow"): between orange and green the lightness holds at 47%
+  // and saturation runs hotter, because a yellow hue at 40% lightness reads
+  // as olive, not yellow.
+  const hue = Math.round(pct * 1.2);
+  const midField = hue > 30 && hue < 100;
   const color = active
-    ? `hsl(${Math.round(pct * 1.2)}, 76%, ${Math.round(44 - pct * 0.06)}%)`
+    ? `hsl(${hue}, ${midField ? 85 : 76}%, ${midField ? 47 : Math.round(44 - pct * 0.06)}%)`
     : "#8E98A8";
   const dragging = drag !== null;
   return (
@@ -2236,7 +2258,10 @@ function ConfidenceSlider({
             )}
             style={{
               width: `${pct}%`,
-              background: `linear-gradient(90deg, hsl(4, 76%, 48%), ${color})`,
+              // A two-stop red-to-green gradient interpolates through BROWN.
+              // The bright stop at the sweep's hue midpoint is what makes the
+              // middle of the bar genuinely yellow.
+              background: `linear-gradient(90deg, hsl(4, 76%, 48%), hsl(${Math.round(pct * 0.6)}, 88%, 50%), ${color})`,
               boxShadow: dragging ? `0 0 10px ${color}66` : undefined,
             }}
           />

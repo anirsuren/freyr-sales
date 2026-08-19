@@ -163,7 +163,7 @@ export function ColorSelect({
       const rect = ref.current?.getBoundingClientRect();
       if (rect) {
         const desiredWidth = Math.max(rect.width, 240);
-        setMenuStyle(floatingMenuStyle(rect, desiredWidth, 190));
+        setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
       }
       setOpen(true);
     }, 80);
@@ -191,7 +191,7 @@ export function ColorSelect({
     const rect = ref.current?.getBoundingClientRect();
     if (rect) {
       const desiredWidth = detailed ? 304 : Math.max(rect.width, 240);
-      setMenuStyle(floatingMenuStyle(rect, desiredWidth, 190));
+      setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
     }
     setMenuQuery("");
     setOpen(true);
@@ -220,7 +220,7 @@ export function ColorSelect({
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
         const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
-        return floatingMenuStyle(rect, width, 190);
+        return floatingMenuStyle(rect, width, 260);
       });
     };
     document.addEventListener("mousedown", onDoc);
@@ -627,7 +627,7 @@ export function MultiColorSelect({
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
         const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
-        return floatingMenuStyle(rect, width, 180);
+        return floatingMenuStyle(rect, width, 260);
       });
     };
     document.addEventListener("mousedown", onDoc);
