@@ -256,6 +256,7 @@ export function GroupPerformanceTab({
   return (
     <OrgPerformanceTab
       state={scoped}
+      allGoals={state.goals}
       meName={meName}
       live={live}
       run={run}

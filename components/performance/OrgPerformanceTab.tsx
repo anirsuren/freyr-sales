@@ -158,6 +158,7 @@ const PACE_RANK: Record<string, number> = {
 };
 
 export function OrgPerformanceTab({
+  allGoals,
   state,
   meName,
   live,
@@ -183,6 +184,9 @@ export function OrgPerformanceTab({
    * tiles are counting, and what to say when there is nothing yet. Left out,
    * everything behaves exactly as the org page always has.
    */
+  /** The unfiltered goal plan, when this screen is showing a scoped copy.
+   *  Lets a rollup still draw the components the scope removed. */
+  allGoals?: PrimaryGoal[];
   scope?: {
     /**
      * Changes when the subject does — a different group, a different person.
@@ -946,6 +950,7 @@ export function OrgPerformanceTab({
                   rates={state.rates ?? {}}
                   dimmed={openIds.size > 0 && !openIds.has(g.id)}
                   state={state}
+                  allGoals={allGoals}
                   meName={meName}
                   actuals={state.actuals}
                   open={openIds.has(g.id)}
@@ -1029,8 +1034,11 @@ function GoalRows({
   onEditGoal,
   onEditSubgoal,
   onLogActual,
+  allGoals,
 }: {
   goal: PrimaryGoal;
+  /** The plan before this screen's scope filter — see GoalZoom's own prop. */
+  allGoals?: PrimaryGoal[];
   /** Position in the same list the chart above draws, for linked hover. */
   index: number;
   syncId: string;
@@ -1130,6 +1138,7 @@ function GoalRows({
         <div className="flex h-full min-h-0 flex-col">
           <GoalZoom
             state={state}
+            allGoals={allGoals}
             goalId={goal.id}
             meName={meName}
             run={run}
@@ -1429,6 +1438,7 @@ function GoalRows({
                   whole reason you drilled in. */}
               <GoalZoom
                 state={state}
+                allGoals={allGoals}
                 goalId={goal.id}
                 meName={meName}
                 run={run}

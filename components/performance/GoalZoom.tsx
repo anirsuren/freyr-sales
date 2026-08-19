@@ -183,8 +183,20 @@ export function GoalZoom({
   fill = false,
   onLinkHover,
   onSetSchedule,
+  allGoals,
 }: {
   state: PerformanceState;
+  /**
+   * The goal plan BEFORE this screen's scope filter, when there is one.
+   *
+   * A group screen drops every goal nobody in the group carries — including
+   * the components of a rollup — so "the sum of three goals" rendered one
+   * card and no explanation (Anir, Aug 19: "It also says one goal. It doesn't
+   * show three. why"). With the full list the missing components can still be
+   * drawn, greyed, saying who carries them ("you can show the other goals,
+   * right? ... gray out the other goals, but at least I can still see them").
+   */
+  allGoals?: PrimaryGoal[];
   goalId: string;
   meName: string;
   run?: RunOp;
@@ -232,9 +244,27 @@ export function GoalZoom({
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
   const meta = typeMeta(goal.type);
   const composite = isComposite(goal);
-  const components = (goal.componentGoalIds ?? [])
-    .map((id) => state.goals.find((g) => g.id === id))
+  const componentPool = allGoals ?? state.goals;
+  const componentsDeclared = (goal.componentGoalIds ?? [])
+    .map((id) => componentPool.find((g) => g.id === id))
     .filter((g): g is PrimaryGoal => Boolean(g));
+  /** In the plan, but not on this screen — nobody here carries it. */
+  const outOfScope = (c: PrimaryGoal) => !state.goals.some((g) => g.id === c.id);
+  /** WHAT THIS SCREEN CARRIES COMES FIRST (Anir, Aug 19: "why are you
+   *  putting on the right side? put the ones on the left side that we
+   *  need"). Declared order otherwise, so the three always read in the same
+   *  sequence once they are all live. */
+  const components = [
+    ...componentsDeclared.filter((c) => state.goals.some((g) => g.id === c.id)),
+    ...componentsDeclared.filter((c) => !state.goals.some((g) => g.id === c.id)),
+  ];
+  /** Everyone who carries a goal, for the greyed cards to name. */
+  const carriedBy = (c: PrimaryGoal) => [
+    ...new Set([
+      ...(c.assignments ?? []).map((a) => a.person),
+      ...c.subgoals.flatMap((sg) => sg.people.map((p) => p.name)),
+    ]),
+  ];
   const cadences = goalCadences(goal);
   const nowFy = currentFiscalYear();
   const [fy, setFy] = useState(nowFy);
@@ -604,7 +634,24 @@ export function GoalZoom({
 
       {/* ------------------------------------------------ component cards */}
       {composite && (
-        <div className={cn("grid grid-cols-1 gap-3.5 lg:grid-cols-3", embedded ? "mt-0" : "mt-4")}>
+        <div className={cn(embedded ? "mt-0" : "mt-4")}>
+        {/* SAY WHAT THESE CARDS ARE (Anir, Aug 19: "If I'm a user and I see
+            this goal, I don't know what this means... If I see booked
+            revenue, I'm like, why does it look so different from the other
+            ones?").
+            
+            The header that explains a rollup is hidden in the drill-down, so
+            these cards used to appear with no introduction at all — a
+            "Renewals" card under a "Booked Revenue" row, two unlabelled
+            money figures, and nothing saying the two are different goals. */}
+        {/* Short by design. The count that matters is the one the cards
+            themselves show; a paragraph explaining a mismatch is a patch over
+            a display bug, not a fix for it. */}
+        <div className="mb-2.5 text-[12.5px] text-text-secondary">
+          <b className="text-text-primary">{goal.name}</b> is the sum of the
+          goals below. Results are logged on them, never on it.
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
           {components.map((c, i) => {
             const cVerified = val(yearRange, {
               componentGoalId: c.id,
@@ -620,11 +667,19 @@ export function GoalZoom({
             const cPeople = new Set(cEntries.map((a) => a.person)).size;
             const cm = componentMeta(c);
             const cColor = cm?.color ?? typeMeta(c.type).color;
+            const away = outOfScope(c);
+            const owners = carriedBy(c);
             return (
-              <Card key={c.id} className="p-4">
+              <Card
+                key={c.id}
+                className={cn("p-4", away && "border-dashed bg-surface/60")}
+              >
                 <div className="flex items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[15px]"
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg text-[15px]",
+                      away && "grayscale opacity-60"
+                    )}
                     style={{ background: `${cColor}1F`, color: cColor }}
                   >
                     {cm ? (
@@ -643,20 +698,76 @@ export function GoalZoom({
                       thing three times. The parent above already says people
                       log results on the goals below, which is where the
                       distinction actually matters. */}
-                  <b className="text-[13.5px] text-text-primary">{c.name}</b>
+                  <b
+                    className={cn(
+                      "text-[13.5px]",
+                      away ? "text-text-secondary" : "text-text-primary"
+                    )}
+                  >
+                    {c.name}
+                  </b>
                 </div>
+                {away ? (
+                  /* Not carried on this screen. It still belongs to the sum,
+                     so it stays visible — greyed, with the people who do
+                     carry it, or plainly that nobody does yet. */
+                  <div className="mt-2.5">
+                    {owners.length > 0 ? (
+                      <>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {owners.slice(0, 4).map((n) => (
+                            <span key={n} className="flex items-center gap-1">
+                              <Avatar name={n} className="h-5 w-5 text-[7px]" />
+                              <span className="text-[11.5px] text-text-secondary">
+                                {n}
+                              </span>
+                            </span>
+                          ))}
+                          {owners.length > 4 && (
+                            <span className="text-[11px] text-text-tertiary tnum">
+                              +{owners.length - 4}
+                            </span>
+                          )}
+                        </span>
+                        <p className="mt-1.5 text-[11px] text-text-tertiary">
+                          carries this one, outside this group
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[12px] text-text-secondary">
+                        Nobody carries this yet, so it adds nothing.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                <>
                 <p className="mt-2.5 text-[21px] font-extrabold tnum">
                   {fmtAmount(c.unit, cVerified)}
-                  {c.target > 0 && (
-                    <span className="text-[12.5px] font-semibold text-text-tertiary">
-                      {" "}
-                      of {fmtAmount(c.unit, c.target)}
-                    </span>
-                  )}
                   {cAwaiting > 0 && (
                     <span className="ml-2 align-middle text-[11px] font-bold text-[color:#0058B0] tnum">
                       +{fmtAmount(c.unit, cAwaiting)} waiting
                     </span>
+                  )}
+                </p>
+                {/* WHOSE TARGET THIS IS. Printing a bare "of $936K" under a
+                    goal whose own target reads $900K made the two look like a
+                    part and its whole, which they are not — they are two
+                    different goals, each with its own number (Anir: "This says
+                    936K, and then the target says 900K. Doesn't make any
+                    sense"). */}
+                <p className="mt-0.5 text-[11px] text-text-secondary">
+                  signed off
+                  {c.target > 0 ? (
+                    <>
+                      {" "}
+                      of {c.name}&rsquo;s own{" "}
+                      <b className="text-text-primary tnum">
+                        {fmtAmount(c.unit, c.target)}
+                      </b>{" "}
+                      target
+                    </>
+                  ) : (
+                    <>. {c.name} has no target set</>
                   )}
                 </p>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
@@ -673,6 +784,8 @@ export function GoalZoom({
                     }}
                   />
                 </div>
+                </>
+                )}
                 <p className="mt-2 text-[11px] leading-snug text-text-secondary">
                   {cm ? `${cm.blurb} ` : ""}
                   {cEntries.length > 0 && (
@@ -687,6 +800,7 @@ export function GoalZoom({
             );
           })}
         </div>
+        </div>
       )}
 
       {/* --------------------- Suren's three boxes: org → groups → people.
@@ -699,7 +813,16 @@ export function GoalZoom({
           inset stacked on the row's own padding and the grid's margin. */}
       <Card
         className={cn(
-          embedded ? "mt-0 border-transparent bg-transparent p-0 shadow-none" : "mt-4 p-4",
+          /* mt-0 was for the case where nothing sits above this. When the
+             component cards do, the heading and its buttons landed right on
+             the card edge above (Anir, Aug 19: "the buttons are damn near
+             touching that card"). */
+          embedded
+            ? cn(
+                "border-transparent bg-transparent p-0 shadow-none",
+                composite ? "mt-5" : "mt-0"
+              )
+            : "mt-4 p-4",
           fill && "flex min-h-0 flex-1 flex-col"
         )}
       >
