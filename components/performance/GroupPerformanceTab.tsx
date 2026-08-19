@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Crown, Settings2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -103,6 +103,12 @@ export function GroupPerformanceTab({
     })),
   ];
 
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stripRef.current?.querySelector('[data-picked="true"]');
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [pickedId]);
+
   if (groups.length === 0) {
     return (
       <EmptyState
@@ -125,9 +131,26 @@ export function GroupPerformanceTab({
     return scopeStateToPeople(state, roster, g.id).goals.length;
   };
 
-  /** The group picker, above the tiles. One click, not a click-then-click. */
+  /**
+   * THE PICKER AT TEN GROUPS, NOT THREE (Anir, Aug 19: "if there are like ten
+   * groups, how's this gonna work?... You have to extrapolate. You can't just
+   * do this with the given data").
+   *
+   * The cards used to wrap, so ten of them stacked four rows deep and pushed
+   * every tile and chart below the fold before you had read a number. The
+   * strip is now ONE line that scrolls sideways, so the page keeps its shape
+   * whether there are two groups or fifty, and the selected card scrolls
+   * itself into view — a group picked from the search below must never sit
+   * off-screen. Finding one of forty is the search bar's job, not a second
+   * dropdown up here (Anir, Aug 19: "remove the dropdown"); it already
+   * reaches every other group and person on the page.
+   */
   const picker = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-3">
+      <div
+        ref={stripRef}
+        className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+      >
       {groups.map((g) => {
         const isOpen = g.id === group?.id;
         const isMine =
@@ -139,10 +162,11 @@ export function GroupPerformanceTab({
           <button
             key={g.id}
             type="button"
+            data-picked={isOpen ? "true" : undefined}
             onClick={() => setPickedId(g.id)}
             aria-pressed={isOpen}
             className={cn(
-              "flex cursor-pointer items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
+              "flex shrink-0 cursor-pointer items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
               isOpen
                 ? "border-blue-primary bg-blue-light"
                 : "border-border-light bg-white hover:bg-surface"
@@ -225,15 +249,7 @@ export function GroupPerformanceTab({
           </button>
         );
       })}
-      <Link
-        /* Straight to the groups tab. "Manage groups" landing on Team members
-           made you find the tab yourself, and the tab is addressable. */
-        href="/admin?tab=groups"
-        className="ml-auto flex items-center gap-1.5 text-[11.5px] font-semibold text-blue-primary hover:underline"
-      >
-        <UsersRound size={13} strokeWidth={2.2} />
-        Manage groups
-      </Link>
+      </div>
     </div>
   );
 
