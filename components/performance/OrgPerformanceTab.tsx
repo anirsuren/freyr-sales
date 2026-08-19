@@ -1307,80 +1307,77 @@ function GoalRows({
               {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
                   goal and "all the people who have contributed to this, and
                   their individual performance"). */}
-              {(goal.assignments ?? []).length > 0 && (
+{(goal.assignments ?? []).length > 0 && (
                 <div className="rounded-xl border border-border-light bg-white p-3.5">
                   <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     Assigned people
                   </p>
-                  <table className="mt-1.5 w-full text-left text-[12px]">
-                    <thead>
-                      {/* ONE COLUMN, NOT THREE (Anir, Aug 19: "can't we just
-                          consolidate all that into one data point and have a
-                          nice big progress bar with data on top"). Target,
-                          actual and % met were three cells saying one thing;
-                          now the numbers sit above their own bar. */}
-                      <tr className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                        <th className="py-2 pr-3 font-bold">Person</th>
-                        <th className="py-2 pr-3 font-bold">Progress</th>
-                        <th className="w-[130px] py-2 font-bold">Verified</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-light">
-                      {(goal.assignments ?? []).map((a) => {
-                        const aActual = actualValue(actuals, goal, {
-                          subgoalId: null,
-                          person: a.person,
-                        });
-                        const share =
-                          a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
-                        const open = openPerson === a.person;
-                        return (
-                          <Fragment key={a.person}>
-                          <tr>
-                            <td className="py-2.5 pr-3">
-                              <span className="flex items-center gap-1.5">
-                                {/* A REAL dropdown (Anir, Aug 19: "I meant a
-                                    proper dropdown"). */}
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenPerson(open ? null : a.person)}
-                                  aria-expanded={open}
-                                  aria-label={`${open ? "Hide" : "Show"} ${a.person}'s numbers`}
-                                  className="shrink-0 cursor-pointer rounded-md p-0.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                                >
-                                  <ChevronDown
-                                    size={14}
-                                    strokeWidth={2.2}
-                                    className={cn(
-                                      "transition-transform duration-200",
-                                      !open && "-rotate-90"
-                                    )}
-                                  />
-                                </button>
-                                <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
-                                <span className="font-semibold text-text-primary">
-                                  {a.person}
-                                </span>
+                  {/* ONE CARD PER PERSON, the same idiom as the group cards
+                      and the pipeline's account cards (Anir, Aug 19: "look at
+                      what you do in the other places where you have a similar
+                      concept. Just do the same thing… there are two horizontal
+                      lines, I have no idea which ones are for which person").
+                      A table drew rules ACROSS people; a card wraps one
+                      person's header and their opened detail together, and the
+                      space between cards is the separation. */}
+                  <div className="mt-2 space-y-2.5">
+                    {(goal.assignments ?? []).map((a) => {
+                      const aActual = actualValue(actuals, goal, {
+                        subgoalId: null,
+                        person: a.person,
+                      });
+                      const share =
+                        a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
+                      const open = openPerson === a.person;
+                      return (
+                        <div
+                          key={a.person}
+                          className={cn(
+                            "overflow-hidden rounded-xl border bg-white transition-colors",
+                            open ? "border-blue-subtle" : "border-border-light"
+                          )}
+                        >
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={open}
+                            onClick={() => setOpenPerson(open ? null : a.person)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setOpenPerson(open ? null : a.person);
+                              }
+                            }}
+                            className={cn(
+                              "flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2.5 transition-colors",
+                              open ? "bg-blue-light/40" : "hover:bg-surface"
+                            )}
+                          >
+                            <span className="flex min-w-[190px] flex-1 items-center gap-2">
+                              <ChevronDown
+                                size={14}
+                                strokeWidth={2.2}
+                                aria-hidden="true"
+                                className={cn(
+                                  "shrink-0 transition-transform duration-200",
+                                  open ? "text-blue-primary" : "-rotate-90 text-text-tertiary"
+                                )}
+                              />
+                              <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
+                              <span className="truncate text-[12.5px] font-semibold text-text-primary">
+                                {a.person}
                               </span>
-                            </td>
-                            <td className="py-2.5 pr-3">
-                              {/* The numbers ON TOP, the bar underneath. */}
-                              <span className="block min-w-[190px]">
-                                <span className="flex items-baseline justify-between gap-2 text-[11.5px] tnum">
-                                  <span>
-                                    <span className="font-bold text-text-primary">
-                                      {fmtAmount(goal.unit, aActual)}
-                                    </span>
-                                    {a.target > 0 && (
-                                      <span className="text-text-tertiary">
-                                        {" "}
-                                        of {fmtAmount(goal.unit, a.target)}
-                                      </span>
-                                    )}
-                                  </span>
-                                  {share !== null && (
+                            </span>
+
+                            {/* The timeline's shape: figure and percent lead,
+                                the lane carries a dot where they stand. */}
+                            <span className="block min-w-[210px] flex-1">
+                              <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">
+                                {fmtAmount(goal.unit, aActual)}
+                                {share !== null && (
+                                  <>
+                                    <span className="text-text-tertiary">·</span>
                                     <span
-                                      className="font-bold"
                                       style={{
                                         color:
                                           share >= 85
@@ -1392,31 +1389,41 @@ function GoalRows({
                                     >
                                       {Math.round(share)}%
                                     </span>
-                                  )}
-                                </span>
-                                {share !== null ? (
-                                  <span className="mt-1 block h-2.5 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
-                                    <span
-                                      className="block h-full rounded-full transition-[width] duration-300"
-                                      style={{
-                                        width: `${share}%`,
-                                        background:
-                                          share >= 85
-                                            ? "#16A34A"
-                                            : share >= 55
-                                              ? "#0071E3"
-                                              : "#DC2626",
-                                      }}
-                                    />
-                                  </span>
-                                ) : (
-                                  <span className="mt-1 block text-[10.5px] text-text-tertiary">
-                                    No personal target set
-                                  </span>
+                                  </>
                                 )}
                               </span>
-                            </td>
-                            <td className="py-2.5">
+                              {share !== null ? (
+                                <>
+                                  <span className="relative mt-1.5 block h-3">
+                                    <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                      <span
+                                        className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
+                                        style={{ width: `${share}%` }}
+                                      />
+                                    </span>
+                                    <span
+                                      className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+                                      style={{ left: `clamp(6px, ${share}%, calc(100% - 6px))` }}
+                                    />
+                                  </span>
+                                  <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
+                                    <span>{fmtAmount(goal.unit, 0)}</span>
+                                    <span className="font-semibold text-text-secondary">
+                                      {fmtAmount(goal.unit, a.target)} target
+                                    </span>
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="mt-1 block text-[10.5px] text-text-tertiary">
+                                  No personal target set
+                                </span>
+                              )}
+                            </span>
+
+                            <span
+                              className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <VerifiedPill
                                 verified={a.verified}
                                 size="sm"
@@ -1443,26 +1450,24 @@ function GoalRows({
                                     : undefined
                                 }
                               />
-                            </td>
-                          </tr>
+                            </span>
+                          </div>
+
                           {open && (
-                            <tr>
-                              <td colSpan={3} className="pb-2">
-                                <PersonGoalPanel
-                                  goal={goal}
-                                  person={a.person}
-                                  target={a.target}
-                                  done={aActual}
-                                  state={state}
-                                />
-                              </td>
-                            </tr>
+                            <div className="border-t border-border-light px-3 pb-3 pt-2.5">
+                              <PersonGoalPanel
+                                goal={goal}
+                                person={a.person}
+                                target={a.target}
+                                done={aActual}
+                                state={state}
+                              />
+                            </div>
                           )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               {goal.subgoals.length === 0 ? (

@@ -384,7 +384,11 @@ a:focus-visible,
 button:focus-visible,
 [tabindex]:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+  /* INSET, so the halo never spills past the column a control is aligned in.
+     The outward 3px ring made a right-aligned button read as misaligned
+     against its own header (Anir, Aug 19: "just fix that column alignment") —
+     the button was flush, the glow was not. */
+  box-shadow: inset 0 0 0 2px rgba(0, 113, 227, 0.35);
 }
 
 /* Text fields: no halo, just a slightly stronger edge. */

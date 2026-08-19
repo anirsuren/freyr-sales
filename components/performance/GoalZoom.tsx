@@ -735,10 +735,15 @@ export function GoalZoom({
             const entries = entriesFor(names);
             if (entries.length === 0) {
               return (
+                /* ROOM TO BREATHE, CENTRED, QUIET (Anir, Aug 19: "can you
+                   make this a little bit bigger? It's still too thin. The
+                   statement should be kind of in the center, a grayed-out
+                   effect") — the same shape the Subgoals and Assigned Groups
+                   boxes use when they have nothing to show. */
                 <p
                   className={cn(
-                    "py-2 text-[10.5px] text-text-tertiary",
-                    !indent && "px-2 py-3 text-[12px] text-text-secondary"
+                    "flex items-center justify-center rounded-lg bg-surface/60 px-3 text-center text-text-tertiary",
+                    indent ? "min-h-[76px] py-5 text-[12px]" : "min-h-[92px] py-6 text-[12.5px]"
                   )}
                 >
                   {indent
