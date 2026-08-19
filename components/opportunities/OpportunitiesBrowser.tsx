@@ -10,6 +10,8 @@ import {
   Play,
   Loader,
   CheckCircle2,
+  ChevronsDownUp,
+  ChevronsUpDown,
   CircleDollarSign,
   Plus,
   Trash2,
@@ -898,7 +900,7 @@ export function OpportunitiesBrowser({
                             opening anything. */}
                         <td className="px-4 py-3.5">
                           {rows.length === 0 && names.length === 0 ? (
-                            <span className="text-[12px] text-text-tertiary">, </span>
+                            <span className="text-[12px] text-text-tertiary">·</span>
                           ) : rows.length > 0 ? (
                             /* One chip per DISTINCT offering — a deal quoted
                                as ARR + OTS is two rows of the same offering,
@@ -1416,7 +1418,7 @@ export function OpportunitiesBrowser({
             value={query}
             onChange={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
-            className="min-w-[240px] flex-1"
+            className="min-w-[190px] flex-1"
           />
           {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
               "it's like how you do customers, and within the customers,
@@ -1469,6 +1471,28 @@ export function OpportunitiesBrowser({
               color: STATUS_COLOR[s],
             }))}
           />
+          {/* ONE button that knows which way it goes (Anir, Aug 19: "It
+              should just be one button. It'll know if I close all or open
+              all"): any card open means the next press closes everything;
+              all shut means it opens everything. */}
+          {groupBy !== "none" && shown.length > 0 && (() => {
+            const allKeys = groupSections.map((s) => s.key);
+            const anyOpen = allKeys.some((k) => !shutGroups.includes(k));
+            return (
+              <button
+                type="button"
+                onClick={() => setShutGroups(anyOpen ? allKeys : [])}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                {anyOpen ? (
+                  <ChevronsDownUp size={14} strokeWidth={2.2} />
+                ) : (
+                  <ChevronsUpDown size={14} strokeWidth={2.2} />
+                )}
+                {anyOpen ? "Close all" : "Open all"}
+              </button>
+            );
+          })()}
         </div>
 
         {shown.length === 0 ? (
@@ -1492,11 +1516,16 @@ export function OpportunitiesBrowser({
           tinted header that folds it away; what lies between the cards is
           the page itself. */}
       {shown.length > 0 && groupBy !== "none" && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-5 space-y-6">
           {groupSections.map(({ key, rows: sectionRows }) => {
             const shut = shutGroups.includes(key);
             return (
               <Card key={key} className="overflow-hidden p-0">
+                {/* A BLUE band, not another pale strip: the group header used
+                    to wear the same near-white as the column strip below it,
+                    so where one account ended and the next began was a squint
+                    (Anir, Aug 19: "the separations between BMS and Haleon are
+                    a little confusing"). */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1507,7 +1536,10 @@ export function OpportunitiesBrowser({
                     )
                   }
                   aria-expanded={!shut}
-                  className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
+                    !shut && "border-b border-border-light"
+                  )}
                 >
                   <ChevronDown
                     size={15}
@@ -2433,7 +2465,7 @@ function FutureSection({
                         {label ? (
                           <OfferingChip name={label} color={colorForOffering(o)} size="xs" />
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">, </span>
+                          <span className="text-[11.5px] text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary tnum">
@@ -2447,7 +2479,7 @@ function FutureSection({
                             {o.targetQuarter}
                           </span>
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">, </span>
+                          <span className="text-[11.5px] text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">

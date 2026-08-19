@@ -106,13 +106,21 @@ export function TargetSlider({
                 }}
               />
             </span>
+            {/* The thumb rides the END of the blue segment. It used to carry
+                the bare share (3% along the lane) while the blue fill drew
+                after everything promised (93% along) — the circle and its own
+                color were in different places (Anir, Aug 19: "this circle is
+                not showing shit"). Dragging still sets only this share; the
+                promised stretch acts as the floor. */}
             <input
               type="range"
               min={0}
               max={max}
               step={step}
-              value={Math.min(amount, max)}
-              onChange={(e) => onChange(e.target.value)}
+              value={Math.min(taken + amount, max)}
+              onChange={(e) =>
+                onChange(String(Math.max(0, Number(e.target.value) - taken)))
+              }
               aria-label={`${label}. Drag to set`}
               className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
             />
@@ -176,10 +184,19 @@ export function TargetSlider({
         )}
       </div>
 
-      {over && (
-        <p className="mt-1.5 text-[11px] font-medium text-[color:#C2410C]">
-          This takes what&apos;s promised {fmtAmount(unit, overBy)} past the
-          goal. Allowed — targets can be ambitious — but worth knowing.
+      {/* ALWAYS in the layout, only sometimes visible — appearing and
+          vanishing used to bump the whole form up and down mid-scroll
+          (Anir, Aug 19: "don't bump it up like that"). */}
+      {max > 0 && (
+        <p
+          className={cn(
+            "mt-1.5 min-h-[16px] text-[11px] font-medium text-[color:#C2410C]",
+            !over && "invisible"
+          )}
+        >
+          {over
+            ? `This takes what's promised ${fmtAmount(unit, overBy)} past the goal. Allowed, targets can be ambitious, but worth knowing.`
+            : " "}
         </p>
       )}
     </div>

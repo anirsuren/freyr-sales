@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
-import { Waypoints } from "lucide-react";
+import { ArrowLeft, Waypoints } from "lucide-react";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { readPerformance } from "@/lib/performance";
 import { readActivityMaster } from "@/lib/activityMaster";
@@ -67,18 +67,28 @@ export default async function ActivityGoalFlowPage() {
 
   return (
     <div className="space-y-5 pb-24">
-      <SmartBack fallback="/reports">Reports</SmartBack>
-      <PageHeader
-        title="What each activity earned"
-        subtitle="When someone logs a result through an activity (a pilot, a contract), it lands here: one row per activity, one column per goal, and the money or count that activity put into that goal."
-      />
+      <div>
+        <div className="mb-3">
+          <SmartBack
+            fallback="/reports"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          >
+            <ArrowLeft size={14} strokeWidth={2} />
+            All reports
+          </SmartBack>
+        </div>
+        <PageHeader
+          title="What each activity earned"
+          subtitle="One row per activity, one column per goal, and what each activity put in."
+        />
+      </div>
 
       {totalEntries === 0 ? (
         <Card className="p-8">
           <EmptyState
             icon={Waypoints}
-            title="Nothing here yet, and that's normal"
-            description="This page fills in on its own as the team works. Example: someone marks a Contract completed for $50K and points it at the Renewals goal. A $50K box appears here where Contract meets Renewals. Nobody has logged a result through an activity yet, so there is nothing to add up. Older results never said which activity they came from, so they stay out instead of being guessed."
+            title="Nothing here yet"
+            description="Log a result through an activity and the money shows up here. Older results never said which activity they came from, so they stay out."
           />
         </Card>
       ) : (

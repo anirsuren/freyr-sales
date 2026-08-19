@@ -64,7 +64,7 @@ function EvidenceLinks({
 }) {
   if (!entry.evidence?.length) {
     return (
-      <span className="text-[13px] text-text-tertiary">, </span>
+      <span className="text-[13px] text-text-tertiary">·</span>
     );
   }
   return (

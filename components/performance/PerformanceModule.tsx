@@ -50,7 +50,7 @@ import {
   PrioritySearchInput,
   SearchPriority,
 } from "@/components/ui/SearchPriority";
-import { DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { useStoredView } from "@/lib/useStoredView";
 import {
   BASE_CURRENCY,
@@ -64,6 +64,8 @@ import {
   hasActuals,
   knownPeople,
   parseAmountInput,
+  entryStatus,
+  goalFamilyActuals,
   type GoalMeasure,
   type GoalUnit,
   type PerfGroup,
@@ -1089,6 +1091,22 @@ function MasterTab({
                       <td className="whitespace-nowrap px-4 py-4 text-[13px] font-semibold text-text-primary tnum">
                         {g.target > 0 ? (
                           fmtAmount(g.unit, g.target)
+                        ) : live ? (
+                          /* A REAL button, not blue-painted text: clicking the
+                             words used to just collapse the row it sat in
+                             (Anir, Aug 19: "I can't even click on the Set
+                             the target button anymore"). */
+                          <button
+                            type="button"
+                            title={`Set the target on ${g.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditGoal(g);
+                            }}
+                            className="cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
+                          >
+                            Set the target →
+                          </button>
                         ) : (
                           <span className="text-[11.5px] font-semibold text-blue-primary">
                             Set the target →
@@ -1111,7 +1129,7 @@ function MasterTab({
                             ))}
                           </span>
                         ) : (
-                          <span className="text-[11.5px] text-text-tertiary">, </span>
+                          <span className="text-[11.5px] text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-4 py-4">
@@ -1351,6 +1369,163 @@ function MasterTab({
  * under-commit a team on purpose, so the bar reports the gap rather than
  * refusing the number.
  */
+/**
+ * ONE PERSON'S WHOLE STORY ON ONE GOAL (Anir, Aug 19: "when I press the
+ * dropdown, it should give me a ton more information about them, maybe cards,
+ * like a row of three or four cards at the top, and maybe some graphs. It
+ * should be pretty extensive").
+ *
+ * Four cards say where they stand, a monthly chart says how they got there,
+ * and the entries themselves are listed underneath — the same numbers the
+ * verification queue works from, never a second opinion.
+ */
+function PersonGoalPanel({
+  goal,
+  person,
+  target,
+  done,
+  state,
+}: {
+  goal: PrimaryGoal;
+  person: string;
+  target: number;
+  done: number;
+  state: PerformanceState;
+}) {
+  const mine = goalFamilyActuals(state, goal)
+    .filter((a) => a.person.trim().toLowerCase() === person.trim().toLowerCase())
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  const verified = mine
+    .filter((a) => entryStatus(a) === "verified")
+    .reduce((s, a) => s + a.amount, 0);
+  const waiting = mine
+    .filter((a) => entryStatus(a) === "reported")
+    .reduce((s, a) => s + a.amount, 0);
+  const left = Math.max(0, target - done);
+  const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+
+  // Month by month, oldest first. Only months that carry something, so a
+  // brand-new goal shows one honest bar instead of twelve empty ones.
+  const byMonth = new Map<string, { value: number; pending: number }>();
+  for (const a of mine) {
+    const key = a.date.slice(0, 7);
+    const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
+    cell.value += a.amount;
+    if (entryStatus(a) === "reported") cell.pending += a.amount;
+    byMonth.set(key, cell);
+  }
+  const months = [...byMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, cell]) => ({
+      label: new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
+        month: "short",
+      }),
+      value: cell.value,
+      pending: cell.pending,
+    }));
+
+  const card = (label: string, value: string, tone?: string) => (
+    <div className="rounded-lg border border-border-light bg-white px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+        {label}
+      </p>
+      <p className={cn("mt-1 text-[16px] font-bold tnum", tone ?? "text-text-primary")}>
+        {value}
+      </p>
+    </div>
+  );
+
+  return (
+    <div className="border-t border-border-light bg-white px-3 py-3">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {card("Target", target > 0 ? fmtAmount(goal.unit, target) : "Not set")}
+        {card("Counted", fmtAmount(goal.unit, done), "text-blue-primary")}
+        {card(
+          "Waiting to verify",
+          waiting > 0 ? fmtAmount(goal.unit, waiting) : "Nothing",
+          waiting > 0 ? "text-[color:#C2410C]" : undefined
+        )}
+        {card(
+          target > 0 ? "Still to go" : "Entries",
+          target > 0 ? fmtAmount(goal.unit, left) : String(mine.length)
+        )}
+      </div>
+
+      {target > 0 && (
+        <div className="mt-3">
+          <div className="flex items-baseline justify-between text-[11px]">
+            <span className="font-semibold text-text-secondary">
+              {pct}% of their target
+            </span>
+            <span className="text-text-tertiary tnum">
+              {fmtAmount(goal.unit, verified)} signed off
+            </span>
+          </div>
+          <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
+            <span
+              className="block h-full rounded-full bg-blue-primary"
+              style={{ width: `${pct}%` }}
+            />
+          </span>
+        </div>
+      )}
+
+      {months.length > 0 ? (
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+            Month by month
+          </p>
+          <div className="mt-1.5">
+            <BarChart
+              data={months}
+              height={140}
+              unit={goal.unit}
+              format={goal.unit === "currency" ? "money" : "number"}
+            />
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-[12px] text-text-tertiary">
+          Nothing logged against this goal yet.
+        </p>
+      )}
+
+      {mine.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+            Latest entries
+          </p>
+          <ul className="mt-1.5 divide-y divide-border-light">
+            {mine.slice(0, 6).map((a) => (
+              <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
+                <span className="w-[74px] shrink-0 text-text-tertiary tnum">
+                  {a.date}
+                </span>
+                <span className="font-semibold text-text-primary tnum">
+                  {fmtAmount(goal.unit, a.amount)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-text-secondary">
+                  {a.dealLabel ?? a.note ?? ""}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                    entryStatus(a) === "verified"
+                      ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
+                      : "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
+                  )}
+                >
+                  {entryStatus(a) === "verified" ? "Verified" : "Waiting"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GroupSplitPanel({
   goal,
   group,
@@ -2122,6 +2297,9 @@ function GoalPopupBody({
   const [confirmSubRemove, setConfirmSubRemove] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [confirmUnassign, setConfirmUnassign] = useState<string | null>(null);
+  /** Which assigned person's drill-down is open (Anir, Aug 19: "when I press
+   *  the dropdown, it should give me a ton more information about them"). */
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
   const [groupAssignOpen, setGroupAssignOpen] = useState(false);
   const [confirmGroupUnassign, setConfirmGroupUnassign] = useState<string | null>(
     null
@@ -2788,11 +2966,29 @@ function GoalPopupBody({
         </div>
       ) : (
         <div className="mt-1.5 space-y-1.5">
-          {soloAssignments.map((a) => (
-            <div
-              key={a.person}
-              className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
-            >
+          {soloAssignments.map((a) => {
+          const done = actualValue(state.actuals, goal, { person: a.person });
+          const donePct =
+            a.target > 0 ? Math.min(100, Math.round((done / a.target) * 100)) : 0;
+          const isOpen = openPerson === a.person;
+          return (
+            <div key={a.person} className="overflow-hidden rounded-xl bg-surface">
+            <div className="flex items-center gap-2.5 px-3 py-2">
+              {/* The row OPENS (Anir, Aug 19: "I definitely think you need a
+                  dropdown… it should be pretty extensive"). */}
+              <button
+                type="button"
+                onClick={() => setOpenPerson(isOpen ? null : a.person)}
+                aria-expanded={isOpen}
+                aria-label={`${isOpen ? "Hide" : "Show"} ${a.person}'s numbers`}
+                className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
+              >
+                <ChevronDown
+                  size={15}
+                  strokeWidth={2.2}
+                  className={cn("transition-transform duration-200", !isOpen && "-rotate-90")}
+                />
+              </button>
               <Avatar name={a.person} className="h-7 w-7 text-[10px]" />
               <span className="flex min-w-0 flex-1 items-center gap-2">
                 <span className="truncate text-[13px] font-semibold text-text-primary">
@@ -2803,9 +2999,25 @@ function GoalPopupBody({
                   <RoleChip role={memberRoles[a.person.trim()]} />
                 )}
               </span>
+              {/* HOW MUCH THEY HAVE DONE, not just what they owe (Anir,
+                  Aug 19: "I want to see a progress bar that shows how much
+                  they've done"). */}
+              {a.target > 0 && (
+                <span className="hidden shrink-0 items-center gap-2 sm:flex">
+                  <span className="h-1.5 w-[92px] overflow-hidden rounded-full bg-white">
+                    <span
+                      className="block h-full rounded-full bg-blue-primary transition-[width] duration-300"
+                      style={{ width: `${donePct}%` }}
+                    />
+                  </span>
+                  <span className="text-[11px] font-bold text-blue-primary tnum">
+                    {donePct}%
+                  </span>
+                </span>
+              )}
               <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
                 {a.target > 0
-                  ? `Target ${fmtAmount(goal.unit, a.target)}`
+                  ? `${fmtAmount(goal.unit, done)} of ${fmtAmount(goal.unit, a.target)}`
                   : "No personal target"}
               </span>
               <VerifiedPill
@@ -2869,7 +3081,18 @@ function GoalPopupBody({
                 </span>
               )}
             </div>
-          ))}
+            {isOpen && (
+              <PersonGoalPanel
+                goal={goal}
+                person={a.person}
+                target={a.target}
+                done={done}
+                state={state}
+              />
+            )}
+            </div>
+          );
+          })}
         </div>
       )}
       {/* THE FORM OPENS INSIDE THIS BOX (Anir, Aug 16: "When I add a person,
@@ -2973,7 +3196,7 @@ function GoalCard({
       </span>
       {(goal.componentGoalIds?.length ?? 0) > 0 && (
         <span className="mt-1.5 inline-flex rounded-full bg-[rgba(109,40,217,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#6D28D9]">
-          ⧉ adds up from {goal.componentGoalIds?.length} goals — nobody enters here
+          ⧉ adds up from {goal.componentGoalIds?.length} goals. Nobody enters here
         </span>
       )}
       <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -3239,8 +3462,12 @@ function GoalEditorFields({
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[220px] flex-1">
-          <label className="text-[12px] font-semibold text-text-primary">
+          {/* PLAIN-ENGLISH HINTS ON EVERY FIELD (Anir, Aug 19: "you need
+              more question marks because people are gonna need to know what
+              this is, and make it super simple so a baby can understand"). */}
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Goal type
+            <InfoHint text={"What kind of goal this is, so it sits with its own kind.\nLike Financial, or Lead Generation."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3276,8 +3503,9 @@ function GoalEditorFields({
       </div>
       <div className="flex flex-wrap gap-2">
         <div>
-          <label className="text-[12px] font-semibold text-text-primary">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Counted in
+            <InfoHint text={"What the number means.\nMoney: dollars, like $500K.\nCount: how many, like 12 meetings.\nPercentage: out of 100, like a 40% win rate."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3294,8 +3522,9 @@ function GoalEditorFields({
           </div>
         </div>
         <div>
-          <label className="text-[12px] font-semibold text-text-primary">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             How it adds up
+            <InfoHint text={"Running total: every entry piles on. $50K then $30K makes $80K. Use this for revenue and counts.\nLatest value: only the newest number counts. Use this for a rate, like win %."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3329,12 +3558,10 @@ function GoalEditorFields({
           </div>
         </div>
       </div>
-      {measure === "level" && (
-        <p className="rounded-lg bg-[rgba(109,40,217,0.06)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#6D28D9]">
-          A latest-value goal (like Win/Loss % or Average Deal Size) shows the
-          most recent number reported instead of adding entries up.
-        </p>
-      )}
+      {/* The banner that said this is gone — the "?" beside "How it adds up"
+          says the same thing without a purple wall in the form (Anir,
+          Aug 19: "you don't even have to see this. Just have a question mark
+          next to how it adds up"). */}
       <div>
         <label className="text-[12px] font-semibold text-text-primary">
           Annual target{" "}

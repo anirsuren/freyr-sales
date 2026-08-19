@@ -1065,7 +1065,7 @@ function GoalRows({
               Set target
             </button>
           ) : (
-            <span className="text-[13px] text-text-tertiary">, </span>
+            <span className="text-[13px] text-text-tertiary">·</span>
           )}
         </td>
         <td className="whitespace-nowrap px-4 py-4">
@@ -1083,7 +1083,7 @@ function GoalRows({
           {goal.target > 0 ? (
             <MetPill met={actual >= goal.target} size="sm" />
           ) : (
-            <span className="text-[12px] text-text-tertiary">, </span>
+            <span className="text-[12px] text-text-tertiary">·</span>
           )}
         </td>
         {/* THE SHINE BELONGS TO THE BAR, NOT THE ROW (Anir, Aug 16: "when my
@@ -1348,7 +1348,7 @@ function GoalRows({
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-text-tertiary">, </span>
+                                <span className="text-text-tertiary">·</span>
                               )}
                             </td>
                             <td className="py-2.5">

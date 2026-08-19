@@ -467,7 +467,11 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   and the campaigns row (Anir, Aug 15: "do the same thing with
                   the profile pictures... that animation I like"). */}
               <Link
-                href={`/performance/groups?group=${encodeURIComponent(g.name)}`}
+                /* The tab picks a group by ID, so linking the NAME landed on
+                   the page with the first group selected instead of this one
+                   (Anir, Aug 19: "make sure it actually takes me to that
+                   group, not just the page"). */
+                href={`/performance/groups?group=${encodeURIComponent(g.id)}`}
                 title="See group performance"
                 aria-label={`See ${g.name} on Group performance`}
                 className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"

@@ -131,13 +131,36 @@ export function TargetsTab({
 
   const [query, setQuery] = useState("");
   // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
-  // MPR and MDV together; an empty pick means everything.
+  // MPR and MDV together; an empty pick means everything. Quarter, country,
+  // connection and owner joined Aug 19 ("you should probably have more
+  // filters there").
   const [domains, setDomains] = useState<string[]>([]);
   const [tierPick, setTierPick] = useState<string[]>([]);
+  const [quarterPick, setQuarterPick] = useState<string[]>([]);
+  const [hqPick, setHqPick] = useState<string[]>([]);
+  const [connectionPick, setConnectionPick] = useState<string[]>([]);
+  const [ownerPick, setOwnerPick] = useState<string[]>([]);
 
   const tiers = useMemo(
     () =>
       [...new Set(list.map((t) => t.tier).filter(Boolean))].sort() as string[],
+    [list]
+  );
+  const quarters = useMemo(
+    () => [...new Set(list.map((t) => t.quarter).filter(Boolean))].sort() as string[],
+    [list]
+  );
+  const hqs = useMemo(
+    () => [...new Set(list.map((t) => t.hq).filter(Boolean))].sort() as string[],
+    [list]
+  );
+  const connections = useMemo(
+    () =>
+      [...new Set(list.map((t) => t.degreeOfConnection).filter(Boolean))].sort() as string[],
+    [list]
+  );
+  const owners = useMemo(
+    () => [...new Set(list.map((t) => t.owner).filter(Boolean))].sort() as string[],
     [list]
   );
 
@@ -147,12 +170,19 @@ export function TargetsTab({
       (t) =>
         (domains.length === 0 || domains.includes(t.domain)) &&
         (tierPick.length === 0 || (t.tier != null && tierPick.includes(t.tier))) &&
+        (quarterPick.length === 0 ||
+          (t.quarter != null && quarterPick.includes(t.quarter))) &&
+        (hqPick.length === 0 || (t.hq != null && hqPick.includes(t.hq))) &&
+        (connectionPick.length === 0 ||
+          (t.degreeOfConnection != null &&
+            connectionPick.includes(t.degreeOfConnection))) &&
+        (ownerPick.length === 0 || (t.owner != null && ownerPick.includes(t.owner))) &&
         (!q ||
           t.name.toLowerCase().includes(q) ||
           (t.owner ?? "").toLowerCase().includes(q) ||
           (t.hq ?? "").toLowerCase().includes(q))
     );
-  }, [list, query, domains, tierPick]);
+  }, [list, query, domains, tierPick, quarterPick, hqPick, connectionPick, ownerPick]);
 
   const potential = shown.reduce((s, t) => s + (t.potential ?? 0), 0);
   const memberSet = new Set(memberNames.map((n) => n.trim().toLowerCase()));
@@ -223,6 +253,46 @@ export function TargetsTab({
             allLabel="All tiers"
             options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t) }))}
           />
+          {quarters.length > 0 && (
+            <MultiColorSelect
+              values={quarterPick}
+              ariaLabel="Quarter"
+              onChange={setQuarterPick}
+              allLabel="All quarters"
+              options={quarters.map((q) => ({ value: q, label: q, color: "#0071E3" }))}
+            />
+          )}
+          {connections.length > 0 && (
+            <MultiColorSelect
+              values={connectionPick}
+              ariaLabel="Connection"
+              onChange={setConnectionPick}
+              allLabel="Any connection"
+              options={connections.map((c) => ({ value: c, label: c, color: "#0F9E8E" }))}
+            />
+          )}
+          {hqs.length > 0 && (
+            <MultiColorSelect
+              values={hqPick}
+              ariaLabel="HQ country"
+              onChange={setHqPick}
+              allLabel="All countries"
+              options={hqs.map((h) => ({
+                value: h,
+                label: hqFlag(h) ? `${hqFlag(h)} ${h}` : h,
+                color: "#5E5CE6",
+              }))}
+            />
+          )}
+          {owners.length > 0 && (
+            <MultiColorSelect
+              values={ownerPick}
+              ariaLabel="Owner"
+              onChange={setOwnerPick}
+              allLabel="All owners"
+              options={owners.map((o) => ({ value: o, label: o, avatarName: o }))}
+            />
+          )}
           {live && canEdit && (
             <Button className="ml-auto shrink-0" onClick={() => setAdding(true)}>
               <Plus size={14} strokeWidth={2.2} /> Add target
@@ -230,7 +300,7 @@ export function TargetsTab({
           )}
           {!live && (
             <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              Sample targets — switch to Real mode for the live list
+              Sample targets. Switch to Real mode for the live list
             </span>
           )}
         </div>
@@ -245,20 +315,24 @@ export function TargetsTab({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] table-fixed border-collapse text-left">
+            {/* WIDER floor than the card, so tight screens scroll sideways
+                instead of crushing the right-hand columns (Anir, Aug 19:
+                "that connection column is really close… maybe just make it
+                scrollable"). Domain gave up width; it never needed it. */}
+            <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
               <thead>
                 <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="w-[26%] px-4 py-2.5">Company</th>
-                  <th className="w-[15%] px-2 py-2.5">Domain</th>
-                  <th className="w-[9%] px-2 py-2.5">Tier</th>
-                  <th className="w-[17%] px-2 py-2.5">Owner</th>
+                  <th className="w-[24%] px-4 py-2.5">Company</th>
+                  <th className="w-[12%] px-2 py-2.5">Domain</th>
+                  <th className="w-[8%] px-2 py-2.5">Tier</th>
+                  <th className="w-[15%] px-2 py-2.5">Owner</th>
                   <th className="w-[11%] px-2 py-2.5">HQ</th>
-                  <th className="w-[11%] px-2 py-2.5">Potential</th>
-                  <th className={cn("px-2 py-2.5", showConnection ? "w-[7%]" : "w-[11%]")}>
+                  <th className="w-[10%] px-2 py-2.5">Potential</th>
+                  <th className={cn("px-2 py-2.5", showConnection ? "w-[9%]" : "w-[20%]")}>
                     Quarter
                   </th>
                   {showConnection && (
-                    <th className="w-[8%] px-2 py-2.5 pr-4">Connection</th>
+                    <th className="w-[11%] px-2 py-2.5 pr-4">Connection</th>
                   )}
                 </tr>
               </thead>
@@ -306,7 +380,7 @@ export function TargetsTab({
                             {t.tier}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-tertiary">, </span>
+                          <span className="text-[11px] text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5">
@@ -339,14 +413,14 @@ export function TargetsTab({
                             {t.hq}
                           </span>
                         ) : (
-                          <span className="text-text-tertiary">, </span>
+                          <span className="text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-[12.5px] font-semibold text-text-primary tnum">
                         {t.potential ? (
                           money(t.potential)
                         ) : (
-                          <span className="font-normal text-text-tertiary">, </span>
+                          <span className="font-normal text-text-tertiary">·</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5">
@@ -355,7 +429,7 @@ export function TargetsTab({
                             {t.quarter}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-text-tertiary">, </span>
+                          <span className="text-[11px] text-text-tertiary">·</span>
                         )}
                       </td>
                       {showConnection && (
@@ -380,7 +454,7 @@ export function TargetsTab({
                               {t.degreeOfConnection}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-text-tertiary">, </span>
+                            <span className="text-[11px] text-text-tertiary">·</span>
                           )}
                         </td>
                       )}
