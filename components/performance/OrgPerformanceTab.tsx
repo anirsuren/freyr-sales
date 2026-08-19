@@ -407,6 +407,15 @@ export function OrgPerformanceTab({
                 bottom edge and the bars right above it"). Bleeding into all
                 three sides puts the bar on the edge and the axis labels
                 immediately above it. */}
+            {/* A FILTER THAT MATCHES NOTHING LEAVES A BLANK CARD. The bars
+                simply vanished and the card sat there empty, which reads as
+                broken rather than as "nothing here" (Anir's standing rule:
+                never lead with emptiness, say what is going on). */}
+            {sorted.length === 0 ? (
+              <p className="mt-3 flex min-h-[190px] flex-1 items-center justify-center rounded-lg bg-surface/60 px-4 text-center text-[12.5px] text-text-tertiary">
+                No goals match these filters, so there is nothing to chart.
+              </p>
+            ) : (
             <div className="-mx-5 -mb-5 mt-3 min-h-0 flex-1">
               <BarChart
                 height={190}
@@ -468,6 +477,7 @@ export function OrgPerformanceTab({
                 })}
               />
             </div>
+            )}
           </Card>
           <Card className="p-5">
             <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
