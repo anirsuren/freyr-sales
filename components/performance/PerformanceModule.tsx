@@ -2355,7 +2355,18 @@ function GoalPopupBody({
           ).then((ok) => ok && setOpenSub(null));
         }}
         title="Remove this subgoal?"
-        body="Its owners, people and targets come off this goal."
+        body={(() => {
+          /* Same rule as removing a goal: say what is destroyed. A subgoal
+             takes every result logged against it, which "targets come off"
+             does not begin to cover. */
+          const logged = state.actuals.filter(
+            (a) => a.subgoalId === confirmSubRemove
+          ).length;
+          const base = "Its owners, people and targets come off this goal.";
+          return logged > 0
+            ? `${base} The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
+            : base;
+        })()}
         confirmLabel="Remove subgoal"
       />
 
@@ -2502,7 +2513,14 @@ function GoalPopupBody({
                     </span>
                     {confirmSubRemove === s.id && hostedInPopup && (
                       <ConfirmUnder
-                        question="Remove this subgoal?"
+                        question={(() => {
+                          const logged = state.actuals.filter(
+                            (a) => a.subgoalId === s.id
+                          ).length;
+                          return logged > 0
+                            ? `Remove this subgoal? The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
+                            : "Remove this subgoal?";
+                        })()}
                         actionLabel="Remove"
                         onConfirm={() => {
                           setConfirmSubRemove(null);
