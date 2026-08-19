@@ -426,9 +426,16 @@ export function OpportunitiesBrowser({
    *  list re-sorts on save and the deal LOOKED like it vanished (Suren, Aug 18:
    *  "I was working on an opportunity. How can it disappear, man?"). */
   const [flashId, setFlashId] = useState<string | null>(null);
-  const closeEditor = () => {
+  /** X keeps the draft; Cancel throws it away. Both used to stash it, so an
+   *  abandoned form could never be cleared — reopening New opportunity handed
+   *  back last week's half-typed deal, and there was no way to start clean
+   *  short of saving something. (Found testing, Aug 19.) */
+  const closeEditor = (discard = false) => {
     setEditing((current) => {
-      if (current) draftStash.current[current.id || "new"] = current;
+      if (!current) return null;
+      const key = current.id || "new";
+      if (discard) delete draftStash.current[key];
+      else draftStash.current[key] = current;
       return null;
     });
   };
@@ -1635,7 +1642,7 @@ export function OpportunitiesBrowser({
 
       <Modal
         open={editing !== null}
-        onClose={closeEditor}
+        onClose={() => closeEditor()}
         title={editing?.id ? `Edit ${editing.name}` : "New opportunity"}
         size="workflow"
         tall
@@ -2138,7 +2145,7 @@ export function OpportunitiesBrowser({
                   Still needed: {missing.join(", ")}.
                 </p>
               )}
-              <Button variant="secondary" onClick={closeEditor}>
+              <Button variant="secondary" onClick={() => closeEditor(true)}>
                 Cancel
               </Button>
               <Button

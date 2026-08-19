@@ -561,9 +561,20 @@ export async function setVerified(input: {
       if (a.goalId !== input.goalId) continue;
       if (input.subgoalId && a.subgoalId !== input.subgoalId) continue;
       if (input.person && a.person !== input.person) continue;
+      /**
+       * SAME RULE AS SIGNING ONE CLAIM OFF (found testing, Aug 19).
+       *
+       * verifyActual refuses anyone who does not head a group containing the
+       * claimant — but this sweep had no such check, so the same money a
+       * manager was refused one claim at a time could be locked wholesale by
+       * signing off the goal above it. Two doors onto one decision must obey
+       * one rule. A claim the caller may not verify is simply left alone; the
+       * goal's own flag still moves, which is the caller's to set.
+       */
+      if (!input.by || !canVerifyEntry(state, input.by, a.person)) continue;
       if ((a.status ?? "verified") === "reported") {
         a.status = "verified";
-        a.verifiedBy = input.by || a.verifiedBy;
+        a.verifiedBy = input.by;
         a.verifiedAt = now;
         a.managerNote = undefined;
       }
