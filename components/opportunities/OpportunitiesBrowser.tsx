@@ -2046,8 +2046,8 @@ export function OpportunitiesBrowser({
                 ))}
                 {editing.activities.length === 0 && (
                   <p className="text-[12px] text-text-tertiary">
-                    What's actually happening on this deal — a demo, a pilot, a
-                    bid defence. Add as many as you like.
+                    What&rsquo;s actually happening on this deal: a demo, a
+                    pilot, a bid defence. Add as many as you like.
                   </p>
                 )}
                 <button
