@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import {
+  actualValue,
   entryStatus,
   fmtAmount,
   parseAmountInput,
@@ -1025,6 +1026,54 @@ export function ClaimReviewDialog({
            * then accept or decline without leaving.
            */
           <Modal open onClose={close} title="Review this claim" size="workflow">
+            {/* WHERE THIS ONE CLAIM SITS ON ITS GOAL (Anir, Aug 19: "shouldn't
+                there be some sort of progress bar in here?"). The goal-level
+                dialog has carried this band for a while; a single claim was
+                the odd one out, which is exactly why the two read as
+                unrelated screens. Same bar, same words, same order. */}
+            {goal && goal.target > 0 && (() => {
+              const signed = actualValue(state.actuals, goal, {}, undefined);
+              const donePct = Math.min(100, Math.round((signed / goal.target) * 100));
+              const thisPct = Math.min(100, Math.round((a.amount / goal.target) * 100));
+              return (
+                <div className="mb-3 rounded-xl bg-surface px-3.5 py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[14px] font-bold text-text-primary">
+                      {goal.name}
+                    </span>
+                    <span className="text-[12px] text-text-secondary tnum">
+                      Goal {fmtAmount(goal.unit, goal.target)} · {donePct}% there
+                    </span>
+                  </div>
+                  <span className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                    <span
+                      className="h-full bg-blue-primary"
+                      style={{ width: `${donePct}%` }}
+                    />
+                    <span
+                      className="h-full bg-blue-primary opacity-[0.35]"
+                      style={{ width: `${thisPct}%` }}
+                    />
+                  </span>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-primary" />
+                      Counted
+                      <b className="text-text-primary tnum">
+                        {fmtAmount(goal.unit, signed)}
+                      </b>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-primary opacity-[0.35]" />
+                      This claim
+                      <b className="text-text-primary tnum">
+                        {fmtAmount(goal.unit, a.amount)}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3">
               <Avatar name={a.person} className="h-10 w-10 text-[13px]" />
               <span className="min-w-0 flex-1">

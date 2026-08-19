@@ -130,16 +130,22 @@ export function PersonSelect({
   placeholder = "Pick a person…",
   allowFree = true,
   roles,
+  meName,
 }: {
   value: string;
   onChange: (next: string) => void;
   people: string[];
   placeholder?: string;
   allowFree?: boolean;
+  /** Marks the reader's own name "(you)", the way every other picker in the
+   *  app does (Anir, Aug 19: "it should say that it's me, right?"). */
+  meName?: string;
   /** Name → workspace role, shown beside each name so you pick a person, not
    *  a string (Anir, Aug 15: "it should show a role"). */
   roles?: Record<string, string>;
 }) {
+  const isMe = (n: string) =>
+    !!meName && n.trim().toLowerCase() === meName.trim().toLowerCase();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
@@ -222,6 +228,9 @@ export function PersonSelect({
             <Avatar name={value} className="h-6 w-6 text-[9px]" />
             <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text-primary">
               {value}
+              {isMe(value) && (
+                <span className="ml-1 font-semibold text-text-tertiary">(you)</span>
+              )}
             </span>
           </>
         ) : (
@@ -279,6 +288,9 @@ export function PersonSelect({
                 <Avatar name={p} className="h-6 w-6 text-[9px]" />
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
                   {p}
+                  {isMe(p) && (
+                    <span className="ml-1 font-semibold text-text-tertiary">(you)</span>
+                  )}
                 </span>
                 {roles?.[p.trim()] && <RoleChip role={roles[p.trim()]} />}
                 {p === value && (

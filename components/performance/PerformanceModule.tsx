@@ -25,6 +25,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { MultiPicker } from "@/components/ui/MultiPicker";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
@@ -4601,9 +4602,19 @@ function LogActualModal({
               <InfoHint text="Which goal this number counts toward. Pick the subgoal too when it belongs to one." />
             </label>
             <div className="mt-1">
-              <ColorSelect
-                value={goalId}
-                onChange={(v) => {
+              {/* CATEGORY FIRST, THEN THE GOAL (Anir, Aug 19: "there are too
+                  many. It should be the category and then the goal… if I press
+                  the back arrow it shows me the four categories"). The same
+                  one-panel drill the offering picker uses, so the two big
+                  pickers in the app behave identically. */}
+              <MultiPicker
+                variant="dropdown"
+                single
+                ariaLabel="Goal"
+                placeholder="Pick a goal…"
+                emptyLabel="No goals yet"
+                selected={goalId ? [goalId] : []}
+                onToggle={(v) => {
                   // Re-picking the SAME goal must not wipe the rest of the
                   // form (Anir: "it shouldn't untoggle the first dropdown").
                   if (v !== goalId) {
@@ -4612,29 +4623,16 @@ function LogActualModal({
                   }
                   setGoalId(v);
                 }}
-                ariaLabel="Goal"
-                // Wide on purpose: this one sits alone in a roomy modal cell,
-                // and the longest goal name is "Booked Revenue (Contract Value
-                // Signed) · adds up". Set here, at the one call site that needs
-                // it, rather than teaching every select in the app to grow.
-                minWidth={430}
-                options={[
-                  { value: "", label: "Pick a goal…", color: "#8E98A8" },
-                  ...state.goals.map((g) => ({
-                    value: g.id,
-                    label:
-                      (g.componentGoalIds?.length ?? 0) > 0
-                        ? `${g.name} · adds up`
-                        : g.name,
-                    // The category rides under the name (Anir, Aug 17: "when
-                    // I'm picking a goal, you gotta show me the category
-                    // too") — two goals can share a name across categories,
-                    // and the colour dot alone doesn't say which is which.
-                    description: `${g.type} · ${g.year}`,
-                    color: typeMeta(g.type).color,
-                    icon: typeMeta(g.type).icon,
-                  })),
-                ]}
+                options={state.goals.map((g) => ({
+                  id: g.id,
+                  label:
+                    (g.componentGoalIds?.length ?? 0) > 0
+                      ? `${g.name} · adds up`
+                      : g.name,
+                  group: `${g.type}`,
+                  color: typeMeta(g.type).color,
+                  icon: typeMeta(g.type).icon,
+                }))}
               />
             </div>
           </div>
@@ -4714,6 +4712,7 @@ function LogActualModal({
               value={person}
               onChange={setPerson}
               people={personOptions}
+              meName={meName}
               placeholder="Whose number is it?"
             />
           </div>
