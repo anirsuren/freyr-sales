@@ -193,6 +193,15 @@ export async function POST(req: NextRequest) {
         );
       }
       if (op === "remove") {
+        // A deleted deal takes its unverified met entries with it, same as a
+        // deleted goal row; verified entries are locked and stay.
+        for (const link of target.goalLinks ?? []) {
+          if (link.actualId) {
+            try {
+              await removeActual(link.actualId);
+            } catch {}
+          }
+        }
         await removeOpportunity(id);
         return NextResponse.json({ ok: true });
       }

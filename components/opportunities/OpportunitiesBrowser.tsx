@@ -1965,7 +1965,7 @@ export function OpportunitiesBrowser({
                       }
                       placeholder="e.g. Customer demo"
                       aria-label={`Activity ${i + 1} name`}
-                      className={cn(inputCls, "min-w-[150px] flex-1")}
+                      className={cn(inputCls, "!w-auto min-w-[150px] flex-1")}
                     />
                     <input
                       type="date"
@@ -1980,7 +1980,7 @@ export function OpportunitiesBrowser({
                       }
                       aria-label={`Activity ${i + 1} start date`}
                       title="When this activity started"
-                      className={cn(inputCls, "w-[138px] tnum")}
+                      className={cn(inputCls, "!w-[138px] tnum")}
                     />
                     <span className="text-[11.5px] font-semibold text-text-tertiary">to</span>
                     <input
@@ -1996,7 +1996,7 @@ export function OpportunitiesBrowser({
                       }
                       aria-label={`Activity ${i + 1} end date`}
                       title="When this activity ended, or should end"
-                      className={cn(inputCls, "w-[138px] tnum")}
+                      className={cn(inputCls, "!w-[138px] tnum")}
                     />
                     <ColorSelect
                       value={a.status}
