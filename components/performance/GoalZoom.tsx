@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import { HoverCard } from "@/components/ui/HoverCard";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { useStickyValue } from "@/lib/useStickyValue";
 import {
   currentFiscalYear,
   entryStatus,
@@ -69,6 +70,13 @@ import type { RunOp } from "./PerformanceModule";
  *  the rows under it (Anir, Aug 16: "On the progress bar, show this, this,
  *  this, and then color-code it, and then the line items for each below").
  *  Identity hues only — red and green stay reserved for status. */
+/** The drill-down rail's height: its default, and the range a drag may
+ *  reach. Below the floor the boxes cannot show a row; above the ceiling the
+ *  rest of the page is off screen on a laptop. */
+const RAIL_DEFAULT = 380;
+const RAIL_MIN = 200;
+const RAIL_MAX = 900;
+
 const DEAL_COLORS = ["#0071E3", "#7C3AED", "#0891B2", "#B4318F", "#0F766E", "#6366F1"];
 
 /**
@@ -269,6 +277,47 @@ export function GoalZoom({
   const nowFy = currentFiscalYear();
   const [fy, setFy] = useState(nowFy);
   const [gran, setGran] = useState<Granularity>("months");
+  /**
+   * HOW TALL THE THREE BOXES ARE, dragged from their bottom edge and
+   * remembered (Anir, Aug 19: "if I want to shorten the organization, group,
+   * and person columns, those three things, at the same time... I can just do
+   * so by dragging down the edge or up the edge").
+   *
+   * One height for all three, because they are one row and resizing them
+   * separately would only ever make the row ragged. Clamped silently between
+   * a height that still shows a couple of rows and one that fills a large
+   * screen — "there should be a set distance... we don't have to show that,
+   * it will automatically do that".
+   */
+  const [railHeight, setRailHeight] = useStickyValue(
+    "freyr.performance.zoom.railHeight",
+    RAIL_DEFAULT
+  );
+  const dragFrom = useRef<{ y: number; h: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const onRailDrag = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragFrom.current = { y: e.clientY, h: railHeight };
+      setDragging(true);
+      const move = (ev: PointerEvent) => {
+        const from = dragFrom.current;
+        if (!from) return;
+        setRailHeight(
+          Math.max(RAIL_MIN, Math.min(RAIL_MAX, from.h + (ev.clientY - from.y)))
+        );
+      };
+      const up = () => {
+        dragFrom.current = null;
+        setDragging(false);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    },
+    [railHeight, setRailHeight]
+  );
   const [selected, setSelected] = useState<number | null>(null);
   /**
    * ONE AT A TIME, OR SEVERAL WITH SHIFT (Anir, Aug 16: "when I hold Shift and
@@ -1054,11 +1103,15 @@ export function GoalZoom({
           const boxHead =
             "flex items-center gap-2 border-b border-border-light bg-surface/60 px-3 py-2";
           return (
+            <div className={cn("relative mt-3", fill && "flex min-h-0 flex-1 flex-col")}>
             <div
               className={cn(
-                "mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3",
+                "grid grid-cols-1 gap-3 xl:grid-cols-3",
                 fill && "min-h-0 flex-1"
               )}
+              // One height, three boxes. In a full-screen modal the viewport
+              // decides instead, so the drag is not offered there.
+              style={fill ? undefined : { height: railHeight }}
             >
               {/* -------- Box 1: the organization, period by period */}
               <div className={boxCls}>
@@ -1068,7 +1121,7 @@ export function GoalZoom({
                     pick a period
                   </span>
                 </div>
-                <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
+                <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {(() => {
                     const inPeriodAwaiting = rows.some((r) => r.awaiting > 0);
                     return rows.map((r, i) => {
@@ -1232,7 +1285,7 @@ export function GoalZoom({
 
                   </span>
                 </div>
-                <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
+                <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {inPeriodGroups.length === 0 ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       No groups yet. Once groups exist, this box lists every
@@ -1656,7 +1709,7 @@ export function GoalZoom({
                     ))}
                   </span>
                 </div>
-                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "max-h-[510px]")}>
+                <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {lineScope !== "person" ? (
                     /* Widened past the drill: the deals themselves, no names.
                        Group needs a group picked; the period does not. */
@@ -1873,7 +1926,34 @@ export function GoalZoom({
                   )}
                 </div>
               </div>
+            </div>
 
+            {!fill && (
+              /* THE EDGE IS THE HANDLE (Anir, Aug 19: "I didn't want there to
+                 be a separate line. I just wanted the line to be the bottom
+                 edge. There shouldn't be any unnecessary space there"). It is
+                 absolutely placed over the row's bottom border, so it costs
+                 no layout height at all and the grab area still spans the
+                 full width. Double-click puts the height back. */
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Drag to resize these three boxes"
+                title="Drag to resize · double-click to reset"
+                onPointerDown={onRailDrag}
+                onDoubleClick={() => setRailHeight(RAIL_DEFAULT)}
+                className="group/rail absolute inset-x-0 -bottom-1.5 z-10 h-3 cursor-ns-resize"
+              >
+                <span
+                  className={cn(
+                    "absolute left-1/2 top-1/2 h-1 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity",
+                    dragging
+                      ? "bg-blue-primary opacity-100"
+                      : "bg-blue-subtle opacity-0 group-hover/rail:opacity-100"
+                  )}
+                />
+              </div>
+            )}
             </div>
           );
         })()}

@@ -60,6 +60,7 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useStickyValue } from "@/lib/useStickyValue";
 import {
   fmtAmount,
   hasActuals,
@@ -110,35 +111,6 @@ import { GroupPerformanceTab } from "./GroupPerformanceTab";
 
 const TABS = ["org", "groups", "people"] as const;
 
-/** A piece of Goal Master UI state that survives leaving the page: filters
- *  and collapsed sections come back exactly as you left them (Anir, Aug 13:
- *  "whatever I last had on the gold master page... that should save"). */
-function useStickyValue<T>(key: string, initial: T): [T, (next: T | ((prev: T) => T)) => void] {
-  const [value, setValue] = useState<T>(initial);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw != null) setValue(JSON.parse(raw) as T);
-    } catch {
-      /* first visit or bad JSON — keep the default */
-    }
-  }, [key]);
-  const set = useCallback(
-    (next: T | ((prev: T) => T)) => {
-      setValue((prev) => {
-        const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
-        try {
-          localStorage.setItem(key, JSON.stringify(resolved));
-        } catch {
-          /* private mode */
-        }
-        return resolved;
-      });
-    },
-    [key]
-  );
-  return [value, set];
-}
 type Tab = (typeof TABS)[number];
 
 const SPLIT_COLORS = ["#0071E3", "#6D28D9", "#0F766E", "#B4318F", "#C2410C", "#0EA5E9"];
