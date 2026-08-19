@@ -568,6 +568,23 @@ export async function setVerified(input: {
       assignment.verified = flag;
     } else {
       goal.verified = flag;
+      /**
+       * SIGNING THE GOAL OFF SIGNS OFF WHAT IS UNDER IT (Anir, Aug 19, after
+       * pressing Verify and lock and watching the row still read "Not
+       * verified": "that's a problem... the user gets confused").
+       *
+       * Group performance draws its pill from the people, not the goal: the
+       * row is green only when every assignment and every subgoal member has
+       * been checked. So approving the goal moved the money and changed
+       * nothing anyone could see. Now the decision reaches the people it
+       * covers, and taking it back clears them again, so the label always
+       * answers the button next to it.
+       */
+      for (const a of goal.assignments ?? []) a.verified = flag;
+      for (const sub of goal.subgoals) {
+        sub.verified = flag;
+        for (const person of sub.people) person.verified = flag;
+      }
     }
   } else {
     const sub = goal.subgoals.find((s) => s.id === input.subgoalId);
