@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
   entryStatus,
@@ -144,8 +145,13 @@ export function PersonSelect({
    *  a string (Anir, Aug 15: "it should show a role"). */
   roles?: Record<string, string>;
 }) {
+  /* Every picker marks you, not just the ones whose caller happened to pass a
+     name down: the assign-a-person and subgoal pickers sat next to the log
+     form saying "Anir Suren" while that one said "Anir Suren (you)". */
+  const signedIn = useCurrentUserOrNull();
+  const myName = meName ?? signedIn?.name ?? "";
   const isMe = (n: string) =>
-    !!meName && n.trim().toLowerCase() === meName.trim().toLowerCase();
+    !!myName && n.trim().toLowerCase() === myName.trim().toLowerCase();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);

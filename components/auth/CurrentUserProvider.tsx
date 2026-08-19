@@ -103,6 +103,12 @@ export function useMyPhoto() {
   return useContext(MyPhotoContext);
 }
 
+/** The signed-in user, or null outside a provider. For shared widgets that
+ *  want to mark "(you)" without every caller threading the name down. */
+export function useCurrentUserOrNull(): UserIdentity | null {
+  return useContext(CurrentUserContext);
+}
+
 export function useCurrentUser(): UserIdentity {
   const user = useContext(CurrentUserContext);
   if (!user) {
