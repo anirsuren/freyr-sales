@@ -66,7 +66,7 @@ export function VerifyGoalModal({
     <Modal
       open
       onClose={onClose}
-      title={undoing ? "Take back this sign-off" : "Verify this goal"}
+      title={undoing ? "Take back this approval" : "Verify this goal"}
       size="workflow"
       tall
     >
@@ -129,8 +129,8 @@ export function VerifyGoalModal({
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
-            Signing off approves the {fmtAmount(goal.unit, waiting)} still
-            waiting below.
+            Approving counts the {fmtAmount(goal.unit, waiting)} still waiting
+            below. It all becomes verified money.
           </span>
         </p>
       )}
@@ -232,18 +232,20 @@ export function VerifyGoalModal({
             const ok = await run(
               { op: "set-verified", goalId: goal.id, verified: !goal.verified },
               undoing
-                ? `${goal.name} is no longer signed off`
-                : `${goal.name} signed off by ${meName}`
+                ? `${goal.name} is no longer approved`
+                : waiting > 0
+                  ? `${goal.name} approved. ${fmtAmount(goal.unit, waiting)} counts now`
+                  : `${goal.name} approved by ${meName}`
             );
             if (ok) onClose();
           }}
           className={cn(
             "inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50",
-            undoing ? "bg-[color:#DC2626]" : "bg-[color:#0F766E]"
+            undoing ? "bg-[color:#DC2626]" : "bg-blue-primary"
           )}
         >
           <ShieldCheck size={14} strokeWidth={2.4} />
-          {undoing ? "Take back the sign-off" : "Sign this goal off"}
+          {undoing ? "Take back the approval" : "Verify and lock"}
         </button>
       </div>
     </Modal>

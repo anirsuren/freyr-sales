@@ -658,6 +658,30 @@ export function OrgPerformanceTab({
               icon: PERIOD_META[p.value].icon,
             }))}
           />
+          {/* THE SAME ONE BUTTON THE PIPELINE HAS (Anir, Aug 19: "can I have
+              the same thing on the performance page, wherever you did the
+              close all and open all"). It knows which way it goes: anything
+              open closes everything, all shut opens everything. */}
+          {picked.length > 0 && (() => {
+            const allIds = picked.map((g) => g.id);
+            const anyOpen = allIds.some((id) => openIds.has(id));
+            return (
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenIds(anyOpen ? new Set() : new Set(allIds))
+                }
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                {anyOpen ? (
+                  <ChevronsDownUp size={14} strokeWidth={2.2} />
+                ) : (
+                  <ChevronsUpDown size={14} strokeWidth={2.2} />
+                )}
+                {anyOpen ? "Close all" : "Open all"}
+              </button>
+            );
+          })()}
           {live && (
             <button
               type="button"

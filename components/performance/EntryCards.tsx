@@ -1042,7 +1042,7 @@ export function ClaimReviewDialog({
            * entered, what they wrote, and the proof big enough to judge —
            * then accept or decline without leaving.
            */
-          <Modal open onClose={close} title="Review this claim" size="workflow">
+          <Modal open onClose={close} title="Verify this claim" size="workflow">
             {/* WHERE THIS ONE CLAIM SITS ON ITS GOAL (Anir, Aug 19: "shouldn't
                 there be some sort of progress bar in here?"). The goal-level
                 dialog has carried this band for a while; a single claim was

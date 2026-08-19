@@ -545,6 +545,20 @@ export async function setVerified(input: {
   const goal = state.goals.find((g) => g.id === input.goalId);
   if (!goal) throw new Error("That goal is gone. Refresh and retry.");
   const flag = input.verified === true;
+  // APPROVING IS APPROVING (Anir, Aug 19: "Can I approve it? If I approve it,
+  // it approves it. It's not that serious"). Signing a goal off used to flip
+  // one flag and leave every claim underneath still waiting, which is exactly
+  // what the dialog's own warning promised it would not do. Now the money
+  // moves with the decision. Taking a sign-off back only clears the flag:
+  // un-counting money that people already banked on is a separate, louder act.
+  if (flag) {
+    for (const a of state.actuals) {
+      if (a.goalId !== input.goalId) continue;
+      if (input.subgoalId && a.subgoalId !== input.subgoalId) continue;
+      if (input.person && a.person !== input.person) continue;
+      if ((a.status ?? "verified") === "reported") a.status = "verified";
+    }
+  }
   if (!input.subgoalId) {
     if (input.person) {
       const assignment = (goal.assignments ?? []).find(
