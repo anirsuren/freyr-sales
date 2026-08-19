@@ -610,15 +610,20 @@ export function OpportunitiesBrowser({
   const totals = useMemo(() => {
     const value = shown.reduce((s, o) => s + o.value, 0);
     const weighted = shown.reduce((s, o) => s + weightedValue(o), 0);
-    const withConfidence = shown.filter((o) => o.confidence !== undefined);
+    /* THE SAME NUMBER THE ROWS SHOW. A deal built in this form stores its
+       confidence on the offering row, not on the deal, so reading the
+       deal-level field alone made the tile say "none recorded yet" while
+       every row underneath it read "65% confident". */
+    const withConfidence = shown
+      .map((o) => opportunityConfidence(o))
+      .filter((c): c is number => typeof c === "number");
     return {
       value,
       weighted,
       count: shown.length,
       avgConfidence: withConfidence.length
         ? Math.round(
-            withConfidence.reduce((s, o) => s + (o.confidence ?? 0), 0) /
-              withConfidence.length
+            withConfidence.reduce((sum, c) => sum + c, 0) / withConfidence.length
           )
         : null,
     };
