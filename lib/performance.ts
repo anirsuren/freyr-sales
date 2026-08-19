@@ -1183,7 +1183,13 @@ export async function assignGoalToGroup(input: {
         person,
         target: 0,
         verified: false,
-        assignedBy: input.addedBy,
+        // STAMPED AS THE GROUP'S DOING, not the person who pressed the button.
+        // It is the only record of WHY this row exists, and without it taking
+        // the group back off the goal cannot tell the people it put there
+        // from the ones somebody assigned by hand — so it left all of them
+        // behind (found testing, Aug 19). Rows already in the store use this
+        // exact marker.
+        assignedBy: "group",
         assignedAt: new Date().toISOString(),
       });
     }
@@ -1201,6 +1207,30 @@ export async function unassignGoalFromGroup(input: {
   if (!goal) throw new Error("That goal is gone. Refresh and retry.");
   goal.groupAssignments = (goal.groupAssignments ?? []).filter(
     (a) => a.groupId !== input.groupId
+  );
+  /**
+   * THE PEOPLE THE GROUP PUT HERE LEAVE WITH IT (found testing, Aug 19).
+   *
+   * Assigning a goal to a group writes an individual row per member, stamped
+   * `assignedBy: "group"`. Taking the group off only removed the group record,
+   * so those rows stayed forever — the goal still listed people, with nothing
+   * left on screen to explain why they were on it, and their targets still ate
+   * into the goal's headroom.
+   *
+   * Anyone still covered by another group on this goal keeps their row, and a
+   * row somebody assigned by hand is never touched: only the ones this
+   * assignment created, and only if nothing else now justifies them.
+   */
+  const stillCovered = new Set(
+    (goal.groupAssignments ?? []).flatMap((a) => {
+      const g = state.groups.find((x) => x.id === a.groupId);
+      return g ? [g.head, ...g.members].map((m) => m.trim().toLowerCase()) : [];
+    })
+  );
+  goal.assignments = (goal.assignments ?? []).filter(
+    (a) =>
+      a.assignedBy !== "group" ||
+      stillCovered.has(a.person.trim().toLowerCase())
   );
   await writeRow(state);
 }
