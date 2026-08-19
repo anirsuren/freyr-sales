@@ -1319,16 +1319,33 @@ function MasterTab({
           void run({ op: "remove-goal", goalId: id }, `${name} removed from the master`);
         }}
         title="Remove this goal?"
-        body={
-          <>
-            <b>
-              {state.goals.find((x) => x.id === confirmRemoveId)?.name ??
-                "This goal"}
-            </b>{" "}
-            and its subgoals come off the master, and Org performance stops
-            counting it.
-          </>
-        }
+        body={(() => {
+          /* SAY WHAT GETS DESTROYED. Removing a goal deletes every result
+             logged against it, which "stops counting it" badly understates:
+             the entries are gone, not merely uncounted. */
+          const logged = state.actuals.filter(
+            (a) => a.goalId === confirmRemoveId
+          ).length;
+          return (
+            <>
+              <b>
+                {state.goals.find((x) => x.id === confirmRemoveId)?.name ??
+                  "This goal"}
+              </b>{" "}
+              and its subgoals come off the master, and Org performance stops
+              counting it.
+              {logged > 0 && (
+                <>
+                  {" "}
+                  <b>
+                    The {logged} {logged === 1 ? "result" : "results"} logged
+                    against it {logged === 1 ? "is" : "are"} deleted too.
+                  </b>
+                </>
+              )}
+            </>
+          );
+        })()}
         confirmLabel="Remove goal"
       />
     </div>
@@ -2314,7 +2331,13 @@ function GoalPopupBody({
           ).then((ok) => ok && onRemoved());
         }}
         title="Remove this goal?"
-        body={`${goal.name} and its subgoals come off the master, and Org performance stops counting it.`}
+        body={(() => {
+          const logged = state.actuals.filter((a) => a.goalId === goal.id).length;
+          const base = `${goal.name} and its subgoals come off the master, and Org performance stops counting it.`;
+          return logged > 0
+            ? `${base} The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
+            : base;
+        })()}
         confirmLabel="Remove goal"
       />
       <ConfirmDialog
