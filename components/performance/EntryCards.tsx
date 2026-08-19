@@ -193,14 +193,14 @@ export function StatusPill({
             onVerify();
           }}
           title="You sent this back. Open it to check the fix and sign it off"
-          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.14)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.22)]"
+          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.16)]"
         >
           {pill}
         </button>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.14)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020]">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020]">
         {pill}
       </span>
     );
@@ -371,11 +371,7 @@ function EntryTimeline({
               <span
                 className={cn(
                   "block text-[12.5px] font-semibold",
-                  step.alert
-                    ? "text-[color:#B02020]"
-                    : step.done
-                      ? "text-text-primary"
-                      : "text-text-tertiary"
+                  step.done ? "text-text-primary" : "text-text-tertiary"
                 )}
               >
                 {step.label}
@@ -402,12 +398,7 @@ function EntryTimeline({
                 )}
               </span>
               {step.note && (
-                <span
-                  className={cn(
-                    "mt-0.5 block text-[11.5px] italic",
-                    step.alert ? "text-[color:#B02020]" : "text-text-secondary"
-                  )}
-                >
+                <span className="mt-0.5 block text-[11.5px] italic text-text-secondary">
                   &ldquo;{step.note}&rdquo;
                 </span>
               )}
@@ -540,8 +531,12 @@ export function MyEntriesCard({
             const back = mine.filter(wasSentBack).length;
             if (back > 0) {
               return (
-                <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[color:#B02020]">
-                  <AlertCircle size={13} strokeWidth={2.6} />
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-text-secondary">
+                  <AlertCircle
+                    size={13}
+                    strokeWidth={2.6}
+                    className="text-[color:#DC2626]"
+                  />
                   {back} sent back and waiting on a fix
                 </span>
               );
@@ -601,7 +596,10 @@ export function MyEntriesCard({
                            open or not — closed is exactly when it needs to be
                            spotted from across the table. */
                         sentBack
-                          ? "bg-[rgba(220,38,38,0.05)] [box-shadow:inset_3px_0_0_0_#DC2626] hover:bg-[rgba(220,38,38,0.09)]"
+                          ? cn(
+                              "[box-shadow:inset_3px_0_0_0_#DC2626]",
+                              open ? "bg-surface" : "hover:bg-surface"
+                            )
                           : open
                             ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                             : "hover:bg-surface"
@@ -743,12 +741,7 @@ export function MyEntriesCard({
                       </td>
                     </tr>
                     {open && (
-                      <tr
-                        className={cn(
-                          "!border-t-0",
-                          sentBack ? "bg-[rgba(220,38,38,0.05)]" : "bg-surface"
-                        )}
-                      >
+                      <tr className="!border-t-0 bg-surface">
                         <td
                           colSpan={8}
                           className={cn(
@@ -764,18 +757,18 @@ export function MyEntriesCard({
                               else, read last if at all — on the one claim
                               where somebody is waiting for the person to act. */}
                           {sentBack && (
-                            <div className="mb-3 mt-2 flex items-start gap-2.5 rounded-xl border border-[rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.08)] px-3.5 py-3">
+                            <div className="mb-3 mt-2 flex items-start gap-2.5 rounded-xl border border-border-light border-l-[3px] border-l-[color:#DC2626] bg-white px-3.5 py-3">
                               <AlertCircle
-                                size={18}
+                                size={17}
                                 strokeWidth={2.5}
                                 className="mt-px shrink-0 text-[color:#DC2626]"
                               />
                               <span className="min-w-0">
-                                <span className="block text-[13px] font-bold text-[color:#B02020]">
+                                <span className="block text-[13px] font-bold text-text-primary">
                                   Sent back &mdash; this does not count until it is
                                   fixed and verified
                                 </span>
-                                <span className="mt-0.5 block text-[12.5px] leading-snug text-[color:#B02020]">
+                                <span className="mt-0.5 block text-[12.5px] leading-snug text-text-secondary">
                                   &ldquo;{a.managerNote}&rdquo;
                                 </span>
                               </span>
