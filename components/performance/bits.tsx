@@ -15,6 +15,7 @@ import {
   Percent,
   Search,
   ShieldCheck,
+  Minus,
   ShieldQuestion,
   ShieldX,
   Sparkles,
@@ -469,13 +470,35 @@ export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md"
 export function VerifiedPill({
   verified,
   onToggle,
+  nothingToVerify = false,
   size = "md",
 }: {
   verified: boolean;
   onToggle?: () => void;
+  /**
+   * There is nothing logged here, so there is nothing to sign off (Anir,
+   * Aug 19: "why is it asking me to even fucking verify this, bro? There's
+   * nothing here"). Saying "Not verified" invited a decision that cannot be
+   * made; this says why the button is missing instead.
+   */
+  nothingToVerify?: boolean;
   size?: "sm" | "md";
 }) {
   const Icon = verified ? ShieldCheck : ShieldQuestion;
+  if (!onToggle && nothingToVerify && !verified) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold text-text-tertiary",
+          size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
+        )}
+        title="Nothing has been logged here yet, so there is nothing to verify."
+      >
+        <Minus size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
+        Nothing to verify
+      </span>
+    );
+  }
   // Read-only chip: leadership hasn't opened the switch to this viewer.
   if (!onToggle) {
     return (
@@ -530,8 +553,11 @@ export function VerifiedPill({
       className={cn(
         "group/vp inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
         verified
-          ? "border-[rgba(22,163,74,0.35)] text-[#16A34A] hover:border-[rgba(220,38,38,0.45)] hover:text-[#DC2626]"
-          : "border-[rgba(0,113,227,0.35)] text-[#0058B0]",
+          ? "border-[rgba(22,163,74,0.35)] text-[#16A34A] hover:border-[rgba(220,38,38,0.45)] hover:bg-[rgba(220,38,38,0.08)] hover:text-[#DC2626]"
+          // Fills light blue under the cursor rather than only swapping its
+          // words (Anir, Aug 19: "should be light filled in blue when I hover
+          // over it").
+          : "border-[rgba(0,113,227,0.35)] text-[#0058B0] hover:border-blue-primary hover:bg-blue-light",
         size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
       )}
     >

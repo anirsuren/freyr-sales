@@ -879,6 +879,26 @@ export function GoalZoom({
                 awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
               };
             })
+            /**
+             * ONLY THE GROUPS THIS GOAL ACTUALLY TOUCHES (Anir, Aug 19: "is it
+             * always gonna show these three groups? Are you sure I signed all
+             * three groups to all three of these goals... it's only supposed
+             * to show the ones for that goal").
+             *
+             * It listed every group in the workspace, so a goal with no group
+             * assigned at all still showed three rows at $0 — which reads as
+             * three departments carrying it and delivering nothing. A group
+             * belongs here if the goal was assigned to it, or if its people
+             * have put numbers against the goal.
+             */
+            .filter(
+              (r2) =>
+                (goal.groupAssignments ?? []).some(
+                  (a) => a.groupId === r2.group.id
+                ) ||
+                r2.verified > 0 ||
+                r2.awaiting > 0
+            )
             .sort((a, b) => b.verified - a.verified);
           const maxG = yearTarget > 0
             ? yearTarget
@@ -1609,7 +1629,10 @@ export function GoalZoom({
                       deals behind their number; the switch widens to the whole
                       group or the whole period, which is the skip he asked
                       for. */}
-                  <span className="ml-auto flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
+                  {/* Bigger hit target (Anir, Aug 19: "you got to make this
+                      bigger, cuz I can barely click on those. It's too
+                      small"). ~20% up on every axis, still pinned right. */}
+                  <span className="ml-auto flex shrink-0 items-center gap-0.5 rounded-lg bg-surface p-[3px]">
                     {(
                       [
                         ["person", "People"],
@@ -1622,7 +1645,7 @@ export function GoalZoom({
                         type="button"
                         onClick={() => setLineScope(k)}
                         className={cn(
-                          "cursor-pointer rounded-md px-1.5 py-0.5 text-[9.5px] font-bold transition-colors",
+                          "cursor-pointer whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-bold transition-colors",
                           lineScope === k
                             ? "bg-white text-blue-primary shadow-sm"
                             : "text-text-tertiary hover:text-text-primary"

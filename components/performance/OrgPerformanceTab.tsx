@@ -1886,8 +1886,21 @@ function GoalRows({
                                   <VerifiedPill
                                     verified={p.verified}
                                     size="sm"
+                                    nothingToVerify={
+                                      !hasActuals(actuals, {
+                                        goalId: goal.id,
+                                        subgoalId: s.id,
+                                        person: p.name,
+                                      })
+                                    }
                                     onToggle={
-                                      live
+                                      live &&
+                                      (hasActuals(actuals, {
+                                        goalId: goal.id,
+                                        subgoalId: s.id,
+                                        person: p.name,
+                                      }) ||
+                                        p.verified)
                                         ? () =>
                                             askVerify({
                                               subgoalId: s.id,
