@@ -399,8 +399,9 @@ export function MyEntriesCard({
   const [openRow, setOpenRow] = useState<string | null>(null);
   /** The claim whose review popup is open, by entry id. */
   const [reviewing, setReviewing] = useState<string | null>(null);
-  const [undoFor, setUndoFor] = useState<string | null>(null);
-  const [undoNote, setUndoNote] = useState("");
+  /** The review popup opened straight onto its note step, because the reader
+   *  pressed send-back rather than the row itself. */
+  const [reviewInSendBack, setReviewInSendBack] = useState(false);
   const [dropFor, setDropFor] = useState<string | null>(null);
   /** Fixing a typo used to mean delete and re-enter, losing the upload. */
   const [editFor, setEditFor] = useState<string | null>(null);
@@ -532,9 +533,8 @@ export function MyEntriesCard({
                           onUnlock={
                             iOwnThisPerson && status === "verified"
                               ? () => {
-                                  setOpenRow(a.id);
-                                  setUndoFor(a.id);
-                                  setUndoNote("");
+                                  setReviewInSendBack(true);
+                                  setReviewing(a.id);
                                 }
                               : undefined
                           }
@@ -559,6 +559,27 @@ export function MyEntriesCard({
                             would be a lot better"). They still open the same
                             forms inside the row; only the way in moved. */}
                         <span className="flex items-center justify-end gap-1">
+                          {/* SEND BACK HAS ITS OWN ICON (Anir, Aug 19: "i need
+                              another icon in the actions column (properly
+                              aligned) for sending it back"). The status pill
+                              still does it on hover; this is the version you
+                              can see without hovering, and it sits in the same
+                              aligned run as edit and delete. */}
+                          {iOwnThisPerson && status === "verified" && (
+                            <button
+                              type="button"
+                              title="Unlock this claim and send it back"
+                              aria-label={`Unlock and send back the ${a.date} entry`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReviewInSendBack(true);
+                                setReviewing(a.id);
+                              }}
+                              className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-surface"
+                            >
+                              <RotateCcw size={14} strokeWidth={2.2} />
+                            </button>
+                          )}
                           {canEdit && (
                             <>
                               <button
@@ -614,33 +635,46 @@ export function MyEntriesCard({
                           colSpan={8}
                           className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         >
-                          <div className="tab-panel grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-                            <Fact label="Goal">
-                              {goal?.name ?? "Goal removed"}
-                            </Fact>
-                            <Fact label="Subgoal">
-                              {sub?.name ?? (
-                                <span className="text-text-tertiary">
-                                  logged on the goal itself
-                                </span>
-                              )}
-                            </Fact>
-
-                            <Fact label="Customer">
-                              <CustomerCell customer={a.customer} customerId={a.customerId} />
-                            </Fact>
-                            <Fact label="Deal">
-                              {a.dealLabel ?? (
-                                <span className="text-text-tertiary">not tied to a deal</span>
-                              )}
-                            </Fact>
-                            <EntryTimeline entry={a} person={person} />
-                            <Fact label="Note">
-                              {a.note ?? (
-                                <span className="text-text-tertiary">none</span>
-                              )}
-                            </Fact>
-                          </div>
+                          {/* THE TIMELINE GETS ITS OWN COLUMN (Anir, Aug 19:
+                              "fix this ui so the timeline doesn't extend so
+                              far down, maybe it deserves its own column"). It
+                              used to be one cell in the facts grid, so its
+                              four stacked steps set the height of the whole
+                              panel and pushed the proof off the screen. Beside
+                              the facts, the panel is only as tall as whichever
+                              side is taller. */}
+                          <div className="tab-panel flex flex-col gap-4 lg:flex-row lg:gap-6">
+                            <div className="min-w-0 flex-1">
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+                                <Fact label="Goal">
+                                  {goal?.name ?? "Goal removed"}
+                                </Fact>
+                                <Fact label="Subgoal">
+                                  {sub?.name ?? (
+                                    <span className="text-text-tertiary">
+                                      logged on the goal itself
+                                    </span>
+                                  )}
+                                </Fact>
+                                <Fact label="Customer">
+                                  <CustomerCell
+                                    customer={a.customer}
+                                    customerId={a.customerId}
+                                  />
+                                </Fact>
+                                <Fact label="Deal">
+                                  {a.dealLabel ?? (
+                                    <span className="text-text-tertiary">
+                                      not tied to a deal
+                                    </span>
+                                  )}
+                                </Fact>
+                                <Fact label="Note">
+                                  {a.note ?? (
+                                    <span className="text-text-tertiary">none</span>
+                                  )}
+                                </Fact>
+                              </div>
 
                           {/* The proof, big enough to judge without opening it. */}
                           <div className="mt-4">
@@ -678,6 +712,14 @@ export function MyEntriesCard({
                                 ask for the contract or SOW.
                               </p>
                             )}
+                              </div>
+                            </div>
+                            {/* The rail, on its own narrow column with a
+                                divider, the way the drill-downs elsewhere
+                                separate a side panel from the facts. */}
+                            <div className="shrink-0 border-t border-border-light pt-3 lg:w-[200px] lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                              <EntryTimeline entry={a} person={person} />
+                            </div>
                           </div>
 
                           {a.managerNote && status === "reported" && (
@@ -789,48 +831,6 @@ export function MyEntriesCard({
                               </div>
                             )}
 
-                          {status === "verified" && iOwnThisPerson && undoFor === a.id && (
-                            <div
-                              className="mt-3 flex flex-wrap items-center gap-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <input
-                                value={undoNote}
-                                onChange={(e) => setUndoNote(e.target.value)}
-                                placeholder="What needs fixing? They see this note."
-                                autoFocus
-                                className="h-[36px] min-w-[240px] flex-1 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-                              />
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={async () => {
-                                  const ok = await run?.(
-                                    {
-                                      op: "send-back-actual",
-                                      actualId: a.id,
-                                      note: undoNote,
-                                    },
-                                    "Unlocked and sent back"
-                                  );
-                                  if (ok) {
-                                    setUndoFor(null);
-                                    setUndoNote("");
-                                  }
-                                }}
-                                className="cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                              >
-                                Send it back
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setUndoFor(null)}
-                                className="cursor-pointer rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
                         </td>
                       </tr>
                     )}
@@ -854,7 +854,11 @@ export function MyEntriesCard({
               state={state}
               run={run}
               busy={busy}
-              onClose={() => setReviewing(null)}
+              startInSendBack={reviewInSendBack}
+              onClose={() => {
+                setReviewing(null);
+                setReviewInSendBack(false);
+              }}
               onPreview={setPreview}
             />
           );
@@ -1154,6 +1158,7 @@ export function ClaimReviewDialog({
   busy,
   onClose,
   onPreview,
+  startInSendBack = false,
 }: {
   entry: PerfActual;
   state: PerformanceState;
@@ -1161,8 +1166,16 @@ export function ClaimReviewDialog({
   busy: boolean;
   onClose: () => void;
   onPreview?: (file: { name: string; url: string }) => void;
+  /** Open on the note step. Used by the send-back icon in Actions, which is
+   *  a way IN to this decision, not a different one (Anir, Aug 19: "pressing
+   *  it should open a popup, not whatever you have rn" — it used to drop an
+   *  input row inside the table). */
+  startInSendBack?: boolean;
 }) {
-  const [sendingBack, setSendingBack] = useState(false);
+  const [sendingBack, setSendingBack] = useState(startInSendBack);
+  /** Already signed off: this dialog is here to take that back, not to do it
+   *  again, so it says so and drops the Verify button. */
+  const locked = entryStatus(a) === "verified";
   const [note, setNote] = useState("");
   const goal = state.goals.find((g) => g.id === a.goalId);
   const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
@@ -1181,7 +1194,12 @@ export function ClaimReviewDialog({
            * entered, what they wrote, and the proof big enough to judge —
            * then accept or decline without leaving.
            */
-          <Modal open onClose={close} title="Verify this claim" size="workflow">
+          <Modal
+            open
+            onClose={close}
+            title={locked ? "Unlock and send this claim back" : "Verify this claim"}
+            size="workflow"
+          >
             {/* WHERE THIS ONE CLAIM SITS ON ITS GOAL (Anir, Aug 19: "shouldn't
                 there be some sort of progress bar in here?"). The goal-level
                 dialog has carried this band for a while; a single claim was
@@ -1337,24 +1355,32 @@ export function ClaimReviewDialog({
                   <button
                     type="button"
                     onClick={() => setSendingBack(true)}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-4 py-2 text-[13.5px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                    className={cn(
+                      "inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-[13.5px] transition-colors",
+                      locked
+                        ? "bg-[color:#B02020] font-semibold text-white hover:bg-[color:#8F1A1A]"
+                        : "border border-border-light bg-white font-semibold text-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+                    )}
                   >
-                    <RotateCcw size={14} strokeWidth={2.4} /> Send back
+                    <RotateCcw size={14} strokeWidth={2.4} />
+                    {locked ? "Unlock and send back" : "Send back"}
                   </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      const ok = await run(
-                        { op: "verify-actual", actualId: a.id },
-                        "Verified and locked. It counts now"
-                      );
-                      if (ok) close();
-                    }}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Check size={14} strokeWidth={2.8} /> Verify and lock
-                  </button>
+                  {!locked && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const ok = await run(
+                          { op: "verify-actual", actualId: a.id },
+                          "Verified and locked. It counts now"
+                        );
+                        if (ok) close();
+                      }}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                    >
+                      <Check size={14} strokeWidth={2.8} /> Verify and lock
+                    </button>
+                  )}
                 </>
               )}
             </div>
