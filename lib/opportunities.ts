@@ -379,6 +379,19 @@ export type OpportunityInput = {
   activities?: unknown[];
 };
 
+/** The next system-assigned deal number (Suren, Aug 18: "every time somebody
+ *  creates an opportunity, you need to create an opportunity ID —
+ *  automatically"). Counts only our own OPP-NNNN ids, so imported CRM numbers
+ *  (DO_0026765) neither collide with nor advance the sequence. */
+function nextOpportunityId(existing: Opportunity[]): string {
+  let max = 0;
+  for (const o of existing) {
+    const m = /^OPP-(\d+)$/.exec(o.externalId ?? "");
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `OPP-${String(max + 1).padStart(4, "0")}`;
+}
+
 export async function addOpportunity(input: OpportunityInput): Promise<Opportunity> {
   const customer = str(input.customer, 200);
   const name = str(input.name, 200);
@@ -395,6 +408,9 @@ export async function addOpportunity(input: OpportunityInput): Promise<Opportuni
     updatedAt: now,
   });
   if (!created) throw new Error("That opportunity could not be saved.");
+  if (!created.externalId) {
+    created.externalId = nextOpportunityId(state.opportunities);
+  }
   state.opportunities.push(created);
   await writeRow(state);
   return created;

@@ -1,12 +1,16 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Briefcase,
   ChevronDown,
   Sparkles,
   Tag,
   Pencil,
+  Play,
+  Loader,
+  CheckCircle2,
+  CircleDollarSign,
   Plus,
   Trash2,
   TrendingUp,
@@ -72,6 +76,7 @@ const LEVEL_COLOR: Record<string, string> = {
 
 const STATUS_COLOR: Record<string, string> = {
   Qualify: "#0891B2",
+  Pilot: "#5E5CE6",
   Propose: "#0071E3",
   "Submitted to client": "#7C3AED",
   "Under review": "#B4318F",
@@ -136,14 +141,52 @@ type Draft = {
   goalIds: string[];
   level: string;
   status: string;
-  /** The activity stage this deal is AT (activity-master id). */
-  activity: string;
-  activityStatus: string;
-  activityStart: string;
-  activityEnd: string;
+  /** Free-form activities on the deal (Suren, Aug 18: "we don't need a fixed
+   *  list. They can enter whatever activity name, and then start date, end
+   *  date, and then status"). */
+  activities: DraftActivity[];
   owner: string;
+  /** No longer shown in the form (Suren, Aug 18: "don't give this comment")
+   *  but carried through saves so stored text is never silently erased. */
   nextSteps: string;
 };
+
+type DraftActivity = {
+  key: string;
+  id: string;
+  name: string;
+  /** What the stored record called it and the label it wore, so an untouched
+   *  master-vocabulary entry saves back unchanged instead of being rewritten
+   *  as its display label. */
+  sourceActivity: string;
+  sourceLabel: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+};
+
+let actSeq = 0;
+function blankActivity(): DraftActivity {
+  actSeq += 1;
+  return {
+    key: `act-new-${actSeq}`,
+    id: "",
+    name: "",
+    sourceActivity: "",
+    sourceLabel: "",
+    status: "initiated",
+    startDate: "",
+    endDate: "",
+  };
+}
+
+/** Suren's three words for where an activity stands ("is it initiated, is it
+ *  in progress, is it completed"), on the stored vocabulary. */
+const ACT_STATUS_OPTIONS = [
+  { value: "initiated", label: "Initiated", color: "#0071E3", icon: Play },
+  { value: "under_progress", label: "In progress", color: "#7C3AED", icon: Loader },
+  { value: "completed", label: "Completed", color: "#0F766E", icon: CheckCircle2 },
+];
 
 let lineSeq = 0;
 function blankLine(): DraftLine {
@@ -173,10 +216,7 @@ const BLANK: Draft = {
   goalIds: [],
   level: "Pipeline",
   status: "",
-  activity: "",
-  activityStatus: "initiated",
-  activityStart: "",
-  activityEnd: "",
+  activities: [],
   owner: "",
   nextSteps: "",
 };
@@ -185,7 +225,9 @@ function toDraft(
   o: Opportunity,
   /** So a sheet row that says "GRI" opens with Regulatory Intelligence
    *  Services already picked, instead of asking someone to re-find it. */
-  catalogue: { id: string; name: string }[] = []
+  catalogue: { id: string; name: string }[] = [],
+  /** Old entries stored a master id ("lead"); the form shows its label. */
+  masters: { id: string; label: string }[] = []
 ): Draft {
   const existing = linesOf(o);
   // An opportunity saved before rows existed opens as ONE row holding exactly
@@ -243,11 +285,19 @@ function toDraft(
     goalIds: [...(o.goalIds ?? [])],
     level: o.level,
     status: o.status ?? "",
-    // The deal's CURRENT stage = the newest entry in its activity history.
-    activity: (o.activities ?? []).at(-1)?.activity ?? "",
-    activityStatus: (o.activities ?? []).at(-1)?.status ?? "initiated",
-    activityStart: (o.activities ?? []).at(-1)?.startDate ?? "",
-    activityEnd: (o.activities ?? []).at(-1)?.endDate ?? "",
+    activities: (o.activities ?? []).map((a, i) => {
+      const label = masters.find((m) => m.id === a.activity)?.label ?? a.activity;
+      return {
+        key: a.id || `act-${i}`,
+        id: a.id,
+        name: label,
+        sourceActivity: a.activity,
+        sourceLabel: label,
+        status: a.status,
+        startDate: a.startDate ?? "",
+        endDate: a.endDate ?? "",
+      };
+    }),
     owner: o.owner ?? "",
     nextSteps: o.nextSteps ?? "",
   };
@@ -320,6 +370,23 @@ export function OpportunitiesBrowser({
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
+  /** Drafts closed WITHOUT saving, by deal id ("new" for a fresh one) — X-ing
+   *  the form must never eat typed work (Anir, Aug 18: "if they exit this
+   *  screen and press the x, when they come back and press edit they have to
+   *  [still have] the data"). A landed save clears its entry. */
+  const draftStash = useRef<Record<string, Draft>>({});
+  /** The row a save just landed on — scrolled to and briefly lit, because the
+   *  list re-sorts on save and the deal LOOKED like it vanished (Suren, Aug 18:
+   *  "I was working on an opportunity. How can it disappear, man?"). */
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const closeEditor = () => {
+    setEditing((current) => {
+      if (current) draftStash.current[current.id || "new"] = current;
+      return null;
+    });
+  };
+  /** Each deal's frozen list position for this visit — see the sort below. */
+  const stableRank = useRef<Map<string, number>>(new Map());
   /** The draft exactly as the editor opened — Save stays greyed out until the
    *  form actually differs from it (Anir, Aug 18: "I didn't change anything,
    *  so why is it asking me to save?"). Null while adding a NEW deal, where
@@ -409,7 +476,7 @@ export function OpportunitiesBrowser({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return currentList
+    const filtered = currentList
       .filter((o) => levelFilter.length === 0 || levelFilter.includes(o.level))
       .filter(
         (o) => statusFilter.length === 0 || statusFilter.includes(o.status ?? "")
@@ -432,24 +499,48 @@ export function OpportunitiesBrowser({
           o.offeringIds.some((id) =>
             (offeringName.get(id) ?? "").toLowerCase().includes(q)
           )
-      )
-      .sort((a, b) => b.value - a.value);
+      );
+    // THE LIST HOLDS ITS ORDER WHILE YOU WORK (Suren, Aug 18: "I was working
+    // on an opportunity. How can it disappear, man… whichever order it is in,
+    // it need to be there"). Money decides the order ONCE per visit; editing
+    // a value or confidence no longer teleports the row mid-session. A newly
+    // created deal joins at the top, where the save just happened.
+    const ranks = stableRank.current;
+    const unseen = filtered.filter((o) => !ranks.has(o.id));
+    if (unseen.length) {
+      if (ranks.size === 0) {
+        [...unseen]
+          .sort((a, b) => b.value - a.value)
+          .forEach((o, i) => ranks.set(o.id, i));
+      } else {
+        let top = Math.min(...ranks.values());
+        for (const o of unseen) ranks.set(o.id, --top);
+      }
+    }
+    return filtered.sort(
+      (a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0)
+    );
   }, [currentList, query, levelFilter, statusFilter, customerFilter, offeringName]);
 
   const groupedShown = useMemo(() => {
     if (groupBy === "none") return shown;
-    const totals = new Map<string, number>();
+    // Groups hold still too — a value edit must not reshuffle the cards any
+    // more than the rows (same Suren rule as the sort above). A group sits
+    // where its best-placed deal sits.
+    const ranks = stableRank.current;
+    const best = new Map<string, number>();
     for (const o of shown) {
       const k = groupKeyOf(o);
-      totals.set(k, (totals.get(k) ?? 0) + o.value);
+      const r = ranks.get(o.id) ?? 0;
+      if (!best.has(k) || r < (best.get(k) ?? 0)) best.set(k, r);
     }
     return [...shown].sort((a, b) => {
       const ka = groupKeyOf(a), kb = groupKeyOf(b);
       if (ka !== kb) {
-        const d = (totals.get(kb) ?? 0) - (totals.get(ka) ?? 0);
+        const d = (best.get(ka) ?? 0) - (best.get(kb) ?? 0);
         return d !== 0 ? d : ka.localeCompare(kb);
       }
-      return b.value - a.value;
+      return (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, groupBy, offeringName]);
@@ -546,34 +637,34 @@ export function OpportunitiesBrowser({
         status: editing.status || undefined,
         owner: editing.owner || undefined,
         nextSteps: editing.nextSteps || undefined,
-        // Picking a different stage APPENDS to the deal's activity history —
-        // the list stays the record, its last entry is where the deal is.
+        // The form's list IS the record (Suren, Aug 18: "add as many
+        // activities as possible"). Person, note and logged date ride along
+        // from the stored entry so renaming never rewrites who did what.
         activities: (() => {
           const existing = editing.id
             ? (list.find((x) => x.id === editing.id)?.activities ?? [])
             : [];
-          const last = existing.at(-1);
-          if (!editing.activity) return undefined;
-          const entry = {
-            activity: editing.activity,
-            status: editing.activityStatus || "initiated",
-            person: last?.activity === editing.activity ? (last.person || meName) : meName,
-            date: new Date().toISOString().slice(0, 10),
-            startDate: editing.activityStart || undefined,
-            endDate: editing.activityEnd || undefined,
-          };
-          if (last?.activity === editing.activity) {
-            // Same stage — its status and dates update in place.
-            if (
-              last.status === entry.status &&
-              (last.startDate ?? "") === (entry.startDate ?? "") &&
-              (last.endDate ?? "") === (entry.endDate ?? "")
-            )
-              return undefined;
-            return [...existing.slice(0, -1), { ...last, ...entry }];
-          }
-          // A new stage appends the next line of the history.
-          return [...existing, entry];
+          const out = editing.activities
+            .filter((a) => a.name.trim())
+            .map((a) => {
+              const prev = existing.find((x) => x.id && x.id === a.id);
+              return {
+                id: a.id || undefined,
+                activity:
+                  prev && a.name.trim() === a.sourceLabel
+                    ? a.sourceActivity
+                    : a.name.trim(),
+                status: a.status || "initiated",
+                person: prev?.person ?? meName,
+                note: prev?.note,
+                date: prev?.date ?? new Date().toISOString().slice(0, 10),
+                startDate: a.startDate || undefined,
+                endDate: a.endDate || undefined,
+              };
+            });
+          // An empty list still posts when rows were deleted, so removing
+          // the last activity actually clears it; undefined means untouched.
+          return out.length || existing.length ? out : undefined;
         })(),
       };
       const res = await fetch("/api/opportunities", {
@@ -591,7 +682,16 @@ export function OpportunitiesBrowser({
       );
       refreshOpportunities();
       toast(editing.id ? `${saved.name} saved` : `${saved.name} added`);
+      delete draftStash.current[editing.id || "new"];
       setEditing(null);
+      // The list re-sorts on save, so walk the eye to where the deal landed.
+      setFlashId(saved.id);
+      setTimeout(() => {
+        document
+          .querySelector(`[data-opp-row="${saved.id}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 150);
+      setTimeout(() => setFlashId(null), 2600);
     } catch (error) {
       toast(error instanceof Error ? error.message : "That didn't save.");
     } finally {
@@ -665,13 +765,16 @@ export function OpportunitiesBrowser({
                   return (
                     <Fragment key={o.id}>
                       <tr
+                        data-opp-row={o.id}
                         onClick={() => setOpenRow(open ? null : o.id)}
                         aria-expanded={open}
                         className={cn(
                           "cursor-pointer transition-colors",
                           open
                             ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                            : "hover:bg-surface"
+                            : "hover:bg-surface",
+                          flashId === o.id &&
+                            "bg-blue-light/60 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         )}
                       >
                         {/* THE ACCOUNT GETS ITS OWN COLUMN (Suren, Aug 16:
@@ -874,7 +977,7 @@ export function OpportunitiesBrowser({
                                   aria-label={`Edit ${o.name}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setEditing(toDraft(o, offerings));
+                                    setEditing(draftStash.current[o.id] ?? toDraft(o, offerings, masterActivities));
                                   }}
                                   className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                                 >
@@ -1123,14 +1226,16 @@ export function OpportunitiesBrowser({
               onClick={() =>
                 // Opens on one empty offering row, because that is the first
                 // thing to fill in and an empty list reads as a dead end.
-                setEditing({
-                  ...BLANK,
-                  owner: meName,
-                  // ONE offering per opportunity (Suren, Aug 17 call) — the
-                  // form opens with its single offering block ready.
-                  rows: [blankLine()],
-                  level: pipeView === "future" ? "Future" : "Pipeline",
-                })
+                setEditing(
+                  draftStash.current["new"] ?? {
+                    ...BLANK,
+                    owner: meName,
+                    // ONE offering per opportunity (Suren, Aug 17 call) — the
+                    // form opens with its single offering block ready.
+                    rows: [blankLine()],
+                    level: pipeView === "future" ? "Future" : "Pipeline",
+                  }
+                )
               }
             >
               <Plus size={14} strokeWidth={2.2} /> New opportunity
@@ -1181,6 +1286,7 @@ export function OpportunitiesBrowser({
       {pipeView === "future" ? (
         <FutureSection
           futures={futures}
+          flashId={flashId}
           writable={writable}
           offeringName={offeringName}
           colorForOffering={(o) =>
@@ -1188,7 +1294,7 @@ export function OpportunitiesBrowser({
               ? (colorForOfferingId.get(o.offeringIds[0]) ?? "#7C3AED")
               : "#7C3AED"
           }
-          onEdit={(o) => setEditing(toDraft(o, offerings))}
+          onEdit={(o) => setEditing(draftStash.current[o.id] ?? toDraft(o, offerings, masterActivities))}
           onRemove={(o) => setConfirmRemove(o)}
         />
       ) : (
@@ -1257,9 +1363,9 @@ export function OpportunitiesBrowser({
           />
           <MultiColorSelect
             values={levelFilter}
-            ariaLabel="Filter by level"
+            ariaLabel="Filter by revenue type"
             onChange={setLevelFilter}
-            allLabel="All levels"
+            allLabel="All revenue types"
             options={OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
               value: l,
               label: l,
@@ -1402,7 +1508,7 @@ export function OpportunitiesBrowser({
 
       <Modal
         open={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
         title={editing?.id ? `Edit ${editing.name}` : "New opportunity"}
         size="workflow"
         tall
@@ -1585,10 +1691,12 @@ export function OpportunitiesBrowser({
             </Field>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label="Level">
+              {/* Suren, Aug 18: "don't call it levels; it's actually a revenue
+                  type." The stored field stays `level` — only the words moved. */}
+              <Field label="Revenue type">
                 <ColorSelect
                   value={editing.level}
-                  ariaLabel="Opportunity level"
+                  ariaLabel="Revenue type"
                   collapsible={false}
                   className="w-full"
                   minWidth={110}
@@ -1647,29 +1755,128 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Opportunity id"
-                hint="The number from Freyr's own CRM (like DO_0026765). It comes from that system, so the app can't invent it. Paste it when the deal has one."
+                hint="Created by the system the moment the deal is saved (Suren, Aug 18: 'it should be system generated'). Numbers imported from Freyr's CRM stay exactly as they came in."
               >
-                <input
-                  value={editing.externalId}
-                  onChange={(e) =>
-                    setEditing({ ...editing, externalId: e.target.value })
-                  }
-                  placeholder="e.g. DO_0026765"
-                  className={cn(inputCls, "tnum")}
-                />
+                {/* Nobody types this anymore — it is assigned, not entered. */}
+                {editing.externalId ? (
+                  <p className={cn(inputCls, "flex items-center bg-surface/60 text-text-secondary tnum select-all")}>
+                    {editing.externalId}
+                  </p>
+                ) : (
+                  <p className={cn(inputCls, "flex items-center bg-surface/60 text-[12.5px] text-text-tertiary")}>
+                    Assigned automatically on save
+                  </p>
+                )}
               </Field>
             </div>
 
-            <Field label="Next steps and pending actions">
-              <textarea
-                value={editing.nextSteps}
-                onChange={(e) =>
-                  setEditing({ ...editing, nextSteps: e.target.value })
-                }
-                rows={3}
-                placeholder="e.g. Bid defence done, decision expected in 2 months"
-                className={cn(inputCls, "h-auto py-2 leading-relaxed")}
-              />
+            {/* ACTIVITIES, NOT A COMMENT BOX (Suren, Aug 18: "instead of next
+                steps and pending actions… ask them to add as many activities
+                as possible — whatever activity name, start date, end date,
+                and status. We don't need a fixed list."). */}
+            <Field label="Activities">
+              <div className="space-y-2">
+                {editing.activities.map((a, i) => (
+                  <div
+                    key={a.key}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/50 p-2"
+                  >
+                    <input
+                      value={a.name}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          activities: editing.activities.map((x) =>
+                            x.key === a.key ? { ...x, name: e.target.value } : x
+                          ),
+                        })
+                      }
+                      placeholder="e.g. Customer demo"
+                      aria-label={`Activity ${i + 1} name`}
+                      className={cn(inputCls, "min-w-[150px] flex-1")}
+                    />
+                    <input
+                      type="date"
+                      value={a.startDate}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          activities: editing.activities.map((x) =>
+                            x.key === a.key ? { ...x, startDate: e.target.value } : x
+                          ),
+                        })
+                      }
+                      aria-label={`Activity ${i + 1} start date`}
+                      title="When this activity started"
+                      className={cn(inputCls, "w-[138px] tnum")}
+                    />
+                    <span className="text-[11.5px] font-semibold text-text-tertiary">to</span>
+                    <input
+                      type="date"
+                      value={a.endDate}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          activities: editing.activities.map((x) =>
+                            x.key === a.key ? { ...x, endDate: e.target.value } : x
+                          ),
+                        })
+                      }
+                      aria-label={`Activity ${i + 1} end date`}
+                      title="When this activity ended, or should end"
+                      className={cn(inputCls, "w-[138px] tnum")}
+                    />
+                    <ColorSelect
+                      value={a.status}
+                      ariaLabel={`Activity ${i + 1} status`}
+                      collapsible={false}
+                      dense
+                      minWidth={140}
+                      onChange={(v) =>
+                        setEditing({
+                          ...editing,
+                          activities: editing.activities.map((x) =>
+                            x.key === a.key ? { ...x, status: v } : x
+                          ),
+                        })
+                      }
+                      options={ACT_STATUS_OPTIONS}
+                    />
+                    <button
+                      type="button"
+                      title="Remove this activity"
+                      aria-label={`Remove activity ${i + 1}`}
+                      onClick={() =>
+                        setEditing({
+                          ...editing,
+                          activities: editing.activities.filter((x) => x.key !== a.key),
+                        })
+                      }
+                      className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                    >
+                      <Trash2 size={14} strokeWidth={2} />
+                    </button>
+                  </div>
+                ))}
+                {editing.activities.length === 0 && (
+                  <p className="text-[12px] text-text-tertiary">
+                    What's actually happening on this deal — a demo, a pilot, a
+                    bid defence. Add as many as you like.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      activities: [...editing.activities, blankActivity()],
+                    })
+                  }
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                >
+                  <Plus size={11} strokeWidth={2.6} /> Add activity
+                </button>
+              </div>
             </Field>
 
             {/* PINNED, so Save never hides below the fold of a tall form
@@ -1694,7 +1901,7 @@ export function OpportunitiesBrowser({
                   Still needed: {missing.join(", ")}.
                 </p>
               )}
-              <Button variant="secondary" onClick={() => setEditing(null)}>
+              <Button variant="secondary" onClick={closeEditor}>
                 Cancel
               </Button>
               <Button
@@ -1879,30 +2086,39 @@ function ConfidenceSlider({
           className="freyr-range relative z-[1] h-5 w-full cursor-pointer appearance-none bg-transparent"
         />
       </span>
-      <div className="flex items-center justify-end gap-0.5">
-        <input
-          value={value}
-          onChange={(e) => {
-            // Confidence is 0–100, full stop (Anir: "this shouldn't be
-            // allowed" at 145%). Anything typed past the ends snaps to them.
-            const text = e.target.value;
-            const typed = Number(text);
-            onChange(
-              text.trim() !== "" && Number.isFinite(typed)
-                ? String(Math.max(0, Math.min(100, typed)))
-                : text
-            );
-          }}
-          inputMode="numeric"
-          placeholder="25"
-          aria-label="Confidence. Type an exact figure"
+      {/* The figure RIDES THE DOT (Suren, Aug 18: "the number should be under
+          the dot always") — anchored at the thumb's percent and clamped so it
+          never slides off the ends. Translate and scale are both Tailwind
+          transforms so the drag pop still composes with the centering. */}
+      <div className="relative h-6">
+        <div
           className={cn(
-            "w-[44px] border-0 bg-transparent p-0 text-right text-[16px] font-bold tnum outline-none transition-transform duration-150 placeholder:text-text-tertiary",
-            dragging && "origin-right scale-110"
+            "absolute top-0 flex -translate-x-1/2 items-center gap-0.5 transition-transform duration-150",
+            dragging && "scale-110"
           )}
-          style={{ color }}
-        />
-        <span className="text-[11.5px] font-semibold text-text-tertiary">%</span>
+          style={{ left: `clamp(30px, ${pct}%, calc(100% - 30px))` }}
+        >
+          <input
+            value={value}
+            onChange={(e) => {
+              // Confidence is 0–100, full stop (Anir: "this shouldn't be
+              // allowed" at 145%). Anything typed past the ends snaps to them.
+              const text = e.target.value;
+              const typed = Number(text);
+              onChange(
+                text.trim() !== "" && Number.isFinite(typed)
+                  ? String(Math.max(0, Math.min(100, typed)))
+                  : text
+              );
+            }}
+            inputMode="numeric"
+            placeholder="25"
+            aria-label="Confidence. Type an exact figure"
+            className="w-[40px] border-0 bg-transparent p-0 text-center text-[16px] font-bold tnum outline-none placeholder:text-text-tertiary"
+            style={{ color }}
+          />
+          <span className="text-[11.5px] font-semibold text-text-tertiary">%</span>
+        </div>
       </div>
     </div>
   );
@@ -1922,6 +2138,7 @@ function FutureSection({
   colorForOffering,
   onEdit,
   onRemove,
+  flashId = null,
 }: {
   futures: Opportunity[];
   writable: boolean;
@@ -1929,6 +2146,8 @@ function FutureSection({
   colorForOffering: (o: Opportunity) => string;
   onEdit: (o: Opportunity) => void;
   onRemove: (o: Opportunity) => void;
+  /** The row a save just landed on — briefly lit so it never looks vanished. */
+  flashId?: string | null;
 }) {
   const dated = futures.filter((o) => o.targetPitchDate);
   const nextPitch = dated
@@ -1974,7 +2193,7 @@ function FutureSection({
             <EmptyState
               icon={Briefcase}
               title="Nothing queued for the future yet"
-              description="Add a deal with the level Future and it lives here until it is pitched."
+              description="Add a deal with the revenue type Future and it lives here until it is pitched."
             />
           </div>
         ) : (
@@ -1997,7 +2216,14 @@ function FutureSection({
                       ? (offeringName.get(o.offeringIds[0]) ?? o.offeringLabels[0])
                       : o.offeringLabels[0];
                   return (
-                    <tr key={o.id} className="transition-colors hover:bg-surface/60">
+                    <tr
+                      key={o.id}
+                      data-opp-row={o.id}
+                      className={cn(
+                        "transition-colors hover:bg-surface/60",
+                        flashId === o.id && "bg-blue-light/60"
+                      )}
+                    >
                       <td className="px-4 py-2.5">
                         <span className="flex min-w-0 items-center gap-2.5">
                           <CompanyLogo name={o.customer} className="h-7 w-7 shrink-0 text-[9px]" />
@@ -2035,7 +2261,7 @@ function FutureSection({
                           <span className="inline-flex items-center gap-1">
                             <button
                               type="button"
-                              title={`Edit ${o.name}. Flip its level to Pipeline when it is pitched`}
+                              title={`Edit ${o.name}. Flip its revenue type to Pipeline when it is pitched`}
                               onClick={() => onEdit(o)}
                               className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
                             >
@@ -2103,7 +2329,8 @@ function SingleOfferingEditor({
     <div className="space-y-3 rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-          <Sparkles size={13} strokeWidth={2.2} aria-hidden="true" />
+          {/* Money, not sparkles — the stars read as AI (Suren, Aug 18). */}
+          <CircleDollarSign size={13} strokeWidth={2.2} aria-hidden="true" />
         </span>
         <span className="text-[12.5px] font-bold text-text-primary">
           What&rsquo;s being sold

@@ -41,6 +41,10 @@ export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
  */
 export const OPPORTUNITY_STATUSES = [
   "Qualify",
+  /** Suren, Aug 18: "if they're doing customer demos and pilots, they're
+   *  actually in a pilot mode, and then proposed mode" — so it sits between
+   *  Qualify and Propose, matching the KonnectCo flow the team follows. */
+  "Pilot",
   "Propose",
   "Submitted to client",
   "Under review",

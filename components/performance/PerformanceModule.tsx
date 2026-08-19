@@ -559,7 +559,7 @@ export function PerformanceModule({
         open={goalModal !== null}
         onClose={() => setGoalModal(null)}
         title={
-          goalModal?.editing ? `Edit goal. ${goalModal.editing.name}` : "New goal"
+          goalModal?.editing ? `Edit goal: ${goalModal.editing.name}` : "New goal"
         }
         size="wide"
       >
