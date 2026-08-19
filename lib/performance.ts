@@ -269,6 +269,17 @@ function normalize(value: unknown): PerformanceState {
             // Carried explicitly: a field this normalizer does not name is
             // dropped the next time anything writes this row.
             customerId: ra.customerId ? str(ra.customerId, 60) : undefined,
+            /**
+             * WRITTEN, THEN THROWN AWAY ON EVERY READ (found testing, Aug 19).
+             *
+             * logActual stores which activity a result came through, and the
+             * "What each activity earned" report is built entirely from it —
+             * but this whitelist never named the field, so it was stripped the
+             * moment anything read the row back. The report could only ever
+             * say "Nothing here yet", however many results were logged
+             * through an activity.
+             */
+            activityId: ra.activityId ? str(ra.activityId, 60) : undefined,
             dealId: ra.dealId ? str(ra.dealId, 80) : undefined,
             opportunityId: ra.opportunityId
               ? str(ra.opportunityId, 80)
