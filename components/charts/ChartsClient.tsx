@@ -118,7 +118,6 @@ const TIP_INLINE_ROWS = 3;
 /** Hard ceiling on the record list, so a reachable tip always reads as a
  *  tooltip and never as a panel. ~3 rows, then it scrolls. Shared by every
  *  chart so the bar tip and the line tip beside it feel like one component. */
-const TIP_LIST_MAX_HEIGHT = 190;
 /** The card's own horizontal padding, mirrored from `.chart-tip` in
  *  `app/globals.css` (`padding: 11px 13px`). The record list cancels it with a
  *  negative margin so the LIST spans the card edge to edge and its scrollbar
@@ -513,16 +512,17 @@ function PortalTip({
         onMouseEnter={interactive ? onEnter : undefined}
         onMouseLeave={interactive ? onLeave : undefined}
       >
-        {/* A column, not a scrolling block: the header stays pinned and the
-            record list below it does the scrolling, so you never lose sight of
-            WHICH bar/slice you are reading while you scroll its deals. */}
+        {/* THE WHOLE CARD SCROLLS (Anir, Aug 19: "the container for this
+            scroll thing shouldn't be in that. it should be in the entire
+            thing cuz that's just annoying").
+            
+            A scroll pane nested inside a small popup means two scrollable
+            regions under one cursor: the wheel does nothing until the pointer
+            happens to be over the inner one, and the header eats space the
+            list needed. One scroll box, the card itself. */}
         <div
           className={cn(
-            "chart-tip chart-tip-side flex min-h-0 flex-col text-left",
-            // Reachable tip: the CARD holds still (rounded corners clip) and
-            // the record list inside it scrolls. Plain tip: unchanged from
-            // before — the whole card is the scroll box.
-            interactive ? "overflow-hidden" : "overflow-y-auto"
+            "chart-tip chart-tip-side flex min-h-0 flex-col overflow-y-auto text-left"
           )}
           style={{ whiteSpace: "normal", width: "100%" }}
         >
@@ -796,21 +796,8 @@ function TipBreakdown({
           <span className="tnum text-text-secondary">{items.length}</span>
         </p>
       )}
-      <div
-        className={cn("min-h-0", interactive && "overflow-y-auto")}
-        style={
-          interactive
-            ? {
-                maxHeight: TIP_LIST_MAX_HEIGHT,
-                // Reserve the gutter so the list doesn't reflow the instant a
-                // scrollbar appears. On overlay-scrollbar platforms (macOS)
-                // this is a no-op and the bar simply paints over the card's
-                // own padding strip — which is now empty by design.
-                scrollbarGutter: "stable",
-              }
-            : undefined
-        }
-      >
+      {/* No scroll box of its own any more — the card scrolls, see PortalTip. */}
+      <div className="min-h-0">
         {rows.map((t, j) => {
           // The person gets their own line whenever the left-hand mark is
           // already spoken for by the company — otherwise the face has nothing

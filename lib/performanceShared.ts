@@ -39,6 +39,9 @@ export type SubgoalPerson = {
   name: string;
   target: number;
   verified: boolean;
+  /** "group" when a department assignment put them here, so taking that
+   *  department off the slice can tell them from a hand-picked person. */
+  assignedBy?: string;
 };
 
 export type Subgoal = {

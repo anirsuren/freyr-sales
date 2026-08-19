@@ -68,7 +68,13 @@ function normalizePerson(v: unknown): SubgoalPerson | null {
   const raw = v as Partial<SubgoalPerson>;
   const name = str(raw.name, 80);
   if (!name) return null;
-  return { name, target: num(raw.target), verified: raw.verified === true };
+  return {
+    name,
+    target: num(raw.target),
+    verified: raw.verified === true,
+    // NAMED, OR DELETED BY THE NEXT WRITE — same trap as everywhere else here.
+    assignedBy: raw.assignedBy ? str(raw.assignedBy, 80) : undefined,
+  };
 }
 
 
@@ -920,7 +926,12 @@ export async function assignSubgoalToGroup(input: {
   )) {
     if (off.has(person.toLowerCase())) continue;
     if (sub.people.some((x) => x.name === person)) continue;
-    sub.people.push({ name: person, target: 0, verified: false });
+    sub.people.push({
+      name: person,
+      target: 0,
+      verified: false,
+      assignedBy: "group",
+    });
   }
   await writeRow(state);
 }
@@ -937,6 +948,26 @@ export async function unassignSubgoalFromGroup(input: {
   sub.groupAssignments = (sub.groupAssignments ?? []).filter(
     (a) => a.groupId !== input.groupId
   );
+  /**
+   * AND THE PEOPLE IT PUT ON THE SLICE (found testing, Aug 19). Same rule the
+   * goal-level path follows: only the ones this assignment created, only if no
+   * other group on the slice still covers them, never a hand-picked person.
+   */
+  const gone = state.groups.find((g) => g.id === input.groupId);
+  const goneRoster = new Set(
+    gone ? [gone.head, ...gone.members].map((m) => m.trim().toLowerCase()) : []
+  );
+  sub.people = sub.people.filter((p) => {
+    if (p.assignedBy !== "group") return true;
+    const who = p.name.trim().toLowerCase();
+    if (!goneRoster.has(who)) return true;
+    return (sub.groupAssignments ?? []).some((other) => {
+      const g2 = state.groups.find((x) => x.id === other.groupId);
+      return g2
+        ? [g2.head, ...g2.members].some((m) => m.trim().toLowerCase() === who)
+        : false;
+    });
+  });
   if (!sub.groupAssignments.length) sub.groupAssignments = undefined;
   await writeRow(state);
 }

@@ -4659,7 +4659,11 @@ function LogActualModal({
   }
 
   return (
-    <Modal tall open={open} onClose={onClose} title="Log a result" size="wide">
+    /* THE SAME WIDTH AS EVERY OTHER WORKFLOW DIALOG (Anir, Aug 19: "can u
+       make this popup look like the other popups, this one's a little so
+       thin"). At 640px this form ran one narrow column while the goal and
+       subgoal editors beside it had 980. */
+    <Modal tall open={open} onClose={onClose} title="Log a result" size="workflow">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         One number at a time: who achieved what, on which goal. Person rolls
         into group, group rolls into the organization, automatically.

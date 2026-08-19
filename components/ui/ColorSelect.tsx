@@ -76,7 +76,13 @@ export function floatingMenuStyle(
   minimumRoom: number
 ): FloatingMenuStyle {
   const edge = 12;
-  const gap = 6;
+  /**
+   * The menu hugs its trigger (Anir, Aug 19: "objectively there's nothing
+   * wrong with this dropdown but it just looks off... maybe because it's too
+   * low?"). Six pixels plus the menu's own shadow read as a detached panel
+   * floating near the field rather than the field's own list.
+   */
+  const gap = 2;
   const width = Math.max(
     1,
     Math.min(desiredWidth, window.innerWidth - edge * 2)
