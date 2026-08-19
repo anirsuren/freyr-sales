@@ -325,7 +325,14 @@ export function OrgPerformanceTab({
     }
   });
 
-  const withValue = picked.map((g) => ({
+  /**
+   * THE TILES COUNT WHAT YOU ARE LOOKING AT (Anir, Aug 19: "of course fix the
+   * filters thing"). Opportunities has always recalculated its tiles as you
+   * filter; here they described the whole plan while the table underneath
+   * showed a subset, so a filter that matched nothing left "7 goals tracked"
+   * sitting above "Nothing matches that search".
+   */
+  const withValue = shown.map((g) => ({
     goal: g,
     actual: actualValue(state.actuals, g),
   }));
@@ -337,7 +344,7 @@ export function OrgPerformanceTab({
       paceVerdict(x.actual, x.goal.target, x.goal.year, x.goal.measure, undefined, milestoneByNow(x.goal)) ===
       "lagging"
   ).length;
-  const verifiedCount = picked.filter((g) => g.verified).length;
+  const verifiedCount = shown.filter((g) => g.verified).length;
   const periodLabel =
     PERIODS.find((p) => p.value === period)?.label ?? "This quarter";
 
@@ -358,7 +365,7 @@ export function OrgPerformanceTab({
         <StatTile
           icon={Target}
           label={words?.trackedLabel ?? "Goals tracked"}
-          value={String(picked.length)}
+          value={String(shown.length)}
           color={scope?.accent}
           sub={words?.trackedSub ?? `${state.goals.length} on the master`}
         />
@@ -367,7 +374,7 @@ export function OrgPerformanceTab({
           label="Targets met"
           value={String(metCount)}
           color="#16A34A"
-          sub={picked.length ? `of ${picked.length} ${noun}` : undefined}
+          sub={shown.length ? `of ${shown.length} ${noun}` : undefined}
         />
         <StatTile
           icon={TrendingDown}
@@ -380,13 +387,13 @@ export function OrgPerformanceTab({
         <StatTile
           icon={ShieldCheck}
           label="Verified"
-          value={`${verifiedCount} of ${picked.length}`}
+          value={`${verifiedCount} of ${shown.length}`}
           color="#0F766E"
           sub={words?.verifiedSub ?? "marked by leadership"}
         />
       </div>
 
-      {picked.length > 0 && (
+      {shown.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
           {/* flex column + flex-1 on the plot: this card is the short one in
               the row and stretches to match the donut beside it, so the chart
@@ -489,8 +496,8 @@ export function OrgPerformanceTab({
                 size={140}
                 thickness={15}
                 syncId="perf-pace"
-                centerLabel={String(picked.length)}
-                centerSub={picked.length === 1 ? noun.replace(/s$/, "") : noun}
+                centerLabel={String(shown.length)}
+                centerSub={shown.length === 1 ? noun.replace(/s$/, "") : noun}
                 segments={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
                   .map((k) => ({
                     label: PACE_LABEL[k],
@@ -512,7 +519,7 @@ export function OrgPerformanceTab({
               <DonutLegend
                 className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-pace"
-                total={picked.length}
+                total={shown.length}
                 items={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
                   .map((k) => ({
                     label: PACE_LABEL[k],
@@ -536,11 +543,16 @@ export function OrgPerformanceTab({
         </div>
       )}
 
+      {/* ONE LINE (Anir, Aug 19: "all this has to be on one line"). The search
+          used to claim a full row of its own and push every filter onto a
+          second: it had a 190px floor and grew, so the row wrapped. It now
+          takes whatever is left after the controls, down to a narrow floor,
+          and the row only scrolls sideways on a genuinely tiny screen. */}
       <SearchPriority
         query={query}
-        className="mt-4 flex flex-wrap items-center gap-2"
+        className="mt-4 flex flex-nowrap items-center gap-2 overflow-x-auto pb-1"
       >
-        <span className="relative flex min-w-[190px] flex-1 basis-[190px] items-center">
+        <span className="relative flex min-w-[120px] flex-1 basis-0 items-center">
           <PrioritySearchInput
             value={query}
             onChange={setQuery}
@@ -592,7 +604,7 @@ export function OrgPerformanceTab({
             </div>
           )}
         </span>
-        <span className="flex flex-wrap items-center gap-2">
+        <span className="flex shrink-0 flex-nowrap items-center gap-2">
           <ColorSelect
             value={sortBy}
             onChange={(v) => setSortBy(v as SortKey)}
@@ -672,8 +684,8 @@ export function OrgPerformanceTab({
               the same thing on the performance page, wherever you did the
               close all and open all"). It knows which way it goes: anything
               open closes everything, all shut opens everything. */}
-          {picked.length > 0 && (() => {
-            const allIds = picked.map((g) => g.id);
+          {shown.length > 0 && (() => {
+            const allIds = shown.map((g) => g.id);
             const anyOpen = allIds.some((id) => openIds.has(id));
             return (
               <button
