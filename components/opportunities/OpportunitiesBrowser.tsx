@@ -1228,17 +1228,31 @@ export function OpportunitiesBrowser({
                                 the activities strip gets the full width
                                 under a divider. No half-empty label grid. */}
                             <div className={cn("grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_230px]", rows.length > 1 && "border-t border-border-light")}>
+                              {/* WHAT CAME IN WITH THE SHEET, when there is any.
+                                  Next steps left the form when activities
+                                  replaced it, so this text can no longer be
+                                  written or changed - leading the panel with a
+                                  frozen field while the live activity list sat
+                                  underneath had it exactly backwards. It stays
+                                  visible because it is real imported detail,
+                                  but it no longer leads and it no longer
+                                  pretends to be fillable. */}
                               <div className="min-w-0">
-                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                                  Next steps
-                                </span>
-                                <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-primary">
-                                  {o.nextSteps ?? (
-                                    <span className="text-text-tertiary">
-                                      Nothing written down yet.
+                                {o.nextSteps ? (
+                                  <>
+                                    <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                      Note from the sheet
                                     </span>
-                                  )}
-                                </p>
+                                    <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-primary">
+                                      {o.nextSteps}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <span className="block text-[12px] text-text-tertiary">
+                                    Everything happening on this deal is in the
+                                    activities below.
+                                  </span>
+                                )}
                               </div>
                               <div className="min-w-0 space-y-3.5 sm:border-l sm:border-border-light sm:pl-8">
                                 <div>
