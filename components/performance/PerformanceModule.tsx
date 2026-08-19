@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Gauge,
   HelpCircle,
+  CalendarDays,
   ChevronsDownUp,
   ChevronsUpDown,
   Pencil,
@@ -580,9 +581,13 @@ export function PerformanceModule({
         <Modal
           open
           onClose={() => setSubModal(null)}
+          /* THE SLICE AND WHAT IT IS A SLICE OF (Anir, Aug 19: "where it
+             says 'Edit sub goal' at the top, I want to see the sub goal and
+             which main goal it's in"). Subgoal names repeat across goals —
+             "Growth Accounts" alone does not say which plan you are editing. */
           title={
             subModal.editing
-              ? `Edit subgoal. ${subModal.editing.name}`
+              ? `${subModal.editing.name} · a subgoal of ${subModal.goal.name}`
               : `Add a subgoal to ${subModal.goal.name}`
           }
           size="workflow"
@@ -848,6 +853,7 @@ function MasterTab({
                   value: String(y),
                   label: String(y),
                   color: "#6D28D9",
+                  icon: CalendarDays,
                 })),
             ]}
           />
@@ -3233,9 +3239,15 @@ function GoalEditorFields({
           </div>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <div>
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+      {/* THREE COLUMNS ON ONE LINE (Anir, Aug 19: "fix the alignment on the
+          edit goal thing"). "Year" was a plain inline label while its
+          neighbours were flex rows carrying a hint icon, so its line box sat
+          on a text baseline and dropped the whole control ~10px below the
+          other two. Every column is the same shape now — a fixed-height label
+          row, each with its hint — so the three controls share a top edge. */}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col">
+          <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
             Counted in
             <InfoHint text={"What the number means.\nMoney: dollars, like $500K.\nCount: how many, like 12 meetings.\nPercentage: out of 100, like a 40% win rate."} />
           </label>
@@ -3253,8 +3265,8 @@ function GoalEditorFields({
             />
           </div>
         </div>
-        <div>
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+        <div className="flex flex-col">
+          <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
             How it adds up
             <InfoHint text={"Running total: every entry piles on. $50K then $30K makes $80K. Use this for revenue and counts.\nLatest value: only the newest number counts. Use this for a rate, like win %."} />
           </label>
@@ -3271,9 +3283,10 @@ function GoalEditorFields({
             />
           </div>
         </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-primary">
+        <div className="flex flex-col">
+          <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
             Year
+            <InfoHint text={"The year this goal is measured in. Freyr's financial year runs April to March, so FY 2026 means April 2026 to March 2027."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3285,6 +3298,7 @@ function GoalEditorFields({
                 value: y,
                 label: y,
                 color: "#6D28D9",
+                icon: CalendarDays,
               }))}
             />
           </div>
@@ -3620,9 +3634,21 @@ function SubgoalEditorFields({
   const siblingTotal = goal.subgoals
     .filter((x) => x.id !== editing?.id)
     .reduce((sum, x) => sum + (x.target || 0), 0);
-  const mine = parsedTarget ?? editing?.target ?? 0;
+  /**
+   * WHAT THIS SLICE ACTUALLY CLAIMS. Its own target when one is set; when it
+   * is blank, the people on it still carry targets and that money is just as
+   * spoken for (Anir, Aug 19: "I have 4.5 million in total. How is it letting
+   * me put 4.5 million for this person's sub goal?" — the subgoal target was
+   * empty, so the band read $0 while a person on it held the entire goal).
+   */
+  const ownTarget = parsedTarget ?? editing?.target ?? 0;
+  const mine = ownTarget > 0 ? ownTarget : peopleSum;
+  const claimedByPeople = ownTarget === 0 && peopleSum > 0;
   const spoken = siblingTotal + mine;
   const goalTarget = goal.target;
+  /** What the people on this slice are measured against. */
+  const personCeiling = ownTarget > 0 ? ownTarget : Math.max(0, goalTarget - siblingTotal);
+  const peopleOver = personCeiling > 0 && peopleSum > personCeiling;
 
   return (
     <div className="space-y-3">
@@ -3639,6 +3665,31 @@ function SubgoalEditorFields({
             </>
           )}
         </p>
+        {goalTarget <= 0 && (
+          /* ZERO IS A STATE, NOT AN ABSENCE (Anir, Aug 19: "when it's at
+             zero, I have to see definitively 'here is where you're at', and
+             it should be at zero because you're just not showing anything.
+             It's just kind of annoying"). With no target on the parent the
+             whole band used to disappear, so the form said nothing at all
+             about the number this slice is a share of. */
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="h-2.5 w-full rounded-full bg-[color:var(--border-light)]" />
+            <span className="text-[11px] text-text-secondary">
+              {goal.name} has no annual target yet, so there is nothing to
+              split.
+              {mine > 0 && (
+                <>
+                  {" "}
+                  This slice claims{" "}
+                  <b className="text-text-primary tnum">
+                    {fmtAmount(goal.unit, mine)}
+                  </b>
+                  {claimedByPeople ? " from its people." : "."}
+                </>
+              )}
+            </span>
+          </div>
+        )}
         {goalTarget > 0 && (
           <>
             {/* THE SPLIT, DRAWN, NOT NARRATED (Anir, Aug 16: "you don't have
@@ -3690,6 +3741,9 @@ function SubgoalEditorFields({
                 <b className="text-text-primary tnum">
                   {fmtAmount(goal.unit, mine)}
                 </b>
+                {claimedByPeople && (
+                  <span className="text-text-tertiary">from its people</span>
+                )}
               </span>
               {spoken <= goalTarget ? (
                 <span className="flex items-center gap-1.5 text-text-secondary">
@@ -3933,15 +3987,23 @@ function SubgoalEditorFields({
                         )
                     )
                     .map((g) => {
-                      const size = new Set(
-                        [g.head, ...g.members].map((m) => m.trim())
-                      ).size;
+                      const roster = [
+                        ...new Set([g.head, ...g.members].map((m) => m.trim())),
+                      ].filter(Boolean);
+                      // The owner's own face wearing the crown, and the group
+                      // itself as a face stack on the right — a generic blue
+                      // people glyph said nothing about who was being put on
+                      // this goal (Anir, Aug 19).
                       return {
                         value: g.id,
                         label: g.name,
                         color: "#0071E3",
-                        icon: UsersRound,
-                        description: `${g.head} · ${size} ${size === 1 ? "person" : "people"}`,
+                        avatarName: g.head,
+                        crown: true,
+                        faces: roster.filter(
+                          (m) => m.toLowerCase() !== g.head.trim().toLowerCase()
+                        ),
+                        description: `Owned by ${g.head} · ${roster.length} ${roster.length === 1 ? "person" : "people"}`,
                       };
                     }),
                 ]}
@@ -3978,19 +4040,56 @@ function SubgoalEditorFields({
                     />
                   )}
                 </span>
-                <input
-                  value={r.target}
-                  onChange={(e) =>
-                    setRows(
-                      rows.map((x, xi) =>
-                        xi === i ? { ...x, target: e.target.value } : x
-                      )
-                    )
-                  }
-                  placeholder="Target"
-                  aria-label={"Target for " + r.name}
-                  className="h-[32px] w-[110px] rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
-                />
+                {(() => {
+                  // Each person's slice of what this subgoal may spend, drawn
+                  // under their own box — a number alone never says whether
+                  // one person is holding the whole goal.
+                  const own = parseAmountInput(r.target) ?? 0;
+                  const share =
+                    personCeiling > 0 ? (own / personCeiling) * 100 : 0;
+                  const over = personCeiling > 0 && own > personCeiling;
+                  return (
+                    <span className="flex w-[110px] shrink-0 flex-col gap-1">
+                      <input
+                        value={r.target}
+                        onChange={(e) =>
+                          setRows(
+                            rows.map((x, xi) =>
+                              xi === i ? { ...x, target: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Target"
+                        aria-label={"Target for " + r.name}
+                        className={cn(
+                          "h-[32px] w-full rounded-lg border bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle",
+                          over ? "border-[color:#C2410C]" : "border-border-light"
+                        )}
+                      />
+                      {own > 0 && personCeiling > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                            <span
+                              className={cn(
+                                "block h-full transition-all",
+                                over ? "bg-[color:#C2410C]" : "bg-blue-primary"
+                              )}
+                              style={{ width: `${Math.min(100, share)}%` }}
+                            />
+                          </span>
+                          <span
+                            className={cn(
+                              "shrink-0 text-[9.5px] font-semibold tnum",
+                              over ? "text-[color:#C2410C]" : "text-text-tertiary"
+                            )}
+                          >
+                            {Math.round(share)}%
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
                 {confirmDrop === `person:${r.name}` ? (
                   <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px]">
                     <button
@@ -4025,18 +4124,60 @@ function SubgoalEditorFields({
               </div>
             ))}
           </div>
-          {parsedTarget !== null && parsedTarget > 0 && rows.length > 0 && (
-            <p
-              className={cn(
-                "mt-2 text-[11px] tnum",
-                Math.abs(peopleSum - parsedTarget) < 0.005 * parsedTarget
-                  ? "text-[color:#16A34A]"
-                  : "text-text-tertiary"
-              )}
-            >
-              People&apos;s targets add to {fmtAmount(goal.unit, peopleSum)} of
-              the {fmtAmount(goal.unit, parsedTarget)} subgoal target.
-            </p>
+          {/* WHAT THE PEOPLE ADD UP TO, DRAWN (Anir, Aug 19: "I need a
+              progress bar there so I should see how much the total goal is
+              for booked revenue... for this growth account sub goal, I need
+              to see that as well").
+              
+              This used to be one sentence, and only when the subgoal carried
+              its own target — so with the target blank there was NO signal at
+              all, and one person could quietly be given the entire goal. It
+              now measures against the subgoal's target when there is one and
+              against what is left of the parent goal when there is not. */}
+          {rows.length > 0 && personCeiling > 0 && (
+            <div className="mt-2.5">
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                <span
+                  className={cn(
+                    "block h-full transition-all",
+                    peopleOver ? "bg-[color:#C2410C]" : "bg-blue-primary"
+                  )}
+                  style={{
+                    width: `${Math.min(100, (peopleSum / personCeiling) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p
+                className={cn(
+                  "mt-1.5 text-[11px] tnum",
+                  peopleOver
+                    ? "font-semibold text-[color:#C2410C]"
+                    : Math.abs(peopleSum - personCeiling) < 0.005 * personCeiling
+                      ? "text-[color:#16A34A]"
+                      : "text-text-secondary"
+                )}
+              >
+                {peopleOver ? (
+                  <>
+                    Over by {fmtAmount(goal.unit, peopleSum - personCeiling)}.
+                    These people carry {fmtAmount(goal.unit, peopleSum)} against{" "}
+                    {ownTarget > 0
+                      ? `a ${fmtAmount(goal.unit, ownTarget)} subgoal target`
+                      : `the ${fmtAmount(goal.unit, personCeiling)} left on ${goal.name}`}
+                    .
+                  </>
+                ) : (
+                  <>
+                    People&apos;s targets add to {fmtAmount(goal.unit, peopleSum)}{" "}
+                    of{" "}
+                    {ownTarget > 0
+                      ? `the ${fmtAmount(goal.unit, ownTarget)} subgoal target`
+                      : `the ${fmtAmount(goal.unit, personCeiling)} left on ${goal.name}`}
+                    .
+                  </>
+                )}
+              </p>
+            </div>
           )}
         </section>
       </div>
@@ -4609,10 +4750,13 @@ function LogActualModal({
                   minWidth={280}
                   options={[
                     { value: "", label: "Pick a subgoal…", color: "#8E98A8" },
+                    // A subgoal belongs to a goal, so it wears that goal's
+                    // type mark rather than a bare dot in the type's colour.
                     ...effectiveGoal.subgoals.map((s) => ({
                       value: s.id,
                       label: s.name,
                       color: typeMeta(effectiveGoal.type).color,
+                      icon: typeMeta(effectiveGoal.type).icon,
                     })),
                   ]}
                 />
@@ -4753,6 +4897,11 @@ function LogActualModal({
               minWidth={430}
               options={[
                 { value: "", label: "Not linked to a deal", color: "#8E98A8" },
+                // A DEAL IS A COMPANY'S DEAL, so it wears that company's mark
+                // (Anir, Aug 19: "I don't care about these blue circles... I
+                // need to see the actual icons and the actual company logos").
+                // Sixty identical blue dots told the reader nothing about
+                // which account they were about to attach money to.
                 ...oppMatches.map((o) => ({
                   value: `opp:${o.id}`,
                   label: o.name,
@@ -4764,12 +4913,14 @@ function LogActualModal({
                     .filter(Boolean)
                     .join(" · "),
                   color: "#0071E3",
+                  logoName: o.customer || undefined,
                 })),
                 ...(selectedAccount?.deals ?? []).map((d) => ({
                   value: `eng:${d.id}`,
                   label: d.label,
                   description: "Engagement already recorded on this account",
                   color: "#0F766E",
+                  logoName: selectedAccount?.name || undefined,
                 })),
               ]}
             />

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   knownPeople,
   scopeStateToPeople,
+  type PerfGroup,
   type PerformanceState,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
@@ -112,6 +113,18 @@ export function GroupPerformanceTab({
     );
   }
 
+  /**
+   * HOW MANY GOALS EACH GROUP CARRIES, on the card itself (Anir, Aug 19: "is
+   * it a good idea to show right here how many goals each group has?").
+   *
+   * Counted the same way the tiles below count them once the group is open,
+   * so the number on the card and the number on the page never disagree.
+   */
+  const goalCountFor = (g: PerfGroup) => {
+    const roster = [...new Set(g.members.map((m) => m.trim()).filter(Boolean))];
+    return scopeStateToPeople(state, roster, g.id).goals.length;
+  };
+
   /** The group picker, above the tiles. One click, not a click-then-click. */
   const picker = (
     <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +142,7 @@ export function GroupPerformanceTab({
             onClick={() => setPickedId(g.id)}
             aria-pressed={isOpen}
             className={cn(
-              "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors",
+              "flex cursor-pointer items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
               isOpen
                 ? "border-blue-primary bg-blue-light"
                 : "border-border-light bg-white hover:bg-surface"
@@ -183,6 +196,30 @@ export function GroupPerformanceTab({
                 <span className="shrink-0 text-text-tertiary">
                   · {count} {count === 1 ? "person" : "people"}
                 </span>
+              </span>
+            </span>
+            {/* THE THIRD BLOCK, not a fourth word (Anir, Aug 19: "you can't
+                put it after where it says '5 people'. You can't put it below,
+                because that is going to look asymmetrical"). Faces on the
+                left, who-and-how-many in the middle, the workload on the
+                right behind a hairline — the card reads as three columns and
+                every card is the same height. */}
+            <span
+              className={cn(
+                "ml-1 flex shrink-0 flex-col items-center justify-center self-stretch border-l pl-2.5 pr-1",
+                isOpen ? "border-[rgba(0,113,227,0.25)]" : "border-border-light"
+              )}
+            >
+              <b
+                className={cn(
+                  "text-[15px] font-extrabold leading-none tnum",
+                  isOpen ? "text-blue-primary" : "text-text-primary"
+                )}
+              >
+                {goalCountFor(g)}
+              </b>
+              <span className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                {goalCountFor(g) === 1 ? "goal" : "goals"}
               </span>
             </span>
           </button>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Search, type LucideIcon } from "lucide-react";
+import { ChevronDown, Check, Crown, Search, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
   PriorityTooltip,
@@ -26,6 +26,19 @@ export type ColorOption = {
    *  said nothing about which one you were picking. */
   logoName?: string;
   description?: string;
+  /**
+   * THE OWNER WEARS THE CROWN (Anir, Aug 19, picking a group to put on a
+   * goal: "I don't need that icon. I need the owner profile picture with the
+   * crown on top"). Draws a small crown over `avatarName`, so the face in the
+   * mark is unmistakably the person who runs this thing.
+   */
+  crown?: boolean;
+  /**
+   * The people inside this option, as an overlapping face stack on the right
+   * ("I also need to see all the people in the group"). Up to five, then a
+   * count. Purely a picture — the option's own words still say how many.
+   */
+  faces?: string[];
   badge?: string;
   badgeColor?: string;
   /** What the trigger shows when the toolbar compresses and the words go —
@@ -258,7 +271,26 @@ export function ColorSelect({
         />
       );
     if (o.avatarName)
-      return (
+      return o.crown ? (
+        <span className="relative shrink-0">
+          <Avatar
+            name={o.avatarName}
+            className={cn(prominent ? "h-8 w-8 text-[10px]" : "h-5 w-5 text-[7px]")}
+          />
+          <span
+            className={cn(
+              "absolute grid place-items-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.22)]",
+              prominent ? "-right-1 -top-1 h-4 w-4" : "-right-0.5 -top-0.5 h-3 w-3"
+            )}
+          >
+            <Crown
+              size={prominent ? 9 : 7}
+              strokeWidth={2.8}
+              className="text-[color:#7C3AED]"
+            />
+          </span>
+        </span>
+      ) : (
         <Avatar
           name={o.avatarName}
           className={cn(
@@ -498,6 +530,27 @@ export function ColorSelect({
                     </span>
                   )}
                 </span>
+                {o.faces && o.faces.length > 0 && (
+                  // The group, drawn. It sits opposite the owner's face so the
+                  // row reads "this person runs it, these people are in it".
+                  <span className="flex shrink-0 items-center">
+                    {o.faces.slice(0, 5).map((name, i) => (
+                      <Avatar
+                        key={`${name}-${i}`}
+                        name={name}
+                        className={cn(
+                          "h-[22px] w-[22px] text-[8px] ring-2 ring-white",
+                          i > 0 && "-ml-2"
+                        )}
+                      />
+                    ))}
+                    {o.faces.length > 5 && (
+                      <span className="-ml-2 grid h-[22px] w-[22px] place-items-center rounded-full bg-surface text-[9px] font-bold text-text-secondary ring-2 ring-white tnum">
+                        +{o.faces.length - 5}
+                      </span>
+                    )}
+                  </span>
+                )}
                 {o.badge && (
                   <span
                     className="semantic-color-pill shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"

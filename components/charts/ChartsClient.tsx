@@ -17,6 +17,13 @@ import {
   Building2,
   User,
   DollarSign,
+  BadgeDollarSign,
+  Magnet,
+  Activity,
+  Handshake,
+  Hourglass,
+  AlertCircle,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { cn, OUTCOME_META } from "@/lib/utils";
@@ -43,6 +50,18 @@ const TIP_ICONS: Record<string, LucideIcon> = {
   company: Building2,
   person: User,
   money: DollarSign,
+  // The performance goal-type marks, so a tip naming a goal wears the same
+  // icon the goal wears everywhere else (Anir, Aug 19: "when you say 'via
+  // renewals', you have to put the icon for the financial and revenue
+  // performance thing"). Keys, not components — a server component can hand
+  // this file a string, never a function.
+  goalFinancial: BadgeDollarSign,
+  goalLeadGen: Magnet,
+  goalActivity: Activity,
+  goalProposal: Handshake,
+  waiting: Hourglass,
+  sentBack: AlertCircle,
+  verified: ShieldCheck,
 };
 
 // The y-axis value chips (max / baseline) that float over a plot area. Built
@@ -628,6 +647,13 @@ export type TipItem = {
    *  progress bar... Make it more visual"). A list of amounts makes the
    *  reader do the division; the bar is that division, already done. */
   bar?: { pct: number; color?: string; caption?: string };
+  /**
+   * Chips the CALLER names outright, for vocabularies this file cannot be
+   * expected to recognise — a goal, a claim's status (Anir, Aug 19: "when
+   * you're saying 'waiting to be verified', that should be like a tag or
+   * something like a color"). `icon` is a TIP_ICONS key.
+   */
+  tags?: { label: string; color: string; icon?: string }[];
 };
 
 /** The clause left over once the person's own name is lifted out of `sub`.
@@ -796,6 +822,12 @@ function TipBreakdown({
           // into `sub` get chips too, instead of flat gray text.
           const parsed = splitTipNote(note);
           const tags = [
+            ...(t.tags ?? []).map((tag) => ({
+              label: tag.label,
+              color: tag.color,
+              bg: `${tag.color}1A`,
+              icon: (tag.icon ? TIP_ICONS[tag.icon] : undefined) ?? Sparkles,
+            })),
             tipTagFor(t.stage, "stage"),
             tipTagFor(t.outcome, "outcome"),
             ...parsed.tags,
@@ -950,6 +982,7 @@ function TipHeader({
   value,
   note,
   dot,
+  bar,
 }: {
   icon?: string;
   color?: string;
@@ -959,6 +992,16 @@ function TipHeader({
   note?: string;
   /** Fall back to a plain colour dot when the series has no icon key. */
   dot?: boolean;
+  /**
+   * DRAW THE PROGRESS, DON'T SPELL IT (Anir, Aug 19: "stop saying '250 of
+   * 900k'... If I don't see a bar, it's gonna piss me off. This is not a
+   * visual way of showing it at the top").
+   *
+   * `done` is signed off, `pending` is claimed but unverified — the same
+   * two-tone bar every other performance surface draws, so the tip and the
+   * page agree at a glance. The caption keeps the numbers, under the bar.
+   */
+  bar?: { done: number; pending?: number; color?: string; caption?: string };
 }) {
   return (
     <div className="flex shrink-0 items-start gap-2.5">
@@ -979,6 +1022,31 @@ function TipHeader({
         <span className="mt-1.5 block text-[21px] font-bold leading-none text-text-primary tnum">
           {value}
         </span>
+        {bar && (
+          <span className="mt-2 block">
+            <span className="flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+              <span
+                className="block h-full"
+                style={{
+                  width: `${Math.max(0, Math.min(100, bar.done))}%`,
+                  background: bar.color ?? color ?? VIZ.blue,
+                }}
+              />
+              <span
+                className="block h-full opacity-[0.30]"
+                style={{
+                  width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
+                  background: bar.color ?? color ?? VIZ.blue,
+                }}
+              />
+            </span>
+            {bar.caption && (
+              <span className="mt-1 block text-[11px] text-text-secondary tnum">
+                {bar.caption}
+              </span>
+            )}
+          </span>
+        )}
         {note && (
           <span className="mt-2 block text-[11.5px] leading-snug text-text-secondary">
             {note}
@@ -1725,6 +1793,8 @@ export function BarChart({
     // A second, smaller line under the bar's value — e.g. the raw count
     // behind a percentage ("4 of 6"), so the bar shows both at rest.
     caption?: string;
+    /** Draws the headline as a bar in the tip instead of spelling it out. */
+    tipBar?: { done: number; pending?: number; color?: string; caption?: string };
     // Tip-only line naming what the headline number MEASURES, for the charts
     // where the records listed below can't add up to it (an average, a
     // probability-weighted figure). Suren added the rows up and got a
@@ -1972,6 +2042,7 @@ export function BarChart({
                   icon={d.icon}
                   color={d.color || VIZ.blue}
                   label={d.label}
+                  bar={d.tipBar}
                   value={`${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
                   // `tipNote` is the fuller sentence version of `caption` — one
                   // or the other, never both restating the same fact.

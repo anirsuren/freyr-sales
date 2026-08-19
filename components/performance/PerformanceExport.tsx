@@ -6,7 +6,7 @@ import { Download, FileSpreadsheet, ListChecks, Printer } from "lucide-react";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import {
   actualValue,
-  entryStatus,
+  entryStatusLabel,
   familyValue,
   paceVerdict,
   pctMet,
@@ -121,7 +121,7 @@ export function PerformanceExport({
           goal?.unit ?? "",
           a.customer ?? "",
           a.dealLabel ?? "",
-          entryStatus(a),
+          entryStatusLabel(a),
           a.verifiedBy ?? "",
           a.verifiedAt ? a.verifiedAt.slice(0, 10) : "",
           a.managerNote ?? "",

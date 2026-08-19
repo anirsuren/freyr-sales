@@ -42,6 +42,7 @@ import {
   PERIODS,
   actualValue,
   entryStatus,
+  entryStatusLabel,
   familyValue,
   goalFamilyActuals,
   fmtAmount,
@@ -64,7 +65,7 @@ import {
 } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
-import { VerifyGoalModal } from "./VerifyGoalModal";
+import { VerifyGoalModal, type VerifyScope } from "./VerifyGoalModal";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
@@ -126,6 +127,15 @@ function monthlyTotals(
  *  two colours on one screen (Anir, Aug 15). Identity colour stays on the type
  *  chip and the icon tile; status stays on the pace pill. */
 const MONEY = "#0071E3";
+
+/** Goal type → the TIP_ICONS key for the same mark it wears on every goal row.
+ *  A string, because that is the only thing a tip datum may carry. */
+const TYPE_TIP_ICON: Record<string, string> = {
+  "financial and revenue performance": "goalFinancial",
+  "lead generation and outreach": "goalLeadGen",
+  "sales activity & engagement": "goalActivity",
+  "proposal & deal execution": "goalProposal",
+};
 
 /** The four windows, widest to narrowest, each with its own mark. */
 const PERIOD_META: Record<PeriodKey, { color: string; icon: typeof CalendarDays }> = {
@@ -470,6 +480,19 @@ export function OrgPerformanceTab({
                         : a > 0
                           ? `${fmtAmount(g.unit, a)} logged`
                           : "no target yet",
+                    // The tip draws the same two-tone bar the page draws
+                    // instead of repeating the figures as a sentence.
+                    tipBar: {
+                      done: g.target > 0 ? pctMet(verified, g.target) : 0,
+                      pending: g.target > 0 ? pctMet(awaiting, g.target) : 0,
+                      color: MONEY,
+                      caption:
+                        g.target > 0
+                          ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
+                          : a > 0
+                            ? `${fmtAmount(g.unit, a)} logged, no target set`
+                            : "no target yet",
+                    },
                     /**
                      * WHERE THE MONEY CAME FROM, NOT WHAT IT WAS FILED UNDER
                      * (Anir, Aug 19: "where the fuck is that money coming
@@ -519,20 +542,42 @@ export function OrgPerformanceTab({
                                 ? `${Math.round(share)}% of target`
                                 : `${Math.round(share)}% of this bar`,
                           },
-                          // On a rollup goal the money was logged somewhere
-                          // else and came up, so name that goal: without it
-                          // the row says who and when but never which goal
-                          // fed the total.
-                          sub: [
-                            entry.person,
-                            loggedOn && loggedOn.id !== g.id
-                              ? `via ${loggedOn.name}`
-                              : null,
-                            entry.date,
-                            waiting ? "waiting to be verified" : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · "),
+                          /**
+                           * THE GOAL AND THE STATUS ARE CHIPS, NOT SENTENCES
+                           * (Anir, Aug 19: "when you say 'via renewals', you
+                           * have to put the icon for the financial and revenue
+                           * performance thing... when you're saying 'waiting
+                           * to be verified', that should be like a tag").
+                           * A category in this app is never flat grey text.
+                           */
+                          tags: [
+                            ...(loggedOn && loggedOn.id !== g.id
+                              ? [
+                                  {
+                                    label: loggedOn.name,
+                                    color: typeMeta(loggedOn.type).color,
+                                    icon: TYPE_TIP_ICON[loggedOn.type.trim().toLowerCase()],
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: entryStatusLabel(entry),
+                              color:
+                                entryStatus(entry) === "verified"
+                                  ? "#16A34A"
+                                  : entryStatus(entry) === "sent_back"
+                                    ? "#DC2626"
+                                    : "#C2410C",
+                              icon:
+                                entryStatus(entry) === "verified"
+                                  ? "verified"
+                                  : entryStatus(entry) === "sent_back"
+                                    ? "sentBack"
+                                    : "waiting",
+                            },
+                          ],
+                          // Who and when stay as plain text under the chips.
+                          sub: [entry.person, entry.date].join(" · "),
                         };
                       }),
                   };
@@ -1023,6 +1068,14 @@ function GoalRows({
    *  (Anir, Aug 16: "a whole pop-up so that all the bullshit gets hidden"). */
   const [full, setFull] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  /** Which slice the confirm dialog is about — null means the goal itself.
+   *  Person, subgoal and subgoal-person sign-offs all land here now instead
+   *  of flipping under the cursor. */
+  const [verifyScope, setVerifyScope] = useState<VerifyScope | null>(null);
+  const askVerify = (scope: VerifyScope | null) => {
+    setVerifyScope(scope);
+    setVerifying(true);
+  };
   /**
    * MONEY STAYS IN THE CURRENCY IT WAS SIGNED IN (Anir, Aug 16: "it should be
    * in their original currency, and it can be different for each one").
@@ -1055,7 +1108,11 @@ function GoalRows({
         meName={meName}
         busy={false}
         run={run}
-        onClose={() => setVerifying(false)}
+        scope={verifyScope}
+        onClose={() => {
+          setVerifying(false);
+          setVerifyScope(null);
+        }}
       />
       <Modal
         open={full}
@@ -1524,25 +1581,13 @@ function GoalRows({
                                 verified={a.verified}
                                 size="sm"
                                 onToggle={
-                                  live &&
-                                  (hasActuals(actuals, {
-                                    goalId: goal.id,
-                                    subgoalId: null,
-                                    person: a.person,
-                                  }) ||
-                                    a.verified)
+                                  live
                                     ? () =>
-                                        run(
-                                          {
-                                            op: "set-verified",
-                                            goalId: goal.id,
-                                            person: a.person,
-                                            verified: !a.verified,
-                                          },
-                                          a.verified
-                                            ? `${a.person} marked not verified`
-                                            : `${a.person} verified`
-                                        )
+                                        askVerify({
+                                          person: a.person,
+                                          label: a.person,
+                                          verified: a.verified,
+                                        })
                                     : undefined
                                 }
                               />
@@ -1702,24 +1747,13 @@ function GoalRows({
                             verified={s.verified}
                             size="sm"
                             onToggle={
-                              live &&
-                              (hasActuals(actuals, {
-                                goalId: goal.id,
-                                subgoalId: s.id,
-                              }) ||
-                                s.verified)
+                              live
                                 ? () =>
-                                    run(
-                                      {
-                                        op: "set-verified",
-                                        goalId: goal.id,
-                                        subgoalId: s.id,
-                                        verified: !s.verified,
-                                      },
-                                      s.verified
-                                        ? `${s.name} marked not verified`
-                                        : `${s.name} verified`
-                                    )
+                                    askVerify({
+                                      subgoalId: s.id,
+                                      label: s.name,
+                                      verified: s.verified,
+                                    })
                                 : undefined
                             }
                           />
@@ -1843,26 +1877,14 @@ function GoalRows({
                                     verified={p.verified}
                                     size="sm"
                                     onToggle={
-                                      live &&
-                                      (hasActuals(actuals, {
-                                        goalId: goal.id,
-                                        subgoalId: s.id,
-                                        person: p.name,
-                                      }) ||
-                                        p.verified)
+                                      live
                                         ? () =>
-                                            run(
-                                              {
-                                                op: "set-verified",
-                                                goalId: goal.id,
-                                                subgoalId: s.id,
-                                                person: p.name,
-                                                verified: !p.verified,
-                                              },
-                                              p.verified
-                                                ? `${p.name} marked not verified`
-                                                : `${p.name} verified on ${s.name}`
-                                            )
+                                            askVerify({
+                                              subgoalId: s.id,
+                                              person: p.name,
+                                              label: `${p.name} on ${s.name}`,
+                                              verified: p.verified,
+                                            })
                                         : undefined
                                     }
                                   />

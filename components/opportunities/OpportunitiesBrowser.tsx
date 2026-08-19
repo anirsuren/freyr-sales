@@ -19,6 +19,20 @@ import {
   X,
   Target,
   Percent,
+  Workflow,
+  Crosshair,
+  CalendarClock,
+  Search,
+  FlaskConical,
+  FileText,
+  Send,
+  Hourglass,
+  PauseCircle,
+  Trophy,
+  CircleSlash,
+  Repeat,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -74,6 +88,34 @@ const LEVEL_COLOR: Record<string, string> = {
   "Go get": "#B4318F",
   "High confidence": "#0F766E",
   Future: "#7C3AED",
+};
+
+/**
+ * EVERY CATEGORY CARRIES A MARK, NOT JUST A COLOUR (Anir, Aug 19: "I don't
+ * care about these blue circles... I need to see the actual icons").
+ * House rule: a category chip is colour AND icon, never a bare dot.
+ */
+const LEVEL_ICON: Record<string, LucideIcon> = {
+  Pipeline: Workflow,
+  "Go get": Crosshair,
+  "High confidence": TrendingUp,
+  Future: CalendarClock,
+};
+
+const STATUS_ICON: Record<string, LucideIcon> = {
+  Qualify: Search,
+  Pilot: FlaskConical,
+  Propose: FileText,
+  "Submitted to client": Send,
+  "Under review": Hourglass,
+  "On hold": PauseCircle,
+  Won: Trophy,
+  Lost: CircleSlash,
+};
+
+const REVENUE_TYPE_META: Record<string, { color: string; icon: LucideIcon }> = {
+  ARR: { color: "#0F766E", icon: Repeat },
+  OTS: { color: "#C2410C", icon: Zap },
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -1949,6 +1991,7 @@ export function OpportunitiesBrowser({
                     value: l,
                     label: l,
                     color: LEVEL_COLOR[l],
+                    icon: LEVEL_ICON[l],
                   }))}
                 />
               </Field>
@@ -1967,6 +2010,7 @@ export function OpportunitiesBrowser({
                       value: st,
                       label: st,
                       color: STATUS_COLOR[st],
+                      icon: STATUS_ICON[st],
                     })),
                   ]}
                 />
@@ -2667,7 +2711,12 @@ function SingleOfferingEditor({
               onChange={(val) => set({ revenueType: val })}
               options={[
                 { value: "", label: "Not set", color: "#8E98A8" },
-                ...REVENUE_TYPES.map((t) => ({ value: t, label: t, color: "#0071E3" })),
+                ...REVENUE_TYPES.map((t) => ({
+                  value: t,
+                  label: t,
+                  color: REVENUE_TYPE_META[t].color,
+                  icon: REVENUE_TYPE_META[t].icon,
+                })),
               ]}
             />
           </div>

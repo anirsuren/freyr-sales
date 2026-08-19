@@ -35,6 +35,24 @@ import type { RunOp } from "./PerformanceModule";
  *
  * The same dialog un-signs: turning a yes back into a no is also a decision.
  */
+/**
+ * WHOSE APPROVAL THIS DIALOG IS ABOUT. Absent = the goal itself; otherwise a
+ * person's slice of it, a subgoal, or a person on a subgoal.
+ *
+ * Those three used to flip the moment you clicked their pill — no dialog, no
+ * confirm, money in or out of the count on one stray click (Anir, Aug 19: "I
+ * just pressed the undo sign-off button... it didn't even ask me for
+ * confirmation in a pop-up"). One decision, one dialog, wherever it is made.
+ */
+export type VerifyScope = {
+  person?: string;
+  subgoalId?: string;
+  /** What the header names: "Suren Dheenadayalan", "Growth Accounts". */
+  label: string;
+  /** The sign-off flag as it stands for this slice. */
+  verified: boolean;
+};
+
 export function VerifyGoalModal({
   open,
   goal,
@@ -43,6 +61,7 @@ export function VerifyGoalModal({
   busy,
   run,
   onClose,
+  scope,
 }: {
   open: boolean;
   goal: PrimaryGoal | null;
@@ -51,16 +70,29 @@ export function VerifyGoalModal({
   busy: boolean;
   run: RunOp;
   onClose: () => void;
+  scope?: VerifyScope | null;
 }) {
   if (!open || !goal) return null;
 
-  const entries = goalFamilyActuals(state, goal).sort((a, b) =>
-    a.date < b.date ? 1 : -1
-  );
-  const verified = familyValue(state, goal, { verifiedOnly: true });
-  const waiting = familyValue(state, goal, { reportedOnly: true });
+  const inScope = (a: { person: string; subgoalId?: string | null }) =>
+    (!scope?.person || a.person === scope.person) &&
+    (!scope?.subgoalId || a.subgoalId === scope.subgoalId);
+  const entries = goalFamilyActuals(state, goal)
+    .filter(inScope)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sum = (want: "verified" | "waiting") =>
+    entries
+      .filter((a) =>
+        want === "verified"
+          ? entryStatus(a) === "verified"
+          : entryStatus(a) !== "verified"
+      )
+      .reduce((t, a) => t + (a.amount || 0), 0);
+  const verified = scope ? sum("verified") : familyValue(state, goal, { verifiedOnly: true });
+  const waiting = scope ? sum("waiting") : familyValue(state, goal, { reportedOnly: true });
   const total = verified + waiting;
-  const undoing = goal.verified;
+  const undoing = scope ? scope.verified : goal.verified;
+  const subjectName = scope ? scope.label : goal.name;
 
   return (
     <Modal
@@ -79,7 +111,12 @@ export function VerifyGoalModal({
       <div className="rounded-xl bg-surface px-4 py-3.5">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <b className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">
-            {goal.name}
+            {subjectName}
+            {scope && (
+              <span className="ml-1.5 text-[12px] font-semibold text-text-tertiary">
+                on {goal.name}
+              </span>
+            )}
           </b>
           <span className="shrink-0 text-right">
             <b className="text-[22px] font-extrabold tracking-[-0.02em] text-text-primary tnum">
@@ -125,6 +162,20 @@ export function VerifyGoalModal({
         </div>
       </div>
 
+      {total === 0 && !undoing && (
+        // The Aug 15 rule was "don't let me sign off nothing", and it was
+        // enforced by killing the pill — which turned undo into a one-way
+        // door the moment nothing was logged (Anir, Aug 19: "I can't even
+        // verify it again"). The pill stays alive; the warning moved here,
+        // where it can be read and overruled.
+        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+          <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
+          <span>
+            Nothing is logged against this yet, so this approves zero. It only
+            records that you have signed it off.
+          </span>
+        </p>
+      )}
       {waiting > 0 && !undoing && (
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
@@ -230,12 +281,18 @@ export function VerifyGoalModal({
           disabled={busy}
           onClick={async () => {
             const ok = await run(
-              { op: "set-verified", goalId: goal.id, verified: !goal.verified },
+              {
+                op: "set-verified",
+                goalId: goal.id,
+                ...(scope?.person ? { person: scope.person } : {}),
+                ...(scope?.subgoalId ? { subgoalId: scope.subgoalId } : {}),
+                verified: !undoing,
+              },
               undoing
-                ? `${goal.name} is no longer approved`
+                ? `${subjectName} is no longer approved`
                 : waiting > 0
-                  ? `${goal.name} approved. ${fmtAmount(goal.unit, waiting)} counts now`
-                  : `${goal.name} approved by ${meName}`
+                  ? `${subjectName} approved. ${fmtAmount(goal.unit, waiting)} counts now`
+                  : `${subjectName} approved by ${meName}`
             );
             if (ok) onClose();
           }}

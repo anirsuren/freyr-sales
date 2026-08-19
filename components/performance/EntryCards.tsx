@@ -18,7 +18,10 @@ import {
 } from "lucide-react";
 import {
   actualValue,
+  awaitingTheirFix,
+  canVerifyEntry,
   entryStatus,
+  isPending,
   fmtAmount,
   parseAmountInput,
   verificationQueue,
@@ -304,11 +307,21 @@ function EntryTimeline({
       note: entry.managerNote,
       done: true,
       // The one step on the rail that is a problem, so it is the one step
-      // that is red.
+      // that is red — until it is answered, below.
       alert: wasSentBack(entry),
       icon: AlertCircle,
       color: "#DC2626",
     });
+    if (entry.resubmittedAt) {
+      steps.push({
+        label: "Fixed and sent back up",
+        who: entry.addedBy || person,
+        when: entry.resubmittedAt.slice(0, 10),
+        done: true,
+        icon: RotateCcw,
+        color: "#7C3AED",
+      });
+    }
   }
   steps.push(
     entryStatus(entry) === "verified"
@@ -421,7 +434,10 @@ function EntryTimeline({
  * reported claim is the rejection, and that is the loudest thing on the row.
  */
 export function wasSentBack(entry: PerfActual): boolean {
-  return entryStatus(entry) === "reported" && !!entry.managerNote;
+  // Only while it is still unanswered. Once the person fixes it, the claim is
+  // waiting on the owner again and stops shouting — the timeline keeps the
+  // history either way.
+  return awaitingTheirFix(entry);
 }
 
 /** The date this claim last moved: verified beats logged beats happened. */
@@ -574,9 +590,12 @@ export function MyEntriesCard({
                 const open = openRow === a.id;
                 const status = entryStatus(a);
                 const sentBack = wasSentBack(a);
-                /** Your own claim, still unlocked: yours to change or drop. */
+                /** Your own claim, still unlocked: yours to change or drop.
+                 *  A sent-back one especially — fixing it is the whole point,
+                 *  and keying this to "reported" alone would have locked the
+                 *  edit exactly when it was needed. */
                 const canEdit =
-                  status === "reported" &&
+                  isPending(a) &&
                   !!run &&
                   (a.person === meName || a.addedBy === meName);
                 return (
@@ -1141,10 +1160,29 @@ export function VerifyQueueCard({
         )}
       </div>
       {queue.length === 0 ? (
-        <p className="px-4 py-3 text-[13px] text-text-secondary">
-          Nothing pending. New claims from your people land here with their
-          evidence.
-        </p>
+        (() => {
+          /* AN EMPTY QUEUE IS NOT ALWAYS AN EMPTY DESK. Claims this reader
+             sent back left the queue on purpose — they wait on the person who
+             made them — but "nothing pending" would read as nothing
+             outstanding at all, which is how a sent-back claim gets forgotten
+             by both sides. */
+          const withThem = state.actuals.filter(
+            (a) => awaitingTheirFix(a) && canVerifyEntry(state, meName, a.person)
+          ).length;
+          return (
+            <p className="px-4 py-3 text-[13px] text-text-secondary">
+              Nothing waiting on you. New claims from your people land here with
+              their evidence.
+              {withThem > 0 && (
+                <span className="text-text-primary">
+                  {" "}
+                  {withThem} {withThem === 1 ? "claim is" : "claims are"} sent
+                  back and waiting on them to fix.
+                </span>
+              )}
+            </p>
+          );
+        })()
       ) : (
         /* A NUMBERED TABLE, not a stack of rows (Anir, Aug 15: "I should
            clearly see this is number one, this is number two... right now, if

@@ -210,9 +210,43 @@ export function isComposite(
   return (goal.componentGoalIds?.length ?? 0) > 0;
 }
 
-/** A legacy entry with no status was entered by a manager and counts. */
-export function entryStatus(a: Pick<PerfActual, "status">): "reported" | "verified" {
+/**
+ * THE THREE THINGS A CLAIM CAN BE (Anir, Aug 19: "you told me that there's no
+ * status for being sent back. Can you fix that").
+ *
+ *   reported  — logged, waiting on the group owner
+ *   sent_back — the owner rejected it, waiting on the person who made it
+ *   verified  — signed off and locked, and the only one that counts
+ *
+ * Sent back used to be "reported plus a note", so a rejected claim and one
+ * nobody had opened were indistinguishable to every query in the app: the
+ * owner's queue listed both, the pill said "waiting" for both, and only a
+ * note buried in the row told them apart.
+ *
+ * A legacy entry with no status was entered by a manager and counts.
+ */
+export type EntryStatus = "reported" | "sent_back" | "verified";
+
+export function entryStatus(a: Pick<PerfActual, "status">): EntryStatus {
   return a.status ?? "verified";
+}
+
+/** Not signed off yet, whichever side it is sitting with — the question every
+ *  "how much is still waiting" sum is really asking. */
+export function isPending(a: Pick<PerfActual, "status">): boolean {
+  return entryStatus(a) !== "verified";
+}
+
+/** One vocabulary for the three states, so a claim reads the same wherever it
+ *  is printed — a row, a tooltip, a spreadsheet. */
+export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
+  reported: "Waiting to be verified",
+  sent_back: "Sent back",
+  verified: "Verified",
+};
+
+export function entryStatusLabel(a: Pick<PerfActual, "status">): string {
+  return ENTRY_STATUS_LABEL[entryStatus(a)];
 }
 
 export type PerfGroup = {
@@ -271,11 +305,22 @@ export type PerfActual = {
   /** reported = waiting for the group owner; verified = checked and LOCKED.
    *  Absent on entries from before this existed — those were entered by
    *  managers directly and count as verified. */
-  status?: "reported" | "verified";
+  status?: EntryStatus;
   verifiedBy?: string;
   verifiedAt?: string;
   /** Set when a group owner sends a claim back with feedback. */
   managerNote?: string;
+  /**
+   * When the claimant fixed a sent-back claim and put it back up.
+   *
+   * Sending back and never-been-looked-at were the same stored state, so a
+   * claim the owner had rejected still sat in that owner's queue as "waiting
+   * for your verification" — the queue mixed what was waiting on the reader
+   * with what was waiting on somebody else (Anir, Aug 19). This is the third
+   * position: rejected, then answered, and waiting on the owner again. The
+   * rejection note stays put so the timeline can still show it happened.
+   */
+  resubmittedAt?: string;
   addedBy: string;
   addedAt: string;
 };
@@ -793,7 +838,10 @@ export function familyValue(
     }
     const status = entryStatus(a);
     if (filter.verifiedOnly && status !== "verified") continue;
-    if (filter.reportedOnly && status !== "reported") continue;
+    // "Waiting" money is anything not signed off — a claim sent back is still
+    // claimed, still unverified, and still has to show up in the pending total
+    // rather than vanishing from both sides of the sum.
+    if (filter.reportedOnly && status === "verified") continue;
     total += a.amount;
   }
   return total;
@@ -823,9 +871,19 @@ export function verificationQueue(
 ): PerfActual[] {
   return state.actuals
     .filter(
-      (a) => entryStatus(a) === "reported" && canVerifyEntry(state, me, a.person)
+      (a) =>
+        // Exactly "reported": a claim you sent back is waiting on the person,
+        // not on you, so it is out of this queue until they answer it. The
+        // queue means one thing — these are waiting on me.
+        entryStatus(a) === "reported" && canVerifyEntry(state, me, a.person)
     )
     .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1));
+}
+
+/** Sent back and not yet answered — the ball is with the person who claimed
+ *  it. Changing anything moves it back to `reported`, waiting on the owner. */
+export function awaitingTheirFix(entry: Pick<PerfActual, "status">): boolean {
+  return entryStatus(entry) === "sent_back";
 }
 
 /* -------------------------------------------------- fiscal calendar (Apr–Mar) */

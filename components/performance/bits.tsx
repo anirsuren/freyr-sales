@@ -30,6 +30,8 @@ import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
   entryStatus,
+  entryStatusLabel,
+  isPending,
   fmtAmount,
   goalFamilyActuals,
   pctMet,
@@ -1107,7 +1109,7 @@ export function PersonGoalPanel({
     .filter((a) => entryStatus(a) === "verified")
     .reduce((s, a) => s + a.amount, 0);
   const waiting = mine
-    .filter((a) => entryStatus(a) === "reported")
+    .filter((a) => isPending(a))
     .reduce((s, a) => s + a.amount, 0);
   const left = Math.max(0, target - done);
   const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
@@ -1119,7 +1121,7 @@ export function PersonGoalPanel({
     const key = a.date.slice(0, 7);
     const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
     cell.value += a.amount;
-    if (entryStatus(a) === "reported") cell.pending += a.amount;
+    if (isPending(a)) cell.pending += a.amount;
     byMonth.set(key, cell);
   }
   const months = [...byMonth.entries()]
@@ -1215,15 +1217,20 @@ export function PersonGoalPanel({
                 <span className="min-w-0 flex-1 truncate text-text-secondary">
                   {a.dealLabel ?? a.note ?? ""}
                 </span>
+                {/* Three states, three colours: signed off is green, sent
+                    back is red, waiting on the owner is amber. It used to say
+                    "Waiting" for both of the last two. */}
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
                     entryStatus(a) === "verified"
                       ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
-                      : "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
+                      : entryStatus(a) === "sent_back"
+                        ? "bg-[rgba(220,38,38,0.10)] text-[color:#B02020]"
+                        : "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
                   )}
                 >
-                  {entryStatus(a) === "verified" ? "Verified" : "Waiting"}
+                  {entryStatus(a) === "reported" ? "Waiting" : entryStatusLabel(a)}
                 </span>
               </li>
             ))}

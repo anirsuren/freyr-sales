@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import {
   currentFiscalYear,
   entryStatus,
+  isPending,
   familyValue,
   fiscalLabel,
   fiscalMonthLabels,
@@ -361,7 +362,7 @@ export function GoalZoom({
       const awaiting = val(range, { reportedOnly: true });
       const entries = familyActuals.filter((a) => inRange(a, range));
       const waitingCount = entries.filter(
-        (a) => entryStatus(a) === "reported"
+        (a) => isPending(a)
       ).length;
       const ended = range[1] <= now;
       return { label, sub, range, isNow, verified, awaiting, waitingCount, entries: entries.length, ended };
@@ -429,7 +430,7 @@ export function GoalZoom({
 
   /** Verification rail: waiting entries on THIS goal family. */
   const waiting = familyActuals
-    .filter((a) => entryStatus(a) === "reported")
+    .filter((a) => isPending(a))
     .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1))
     .slice(0, 8);
   const recentVerified = familyActuals

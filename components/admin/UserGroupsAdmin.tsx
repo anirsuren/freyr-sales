@@ -25,7 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
-import { actualValue, entryStatus } from "@/lib/performanceShared";
+import { actualValue, isPending } from "@/lib/performanceShared";
 
 /**
  * USER GROUPS LIVE IN ADMIN, NOT IN PERFORMANCE (Suren, Aug 12: "creating
@@ -135,7 +135,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       }
     }
     const waiting = perf.actuals.filter(
-      (a) => inGroup(a.person) && entryStatus(a) === "reported"
+      (a) => inGroup(a.person) && isPending(a)
     ).length;
     return { held: held.length, target, achieved, waiting };
   }

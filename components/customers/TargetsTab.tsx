@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Building2, CalendarDays, Crosshair, DollarSign, Layers, Plus, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -251,7 +251,7 @@ export function TargetsTab({
             ariaLabel="Tier"
             onChange={setTierPick}
             allLabel="All tiers"
-            options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t) }))}
+            options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t), icon: Layers }))}
           />
           {quarters.length > 0 && (
             <MultiColorSelect
@@ -259,7 +259,7 @@ export function TargetsTab({
               ariaLabel="Quarter"
               onChange={setQuarterPick}
               allLabel="All quarters"
-              options={quarters.map((q) => ({ value: q, label: q, color: "#0071E3" }))}
+              options={quarters.map((q) => ({ value: q, label: q, color: "#0071E3", icon: CalendarDays }))}
             />
           )}
           {connections.length > 0 && (
@@ -601,6 +601,7 @@ export function TargetsTab({
                       value: q,
                       label: q,
                       color: "#0071E3",
+                      icon: CalendarDays,
                     })),
                   ]}
                 />

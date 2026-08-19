@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
-import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Users } from "lucide-react";
+import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Tag, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -315,6 +315,7 @@ export function ContactsBrowser({
                         value: c,
                         label: c,
                         color: CATEGORY_ACCENTS[i % CATEGORY_ACCENTS.length],
+                        icon: Tag,
                       }))}
                     />
                     <button

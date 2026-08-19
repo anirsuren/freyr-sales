@@ -284,12 +284,27 @@ function normalize(value: unknown): PerformanceState {
                   .slice(0, 5)
               : undefined,
             status:
-              ra.status === "reported" || ra.status === "verified"
-                ? ra.status
-                : undefined,
+              // BEFORE THERE WAS A STATUS FOR IT, a sent-back claim was
+              // "reported" carrying the owner's note. That shape is read as
+              // sent_back from now on, so the rows Anir already has land on
+              // the right side of the new rule. It has to be tested BEFORE
+              // "reported" is honoured, or the legacy rows keep the status
+              // that could not tell the two apart.
+              ra.status === "reported" && ra.managerNote && !ra.resubmittedAt
+                ? "sent_back"
+                : ra.status === "reported" ||
+                    ra.status === "verified" ||
+                    ra.status === "sent_back"
+                  ? ra.status
+                  : undefined,
             verifiedBy: ra.verifiedBy ? str(ra.verifiedBy, 80) : undefined,
             verifiedAt: ra.verifiedAt ? str(ra.verifiedAt, 40) : undefined,
             managerNote: ra.managerNote ? str(ra.managerNote, 300) : undefined,
+            // Whitelisted like every other field: anything not named here is
+            // dropped the next time anything writes this row.
+            resubmittedAt: ra.resubmittedAt
+              ? str(ra.resubmittedAt, 40)
+              : undefined,
             addedBy: str(ra.addedBy, 80) || person,
             addedAt: str(ra.addedAt, 40) || new Date().toISOString(),
           },
@@ -572,11 +587,12 @@ export async function setVerified(input: {
        * goal's own flag still moves, which is the caller's to set.
        */
       if (!input.by || !canVerifyEntry(state, input.by, a.person)) continue;
-      if ((a.status ?? "verified") === "reported") {
+      if ((a.status ?? "verified") !== "verified") {
         a.status = "verified";
         a.verifiedBy = input.by;
         a.verifiedAt = now;
         a.managerNote = undefined;
+        a.resubmittedAt = undefined;
       }
     }
   }
@@ -768,6 +784,20 @@ export async function updateActual(input: {
       ? str(input.opportunityId, 80)
       : undefined;
   }
+  /**
+   * CHANGING A REJECTED CLAIM IS ANSWERING IT (Anir, Aug 19, on the queue
+   * showing him a claim he had sent back himself: "if this makes sense to
+   * you do it").
+   *
+   * A sent-back claim waits on the person who made it, so it leaves the
+   * owner's queue. This is the moment it comes back: they fixed something,
+   * so it is waiting on the owner again. The note stays, so the timeline can
+   * still show it was sent back and then answered.
+   */
+  if (entry.status === "sent_back") {
+    entry.status = "reported";
+    entry.resubmittedAt = new Date().toISOString();
+  }
   await writeRow(state);
 }
 
@@ -945,6 +975,7 @@ export async function verifyActual(input: {
   entry.verifiedBy = input.by;
   entry.verifiedAt = new Date().toISOString();
   entry.managerNote = undefined;
+  entry.resubmittedAt = undefined;
   await writeRow(state);
 }
 
@@ -961,10 +992,12 @@ export async function sendBackActual(input: {
   if (!canVerifyEntry(state, input.by, entry.person)) {
     throw new Error("Only the group owner for this person can send their numbers back.");
   }
-  entry.status = "reported";
+  entry.status = "sent_back";
   entry.verifiedBy = undefined;
   entry.verifiedAt = undefined;
   entry.managerNote = input.note ? str(input.note, 300) : undefined;
+  // A new rejection is a new round: it waits on them again until they answer.
+  entry.resubmittedAt = undefined;
   await writeRow(state);
 }
 
