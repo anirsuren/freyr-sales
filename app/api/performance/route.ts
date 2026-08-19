@@ -3,6 +3,7 @@ import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
+import { readOpportunities, updateOpportunity } from "@/lib/opportunities";
 import {
   addGoal,
   addGoalType,
@@ -261,9 +262,36 @@ export async function POST(req: NextRequest) {
             : {}),
         });
         break;
-      case "remove-goal":
-        await removeGoal(String(body.goalId ?? ""));
+      case "remove-goal": {
+        /**
+         * A DELETED GOAL LEAVES NOTHING POINTING AT IT. Its results already
+         * went with it; the deals that fed it did not, so a goal row on an
+         * opportunity was left reading "Pick a goal…" beside a live value,
+         * looking like an unfinished entry with no sign the goal had gone.
+         */
+        const goneId = String(body.goalId ?? "");
+        await removeGoal(goneId);
+        try {
+          const opps = await readOpportunities();
+          for (const deal of opps.opportunities) {
+            const links = deal.goalLinks ?? [];
+            const keptLinks = links.filter((l) => l.goalId !== goneId);
+            const keptIds = (deal.goalIds ?? []).filter((id) => id !== goneId);
+            if (
+              keptLinks.length !== links.length ||
+              keptIds.length !== (deal.goalIds ?? []).length
+            ) {
+              await updateOpportunity(deal.id, {
+                goalIds: keptIds,
+                goalLinks: keptLinks,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("[performance] goal-link cleanup failed:", error);
+        }
         break;
+      }
       case "add-subgoal":
         await addSubgoal({
           goalId: String(body.goalId ?? ""),
