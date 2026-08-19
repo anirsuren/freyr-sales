@@ -189,7 +189,9 @@ export function GroupPerformanceTab({
         );
       })}
       <Link
-        href="/admin"
+        /* Straight to the groups tab. "Manage groups" landing on Team members
+           made you find the tab yourself, and the tab is addressable. */
+        href="/admin?tab=groups"
         className="ml-auto flex items-center gap-1.5 text-[11.5px] font-semibold text-blue-primary hover:underline"
       >
         <UsersRound size={13} strokeWidth={2.2} />
