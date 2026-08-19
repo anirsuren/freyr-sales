@@ -1,5 +1,8 @@
 import { isCurrencyCode, type CurrencyCode } from "./currency";
-import type { OpportunityActivity } from "./opportunitiesShared";
+import type {
+  OpportunityActivity,
+  OpportunityGoalLink,
+} from "./opportunitiesShared";
 import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import {
@@ -115,6 +118,33 @@ function normalizeLines(raw: unknown): OpportunityLine[] {
   return out;
 }
 
+function normalizeGoalLinks(raw: unknown): OpportunityGoalLink[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: OpportunityGoalLink[] = [];
+  for (const item of raw.slice(0, 50)) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const goalId = str(r.goalId, 60);
+    if (!goalId) continue;
+    const value =
+      typeof r.value === "number" && Number.isFinite(r.value) && r.value >= 0
+        ? r.value
+        : undefined;
+    out.push({
+      id:
+        str(r.id, 60) ||
+        `gl-${out.length}-${Math.random().toString(36).slice(2, 7)}`,
+      goalId,
+      person: str(r.person, 120) || undefined,
+      value,
+      met: r.met === true,
+      metAt: day(r.metAt),
+      actualId: str(r.actualId, 60) || undefined,
+    });
+  }
+  return out.length ? out : undefined;
+}
+
 const ACTIVITY_STATUSES = ["initiated", "under_progress", "completed"] as const;
 
 function normalizeActivities(raw: unknown): OpportunityActivity[] | undefined {
@@ -189,7 +219,17 @@ function normalizeOne(raw: unknown): Opportunity | null {
     estSignDate: day(r.estSignDate),
     owner: str(r.owner, 120) || undefined,
     nextSteps: str(r.nextSteps, 600) || undefined,
-    goalIds: strList(r.goalIds, 60),
+    // The goal table is the source of truth once it exists: goalIds derive
+    // from its rows so pacing keeps reading the field it always has.
+    ...(() => {
+      const goalLinks = normalizeGoalLinks(r.goalLinks);
+      return {
+        goalLinks,
+        goalIds: goalLinks
+          ? [...new Set(goalLinks.map((l) => l.goalId))]
+          : strList(r.goalIds, 60),
+      };
+    })(),
     activities: normalizeActivities(r.activities),
     targetPitchDate: day(r.targetPitchDate),
     targetQuarter: str(r.targetQuarter, 40) || undefined,
@@ -376,6 +416,7 @@ export type OpportunityInput = {
   owner?: string;
   nextSteps?: string;
   goalIds?: string[];
+  goalLinks?: unknown[];
   activities?: unknown[];
 };
 

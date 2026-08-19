@@ -113,6 +113,28 @@ export type OpportunityActivity = {
   endDate?: string;
 };
 
+/**
+ * ONE ROW OF THE DEAL'S GOAL TABLE (Suren, Aug 18 call: "let them assign that
+ * goal, and then let them assign the value for the goal, and then they may
+ * say met. The moment they say met, you take this value and add it against
+ * [the goal], and also put the person name… let it be manual right now").
+ */
+export type OpportunityGoalLink = {
+  id: string;
+  /** A goal from the Goal Master. */
+  goalId: string;
+  /** Whose credit the number is. */
+  person?: string;
+  /** The number that counts once met — money for currency goals. */
+  value?: number;
+  met?: boolean;
+  /** ISO day Met was saved. */
+  metAt?: string;
+  /** The performance entry written when Met landed — the double-count guard,
+   *  and the handle to withdraw it while it is still unverified. */
+  actualId?: string;
+};
+
 export type Opportunity = {
   id: string;
   /** Freyr's own reference, e.g. DO_0026765. Optional: most rows lack one. */
@@ -156,6 +178,9 @@ export type Opportunity = {
    * signed by today.
    */
   goalIds?: string[];
+  /** The goal table rows. When present, `goalIds` is derived from them so the
+   *  pacing line keeps reading the same field it always has. */
+  goalLinks?: OpportunityGoalLink[];
   /**
    * SALES ACTIVITIES ON THE DEAL (Suren, Aug 17 answers: "you should have an
    * activity at the opportunity level… the data entry should be in the

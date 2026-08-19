@@ -139,6 +139,8 @@ type Draft = {
   customerOther: boolean;
   rows: DraftLine[];
   goalIds: string[];
+  /** The goal table (Suren, Aug 18: goal + person + value + Met). */
+  goalRows: DraftGoalRow[];
   level: string;
   status: string;
   /** Free-form activities on the deal (Suren, Aug 18: "we don't need a fixed
@@ -164,6 +166,29 @@ type DraftActivity = {
   startDate: string;
   endDate: string;
 };
+
+type DraftGoalRow = {
+  key: string;
+  id: string;
+  goalId: string;
+  person: string;
+  value: string;
+  met: boolean;
+  actualId?: string;
+};
+
+let goalRowSeq = 0;
+function blankGoalRow(): DraftGoalRow {
+  goalRowSeq += 1;
+  return {
+    key: `gl-new-${goalRowSeq}`,
+    id: "",
+    goalId: "",
+    person: "",
+    value: "",
+    met: false,
+  };
+}
 
 let actSeq = 0;
 function blankActivity(): DraftActivity {
@@ -214,6 +239,7 @@ const BLANK: Draft = {
   customerOther: false,
   rows: [],
   goalIds: [],
+  goalRows: [],
   level: "Pipeline",
   status: "",
   activities: [],
@@ -283,6 +309,25 @@ function toDraft(
     customerOther: false,
     rows,
     goalIds: [...(o.goalIds ?? [])],
+    // Old records carry bare goalIds; they open as table rows to fill in.
+    goalRows: (o.goalLinks ?? []).length
+      ? (o.goalLinks ?? []).map((l, i) => ({
+          key: l.id || `gl-${i}`,
+          id: l.id,
+          goalId: l.goalId,
+          person: l.person ?? "",
+          value: l.value !== undefined ? String(l.value) : "",
+          met: Boolean(l.met),
+          actualId: l.actualId,
+        }))
+      : (o.goalIds ?? []).map((goalId, i) => ({
+          key: `gl-old-${i}`,
+          id: "",
+          goalId,
+          person: "",
+          value: "",
+          met: false,
+        })),
     level: o.level,
     status: o.status ?? "",
     activities: (o.activities ?? []).map((a, i) => {
@@ -632,7 +677,25 @@ export function OpportunitiesBrowser({
           confidence: r.confidence === "" ? undefined : Number(r.confidence),
           estSignDate: r.estSignDate || undefined,
         })),
-        goalIds: editing.goalIds,
+        // goalIds stays derived for the pacing line; the table is the record.
+        goalIds: [
+          ...new Set(
+            editing.goalRows.filter((r) => r.goalId).map((r) => r.goalId)
+          ),
+        ],
+        goalLinks: editing.goalRows
+          .filter((r) => r.goalId)
+          .map((r) => ({
+            id: r.id || undefined,
+            goalId: r.goalId,
+            person: r.person || undefined,
+            value:
+              r.value.trim() !== "" && Number.isFinite(Number(r.value.replace(/,/g, "")))
+                ? Number(r.value.replace(/,/g, ""))
+                : undefined,
+            met: r.met,
+            actualId: r.actualId,
+          })),
         level: editing.level,
         status: editing.status || undefined,
         owner: editing.owner || undefined,
@@ -1656,38 +1719,147 @@ export function OpportunitiesBrowser({
               onChange={(line) => setEditing({ ...editing, rows: [line] })}
             />
 
-            {/* WHICH GOAL THIS DEAL FEEDS (Anir, Aug 16: the straight-line
-                "must be at" "doesn't make any sense" for deals dated
-                November). With this, a goal's pacing line becomes the deals
-                that were supposed to have signed by today instead of a twelfth
-                of the target per month. */}
+            {/* THE GOAL TABLE (Suren, Aug 18 call: "let them assign that goal,
+                let them assign the value for the goal, and then they may say
+                met. The moment they say met, you take this value and add it
+                against [the goal], and also put the person name. Let it be
+                manual right now."). Rows come from the Goal Master; nothing
+                touches performance until Met is on and the form is saved. */}
             <Field
               label="Goals this deal feeds"
-              hint="Its value counts toward the pacing line on every goal you pick, once its estimated sign date has passed."
+              hint="Pick a goal from the Goal Master, say whose credit it is and for how much. Nothing counts on performance until you mark it met and save."
             >
-              <MultiPicker
-                variant="dropdown"
-                ariaLabel="Goals this deal feeds"
-                options={goals.map((g) => ({
-                  id: g.id,
-                  label: g.name,
-                  sub: String(g.year),
-                  color: typeMeta(g.type ?? "").color,
-                  icon: typeMeta(g.type ?? "").icon,
-                  group: g.type ?? "Other",
-                }))}
-                selected={editing.goalIds}
-                onToggle={(id) =>
-                  setEditing({
-                    ...editing,
-                    goalIds: editing.goalIds.includes(id)
-                      ? editing.goalIds.filter((x) => x !== id)
-                      : [...editing.goalIds, id],
-                  })
-                }
-                placeholder="Pick the goals this deal feeds…"
-                emptyLabel="No goals on the master yet."
-              />
+              <div className="space-y-2">
+                {editing.goalRows.map((r, i) => (
+                  <div
+                    key={r.key}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/50 p-2"
+                  >
+                    <ColorSelect
+                      value={r.goalId}
+                      ariaLabel={`Goal ${i + 1}`}
+                      collapsible={false}
+                      dense
+                      minWidth={200}
+                      className="min-w-[200px] flex-1"
+                      onChange={(v) =>
+                        setEditing({
+                          ...editing,
+                          goalRows: editing.goalRows.map((x) =>
+                            x.key === r.key ? { ...x, goalId: v } : x
+                          ),
+                        })
+                      }
+                      options={[
+                        { value: "", label: "Pick a goal…", color: "#8E98A8" },
+                        ...goals.map((g) => ({
+                          value: g.id,
+                          label: `${g.name} · ${g.year}`,
+                          color: typeMeta(g.type ?? "").color,
+                          icon: typeMeta(g.type ?? "").icon,
+                        })),
+                      ]}
+                    />
+                    <ColorSelect
+                      value={r.person}
+                      ariaLabel={`Goal ${i + 1} person`}
+                      collapsible={false}
+                      dense
+                      minWidth={150}
+                      onChange={(v) =>
+                        setEditing({
+                          ...editing,
+                          goalRows: editing.goalRows.map((x) =>
+                            x.key === r.key ? { ...x, person: v } : x
+                          ),
+                        })
+                      }
+                      options={[
+                        { value: "", label: "Deal owner", color: "#8E98A8" },
+                        ...[...new Set([...people, ...(r.person ? [r.person] : [])])]
+                          .sort((a, b) => a.localeCompare(b))
+                          .map((n) => ({
+                            value: n,
+                            label: n === meName ? `${n} (you)` : n,
+                            avatarName: n,
+                          })),
+                      ]}
+                    />
+                    <input
+                      value={r.value}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          goalRows: editing.goalRows.map((x) =>
+                            x.key === r.key
+                              ? { ...x, value: withCommas(e.target.value) }
+                              : x
+                          ),
+                        })
+                      }
+                      inputMode="numeric"
+                      placeholder="Value"
+                      aria-label={`Goal ${i + 1} value`}
+                      className={cn(inputCls, "!w-[130px] text-right tnum")}
+                    />
+                    {/* GREEN IS EARNED HERE: met is a real state, not identity. */}
+                    <button
+                      type="button"
+                      aria-pressed={r.met}
+                      aria-label={`Goal ${i + 1} met`}
+                      onClick={() =>
+                        setEditing({
+                          ...editing,
+                          goalRows: editing.goalRows.map((x) =>
+                            x.key === r.key ? { ...x, met: !x.met } : x
+                          ),
+                        })
+                      }
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-colors",
+                        r.met
+                          ? "border-transparent bg-[color:#16A34A] text-white"
+                          : "border-border-light bg-white text-text-secondary hover:border-[color:#16A34A]/50 hover:text-[color:#16A34A]"
+                      )}
+                    >
+                      <CheckCircle2 size={12.5} strokeWidth={2.6} />
+                      {r.met ? "Met" : "Mark met"}
+                    </button>
+                    <button
+                      type="button"
+                      title="Remove this goal row"
+                      aria-label={`Remove goal ${i + 1}`}
+                      onClick={() =>
+                        setEditing({
+                          ...editing,
+                          goalRows: editing.goalRows.filter((x) => x.key !== r.key),
+                        })
+                      }
+                      className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                    >
+                      <Trash2 size={14} strokeWidth={2} />
+                    </button>
+                  </div>
+                ))}
+                {editing.goalRows.length === 0 && (
+                  <p className="text-[12px] text-text-tertiary">
+                    Nothing attached yet. Add the goals this deal is working
+                    toward; mark one met when it lands and its value counts.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      goalRows: [...editing.goalRows, blankGoalRow()],
+                    })
+                  }
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                >
+                  <Plus size={11} strokeWidth={2.6} /> Add goal
+                </button>
+              </div>
             </Field>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

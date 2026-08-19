@@ -10,6 +10,8 @@ import {
   updateOpportunity,
   type OpportunityInput,
 } from "@/lib/opportunities";
+import type { Opportunity } from "@/lib/opportunitiesShared";
+import { logActual, removeActual } from "@/lib/performance";
 
 export const dynamic = "force-dynamic";
 
@@ -50,10 +52,82 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     owner: s(raw.owner),
     nextSteps: s(raw.nextSteps),
     goalIds: list(raw.goalIds),
-    // Shape-checked in lib/opportunities (normalizeActivities), same deal as
-    // the offering rows above.
+    // Shape-checked in lib/opportunities (normalizeGoalLinks /
+    // normalizeActivities), same deal as the offering rows above.
+    goalLinks: Array.isArray(raw.goalLinks) ? raw.goalLinks : undefined,
     activities: Array.isArray(raw.activities) ? raw.activities : undefined,
   };
+}
+
+/**
+ * THE MET BUTTON IS WHAT COUNTS (Suren, Aug 18 call: "the moment they click
+ * on met, that's when you take this value and add it against [the goal], and
+ * also put the person name… let it be manual right now").
+ *
+ * A goal row newly saved as met writes ONE performance entry — goal, person,
+ * value, tagged with the deal — and remembers the entry id so a re-save never
+ * double-counts. Un-met withdraws the entry while it is still unverified; a
+ * verified entry is locked by the group owner's sign-off and stays.
+ */
+async function settleMetGoals(
+  before: Opportunity | null,
+  after: Opportunity,
+  meName: string
+): Promise<Opportunity> {
+  const links = after.goalLinks ?? [];
+  if (links.length === 0 && !(before?.goalLinks ?? []).length) return after;
+  const next = [...links];
+  let changed = false;
+
+  for (let i = 0; i < next.length; i++) {
+    const link = next[i];
+    if (link.met && !link.actualId && (link.value ?? 0) > 0) {
+      try {
+        const entry = await logActual({
+          goalId: link.goalId,
+          person: link.person || after.owner || meName,
+          amount: link.value ?? 0,
+          note: "Marked met on the deal",
+          customer: after.customer,
+          opportunityId: after.id,
+          dealLabel: after.name,
+          addedBy: meName,
+        });
+        next[i] = {
+          ...link,
+          actualId: entry.id,
+          metAt: new Date().toISOString().slice(0, 10),
+        };
+        changed = true;
+      } catch (error) {
+        console.error("[opportunities] met entry failed:", error);
+      }
+    } else if (!link.met && link.actualId) {
+      try {
+        await removeActual(link.actualId);
+        next[i] = { ...link, actualId: undefined, metAt: undefined };
+        changed = true;
+      } catch {
+        // Verified and locked: the number stays, and so does the handle so a
+        // future re-met cannot write it twice.
+      }
+    }
+  }
+
+  // Rows deleted outright take their unverified entry with them.
+  const stillHere = new Set(next.map((l) => l.id));
+  for (const old of before?.goalLinks ?? []) {
+    if (old.actualId && !stillHere.has(old.id)) {
+      try {
+        await removeActual(old.actualId);
+      } catch {
+        // Verified: stays, by the same rule as above.
+      }
+    }
+  }
+
+  if (!changed) return after;
+  return updateOpportunity(after.id, { goalLinks: next });
 }
 
 export async function GET(req: NextRequest) {
@@ -91,7 +165,8 @@ export async function POST(req: NextRequest) {
         // An opportunity nobody owns is an opportunity nobody chases.
         owner: body(raw).owner || me.name,
       });
-      return NextResponse.json({ ok: true, opportunity: created });
+      const settled = await settleMetGoals(null, created, me.name);
+      return NextResponse.json({ ok: true, opportunity: settled });
     }
 
     const id = String(raw.id ?? "");
@@ -122,7 +197,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       const updated = await updateOpportunity(id, body(raw));
-      return NextResponse.json({ ok: true, opportunity: updated });
+      const settled = await settleMetGoals(target, updated, me.name);
+      return NextResponse.json({ ok: true, opportunity: settled });
     }
 
     return NextResponse.json({ error: `Unknown operation: ${op}` }, { status: 400 });
