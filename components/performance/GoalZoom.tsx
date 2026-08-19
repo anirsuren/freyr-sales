@@ -65,13 +65,60 @@ import type { RunOp } from "./PerformanceModule";
 /** Reported-but-unverified, drawn as hatched brand blue: the same colour as a
  *  signed-off number because it is the same measurement, striped because it is
  *  not confirmed yet. */
-const COMPONENT_COLORS = ["#0071E3", "#0F766E", "#6D28D9"];
 /** One identity colour per line item, matched between a bar's segments and
  *  the rows under it (Anir, Aug 16: "On the progress bar, show this, this,
  *  this, and then color-code it, and then the line items for each below").
  *  Identity hues only — red and green stay reserved for status. */
 const DEAL_COLORS = ["#0071E3", "#7C3AED", "#0891B2", "#B4318F", "#0F766E", "#6366F1"];
-const COMPONENT_ICONS = ["🚀", "📈", "🔁"];
+
+/**
+ * WHAT EACH COMPONENT ACTUALLY IS, KEYED TO THE GOAL (Anir, Aug 19: "why is
+ * there a renewals thing?... What is that renewals card at the top? What is
+ * that supposed to be? I don't know what it is. That's a problem").
+ *
+ * The mark and the blurb used to come from the card's POSITION — slot 0 got
+ * the rocket and "brand-new customers signing their first contract" whatever
+ * goal happened to land there. On his group, scope left Renewals in slot 0,
+ * so the card described renewals as first-time contracts. Position is not a
+ * fact about a goal; the goal is.
+ *
+ * Matched on id first (these three are seeded with stable ids) and on name
+ * second, so a renamed or hand-made component still finds its own words. A
+ * component nobody has described gets the goal's own type mark and no blurb —
+ * silence beats a confident wrong sentence.
+ */
+const COMPONENT_META: Record<string, { icon: string; color: string; blurb: string }> = {
+  "pg-org-booked-new": {
+    icon: "🚀",
+    color: "#0071E3",
+    blurb: "Brand-new customers signing their first contract.",
+  },
+  "pg-org-booked-existing": {
+    icon: "📈",
+    color: "#0F766E",
+    blurb:
+      "A current customer adding a new service. The expansion signal: they see more in us.",
+  },
+  "pg-org-renewals": {
+    icon: "🔁",
+    color: "#6D28D9",
+    blurb:
+      "Contracts ending their term and signing again. The customer-is-happy signal.",
+  },
+};
+
+const COMPONENT_META_BY_NAME: Record<string, keyof typeof COMPONENT_META> = {
+  "booked new business": "pg-org-booked-new",
+  "booked existing business": "pg-org-booked-existing",
+  renewals: "pg-org-renewals",
+};
+
+function componentMeta(goal: Pick<PrimaryGoal, "id" | "name">) {
+  const key =
+    (COMPONENT_META[goal.id] && goal.id) ||
+    COMPONENT_META_BY_NAME[goal.name.trim().toLowerCase()];
+  return key ? COMPONENT_META[key] : null;
+}
 
 /**
  * "halves" is Suren's semiannual view (Aug 14, via Anir: "you also have H1 and
@@ -571,19 +618,25 @@ export function GoalZoom({
               (a) => a.goalId === c.id && inRange(a, yearRange)
             );
             const cPeople = new Set(cEntries.map((a) => a.person)).size;
-            const blurbs = [
-              "Brand-new customers signing their first contract.",
-              "A current customer adding a new service. The expansion signal: they see more in us.",
-              "Contracts ending their term and signing again. The customer-is-happy signal.",
-            ];
+            const cm = componentMeta(c);
+            const cColor = cm?.color ?? typeMeta(c.type).color;
             return (
               <Card key={c.id} className="p-4">
                 <div className="flex items-center gap-2.5">
                   <span
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-[15px]"
-                    style={{ background: `${COMPONENT_COLORS[i % 3]}1F` }}
+                    style={{ background: `${cColor}1F`, color: cColor }}
                   >
-                    {COMPONENT_ICONS[i % 3]}
+                    {cm ? (
+                      cm.icon
+                    ) : (
+                      // No description for this one, so it wears its own goal
+                      // type's mark rather than borrowing a neighbour's.
+                      (() => {
+                        const TypeIcon = typeMeta(c.type).icon;
+                        return <TypeIcon size={15} strokeWidth={2.2} />;
+                      })()
+                    )}
                   </span>
                   {/* No "people enter here" chip on each card (Anir, Aug 15):
                       it looked like a button, did nothing, and said the same
@@ -616,12 +669,12 @@ export function GoalZoom({
                           : cVerified > 0
                             ? "100%"
                             : "0%",
-                      background: COMPONENT_COLORS[i % 3],
+                      background: cColor,
                     }}
                   />
                 </div>
                 <p className="mt-2 text-[11px] leading-snug text-text-secondary">
-                  {blurbs[i % 3]}{" "}
+                  {cm ? `${cm.blurb} ` : ""}
                   {cEntries.length > 0 && (
                     <span className="text-text-tertiary tnum">
                       {cEntries.length}{" "}
@@ -1731,18 +1784,21 @@ export function GoalZoom({
                   <div className="flex flex-wrap items-center gap-2">
                     <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
                     <b className="text-[12.5px]">{a.person}</b>
-                    {ci >= 0 && (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                        style={{
-                          background: `${COMPONENT_COLORS[ci % 3]}1A`,
-                          color: COMPONENT_COLORS[ci % 3],
-                        }}
-                      >
-                        {COMPONENT_ICONS[ci % 3]}{" "}
-                        {components[ci].name.replace("Booked ", "")}
-                      </span>
-                    )}
+                    {ci >= 0 && (() => {
+                      // Same rule as the cards above: the mark belongs to the
+                      // goal, not to its place in the list.
+                      const cm = componentMeta(components[ci]);
+                      const color = cm?.color ?? typeMeta(components[ci].type).color;
+                      return (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                          style={{ background: `${color}1A`, color }}
+                        >
+                          {cm ? `${cm.icon} ` : ""}
+                          {components[ci].name.replace("Booked ", "")}
+                        </span>
+                      );
+                    })()}
                     <b className="text-[12.5px] tnum">
                       {fmtAmount(goal.unit, a.amount)}
                     </b>

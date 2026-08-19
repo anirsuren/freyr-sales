@@ -1998,7 +1998,18 @@ export function BarChart({
           all start from the same place anyway; the line was restating that
           and colliding with the labels to do it. */}
       {data.map((d, i) => {
-        const barInteractive = tipIsLong(d.tip);
+        /**
+         * REACHABLE WHENEVER IT LISTS ANYTHING (Anir, Aug 19: "if there are
+         * multiple things that this is made of, I need to be able to scroll
+         * on the pop-up. I can't scroll on the pop-up because as soon as I
+         * leave my cursor, it disappears").
+         *
+         * This used to open only past three rows, so a card the reader could
+         * plainly see more in still evaporated the moment they moved toward
+         * it. A tip with no record list stays inert, as it must — nothing to
+         * reach for, and it would only intercept the pointer.
+         */
+        const barInteractive = (d.tip?.length ?? 0) > 0;
         return (
           <div
             key={i}
@@ -2045,8 +2056,15 @@ export function BarChart({
                   bar={d.tipBar}
                   value={`${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
                   // `tipNote` is the fuller sentence version of `caption` — one
-                  // or the other, never both restating the same fact.
-                  note={d.tipNote || d.caption}
+                  // or the other, never both restating the same fact. And when
+                  // the bar above already carries the figures, neither: the
+                  // card printed "$250K of $900K" twice, once under the bar
+                  // and once here (Anir, Aug 19).
+                  note={
+                    d.tipBar?.caption
+                      ? d.tipNote || undefined
+                      : d.tipNote || d.caption
+                  }
                 />
                 {!hideTipStats && (
                   <div className="mt-3 shrink-0 space-y-1.5 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
