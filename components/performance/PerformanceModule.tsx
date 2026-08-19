@@ -3092,26 +3092,32 @@ function GoalEditorFields({
    * started simply vanished and the goal saved as if you had never added it.
    * Now it blocks, and says which row and what is missing.
    */
-  const milestoneProblem = (() => {
+  const milestoneFault = ((): { index: number; message: string } | null => {
     for (let i = 0; i < milestones.length; i += 1) {
       const m = milestones[i];
       const hasDate = !!m.date.trim();
       const amt = parseAmountInput(m.amount);
       const hasAmount = amt !== null && amt > 0;
+      // THE COMPLAINT SITS ON THE ROW IT IS ABOUT (Anir, Aug 19: "can u make
+      // the milestones look better"). "Milestone 1 is empty" floating under
+      // the list made the reader count rows to find the one it meant.
       if (!hasDate && !hasAmount)
-        return `Milestone ${i + 1} is empty. Give it a date and a figure, or remove it.`;
-      if (!hasDate) return `Milestone ${i + 1} needs a date.`;
-      if (!hasAmount) return `Milestone ${i + 1} needs a figure to reach.`;
+        return { index: i, message: "Give this one a date and a figure, or remove it." };
+      if (!hasDate) return { index: i, message: "This one needs a date." };
+      if (!hasAmount) return { index: i, message: "This one needs a figure to reach." };
     }
     // Two rows on the same day cannot both be "the figure due by then".
-    const seen = new Set<string>();
-    for (const m of milestones) {
-      const d = m.date.trim();
-      if (d && seen.has(d)) return `Two milestones share ${d}. Keep one.`;
-      if (d) seen.add(d);
+    const seen = new Map<string, number>();
+    for (let i = 0; i < milestones.length; i += 1) {
+      const d = milestones[i].date.trim();
+      if (!d) continue;
+      if (seen.has(d))
+        return { index: i, message: `Milestone ${seen.get(d)! + 1} already covers ${d}.` };
+      seen.set(d, i);
     }
     return null;
   })();
+  const milestoneProblem = milestoneFault?.message ?? null;
 
   /** Editing with nothing changed → Save stays grey (Anir, Aug 18: "That
    *  should be greyed out unless I change anything. This goes for all
@@ -3361,65 +3367,132 @@ function GoalEditorFields({
           </p>
 
           {milestones.length > 0 && (
-            <div className="mt-2.5 space-y-1.5">
+            /**
+             * A SCHEDULE, NOT THREE IDENTICAL ROWS (Anir, Aug 19: "can u make
+             * the milestones look better i dont like the way it looks tbh").
+             * It was a bare date box, the word "reach", a number box and a
+             * loud red bin, repeated — nothing said these were steps in an
+             * order, nothing labelled either field, and the error floated at
+             * the bottom naming a row you had to count to find.
+             *
+             * Same numbered rail the claim timeline uses: each step is a card,
+             * the fields carry their own labels, an unfinished one is dashed,
+             * and the complaint sits on the card it belongs to.
+             */
+            <div className="mt-3 space-y-2">
               {milestones.map((m, idx) => {
                 const amt = parseAmountInput(m.amount) ?? 0;
                 const over = parsedTarget !== null && parsedTarget > 0 && amt > parsedTarget;
+                const faulted = milestoneFault?.index === idx;
+                const blank = !m.date.trim() && !m.amount.trim();
                 return (
-                  <div key={idx} className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="date"
-                      value={m.date}
-                      onChange={(e) =>
-                        setMilestones((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, date: e.target.value } : x
-                          )
-                        )
-                      }
-                      className="h-[34px] shrink-0 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
-                    />
-                    <span className="text-[11.5px] text-text-tertiary">
-                      reach
-                    </span>
-                    <input
-                      value={m.amount}
-                      onChange={(e) =>
-                        setMilestones((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, amount: e.target.value } : x
-                          )
-                        )
-                      }
-                      inputMode="decimal"
-                      placeholder={unit === "currency" ? "e.g. 300K" : "e.g. 40"}
-                      className={cn(
-                        "h-[34px] w-[120px] rounded-lg border bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle",
-                        over ? "border-[color:#C2410C]" : "border-border-light"
-                      )}
-                    />
-                    {parsedTarget !== null && parsedTarget > 0 && amt > 0 && (
+                  <div key={idx} className="flex gap-2.5">
+                    <span className="flex flex-col items-center">
                       <span
                         className={cn(
-                          "text-[11px] tnum",
-                          over ? "text-[color:#C2410C]" : "text-text-tertiary"
+                          "grid h-[24px] w-[24px] shrink-0 place-items-center rounded-full text-[11.5px] font-bold tnum",
+                          faulted
+                            ? "bg-[rgba(194,65,12,0.12)] text-[color:#C2410C]"
+                            : "bg-blue-light text-blue-primary"
                         )}
                       >
-                        {Math.round((amt / parsedTarget) * 100)}% of target
-                        {over ? ". Above it" : ""}
+                        {idx + 1}
                       </span>
-                    )}
-                    <button
-                      type="button"
-                      title="Remove this milestone"
-                      aria-label="Remove this milestone"
-                      onClick={() =>
-                        setMilestones((prev) => prev.filter((_, i) => i !== idx))
-                      }
-                      className="ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                      {idx < milestones.length - 1 && (
+                        <span className="w-[2px] flex-1 bg-[color:var(--border-light)]" />
+                      )}
+                    </span>
+                    <div
+                      className={cn(
+                        "min-w-0 flex-1 rounded-xl border bg-white px-3 py-2.5",
+                        faulted
+                          ? "border-[color:#C2410C]"
+                          : blank
+                            ? "border-dashed border-border-light"
+                            : "border-border-light"
+                      )}
                     >
-                      <Trash2 size={13} strokeWidth={2.2} />
-                    </button>
+                      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                        <label className="flex shrink-0 flex-col gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                            By
+                          </span>
+                          <input
+                            type="date"
+                            value={m.date}
+                            onChange={(e) =>
+                              setMilestones((prev) =>
+                                prev.map((x, i) =>
+                                  i === idx ? { ...x, date: e.target.value } : x
+                                )
+                              )
+                            }
+                            className="h-[34px] shrink-0 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
+                          />
+                        </label>
+                        <label className="flex shrink-0 flex-col gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                            Reach
+                          </span>
+                          <span className="relative flex items-center">
+                            {unit === "currency" && (
+                              <span className="pointer-events-none absolute left-2.5 text-[12.5px] font-semibold text-text-tertiary">
+                                $
+                              </span>
+                            )}
+                            <input
+                              value={m.amount}
+                              onChange={(e) =>
+                                setMilestones((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx ? { ...x, amount: e.target.value } : x
+                                  )
+                                )
+                              }
+                              inputMode="decimal"
+                              placeholder={unit === "currency" ? "300K" : "40"}
+                              className={cn(
+                                "h-[34px] w-[130px] rounded-lg border bg-white py-0 text-[12.5px] outline-none tnum focus:border-blue-subtle",
+                                unit === "currency" ? "pl-6 pr-2.5" : "px-2.5",
+                                over ? "border-[color:#C2410C]" : "border-border-light"
+                              )}
+                            />
+                          </span>
+                        </label>
+                        {parsedTarget !== null && parsedTarget > 0 && amt > 0 && (
+                          // The share of the target this date is meant to
+                          // reach, as a chip — it is a reading of the number
+                          // beside it, not another field.
+                          <span
+                            className={cn(
+                              "mb-[7px] shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum",
+                              over
+                                ? "bg-[rgba(194,65,12,0.12)] text-[color:#C2410C]"
+                                : "bg-surface text-text-secondary"
+                            )}
+                          >
+                            {Math.round((amt / parsedTarget) * 100)}% of target
+                            {over ? " · above it" : ""}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          title="Remove this milestone"
+                          aria-label={`Remove milestone ${idx + 1}`}
+                          onClick={() =>
+                            setMilestones((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          className="mb-[5px] ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                        >
+                          <Trash2 size={14} strokeWidth={2.2} />
+                        </button>
+                      </div>
+                      {faulted && (
+                        <p className="mt-2 text-[11.5px] font-medium text-[color:#C2410C]">
+                          {milestoneFault.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -3437,11 +3510,6 @@ function GoalEditorFields({
             {milestones.length ? "Add another date" : "Add a milestone"}
           </button>
 
-          {milestoneProblem && (
-            <p className="mt-2 text-[11.5px] font-medium text-[color:#C2410C]">
-              {milestoneProblem}
-            </p>
-          )}
         </div>
       )}
 
