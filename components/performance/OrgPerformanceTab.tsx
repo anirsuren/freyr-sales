@@ -63,7 +63,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { VerifyGoalModal } from "./VerifyGoalModal";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
-import { GroupPill, MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
+import { GroupPill, MetPill, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -905,6 +905,8 @@ function GoalRows({
   meName: string;
   onGoToMaster: () => void;
 }) {
+  /** Which assigned person's numbers are unfolded under their row. */
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(
     actual,
@@ -1288,11 +1290,14 @@ function GoalRows({
                   </p>
                   <table className="mt-1.5 w-full text-left text-[12px]">
                     <thead>
+                      {/* ONE COLUMN, NOT THREE (Anir, Aug 19: "can't we just
+                          consolidate all that into one data point and have a
+                          nice big progress bar with data on top"). Target,
+                          actual and % met were three cells saying one thing;
+                          now the numbers sit above their own bar. */}
                       <tr className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         <th className="py-2 pr-3 font-bold">Person</th>
-                        <th className="w-[110px] py-2 pr-3 font-bold">Target</th>
-                        <th className="w-[110px] py-2 pr-3 font-bold">Actual</th>
-                        <th className="w-[150px] py-2 pr-3 font-bold">% met</th>
+                        <th className="py-2 pr-3 font-bold">Progress</th>
                         <th className="w-[130px] py-2 font-bold">Verified</th>
                       </tr>
                     </thead>
@@ -1304,28 +1309,71 @@ function GoalRows({
                         });
                         const share =
                           a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
+                        const open = openPerson === a.person;
                         return (
-                          <tr key={a.person}>
+                          <Fragment key={a.person}>
+                          <tr>
                             <td className="py-2.5 pr-3">
-                              <span className="flex items-center gap-2">
+                              <span className="flex items-center gap-1.5">
+                                {/* A REAL dropdown (Anir, Aug 19: "I meant a
+                                    proper dropdown"). */}
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenPerson(open ? null : a.person)}
+                                  aria-expanded={open}
+                                  aria-label={`${open ? "Hide" : "Show"} ${a.person}'s numbers`}
+                                  className="shrink-0 cursor-pointer rounded-md p-0.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                                >
+                                  <ChevronDown
+                                    size={14}
+                                    strokeWidth={2.2}
+                                    className={cn(
+                                      "transition-transform duration-200",
+                                      !open && "-rotate-90"
+                                    )}
+                                  />
+                                </button>
                                 <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
                                 <span className="font-semibold text-text-primary">
                                   {a.person}
                                 </span>
                               </span>
                             </td>
-                            <td className="whitespace-nowrap py-2.5 pr-3 tnum">
-                              {a.target > 0 ? fmtAmount(goal.unit, a.target) : ", "}
-                            </td>
-                            <td className="whitespace-nowrap py-2.5 pr-3 font-bold text-text-primary tnum">
-                              {fmtAmount(goal.unit, aActual)}
-                            </td>
                             <td className="py-2.5 pr-3">
-                              {share !== null ? (
-                                <span className="flex items-center gap-2">
-                                  <span className="h-1.5 w-20 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+                              {/* The numbers ON TOP, the bar underneath. */}
+                              <span className="block min-w-[190px]">
+                                <span className="flex items-baseline justify-between gap-2 text-[11.5px] tnum">
+                                  <span>
+                                    <span className="font-bold text-text-primary">
+                                      {fmtAmount(goal.unit, aActual)}
+                                    </span>
+                                    {a.target > 0 && (
+                                      <span className="text-text-tertiary">
+                                        {" "}
+                                        of {fmtAmount(goal.unit, a.target)}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {share !== null && (
                                     <span
-                                      className="block h-full rounded-full"
+                                      className="font-bold"
+                                      style={{
+                                        color:
+                                          share >= 85
+                                            ? "#15803D"
+                                            : share >= 55
+                                              ? "#0071E3"
+                                              : "#DC2626",
+                                      }}
+                                    >
+                                      {Math.round(share)}%
+                                    </span>
+                                  )}
+                                </span>
+                                {share !== null ? (
+                                  <span className="mt-1 block h-2.5 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+                                    <span
+                                      className="block h-full rounded-full transition-[width] duration-300"
                                       style={{
                                         width: `${share}%`,
                                         background:
@@ -1337,19 +1385,12 @@ function GoalRows({
                                       }}
                                     />
                                   </span>
-                                  <span
-                                    className={
-                                      share < 55
-                                        ? "font-semibold text-[color:#DC2626] tnum"
-                                        : "font-semibold text-text-primary tnum"
-                                    }
-                                  >
-                                    {Math.round(share)}%
+                                ) : (
+                                  <span className="mt-1 block text-[10.5px] text-text-tertiary">
+                                    No personal target set
                                   </span>
-                                </span>
-                              ) : (
-                                <span className="text-text-tertiary">·</span>
-                              )}
+                                )}
+                              </span>
                             </td>
                             <td className="py-2.5">
                               <VerifiedPill
@@ -1380,6 +1421,20 @@ function GoalRows({
                               />
                             </td>
                           </tr>
+                          {open && (
+                            <tr>
+                              <td colSpan={3} className="pb-2">
+                                <PersonGoalPanel
+                                  goal={goal}
+                                  person={a.person}
+                                  target={a.target}
+                                  done={aActual}
+                                  state={state}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         );
                       })}
                     </tbody>

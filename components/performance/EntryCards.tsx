@@ -118,11 +118,14 @@ function CustomerCell({
 export function StatusPill({
   entry,
   onUnlock,
+  onVerify,
   waitingOnMe = false,
 }: {
   entry: PerfActual;
   /** Present only for someone who may reopen this claim. */
   onUnlock?: () => void;
+  /** Present when the reader can sign this one off from right here. */
+  onVerify?: () => void;
   /** The reader is the group owner who has to check this one. */
   waitingOnMe?: boolean;
 }) {
@@ -148,8 +151,15 @@ export function StatusPill({
             strokeWidth={2.4}
             className="hidden group-hover/st:block"
           />
-          <span className="group-hover/st:hidden">Verified · locked</span>
-          <span className="hidden group-hover/st:inline">Unlock and send back</span>
+          {/* Same fixed-width trick as the waiting pill below. */}
+          <span className="grid">
+            <span className="col-start-1 row-start-1 group-hover/st:invisible">
+              Verified · locked
+            </span>
+            <span className="invisible col-start-1 row-start-1 group-hover/st:visible">
+              Unlock and send back
+            </span>
+          </span>
         </button>
       );
     }
@@ -157,6 +167,41 @@ export function StatusPill({
       <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(22,163,74,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#16A34A]">
         <CheckCircle2 size={12} strokeWidth={2.4} /> Verified · locked
       </span>
+    );
+  }
+  /* IF IT IS WAITING ON YOU, SIGN IT OFF FROM HERE (Anir, Aug 19: "I'm
+     scrolling down to that exact spot. It should let me verify from there
+     too. Why only at the top?"). Same hover-swap as the locked pill. */
+  if (onVerify && waitingOnMe) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onVerify();
+        }}
+        title="Check this claim and sign it off"
+        className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#0058B0] transition-colors hover:bg-[rgba(22,163,74,0.12)] hover:text-[color:#16A34A]"
+      >
+        <Hourglass size={12} strokeWidth={2.4} className="group-hover/st:hidden" />
+        <CheckCircle2
+          size={12}
+          strokeWidth={2.4}
+          className="hidden group-hover/st:block"
+        />
+        {/* BOTH LABELS SHARE ONE GRID CELL, so the pill is always as wide as
+            its longest word and hovering swaps text without nudging the table
+            (Anir, Aug 19: "it glitches out, it shouldn't even be moving the
+            table. It should just be changing the button"). */}
+        <span className="grid">
+          <span className="col-start-1 row-start-1 group-hover/st:invisible">
+            Waiting for you to verify
+          </span>
+          <span className="invisible col-start-1 row-start-1 group-hover/st:visible">
+            Review and verify
+          </span>
+        </span>
+      </button>
     );
   }
   return (
@@ -336,6 +381,20 @@ export function MyEntriesCard({
                                   setOpenRow(a.id);
                                   setUndoFor(a.id);
                                   setUndoNote("");
+                                }
+                              : undefined
+                          }
+                          onVerify={
+                            /* Opens the row so the proof is in front of you,
+                               then signs it off — the same op the queue at the
+                               top runs, reachable from where you are standing. */
+                            iOwnThisPerson && status !== "verified"
+                              ? () => {
+                                  setOpenRow(a.id);
+                                  void run?.(
+                                    { op: "verify-actual", actualId: a.id },
+                                    "Verified and locked. It counts now"
+                                  );
                                 }
                               : undefined
                           }

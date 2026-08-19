@@ -75,6 +75,7 @@ import {
   actualValue,
 } from "@/lib/performanceShared";
 import {
+  PersonGoalPanel,
   PersonSelect,
   TrackSwitch,
   TypeChip,
@@ -1369,162 +1370,6 @@ function MasterTab({
  * under-commit a team on purpose, so the bar reports the gap rather than
  * refusing the number.
  */
-/**
- * ONE PERSON'S WHOLE STORY ON ONE GOAL (Anir, Aug 19: "when I press the
- * dropdown, it should give me a ton more information about them, maybe cards,
- * like a row of three or four cards at the top, and maybe some graphs. It
- * should be pretty extensive").
- *
- * Four cards say where they stand, a monthly chart says how they got there,
- * and the entries themselves are listed underneath — the same numbers the
- * verification queue works from, never a second opinion.
- */
-function PersonGoalPanel({
-  goal,
-  person,
-  target,
-  done,
-  state,
-}: {
-  goal: PrimaryGoal;
-  person: string;
-  target: number;
-  done: number;
-  state: PerformanceState;
-}) {
-  const mine = goalFamilyActuals(state, goal)
-    .filter((a) => a.person.trim().toLowerCase() === person.trim().toLowerCase())
-    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-  const verified = mine
-    .filter((a) => entryStatus(a) === "verified")
-    .reduce((s, a) => s + a.amount, 0);
-  const waiting = mine
-    .filter((a) => entryStatus(a) === "reported")
-    .reduce((s, a) => s + a.amount, 0);
-  const left = Math.max(0, target - done);
-  const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
-
-  // Month by month, oldest first. Only months that carry something, so a
-  // brand-new goal shows one honest bar instead of twelve empty ones.
-  const byMonth = new Map<string, { value: number; pending: number }>();
-  for (const a of mine) {
-    const key = a.date.slice(0, 7);
-    const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
-    cell.value += a.amount;
-    if (entryStatus(a) === "reported") cell.pending += a.amount;
-    byMonth.set(key, cell);
-  }
-  const months = [...byMonth.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, cell]) => ({
-      label: new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
-        month: "short",
-      }),
-      value: cell.value,
-      pending: cell.pending,
-    }));
-
-  const card = (label: string, value: string, tone?: string) => (
-    <div className="rounded-lg border border-border-light bg-white px-3 py-2.5">
-      <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-        {label}
-      </p>
-      <p className={cn("mt-1 text-[16px] font-bold tnum", tone ?? "text-text-primary")}>
-        {value}
-      </p>
-    </div>
-  );
-
-  return (
-    <div className="border-t border-border-light bg-white px-3 py-3">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {card("Target", target > 0 ? fmtAmount(goal.unit, target) : "Not set")}
-        {card("Counted", fmtAmount(goal.unit, done), "text-blue-primary")}
-        {card(
-          "Waiting to verify",
-          waiting > 0 ? fmtAmount(goal.unit, waiting) : "Nothing",
-          waiting > 0 ? "text-[color:#C2410C]" : undefined
-        )}
-        {card(
-          target > 0 ? "Still to go" : "Entries",
-          target > 0 ? fmtAmount(goal.unit, left) : String(mine.length)
-        )}
-      </div>
-
-      {target > 0 && (
-        <div className="mt-3">
-          <div className="flex items-baseline justify-between text-[11px]">
-            <span className="font-semibold text-text-secondary">
-              {pct}% of their target
-            </span>
-            <span className="text-text-tertiary tnum">
-              {fmtAmount(goal.unit, verified)} signed off
-            </span>
-          </div>
-          <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
-            <span
-              className="block h-full rounded-full bg-blue-primary"
-              style={{ width: `${pct}%` }}
-            />
-          </span>
-        </div>
-      )}
-
-      {months.length > 0 ? (
-        <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-            Month by month
-          </p>
-          <div className="mt-1.5">
-            <BarChart
-              data={months}
-              height={140}
-              unit={goal.unit}
-              format={goal.unit === "currency" ? "money" : "number"}
-            />
-          </div>
-        </div>
-      ) : (
-        <p className="mt-3 text-[12px] text-text-tertiary">
-          Nothing logged against this goal yet.
-        </p>
-      )}
-
-      {mine.length > 0 && (
-        <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-            Latest entries
-          </p>
-          <ul className="mt-1.5 divide-y divide-border-light">
-            {mine.slice(0, 6).map((a) => (
-              <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
-                <span className="w-[74px] shrink-0 text-text-tertiary tnum">
-                  {a.date}
-                </span>
-                <span className="font-semibold text-text-primary tnum">
-                  {fmtAmount(goal.unit, a.amount)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-text-secondary">
-                  {a.dealLabel ?? a.note ?? ""}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                    entryStatus(a) === "verified"
-                      ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
-                      : "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
-                  )}
-                >
-                  {entryStatus(a) === "verified" ? "Verified" : "Waiting"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function GroupSplitPanel({
   goal,
@@ -3917,7 +3762,12 @@ function SubgoalEditorFields({
 
       <div className="flex flex-wrap gap-2">
         <div className="min-w-[200px] flex-1">
-          <label className="text-[12px] font-semibold text-text-primary">
+          {/* THE SAME BLUE DOT THE BAR ABOVE USES (Anir, Aug 19: "you're
+              using the blue, right? Put that blue next to subgoal target so
+              they know that it's that"), so the fields and the segment they
+              drive are visibly the same thing. */}
+          <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.35]" />
             Subgoal name
           </label>
           <input
@@ -3928,7 +3778,8 @@ function SubgoalEditorFields({
           />
         </div>
         <div className="w-[170px]">
-          <label className="text-[12px] font-semibold text-text-primary">
+          <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.35]" />
             Subgoal target
           </label>
           <div className="relative mt-1">

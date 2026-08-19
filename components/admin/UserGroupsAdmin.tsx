@@ -389,7 +389,10 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
               key={g.id}
               className="overflow-hidden rounded-xl border border-border-light bg-white"
             >
-            <div className="flex items-center gap-3 px-3.5 py-2.5">
+            {/* More air top and bottom: the faces were grazing the card's own
+                edge (Anir, Aug 19: "my profile picture is kind of hitting the
+                top, give a little bit more gap"). */}
+            <div className="flex items-center gap-3 px-3.5 py-4">
               {/* The whole left side is the toggle: the row answers "who is in
                   here" without sending you into the editor to find out. */}
               <button
