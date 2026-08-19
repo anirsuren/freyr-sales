@@ -44,6 +44,25 @@ export async function getRole(): Promise<Role> {
 }
 
 /** The effective role AND the real one, so the UI can show "viewing as". */
+
+/** The workspace role behind an email, for the local persona override. */
+async function roleForLocalPersona(email: string): Promise<Role | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/app_users?email=eq.${encodeURIComponent(email.toLowerCase())}&active=eq.true&select=app_role`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" }
+    );
+    const rows = (await res.json()) as { app_role?: string }[];
+    const raw = rows?.[0]?.app_role;
+    return raw === "admin" ? "admin" : raw === "manager" ? "manager" : raw === "rep" ? "rep" : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
   const store = await cookies();
   const viewAs = store.get("freyr_preview_role")?.value;
@@ -75,6 +94,18 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
   }
 
   if (!process.env.AUTH_MODE) {
+    /**
+     * The local persona override wins here too. `getCurrentUser()` honours
+     * FREYR_LOCAL_IDENTITY_EMAIL, and the shell is handed THIS role: with only
+     * one of the two switched, a local rep session drew an admin sidebar whose
+     * links all bounced back to Offerings. Same fence as the identity itself —
+     * local, unauthenticated sessions only.
+     */
+    const asEmail = process.env.FREYR_LOCAL_IDENTITY_EMAIL?.trim();
+    if (asEmail) {
+      const persona = await roleForLocalPersona(asEmail);
+      if (persona) return { role: applyViewAs(persona, viewAs), realRole: persona };
+    }
     // Demo harness (no authentication configured): the switcher IS the role,
     // and its identity defaults to admin.
     const role = normalizeWorkspaceRole(store.get("freyr_as_role")?.value);
