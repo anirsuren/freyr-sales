@@ -767,7 +767,12 @@ function SegmentBrackets({
   unit: GoalUnit;
 }) {
   const shown = parts.filter((p) => p.pct > 0.5 && p.value > 0);
-  if (shown.length < 2) return null;
+  /* ONE SEGMENT STILL DESERVES ITS LABEL (Anir, Aug 20: "it doesn't even show
+     me anything now" — a group with nothing verified and $250K sent back drew
+     a bar with no bracket at all, so the only number near it was a $0).
+     Two brackets exist to tell segments apart; one bracket still says what the
+     bar is made of, which is the whole job. */
+  if (shown.length < 1) return null;
   return (
     <div className="mt-1 flex w-full items-start" aria-hidden="true">
       {shown.map((p) => (
@@ -968,10 +973,10 @@ export function PaceTimeline({
                 use it and put some text on top"). With a schedule the top lane
                 belongs to "must be at" and this stays underneath, so the two
                 can never collide. */}
-            {!hasSchedule && (
+            {!hasSchedule && verified + awaiting > 0 && (
               <span
                 className="absolute flex flex-col items-center"
-                style={{ ...labelPos(vPct), top: 0 }}
+                style={{ ...labelPos(aPct), top: 0 }}
               >
                 {/* THE HEADLINE IS WHAT COUNTS (Anir, Aug 20: "also fix that
                     too", pointing at "$200K · 40%" in red).
@@ -989,12 +994,11 @@ export function PaceTimeline({
                     bar and the sum of the two brackets. */}
                 <span
                   className={cn(
-                    "whitespace-nowrap font-bold tnum",
+                    "whitespace-nowrap font-bold text-text-primary tnum",
                     compact ? "text-[10px]" : "text-[12px]"
                   )}
-                  style={{ color: ENTRY_COLOR.verified }}
                 >
-                  {fmtAmount(unit, verified)} · {Math.round(vPct)}%
+                  {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
                 </span>
               </span>
             )}
@@ -1086,8 +1090,16 @@ export function PaceTimeline({
                 overlay, which collapsed to nothing whenever the brackets had
                 fewer than two segments to draw and dropped the target on top
                 of the legend (Anir, Aug 20: "the text is overlapping"). */}
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 flex-1">
+            {/* BRACKETS GET THE BAR'S FULL WIDTH (Anir, Aug 20: "the line
+                should be from the left to the right do u see the isuse").
+                
+                They used to share a flex row with the target block, so the
+                measuring row was ~169px against a 339px bar — every bracket
+                stopped short of the segment it was measuring, by half. The
+                target moved to its own line underneath, which costs one line
+                and makes the brackets line up with the stripes exactly. */}
+            <div className="block">
+              <span className="block w-full">
                 <SegmentBrackets
                   unit={unit}
                   parts={[
@@ -1107,18 +1119,18 @@ export function PaceTimeline({
                   ]}
                 />
               </span>
-              <span className="shrink-0 pt-[3px] text-right">
+              <span className="mt-1 block text-right">
                 <b
                   className={cn(
-                    "block font-bold text-text-primary tnum",
+                    "inline font-bold text-text-primary tnum",
                     compact ? "text-[11px]" : "text-[12.5px]"
                   )}
                 >
                   {fmtAmount(unit, target)}
-                </b>
+                </b>{" "}
                 <span
                   className={cn(
-                    "block text-text-tertiary",
+                    "inline text-text-tertiary",
                     compact ? "text-[9px]" : "text-[10.5px]"
                   )}
                 >
