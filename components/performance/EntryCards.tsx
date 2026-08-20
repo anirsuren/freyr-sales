@@ -1359,10 +1359,9 @@ export function MyEntriesCard({
                   a group owner sends a claim back for, so the one screen where
                   proof is most likely missing was the one screen that could
                   not add it. */}
+              {/* The picker draws its own label and hint — saying "Evidence"
+                  above it printed the word twice (Anir, Aug 20). */}
               <div className="mt-3">
-                <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
-                  Evidence
-                </span>
                 <EvidencePicker
                   value={draftEvidence}
                   onChange={setDraftEvidence}

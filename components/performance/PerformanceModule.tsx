@@ -4943,17 +4943,11 @@ function LogActualModal({
             number rather than adding to a total.
           </p>
         )}
-        <div>
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Evidence
-            <InfoHint text={"The proof behind the claim: the signed contract, SOW or opportunity summary.\nThe group owner opens it before verifying, and money claims cannot be submitted without it."} />
-          </label>
-          <EvidencePicker
-            value={evidence}
-            onChange={setEvidence}
-            onUploadingChange={setUploading}
-          />
-        </div>
+        <EvidencePicker
+          value={evidence}
+          onChange={setEvidence}
+          onUploadingChange={setUploading}
+        />
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Note{" "}
