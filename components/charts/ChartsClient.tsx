@@ -2048,7 +2048,14 @@ export function BarChart({
             // `hover:` variant) compiles to a class that rule cannot match —
             // so the wash stayed near-white on a near-black card. `var(--surface)`
             // is redefined under `.dark`, so it follows the theme by itself.
-            className="group/bar relative z-[1] flex h-full min-w-0 cursor-pointer flex-col items-center rounded-md transition-colors hover:bg-[var(--surface)]"
+            /* NO COLUMN WASH, NO COLUMN HOVER (Anir, Aug 20: "when my mouse
+               is literally on the left side it's triggering this pop-up...
+               and I don't want it to do that gray background... only when I
+               actually hover over the bar chart"). The column spans the whole
+               card's height and its share of the width, so empty air above a
+               short bar behaved like the bar. The tip and the highlight now
+               hang off the DRAWN bar below; the column keeps only the click. */
+            className="relative z-[1] flex h-full min-w-0 cursor-pointer flex-col items-center rounded-md"
             role={onBarClick ? "button" : undefined}
             tabIndex={onBarClick ? 0 : undefined}
             aria-label={onBarClick ? `Open ${d.label}` : undefined}
@@ -2063,17 +2070,6 @@ export function BarChart({
                   }
                 : undefined
             }
-            onMouseEnter={(e) => {
-              showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
-              if (syncId) donutSyncBroadcast(syncId, i);
-            }}
-            onMouseMove={(e) =>
-              moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
-            }
-            onMouseLeave={() => {
-              closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
-              if (syncId) donutSyncBroadcast(syncId, null);
-            }}
           >
             {/* Hover breakdown — portaled so it's never clipped by the card.
                 It sits directly above (or below) THIS bar's value label
@@ -2143,7 +2139,18 @@ export function BarChart({
                   with it, exactly as far, at exactly the same speed (Suren:
                   "the number does not go up when the bar chart goes up"). */}
               <div
-                className="relative flex w-[72%] min-w-[14px] max-w-[88px] justify-center transition-transform duration-150 motion-reduce:transition-none"
+                className="group/bar relative flex w-[72%] min-w-[14px] max-w-[88px] justify-center transition-transform duration-150 motion-reduce:transition-none"
+                onMouseEnter={(e) => {
+                  showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
+                  if (syncId) donutSyncBroadcast(syncId, i);
+                }}
+                onMouseMove={(e) =>
+                  moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
+                }
+                onMouseLeave={() => {
+                  closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
+                  if (syncId) donutSyncBroadcast(syncId, null);
+                }}
                 style={{
                   height: `${(d.value / max) * 100}%`,
                   minHeight: 4,

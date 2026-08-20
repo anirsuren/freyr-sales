@@ -1052,62 +1052,32 @@ export function PaceTimeline({
             </div>
 
 
-            <SegmentBrackets
-              unit={unit}
-              parts={[
-                {
-                  key: "verified",
-                  value: verified,
-                  pct: vPct,
-                  color: ENTRY_COLOR.verified,
-                },
-                {
-                  key: "unverified",
-                  value: awaiting,
-                  pct: Math.max(0, aPct - vPct),
-                  color:
-                    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
-                },
-              ]}
-            />
-
-            {/* WHERE YOU ARE — its own lane between the track and the end
-                labels, in flow (Anir, Aug 16: "The lines don't line up").
-                Absolutely positioned over the end-label row it landed on top
-                of "$0" and "$900K", and the space reserved for it opened a
-                dead band underneath them. */}
-            <div
-              className="relative"
-              style={{ height: hasSchedule ? GAP + LABEL : 0 }}
-            >
-              {hasSchedule && (
-              <span
-                className="absolute"
-                style={{ ...labelPos(aPct), top: GAP }}
-              >
-                <span
-                  className={cn(
-                    "whitespace-nowrap font-bold tnum",
-                    compact ? "text-[10px]" : "text-[12px]"
-                  )}
-                  style={{ color: accent }}
-                >
-                  {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
-                </span>
-              </span>
-              )}
-            </div>
-            {/* WHAT EACH END OF THE TRACK IS WORTH. */}
-            <div className="mt-1 flex items-baseline justify-between gap-2">
-              <span
-                className={cn(
-                  "font-semibold text-text-tertiary tnum",
-                  compact ? "text-[9.5px]" : "text-[11px]"
-                )}
-              >
-                {fmtAmount(unit, 0)}
-              </span>
-              <span className="min-w-0 text-right">
+            {/* THE TARGET HANGS OFF ITS OWN CIRCLE (Anir, Aug 20: "I need to
+                be able to clearly see that $500K is where that grey circle
+                is"). It used to sit a full row below the brackets, so the
+                number and the mark it labels read as two unrelated facts. One
+                row now: brackets measure the money on the left, the target
+                labels its circle on the right. */}
+            <div className="relative">
+              <SegmentBrackets
+                unit={unit}
+                parts={[
+                  {
+                    key: "verified",
+                    value: verified,
+                    pct: vPct,
+                    color: ENTRY_COLOR.verified,
+                  },
+                  {
+                    key: "unverified",
+                    value: awaiting,
+                    pct: Math.max(0, aPct - vPct),
+                    color:
+                      sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                  },
+                ]}
+              />
+              <span className="absolute right-0 top-[3px] text-right">
                 <b
                   className={cn(
                     "block font-bold text-text-primary tnum",
@@ -1122,10 +1092,6 @@ export function PaceTimeline({
                     compact ? "text-[9px]" : "text-[10.5px]"
                   )}
                 >
-                  {/* SAY WHERE THE LINE CAME FROM. A pacing number nobody can
-                      source is a number nobody trusts (Anir, Aug 16: "im still
-                      utterly confused where ur getting this 'must be' value
-                      from"). */}
                   {hasSchedule ? (
                     `target · due ${expectedDueLabel ?? "by now"}`
                   ) : onSetSchedule ? (
@@ -1148,6 +1114,7 @@ export function PaceTimeline({
                 </span>
               </span>
             </div>
+
           </div>
 
           <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-1.5")}>
