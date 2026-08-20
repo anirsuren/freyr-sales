@@ -9,7 +9,7 @@
  * that leaks it. So a reader without that access gets the fact and not the
  * particulars.
  */
-import { listOfferings } from "./offerings";
+import { listOfferings, listFdlComponents } from "./offerings";
 import { canViewNextCustomerVersion } from "./roadmapAccess";
 import type { RoadmapChangeInput } from "./notifications";
 
@@ -32,6 +32,32 @@ export async function roadmapChangesForReader(): Promise<RoadmapChangeInput[]> {
            filtered line by line — a filter that keeps "V4 moved to June" while
            dropping its sibling would still have said V4 exists. */
         changes: maySeeNext ? v.changes : ["The roadmap was updated"],
+      })),
+    });
+  }
+  /**
+   * COMPONENTS ARE WHERE ROADMAPS ACTUALLY MOVE (found Aug 20: the
+   * offering-level roadmap has had no editor since the tab was replaced, so a
+   * bell that only watched offerings would have stayed silent forever while
+   * people edited component versions all day).
+   *
+   * No access gate here, deliberately: nothing redacts a component's planned
+   * releases today — the component page shows them to everyone who can open
+   * it — so the notification says exactly what the page already says. If that
+   * ever gets gated, this must follow it the same day.
+   */
+  for (const component of listFdlComponents()) {
+    const versions = component.roadmap_versions ?? [];
+    if (!versions.length) continue;
+    out.push({
+      offeringId: component.id,
+      offeringName: component.name,
+      href: `/components/${component.id}`,
+      versions: versions.map((v) => ({
+        version: v.version,
+        savedAt: v.savedAt,
+        savedBy: v.savedBy,
+        changes: v.changes,
       })),
     });
   }

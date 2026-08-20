@@ -173,6 +173,8 @@ function dayStamp(days: number, ahead: boolean): string {
 export type RoadmapChangeInput = {
   offeringId: string;
   offeringName: string;
+  /** Where the row goes. Components live on their own page, not an offering's. */
+  href?: string;
   versions: {
     version: number;
     savedAt: string;
@@ -559,7 +561,7 @@ export function buildNotifications(input: {
       /* Something a rep may already have quoted to a customer, so it sits with
          the work of the day rather than in "later". */
       urgency: "week",
-      href: `/offerings/${r.offeringId}`,
+      href: r.href ?? `/offerings/${r.offeringId}`,
       ts: latest.savedAt,
     });
   }
