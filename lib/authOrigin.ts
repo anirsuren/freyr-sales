@@ -70,3 +70,35 @@ export function browserRedirectOrigin(requestUrl: URL): string | null {
   if (isLoopback && isHttp) return requestUrl.origin;
   return configured;
 }
+
+/**
+ * A redirect that keeps the reader on the port they are actually using.
+ *
+ * Same rule as browserRedirectOrigin, packaged so callers do not each rebuild
+ * the URL: in development a loopback request goes back to its own origin, and
+ * in production the configured origin always wins. Falls back to the request's
+ * own origin when nothing is configured, which is the unauthenticated local
+ * harness.
+ *
+ * ANYTHING THAT LEAVES THE BUILDING STILL USES authUrl — a confirmation link,
+ * a reset link, an invitation. Those must name one fixed host; a link built
+ * from whatever host asked for it is how phished sign-in pages get sent.
+ */
+export function browserUrl(requestUrl: URL, path: string): URL {
+  const resolved = browserRedirectOrigin(requestUrl);
+  // In production an unconfigured origin is a misconfiguration, not a licence
+  // to trust the Host header. Outside production the loopback harness has no
+  // origin to configure and its own is the only sensible answer.
+  if (!resolved && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_PUBLIC_ORIGIN is missing or invalid.");
+  }
+  const origin = resolved ?? requestUrl.origin;
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
+    throw new Error("Redirect must be a same-origin path.");
+  }
+  const candidate = new URL(path, origin);
+  if (candidate.origin !== origin) {
+    throw new Error("Redirect escaped its origin.");
+  }
+  return candidate;
+}

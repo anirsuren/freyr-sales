@@ -5,7 +5,7 @@ import {
   type AppSession,
   verifyAppSession,
 } from "@/lib/appSession";
-import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { authUrl, browserUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 import { isOfferingsReleasePath } from "@/lib/release";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -85,7 +85,17 @@ function loginUrl(request: NextRequest, authMode: string | undefined): URL {
   if (authMode === "entra") {
     return authUrl("/.auth/login/aad");
   }
-  const url = authUrl("/login");
+  /**
+   * SIGN IN ON THE PORT YOU ARE ON (Anir, Aug 20, sent from :3006 to
+   * :3001/login?next=/admin: "if the problem is taking me here").
+   *
+   * AUTH_PUBLIC_ORIGIN pins one host, which is right for a link in an email
+   * and wrong for bouncing the tab you are already in — a review server on
+   * another port threw you at 3001, where a different session (or nothing at
+   * all) was signed in. Switch account hit this in a different route on
+   * Aug 19; these are the rest of the same bug.
+   */
+  const url = browserUrl(request.nextUrl, "/login");
   url.searchParams.set(
     "next",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
@@ -164,7 +174,9 @@ export async function middleware(request: NextRequest) {
           { status: 503 }
         )
       : authOrigin
-        ? NextResponse.redirect(authUrl("/login?configuration=error"))
+        ? NextResponse.redirect(
+            browserUrl(request.nextUrl, "/login?configuration=error")
+          )
         : new NextResponse("Authentication is not configured.", {
             status: 503,
           });
@@ -207,7 +219,7 @@ export async function middleware(request: NextRequest) {
     // only origin-less path allowed this far is the unauthenticated local-dev
     // harness, where redirecting on the current loopback origin is safe.
     const response = NextResponse.redirect(
-      authOrigin ? authUrl("/offerings") : new URL("/offerings", request.url)
+      browserUrl(request.nextUrl, "/offerings")
     );
     securityHeaders(response, requestId);
     return response;
@@ -242,7 +254,8 @@ export async function middleware(request: NextRequest) {
             { status: 403 }
           )
         : NextResponse.redirect(
-            authUrl(
+            browserUrl(
+              request.nextUrl,
               `/api/auth/resolve?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`
             )
           );
