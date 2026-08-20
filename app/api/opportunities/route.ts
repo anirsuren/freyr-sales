@@ -5,6 +5,7 @@ import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
 import {
   addOpportunity,
+  commitOpportunitiesChange,
   readOpportunities,
   removeOpportunity,
   updateOpportunity,
@@ -218,6 +219,11 @@ export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   const privileged = isManagerOrAdmin(me.role);
 
+  /* Every mutation below reads the whole row and writes it back, so they must
+     not overlap — see commitOpportunitiesChange. Wrapping the whole block
+     rather than each call keeps a read and its dependent write inside one
+     turn (settleMetGoals reads the deal it just wrote). */
+  return commitOpportunitiesChange(async () => {
   try {
     if (op === "add") {
       const created = await addOpportunity({
@@ -277,4 +283,5 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  });
 }

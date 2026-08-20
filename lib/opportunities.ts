@@ -390,6 +390,47 @@ function seededMock(): OpportunitiesState {
   return { opportunities };
 }
 
+
+/**
+ * ONE WRITE AT A TIME (found Aug 20: three saves fired together, all three
+ * returned {ok:true}, and TWO OF THEM NEVER HAPPENED).
+ *
+ * Every mutation here is read-the-whole-row, change it, write the whole row
+ * back. Run two at once and both read the same starting row, so the second
+ * write erases the first — and the person whose change vanished was told it
+ * saved. The same three saves also each handed out OPP-0002, because the next
+ * id is computed from a row that is already stale by the time it is used.
+ *
+ * The catalogue solved this long ago with a promise queue
+ * (commitOfferingsChange); this is that, for opportunities. Each change waits
+ * for the one before it, so it reads a row that includes it.
+ *
+ * Scope, honestly: this serializes a single server process. Two ECS tasks
+ * writing the same row at the same instant would still race — that needs a
+ * conditional update in the database, which is a bigger change than this bug
+ * warrants today, and the catalogue has always had the same limit.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __FREYR_OPPS_WRITE_QUEUE__: Promise<void> | undefined;
+}
+
+export async function commitOpportunitiesChange<T>(
+  change: () => Promise<T>
+): Promise<T> {
+  const previous = globalThis.__FREYR_OPPS_WRITE_QUEUE__ ?? Promise.resolve();
+  let release: () => void = () => undefined;
+  globalThis.__FREYR_OPPS_WRITE_QUEUE__ = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous.catch(() => undefined);
+  try {
+    return await change();
+  } finally {
+    release();
+  }
+}
+
 export async function readOpportunities(): Promise<OpportunitiesState> {
   if (getDataMode() === "mock") return seededMock();
   return readRow().catch(() => structuredClone(EMPTY_OPPORTUNITIES));
