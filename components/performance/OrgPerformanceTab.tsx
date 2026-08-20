@@ -1204,6 +1204,15 @@ function GoalRows({
                 <span className="text-[10.5px] text-text-tertiary tnum">
                   {goal.year}
                 </span>
+                {/* WHO SET IT. A rep opening their own goal had no way to see
+                    where it came from, so no way to know who to ask about it
+                    (Anir, Aug 19). Recorded since the goal was created; just
+                    never shown. */}
+                {goal.createdBy && (
+                  <span className="truncate text-[10.5px] text-text-tertiary">
+                    · set by {goal.createdBy}
+                  </span>
+                )}
               </span>
             </span>
           </span>
@@ -1293,7 +1302,14 @@ function GoalRows({
             {pace === "unscheduled" && live ? (
               <button
                 type="button"
-                onClick={() => onEditGoal(goal)}
+                onClick={(e) => {
+                  // The row itself toggles open on click, so without this the
+                  // chip opened the editor AND collapsed the drill-down behind
+                  // it (Anir, Aug 19: "when I press No Schedule, it
+                  // automatically closes the dropdown").
+                  e.stopPropagation();
+                  onEditGoal(goal);
+                }}
                 title="No schedule set. Click to open this goal and add one"
                 // Hugs the pill exactly — a block button drew its own bigger
                 // ring around the chip and read as two shapes (Anir: "button
@@ -1554,8 +1570,27 @@ function GoalRows({
                                 )}
                               />
                               <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
-                              <span className="truncate text-[12.5px] font-semibold text-text-primary">
-                                {a.person}
+                              <span className="min-w-0">
+                                <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                  {a.person}
+                                </span>
+                                {/* WHO PUT THIS ON THEM (Anir, Aug 19, reading
+                                    his own goal as a rep: "I don't know who
+                                    assigned it to me, so I don't know who to
+                                    reach out to if I have questions"). The
+                                    store has always recorded it; nothing ever
+                                    showed it. A goal that arrives from nobody
+                                    is a goal nobody can ask about. */}
+                                {a.assignedBy && (
+                                  <span className="block truncate text-[10.5px] text-text-tertiary">
+                                    {a.assignedBy === "group"
+                                      ? "via their group"
+                                      : `Assigned by ${a.assignedBy}`}
+                                    {a.assignedAt
+                                      ? ` · ${a.assignedAt.slice(0, 10)}`
+                                      : ""}
+                                  </span>
+                                )}
                               </span>
                             </span>
 

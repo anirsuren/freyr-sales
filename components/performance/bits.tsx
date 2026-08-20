@@ -1158,6 +1158,9 @@ export function PersonGoalPanel({
       }),
       value: cell.value,
       pending: cell.pending,
+      // The exact string the tiles use, so one number never appears twice in
+      // two shapes on the same card.
+      caption: fmtAmount(goal.unit, cell.value),
     }));
 
   const card = (label: string, value: string, tone?: string) => (
@@ -1212,10 +1215,16 @@ export function PersonGoalPanel({
             Month by month
           </p>
           <div className="mt-1.5">
+            {/* `unit` here is the WORD printed after each value ("12 calls"),
+                not the goal's kind — passing goal.unit put the literal word
+                "count" after every bar, so a month read "80K count" while the
+                tile above it read 80,000 (Anir, Aug 19: "WHY would it say 80k
+                and not the full amount like $80,000"). The goal's own
+                formatter draws these now, so the chart and the tiles say the
+                same number the same way, currency symbol included. */}
             <BarChart
               data={months}
               height={140}
-              unit={goal.unit}
               format={goal.unit === "currency" ? "money" : "number"}
             />
           </div>
