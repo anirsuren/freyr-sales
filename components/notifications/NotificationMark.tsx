@@ -5,6 +5,7 @@ import {
   CalendarClock,
   PhoneCall,
   Fingerprint,
+  Target,
   Bell,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -20,6 +21,7 @@ const ICON: Record<NotificationType, typeof Bell> = {
   followup: CalendarClock,
   voice: PhoneCall,
   security: Fingerprint,
+  performance: Target,
 };
 
 // The badge says what kind of alert it is; the mark underneath says who it is
@@ -33,6 +35,8 @@ const BADGE: Record<NotificationType, string> = {
   voice: "bg-success text-white",
   // Identity purple — the same token ownership uses everywhere else.
   security: "bg-[color:#6D28D9] text-white",
+  // A goal needs you — the same blue every "waiting on you" state uses.
+  performance: "bg-blue-primary text-white",
 };
 
 /**

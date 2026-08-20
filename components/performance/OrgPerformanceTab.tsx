@@ -503,6 +503,18 @@ export function OrgPerformanceTab({
                       done: g.target > 0 ? pctMet(verified, g.target) : 0,
                       pending: g.target > 0 ? pctMet(awaiting, g.target) : 0,
                       color: MONEY,
+                      /* THE COLOURS HAVE TO LINE UP (Anir, Aug 20: "if this
+                         was sent back, the colors should line up... it
+                         shouldn't be that blue thing, cuz that means I have to
+                         look at it"). The rows underneath already flagged a
+                         rejected claim in red while the bar above them stayed
+                         a calm blue, so the headline said "on track" about
+                         money somebody had refused. */
+                      pendingColor: goalFamilyActuals(state, g).some(
+                        (e) => entryStatus(e) === "sent_back"
+                      )
+                        ? "#DC2626"
+                        : MONEY,
                       caption:
                         g.target > 0
                           ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
@@ -535,7 +547,7 @@ export function OrgPerformanceTab({
                           loggedOn?.name ??
                           entry.note ??
                           "Logged result";
-                        const waiting = entryStatus(entry) !== "verified";
+                        const st = entryStatus(entry);
                         const share =
                           g.target > 0
                             ? pctMet(entry.amount, g.target)
@@ -553,7 +565,17 @@ export function OrgPerformanceTab({
                           avatar: entry.person,
                           bar: {
                             pct: share,
-                            color: waiting ? "#C2410C" : MONEY,
+                            /* Same three colours as this row's own status
+                               chip, so the bar and the chip beside it never
+                               tell two different stories: signed off is the
+                               money colour, sent back is red, waiting its turn
+                               is burnt orange. */
+                            color:
+                              st === "verified"
+                                ? MONEY
+                                : st === "sent_back"
+                                  ? "#DC2626"
+                                  : "#C2410C",
                             caption:
                               g.target > 0
                                 ? `${Math.round(share)}% of target`
@@ -580,15 +602,15 @@ export function OrgPerformanceTab({
                             {
                               label: entryStatusLabel(entry),
                               color:
-                                entryStatus(entry) === "verified"
+                                st === "verified"
                                   ? "#16A34A"
-                                  : entryStatus(entry) === "sent_back"
+                                  : st === "sent_back"
                                     ? "#DC2626"
                                     : "#C2410C",
                               icon:
-                                entryStatus(entry) === "verified"
+                                st === "verified"
                                   ? "verified"
-                                  : entryStatus(entry) === "sent_back"
+                                  : st === "sent_back"
                                     ? "sentBack"
                                     : "waiting",
                             },

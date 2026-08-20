@@ -6,9 +6,26 @@ import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
+import { readPerformance } from "@/lib/performance";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
+
+
+/**
+ * The performance slice of the bell, for whoever is signed in. Read once and
+ * handed to both surfaces so the bell and the notifications page can never
+ * disagree about what is waiting on you.
+ */
+async function performanceForMe() {
+  try {
+    const [state, me] = await Promise.all([readPerformance(), getCurrentUser()]);
+    return { state, me: me.name };
+  } catch {
+    return null;
+  }
+}
 
 export default async function NotificationsPage() {
   /**
@@ -20,7 +37,10 @@ export default async function NotificationsPage() {
    * notifications' doesn't even work"). Both surfaces now read the same
    * nudges and honour the same live-workspace rule.
    */
-  const nudges = await currentUserSetupNudges();
+  const [nudges, performance] = await Promise.all([
+    currentUserSetupNudges(),
+    performanceForMe(),
+  ]);
 
   if (isOfferingsOnly(getDataMode())) {
     const items = buildNotifications({
@@ -28,6 +48,7 @@ export default async function NotificationsPage() {
       customers: [],
       contacts: [],
       interactions: [],
+      performance,
       ...nudges,
     });
     return (
@@ -49,7 +70,7 @@ export default async function NotificationsPage() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
-  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, ...nudges });
+  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, performance, ...nudges });
 
   return (
     <div>

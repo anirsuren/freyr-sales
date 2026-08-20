@@ -317,6 +317,8 @@ function normalize(value: unknown): PerformanceState {
             verifiedBy: ra.verifiedBy ? str(ra.verifiedBy, 80) : undefined,
             verifiedAt: ra.verifiedAt ? str(ra.verifiedAt, 40) : undefined,
             managerNote: ra.managerNote ? str(ra.managerNote, 300) : undefined,
+            sentBackBy: ra.sentBackBy ? str(ra.sentBackBy, 80) : undefined,
+            sentBackAt: ra.sentBackAt ? str(ra.sentBackAt, 40) : undefined,
             // Whitelisted like every other field: anything not named here is
             // dropped the next time anything writes this row.
             resubmittedAt: ra.resubmittedAt
@@ -609,6 +611,8 @@ export async function setVerified(input: {
         a.verifiedBy = input.by;
         a.verifiedAt = now;
         a.managerNote = undefined;
+        a.sentBackBy = undefined;
+        a.sentBackAt = undefined;
         a.resubmittedAt = undefined;
       }
     }
@@ -1017,6 +1021,8 @@ export async function verifyActual(input: {
   entry.verifiedBy = input.by;
   entry.verifiedAt = new Date().toISOString();
   entry.managerNote = undefined;
+  entry.sentBackBy = undefined;
+  entry.sentBackAt = undefined;
   entry.resubmittedAt = undefined;
   await writeRow(state);
 }
@@ -1038,6 +1044,10 @@ export async function sendBackActual(input: {
   entry.verifiedBy = undefined;
   entry.verifiedAt = undefined;
   entry.managerNote = input.note ? str(input.note, 300) : undefined;
+  // The name goes on the rejection, always — a note with nobody behind it
+  // leaves the rep with nobody to ask.
+  entry.sentBackBy = str(input.by, 80) || undefined;
+  entry.sentBackAt = new Date().toISOString();
   // A new rejection is a new round: it waits on them again until they answer.
   entry.resubmittedAt = undefined;
   await writeRow(state);

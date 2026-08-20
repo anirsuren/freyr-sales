@@ -4,6 +4,12 @@ import { buildDeals, ROTTING_DAYS } from "./pipeline";
 import { OUTCOME_META } from "./utils";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
 import type { StoredVoiceConversation } from "./voiceEvents";
+import {
+  entryStatus,
+  fmtAmount,
+  verificationQueue,
+  type PerformanceState,
+} from "./performanceShared";
 
 export const NOTIF_READ_KEY = "freyr.notif.read.v1";
 
@@ -14,7 +20,11 @@ export type NotificationType =
   | "followup"
   | "voice"
   /** Your own account, not an account you sell to — e.g. Touch ID not set up. */
-  | "security";
+  | "security"
+  /** A goal result of yours needs attention: rejected, or waiting on your
+   *  sign-off (Anir, Aug 20: "I didn't get a notification. There has to be
+   *  something that gets notified because I sent it back"). */
+  | "performance";
 
 /**
  * How pressing an alert is. Five rows that all say "Follow-up due" read as five
@@ -169,6 +179,14 @@ export function buildNotifications(input: {
    *  Aug 13: "their notification should be a third notification for putting
    *  their title instead of saying 'title not set'"). */
   needsTitle?: boolean;
+  /**
+   * GOAL RESULTS THAT NEED SOMEBODY (Anir, Aug 20: "It should say that this
+   * guy's profile picture sent this thing back... This should show up at the
+   * top right, especially if it's sent back, because it needs my action
+   * item"). A rejection that only exists on a table the rep has to think to
+   * open is a rejection nobody sees.
+   */
+  performance?: { state: PerformanceState; me: string } | null;
 }): AppNotification[] {
   const {
     sessions,
@@ -179,6 +197,7 @@ export function buildNotifications(input: {
     needsPasskey = false,
     needsTour = false,
     needsTitle = false,
+    performance = null,
   } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
@@ -406,7 +425,59 @@ export function buildNotifications(input: {
     });
   }
 
-  return securityRows.concat(out)
+  /**
+   * A REJECTED RESULT IS THE MOST URGENT THING A REP CAN HAVE (Anir, Aug 20).
+   * It carries the rejector's face, because the first question a rep asks is
+   * who, and the second is why. Overdue on purpose: it is already late — the
+   * money stopped counting the moment it was sent back.
+   */
+  const perfRows: AppNotification[] = [];
+  if (performance?.me) {
+    const { state: perf, me } = performance;
+    const mine = perf.actuals.filter(
+      (a) =>
+        a.person.trim().toLowerCase() === me.trim().toLowerCase() &&
+        entryStatus(a) === "sent_back"
+    );
+    for (const a of mine) {
+      const goal = perf.goals.find((g) => g.id === a.goalId);
+      const amount = goal ? fmtAmount(goal.unit, a.amount, a.currency) : String(a.amount);
+      perfRows.push({
+        id: `perf-sent-back-${a.id}`,
+        type: "performance",
+        title: "A result of yours was sent back",
+        body: a.managerNote || "Open it, fix what they asked for, and save.",
+        subject: `${amount} on ${goal?.name ?? "a goal"} was sent back`,
+        chip: "Needs your fix",
+        person: a.sentBackBy || undefined,
+        detail: a.sentBackBy
+          ? `${a.sentBackBy} sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`
+          : "It does not count toward your goal until you fix it and it is verified.",
+        urgency: "overdue",
+        href: "/performance/people",
+        ts: a.sentBackAt || a.addedAt || new Date(nowMs).toISOString(),
+      });
+    }
+    // The other side of the same handshake: claims sitting on a group owner.
+    const waiting = verificationQueue(perf, me);
+    if (waiting.length > 0) {
+      const total = waiting.reduce((sum, q) => sum + (q.amount || 0), 0);
+      perfRows.push({
+        id: "perf-verify-queue",
+        type: "performance",
+        title: "Claims waiting for you to verify",
+        body: `${waiting.length} result${waiting.length === 1 ? "" : "s"} from your people need checking.`,
+        subject: `${waiting.length} claim${waiting.length === 1 ? "" : "s"} waiting on you`,
+        chip: "Your sign-off",
+        detail: `${total.toLocaleString()} is on hold until you check the proof and lock it.`,
+        urgency: "today",
+        href: "/performance/people",
+        ts: waiting[0]?.addedAt || new Date(nowMs).toISOString(),
+      });
+    }
+  }
+
+  return perfRows.concat(securityRows).concat(out)
     .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
     .sort((a, b) => {
       // Your own account first: a rep can't be nagged about a customer while

@@ -1,4 +1,5 @@
 import {
+  Target,
   Briefcase,
   CalendarClock,
   ClipboardCheck,
@@ -50,6 +51,8 @@ const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> =
   // Your own account. Overridden per row by SETUP_META below: the three setup
   // rows are three different jobs and must not share one glyph.
   security: { icon: Fingerprint, color: "#6D28D9" },
+  // A goal result needs somebody: blue, the app's "waiting on you" colour.
+  performance: { icon: Target, color: "#0071E3" },
 };
 
 /**

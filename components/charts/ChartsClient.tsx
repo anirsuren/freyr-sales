@@ -988,7 +988,21 @@ function TipHeader({
    * two-tone bar every other performance surface draws, so the tip and the
    * page agree at a glance. The caption keeps the numbers, under the bar.
    */
-  bar?: { done: number; pending?: number; color?: string; caption?: string };
+  bar?: {
+    done: number;
+    pending?: number;
+    color?: string;
+    /**
+     * The unverified segment's own colour. Sent-back money is not "waiting its
+     * turn", it is rejected — and a header bar tinted the same friendly blue as
+     * the signed-off half said the opposite (Anir, Aug 20: "if this was sent
+     * back, the colors should line up... it shouldn't be that blue thing, cuz
+     * that means I have to look at it"). Defaults to `color`, so every chart
+     * that has nothing rejected looks exactly as it did.
+     */
+    pendingColor?: string;
+    caption?: string;
+  };
 }) {
   return (
     <div className="flex shrink-0 items-start gap-2.5">
@@ -1023,7 +1037,7 @@ function TipHeader({
                 className="block h-full opacity-[0.30]"
                 style={{
                   width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
-                  background: bar.color ?? color ?? VIZ.blue,
+                  background: bar.pendingColor ?? bar.color ?? color ?? VIZ.blue,
                 }}
               />
             </span>
@@ -1790,7 +1804,13 @@ export function BarChart({
     // behind a percentage ("4 of 6"), so the bar shows both at rest.
     caption?: string;
     /** Draws the headline as a bar in the tip instead of spelling it out. */
-    tipBar?: { done: number; pending?: number; color?: string; caption?: string };
+    tipBar?: {
+      done: number;
+      pending?: number;
+      color?: string;
+      pendingColor?: string;
+      caption?: string;
+    };
     // Tip-only line naming what the headline number MEASURES, for the charts
     // where the records listed below can't add up to it (an average, a
     // probability-weighted figure). Suren added the rows up and got a

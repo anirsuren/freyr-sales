@@ -127,6 +127,7 @@ export function StatusPill({
   onUnlock,
   onVerify,
   waitingOnMe = false,
+  onOpen,
 }: {
   entry: PerfActual;
   /** Present only for someone who may reopen this claim. */
@@ -135,6 +136,13 @@ export function StatusPill({
   onVerify?: () => void;
   /** The reader is the group owner who has to check this one. */
   waitingOnMe?: boolean;
+  /**
+   * Expand the row this pill sits on (Anir, Aug 20: "When I see 'Sent back,'
+   * I should be able to click on the 'Sent back,' right?"). A rejection is
+   * the one status that comes with homework, so the badge announcing it has
+   * to be the way to the note rather than a label you then hunt around.
+   */
+  onOpen?: () => void;
 }) {
   if (entryStatus(entry) === "verified") {
     if (onUnlock) {
@@ -185,6 +193,15 @@ export function StatusPill({
       <>
         <AlertCircle size={13} strokeWidth={2.6} />
         Sent back &middot; needs a fix
+        {/* THE FACE OF WHOEVER REJECTED IT, right on the badge (Anir, Aug 20:
+            "I can't see who sent it back. I can see the reason, though"). The
+            reason without the author is an instruction from nobody. */}
+        {entry.sentBackBy && (
+          <Avatar
+            name={entry.sentBackBy}
+            className="h-[17px] w-[17px] shrink-0 text-[7.5px]"
+          />
+        )}
       </>
     );
     if (onVerify && waitingOnMe) {
@@ -197,6 +214,25 @@ export function StatusPill({
           }}
           title="You sent this back. Open it to check the fix and sign it off"
           className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.16)]"
+        >
+          {pill}
+        </button>
+      );
+    }
+    if (onOpen) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          title={
+            entry.sentBackBy
+              ? `${entry.sentBackBy} sent this back. Open it to read why`
+              : "Open it to read why this was sent back"
+          }
+          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.18)]"
         >
           {pill}
         </button>
@@ -257,6 +293,26 @@ export function StatusPill({
  * idea"). The row used to show only the result date, so a claim that had been
  * checked and locked looked identical to one nobody had touched.
  */
+/**
+ * A STAMP IS A DAY AND A CLOCK TIME (Anir, Aug 20: "I need the time too. I
+ * can't just have the date. The time should be right under"). Two claims
+ * logged on the same day were indistinguishable, so "why are there two?" had
+ * no answer on the row itself. Date-only values — the result date, which is
+ * a day someone picked, not a moment — have no clock to show and say so by
+ * omission rather than by inventing midnight.
+ */
+function stamp(iso?: string): { day?: string; time?: string } {
+  if (!iso) return {};
+  const day = iso.slice(0, 10);
+  if (iso.length <= 10) return { day };
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return { day };
+  return {
+    day,
+    time: t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+  };
+}
+
 function EntryTimeline({
   entry,
   person,
@@ -295,7 +351,7 @@ function EntryTimeline({
     {
       label: "Logged",
       who: entry.addedBy || person,
-      when: entry.addedAt?.slice(0, 10),
+      when: entry.addedAt,
       done: true,
       icon: PenLine,
       color: "#0071E3",
@@ -304,6 +360,11 @@ function EntryTimeline({
   if (entry.managerNote) {
     steps.push({
       label: "Sent back",
+      // The rejection carries its author now — a note from nobody left the
+      // rep with nobody to go ask about it.
+      who: entry.sentBackBy,
+      when: entry.sentBackAt,
+      fallback: entry.sentBackAt ? undefined : "date not recorded",
       note: entry.managerNote,
       done: true,
       // The one step on the rail that is a problem, so it is the one step
@@ -316,7 +377,7 @@ function EntryTimeline({
       steps.push({
         label: "Fixed and sent back up",
         who: entry.addedBy || person,
-        when: entry.resubmittedAt.slice(0, 10),
+        when: entry.resubmittedAt,
         done: true,
         icon: RotateCcw,
         color: "#7C3AED",
@@ -328,7 +389,7 @@ function EntryTimeline({
       ? {
           label: "Verified and locked",
           who: entry.verifiedBy,
-          when: entry.verifiedAt?.slice(0, 10),
+          when: entry.verifiedAt,
           // A handful of claims were signed off before sign-off recorded a
           // date. Saying so beats a blank line under the step, and beats
           // borrowing another step's date and calling it the verification.
@@ -395,7 +456,9 @@ function EntryTimeline({
                   read like a different kind of thing. */}
               <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
                 <span className={cn(!step.when && "italic text-text-tertiary", "tnum")}>
-                  {step.when ?? step.fallback ?? (step.done ? "" : "not yet")}
+                  {stamp(step.when).day ??
+                    step.fallback ??
+                    (step.done ? "" : "not yet")}
                 </span>
                 {step.who && (
                   <>
@@ -410,9 +473,17 @@ function EntryTimeline({
                   </>
                 )}
               </span>
+              {/* The clock sits under the day, not beside it — the day is
+                  what you scan for, the time is what you check. */}
+              {stamp(step.when).time && (
+                <span className="block text-[11px] tnum text-text-tertiary">
+                  {stamp(step.when).time}
+                </span>
+              )}
               {step.note && (
-                <span className="mt-0.5 block text-[11.5px] italic text-text-secondary">
-                  &ldquo;{step.note}&rdquo;
+                <span className="mt-0.5 block text-[11.5px] text-text-secondary">
+                  <span className="font-semibold not-italic">Their note: </span>
+                  <span className="italic">&ldquo;{step.note}&rdquo;</span>
                 </span>
               )}
             </span>
@@ -442,11 +513,7 @@ export function wasSentBack(entry: PerfActual): boolean {
 
 /** The date this claim last moved: verified beats logged beats happened. */
 function lastMoved(entry: PerfActual): string {
-  return (
-    entry.verifiedAt?.slice(0, 10) ??
-    entry.addedAt?.slice(0, 10) ??
-    entry.date
-  );
+  return entry.verifiedAt ?? entry.addedAt ?? entry.date;
 }
 
 /** One labelled fact in the expanded row. */
@@ -640,8 +707,15 @@ export function MyEntriesCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        <span className="block">{lastMoved(a)}</span>
+                        <span className="block">{stamp(lastMoved(a)).day}</span>
                         <span className="block text-[10.5px] text-text-tertiary">
+                          {/* THE CLOCK GOES UNDER THE DAY (Anir, Aug 20: "I
+                              need the time too... The time should be right
+                              under"). Two claims on one day were the same
+                              row twice with nothing to tell them apart. */}
+                          {stamp(lastMoved(a)).time
+                            ? `${stamp(lastMoved(a)).time} · `
+                            : ""}
                           {entryStatus(a) === "verified" && a.verifiedAt
                             ? "verified"
                             : a.addedAt
@@ -679,6 +753,9 @@ export function MyEntriesCard({
                               ? () => setReviewing(a.id)
                               : undefined
                           }
+                          /* For the person who has to FIX it, the badge is
+                             the way to the note. */
+                          onOpen={() => setOpenRow(open ? null : a.id)}
                         />
                       </td>
                       <td className="px-4 py-3.5">
@@ -787,8 +864,37 @@ export function MyEntriesCard({
                                   Sent back &mdash; this does not count until it is
                                   fixed and verified
                                 </span>
-                                <span className="mt-0.5 block text-[12.5px] leading-snug text-text-secondary">
-                                  &ldquo;{a.managerNote}&rdquo;
+                                {/* WHO, AND WHEN. A rejection with a reason
+                                    but no author leaves the person holding it
+                                    with nobody to go ask. */}
+                                {(a.sentBackBy || a.sentBackAt) && (
+                                  <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-text-secondary">
+                                    {a.sentBackBy && (
+                                      <>
+                                        by
+                                        <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
+                                          <Avatar
+                                            name={a.sentBackBy}
+                                            className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                                          />
+                                          {a.sentBackBy}
+                                        </span>
+                                      </>
+                                    )}
+                                    {a.sentBackAt && (
+                                      <span className="tnum text-text-tertiary">
+                                        {a.sentBackBy ? "· " : ""}
+                                        {stamp(a.sentBackAt).day}
+                                        {stamp(a.sentBackAt).time
+                                          ? ` at ${stamp(a.sentBackAt).time}`
+                                          : ""}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                                <span className="mt-1 block text-[12.5px] leading-snug text-text-secondary">
+                                  <b className="text-text-primary">Their note: </b>
+                                  <i>&ldquo;{a.managerNote}&rdquo;</i>
                                 </span>
                               </span>
                             </div>
@@ -886,7 +992,7 @@ export function MyEntriesCard({
                               should be able to delete it"). The server has
                               always allowed this and always refused it once
                               verified; the row simply never offered it. */}
-                          {canEdit && (dropFor === a.id || editFor === a.id) && (
+                          {canEdit && dropFor === a.id && (
                               <div
                                 className="mt-3 flex flex-wrap items-center gap-2"
                                 onClick={(e) => e.stopPropagation()}
@@ -916,68 +1022,6 @@ export function MyEntriesCard({
                                       className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
                                     >
                                       Keep it
-                                    </button>
-                                  </>
-                                ) : editFor === a.id ? (
-                                  <>
-                                    <label className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                                      Amount
-                                      <input
-                                        value={draft.amount}
-                                        onChange={(e) =>
-                                          setDraft((d) => ({ ...d, amount: e.target.value }))
-                                        }
-                                        className="h-[34px] w-[110px] rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle tnum"
-                                      />
-                                    </label>
-                                    <label className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                                      Date
-                                      <input
-                                        type="date"
-                                        value={draft.date}
-                                        onChange={(e) =>
-                                          setDraft((d) => ({ ...d, date: e.target.value }))
-                                        }
-                                        className="h-[34px] rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle"
-                                      />
-                                    </label>
-                                    <label className="flex min-w-[160px] flex-1 items-center gap-1.5 text-[11.5px] text-text-secondary">
-                                      Customer
-                                      <input
-                                        value={draft.customer}
-                                        onChange={(e) =>
-                                          setDraft((d) => ({ ...d, customer: e.target.value }))
-                                        }
-                                        className="h-[34px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-subtle"
-                                      />
-                                    </label>
-                                    <button
-                                      type="button"
-                                      disabled={busy}
-                                      onClick={async () => {
-                                        const parsed = parseAmountInput(draft.amount);
-                                        const okDone = await run?.(
-                                          {
-                                            op: "update-actual",
-                                            actualId: a.id,
-                                            amount: parsed ?? a.amount,
-                                            date: draft.date || a.date,
-                                            customer: draft.customer,
-                                          },
-                                          "Entry updated"
-                                        );
-                                        if (okDone) setEditFor(null);
-                                      }}
-                                      className="cursor-pointer rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                                    >
-                                      Save
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditFor(null)}
-                                      className="cursor-pointer rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                                    >
-                                      Cancel
                                     </button>
                                   </>
                                 ) : null}
@@ -1014,6 +1058,130 @@ export function MyEntriesCard({
               }}
               onPreview={setPreview}
             />
+          );
+        })()}
+      {/* EDITING A RESULT IS A POPUP, NOT A ROW (Anir, Aug 20: "When I press
+          Edit, why is it opening this thing? Look at this: why is it opening
+          a fucking weird row here? It should be opening a pop-up"). Three
+          bare inputs wedged under the panel read as part of the record rather
+          than as a form you are filling in, and the Save they belonged to was
+          a scroll away from the number being changed. Same fields, same op —
+          in the shape every other edit in this app uses. */}
+      {editFor && run &&
+        (() => {
+          const a = state.actuals.find((x) => x.id === editFor);
+          if (!a) return null;
+          const goal = state.goals.find((g) => g.id === a.goalId);
+          return (
+            <Modal
+              open
+              onClose={() => setEditFor(null)}
+              title="Edit this result"
+              size="wide"
+            >
+              <p className="text-[12.5px] text-text-secondary">
+                {goal?.name ?? "This goal"} · logged{" "}
+                {stamp(a.addedAt).day ?? a.date}
+                {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}.
+                {awaitingTheirFix(a)
+                  ? " Saving sends it back up for verification."
+                  : ""}
+              </p>
+              {/* The rejection note travels WITH the form. Fixing a claim
+                  without the reason in front of you is guesswork. */}
+              {a.managerNote && (
+                <div className="mt-3 rounded-xl border border-[color:#DC2626] bg-[color:#DC26260D] px-3.5 py-3">
+                  <span className="flex items-center gap-2 text-[12.5px] font-bold text-[color:#DC2626]">
+                    <AlertCircle size={14} strokeWidth={2.4} />
+                    Sent back
+                    {a.sentBackBy ? " by" : ""}
+                    {a.sentBackBy && (
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
+                        <Avatar
+                          name={a.sentBackBy}
+                          className="h-[18px] w-[18px] text-[8px]"
+                        />
+                        {a.sentBackBy}
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1 block text-[12.5px] text-text-secondary">
+                    <b className="text-text-primary">Their note: </b>
+                    <i>&ldquo;{a.managerNote}&rdquo;</i>
+                  </span>
+                </div>
+              )}
+              <div className="mt-3.5 grid gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                    Amount
+                  </span>
+                  <input
+                    autoFocus
+                    value={draft.amount}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, amount: e.target.value }))
+                    }
+                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle tnum"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                    Date
+                  </span>
+                  <input
+                    type="date"
+                    value={draft.date}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, date: e.target.value }))
+                    }
+                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                    Customer
+                  </span>
+                  <input
+                    value={draft.customer}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, customer: e.target.value }))
+                    }
+                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditFor(null)}
+                  className="cursor-pointer rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    const parsed = parseAmountInput(draft.amount);
+                    const okDone = await run(
+                      {
+                        op: "update-actual",
+                        actualId: a.id,
+                        amount: parsed ?? a.amount,
+                        date: draft.date || a.date,
+                        customer: draft.customer,
+                      },
+                      "Entry updated"
+                    );
+                    if (okDone) setEditFor(null);
+                  }}
+                  className="cursor-pointer rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                >
+                  Save changes
+                </button>
+              </div>
+            </Modal>
           );
         })()}
       {preview && (
@@ -1194,21 +1362,26 @@ export function VerifyQueueCard({
           <table className="w-full min-w-[900px] border-collapse">
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
-                <th className="w-9 px-4 py-2.5">
-                  <input
-                    type="checkbox"
-                    aria-label="Select every claim"
-                    checked={picked.size > 0 && picked.size === queue.length}
-                    ref={(el) => {
-                      if (el) el.indeterminate = picked.size > 0 && picked.size < queue.length;
-                    }}
-                    onChange={(e) =>
-                      setPicked(
-                        e.target.checked ? new Set(queue.map((x) => x.id)) : new Set()
-                      )
-                    }
-                    className="h-3.5 w-3.5 cursor-pointer accent-[color:#0071E3]"
-                  />
+                <th className="w-9 p-0">
+                  <label
+                    className="flex cursor-pointer items-center px-4 py-2.5"
+                    title="Select every claim waiting on you"
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label="Select every claim"
+                      checked={picked.size > 0 && picked.size === queue.length}
+                      ref={(el) => {
+                        if (el) el.indeterminate = picked.size > 0 && picked.size < queue.length;
+                      }}
+                      onChange={(e) =>
+                        setPicked(
+                          e.target.checked ? new Set(queue.map((x) => x.id)) : new Set()
+                        )
+                      }
+                      className="h-4 w-4 cursor-pointer accent-[color:#0071E3]"
+                    />
+                  </label>
                 </th>
                 <th className="w-10 px-4 py-2.5 text-right">#</th>
                 <th className="px-4 py-2.5">Logged by</th>
@@ -1231,21 +1404,28 @@ export function VerifyQueueCard({
                         picked.has(a.id) ? "bg-blue-light/35" : "hover:bg-surface"
                       )}
                     >
-                      <td className="px-4 py-3.5">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${a.person}'s claim`}
-                          checked={picked.has(a.id)}
-                          onChange={(e) =>
-                            setPicked((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(a.id);
-                              else next.delete(a.id);
-                              return next;
-                            })
-                          }
-                          className="h-3.5 w-3.5 cursor-pointer accent-[color:#0071E3]"
-                        />
+                      {/* THE WHOLE CELL TICKS THE BOX (Anir, Aug 20: "I
+                          can't tick anything"). A bare 14px square in a
+                          32px-tall row is a target you miss more often than
+                          you hit; the label wraps the padding so anywhere in
+                          the column counts as the click. */}
+                      <td className="p-0">
+                        <label className="flex cursor-pointer items-center px-4 py-3.5">
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${a.person}'s claim`}
+                            checked={picked.has(a.id)}
+                            onChange={(e) =>
+                              setPicked((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(a.id);
+                                else next.delete(a.id);
+                                return next;
+                              })
+                            }
+                            className="h-4 w-4 cursor-pointer accent-[color:#0071E3]"
+                          />
+                        </label>
                       </td>
                       <td className="px-4 py-3.5 text-right text-[13px] font-bold text-text-tertiary tnum">
                         {i + 1}
@@ -1266,7 +1446,19 @@ export function VerifyQueueCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        {a.date}
+                        <span className="block">{a.date}</span>
+                        {/* When it actually landed in your queue. Same
+                            reason as the rep's table: on a day with two
+                            claims, the day alone says nothing. */}
+                        {stamp(a.addedAt).day && (
+                          <span className="block text-[10.5px] text-text-tertiary">
+                            logged{" "}
+                            {stamp(a.addedAt).day === a.date
+                              ? ""
+                              : `${stamp(a.addedAt).day} `}
+                            {stamp(a.addedAt).time ?? ""}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <EvidenceLinks entry={a} onOpen={setPreview} />

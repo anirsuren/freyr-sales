@@ -314,6 +314,14 @@ export type PerfActual = {
   /** Set when a group owner sends a claim back with feedback. */
   managerNote?: string;
   /**
+   * WHO sent it back, and when (Anir, Aug 20: "I can't see who sent it back.
+   * I can see the reason, though"). A rejection landing on a rep's row with a
+   * note and no name is an instruction from nobody — there is no one to go
+   * ask about it. Cleared on verify, restamped on every new rejection.
+   */
+  sentBackBy?: string;
+  sentBackAt?: string;
+  /**
    * When the claimant fixed a sent-back claim and put it back up.
    *
    * Sending back and never-been-looked-at were the same stored state, so a

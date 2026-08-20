@@ -5,11 +5,31 @@ import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
+import { readPerformance } from "@/lib/performance";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const dynamic = "force-dynamic";
 
+
+/**
+ * The performance slice of the bell, for whoever is signed in. Read once and
+ * handed to both surfaces so the bell and the notifications page can never
+ * disagree about what is waiting on you.
+ */
+async function performanceForMe() {
+  try {
+    const [state, me] = await Promise.all([readPerformance(), getCurrentUser()]);
+    return { state, me: me.name };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
-  const nudges = await currentUserSetupNudges();
+  const [nudges, performance] = await Promise.all([
+    currentUserSetupNudges(),
+    performanceForMe(),
+  ]);
 
   /**
    * IN THE LIVE WORKSPACE, TWO ROWS AND NOTHING ELSE (Anir, Aug 13:
@@ -30,6 +50,7 @@ export async function GET() {
         customers: [],
         contacts: [],
         interactions: [],
+        performance,
         ...nudges,
       }),
     });
@@ -49,6 +70,7 @@ export async function GET() {
     contacts,
     interactions,
     voiceConversations,
+    performance,
     ...nudges,
   });
   return NextResponse.json({ notifications });
