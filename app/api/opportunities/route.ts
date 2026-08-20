@@ -123,6 +123,11 @@ async function settleMetGoals(
           goalId: link.goalId,
           person: link.person || after.owner || meName,
           amount: link.value ?? 0,
+          // THE DEAL'S OWN CURRENCY RIDES ALONG (loop tick 2, Aug 20: a €50K
+          // deal marked Met minted a claim with no currency, which Performance
+          // then rendered as $50,000 — the exact class of lie the Aug 20
+          // "never again" rule exists for).
+          currency: after.currency,
           note: "Marked met on the deal",
           customer: after.customer,
           opportunityId: after.id,
