@@ -770,6 +770,13 @@ export async function updateActual(input: {
   /** The deal this number came out of, when there is one. */
   opportunityId?: string;
   dealLabel?: string;
+  /**
+   * The proof, replaced wholesale. The commonest reason a claim comes back is
+   * that it arrived without a contract attached, so the form that answers a
+   * rejection has to be able to attach one (Anir, Aug 20: "do they have to
+   * upload a doc here or no").
+   */
+  evidence?: { name: string; url: string }[];
   by: string;
 }): Promise<void> {
   const state = await readRow();
@@ -797,6 +804,15 @@ export async function updateActual(input: {
   if (input.customer !== undefined) {
     entry.customer = input.customer ? str(input.customer, 160) : undefined;
     entry.customerId = input.customerId ? str(input.customerId, 60) : undefined;
+  }
+  if (input.evidence !== undefined) {
+    // Same shape and same caps the read path enforces, so an edit can never
+    // put a file on a claim that a fresh read would then strip.
+    const files = input.evidence
+      .map((e) => ({ name: str(e?.name ?? "", 160), url: str(e?.url ?? "", 500) }))
+      .filter((e) => e.name && e.url)
+      .slice(0, 5);
+    entry.evidence = files.length ? files : undefined;
   }
   if (input.dealLabel !== undefined) {
     entry.dealLabel = input.dealLabel ? str(input.dealLabel, 160) : undefined;

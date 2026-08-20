@@ -32,6 +32,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
+import { EvidencePicker } from "./EvidencePicker";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -717,6 +718,12 @@ export function MyEntriesCard({
   /** Fixing a typo used to mean delete and re-enter, losing the upload. */
   const [editFor, setEditFor] = useState<string | null>(null);
   const [draft, setDraft] = useState({ amount: "", date: "", customer: "" });
+  /** The proof, edited alongside the numbers — the commonest reason a claim
+   *  comes back is that it arrived without one. */
+  const [draftEvidence, setDraftEvidence] = useState<
+    { name: string; url: string }[]
+  >([]);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   /** Landing from the rejected-claims card: open that row and bring it into
    *  view. Without the scroll the card at the top appears to do nothing on a
    *  long page — the row it opened is two screens down. */
@@ -737,6 +744,7 @@ export function MyEntriesCard({
         date: entry.date,
         customer: entry.customer ?? "",
       });
+      setDraftEvidence(entry.evidence ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusEntryId]);
@@ -945,6 +953,7 @@ export function MyEntriesCard({
                                     date: a.date,
                                     customer: a.customer ?? "",
                                   });
+                                  setDraftEvidence(a.evidence ?? []);
                                 }
                               : () => setOpenRow(open ? null : a.id)
                           }
@@ -995,6 +1004,7 @@ export function MyEntriesCard({
                                     date: a.date,
                                     customer: a.customer ?? "",
                                   });
+                                  setDraftEvidence(a.evidence ?? []);
                                 }}
                                 className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
                               >
@@ -1268,7 +1278,7 @@ export function MyEntriesCard({
             <Modal
               open
               onClose={() => setEditFor(null)}
-              title="Edit this result"
+              title={awaitingTheirFix(a) ? "Fix this result" : "Edit this result"}
               size="wide"
             >
               <p className="text-[12.5px] text-text-secondary">
@@ -1276,7 +1286,7 @@ export function MyEntriesCard({
                 {stamp(a.addedAt).day ?? a.date}
                 {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}.
                 {awaitingTheirFix(a)
-                  ? " Saving sends it back up for verification."
+                  ? ` ${a.sentBackBy ?? "Your group owner"} sees it again as soon as you send it.`
                   : ""}
               </p>
               {/* The rejection note travels WITH the form. Fixing a claim
@@ -1343,6 +1353,22 @@ export function MyEntriesCard({
                   />
                 </label>
               </div>
+              {/* THE PROOF, ON THE FORM THAT ANSWERS THE REJECTION (Anir,
+                  Aug 20: "do they have to upload a doc here or no"). They
+                  could not — and "attach the contract" is the commonest thing
+                  a group owner sends a claim back for, so the one screen where
+                  proof is most likely missing was the one screen that could
+                  not add it. */}
+              <div className="mt-3">
+                <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                  Evidence
+                </span>
+                <EvidencePicker
+                  value={draftEvidence}
+                  onChange={setDraftEvidence}
+                  onUploadingChange={setUploadingEvidence}
+                />
+              </div>
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
@@ -1351,9 +1377,15 @@ export function MyEntriesCard({
                 >
                   Cancel
                 </button>
+                {/* THE BUTTON SAYS WHAT PRESSING IT DOES (Anir, Aug 20:
+                    "'save changes' is not good... they are not going to think
+                    it's going to actually get sent back"). Saving a rejected
+                    claim puts it back in the owner's queue, which is the whole
+                    point of the screen and was the one thing the button did
+                    not mention. */}
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || uploadingEvidence}
                   onClick={async () => {
                     const parsed = parseAmountInput(draft.amount);
                     const okDone = await run(
@@ -1363,14 +1395,21 @@ export function MyEntriesCard({
                         amount: parsed ?? a.amount,
                         date: draft.date || a.date,
                         customer: draft.customer,
+                        evidence: draftEvidence,
                       },
-                      "Entry updated"
+                      awaitingTheirFix(a)
+                        ? "Sent back up for verification"
+                        : "Entry updated"
                     );
                     if (okDone) setEditFor(null);
                   }}
                   className="cursor-pointer rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 >
-                  Save changes
+                  {uploadingEvidence
+                    ? "Waiting for the upload…"
+                    : awaitingTheirFix(a)
+                      ? "Send it back for verification"
+                      : "Save changes"}
                 </button>
               </div>
             </Modal>

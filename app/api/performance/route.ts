@@ -496,6 +496,12 @@ export async function POST(req: NextRequest) {
             : undefined,
           dealLabel:
             body.dealLabel === undefined ? undefined : String(body.dealLabel ?? ""),
+          evidence: Array.isArray(body.evidence)
+            ? (body.evidence as { name?: unknown; url?: unknown }[]).map((e) => ({
+                name: String(e?.name ?? ""),
+                url: String(e?.url ?? ""),
+              }))
+            : undefined,
           by: me.name,
         });
         break;
