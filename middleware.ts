@@ -309,9 +309,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const headers = new Headers(request.headers);
-  headers.set("x-request-id", requestId);
-  const response = NextResponse.next({ request: { headers } });
+  /**
+   * PASS THE REQUEST THROUGH UNTOUCHED (the upload outage, Aug 20 — Antara's
+   * 32MB proposal, then every retry: "Couldn't upload that file", "Send the
+   * file as multipart form data", and a naked 500).
+   *
+   * This used to be NextResponse.next({ request: { headers } }) so the route
+   * could see an x-request-id — which NOTHING server-side ever read; the id
+   * only decorates the RESPONSE below. But forwarding a MODIFIED request
+   * makes Next re-stream the body to the route handler, and that re-stream is
+   * capped at experimental.middlewareClientMaxBodySize (10MB by default) and
+   * dies with "Response body object should not be disturbed or locked" beyond
+   * it. Reproduced with `next start` + a 32MB multipart POST; unmodified
+   * pass-through hands the route the original stream and the whole class of
+   * failure disappears.
+   */
+  const response = NextResponse.next();
   securityHeaders(response, requestId);
   return response;
 }

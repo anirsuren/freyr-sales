@@ -28,6 +28,12 @@ const nextConfig = {
   // of the list — reads exactly like "my save disappeared" (Anir, Jul 5).
   experimental: {
     staleTimes: { dynamic: 0 },
+    // Belt and braces for the Aug 20 upload outage: even when middleware has
+    // reason to buffer a request body, the cap must clear the biggest file
+    // the materials endpoint accepts (MAX_UPLOAD_BYTES, 512MB) — the 10MB
+    // default truncated Antara's 32MB proposal and formData() blew up on the
+    // stump.
+    middlewareClientMaxBodySize: 512 * 1024 * 1024,
     ...(Number.isInteger(nextBuildCpus) && nextBuildCpus > 0
       ? { cpus: nextBuildCpus }
       : {}),
