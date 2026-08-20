@@ -19,6 +19,7 @@ import {
   STAGE_COLOR,
 } from "@/lib/pipeline";
 import { readOpportunities } from "@/lib/opportunities";
+import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import {
   repEmail,
@@ -235,9 +236,11 @@ export default async function TeamPage() {
       if (o.status === "Won" || o.status === "Lost") continue;
       const key = o.owner.trim().toLowerCase();
       const row = byOwner.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
-      const value = o.value ?? 0;
-      row.openValue += value;
-      row.weighted += Math.round(value * ((o.confidence ?? 0) / 100));
+      /* The same math the Opportunities page shows: total = sum of the
+         rows, weighted = each row times ITS OWN confidence. Reading the
+         deal-level fields alone undercounted every line-built deal. */
+      row.openValue += opportunityValue(o);
+      row.weighted += Math.round(weightedValue(o));
       row.openCount += 1;
       byOwner.set(key, row);
     }
@@ -264,11 +267,8 @@ export default async function TeamPage() {
     const open = opportunities.filter(
       (o) => o.level !== "Future" && o.status !== "Won" && o.status !== "Lost"
     );
-    totalPipeline = open.reduce((s, o) => s + (o.value ?? 0), 0);
-    totalWeighted = open.reduce(
-      (s, o) => s + Math.round((o.value ?? 0) * ((o.confidence ?? 0) / 100)),
-      0
-    );
+    totalPipeline = open.reduce((s, o) => s + opportunityValue(o), 0);
+    totalWeighted = open.reduce((s, o) => s + Math.round(weightedValue(o)), 0);
     totalOpen = open.length;
   }
 

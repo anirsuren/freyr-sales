@@ -11,7 +11,7 @@ import {
 import { readOpportunities } from "./opportunities";
 import { readTargets } from "./targets";
 import { readPerformance } from "./performance";
-import { weightedValue } from "./opportunitiesShared";
+import { opportunityValue, weightedValue } from "./opportunitiesShared";
 import { readActivityMaster } from "./activityMaster";
 import { masterFor } from "./activityMasterShared";
 
@@ -284,7 +284,7 @@ function digestFor(
     const mine = all.filter(
       (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level !== "Future"
     );
-    const pipeValue = mine.reduce((sum, o) => sum + o.value, 0);
+    const pipeValue = mine.reduce((sum, o) => sum + opportunityValue(o), 0);
     const pipeWeighted = mine.reduce((sum, o) => sum + weightedValue(o), 0);
     const futureCount = all.filter(
       (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level === "Future"

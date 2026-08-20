@@ -55,6 +55,7 @@ import {
   OPPORTUNITY_STATUSES,
   REVENUE_TYPES,
   offeringCount,
+  opportunityValue,
   weightedValue,
   lines as linesOf,
   lineLabel,
@@ -657,7 +658,9 @@ export function OpportunitiesBrowser({
   }, [groupedShown, groupBy]);
 
   const totals = useMemo(() => {
-    const value = shown.reduce((s, o) => s + o.value, 0);
+    /* Sum of the rows, not the deal-level field — the two can drift and the
+       rows are the truth (opportunityValue's own doctrine). */
+    const value = shown.reduce((s, o) => s + opportunityValue(o), 0);
     const weighted = shown.reduce((s, o) => s + weightedValue(o), 0);
     /* THE SAME NUMBER THE ROWS SHOW. A deal built in this form stores its
        confidence on the offering row, not on the deal, so reading the
@@ -1049,7 +1052,7 @@ export function OpportunitiesBrowser({
                                   Total
                                 </span>
                                 <span className="text-[14px] font-bold text-text-primary tnum">
-                                  {money(o.value)}
+                                  {money(opportunityValue(o))}
                                 </span>
                               </span>
                             </div>
@@ -1207,7 +1210,7 @@ export function OpportunitiesBrowser({
                                           <span
                                             className="absolute inset-y-0 left-0 rounded-full bg-blue-primary"
                                             style={{
-                                              width: `${o.value > 0 ? Math.min(100, (lineWeighted(line) / o.value) * 100) : 0}%`,
+                                              width: `${opportunityValue(o) > 0 ? Math.min(100, (lineWeighted(line) / opportunityValue(o)) * 100) : 0}%`,
                                             }}
                                           />
                                         </span>
@@ -1230,7 +1233,7 @@ export function OpportunitiesBrowser({
                                               {" "}of {money(line.value)}
                                             </span>
                                             <span className="text-text-tertiary">
-                                              {" "}of {money(o.value)}
+                                              {" "}of {money(opportunityValue(o))}
                                             </span>
                                             {line.confidence !== undefined && (
                                               <span className="text-text-secondary"> · {line.confidence}%</span>
@@ -1633,7 +1636,7 @@ export function OpportunitiesBrowser({
                       bar") — same picture as every row: track = total value,
                       fill = the weighted share. */}
                   {(() => {
-                    const total = sectionRows.reduce((sum, x) => sum + x.value, 0);
+                    const total = sectionRows.reduce((sum, x) => sum + opportunityValue(x), 0);
                     const weighted = sectionRows.reduce(
                       (sum, x) => sum + weightedValue(x),
                       0
