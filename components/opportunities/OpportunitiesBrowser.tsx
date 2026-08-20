@@ -1069,6 +1069,16 @@ export function OpportunitiesBrowser({
                                 <span className="text-text-tertiary">
                                   no confidence set
                                 </span>
+                              ) : o.status === "Won" || o.status === "Lost" ? (
+                                /* A DECIDED DEAL HAS NO CONFIDENCE LEFT. Once
+                                   weighted value stopped discounting a signed
+                                   deal, this line derived 100% and read "100%
+                                   confident" under a Won badge — confidence is
+                                   a forecast word and the forecast is over.
+                                   Say what happened instead. */
+                                <span className="font-semibold text-[color:#0058B0]">
+                                  {o.status === "Won" ? "signed, counts in full" : "lost, counts as nothing"}
+                                </span>
                               ) : (
                                 <span className="font-semibold text-[color:#0058B0]">
                                   {shownConfidence}% confident
