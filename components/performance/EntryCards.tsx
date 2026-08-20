@@ -695,7 +695,7 @@ export function MyEntriesCard({
   run,
   meName,
   busy = false,
-  focusEntryId = null,
+  focusEntry = null,
 }: {
   state: PerformanceState;
   person: string;
@@ -704,8 +704,10 @@ export function MyEntriesCard({
   meName?: string;
   busy?: boolean;
   /** Open this entry and scroll to it — how the rejected-claims card at the
-   *  top of the page hands you off to the row you have to fix. */
-  focusEntryId?: string | null;
+   *  top of the page hands you off to the row you have to fix. The counter
+   *  makes a second press on the SAME claim a new request rather than a
+   *  no-op set-state React drops. */
+  focusEntry?: { id: string; n: number } | null;
 }) {
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
@@ -729,16 +731,17 @@ export function MyEntriesCard({
    *  long page — the row it opened is two screens down. */
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   useEffect(() => {
-    if (!focusEntryId) return;
-    setOpenRow(focusEntryId);
-    const el = rowRefs.current[focusEntryId];
+    if (!focusEntry) return;
+    const { id } = focusEntry;
+    setOpenRow(id);
+    const el = rowRefs.current[id];
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     // "Fix it" should START the fix, not just point at it. The row underneath
     // is left open, so closing the form lands on the claim in full.
-    const entry = state.actuals.find((x) => x.id === focusEntryId);
+    const entry = state.actuals.find((x) => x.id === id);
     if (entry && awaitingTheirFix(entry) && entry.person === person && run) {
       setDropFor(null);
-      setEditFor(focusEntryId);
+      setEditFor(id);
       setDraft({
         amount: String(entry.amount),
         date: entry.date,
@@ -747,7 +750,7 @@ export function MyEntriesCard({
       setDraftEvidence(entry.evidence ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusEntryId]);
+  }, [focusEntry]);
   /**
    * A LOCK NEEDS AN UNDO (bug, Aug 15). Verifying pulls the row out of the
    * queue, and the queue was the only place Send back lived — so a claim

@@ -202,9 +202,21 @@ export function PeopleTab({
 
   /** Everyone the server lets you see, plus every group, reachable from the
    *  one search bar in the filter row. */
-  /** The claim the rejected-claims card sent you to, so the table below can
-   *  open it and scroll it into view. */
-  const [focusEntry, setFocusEntry] = useState<string | null>(null);
+  /**
+   * The claim the rejected-claims card sent you to, so the table below can
+   * open it and scroll it into view.
+   *
+   * The counter is load-bearing (Anir, Aug 20: "I pressed Fix It and then I
+   * closed it, and now it's not letting me open it again"). Storing the id
+   * alone meant pressing Fix it on the SAME claim set state to the value it
+   * already held, React saw no change, and the effect that opens the form
+   * never re-ran — so the second press did nothing at all.
+   */
+  const [focusEntry, setFocusEntry] = useState<{ id: string; n: number } | null>(
+    null
+  );
+  const askFix = (id: string) =>
+    setFocusEntry((prev) => ({ id, n: (prev?.n ?? 0) + 1 }));
 
   const jumps = useMemo(
     () => [
@@ -240,7 +252,7 @@ export function PeopleTab({
           state={state}
           person={person}
           isMe={person === meName}
-          onFix={setFocusEntry}
+          onFix={askFix}
         />
         <VerifyQueueCard state={state} run={run} meName={meName} busy={false} />
       </div>
@@ -303,7 +315,7 @@ export function PeopleTab({
           person={person}
           run={run}
           meName={meName}
-          focusEntryId={focusEntry}
+          focusEntry={focusEntry}
         />
       </div>
     </div>
