@@ -166,6 +166,14 @@ function DropdownPicker({
     (o.sub ?? "").toLowerCase().includes(q) ||
     (o.group ?? "").toLowerCase().includes(q);
 
+  // The flat list a search shows, hoisted so Enter can commit the top row
+  // (Anir, Aug 20: "when I press Enter on all these dropdowns with the search
+  // bar, it has to pick the first"). An exactly-typed label wins over row
+  // order, so typing a full name never lands on a longer one above it.
+  const searchHits = [...topOptions, ...options].filter(matches);
+  const enterPick =
+    searchHits.find((o) => o.label.trim().toLowerCase() === q) ?? searchHits[0];
+
   const toggleMenu = () => {
     if (open) {
       setOpen(false);
@@ -353,6 +361,15 @@ function DropdownPicker({
                     setQuery(e.target.value);
                     setLevel(null);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    if (!searching || !enterPick) return;
+                    pick(enterPick.id);
+                    // A single-pick menu closes itself in `pick`; a multi
+                    // stays up, so clear the box and type the next name.
+                    if (!single) setQuery("");
+                  }}
                   placeholder="Search…"
                   aria-label={`Search ${ariaLabel ?? "options"}`}
                   className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
@@ -365,7 +382,7 @@ function DropdownPicker({
             ) : searching || !grouped ? (
               // Typing shows every matching option at once, flat — search
               // cuts across categories.
-              [...topOptions, ...options].filter(matches).map((o) => (
+              searchHits.map((o) => (
                 <OptionRow
                   key={o.id}
                   o={o}

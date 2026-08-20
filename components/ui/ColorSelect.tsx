@@ -194,6 +194,25 @@ export function ColorSelect({
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
   const detailed = options.some((o) => o.description);
+  // The rows the menu is actually showing right now. Hoisted out of the JSX
+  // so Enter in the search box can commit the top one (Anir, Aug 20: "when I
+  // press Enter on all these dropdowns with the search bar, it has to pick
+  // the first").
+  const menuQ = menuQuery.trim().toLowerCase();
+  const visibleOptions =
+    searchable && menuQ
+      ? options.filter(
+          (o) =>
+            o.label.toLowerCase().includes(menuQ) ||
+            (o.description ?? "").toLowerCase().includes(menuQ)
+        )
+      : options;
+  // An exact typed name beats row order — typing "Novartis" in full and
+  // hitting Enter must not land on "Novartis + Cognizant" just because it
+  // sorts higher.
+  const enterPick =
+    visibleOptions.find((o) => o.label.trim().toLowerCase() === menuQ) ??
+    visibleOptions[0];
   const showDetailedTrigger = detailed && !compactTrigger;
   // The two-line "detailed" trigger never compacts — it isn't a toolbar shape.
   const searchHasPriority = useSearchPriority();
@@ -478,6 +497,13 @@ export function ColorSelect({
                   autoFocus
                   value={menuQuery}
                   onChange={(e) => setMenuQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    if (!enterPick) return;
+                    onChange(enterPick.value);
+                    setOpen(false);
+                  }}
                   placeholder="Search…"
                   aria-label={`Search ${ariaLabel || "options"}`}
                   className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
@@ -485,16 +511,7 @@ export function ColorSelect({
               </div>
             </div>
           )}
-          {(searchable && menuQuery.trim()
-            ? options.filter((o) => {
-                const q = menuQuery.trim().toLowerCase();
-                return (
-                  o.label.toLowerCase().includes(q) ||
-                  (o.description ?? "").toLowerCase().includes(q)
-                );
-              })
-            : options
-          ).map((o, rowIndex) => {
+          {visibleOptions.map((o, rowIndex) => {
             const on = o.value === value;
             // Selected look = a whisper of the option's own color (Suren: the old
             // solid-blue fill + left notch looked bad). No bar, no heavy fill.
@@ -895,6 +912,19 @@ export function MultiColorSelect({
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    // Same rule as the single select, except a multi keeps
+                    // the menu up: tick the top match, clear the box, type
+                    // the next name.
+                    const hit =
+                      visibleOptions.find((o) => o.label.trim().toLowerCase() === q) ??
+                      visibleOptions[0];
+                    if (!hit) return;
+                    toggle(hit.value);
+                    setQuery("");
+                  }}
                   placeholder="Search…"
                   aria-label="Search options"
                   className="w-full bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
