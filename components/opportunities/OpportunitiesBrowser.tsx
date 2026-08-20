@@ -2659,24 +2659,49 @@ function FormRoom({
   icon: Icon,
   title,
   hint,
+  defaultOpen = false,
   children,
 }: {
   icon: LucideIcon;
   title: string;
   hint?: string;
+  /** Only the first room opens (Anir, Aug 20: "the first one that should only
+   *  be open, and the other ones are closed"). Same rule the offering tab's
+   *  six sections follow, for the same reason: a long scroll of open panels
+   *  hides where to start. */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-3 rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
-      <div className="flex items-center gap-2">
+    <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-2 text-left"
+      >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
           <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
         </span>
         <span className="text-[12.5px] font-bold text-text-primary">{title}</span>
         <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
-      </div>
-      {hint && <p className="-mt-1 text-[11.5px] text-text-secondary">{hint}</p>}
-      {children}
+        <ChevronDown
+          size={15}
+          strokeWidth={2.2}
+          aria-hidden="true"
+          className={cn(
+            "shrink-0 text-blue-primary transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {hint && <p className="text-[11.5px] text-text-secondary">{hint}</p>}
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -2710,17 +2735,9 @@ function SingleOfferingEditor({
        is the offering… make it look good"): a whisper of blue behind the
        whole block and a named header, so the eye reads one bounded thing —
        the offering and its money — without anything moving. */
-    <div className="space-y-3 rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
-      <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-          {/* Money, not sparkles — the stars read as AI (Suren, Aug 18). */}
-          <CircleDollarSign size={13} strokeWidth={2.2} aria-hidden="true" />
-        </span>
-        <span className="text-[12.5px] font-bold text-text-primary">
-          What&rsquo;s being sold
-        </span>
-        <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
-      </div>
+    /* The one room that opens with the form — it is the first thing you fill
+       in and the only one that is empty on a new deal. */
+    <FormRoom icon={CircleDollarSign} title="What's being sold" defaultOpen>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
         <div className="min-w-0">
           <label className={labelCls}>Offering</label>
@@ -2881,6 +2898,6 @@ function SingleOfferingEditor({
           )}
         </p>
       )}
-    </div>
+    </FormRoom>
   );
 }
