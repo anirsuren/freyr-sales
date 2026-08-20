@@ -564,7 +564,37 @@ export function buildNotifications(input: {
     });
   }
 
-  return perfRows.concat(securityRows).concat(roadmapRows).concat(out)
+  /**
+   * A BULK UPDATE MUST NOT BECOME THE WHOLE BELL.
+   *
+   * One row per changed offering is right for two or three. It is wrong for
+   * twenty-five: the list is capped at 30, so an owner working through the
+   * catalogue in one sitting — or an import — would push every sent-back
+   * claim and every follow-up off the bottom. The newest few keep their own
+   * row and say what changed; the rest collapse into one line that still says
+   * the number, so nothing is silently dropped.
+   */
+  const ROADMAP_ROWS_SHOWN = 3;
+  const roadmapShown = roadmapRows
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .slice(0, ROADMAP_ROWS_SHOWN);
+  const roadmapRest = roadmapRows.length - roadmapShown.length;
+  if (roadmapRest > 0) {
+    roadmapShown.push({
+      id: "roadmap-more",
+      type: "roadmap",
+      title: "More roadmaps changed",
+      body: `${roadmapRest} other offering${roadmapRest === 1 ? "" : "s"} changed their roadmap recently.`,
+      subject: `${roadmapRest} more roadmap${roadmapRest === 1 ? "" : "s"} changed`,
+      chip: "Offerings",
+      detail: "Open Offerings to see which ones.",
+      urgency: "week",
+      href: "/offerings",
+      ts: roadmapRows[roadmapShown.length]?.ts ?? new Date(nowMs).toISOString(),
+    });
+  }
+
+  return perfRows.concat(securityRows).concat(roadmapShown).concat(out)
     .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
     .sort((a, b) => {
       // Your own account first: a rep can't be nagged about a customer while
