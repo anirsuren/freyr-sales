@@ -435,7 +435,12 @@ const PACE_META: Record<
   /* A target with no schedule cannot be behind or ahead of anything. Saying
      "no schedule" is the honest verdict; the old code called it lagging
      against a line the app drew itself (Anir, Aug 16). */
-  unscheduled: { label: "No schedule", color: "#8E98A8", icon: CalendarClock },
+  /* NEVER GRAY IN A GRAPH (Suren, the same rule that turned VIZ.slate from
+     #8E98A8 into a real violet). This colour is not only a chip: it paints a
+     slice and a legend dot in "Where the goals stand". Violet because the
+     reserved status hues are spoken for — green met, blue on track, red
+     lagging — and "nobody set a schedule" is not a verdict about the goal. */
+  unscheduled: { label: "No schedule", color: "#A855F7", icon: CalendarClock },
 };
 
 export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md" }) {

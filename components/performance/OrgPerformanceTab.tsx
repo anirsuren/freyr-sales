@@ -84,7 +84,11 @@ import type { RunOp } from "./PerformanceModule";
 const PERIOD_KEYS = ["week", "month", "quarter", "year"] as const;
 
 const PACE_COLOR: Record<string, string> = {
-  unscheduled: "#8E98A8",
+  /* Same violet as the chip in bits.tsx — this map paints the donut and its
+     legend, and a gray slice broke the no-gray-in-a-graph rule. The two maps
+     still disagree about "ahead" (green here as a chip, teal in the donut);
+     that one is a choice, not a bug, so it is left as found. */
+  unscheduled: "#A855F7",
   met: "#16A34A",
   ahead: "#0F766E",
   ontrack: "#0071E3",
