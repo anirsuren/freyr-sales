@@ -44,6 +44,7 @@ import {
   entryStatus,
   entryStatusLabel,
   familyValue,
+  verifiedValue,
   goalFamilyActuals,
   ENTRY_COLOR,
   canVerifyEntry,
@@ -144,7 +145,8 @@ const MONEY = ENTRY_COLOR.verified;
  * before Met and % Met moved to verified-only. A verdict flatters nobody.
  */
 function verifiedFor(state: Pick<PerformanceState, "actuals">, g: PrimaryGoal): number {
-  return familyValue(state, g, { verifiedOnly: true });
+  /* Ratio goals report their latest reading, not a sum — see verifiedValue. */
+  return verifiedValue(state, g);
 }
 
 /** Goal type → the TIP_ICONS key for the same mark it wears on every goal row.
@@ -390,7 +392,7 @@ export function OrgPerformanceTab({
     actual: actualValue(state.actuals, g, { rates: state.rates }),
     // The tile counts the same way the row's badge does: a target is met when
     // the money that COUNTS reaches it.
-    verified: familyValue(state, g, { verifiedOnly: true }),
+    verified: verifiedValue(state, g),
   }));
   const metCount = withValue.filter(
     (x) => x.goal.target > 0 && x.verified >= x.goal.target
@@ -513,7 +515,7 @@ export function OrgPerformanceTab({
                    * this is the progress, right?"). Lagging still shows in the
                    * row's pace pill and the donut beside this card.
                    */
-                  const verified = familyValue(state, g, { verifiedOnly: true });
+                  const verified = verifiedValue(state, g);
                   const awaiting = Math.max(0, a - verified);
                   return {
                     label: chartName(g.name),

@@ -902,6 +902,38 @@ export function familyValue(
   return total;
 }
 
+/**
+ * THE VERIFIED FIGURE A VERDICT IS JUDGED ON.
+ *
+ * Not simply familyValue(verifiedOnly): a RATIO goal (win rate, average deal
+ * size) reports its latest reading, never a running total, and summing them is
+ * meaningless. Judging Win/Loss Ratio on the sum of every verified entry
+ * printed "713% met" over a goal whose own caption read "44% of 45%" (found in
+ * mock, Aug 20). Same rule actualValue has always followed for `measure:
+ * "level"`, applied to the verified half — a total sums, a level is the last
+ * word on it.
+ */
+export function verifiedValue(
+  state: Pick<PerformanceState, "actuals"> & Partial<Pick<PerformanceState, "rates">>,
+  goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure" | "currency">
+): number {
+  if (goal.measure !== "level") {
+    return familyValue(state, goal, { verifiedOnly: true });
+  }
+  let latest: PerfActual | null = null;
+  for (const a of goalFamilyActuals(state, goal)) {
+    if (entryStatus(a) !== "verified") continue;
+    if (
+      !latest ||
+      Date.parse(a.date) > Date.parse(latest.date) ||
+      (a.date === latest.date && a.addedAt > latest.addedAt)
+    ) {
+      latest = a;
+    }
+  }
+  return latest?.amount ?? 0;
+}
+
 /** Entries a given person is allowed to verify: they head a group the entry's
  *  person belongs to (Suren, Aug 13: "whoever has been identified as a group
  *  owner is the only person who can verify it"). */
