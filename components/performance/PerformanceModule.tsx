@@ -1649,7 +1649,12 @@ function AssignGroupModal({
     });
 
   const body = (
-    <div className={cn("flex min-h-0 flex-col", !inline && "h-full")}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        !inline && groups.length > 4 && "h-full"
+      )}
+    >
       <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
         Giving
         <b className="text-text-primary">{goal.name}</b>
@@ -1666,12 +1671,18 @@ function AssignGroupModal({
       {/* THE LIST SCROLLS, THE DIALOG DOES NOT. A hundred groups stay inside
           this box, and the fade at its foot says there are more — it clears
           the moment the last row is reached. */}
-      <div className={cn("relative mt-1.5 min-h-0", !inline && "flex-1")}>
+      <div
+        className={cn(
+          "relative mt-1.5 min-h-0",
+          !inline && groups.length > 4 && "flex-1"
+        )}
+      >
         <div
           ref={listRef}
           onScroll={syncFade}
           className={cn(
-            "flex h-full flex-col gap-1.5 overflow-y-auto pr-1",
+            "flex flex-col gap-1.5 overflow-y-auto pr-1",
+            !inline && groups.length > 4 && "h-full",
             inline && "max-h-[300px]"
           )}
         >
@@ -1816,20 +1827,31 @@ function AssignGroupModal({
           under the list, full width, drawn against what the other groups and
           people already hold. */}
       <div className="mt-3 shrink-0 border-t border-border-light pt-3">
-        <TargetSlider
-          label="Group target"
-          value={target}
-          onChange={setTarget}
-          unit={goal.unit}
-          max={goal.target}
-          allocations={allocations}
-        />
-        <div className="mt-3 flex flex-nowrap items-center justify-end gap-2">
-          {!groupId && groups.length > 0 && (
-            <p className="mr-auto text-[11.5px] text-text-tertiary">
-              Pick a group above to continue.
+        {/* ONE QUESTION AT A TIME (Anir, Aug 20: "I have to pick the group,
+            and then it'll show me the group target, because this is
+            confusing. I don't know which one to pick. I don't know what I
+            have to do here"). A slider for a group nobody has chosen yet is a
+            number about nothing — and it sat there looking like the second
+            half of a form you had already filled in. It appears when there is
+            a group for it to be about, named after that group. */}
+        {picked ? (
+          <TargetSlider
+            label={`Target for ${picked.name}`}
+            value={target}
+            onChange={setTarget}
+            unit={goal.unit}
+            max={goal.target}
+            allocations={allocations}
+          />
+        ) : (
+          groups.length > 0 && (
+            <p className="text-[12.5px] text-text-secondary">
+              Pick a group above. You can give it a share of the{" "}
+              {fmtAmount(goal.unit, goal.target)} next, or leave that for later.
             </p>
-          )}
+          )
+        )}
+        <div className="mt-3 flex flex-nowrap items-center justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
@@ -1848,14 +1870,24 @@ function AssignGroupModal({
         {body}
       </div>
     );
+  /**
+   * A FIXED 780px BOX FOR THREE GROUPS IS A SCREEN OF NOTHING (Anir, Aug 20).
+   * The height is there so a long roster scrolls inside the dialog instead of
+   * stretching it; with a handful of groups it only manufactured a void
+   * between the list and the target, which read as a form with a missing
+   * middle. Short lists size to their content.
+   */
+  const tallList = groups.length > 4;
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Assign to a group"
       size="wide"
-      tall
-      dialogClassName="!h-[min(780px,calc(100vh-3rem))]"
+      tall={tallList}
+      dialogClassName={
+        tallList ? "!h-[min(780px,calc(100vh-3rem))]" : undefined
+      }
     >
       {body}
     </Modal>

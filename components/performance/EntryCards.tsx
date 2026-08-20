@@ -584,65 +584,76 @@ export function SentBackCard({
         aria-hidden="true"
         className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
       />
-      <div className="flex flex-wrap items-center gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-2.5">
+      <div className="flex items-start gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-3">
         <AlertCircle
           size={16}
           strokeWidth={2.4}
           aria-hidden="true"
-          className="shrink-0 text-[color:#B02020]"
+          className="mt-px shrink-0 text-[color:#B02020]"
         />
-        <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
-          {isMe
-            ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
-            : `Sent back to ${who}. ${rejected.length} waiting on them`}
-        </h3>
-        <span className="text-[12.5px] font-semibold text-text-secondary">
-          {isMe
-            ? "None of it counts toward your goals until you fix it and it is verified."
-            : "None of it counts until they fix it."}
+        <span className="min-w-0">
+          <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
+            {isMe
+              ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
+              : `Sent back to ${who}. ${rejected.length} waiting on them`}
+          </h3>
+          <span className="mt-0.5 block text-[12.5px] text-text-secondary">
+            {isMe
+              ? "None of it counts toward your goals until you fix it and it is verified."
+              : "None of it counts until they fix it."}
+          </span>
         </span>
       </div>
       <ul className="divide-y divide-border-light">
         {rejected.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
           return (
-            <li
-              key={a.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3"
-            >
-              <span className="text-[14px] font-bold text-text-primary tnum">
-                {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+            /* TWO LINES, NOT ONE RUN-ON (Anir, Aug 20: "I don't like how
+               it's just all in one line. It looks ugly"). The money and what
+               it was against are the headline; who refused it, when, and what
+               they said are the story underneath. */
+            <li key={a.id} className="flex items-start gap-3 px-4 py-3">
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <b className="text-[16px] font-bold text-text-primary tnum">
+                    {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                  </b>
+                  <span className="text-[13px] text-text-secondary">
+                    on {goal?.name ?? "a goal"}
+                  </span>
+                </span>
+                {/* Who refused it, with their face — the first question anyone
+                    holding a rejection asks — then when. */}
+                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {a.sentBackBy && (
+                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                      <Avatar
+                        name={a.sentBackBy}
+                        className="h-[20px] w-[20px] shrink-0 text-[8px]"
+                      />
+                      {a.sentBackBy}
+                    </span>
+                  )}
+                  {a.sentBackAt && (
+                    <span className="text-[11.5px] tnum text-text-tertiary">
+                      {stamp(a.sentBackAt).day}
+                      {stamp(a.sentBackAt).time
+                        ? ` at ${stamp(a.sentBackAt).time}`
+                        : ""}
+                    </span>
+                  )}
+                </span>
+                {a.managerNote && (
+                  <span className="mt-1 block text-[12.5px] leading-snug text-text-secondary">
+                    <b className="text-text-primary">Their note: </b>
+                    <i>&ldquo;{a.managerNote}&rdquo;</i>
+                  </span>
+                )}
               </span>
-              <span className="text-[13px] text-text-secondary">
-                on {goal?.name ?? "a goal"}
-              </span>
-              {/* Who refused it, with their face — the first question anyone
-                  holding a rejection asks. */}
-              {a.sentBackBy && (
-                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                  <Avatar
-                    name={a.sentBackBy}
-                    className="h-[20px] w-[20px] shrink-0 text-[8px]"
-                  />
-                  {a.sentBackBy}
-                </span>
-              )}
-              {a.sentBackAt && (
-                <span className="text-[11.5px] tnum text-text-tertiary">
-                  {stamp(a.sentBackAt).day}
-                  {stamp(a.sentBackAt).time ? ` at ${stamp(a.sentBackAt).time}` : ""}
-                </span>
-              )}
-              {a.managerNote && (
-                <span className="min-w-0 flex-1 text-[12.5px] text-text-secondary">
-                  <b className="text-text-primary">Their note: </b>
-                  <i>&ldquo;{a.managerNote}&rdquo;</i>
-                </span>
-              )}
               <button
                 type="button"
                 onClick={() => onFix(a.id)}
-                className="ml-auto shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
+                className="mt-0.5 shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
               >
                 {isMe ? "Fix it" : "Open it"}
               </button>

@@ -586,14 +586,27 @@ export function fmtAmount(
   unit: GoalUnit,
   value: number,
   /** Money only. Omitted keeps the workspace currency, as it always was. */
-  code: CurrencyCode = BASE_CURRENCY
+  code?: CurrencyCode
 ): string {
+  /**
+   * A CURRENCY CODE MEANS MONEY, WHATEVER THE GOAL SAYS (Anir, Aug 20: "I
+   * just realized there's no currency anywhere... Literally everywhere where
+   * that number is, it has to be there").
+   *
+   * A result logged in USD printed as a bare "120,000" because the GOAL it
+   * hung under had been created with unit=count — the goal's filing decided
+   * how the money was drawn, and the money lost its symbol. Nothing ever
+   * attaches a currency code to a headcount, so a code present is proof this
+   * value is money and it is rendered as money. Callers that pass no code are
+   * untouched: a count goal still counts, a percent goal still shows a %.
+   */
+  if (code) return fmtMoney(value, code);
   if (unit === "count") return Math.round(value).toLocaleString("en-US");
   if (unit === "percent") {
     const r = Math.round(value * 10) / 10;
     return `${Number.isInteger(r) ? r.toFixed(0) : r}%`;
   }
-  return fmtMoney(value, code);
+  return fmtMoney(value, BASE_CURRENCY);
 }
 
 function trim1(n: number): string {
