@@ -18,6 +18,7 @@ import {
   STAGES,
   STAGE_COLOR,
 } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import {
   repEmail,
@@ -212,10 +213,64 @@ export default async function TeamPage() {
     roster: salesTeamFor(currentUser),
   });
 
-  const totalPipeline = stats.reduce((s, r) => s + r.openValue, 0);
-  const totalWeighted = stats.reduce((s, r) => s + r.weighted, 0);
+  /**
+   * THE PIPELINE COLUMNS COME FROM THE REAL DEALS (found Aug 20, shooting the
+   * page: every member showed $0 while Opportunities held $11M).
+   *
+   * buildDeals reads the demo pitch-session pipeline, which the live
+   * workspace does not use — real deals live in the Opportunities store with
+   * an owner on each row. In live mode those rows are the truth: a member's
+   * open pipeline is the sum of their not-Won-not-Lost current deals, and
+   * weighted is value x confidence, exactly the arithmetic the Opportunities
+   * header shows. Mock keeps the demo numbers.
+   */
+  if (getDataMode() === "live") {
+    const { opportunities } = await readOpportunities();
+    const byOwner = new Map<
+      string,
+      { openValue: number; weighted: number; openCount: number }
+    >();
+    for (const o of opportunities) {
+      if (!o.owner || o.level === "Future") continue;
+      if (o.status === "Won" || o.status === "Lost") continue;
+      const key = o.owner.trim().toLowerCase();
+      const row = byOwner.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
+      const value = o.value ?? 0;
+      row.openValue += value;
+      row.weighted += Math.round(value * ((o.confidence ?? 0) / 100));
+      row.openCount += 1;
+      byOwner.set(key, row);
+    }
+    for (const r of stats) {
+      const real = byOwner.get(r.name.trim().toLowerCase());
+      r.openValue = real?.openValue ?? 0;
+      r.weighted = real?.weighted ?? 0;
+      r.openCount = real?.openCount ?? 0;
+    }
+  }
+
+  let totalPipeline = stats.reduce((s, r) => s + r.openValue, 0);
+  let totalWeighted = stats.reduce((s, r) => s + r.weighted, 0);
   const totalMeetings = stats.reduce((s, r) => s + r.meetings, 0);
-  const totalOpen = stats.reduce((s, r) => s + r.openCount, 0);
+  let totalOpen = stats.reduce((s, r) => s + r.openCount, 0);
+  /**
+   * THE HEADER COUNTS THE WHOLE FLOOR, OWNED OR NOT. 97 of the 102 imported
+   * deals carry no owner yet, so summing the per-person rows said "Team
+   * pipeline $0" over a workspace holding $11M (Aug 20). A deal nobody has
+   * claimed is still the team's pipeline.
+   */
+  if (getDataMode() === "live") {
+    const { opportunities } = await readOpportunities();
+    const open = opportunities.filter(
+      (o) => o.level !== "Future" && o.status !== "Won" && o.status !== "Lost"
+    );
+    totalPipeline = open.reduce((s, o) => s + (o.value ?? 0), 0);
+    totalWeighted = open.reduce(
+      (s, o) => s + Math.round((o.value ?? 0) * ((o.confidence ?? 0) / 100)),
+      0
+    );
+    totalOpen = open.length;
+  }
 
   const reps: RosterRep[] = stats.map((r) => {
     const you = isCurrentRep(r, currentUser.memberId);
