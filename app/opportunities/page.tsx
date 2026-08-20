@@ -6,7 +6,7 @@ import { readPerformance } from "@/lib/performance";
 import { readActivityMaster } from "@/lib/activityMaster";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
-import { isManagerOrAdmin } from "@/lib/moduleAccess";
+
 import { visiblePeople } from "@/lib/performanceShared";
 import { getDataMode } from "@/lib/dataMode";
 import { OpportunitiesBrowser } from "@/components/opportunities/OpportunitiesBrowser";
@@ -64,7 +64,15 @@ export default async function OpportunitiesPage() {
       rates={perf.rates ?? {}}
       people={visiblePeople(perf, me.name, me.role)}
       meName={me.name}
-      canEdit={isManagerOrAdmin(me.role)}
+      /**
+       * A REP KEEPS THEIR OWN PIPELINE (Anir, Aug 19: "yes open it"). Opening
+       * the module read-only would have been half a door: a rep could watch
+       * their deals and change nothing about them. The server already decides
+       * this per deal — update and remove demand the owner or a manager — so
+       * the button being here does not widen what anyone may actually do,
+       * it just stops hiding it from the person whose deal it is.
+       */
+      canEdit
       live={getDataMode() === "live"}
     />
   );

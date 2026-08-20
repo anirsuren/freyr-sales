@@ -17,7 +17,6 @@ export const MANAGER_ONLY_MODULES = [
   "/components",
   "/customers",
   "/reports",
-  "/performance",
   "/market-intel",
 ] as const;
 
@@ -32,8 +31,21 @@ export const MANAGER_ONLY_MODULES = [
  * pipeline, forecast, opportunities, contacts, sessions, sequences, campaigns,
  * voice agents, tasks, analytics, activity — was open to reps by default. A
  * blacklist grows a hole every time a module ships. This closes by default.
+ *
+ * PERFORMANCE AND OPPORTUNITIES REOPENED (Anir, Aug 19: "yes open it"). A rep
+ * who could not open either could not log their own result or see their own
+ * deal — every number had to be entered on their behalf by a manager, which
+ * is not what a sales team does. Performance already scopes a non-manager to
+ * themselves plus any group they head, so a rep sees their own goals and
+ * nobody else's; writing is still checked per operation on the server.
  */
-export const REP_MODULES = ["/agent", "/offerings", "/team"] as const;
+export const REP_MODULES = [
+  "/agent",
+  "/offerings",
+  "/team",
+  "/performance",
+  "/opportunities",
+] as const;
 
 /**
  * TEAM IS NOT FINISHED, SO NOBODY BUT ADMINS SEES IT YET (Anir, Aug 16: "the
@@ -68,7 +80,7 @@ export function canAccessModule(
   // Signing in, your own settings, the notification list, the tour: these are
   // not modules and locking a rep out of them would lock them out of the app.
   if (isAlwaysOpen(path)) return true;
-  // A rep gets exactly the three modules, and nothing gets added to that list
+  // A rep gets exactly the modules on that list, and nothing gets added to it
   // by being built later.
   if (role === "rep") return REP_MODULES.some((m) => isUnder(path, m));
   if (!isManagerOnlyPath(path)) return true;

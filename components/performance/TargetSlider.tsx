@@ -96,8 +96,13 @@ export function TargetSlider({
                 style={{ width: `${pct(taken)}%` }}
               />
               <span
+                /* NO TRANSITION ON THE FILL (Anir, Aug 19: "the circle does
+                   not go with the line, the line has to catch up"). The thumb
+                   is a native range input and moves with the pointer; a 75ms
+                   width transition meant the blue lagged behind it the whole
+                   way down the lane. */
                 className={cn(
-                  "absolute inset-y-0 transition-[width] duration-75",
+                  "absolute inset-y-0",
                   over ? "bg-[color:#C2410C]" : "bg-blue-primary"
                 )}
                 style={{

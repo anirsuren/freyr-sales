@@ -3031,9 +3031,16 @@ function GoalEditorFields({
   onDone: () => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
-  const [type, setType] = useState(editing?.type ?? types[0] ?? "");
+  /**
+   * NOTHING IS CHOSEN FOR YOU (Anir, Aug 19: "it shouldn't auto pick this
+   * type", and then "there's no currency anywhere" — because the unit had
+   * quietly defaulted to Count, so a revenue goal was created that could
+   * never show a pound sign). A default that is right three times out of four
+   * is worse than no default: the fourth goal is wrong and nobody looked.
+   */
+  const [type, setType] = useState(editing?.type ?? "");
   const [newType, setNewType] = useState("");
-  const [unit, setUnit] = useState<GoalUnit>(editing?.unit ?? "count");
+  const [unit, setUnit] = useState<GoalUnit | "">(editing?.unit ?? "");
   const [measure, setMeasure] = useState<GoalMeasure>(editing?.measure ?? "total");
   const [year, setYear] = useState(
     String(editing?.year ?? new Date().getFullYear())
@@ -3186,6 +3193,7 @@ function GoalEditorFields({
               ariaLabel="Goal type"
               minWidth={220}
               options={[
+                { value: "", label: "Pick a goal type…", color: "#8E98A8" },
                 ...types.map((t) => ({
                   value: t,
                   label: t,
@@ -3230,6 +3238,7 @@ function GoalEditorFields({
               ariaLabel="Counted in"
               minWidth={150}
               options={[
+                { value: "", label: "Pick one…", color: "#8E98A8" },
                 { value: "currency", label: "Money ($)", color: "#0F766E" },
                 { value: "count", label: "Count (#)", color: "#0071E3" },
                 { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
@@ -3301,7 +3310,7 @@ function GoalEditorFields({
         {target.trim() !== "" &&
           (parsedTarget !== null ? (
             <p className="mt-1 text-[11px] text-text-tertiary tnum">
-              = {fmtAmount(unit, parsedTarget)}
+              = {fmtAmount(unit || "count", parsedTarget)}
             </p>
           ) : (
             <p className="mt-1 whitespace-nowrap text-[11px] text-error">
@@ -3505,6 +3514,8 @@ function GoalEditorFields({
           disabled={
             busy ||
             !name.trim() ||
+            !type ||
+            !unit ||
             (type === "__new" && !newType.trim()) ||
             milestoneProblem !== null ||
             unchanged
