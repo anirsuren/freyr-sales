@@ -881,6 +881,19 @@ export function familyValue(
   goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure" | "currency">,
   filter: ValueFilter = {}
 ): number {
+  /**
+   * A RATIO IS NEVER A SUM (found in mock, Aug 20: Win/Loss Ratio read "713%
+   * met", and its drill would have added up every monthly win rate into a
+   * bar).
+   *
+   * `measure: "level"` means the goal reports its latest reading — a win rate,
+   * an average deal size. actualValue has always known that; this function did
+   * not, so every rail, every period bar and every verdict built on it summed
+   * percentages. Whatever the filter selects, a level goal answers with the
+   * LAST of them, not the total.
+   */
+  const level = goal.measure === "level";
+  let latest: PerfActual | null = null;
   let total = 0;
   for (const a of goalFamilyActuals(state, goal)) {
     if (filter.componentGoalId && a.goalId !== filter.componentGoalId) continue;
@@ -897,9 +910,19 @@ export function familyValue(
     // rather than vanishing from both sides of the sum.
     if (filter.reportedOnly && status === "verified") continue;
     if (filter.sentBackOnly && status !== "sent_back") continue;
+    if (level) {
+      if (
+        !latest ||
+        Date.parse(a.date) > Date.parse(latest.date) ||
+        (a.date === latest.date && a.addedAt > latest.addedAt)
+      ) {
+        latest = a;
+      }
+      continue;
+    }
     total += inGoalCurrency(a, goal.currency, state.rates);
   }
-  return total;
+  return level ? (latest?.amount ?? 0) : total;
 }
 
 /**
@@ -917,21 +940,10 @@ export function verifiedValue(
   state: Pick<PerformanceState, "actuals"> & Partial<Pick<PerformanceState, "rates">>,
   goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure" | "currency">
 ): number {
-  if (goal.measure !== "level") {
-    return familyValue(state, goal, { verifiedOnly: true });
-  }
-  let latest: PerfActual | null = null;
-  for (const a of goalFamilyActuals(state, goal)) {
-    if (entryStatus(a) !== "verified") continue;
-    if (
-      !latest ||
-      Date.parse(a.date) > Date.parse(latest.date) ||
-      (a.date === latest.date && a.addedAt > latest.addedAt)
-    ) {
-      latest = a;
-    }
-  }
-  return latest?.amount ?? 0;
+  /* familyValue handles the ratio rule itself now; this name stays because
+     "the verified figure a verdict is judged on" is worth saying out loud at
+     every call site. */
+  return familyValue(state, goal, { verifiedOnly: true });
 }
 
 /** Entries a given person is allowed to verify: they head a group the entry's
