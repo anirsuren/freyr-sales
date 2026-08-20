@@ -6,11 +6,6 @@
 import { getDataMode } from "./dataMode";
 import { createClient } from "@supabase/supabase-js";
 import {
-  nextRoadmapVersions,
-  nextComponentVersions,
-  type RoadmapVersion,
-} from "./roadmapVersions";
-import {
   canonicalMaterialFolder,
   isFixedMaterialFolder,
   sanitizeMaterialFolderPath,
@@ -142,14 +137,6 @@ export interface Offering {
    *  the restricted next-version table without flattening them into generic
    *  release bullets. */
   roadmap_details?: OfferingRoadmapDetails;
-  /**
-   * EVERY CHANGE TO THIS ROADMAP, NEWEST FIRST (product owner, Aug 20: "Every
-   * time there is a change in road map it has to be versioned. Just like how
-   * you version a document").
-   *
-   * Written by the save path, never by a client body. See lib/roadmapVersions.
-   */
-  roadmap_versions?: RoadmapVersion[];
   /** WHO OWNS THIS OFFERING, as account records rather than a name string.
    *  Editing rights are decided by `memberId`, an exact match against the
    *  signed-in workspace account, never by matching a person's display name
@@ -239,8 +226,6 @@ export interface FdlComponent {
   type: FdlComponentType;
   releases: FdlRelease[];
   features: FdlFeature[];
-  /** Every change ever made to this component's releases, newest first. */
-  roadmap_versions?: RoadmapVersion[];
 }
 
 export interface OfferingRoadmapModuleRow {
@@ -1266,82 +1251,6 @@ function seed(): OfferingsStore {
   };
 }
 
-
-/**
- * ROADMAP HISTORY FOR THE SHOWROOM.
- *
- * Mock has to look like a workspace somebody has been using for a year (Anir's
- * standing rule: mock is always full), and a version history that is empty
- * everywhere teaches nobody what the feature looks like. Built FROM each
- * component's own versions, so the story it tells can never contradict the
- * releases sitting next to it: each later version was added at some point, one
- * of them slipped a quarter, and the current-version mark moved when the newest
- * release shipped.
- *
- * Demo names only — mock never puts words in a real colleague's mouth.
- */
-const DEMO_ROADMAP_AUTHORS = [
-  "Audrey Kingsley",
-  "Daniel Foster",
-  "Grace Lockwood",
-  "Hannah Schmidt",
-];
-
-function seedRoadmapHistory(
-  releases: FdlRelease[],
-  seed: number
-): RoadmapVersion[] {
-  if (releases.length < 2) return [];
-  const daysAgo = (n: number) =>
-    new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
-  const snapshot = (upTo: number) =>
-    releases.slice(0, upTo + 1).map((r) => ({ ...r }));
-  const out: RoadmapVersion[] = [];
-  const author = (i: number) =>
-    DEMO_ROADMAP_AUTHORS[(seed + i) % DEMO_ROADMAP_AUTHORS.length];
-
-  releases.forEach((release, i) => {
-    if (i === 0) return;
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(120 - i * 30),
-      savedBy: author(i),
-      changes: [`Added ${release.version}${release.date ? ` (${release.date})` : ""}`],
-      releases: snapshot(i),
-    });
-  });
-  /* One slipped date, because roadmaps slip — this is the entry that makes the
-     feature obviously useful when a rep asks "did this move since I quoted it?" */
-  const slipped = releases[releases.length - 1];
-  if (slipped?.date) {
-    /* A slip has to land on an EARLIER date — the first cut computed the same
-       month and printed "moved from 2026-10-01 to 2026-10-01", which is not a
-       slip, it is a typo with a timestamp. One quarter back, same day. */
-    const slipFrom = new Date(slipped.date);
-    slipFrom.setMonth(slipFrom.getMonth() - 3);
-    const was = slipFrom.toISOString().slice(0, 10);
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(21),
-      savedBy: author(out.length),
-      changes: [`${slipped.version} moved from ${was} to ${slipped.date}`],
-      releases: snapshot(releases.length - 1),
-    });
-  }
-  const current = releases.find((r) => r.current);
-  if (current) {
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(3 + (seed % 4)),
-      savedBy: author(out.length),
-      changes: [`${current.version} is now the current version`],
-      releases: snapshot(releases.length - 1),
-    });
-  }
-  /* Newest first, the way the list reads. */
-  return out.reverse();
-}
-
 /** Demo FDL components for the mock showroom — enough versions and mapped
  *  features that the comparison matrix and feature sheets demo themselves. */
 /**
@@ -1656,16 +1565,7 @@ function seedFdlComponents(): FdlComponent[] {
     });
     // A component with no released version yet would read as broken.
     if (!releasedIds.length && releases[0]) releases[0].status = "released";
-    return {
-      id,
-      name: blueprint.name,
-      type: blueprint.type,
-      releases,
-      features,
-      /* The showroom needs a history to show; real mode starts empty and
-         fills itself as owners edit. */
-      roadmap_versions: seedRoadmapHistory(releases, index),
-    };
+    return { id, name: blueprint.name, type: blueprint.type, releases, features };
   });
 }
 
@@ -3062,13 +2962,7 @@ function isFolderUnder(path: string, root: string): boolean {
 
 export function updateOffering(
   id: string,
-  data: Partial<Offering>,
-  /**
-   * Who is saving, from the session. Present only on the routes that know a
-   * person; absent for imports and internal rewrites, which then leave the
-   * roadmap history alone rather than crediting a version to nobody.
-   */
-  savedBy?: string
+  data: Partial<Offering>
 ): Offering | null {
   const i = activeStore().offerings.findIndex((o) => o.id === id);
   if (i === -1) return null;
@@ -3093,33 +2987,10 @@ export function updateOffering(
             ),
           }),
     };
-  /**
-   * VERSION THE ROADMAP BEFORE THE ROW MOVES ON.
-   *
-   * Computed here rather than in the route because this is the one place every
-   * roadmap edit funnels through, and it holds both the row as it stands and
-   * the patch about to land. A save that changes nothing on the roadmap mints
-   * nothing, so re-saving an offering never inflates its history. The history
-   * itself is never taken from the request body — a client cannot forge or
-   * erase a version.
-   */
-  const priorRow = activeStore().offerings[i];
-  const roadmapAfter = {
-    releases: normalizedData.releases ?? priorRow.releases,
-    roadmap_details:
-      normalizedData.roadmap_details === undefined
-        ? priorRow.roadmap_details
-        : normalizedData.roadmap_details,
-  };
-  const minted = savedBy
-    ? nextRoadmapVersions(priorRow, roadmapAfter, savedBy)
-    : null;
-
   activeStore().offerings[i] = {
-    ...priorRow,
+    ...activeStore().offerings[i],
     ...normalizedData,
     materials,
-    ...(minted ? { roadmap_versions: minted } : {}),
     id,
   };
   if (data.offering_type) ensureOfferingType(activeStore().offerings[i].offering_type);
@@ -3163,22 +3034,12 @@ export function createFdlComponent(data: {
 
 export function updateFdlComponent(
   id: string,
-  data: Partial<Omit<FdlComponent, "id">>,
-  /** Who is saving, from the session. Absent for internal rewrites, which then
-   *  leave the history alone rather than crediting a version to nobody. */
-  savedBy?: string
+  data: Partial<Omit<FdlComponent, "id">>
 ): FdlComponent | null {
   const list = fdlList();
   const i = list.findIndex((c) => c.id === id);
   if (i === -1) return null;
-  /* Versioned before the row moves on, from the one place every component
-     edit funnels through. A save that leaves the releases alone mints
-     nothing, so renaming a component never inflates its roadmap history. */
-  const minted =
-    savedBy && data.releases
-      ? nextComponentVersions(list[i], { releases: data.releases }, savedBy)
-      : null;
-  list[i] = { ...list[i], ...data, ...(minted ? { roadmap_versions: minted } : {}), id };
+  list[i] = { ...list[i], ...data, id };
   return list[i];
 }
 

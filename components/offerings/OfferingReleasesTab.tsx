@@ -11,7 +11,6 @@ import {
   GitCompareArrows,
   GripVertical,
   History,
-  GitBranch,
   Layers,
   ListChecks,
   Pencil,
@@ -24,8 +23,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { RoadmapVersionHistory } from "./RoadmapVersionHistory";
-import type { RoadmapVersion } from "@/lib/roadmapVersions";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
 import { ReleaseTimeline } from "@/components/offerings/ReleaseTimeline";
@@ -1144,7 +1141,6 @@ export function OfferingReleasesTab({
   offeringName,
   releases,
   roadmapDetails,
-  roadmapVersions,
   canEdit,
   canSeeNext,
   contacts,
@@ -1155,8 +1151,6 @@ export function OfferingReleasesTab({
   offeringName: string;
   releases: OfferingRelease[];
   roadmapDetails?: OfferingRoadmapDetails;
-  /** Every change ever made to this roadmap, newest first. */
-  roadmapVersions?: RoadmapVersion[];
   canEdit: boolean;
   canSeeNext: boolean;
   contacts: OfferingContact[];
@@ -1580,18 +1574,6 @@ export function OfferingReleasesTab({
             ))}
           </div>
         )}
-      </SectionCard>
-
-      {/* CHANGE HISTORY OF THE DOCUMENT ITSELF, not of the product. Release
-          History above says what shipped to customers; this says what this
-          page has claimed over time and who changed it (product owner, Aug 20:
-          "Every time there is a change in road map it has to be versioned"). */}
-      <SectionCard
-        title="Roadmap version history"
-        icon={GitBranch}
-        {...foldProps("versions")}
-      >
-        <RoadmapVersionHistory versions={roadmapVersions ?? []} />
       </SectionCard>
 
       {canSeeNext && (

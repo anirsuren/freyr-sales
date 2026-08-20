@@ -7,7 +7,6 @@ import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useRouter } from "next/navigation";
 import {
-  GitBranch,
   GanttChartSquare,
   Rows3,
   ArrowLeft,
@@ -68,7 +67,6 @@ import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
 import { VersionTimeline } from "@/components/fdl/VersionTimeline";
-import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 
@@ -1917,28 +1915,6 @@ export function FdlComponentDetail({
               setVersionsModalOpen(true);
             }}
           />
-          )}
-          {/* WHO CHANGED THIS ROADMAP, AND WHEN (product owner, Aug 20:
-              "Every time there is a change in road map it has to be versioned.
-              Just like how you version a document").
-              This is the roadmap people actually edit — the offering-level one
-              has had no editor since the tab was replaced — so the history has
-              to live here, next to the versions it records. */}
-          {(component.roadmap_versions?.length ?? 0) >= 0 && (
-            <details className="mb-4">
-              <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
-                <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
-                Roadmap version history
-                <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
-                  {component.roadmap_versions?.length
-                    ? `v${component.roadmap_versions[0].version}`
-                    : "No changes yet"}
-                </span>
-              </summary>
-              <div className="mt-3">
-                <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
-              </div>
-            </details>
           )}
           {versionsView === "list" && (
           // ONE CARD PER VERSION. A divided list of text rows made every

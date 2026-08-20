@@ -1,4 +1,3 @@
-import { roadmapChangesForReader } from "@/lib/roadmapNotices";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buildNotifications } from "@/lib/notifications";
@@ -38,10 +37,9 @@ export default async function NotificationsPage() {
    * notifications' doesn't even work"). Both surfaces now read the same
    * nudges and honour the same live-workspace rule.
    */
-  const [nudges, performance, roadmaps] = await Promise.all([
+  const [nudges, performance] = await Promise.all([
     currentUserSetupNudges(),
     performanceForMe(),
-    roadmapChangesForReader(),
   ]);
 
   if (isOfferingsOnly(getDataMode())) {
@@ -51,7 +49,6 @@ export default async function NotificationsPage() {
       contacts: [],
       interactions: [],
       performance,
-      roadmaps,
       ...nudges,
     });
     return (
@@ -73,7 +70,7 @@ export default async function NotificationsPage() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
-  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, performance, roadmaps, ...nudges });
+  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, performance, ...nudges });
 
   return (
     <div>

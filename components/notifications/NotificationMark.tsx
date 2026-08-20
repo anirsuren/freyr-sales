@@ -6,7 +6,6 @@ import {
   PhoneCall,
   Fingerprint,
   Target,
-  Map,
   Bell,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -23,7 +22,6 @@ const ICON: Record<NotificationType, typeof Bell> = {
   voice: PhoneCall,
   security: Fingerprint,
   performance: Target,
-  roadmap: Map,
 };
 
 // The badge says what kind of alert it is; the mark underneath says who it is
@@ -39,9 +37,6 @@ const BADGE: Record<NotificationType, string> = {
   security: "bg-[color:#6D28D9] text-white",
   // A goal needs you — the same blue every "waiting on you" state uses.
   performance: "bg-blue-primary text-white",
-  /* Identity purple, like ownership and the No-schedule chip: a roadmap change
-     is news about a thing, not a verdict, so it must not wear a status hue. */
-  roadmap: "bg-[color:#A855F7] text-white",
 };
 
 /**
