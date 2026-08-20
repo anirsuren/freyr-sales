@@ -286,20 +286,24 @@ export function OfferingOverviewMain({
             is about to quote, because the question it answers — "did this move
             since I told the client?" — only occurs to you while you are
             looking at the number. Folded shut: it is history, not the headline. */}
-        {(o.roadmap_versions?.length ?? 0) > 0 && (
-          <details className="mt-5 max-w-[640px] pl-11">
-            <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
-              <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
-              Roadmap version history
-              <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
-                v{o.roadmap_versions![0].version}
-              </span>
-            </summary>
-            <div className="mt-3">
-              <RoadmapVersionHistory versions={o.roadmap_versions ?? []} />
-            </div>
-          </details>
-        )}
+        {/* ALWAYS THERE, EVEN AT ZERO. Hiding this until the first edit meant
+            the day it shipped nobody could find it, on any offering — a built
+            feature that looks unbuilt (Anir, Aug 20, on his own screen: "Again,
+            do you see it?"). Empty it says so in one line and costs nothing. */}
+        <details className="mt-5 max-w-[640px] pl-11">
+          <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
+            <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
+            Roadmap version history
+            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
+              {o.roadmap_versions?.length
+                ? `v${o.roadmap_versions[0].version}`
+                : "No changes yet"}
+            </span>
+          </summary>
+          <div className="mt-3">
+            <RoadmapVersionHistory versions={o.roadmap_versions ?? []} />
+          </div>
+        </details>
       </section>
 
 
