@@ -33,8 +33,15 @@ export interface RoadmapVersion {
   savedBy: string;
   /** What changed, one plain-English line each. Never empty. */
   changes: string[];
-  /** The roadmap AS IT STOOD after this save, so any version reads back whole. */
-  releases: OfferingRelease[];
+  /**
+   * The roadmap AS IT STOOD after this save, so any version reads back whole.
+   *
+   * Two shapes share this field: an offering's releases carry `features`, an
+   * FDL component's carry `current` and no features at all. Typed as the union
+   * rather than the offering shape alone, because pretending otherwise is what
+   * let a reader crash on `features.length` (Aug 20).
+   */
+  releases: (OfferingRelease | ComponentRelease)[];
   roadmap_details?: OfferingRoadmapDetails;
 }
 

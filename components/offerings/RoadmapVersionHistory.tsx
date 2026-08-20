@@ -131,7 +131,15 @@ export function RoadmapVersionHistory({
                           <b className="text-text-primary">{r.version}</b>
                           {r.date ? ` · ${r.date}` : ""}
                           {r.status === "next" ? " · next release" : ""}
-                          {r.features.length
+                          {/* A COMPONENT RELEASE HAS NO `features` (found Aug 20:
+                              expanding a version on a component page threw
+                              "Cannot read properties of undefined" and took the
+                              whole section down with it). The snapshot is cast
+                              through JSON, so TypeScript never saw the two
+                              shapes differ. Components carry `current` instead
+                              — the version sellers quote — so say that. */}
+                          {"current" in r && r.current ? " · current version" : ""}
+                          {"features" in r && r.features.length
                             ? ` · ${r.features.length} feature${r.features.length === 1 ? "" : "s"}`
                             : ""}
                         </p>
