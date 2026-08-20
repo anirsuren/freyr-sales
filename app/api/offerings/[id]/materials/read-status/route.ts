@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getOffering } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
-import { loadMaterialText } from "@/lib/materialText";
+import { loadMaterialText, type MaterialTextEntry } from "@/lib/materialText";
 import { isReadableFile } from "@/lib/fileText";
+import { indexStoredMaterialInBackground } from "@/lib/materialIndexing";
+
+/** Paths this process has already re-kicked, so a page of pollers cannot
+ *  stampede the indexer. One kick per file per container is plenty. */
+const kicked = new Set<string>();
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +45,38 @@ export async function POST(
   if (!paths.length) return NextResponse.json({ status: {} });
 
   const index = await loadMaterialText().catch(() => ({}));
-  const status: Record<string, { state: "reading" | "read" | "no-text"; words: number }> = {};
+  const status: Record<
+    string,
+    { state: "reading" | "read" | "no-text"; words: number; bytes?: number }
+  > = {};
   for (const path of paths) {
-    const entry = (index as Record<string, { text?: string } | undefined>)[path];
+    const entry = (index as Record<string, MaterialTextEntry | undefined>)[path];
     const words = entry?.text ? entry.text.match(/\S+/g)?.length ?? 0 : 0;
-    if (words > 0) status[path] = { state: "read", words };
+    if (words > 0) status[path] = { state: "read", words, bytes: entry?.bytes };
+    else if (entry)
+      // An entry with no text is the indexer's RECORDED verdict: it held the
+      // bytes, ran extraction and transcription, and found nothing to read.
+      status[path] = { state: "no-text", words: 0, bytes: entry.bytes };
     else if (!isReadableFile(path)) status[path] = { state: "no-text", words: 0 };
-    else status[path] = { state: "reading", words: 0 };
+    else {
+      /**
+       * NO ENTRY AT ALL: the background read never finished — a container
+       * that restarted mid-job, or a file from before indexing recorded
+       * verdicts. This is the state Anir watched say "Freyr AI is reading
+       * it…" forever (Aug 20). Being asked IS the cue to heal: kick the
+       * indexer (it fetches the bytes back from storage itself) and keep
+       * answering "reading" until it lands. Once per path per container.
+       */
+      if (!kicked.has(path)) {
+        kicked.add(path);
+        indexStoredMaterialInBackground({
+          offeringId: id,
+          path,
+          filename: path.split("/").pop() || path,
+        });
+      }
+      status[path] = { state: "reading", words: 0 };
+    }
   }
   return NextResponse.json({ status });
 }

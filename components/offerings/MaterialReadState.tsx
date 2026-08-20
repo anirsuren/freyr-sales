@@ -23,6 +23,14 @@ import { Check, Sparkles } from "lucide-react";
 
 type State = "reading" | "read" | "no-text";
 
+/** "504 KB", "32.4 MB" — the size a person says out loud (Anir, Aug 20: "I
+ *  want to see the file size on all these as well"). */
+function fmtBytes(n: number): string {
+  if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
+  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
+  return `${n} B`;
+}
+
 export function MaterialReadState({
   offeringId,
   docsPath,
@@ -32,6 +40,7 @@ export function MaterialReadState({
 }) {
   const [state, setState] = useState<State | null>(null);
   const [words, setWords] = useState(0);
+  const [bytes, setBytes] = useState<number | null>(null);
   const stop = useRef(false);
 
   useEffect(() => {
@@ -58,6 +67,7 @@ export function MaterialReadState({
         if (entry && !stop.current) {
           setState(entry.state as State);
           setWords(entry.words || 0);
+          if (typeof entry.bytes === "number") setBytes(entry.bytes);
           // Settled states never change again; stop asking.
           if (entry.state !== "reading") return;
         }
@@ -85,6 +95,11 @@ export function MaterialReadState({
       <span className="mt-1 flex items-center gap-1.5 text-[10.5px] font-semibold text-success">
         <Check size={11} strokeWidth={3} />
         Freyr AI read {words.toLocaleString()} words
+        {bytes !== null && (
+          <span className="font-medium text-text-tertiary">
+            · {fmtBytes(bytes)}
+          </span>
+        )}
       </span>
     );
   }
@@ -92,7 +107,8 @@ export function MaterialReadState({
   if (state === "no-text") {
     return (
       <span className="mt-1 block text-[10.5px] text-text-tertiary">
-        No text inside to read
+        No readable text inside — stored and downloadable as-is
+        {bytes !== null ? ` · ${fmtBytes(bytes)}` : ""}
       </span>
     );
   }

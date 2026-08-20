@@ -30,6 +30,10 @@ export type MaterialTextEntry = {
   filename: string;
   /** Extracted, plain text. Empty means "we could not read this format". */
   text: string;
+  /** The stored file's size. Recorded whenever the indexer held the bytes,
+   *  so every row can print it (Anir, Aug 20: "I want to see the file size
+   *  on all these as well"). */
+  bytes?: number;
   extractedAt: string;
   /** Published/authored date declared inside the document, when available. */
   contentDate?: string;

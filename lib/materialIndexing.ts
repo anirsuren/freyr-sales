@@ -117,6 +117,7 @@ export async function indexStoredMaterial(args: {
           offeringId,
           filename,
           text,
+          bytes: bytes.length,
           extractedAt: new Date().toISOString(),
           ...(extracted.contentDate ? { contentDate: extracted.contentDate } : {}),
           ...(extracted.archiveMembers
@@ -159,6 +160,26 @@ export async function indexStoredMaterial(args: {
         readable = true;
         words = heard.words;
       }
+    }
+
+    /**
+     * A DEFINITIVE "NOTHING TO READ" IS AN ANSWER, NOT A FAILURE (Anir,
+     * Aug 20: his image-only PDF sat on "Freyr AI is reading it…" forever).
+     *
+     * The no-empty-entries rule above exists so a TRANSIENT failed fetch can
+     * never permanently mark a readable deck wordless. But here the bytes
+     * were in hand and extraction and transcription both ran and found
+     * nothing — asking again gets the same answer. Record it, with the size,
+     * so the row can say "no readable text" instead of pretending forever.
+     */
+    if (!readable) {
+      await saveMaterialText(path, {
+        offeringId,
+        filename,
+        text: "",
+        bytes: bytes.length,
+        extractedAt: new Date().toISOString(),
+      }).catch(() => undefined);
     }
   } catch {
     // Indexing is a bonus. The file is stored either way.
