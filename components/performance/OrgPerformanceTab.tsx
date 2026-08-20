@@ -357,9 +357,12 @@ export function OrgPerformanceTab({
   const withValue = shown.map((g) => ({
     goal: g,
     actual: actualValue(state.actuals, g),
+    // The tile counts the same way the row's badge does: a target is met when
+    // the money that COUNTS reaches it.
+    verified: familyValue(state, g, { verifiedOnly: true }),
   }));
   const metCount = withValue.filter(
-    (x) => x.goal.target > 0 && x.actual >= x.goal.target
+    (x) => x.goal.target > 0 && x.verified >= x.goal.target
   ).length;
   const laggingCount = withValue.filter(
     (x) =>
@@ -1011,43 +1014,69 @@ export function OrgPerformanceTab({
   );
 }
 
+/**
+ * THE ROW'S BAR, DRAWN THE SAME WAY AS EVERY BAR BELOW IT.
+ *
+ * It used to fill to the CLAIMED total in one solid pace colour, which is how
+ * a goal could read "100%" in green while the drill-down under it showed $80K
+ * signed off and $120K refused (Anir, Aug 20: "it says 100% green, but then
+ * when I click on the columns and tables, it doesn't say 100% green
+ * anywhere"). Solid green to what counts, striped for the rest, and the
+ * percentage is the one you could defend in a review.
+ */
 function MiniBar({
   actual,
+  claimed,
+  sentBack = 0,
   target,
-  pace,
   lit = false,
 }: {
+  /** Signed off — the number the percentage is about. */
   actual: number;
+  /** Everything logged, verified or not. Defaults to `actual`. */
+  claimed?: number;
+  sentBack?: number;
   target: number;
-  pace: ReturnType<typeof paceVerdict>;
+  pace?: ReturnType<typeof paceVerdict>;
   /** This row's bar in the chart above is under the cursor. */
   lit?: boolean;
 }) {
+  const all = claimed ?? actual;
   const pct = Math.min(100, pctMet(actual, target));
-  const color =
-    pace === "lagging" ? "#DC2626" : pace === "ontrack" ? "#0071E3" : "#16A34A";
+  const claimedPct = Math.min(100, pctMet(all, target));
+  const unverifiedColor =
+    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported;
   return (
     <span className="flex items-center gap-2">
       <span
         className={cn(
-          "h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
-          // Glow when its bar in the chart is hovered, so the eye can carry a
-          // number from the chart to its row without counting columns.
-          // The container stays put; the FILL is what lights up.
+          "flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
           lit && "h-2 w-28"
         )}
       >
         <span
-          className={cn("block h-full rounded-full", lit && "bar-lit")}
+          className={cn("block h-full", lit && "bar-lit")}
           style={{
             width: `${target > 0 ? pct : 0}%`,
-            background: color,
-            ["--bar-glow" as string]: `${color}BF`,
+            background: ENTRY_COLOR.verified,
+            ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
+          }}
+        />
+        <span
+          className={cn("unverified-fill block h-full", lit && "bar-lit")}
+          style={{
+            width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
+            ["--fill" as string]: unverifiedColor,
           }}
         />
       </span>
-      <span className="text-[12px] font-semibold tnum" style={{ color }}>
-        {target > 0 ? `${Math.round(pctMet(actual, target))}%` : "·"}
+      <span
+        className="text-[12px] font-semibold tnum"
+        style={{
+          color: target > 0 && pct > 0 ? ENTRY_COLOR.verified : "var(--text-tertiary)",
+        }}
+      >
+        {target > 0 ? `${Math.round(pct)}%` : "·"}
       </span>
     </span>
   );
@@ -1100,6 +1129,19 @@ function GoalRows({
   /** Which assigned person's numbers are unfolded under their row. */
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const actual = actualValue(actuals, goal);
+  /**
+   * WHAT ACTUALLY COUNTS (Anir, Aug 20: "it says 'percent met' is at 100%, but
+   * that is so misleading... when I click on the columns and tables, it
+   * doesn't say 100% green anywhere").
+   *
+   * Actual stays the full claim — his own rule from Aug 15 — but Met and % Met
+   * are VERDICTS, and a verdict on money a group owner refused is a lie. The
+   * row said "Target met, 100%" in green over $120K that had been sent back
+   * and $80K that had not. Both now read the signed-off figure, and the bar
+   * draws the rest striped exactly as every drill-down under it does.
+   */
+  const verifiedActual = familyValue({ actuals }, goal, { verifiedOnly: true });
+  const sentBackActual = familyValue({ actuals }, goal, { sentBackOnly: true });
   const pace = paceVerdict(
     actual,
     goal.target,
@@ -1312,7 +1354,7 @@ function GoalRows({
         </td>
         <td className="px-4 py-4">
           {goal.target > 0 ? (
-            <MetPill met={actual >= goal.target} size="sm" />
+            <MetPill met={verifiedActual >= goal.target} size="sm" />
           ) : (
             <span className="text-[12px] text-text-tertiary">·</span>
           )}
@@ -1362,7 +1404,9 @@ function GoalRows({
             )}
           </span>
           <MiniBar
-            actual={actual}
+            actual={verifiedActual}
+            claimed={actual}
+            sentBack={sentBackActual}
             target={goal.target}
             pace={pace}
             lit={linkedIndex === index}
@@ -1838,6 +1882,15 @@ function GoalRows({
                   const subActual = actualValue(actuals, goal, {
                     subgoalId: s.id,
                   });
+                  const subEntries = actuals.filter(
+                    (x) => x.subgoalId === s.id
+                  );
+                  const subVerified = subEntries
+                    .filter((x) => entryStatus(x) === "verified")
+                    .reduce((sum, x) => sum + x.amount, 0);
+                  const subSentBack = subEntries
+                    .filter((x) => entryStatus(x) === "sent_back")
+                    .reduce((sum, x) => sum + x.amount, 0);
                   const subPace = paceVerdict(
                     subActual,
                     s.target,
@@ -1904,7 +1957,9 @@ function GoalRows({
                                 : "·"}
                             </span>
                             <MiniBar
-                              actual={subActual}
+                              actual={subVerified}
+                              claimed={subActual}
+                              sentBack={subSentBack}
                               target={s.target}
                               pace={subPace}
                             />

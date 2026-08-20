@@ -217,53 +217,32 @@ function inBarOrder(entries: PerfActual[]): PerfActual[] {
 }
 
 /**
- * THE NUMBER BESIDE A NAME, IN THE COLOURS THE BARS USE (Anir, Aug 20: "the
- * 80k and then the +120k above is what's confusing me").
+ * THE NUMBER BESIDE A NAME (Anir, Aug 20: "if you're just gonna put two
+ * numbers next to each other, I don't want to see that. Just remove that.
+ * It's pointless").
  *
- * A green figure and a blue "+$120K" pill said nothing about what the plus
- * WAS — added to what, by whom, why it was a different colour from the red
- * stripe directly underneath it. Verified money is green like its half of the
- * bar; the pill takes the colour and the word of whatever the rest of the bar
- * is: sent back, or waiting.
+ * A closed row carried the verified figure AND a badge for the unverified one,
+ * two amounts colliding in a space with room for one. The BAR on that row
+ * already shows the split — solid green for what counts, striped for what does
+ * not — and opening the row gives both numbers, bracketed and named. So the
+ * row shows the one figure that matters: what actually counts.
  */
 function RowTotals({
   unit,
   verified,
-  awaiting,
-  sentBack,
 }: {
   unit: GoalUnit;
   verified: number;
-  awaiting: number;
-  sentBack: number;
 }) {
-  const refused = sentBack > 0;
   return (
-    <>
-      <b
-        className="shrink-0 text-right text-[11.5px] tnum"
-        style={verified > 0 ? { color: ENTRY_COLOR.verified } : undefined}
-      >
-        <span className={verified > 0 ? "" : "text-text-tertiary"}>
-          {fmtAmount(unit, verified)}
-        </span>
-      </b>
-      {awaiting > 0 && (
-        <span
-          className="shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold tnum"
-          style={{
-            background: refused
-              ? "rgba(220,38,38,0.12)"
-              : "rgba(0,113,227,0.12)",
-            color: refused
-              ? "var(--entry-sent-back-ink)"
-              : "var(--entry-waiting)",
-          }}
-        >
-          {fmtAmount(unit, awaiting)} {refused ? "sent back" : "waiting"}
-        </span>
-      )}
-    </>
+    <b
+      className="shrink-0 text-right text-[11.5px] tnum"
+      style={verified > 0 ? { color: ENTRY_COLOR.verified } : undefined}
+    >
+      <span className={verified > 0 ? "" : "text-text-tertiary"}>
+        {fmtAmount(unit, verified)}
+      </span>
+    </b>
   );
 }
 
@@ -1338,28 +1317,6 @@ export function GoalZoom({
                             bar, so August's bar was shorter than September's
                             and the columns stopped being comparable. The slot
                             is there on every row; the badge fills it or not. */}
-                        {inPeriodAwaiting && (
-                          <span className="flex w-[56px] shrink-0 justify-end">
-                            {r.awaiting > 0 && (
-                              <span
-                                className="whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold tnum"
-                                style={{
-                                  background:
-                                    r.sentBack > 0
-                                      ? "rgba(220,38,38,0.12)"
-                                      : "rgba(0,113,227,0.12)",
-                                  color:
-                                    r.sentBack > 0
-                                      ? "var(--entry-sent-back-ink)"
-                                      : "var(--entry-waiting)",
-                                }}
-                              >
-                                {fmtAmount(goal.unit, r.awaiting)}{" "}
-                                {r.sentBack > 0 ? "back" : "waiting"}
-                              </span>
-                            )}
-                          </span>
-                        )}
                         <ChevronDown
                           size={13}
                           strokeWidth={2.4}
@@ -1524,12 +1481,7 @@ export function GoalZoom({
                             <span className="min-w-0 flex-1">
                               <GroupPill name={r2.group.name} size="sm" />
                             </span>
-                            <RowTotals
-                              unit={goal.unit}
-                              verified={r2.verified}
-                              awaiting={r2.awaiting}
-                              sentBack={r2.sentBack}
-                            />
+                            <RowTotals unit={goal.unit} verified={r2.verified} />
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
                                 "this is still not a drop-down"). The people
                                 appeared on select with nothing on the row to
@@ -1715,12 +1667,7 @@ export function GoalZoom({
                                       />
                                     )}
                                   </span>
-                                  <RowTotals
-                                    unit={goal.unit}
-                                    verified={v}
-                                    awaiting={w}
-                                    sentBack={sb}
-                                  />
+                                  <RowTotals unit={goal.unit} verified={v} />
                                   </span>
                                   {(() => {
                                     const mine = (goal.assignments ?? []).find(
@@ -1985,12 +1932,7 @@ export function GoalZoom({
                             </span>
                           )}
                         </span>
-                        <RowTotals
-                          unit={goal.unit}
-                          verified={p.verified}
-                          awaiting={p.awaiting}
-                          sentBack={p.sentBack}
-                        />
+                        <RowTotals unit={goal.unit} verified={p.verified} />
                         </span>
                         {/* Same as the group rows: full width underneath, and
                             only when there is something to draw. Open, the bar
