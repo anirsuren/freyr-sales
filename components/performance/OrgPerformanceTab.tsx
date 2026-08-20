@@ -1518,7 +1518,14 @@ function GoalRows({
                 e.stopPropagation();
                 setVerifying(true);
               }}
-              title={`Undo the sign-off on ${goal.name}. It stops counting until it is verified again`}
+              /* SAY WHAT THE BUTTON ACTUALLY DOES. This promised the money
+                 "stops counting until it is verified again", but setVerified
+                 only sweeps entries when the flag goes ON — taking a sign-off
+                 back deliberately leaves every claim verified, because
+                 un-counting money people already banked on is a louder act
+                 than one button. The old text described a consequence the code
+                 refuses to have. */
+              title={`Undo the sign-off on ${goal.name}. The results underneath stay verified`}
               aria-label={`Undo the sign-off on ${goal.name}`}
               className="cursor-pointer rounded-md p-1 text-[#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
             >
