@@ -262,6 +262,19 @@ export function lineWeighted(line: OpportunityLine): number {
  * at 10% is not the same bet as $600K at some blended number.
  */
 export function weightedValue(o: Opportunity): number {
+  /**
+   * A DECIDED DEAL IS NOT A BET (found Aug 20: GRI — Kimberly Clark, won, sat
+   * in the pipeline weighted at 25% — $125K of a $500K deal that is already
+   * signed. The forecast was discounting closed business by $375K and calling
+   * it probability).
+   *
+   * Confidence answers "how likely is this to land". Once it has landed the
+   * question is over: a won deal is worth all of it, a lost one is worth
+   * nothing, and the stale percentage somebody typed while it was still open
+   * has no say. Everything still in flight is weighted exactly as before.
+   */
+  if (o.status === "Won") return opportunityValue(o);
+  if (o.status === "Lost") return 0;
   const l = lines(o);
   if (l.length) return l.reduce((sum, x) => sum + lineWeighted(x), 0);
   return o.confidence === undefined ? 0 : (o.value * o.confidence) / 100;

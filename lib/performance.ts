@@ -1169,6 +1169,23 @@ export async function assignGoal(input: {
       assignedBy: input.addedBy,
       assignedAt: new Date().toISOString(),
     });
+    /**
+     * A SIGN-OFF COVERS WHAT WAS THERE WHEN IT WAS SIGNED (found Aug 20:
+     * Renewals read "Verified" on Org and "Not verified" on Group and People,
+     * at the same moment, for the same goal).
+     *
+     * Signing a goal off marks the goal AND everyone on it. Nothing decided
+     * what happens to the next person to join, so they arrived unverified
+     * under a goal still flying a green pill: Org answered "did leadership
+     * sign this off" (yes) while Group and People answered "has everyone been
+     * checked" (no).
+     *
+     * The new person's numbers genuinely have not been checked, so inheriting
+     * the sign-off would be the lie. The goal reopens instead — the same thing
+     * a document does when you add a page after approval — and the tabs go
+     * back to agreeing.
+     */
+    goal.verified = false;
   }
   await writeRow(state);
 }
@@ -1254,6 +1271,9 @@ export async function assignGoalToGroup(input: {
         .join(", ");
       overlapWarning = `Heads up: on this goal, ${named}. The same person never counts twice.`;
     }
+    /* Handing the goal to a whole department brings unchecked people with it,
+       so the sign-off reopens for the same reason it does for one person. */
+    goal.verified = false;
   }
 
   /**
