@@ -1053,6 +1053,7 @@ export function VerifyQueueCard({
    *  people would need that just don't exist"). Customers has select-many;
    *  this is the same idiom on the queue. */
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
   const heads = headedGroups(state, meName);
   if (heads.length === 0) return null;
   const queue = verificationQueue(state, meName);
@@ -1127,14 +1128,14 @@ export function VerifyQueueCard({
             <button
               type="button"
               disabled={busy}
-              onClick={async () => {
-                // One at a time on the wire: the server checks ownership per
-                // entry, and a partial failure must not look like a success.
-                for (const id of picked) {
-                  await run({ op: "verify-actual", actualId: id }, "");
-                }
-                setPicked(new Set());
-              }}
+              /* SIGNING OFF IN BULK IS STILL SIGNING OFF (found testing, Aug
+                 19: two claims went reported → verified on one click with no
+                 dialog at all). Anir has made this point twice about the
+                 single-claim pill — "it auto-verified it. It didn't even ask
+                 me. It didn't open up any pop-up" — and the bulk button was
+                 the one path that still did it. It asks first now, naming
+                 what is about to be locked and for how much. */
+              onClick={() => setConfirmBulk(true)}
               className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
             >
               Verify and lock {picked.size} ✓
@@ -1292,6 +1293,88 @@ export function VerifyQueueCard({
           </table>
         </div>
       )}
+      {confirmBulk && (() => {
+        const chosen = queue.filter((q) => picked.has(q.id));
+        const total = chosen.reduce((t, q) => t + (q.amount || 0), 0);
+        const people = [...new Set(chosen.map((q) => q.person))];
+        const unit =
+          state.goals.find((g) => g.id === chosen[0]?.goalId)?.unit ?? "currency";
+        return (
+          <Modal
+            open
+            onClose={() => setConfirmBulk(false)}
+            title={`Verify and lock ${chosen.length} ${chosen.length === 1 ? "claim" : "claims"}`}
+          >
+            <p className="text-[13.5px] leading-relaxed text-text-secondary">
+              This signs off{" "}
+              <b className="text-text-primary tnum">{fmtAmount(unit, total)}</b>{" "}
+              from{" "}
+              <b className="text-text-primary">
+                {people.length === 1 ? people[0] : `${people.length} people`}
+              </b>
+              . Locked claims count toward their goals and cannot be edited
+              until you send them back.
+            </p>
+            <ul className="mt-3 max-h-[220px] space-y-1.5 overflow-y-auto">
+              {chosen.map((q) => (
+                <li
+                  key={q.id}
+                  className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-1.5 text-[12.5px]"
+                >
+                  <Avatar name={q.person} className="h-5 w-5 shrink-0 text-[7px]" />
+                  <span className="min-w-0 flex-1 truncate text-text-primary">
+                    {q.person}
+                    {q.customer ? ` · ${q.customer}` : ""}
+                  </span>
+                  <b className="shrink-0 text-text-primary tnum">
+                    {fmtAmount(
+                      state.goals.find((g) => g.id === q.goalId)?.unit ?? "currency",
+                      q.amount
+                    )}
+                  </b>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmBulk(false)}
+                className="cursor-pointer rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  // One at a time on the wire: the server checks ownership per
+                  // entry, and a partial failure must not look like a success.
+                  let done = 0;
+                  for (const id of picked) {
+                    const ok = await run({ op: "verify-actual", actualId: id }, "");
+                    if (ok) done += 1;
+                  }
+                  setPicked(new Set());
+                  setConfirmBulk(false);
+                  // Say what actually landed, not what was asked for.
+                  if (done < chosen.length) {
+                    window.setTimeout(
+                      () =>
+                        alert(
+                          `${done} of ${chosen.length} verified. The rest were refused — refresh and check who owns them.`
+                        ),
+                      50
+                    );
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+              >
+                <Check size={14} strokeWidth={2.8} /> Verify and lock
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
       {(() => {
         const a = queue.find((x) => x.id === reviewId);
         if (!a) return null;
