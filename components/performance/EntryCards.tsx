@@ -316,7 +316,7 @@ export function stamp(iso?: string): { day?: string; time?: string } {
   };
 }
 
-function EntryTimeline({
+export function EntryTimeline({
   entry,
   person,
 }: {

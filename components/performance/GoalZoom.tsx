@@ -21,6 +21,7 @@ import { HoverCard } from "@/components/ui/HoverCard";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { ResultDetailModal } from "./ResultDetailModal";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
   currentFiscalYear,
@@ -519,6 +520,9 @@ export function GoalZoom({
       return next;
     });
   const { opportunities, loading: oppsLoading } = useOpportunities();
+  /** The result whose full story is open, if any (Anir, Aug 20: "when I click
+   *  on this, you think it's supposed to show me something?"). */
+  const [openResult, setOpenResult] = useState<PerfActual | null>(null);
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
 
@@ -1112,7 +1116,16 @@ export function GoalZoom({
                   return (
                     <div
                       key={a.id}
-                      className="flex flex-col gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpenResult(a)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setOpenResult(a);
+                        }
+                      }}
+                      className="flex cursor-pointer flex-col gap-1 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--blue-primary)]"
                     >
                       <span className="flex items-center gap-2">
                         {indent && (
@@ -2233,6 +2246,24 @@ export function GoalZoom({
       </Card>
       </div>
       )}
+
+      {/* One logged result, in full — opened by clicking any row in the rails. */}
+      <ResultDetailModal
+        entry={openResult}
+        goal={goal}
+        dealName={
+          openResult?.opportunityId
+            ? opportunities.find((o) => o.id === openResult.opportunityId)?.name
+            : undefined
+        }
+        dealStatus={
+          openResult?.opportunityId
+            ? opportunities.find((o) => o.id === openResult.opportunityId)?.status
+            : undefined
+        }
+        open={!!openResult}
+        onClose={() => setOpenResult(null)}
+      />
     </div>
   );
 }
