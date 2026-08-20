@@ -28,6 +28,7 @@ import {
   type GoalUnit,
   ENTRY_COLOR,
   entryStatus,
+  ENTRY_INK,
   isPending,
   familyValue,
   fiscalLabel,
@@ -1177,8 +1178,22 @@ export function GoalZoom({
                           <span>not linked to an opportunity</span>
                         )}
                         {!verified && (
-                          <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
-                            waiting
+                          /* IT SAID "waiting", IN BLUE, ON MONEY THAT WAS
+                             REFUSED (found Aug 20 when Anir asked what these
+                             chips are for). The test was `!verified`, which
+                             lumps a sent-back claim in with one nobody has
+                             looked at yet — so a rejected $120K wore the
+                             waiting-blue chip while the marker beside it and
+                             the stripe above it were both red. Says which it
+                             is, in that status's own colour. */
+                          <span
+                            className="rounded-full px-1.5 py-0.5 font-bold"
+                            style={{
+                              background: `color-mix(in srgb, ${entryColor(a)} 12%, transparent)`,
+                              color: ENTRY_INK[entryStatus(a)],
+                            }}
+                          >
+                            {entryStatus(a) === "sent_back" ? "sent back" : "waiting"}
                           </span>
                         )}
                       </span>
