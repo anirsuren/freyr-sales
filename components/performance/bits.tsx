@@ -940,6 +940,18 @@ export function PaceTimeline({
                and nothing sits on the track. */
             style={{ paddingTop: LANE + 8 }}
           >
+            {/* THE ZERO END, SAID ONCE, UP TOP (Anir, Aug 20: "where you say
+                $0, put that $0 on top... you can move it up for sure"). The
+                left end needs no circle and no bottom row of its own. */}
+            <span
+              className={cn(
+                "absolute left-0 font-semibold text-text-tertiary tnum",
+                compact ? "text-[9.5px]" : "text-[11px]"
+              )}
+              style={{ top: LANE - (compact ? 12 : 14) + 8 }}
+            >
+              {fmtAmount(unit, 0)}
+            </span>
             {/* WHERE YOU ARE, IN THE LANE ABOVE — when nothing else is using
                 it (Anir, Aug 16: "you're not using the top of the progress
                 bar... I didn't ask you to shorten it. I asked you to actually
@@ -1058,26 +1070,32 @@ export function PaceTimeline({
                 number and the mark it labels read as two unrelated facts. One
                 row now: brackets measure the money on the left, the target
                 labels its circle on the right. */}
-            <div className="relative">
-              <SegmentBrackets
-                unit={unit}
-                parts={[
-                  {
-                    key: "verified",
-                    value: verified,
-                    pct: vPct,
-                    color: ENTRY_COLOR.verified,
-                  },
-                  {
-                    key: "unverified",
-                    value: awaiting,
-                    pct: Math.max(0, aPct - vPct),
-                    color:
-                      sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
-                  },
-                ]}
-              />
-              <span className="absolute right-0 top-[3px] text-right">
+            {/* Brackets and the target share one FLEX row — not an absolute
+                overlay, which collapsed to nothing whenever the brackets had
+                fewer than two segments to draw and dropped the target on top
+                of the legend (Anir, Aug 20: "the text is overlapping"). */}
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 flex-1">
+                <SegmentBrackets
+                  unit={unit}
+                  parts={[
+                    {
+                      key: "verified",
+                      value: verified,
+                      pct: vPct,
+                      color: ENTRY_COLOR.verified,
+                    },
+                    {
+                      key: "unverified",
+                      value: awaiting,
+                      pct: Math.max(0, aPct - vPct),
+                      color:
+                        sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                    },
+                  ]}
+                />
+              </span>
+              <span className="shrink-0 pt-[3px] text-right">
                 <b
                   className={cn(
                     "block font-bold text-text-primary tnum",
@@ -1259,6 +1277,7 @@ export function PersonGoalPanel({
       color: ENTRY_COLOR.verified,
       pendingColor:
         sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+      dotColor: typeMeta(goal.type).color,
       // NO CAPTION (Anir, Aug 20: "why are you saying 200k twice"). The bar
       // already prints its own value label above itself; a caption under it
       // repeated the same figure in a lighter grey, on the bar AND in its

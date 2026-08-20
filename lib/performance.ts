@@ -606,6 +606,17 @@ export async function setVerified(input: {
        * goal's own flag still moves, which is the caller's to set.
        */
       if (!input.by || !canVerifyEntry(state, input.by, a.person)) continue;
+      /**
+       * A REJECTION IS A DECISION ALREADY MADE (Anir, Aug 20, staring at the
+       * goal dialog offering to bless the $250K he had himself sent back:
+       * "That text is misleading, right? Why are you throwing this error?").
+       *
+       * The sweep exists so "approving is approving" for money nobody has
+       * looked at. Sent-back money HAS been looked at — the answer was no.
+       * Signing the goal off must not quietly overturn it; that claim comes
+       * back only through its own flow, after the person fixes it.
+       */
+      if ((a.status ?? "verified") === "sent_back") continue;
       if ((a.status ?? "verified") !== "verified") {
         a.status = "verified";
         a.verifiedBy = input.by;

@@ -93,6 +93,8 @@ export interface AppNotification {
    */
   mark?: SetupMark;
   urgency?: NotificationUrgency;
+  /** The rejection note, printed as its own quoted line under the detail. */
+  note?: string;
   /**
    * Compact relative time ("in 4d", "2d ago") for the right-hand stamp.
    * Computed here, on the server, so the bell and the page always agree and no
@@ -442,6 +444,16 @@ export function buildNotifications(input: {
     for (const a of mine) {
       const goal = perf.goals.find((g) => g.id === a.goalId);
       const amount = goal ? fmtAmount(goal.unit, a.amount, a.currency) : String(a.amount);
+      /**
+       * WHO, PLAINLY, THEN WHY (Anir, Aug 20, reading it on his own bell:
+       * "You have to say clearly, 'Anir Suren sent it back,' and then
+       * underneath you put the reason").
+       *
+       * The sentence had been split across the avatar line and a run-on
+       * detail ('Anir Suren  sent it back: "test". It does not count…'),
+       * which read as a fragment. The line beside the face now says the one
+       * whole fact, and the note is its own quoted line via `note`.
+       */
       perfRows.push({
         id: `perf-sent-back-${a.id}`,
         type: "performance",
@@ -450,11 +462,10 @@ export function buildNotifications(input: {
         subject: `${amount} on ${goal?.name ?? "a goal"} was sent back`,
         chip: "Needs your fix",
         person: a.sentBackBy || undefined,
-        // The row prints the face and the name itself, so this line carries on
-        // from it rather than saying the name twice.
         detail: a.sentBackBy
-          ? `sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`
-          : `Your group owner sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`,
+          ? "sent it back. It does not count until you fix it."
+          : "Your group owner sent it back. It does not count until you fix it.",
+        note: a.managerNote || undefined,
         urgency: "overdue",
         href: "/performance/people",
         ts: a.sentBackAt || a.addedAt || new Date(nowMs).toISOString(),

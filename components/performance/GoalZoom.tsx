@@ -502,11 +502,18 @@ export function GoalZoom({
   );
   /** Which person is unfolded onto their line items, inside box 3. */
   const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
-  const togglePerson = (name: string, additive: boolean) =>
+  /**
+   * EVERY OPEN IS ADDITIVE (Anir, Aug 20: "I wanna be able to open up
+   * multiple. Why can't I open up multiple?"). This used to close every other
+   * person unless you knew to hold a modifier — an invisible rule. A click
+   * toggles that one person, full stop; the months column has worked this way
+   * all along, and two columns of the same drill must not disagree about what
+   * a click does.
+   */
+  const togglePerson = (name: string) =>
     setOpenPeople((prev) => {
-      const open = prev.has(name);
-      const next = additive ? new Set(prev) : new Set<string>();
-      if (open) next.delete(name);
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
       else next.add(name);
       return next;
     });
@@ -1294,6 +1301,9 @@ export function GoalZoom({
                                     r.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
                                       : ENTRY_COLOR.reported,
+                                  ["--bar-glow" as string]: r.sentBack > 0
+                                      ? ENTRY_COLOR.sent_back
+                                      : ENTRY_COLOR.reported,
                                 }}
                               />
                             </>
@@ -1504,6 +1514,7 @@ export function GoalZoom({
                                 style={{
                                   width: `${Math.min(100, (r2.verified / maxG) * 100)}%`,
                                   background: ENTRY_COLOR.verified,
+                                  ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
                                 }}
                               />
                               {/* WAITING IS THE SAME BLUE, WASHED OUT — not
@@ -1517,6 +1528,9 @@ export function GoalZoom({
                                   width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
                                   ["--fill" as string]:
                                     r2.sentBack > 0
+                                      ? ENTRY_COLOR.sent_back
+                                      : ENTRY_COLOR.reported,
+                                  ["--bar-glow" as string]: r2.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
                                       : ENTRY_COLOR.reported,
                                 }}
@@ -1718,6 +1732,9 @@ export function GoalZoom({
                                                 sb > 0
                                                   ? ENTRY_COLOR.sent_back
                                                   : ENTRY_COLOR.reported,
+                                              ["--bar-glow" as string]: sb > 0
+                                                  ? ENTRY_COLOR.sent_back
+                                                  : ENTRY_COLOR.reported,
                                             }}
                                           />
                                         </span>
@@ -1832,7 +1849,7 @@ export function GoalZoom({
                       <button
                         type="button"
                         aria-expanded={openPeople.has(p.name)}
-                        onClick={(e) => togglePerson(p.name, e.shiftKey)}
+                        onClick={(e) => togglePerson(p.name)}
                         className={cn(
                           "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-colors",
                           openPeople.has(p.name)
@@ -1905,7 +1922,7 @@ export function GoalZoom({
                       <button
                         type="button"
                         aria-expanded={openPeople.has(p.name)}
-                        onClick={(e) => togglePerson(p.name, e.shiftKey)}
+                        onClick={(e) => togglePerson(p.name)}
                         onMouseEnter={() => onLinkHover?.(true)}
                         onMouseLeave={() => onLinkHover?.(false)}
                         className={cn(
@@ -1962,6 +1979,8 @@ export function GoalZoom({
                                         ? entryColor(a)
                                         : undefined,
                                     ["--fill" as string]: entryColor(a),
+                                    ["--bar-glow" as string]: entryColor(a),
+                                    ["--bar-glow" as string]: entryColor(a),
                                   }}
                                 />
                               ))}
@@ -1973,6 +1992,7 @@ export function GoalZoom({
                               style={{
                                 width: `${Math.min(100, (p.verified / maxP) * 100)}%`,
                                 background: ENTRY_COLOR.verified,
+                                ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
                               }}
                             />
                             <span
@@ -1981,6 +2001,9 @@ export function GoalZoom({
                                 width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
                                 ["--fill" as string]:
                                   p.sentBack > 0
+                                    ? ENTRY_COLOR.sent_back
+                                    : ENTRY_COLOR.reported,
+                                ["--bar-glow" as string]: p.sentBack > 0
                                     ? ENTRY_COLOR.sent_back
                                     : ENTRY_COLOR.reported,
                               }}

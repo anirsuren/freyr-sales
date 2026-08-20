@@ -195,13 +195,26 @@ export function VerifyGoalModal({
           </span>
         </p>
       )}
-      {waiting > 0 && !undoing && (
+      {/* TWO DIFFERENT WARNINGS FOR TWO DIFFERENT KINDS OF MONEY (Anir,
+          Aug 20: "That text is misleading, right? It sounds like a much
+          bigger deal than it is"). Unread money is swept in by this sign-off,
+          so that gets the alarm. Sent-back money is NOT — a rejection you
+          already made stays made — so it gets a calm note instead of an
+          error dressed as one. */}
+      {waiting - sentBack > 0 && !undoing && (
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
-            {fmtAmount(goal.unit, waiting)} below has not been checked yet.
-            Signing off here signs off that too.
+            {fmtAmount(goal.unit, waiting - sentBack)} below has not been
+            checked yet. Signing off here signs off that too.
           </span>
+        </p>
+      )}
+      {sentBack > 0 && !undoing && (
+        <p className="mt-2 text-[11.5px] leading-relaxed text-text-secondary">
+          The {fmtAmount(goal.unit, sentBack)} you sent back stays sent back —
+          this sign-off does not count it. It returns through its own claim
+          once it is fixed.
         </p>
       )}
 
@@ -219,42 +232,56 @@ export function VerifyGoalModal({
             const locked = entryStatus(a) === "verified";
             return (
               <div key={a.id}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
-                  <span className="min-w-[7rem] flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                    {a.person}
-                  </span>
-                  {/* THE ACCOUNT WEARS ITS MARK, like everywhere else in the
-                      app (Anir, Aug 20: "again, companylogo, time, etc"). */}
-                  {a.customer && (
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <CompanyLogo
-                        name={a.customer}
-                        className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                      />
-                      <span className="min-w-0 truncate text-[11.5px] text-text-secondary">
-                        {a.customer}
+                {/* ONE CARD, TWO SIDES (Anir, Aug 20: "I like the entry, but
+                    you have to make the entry look good. The profile's on the
+                    left, and the right side has that. It's just so
+                    confusing"). Left: who, for which account, when. Right: the
+                    money and its verdict. The middle stopped being a bag of
+                    fragments fighting for one line. */}
+                <div className="flex items-start gap-2.5 rounded-xl bg-surface px-3 py-2.5">
+                  <Avatar name={a.person} className="mt-0.5 h-7 w-7 shrink-0 text-[10px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                      {a.person}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
+                      {a.customer && (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <CompanyLogo
+                            name={a.customer}
+                            className="h-[16px] w-[16px] shrink-0 text-[6px]"
+                          />
+                          <span className="min-w-0 truncate">{a.customer}</span>
+                        </span>
+                      )}
+                      <span className="shrink-0 text-text-tertiary tnum">
+                        {a.customer ? "· " : ""}
+                        {a.date}
+                        {stamp(a.addedAt).time ? ` · ${stamp(a.addedAt).time}` : ""}
                       </span>
                     </span>
-                  )}
-                  <span className="shrink-0 text-[11px] text-text-tertiary tnum">
-                    {a.date}
-                    {stamp(a.addedAt).time ? ` · ${stamp(a.addedAt).time}` : ""}
                   </span>
-                  <b className="shrink-0 text-[13px] text-text-primary tnum">
-                    {fmtAmount(goal.unit, a.amount, a.currency)}
-                  </b>
+                  <span className="shrink-0 text-right">
+                    <b className="block text-[14px] text-text-primary tnum">
+                      {fmtAmount(goal.unit, a.amount, a.currency)}
+                    </b>
                   <span
                     className={cn(
                       "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold",
                       locked
-                        ? "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]"
-                        : "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]"
+                        ? "bg-[rgba(22,163,74,0.12)] text-[color:var(--entry-verified-ink)]"
+                        : entryStatus(a) === "sent_back"
+                          ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
+                          : "bg-[rgba(0,113,227,0.12)] text-[color:var(--entry-waiting)]"
                     )}
                   >
                     {locked ? (
                       <>
                         <CheckCircle2 size={11} strokeWidth={2.4} /> verified
+                      </>
+                    ) : entryStatus(a) === "sent_back" ? (
+                      <>
+                        <TriangleAlert size={11} strokeWidth={2.4} /> sent back
                       </>
                     ) : (
                       <>
@@ -262,10 +289,11 @@ export function VerifyGoalModal({
                       </>
                     )}
                   </span>
+                  </span>
                 </div>
 
                 {a.note && (
-                  <p className="mt-1 pl-8 text-[11.5px] text-text-secondary">
+                  <p className="mt-1 pl-3 text-[11.5px] italic text-text-secondary">
                     &ldquo;{a.note}&rdquo;
                   </p>
                 )}

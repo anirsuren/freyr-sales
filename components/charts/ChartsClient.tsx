@@ -1810,6 +1810,15 @@ export function BarChart({
      * Omitted keeps the bar's own colour, exactly as before.
      */
     pendingColor?: string;
+    /**
+     * The identity dot beside the axis label, when it should differ from the
+     * bar's own fill (Anir, Aug 20: "it says green is both revenue and sales
+     * materials... that color has to mean something"). The performance bars
+     * are green because green means VERIFIED — but that made every goal's
+     * label dot green too, a colour wearing two meanings at once. The dot is
+     * the series' identity (its goal type); the bar is its status.
+     */
+    dotColor?: string;
     // TIP_ICONS key ("qualified", "company", …) — string, not a component, so
     // server components can pass it. Absent/unknown = no mark, same as today.
     icon?: string;
@@ -2251,11 +2260,11 @@ export function BarChart({
                 title={d.label}
                 className="line-clamp-2 w-full break-words text-[11px] leading-[1.2] text-text-tertiary"
               >
-                {!d.logo && d.color && (
+                {!d.logo && (d.dotColor || d.color) && (
                   <span
                     aria-hidden
                     className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
-                    style={{ background: d.color }}
+                    style={{ background: d.dotColor || d.color }}
                   />
                 )}
                 {d.label}

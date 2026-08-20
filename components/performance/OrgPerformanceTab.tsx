@@ -492,6 +492,10 @@ export function OrgPerformanceTab({
                         ? Math.round(pctMet(awaiting, g.target))
                         : 0,
                     color: MONEY,
+                    // The label dot keeps the goal TYPE's own colour, so green
+                    // under the bars means "Financial" again instead of
+                    // repeating the verified green of every bar above it.
+                    dotColor: typeMeta(g.type).color,
                     /* And the same red on the bar itself, not just in its
                        tip (Anir, Aug 20: "the top of the bar should be the
                        same color not that blue stripe"). */
@@ -1067,6 +1071,7 @@ function MiniBar({
           style={{
             width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
             ["--fill" as string]: unverifiedColor,
+            ["--bar-glow" as string]: unverifiedColor,
           }}
         />
       </span>
@@ -1749,6 +1754,9 @@ function GoalRows({
                                           width: `${a.target > 0 ? Math.max(0, Math.min(100, share) - Math.min(100, pctMet(aVerified, a.target))) : 0}%`,
                                           ["--fill" as string]:
                                             aSentBack > 0
+                                              ? ENTRY_COLOR.sent_back
+                                              : ENTRY_COLOR.reported,
+                                          ["--bar-glow" as string]: aSentBack > 0
                                               ? ENTRY_COLOR.sent_back
                                               : ENTRY_COLOR.reported,
                                         }}

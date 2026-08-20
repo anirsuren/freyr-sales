@@ -1621,6 +1621,13 @@ function AssignGroupModal({
    * idiom as the drill-down's column 2: closed to one line, open to a roster.
    */
   const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
+  /** Roster columns inside a group card — his call, remembered (Anir, Aug 20:
+   *  "They can choose if they want the group to show up in rows of two or
+   *  rows of one, because right now it's super annoying"). */
+  const [rosterCols, setRosterCols] = useStickyValue<number>(
+    "freyr.performance.assigngroup.cols",
+    2
+  );
   /** Whether the list is scrolled to its end — drives the fade-out below it
    *  (Anir, Aug 17: "if there's a hundred groups… a faded-out container"). */
   const [moreBelow, setMoreBelow] = useState(false);
@@ -1664,12 +1671,7 @@ function AssignGroupModal({
     });
 
   const body = (
-    <div
-      className={cn(
-        "flex min-h-0 flex-col",
-        !inline && groups.length > 4 && "h-full"
-      )}
-    >
+    <div className={cn("flex min-h-0 flex-col", !inline && "h-full")}>
       <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
         Giving
         <b className="text-text-primary">{goal.name}</b>
@@ -1681,23 +1683,37 @@ function AssignGroupModal({
         <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
           Pick one
         </span>
+        <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-border-light">
+          {[1, 2].map((n) => (
+            <button
+              key={n}
+              type="button"
+              title={n === 1 ? "People in one column" : "People in two columns"}
+              aria-pressed={rosterCols === n}
+              onClick={() => setRosterCols(n)}
+              className={cn(
+                "cursor-pointer px-2 py-1 text-[10.5px] font-bold transition-colors",
+                rosterCols === n
+                  ? "bg-blue-primary text-white"
+                  : "bg-white text-text-secondary hover:text-blue-primary"
+              )}
+            >
+              {n === 1 ? "1 col" : "2 cols"}
+            </button>
+          ))}
+        </span>
       </label>
 
       {/* THE LIST SCROLLS, THE DIALOG DOES NOT. A hundred groups stay inside
           this box, and the fade at its foot says there are more — it clears
           the moment the last row is reached. */}
-      <div
-        className={cn(
-          "relative mt-1.5 min-h-0",
-          !inline && groups.length > 4 && "flex-1"
-        )}
-      >
+      <div className={cn("relative mt-1.5 min-h-0", !inline && "flex-1")}>
         <div
           ref={listRef}
           onScroll={syncFade}
           className={cn(
             "flex flex-col gap-1.5 overflow-y-auto pr-1",
-            !inline && groups.length > 4 && "h-full",
+            !inline && "h-full",
             inline && "max-h-[300px]"
           )}
         >
@@ -1713,37 +1729,43 @@ function AssignGroupModal({
                 ...new Set([g.head, ...g.members].map((m) => m.trim()).filter(Boolean)),
               ];
               return (
+                /* ONLY THE CHECKBOX SELECTS (Anir, Aug 20: "my mouse has to
+                   go over the checkbox to check it, not just a dropdown,
+                   because that's kind of overlapping"). The whole card used
+                   to toggle selection, so reaching for Show people meant
+                   gambling with the pick. The circle is the one control that
+                   picks, with a real hit area; everything else on the card
+                   just reads. */
                 <div
                   key={g.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={on}
-                  onClick={() => setGroupId(on ? "" : g.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setGroupId(on ? "" : g.id);
-                    }
-                  }}
                   className={cn(
-                    "shrink-0 cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all",
+                    "shrink-0 rounded-xl border px-3 py-2.5 text-left transition-all",
                     on
                       ? "border-blue-primary bg-blue-light/60 shadow-sm"
-                      : "border-border-light bg-white hover:border-blue-subtle hover:bg-surface"
+                      : "border-border-light bg-white hover:border-blue-subtle"
                   )}
                 >
-                  <span className="flex items-start gap-3">
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                        on
-                          ? "border-blue-primary bg-blue-primary text-white"
-                          : "border-border-light bg-white"
-                      )}
+                  <span className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={`Assign to ${g.name}`}
+                      onClick={() => setGroupId(on ? "" : g.id)}
+                      className="-m-1.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-blue-light/60"
                     >
-                      {on && <Check size={10} strokeWidth={3.4} />}
-                    </span>
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors",
+                          on
+                            ? "border-blue-primary bg-blue-primary text-white"
+                            : "border-border-light bg-white"
+                        )}
+                      >
+                        {on && <Check size={10} strokeWidth={3.4} />}
+                      </span>
+                    </button>
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <GroupPill name={g.name} />
@@ -1802,7 +1824,12 @@ function AssignGroupModal({
                         </span>
                       </button>
                       {expanded && (
-                        <span className="tab-panel mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2 sm:grid-cols-2">
+                        <span
+                          className={cn(
+                            "tab-panel mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2",
+                            rosterCols === 2 && "sm:grid-cols-2"
+                          )}
+                        >
                           {roster.map((name) => (
                             <span key={name} className="flex items-center gap-2">
                               <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
@@ -1886,23 +1913,20 @@ function AssignGroupModal({
       </div>
     );
   /**
-   * A FIXED 780px BOX FOR THREE GROUPS IS A SCREEN OF NOTHING (Anir, Aug 20).
-   * The height is there so a long roster scrolls inside the dialog instead of
-   * stretching it; with a handful of groups it only manufactured a void
-   * between the list and the target, which read as a form with a missing
-   * middle. Short lists size to their content.
+   * ONE SIZE, ALWAYS (Anir, Aug 20: "the size should stay the same. You could
+   * literally make it a proper pop-up, whatever the normal size is, and it
+   * doesn't change"). It sized to its content for a day and every click —
+   * pick a group, expand a roster — made the whole dialog jump. The list
+   * scrolls inside; the frame holds still.
    */
-  const tallList = groups.length > 4;
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Assign to a group"
       size="wide"
-      tall={tallList}
-      dialogClassName={
-        tallList ? "!h-[min(780px,calc(100vh-3rem))]" : undefined
-      }
+      tall
+      dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
     >
       {body}
     </Modal>

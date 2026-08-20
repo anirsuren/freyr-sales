@@ -148,6 +148,13 @@ export function NotificationRow({
             {n.detail || n.body}
           </span>
         </div>
+        {/* The reason on its own line, quoted — not run into the sentence
+            above it (Anir, Aug 20: "then underneath you put the reason"). */}
+        {n.note && (
+          <p className="mt-1 min-w-0 text-[12px] italic text-text-secondary leading-snug break-words">
+            &ldquo;{n.note}&rdquo;
+          </p>
+        )}
       </div>
 
       {/* Unread marker: present, but quieter than the words it sits beside. */}
