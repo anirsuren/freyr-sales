@@ -398,13 +398,17 @@ function EntryTimeline({
           fallback: entry.verifiedAt ? undefined : "date not recorded",
           done: true,
           icon: ShieldCheck,
-          color: "#16A34A",
+          color: ENTRY_COLOR.verified,
         }
       : {
           label: "Waiting to be verified",
           done: false,
           icon: Hourglass,
-          color: "#C2410C",
+          // Waiting is BLUE in the app-wide scheme (green counts, red was
+          // refused, blue waits its turn). This step wore caution orange from
+          // before the scheme existed — the one surface still colouring
+          // "unread" as if it were trouble (found in the Aug 20 colour sweep).
+          color: ENTRY_COLOR.reported,
         }
   );
 
