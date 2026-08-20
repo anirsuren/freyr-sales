@@ -8,7 +8,7 @@ import {
 } from "@/lib/accessControl";
 import { resolveWorkspaceAccess } from "@/lib/accessStore";
 import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
-import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { browserRedirectOrigin } from "@/lib/authOrigin";
 import { appHomePath } from "@/lib/appHome";
 
 function safeNext(request: NextRequest, origin: string): string {
@@ -28,7 +28,9 @@ function safeNext(request: NextRequest, origin: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const origin = configuredAuthOrigin();
+  // Same rule as sign-out: a dev loopback request returns to its own port, so
+  // a review server on :3006 does not bounce you to :3001 after signing in.
+  const origin = browserRedirectOrigin(request.nextUrl);
   if (!origin) {
     return NextResponse.json(
       { error: "Authentication redirect is not configured." },
@@ -38,12 +40,12 @@ export async function GET(request: NextRequest) {
   const next = safeNext(request, origin);
   const principal = await authenticatedRequestPrincipal(request);
   if (!principal) {
-    const login = authUrl("/login");
+    const login = new URL("/login", origin);
     login.searchParams.set("next", next);
     return NextResponse.redirect(login);
   }
   if (!isApprovalGateEnabled()) {
-    return NextResponse.redirect(authUrl(next));
+    return NextResponse.redirect(new URL(next, origin));
   }
 
   try {
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
     }
     if (!access) throw lastError;
     if (access.status === "pending") {
-      const pending = authUrl("/access-pending");
+      const pending = new URL("/access-pending", origin);
       if (principal.email) pending.searchParams.set("email", principal.email);
       return NextResponse.redirect(pending);
     }
@@ -82,7 +84,7 @@ export async function GET(request: NextRequest) {
       role: access.role,
       workspaceId: access.workspaceId,
     });
-    const response = NextResponse.redirect(authUrl(next));
+    const response = NextResponse.redirect(new URL(next, origin));
     response.cookies.set(ACCESS_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -92,7 +94,7 @@ export async function GET(request: NextRequest) {
     });
     return response;
   } catch {
-    const unavailable = authUrl("/access-pending");
+    const unavailable = new URL("/access-pending", origin);
     unavailable.searchParams.set("configuration", "error");
     // Carry the destination so "Try again" resumes the SAME sign-in instead
     // of dumping the person back at the start.

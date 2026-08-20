@@ -45,3 +45,28 @@ export function authUrl(path: string): URL {
   }
   return candidate;
 }
+
+/**
+ * WHERE A BROWSER REDIRECT SHOULD LAND, as opposed to an emailed link.
+ *
+ * AUTH_PUBLIC_ORIGIN pins one host, which is exactly right for anything that
+ * leaves the building — a reset link, an invitation, a confirmation — and
+ * exactly wrong for a redirect back to the tab you are already in. Running a
+ * review server on another port made "Switch account" throw you at
+ * localhost:3001 whichever port you were actually on (Anir, Aug 19: "I can't
+ * switch my account. It takes me to this link. I think it's a wrong link").
+ *
+ * So: in development, a request that came from loopback goes back to the
+ * origin it came from. In production the configured origin always wins —
+ * following the request's own host there is how open redirects and cookie
+ * leaks start.
+ */
+export function browserRedirectOrigin(requestUrl: URL): string | null {
+  const configured = configuredAuthOrigin();
+  if (process.env.NODE_ENV === "production") return configured;
+  const isLoopback = LOOPBACK_HOSTS.has(requestUrl.hostname);
+  const isHttp =
+    requestUrl.protocol === "http:" || requestUrl.protocol === "https:";
+  if (isLoopback && isHttp) return requestUrl.origin;
+  return configured;
+}

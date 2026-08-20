@@ -4,7 +4,7 @@ import {
   APP_SESSION_COOKIE,
   requestUsesHttps,
 } from "@/lib/appSession";
-import { configuredAuthOrigin } from "@/lib/authOrigin";
+import { browserRedirectOrigin } from "@/lib/authOrigin";
 import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 
 const AUTH_COOKIES = [
@@ -39,7 +39,10 @@ function safeLogoutUrl(request: NextRequest): URL {
   // allowed to fall back to the actual loopback request so signing out cannot
   // strand someone on a JSON 503 merely because AUTH_PUBLIC_ORIGIN was not
   // copied into their local shell.
-  const origin = configuredAuthOrigin() || localRequestOrigin(request);
+  // A loopback request in development goes back to the port it came from; in
+  // production the one configured origin still wins. See browserRedirectOrigin.
+  const origin =
+    browserRedirectOrigin(request.nextUrl) || localRequestOrigin(request);
   if (!origin) {
     throw new Error("Authentication redirect is not configured.");
   }
