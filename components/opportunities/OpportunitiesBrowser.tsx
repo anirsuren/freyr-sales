@@ -2058,9 +2058,10 @@ export function OpportunitiesBrowser({
                   </div>
                 ))}
                 {editing.goalRows.length === 0 && (
+                  /* The room's header already carries the met-and-saved rule;
+                     repeating it here was two sentences for one fact. */
                   <p className="text-[12px] text-text-tertiary">
-                    Nothing attached yet. Add the goals this deal is working
-                    toward; mark one met when it lands and its value counts.
+                    Nothing attached yet.
                   </p>
                 )}
                 <button
