@@ -44,6 +44,7 @@ import {
   entryStatus,
   entryStatusLabel,
   familyValue,
+  goalAuthor,
   verifiedValue,
   goalFamilyActuals,
   ENTRY_COLOR,
@@ -1357,9 +1358,17 @@ function GoalRows({
                     where it came from, so no way to know who to ask about it
                     (Anir, Aug 19). Recorded since the goal was created; just
                     never shown. */}
-                {goal.createdBy && (
-                  <span className="truncate text-[10.5px] text-text-tertiary">
-                    · set by {goal.createdBy}
+                {goalAuthor(goal.createdBy) && (
+                  /* A face, not just a name (Anir, Aug 20: "you put the
+                     profile picture, which you're not doing"). The goals that
+                     came off the sheet say nothing at all — see goalAuthor. */
+                  <span className="flex min-w-0 items-center gap-1 text-[10.5px] text-text-tertiary">
+                    <span aria-hidden="true">·</span> set by
+                    <Avatar
+                      name={goalAuthor(goal.createdBy)!}
+                      className="h-3.5 w-3.5 shrink-0 text-[6px]"
+                    />
+                    <span className="truncate">{goalAuthor(goal.createdBy)}</span>
                   </span>
                 )}
               </span>

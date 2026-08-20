@@ -946,6 +946,28 @@ export function verifiedValue(
   return familyValue(state, goal, { verifiedOnly: true });
 }
 
+/**
+ * WHO SET THIS GOAL, WHEN THAT IS A PERSON.
+ *
+ * The goals that came off Suren's sheet carry provenance strings, not names —
+ * "Suren's goal sheet", "Suren (Aug 12 spec)", "Sample data". Printing those
+ * under a goal read as a person who does not exist, and said nothing useful
+ * about a goal that has simply always been there (Anir, Aug 20: "all of the
+ * default ones that were there before, you can just leave them as is. You
+ * don't have to say that they were made by anyone... the new ones, you just
+ * say 'set by whoever', and then you put the profile picture").
+ *
+ * Null means "this is one of the defaults" — say nothing.
+ */
+export function goalAuthor(createdBy?: string): string | null {
+  const name = (createdBy ?? "").trim();
+  if (!name) return null;
+  /* A bracketed note or a possessive document is a source, not a colleague. */
+  if (/\(|\)|'s |’s |^sample data$/i.test(name)) return null;
+  if (/sheet|spec|import|seed|sample|system/i.test(name)) return null;
+  return name;
+}
+
 /** Entries a given person is allowed to verify: they head a group the entry's
  *  person belongs to (Suren, Aug 13: "whoever has been identified as a group
  *  owner is the only person who can verify it"). */

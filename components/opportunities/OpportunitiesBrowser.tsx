@@ -1854,7 +1854,12 @@ export function OpportunitiesBrowser({
               onChange={(line) => setEditing({ ...editing, rows: [line] })}
             />
 
-            <FormRoom icon={Flag} title="Where it stands" hint="Status, how this revenue is counted, and who owns it.">
+            <FormRoom
+              icon={Flag}
+              title="Where it stands"
+              hint="Status, how this revenue is counted, and who owns it."
+              summary={`${editing.status || "No status"} · ${editing.owner || "Unassigned"}`}
+            >
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {/* Suren, Aug 18: "don't call it levels; it's actually a revenue
                   type." The stored field stays `level` — only the words moved. */}
@@ -1950,6 +1955,11 @@ export function OpportunitiesBrowser({
               icon={TargetIcon}
               title="Goals this deal feeds"
               hint="Nothing counts on performance until a row is marked met and saved."
+              summary={
+                editing.goalRows.length
+                  ? `${editing.goalRows.length} goal${editing.goalRows.length === 1 ? "" : "s"}`
+                  : "None yet"
+              }
             >
               <div className="space-y-2">
                 {editing.goalRows.map((r, i) => (
@@ -2093,6 +2103,11 @@ export function OpportunitiesBrowser({
               icon={ListChecksIcon}
               title="Activities"
               hint="What's actually happening on this deal: a demo, a pilot, a bid defence."
+              summary={
+                editing.activities.length
+                  ? `${editing.activities.length} logged`
+                  : "None yet"
+              }
             >
               <div className="space-y-2">
                 {editing.activities.map((a, i) => (
@@ -2480,6 +2495,48 @@ function FutureSection({
   /** The row a save just landed on — briefly lit so it never looks vanished. */
   flashId?: string | null;
 }) {
+  /**
+   * THE SAME TOOLS AS THE PIPELINE (Anir, Aug 20: "Why would we not have
+   * filters and search bars here either on the future page? Just copy
+   * whatever you have on the current pipeline and do it for future as well").
+   *
+   * 23 rows is already more than a screen, and this tab had no way to find
+   * one. Search reads the same fields the pipeline's does; the two pickers are
+   * the ones that mean anything here — which account, and which quarter it is
+   * aimed at. The tiles keep counting ALL futures, because they answer "what
+   * is queued" and must not move when you narrow the list.
+   */
+  const [q, setQ] = useState("");
+  const [customer, setCustomer] = useState("all");
+  const [quarter, setQuarter] = useState("all");
+  const customers = useMemo(
+    () => [...new Set(futures.map((o) => o.customer).filter(Boolean))].sort(),
+    [futures]
+  );
+  const quarters = useMemo(
+    () => [...new Set(futures.map((o) => o.targetQuarter).filter(Boolean) as string[])].sort(),
+    [futures]
+  );
+  const shownFutures = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return futures.filter((o) => {
+      if (customer !== "all" && o.customer !== customer) return false;
+      if (quarter !== "all" && o.targetQuarter !== quarter) return false;
+      if (!needle) return true;
+      const hay = [
+        o.name,
+        o.customer,
+        o.owner,
+        offeringName.get(o.offeringIds?.[0] ?? "") ?? "",
+        ...(o.offeringLabels ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(needle);
+    });
+  }, [futures, q, customer, quarter, offeringName]);
+
   const dated = futures.filter((o) => o.targetPitchDate);
   const nextPitch = dated
     .map((o) => o.targetPitchDate!)
@@ -2519,6 +2576,61 @@ function FutureSection({
       </div>
 
       <Card className="mt-4 overflow-hidden p-0">
+        {futures.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
+            <PrioritySearchInput
+              value={q}
+              onChange={setQ}
+              placeholder="Search future deals, accounts, offerings…"
+              placeholders={[
+                "Search future deals…",
+                "Search accounts…",
+                "Search offerings…",
+              ]}
+              className="min-w-[190px] flex-1"
+            />
+            <ColorSelect
+              value={customer}
+              onChange={setCustomer}
+              ariaLabel="Customer"
+              collapsible={false}
+              dense
+              minWidth={150}
+              options={[
+                { value: "all", label: "All customers" },
+                ...customers.map((c) => ({ value: c, label: c, logoName: c })),
+              ]}
+            />
+            <ColorSelect
+              value={quarter}
+              onChange={setQuarter}
+              ariaLabel="Target quarter"
+              collapsible={false}
+              dense
+              minWidth={140}
+              options={[
+                { value: "all", label: "Any quarter" },
+                ...quarters.map((qt) => ({ value: qt, label: qt, color: "#7C3AED" })),
+              ]}
+            />
+            {(q || customer !== "all" || quarter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQ("");
+                  setCustomer("all");
+                  setQuarter("all");
+                }}
+                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <X size={12} strokeWidth={2.4} /> Clear
+              </button>
+            )}
+            <span className="text-[12px] font-semibold text-text-tertiary tnum">
+              {shownFutures.length} of {futures.length}
+            </span>
+          </div>
+        )}
         {futures.length === 0 ? (
           <div className="px-4 py-8">
             <EmptyState
@@ -2541,7 +2653,14 @@ function FutureSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {futures.map((o) => {
+                {shownFutures.length === 0 && (
+                  <tr>
+                    <td colSpan={writable ? 6 : 5} className="px-4 py-8 text-center text-[13px] text-text-secondary">
+                      No future deal matches that. Clear the filters to see all {futures.length}.
+                    </td>
+                  </tr>
+                )}
+                {shownFutures.map((o) => {
                   const label =
                     o.offeringIds[0]
                       ? (offeringName.get(o.offeringIds[0]) ?? o.offeringLabels[0])
@@ -2666,6 +2785,7 @@ function FormRoom({
   title,
   hint,
   defaultOpen = false,
+  summary,
   children,
 }: {
   icon: LucideIcon;
@@ -2676,6 +2796,12 @@ function FormRoom({
    *  six sections follow, for the same reason: a long scroll of open panels
    *  hides where to start. */
   defaultOpen?: boolean;
+  /**
+   * What the room holds, shown ONLY while it is shut. A closed panel that
+   * says nothing makes you open all three to find out whether anything is in
+   * them, which is the scroll the dropdowns were meant to end.
+   */
+  summary?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -2692,6 +2818,11 @@ function FormRoom({
         </span>
         <span className="text-[12.5px] font-bold text-text-primary">{title}</span>
         <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
+        {!open && summary && (
+          <span className="shrink-0 truncate text-[11.5px] font-semibold text-text-secondary">
+            {summary}
+          </span>
+        )}
         <ChevronDown
           size={15}
           strokeWidth={2.2}

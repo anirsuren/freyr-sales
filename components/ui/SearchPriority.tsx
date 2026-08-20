@@ -176,7 +176,16 @@ export function PrioritySearchInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
   const [slot, setSlot] = useState(0);
-  const rotating = !!placeholders?.length && !value && !focused;
+  /**
+   * Two different questions. `hinting` is "is the box empty, so is there a
+   * placeholder at all" — true even while focused, because the whole point is
+   * that the LONG line never gets rendered and cut off (Anir, Aug 20, looking
+   * at a focused box: "the search bar does not animate", and it was showing
+   * "…offerings, ow"). `rotating` is "should it be swapping right now", which
+   * stops the moment somebody is actually using the box.
+   */
+  const hinting = !!placeholders?.length && !value;
+  const rotating = hinting && !focused;
   useEffect(() => {
     if (!rotating) return;
     /* Slow enough to read, and it stops the moment the box is used. Reduced
@@ -190,7 +199,7 @@ export function PrioritySearchInput({
     const t = setInterval(() => setSlot((n) => n + 1), 2600);
     return () => clearInterval(t);
   }, [rotating]);
-  const shown = rotating
+  const shown = hinting
     ? placeholders![slot % placeholders!.length]
     : placeholder;
 
@@ -248,7 +257,7 @@ export function PrioritySearchInput({
         }}
         /* The real placeholder goes quiet while the overlay is doing the
            talking, so the two can never both be visible. */
-        placeholder={rotating ? "" : placeholder}
+        placeholder={hinting ? "" : placeholder}
         aria-label={ariaLabel ?? placeholder}
         // Replaced wholesale, not merged — see the note on the icon above.
         className={
@@ -256,9 +265,11 @@ export function PrioritySearchInput({
           "w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
         }
       />
-      {rotating && (
+      {hinting && (
         <span
-          key={slot}
+          /* Re-keyed only while rotating, so the fade plays on a swap and not
+             when the box merely gains focus. */
+          key={rotating ? slot : "held"}
           aria-hidden="true"
           className="search-hint pointer-events-none absolute left-8 top-1/2 -translate-y-1/2 truncate pr-3 text-[13px] text-text-tertiary"
         >
