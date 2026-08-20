@@ -337,5 +337,13 @@ export const config = {
   // Protect dynamic routes even when an attacker gives a route parameter a
   // file-looking suffix such as ".png". Only framework assets and the favicon
   // bypass authentication.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // The two big-body upload endpoints are EXCLUDED: any route the middleware
+  // matches gets its body re-streamed by Next with a hard cap, which is what
+  // ate Antara's 32MB proposal (Aug 20) — the cap-raise alone did not save it.
+  // Both routes carry their own sign-in checks (canEditOffering /
+  // verifiedWorkflowActor return 403 without a session), and the session
+  // cookie is SameSite=Lax, so a cross-site POST arrives without it.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/offerings/.*/materials/upload|api/performance/evidence).*)",
+  ],
 };
