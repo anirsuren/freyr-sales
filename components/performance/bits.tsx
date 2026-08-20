@@ -745,6 +745,48 @@ export function GroupPill({
  * off, the pale part is claimed and still waiting, and the marker is the
  * calendar: where this would have to stand today to be on time.
  */
+/**
+ * WHERE EACH NUMBER STARTS AND STOPS (Anir, Aug 20: "what does 80k + 120k
+ * mean? ... Show a line: this is 80k, this is 120k. Like a vertical line, then
+ * a horizontal line, and then a vertical line").
+ *
+ * The header pill said "$80K +$120K" and left you to work out which part of the
+ * bar was which. This measures them: a bracket under each segment, exactly as
+ * wide as the segment, with its own amount underneath in its own colour.
+ */
+function SegmentBrackets({
+  parts,
+  unit,
+}: {
+  parts: { key: string; value: number; pct: number; color: string }[];
+  unit: GoalUnit;
+}) {
+  const shown = parts.filter((p) => p.pct > 0.5 && p.value > 0);
+  if (shown.length < 2) return null;
+  return (
+    <div className="mt-1 flex w-full items-start" aria-hidden="true">
+      {shown.map((p) => (
+        <span
+          key={p.key}
+          className="min-w-0 shrink-0 px-[1.5px]"
+          style={{ width: `${p.pct}%` }}
+        >
+          <span
+            className="block h-[5px] rounded-t-[2px] border-x-[1.5px] border-t-[1.5px]"
+            style={{ borderColor: p.color }}
+          />
+          <span
+            className="mt-[3px] block truncate text-center text-[10px] font-bold tnum"
+            style={{ color: p.color }}
+          >
+            {fmtAmount(unit, p.value)}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function PaceTimeline({
   title,
   verified,
@@ -954,9 +996,13 @@ export function PaceTimeline({
                     sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
                 }}
               />
+              {/* Signed off is GREEN and solid, everywhere (Anir, Aug 20:
+                  "I like the idea that verified is green, but then make it
+                  consistent"). The collapsed rail already drew it green while
+                  this track drew the same money blue. */}
               <span
                 className="absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${vPct}%`, background: accent }}
+                style={{ width: `${vPct}%`, background: ENTRY_COLOR.verified }}
               />
               {/* Every point on the track wears a dot, including the last one. */}
               <span
@@ -978,6 +1024,25 @@ export function PaceTimeline({
               />
             </div>
 
+
+            <SegmentBrackets
+              unit={unit}
+              parts={[
+                {
+                  key: "verified",
+                  value: verified,
+                  pct: vPct,
+                  color: ENTRY_COLOR.verified,
+                },
+                {
+                  key: "unverified",
+                  value: awaiting,
+                  pct: Math.max(0, aPct - vPct),
+                  color:
+                    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                },
+              ]}
+            />
 
             {/* WHERE YOU ARE — its own lane between the track and the end
                 labels, in flow (Anir, Aug 16: "The lines don't line up").
@@ -1060,7 +1125,7 @@ export function PaceTimeline({
 
           <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-1.5")}>
             <PaceRow
-              swatch={accent}
+              swatch={ENTRY_COLOR.verified}
               label="Verified, counts now"
               value={fmtAmount(unit, verified)}
             />
@@ -1078,7 +1143,7 @@ export function PaceTimeline({
             )}
             {awaiting - sentBack > 0 && (
               <PaceRow
-                swatch={accent}
+                swatch={ENTRY_COLOR.reported}
                 faded
                 label="Claimed, not checked yet"
                 value={fmtAmount(unit, awaiting - sentBack)}
@@ -1173,6 +1238,9 @@ export function PersonGoalPanel({
   const waiting = mine
     .filter((a) => isPending(a))
     .reduce((s, a) => s + a.amount, 0);
+  const sentBackMine = mine
+    .filter((a) => entryStatus(a) === "sent_back")
+    .reduce((s, a) => s + a.amount, 0);
   const left = Math.max(0, target - done);
   const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
 
@@ -1194,6 +1262,9 @@ export function PersonGoalPanel({
       }),
       value: cell.value,
       pending: cell.pending,
+      color: ENTRY_COLOR.verified,
+      pendingColor:
+        sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
       // NO CAPTION (Anir, Aug 20: "why are you saying 200k twice"). The bar
       // already prints its own value label above itself; a caption under it
       // repeated the same figure in a lighter grey, on the bar AND in its
@@ -1215,11 +1286,22 @@ export function PersonGoalPanel({
     <div className="border-t border-border-light bg-white px-3 py-3">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {card("Target", target > 0 ? fmtAmount(goal.unit, target) : "Not set")}
-        {card("Counted", fmtAmount(goal.unit, done), "text-blue-primary")}
+        {/* The tiles read in the same three colours the bars do: what counts
+            is green, what is still owed to somebody wears the colour of whose
+            move it is. */}
+        {card(
+          "Counted",
+          fmtAmount(goal.unit, done),
+          "text-[color:var(--entry-verified-ink)]"
+        )}
         {card(
           "Waiting to verify",
           waiting > 0 ? fmtAmount(goal.unit, waiting) : "Nothing",
-          waiting > 0 ? "text-[color:#C2410C]" : undefined
+          waiting > 0
+            ? sentBackMine > 0
+              ? "text-[color:var(--entry-sent-back-ink)]"
+              : "text-[color:var(--entry-waiting)]"
+            : undefined
         )}
         {card(
           target > 0 ? "Still to go" : "Entries",
@@ -1237,10 +1319,24 @@ export function PersonGoalPanel({
               {fmtAmount(goal.unit, verified)} signed off
             </span>
           </div>
-          <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
+          {/* Signed off, then whatever is still owed — the same two-part
+              bar and the same colours as every other track. It was one solid
+              blue sweep, which drew refused money as if it counted. */}
+          <span className="mt-1 flex h-2 overflow-hidden rounded-full bg-surface">
             <span
-              className="block h-full rounded-full bg-blue-primary"
-              style={{ width: `${pct}%` }}
+              className="block h-full"
+              style={{
+                width: `${target > 0 ? Math.min(100, (verified / target) * 100) : 0}%`,
+                background: ENTRY_COLOR.verified,
+              }}
+            />
+            <span
+              className="unverified-fill block h-full"
+              style={{
+                width: `${target > 0 ? Math.min(100 - Math.min(100, (verified / target) * 100), (waiting / target) * 100) : 0}%`,
+                ["--fill" as string]:
+                  sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+              }}
             />
           </span>
         </div>

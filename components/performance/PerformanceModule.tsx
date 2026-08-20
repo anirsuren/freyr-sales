@@ -851,13 +851,23 @@ function MasterTab({
               {anyTypeOpen ? "Close all" : "Open all"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onNewGoal}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-          >
-            <Plus size={14} strokeWidth={2.4} /> New goal
-          </button>
+          {/* SHAPING THE PLAN IS A MANAGER'S JOB (Anir, Aug 20: "I should
+              not be able to add people if I'm a sales rep. That's a huge
+              problem... they shouldn't be able to assign groups, assign
+              stuff, or delete goals").
+              The server has always refused a rep every one of these ops with
+              a 403 — the whole page used to be hidden from reps, so nobody
+              had looked at the buttons since it was opened up. A button that
+              can only fail is worse than no button. */}
+          {isManager && (
+            <button
+              type="button"
+              onClick={onNewGoal}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+            >
+              <Plus size={14} strokeWidth={2.4} /> New goal
+            </button>
+          )}
         </span>
       </SearchPriority>
 
@@ -1063,11 +1073,11 @@ function MasterTab({
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <PickedPill goal={g} live={live} run={run} />
+                        <PickedPill goal={g} live={live && isManager} run={run} />
                       </td>
                       <td className="py-4 pl-2 pr-4">
                         <span className="flex items-center justify-end gap-0.5">
-                          {live && (
+                          {live && isManager && (
                             <>
                               <button
                                 type="button"
@@ -1300,6 +1310,7 @@ function GroupSplitPanel({
   assignment,
   state,
   live,
+  isManager,
   busy,
   run,
 }: {
@@ -1308,6 +1319,8 @@ function GroupSplitPanel({
   group: PerformanceState["groups"][number];
   assignment: NonNullable<PrimaryGoal["groupAssignments"]>[number];
   live: boolean;
+  /** Splitting a group's number between its people is a plan change. */
+  isManager: boolean;
   busy: boolean;
   run: RunOp;
 }) {
@@ -1467,6 +1480,7 @@ function GroupSplitPanel({
               </span>
             )}
             {live &&
+              isManager &&
               (dropFor === m ? (
                 <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
                   <button
@@ -2184,9 +2198,9 @@ function GoalPopupBody({
           </span>
         </span>
         <span className="flex items-center gap-1.5">
-          <PickedPill goal={goal} live={live} run={run} />
+          <PickedPill goal={goal} live={live && isManager} run={run} />
           <InfoHint text={"Tracking means this goal is counted and shown on Org performance.\nNot tracked means it stays on the master list only."} />
-          {live && (
+          {live && isManager && (
             <button
               type="button"
               title="Edit the goal's details: name, type, year, target"
@@ -2196,7 +2210,7 @@ function GoalPopupBody({
               <Pencil size={14} strokeWidth={2.2} />
             </button>
           )}
-          {live && (
+          {live && isManager && (
             <span className="relative">
               <button
                 type="button"
@@ -2321,7 +2335,7 @@ function GoalPopupBody({
         {/* The add action lives WITH the section it adds to, not stranded at
             the bottom-left (Anir, Aug 12: "that's a bad place to put this
             button"). */}
-        {live && (
+        {live && isManager && (
           <button
             type="button"
             onClick={() => setOpenSub("new")}
@@ -2433,7 +2447,7 @@ function GoalPopupBody({
                     ))}
                   </span>
                 )}
-                {live && expanded && (
+                {live && isManager && expanded && (
                   <span
                     className="relative shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -2572,7 +2586,7 @@ function GoalPopupBody({
           <p className="text-[12.5px] text-text-secondary">
             No department carries this goal yet.
           </p>
-          {live && state.groups.length > 0 && (
+          {live && isManager && state.groups.length > 0 && (
             <button
               type="button"
               onClick={() => setGroupAssignOpen(true)}
@@ -2676,7 +2690,7 @@ function GoalPopupBody({
                   its people carry {fmtAmount(goal.unit, peopleTotal)}
                 </span>
               )}
-              {live && (
+              {live && isManager && (
                 <span className="relative ml-auto shrink-0">
                   {confirmGroupUnassign === assignment.groupId ? (
                     <span className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px]">
@@ -2726,6 +2740,7 @@ function GoalPopupBody({
                 assignment={assignment}
                 state={state}
                 live={live}
+                isManager={isManager}
                 busy={busy}
                 run={run}
               />
@@ -2783,7 +2798,7 @@ function GoalPopupBody({
               ? "Nobody outside those groups carries this goal."
               : "Nobody carries this goal individually yet."}
           </p>
-          {live && (
+          {live && isManager && (
             <button
               type="button"
               onClick={() => setAssignOpen(true)}
@@ -2923,7 +2938,7 @@ function GoalPopupBody({
                     : undefined
                 }
               />
-              {live && (
+              {live && isManager && (
                 <span className="relative shrink-0">
                   <button
                     type="button"

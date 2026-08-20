@@ -129,7 +129,9 @@ function monthlyTotals(
  *  one blue, in the chart and in the table, so the same $250K never appears in
  *  two colours on one screen (Anir, Aug 15). Identity colour stays on the type
  *  chip and the icon tile; status stays on the pace pill. */
-const MONEY = "#0071E3";
+/* The bar chart's own colour IS the verified colour: a solid column is money
+   that counts, and the striped cap on top of it is money that does not yet. */
+const MONEY = ENTRY_COLOR.verified;
 
 /** Goal type → the TIP_ICONS key for the same mark it wears on every goal row.
  *  A string, because that is the only thing a tip datum may carry. */
@@ -1566,6 +1568,14 @@ function GoalRows({
                       space between cards is the separation. */}
                   <div className="mt-2 space-y-2.5">
                     {(goal.assignments ?? []).map((a) => {
+                      const aVerified = familyValue({ actuals }, goal, {
+                        person: a.person,
+                        verifiedOnly: true,
+                      });
+                      const aSentBack = familyValue({ actuals }, goal, {
+                        person: a.person,
+                        sentBackOnly: true,
+                      });
                       const aActual = actualValue(actuals, goal, {
                         subgoalId: null,
                         person: a.person,
@@ -1676,15 +1686,44 @@ function GoalRows({
                               {share !== null ? (
                                 <>
                                   <span className="relative mt-1.5 block h-3">
-                                    <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                    {/* Signed off, then whatever is still
+                                        owed — same two parts, same colours,
+                                        same stripe as every other bar. This
+                                        was one flat blue sweep at 55%, which
+                                        drew refused money as if it counted. */}
+                                    <span className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                                       <span
-                                        className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
-                                        style={{ width: `${share}%` }}
+                                        className="block h-full transition-[width] duration-300"
+                                        style={{
+                                          width: `${a.target > 0 ? Math.min(100, pctMet(aVerified, a.target)) : 0}%`,
+                                          background: ENTRY_COLOR.verified,
+                                        }}
+                                      />
+                                      <span
+                                        className="unverified-fill block h-full transition-[width] duration-300"
+                                        style={{
+                                          width: `${a.target > 0 ? Math.max(0, Math.min(100, share) - Math.min(100, pctMet(aVerified, a.target))) : 0}%`,
+                                          ["--fill" as string]:
+                                            aSentBack > 0
+                                              ? ENTRY_COLOR.sent_back
+                                              : ENTRY_COLOR.reported,
+                                        }}
                                       />
                                     </span>
                                     <span
-                                      className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
-                                      style={{ left: `clamp(6px, ${share}%, calc(100% - 6px))` }}
+                                      className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+                                      // The head of the bar wears whatever the
+                                      // bar's last segment is.
+                                      // eslint-disable-next-line react/forbid-dom-props
+                                      style={{
+                                        left: `clamp(6px, ${share}%, calc(100% - 6px))`,
+                                        background:
+                                          aSentBack > 0
+                                            ? ENTRY_COLOR.sent_back
+                                            : aVerified >= aActual
+                                              ? ENTRY_COLOR.verified
+                                              : ENTRY_COLOR.reported,
+                                      }}
                                     />
                                   </span>
                                   <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">

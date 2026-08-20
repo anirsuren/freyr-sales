@@ -1234,9 +1234,10 @@ export function GoalZoom({
                           {!empty && (
                             <>
                               <span
-                                className={cn("h-full bg-[#16A34A]", lit && "bar-lit")}
+                                className={cn("h-full", lit && "bar-lit")}
                                 style={{
                                   width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
+                                  background: ENTRY_COLOR.verified,
                                   ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
                                 }}
                               />
@@ -1469,11 +1470,11 @@ export function GoalZoom({
                           {(r2.verified > 0 || r2.awaiting > 0) && (
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               <span
-                                className={cn(
-                                  "block h-full bg-blue-primary",
-                                  lit && "bar-lit"
-                                )}
-                                style={{ width: `${Math.min(100, (r2.verified / maxG) * 100)}%` }}
+                                className={cn("block h-full", lit && "bar-lit")}
+                                style={{
+                                  width: `${Math.min(100, (r2.verified / maxG) * 100)}%`,
+                                  background: ENTRY_COLOR.verified,
+                                }}
                               />
                               {/* WAITING IS THE SAME BLUE, WASHED OUT — not
                                   amber, and not stripes either: both were
@@ -1673,25 +1674,24 @@ export function GoalZoom({
                                       <span className="flex items-center gap-2 pl-7">
                                         <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                                           <span
-                                            className={cn(
-                                              "block h-full bg-blue-primary",
-                                              lit && "bar-lit"
-                                            )}
+                                            className={cn("block h-full", lit && "bar-lit")}
                                             style={{
                                               width: base
                                                 ? `${Math.min(100, (v / base) * 100)}%`
                                                 : "0%",
+                                              background: ENTRY_COLOR.verified,
                                             }}
                                           />
                                           <span
                                             className={cn(
-                                              "block h-full bg-blue-primary opacity-[0.28]",
+                                              "unverified-fill block h-full",
                                               lit && "bar-lit"
                                             )}
                                             style={{
                                               width: base
                                                 ? `${Math.min(100, (w / base) * 100)}%`
                                                 : "0%",
+                                              ["--fill" as string]: ENTRY_COLOR.reported,
                                             }}
                                           />
                                         </span>
@@ -1952,11 +1952,11 @@ export function GoalZoom({
                           ) : (
                           <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                             <span
-                              className={cn(
-                                "block h-full bg-blue-primary",
-                                lit && "bar-lit"
-                              )}
-                              style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
+                              className={cn("block h-full", lit && "bar-lit")}
+                              style={{
+                                width: `${Math.min(100, (p.verified / maxP) * 100)}%`,
+                                background: ENTRY_COLOR.verified,
+                              }}
                             />
                             <span
                               className={cn("unverified-fill block h-full", lit && "bar-lit")}

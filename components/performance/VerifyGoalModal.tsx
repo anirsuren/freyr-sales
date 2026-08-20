@@ -8,6 +8,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import {
+  ENTRY_COLOR,
   entryStatus,
   familyValue,
   fmtAmount,
@@ -93,6 +94,9 @@ export function VerifyGoalModal({
   const verified = scope ? sum("verified") : familyValue(state, goal, { verifiedOnly: true });
   const waiting = scope ? sum("waiting") : familyValue(state, goal, { reportedOnly: true });
   const total = verified + waiting;
+  const sentBack = entries
+    .filter((a) => entryStatus(a) === "sent_back")
+    .reduce((sum, a) => sum + a.amount, 0);
   const undoing = scope ? scope.verified : goal.verified;
   const subjectName = scope ? scope.label : goal.name;
 
@@ -131,28 +135,41 @@ export function VerifyGoalModal({
         </div>
 
         <div className="mt-2.5 flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+          {/* The same three colours and the same stripe as every other bar. */}
           <span
-            className="block h-full bg-blue-primary"
+            className="block h-full"
             style={{
               width: `${goal.target > 0 ? Math.min(100, (verified / goal.target) * 100) : verified > 0 ? (verified / total) * 100 : 0}%`,
+              background: ENTRY_COLOR.verified,
             }}
           />
           <span
-            className="block h-full bg-blue-primary opacity-[0.28]"
+            className="unverified-fill block h-full"
             style={{
               width: `${goal.target > 0 ? Math.min(100, (waiting / goal.target) * 100) : waiting > 0 ? (waiting / total) * 100 : 0}%`,
+              ["--fill" as string]:
+                sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
             }}
           />
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-2 w-2 rounded-full bg-blue-primary" />
-            Approved
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: ENTRY_COLOR.verified }}
+            />
+            Verified
             <b className="text-text-primary tnum">{fmtAmount(goal.unit, verified)}</b>
           </span>
           <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-2 w-2 rounded-full bg-blue-primary opacity-[0.28]" />
-            Waiting
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{
+                background:
+                  sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+              }}
+            />
+            {sentBack > 0 ? "Sent back" : "Waiting"}
             <b className="text-text-primary tnum">{fmtAmount(goal.unit, waiting)}</b>
           </span>
           {goal.target > 0 && (

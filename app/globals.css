@@ -57,11 +57,26 @@
      and pale blue in the next. Defined once here, referenced everywhere, so
      changing what "sent back" looks like is one line and not a search.
      ------------------------------------------------------------------------ */
-  --entry-verified: var(--blue-primary);
+  /*
+     THE RULE, decided Aug 20 ("I like the idea that verified is green, but
+     then make it consistent. I like green, blue, and red, and then figure out
+     when to use stripes"):
+
+       SOLID means it counts. STRIPED means it does not, yet.
+       GREEN  — verified. Signed off, locked, rolls up. The only solid fill.
+       BLUE   — claimed, waiting on the group owner. Striped.
+       RED    — sent back, waiting on the person who claimed it. Striped.
+
+     So the fill answers "does this count" and the hue answers "whose move is
+     it". Green was previously blue in the expanded panels and a hardcoded
+     #16A34A in the collapsed rails, which is how one month could be green in
+     the row and blue in the drawer it opened.
+  */
+  --entry-verified: #16a34a;
   --entry-verified-ink: #15803d;
   --entry-sent-back: #dc2626;
   --entry-sent-back-ink: #b02020;
-  --entry-waiting: var(--warning);
+  --entry-waiting: var(--blue-primary);
 }
 
 html,
