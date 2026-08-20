@@ -8,6 +8,7 @@ import {
   actualValue,
   entryStatusLabel,
   familyValue,
+  milestoneByNow,
   paceVerdict,
   pctMet,
   yearElapsed,
@@ -69,7 +70,9 @@ export function PerformanceExport({
         // Verdict columns judge verified money, same as the page (tick 6).
         g.target > 0 ? Math.round(pctMet(verified, g.target) * 10) / 10 : "",
         Math.round(yearElapsed(g.year) * 1000) / 10,
-        paceVerdict(verified, g.target, g.year, g.measure),
+        // Same schedule the page judges against — the CSV must never call a
+        // goal "unscheduled" while the screen calls it lagging.
+        paceVerdict(verified, g.target, g.year, g.measure, undefined, milestoneByNow(g)),
         g.verified ? "yes" : "no",
         (g.assignments ?? []).map((a) => a.person).join("; "),
         (g.groupAssignments ?? [])
