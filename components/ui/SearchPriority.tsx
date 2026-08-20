@@ -128,6 +128,7 @@ export function PrioritySearchInput({
   value,
   onChange,
   placeholder,
+  placeholders,
   ariaLabel,
   width = 190,
   expandedWidth = 320,
@@ -142,6 +143,17 @@ export function PrioritySearchInput({
   value: string;
   onChange: (next: string) => void;
   placeholder: string;
+  /**
+   * PLACEHOLDERS THAT TAKE TURNS (Anir, Aug 20: "this thing needs to be an
+   * animation, the search bar").
+   *
+   * One long placeholder listing everything the box searches — "Search deals,
+   * accounts, offerings, owners…" — got cut off mid-word at every real width,
+   * so the box advertised "ow". Short lines that swap instead say the same
+   * four things and always fit. Empty and unfocused only: it must never move
+   * while somebody is typing.
+   */
+  placeholders?: string[];
   ariaLabel?: string;
   /** Resting width in px. Ignored when `grow` is set. */
   width?: number;
@@ -162,6 +174,25 @@ export function PrioritySearchInput({
   const handle = useContext(SearchPriorityContext);
   const active = handle?.active ?? false;
   const inputRef = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  const [slot, setSlot] = useState(0);
+  const rotating = !!placeholders?.length && !value && !focused;
+  useEffect(() => {
+    if (!rotating) return;
+    /* Slow enough to read, and it stops the moment the box is used. Reduced
+       motion keeps the first line and never swaps. */
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    const t = setInterval(() => setSlot((n) => n + 1), 2600);
+    return () => clearInterval(t);
+  }, [rotating]);
+  const shown = rotating
+    ? placeholders![slot % placeholders!.length]
+    : placeholder;
 
   return (
     <div
@@ -199,8 +230,14 @@ export function PrioritySearchInput({
         ref={inputRef}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        onFocus={() => handle?.setFocused(true)}
-        onBlur={() => handle?.setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          handle?.setFocused(true);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          handle?.setFocused(false);
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           // Escape empties the box and hands the row back — the same restore
@@ -209,14 +246,25 @@ export function PrioritySearchInput({
           if (value) onChange("");
           inputRef.current?.blur();
         }}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
+        /* The real placeholder goes quiet while the overlay is doing the
+           talking, so the two can never both be visible. */
+        placeholder={rotating ? "" : placeholder}
+        aria-label={ariaLabel ?? placeholder}
         // Replaced wholesale, not merged — see the note on the icon above.
         className={
           inputClassName ??
           "w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
         }
       />
+      {rotating && (
+        <span
+          key={slot}
+          aria-hidden="true"
+          className="search-hint pointer-events-none absolute left-8 top-1/2 -translate-y-1/2 truncate pr-3 text-[13px] text-text-tertiary"
+        >
+          {shown}
+        </span>
+      )}
     </div>
   );
 }

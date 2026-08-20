@@ -1783,3 +1783,19 @@ input {
     ),
     var(--fill, var(--entry-verified));
 }
+
+/**
+ * THE SEARCH BOX'S OWN LINE, SWAPPING (Anir, Aug 20: "this thing needs to be
+ * an animation, the search bar"). A short rise and fade, so the words change
+ * without the box twitching. Reduced motion never animates it.
+ */
+@keyframes searchHintIn {
+  from { opacity: 0; transform: translate(0, calc(-50% + 4px)); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+.search-hint {
+  animation: searchHintIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-hint { animation: none; }
+}

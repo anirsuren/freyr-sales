@@ -1502,6 +1502,12 @@ export function OpportunitiesBrowser({
             value={query}
             onChange={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
+            placeholders={[
+              "Search deals…",
+              "Search accounts…",
+              "Search offerings…",
+              "Search owners…",
+            ]}
             className="min-w-[190px] flex-1"
           />
           {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
