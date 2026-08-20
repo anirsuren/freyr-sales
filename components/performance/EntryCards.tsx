@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   CalendarCheck2,
   Check,
@@ -726,18 +726,15 @@ export function MyEntriesCard({
     { name: string; url: string }[]
   >([]);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
-  /** Landing from the rejected-claims card: open that row and bring it into
-   *  view. Without the scroll the card at the top appears to do nothing on a
-   *  long page — the row it opened is two screens down. */
-  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   useEffect(() => {
     if (!focusEntry) return;
     const { id } = focusEntry;
+    // NO SCROLL (Anir, Aug 20: "stop scrolling down when I click it"). The
+    // jump was written for a card that only pointed at the row; now the form
+    // opens over the page, so dragging the page out from under it moved
+    // everything except the thing being looked at. The row is still opened
+    // underneath, so closing the form lands on the claim in full.
     setOpenRow(id);
-    const el = rowRefs.current[id];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    // "Fix it" should START the fix, not just point at it. The row underneath
-    // is left open, so closing the form lands on the claim in full.
     const entry = state.actuals.find((x) => x.id === id);
     if (entry && awaitingTheirFix(entry) && entry.person === person && run) {
       setDropFor(null);
@@ -856,9 +853,6 @@ export function MyEntriesCard({
                          colour"). It was the only one washed in blue; the goal
                          rows open onto plain surface with a blue rail down the
                          left, so this now does too. */
-                      ref={(el) => {
-                        rowRefs.current[a.id] = el;
-                      }}
                       className={cn(
                         "cursor-pointer transition-colors",
                         /* A rejected claim wears its rail whether the row is
