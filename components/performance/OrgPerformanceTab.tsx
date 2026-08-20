@@ -534,9 +534,15 @@ export function OrgPerformanceTab({
                      * longer counted as achieved.
                      */
                     value: g.target > 0 ? Math.round(pctMet(a, g.target)) : 0,
+                    /* "40% · $200K of $200K" invited the obvious arithmetic
+                       and failed it: the caption is money LOGGED against the
+                       target, the number is what is VERIFIED. Naming it "met"
+                       borrows the column heading a reader already knows — the
+                       row underneath says the same word and the same number —
+                       so the two facts stop looking like one broken one. */
                     valueLabel:
                       g.target > 0
-                        ? `${Math.round(pctMet(verified, g.target))}%`
+                        ? `${Math.round(pctMet(verified, g.target))}% met`
                         : undefined,
                     pending:
                       g.target > 0 && awaiting > 0
