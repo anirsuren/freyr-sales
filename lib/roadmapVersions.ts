@@ -111,6 +111,10 @@ export function describeRoadmapChange(
     const was = prevByKey.get(keyOf(r));
     if (!was) continue;
     const name = r.version || "a version";
+    /* Same release (keys match, case-insensitively) wearing a different
+       label — without this a rename came out as the useless "Roadmap
+       updated", because every other check compares dates and features. */
+    if (was.version !== r.version) changes.push(`Renamed ${was.version} to ${r.version}`);
     if ((was.date || "") !== (r.date || "")) {
       changes.push(
         was.date && r.date
@@ -173,10 +177,23 @@ export function describeRoadmapChange(
   return changes;
 }
 
-/** Did the roadmap actually move? Renaming the offering must not mint a version. */
+/**
+ * Did the roadmap actually move? Renaming the offering must not mint a version.
+ *
+ * RELEASE ORDER IS NOT A CHANGE. The tab re-sorts releases every render (next
+ * first, then newest date), so the order they happen to sit in the array is
+ * invisible to everyone. Dragging rows around was minting versions whose only
+ * history line was "Roadmap updated" — an edit nobody made. Compared by key so
+ * the same set in a different order reads as the same roadmap.
+ *
+ * The roadmap_details lists stay order-sensitive on purpose: those tables ARE
+ * rendered in stored order, so moving a module up the page is a real edit.
+ */
 export function roadmapChanged(before: RoadmapShape, after: RoadmapShape): boolean {
+  const byKey = (rs: OfferingRelease[]) =>
+    stable([...rs].sort((a, b) => keyOf(a).localeCompare(keyOf(b))));
   return (
-    stable(list(before)) !== stable(list(after)) ||
+    byKey(list(before)) !== byKey(list(after)) ||
     stable(before.roadmap_details) !== stable(after.roadmap_details)
   );
 }
