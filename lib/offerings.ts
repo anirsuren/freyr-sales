@@ -1266,6 +1266,82 @@ function seed(): OfferingsStore {
   };
 }
 
+
+/**
+ * ROADMAP HISTORY FOR THE SHOWROOM.
+ *
+ * Mock has to look like a workspace somebody has been using for a year (Anir's
+ * standing rule: mock is always full), and a version history that is empty
+ * everywhere teaches nobody what the feature looks like. Built FROM each
+ * component's own versions, so the story it tells can never contradict the
+ * releases sitting next to it: each later version was added at some point, one
+ * of them slipped a quarter, and the current-version mark moved when the newest
+ * release shipped.
+ *
+ * Demo names only — mock never puts words in a real colleague's mouth.
+ */
+const DEMO_ROADMAP_AUTHORS = [
+  "Audrey Kingsley",
+  "Daniel Foster",
+  "Grace Lockwood",
+  "Hannah Schmidt",
+];
+
+function seedRoadmapHistory(
+  releases: FdlRelease[],
+  seed: number
+): RoadmapVersion[] {
+  if (releases.length < 2) return [];
+  const daysAgo = (n: number) =>
+    new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  const snapshot = (upTo: number) =>
+    releases.slice(0, upTo + 1).map((r) => ({ ...r }));
+  const out: RoadmapVersion[] = [];
+  const author = (i: number) =>
+    DEMO_ROADMAP_AUTHORS[(seed + i) % DEMO_ROADMAP_AUTHORS.length];
+
+  releases.forEach((release, i) => {
+    if (i === 0) return;
+    out.push({
+      version: out.length + 1,
+      savedAt: daysAgo(120 - i * 30),
+      savedBy: author(i),
+      changes: [`Added ${release.version}${release.date ? ` (${release.date})` : ""}`],
+      releases: snapshot(i),
+    });
+  });
+  /* One slipped date, because roadmaps slip — this is the entry that makes the
+     feature obviously useful when a rep asks "did this move since I quoted it?" */
+  const slipped = releases[releases.length - 1];
+  if (slipped?.date) {
+    /* A slip has to land on an EARLIER date — the first cut computed the same
+       month and printed "moved from 2026-10-01 to 2026-10-01", which is not a
+       slip, it is a typo with a timestamp. One quarter back, same day. */
+    const slipFrom = new Date(slipped.date);
+    slipFrom.setMonth(slipFrom.getMonth() - 3);
+    const was = slipFrom.toISOString().slice(0, 10);
+    out.push({
+      version: out.length + 1,
+      savedAt: daysAgo(21),
+      savedBy: author(out.length),
+      changes: [`${slipped.version} moved from ${was} to ${slipped.date}`],
+      releases: snapshot(releases.length - 1),
+    });
+  }
+  const current = releases.find((r) => r.current);
+  if (current) {
+    out.push({
+      version: out.length + 1,
+      savedAt: daysAgo(3 + (seed % 4)),
+      savedBy: author(out.length),
+      changes: [`${current.version} is now the current version`],
+      releases: snapshot(releases.length - 1),
+    });
+  }
+  /* Newest first, the way the list reads. */
+  return out.reverse();
+}
+
 /** Demo FDL components for the mock showroom — enough versions and mapped
  *  features that the comparison matrix and feature sheets demo themselves. */
 /**
@@ -1580,7 +1656,16 @@ function seedFdlComponents(): FdlComponent[] {
     });
     // A component with no released version yet would read as broken.
     if (!releasedIds.length && releases[0]) releases[0].status = "released";
-    return { id, name: blueprint.name, type: blueprint.type, releases, features };
+    return {
+      id,
+      name: blueprint.name,
+      type: blueprint.type,
+      releases,
+      features,
+      /* The showroom needs a history to show; real mode starts empty and
+         fills itself as owners edit. */
+      roadmap_versions: seedRoadmapHistory(releases, index),
+    };
   });
 }
 
