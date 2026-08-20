@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, FileSpreadsheet, ListChecks, Printer } from "lucide-react";
 import { toCSV, downloadCSV } from "@/lib/csv";
+import { BASE_CURRENCY } from "@/lib/currency";
 import {
   actualValue,
   entryStatusLabel,
@@ -62,6 +63,7 @@ export function PerformanceExport({
         g.type,
         g.year,
         g.unit,
+        g.unit === "currency" ? g.currency ?? BASE_CURRENCY : "",
         g.measure,
         g.target || 0,
         actual,
@@ -89,6 +91,7 @@ export function PerformanceExport({
           "Type",
           "Year",
           "Unit",
+          "Currency",
           "Measure",
           "Target",
           "Actual",
@@ -123,11 +126,16 @@ export function PerformanceExport({
           sub?.name ?? "",
           a.amount,
           goal?.unit ?? "",
+          // A code on the entry wins; money goals fall back to their own
+          // currency — the same resolution fmtAmount uses on screen.
+          a.currency ?? (goal?.unit === "currency" ? goal?.currency ?? BASE_CURRENCY : ""),
           a.customer ?? "",
           a.dealLabel ?? "",
           entryStatusLabel(a),
           a.verifiedBy ?? "",
           a.verifiedAt ? a.verifiedAt.slice(0, 10) : "",
+          a.sentBackBy ?? "",
+          a.sentBackAt ? a.sentBackAt.slice(0, 10) : "",
           a.managerNote ?? "",
           (a.evidence ?? []).map((e) => e.name).join("; "),
           a.addedBy,
@@ -144,11 +152,14 @@ export function PerformanceExport({
           "Subgoal",
           "Amount",
           "Unit",
+          "Currency",
           "Customer",
           "Deal",
           "Status",
           "Verified by",
           "Verified on",
+          "Sent back by",
+          "Sent back on",
           "Sent-back note",
           "Evidence",
           "Entered by",
