@@ -30,6 +30,7 @@ import {
   type PerfActual,
   type PerformanceState,
 } from "@/lib/performanceShared";
+import { currencyMeta } from "@/lib/currency";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
@@ -1320,14 +1321,31 @@ export function MyEntriesCard({
                   <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
                     Amount
                   </span>
-                  <input
-                    autoFocus
-                    value={draft.amount}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, amount: e.target.value }))
-                    }
-                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle tnum"
-                  />
+                  {/* THE AMOUNT CARRIES ITS CURRENCY HERE TOO (Anir, Aug 20:
+                      "Literally everywhere where that number is, it has to be
+                      there"). The log form has worn the symbol since Aug 15;
+                      this box, where a rep retypes the same money after it was
+                      sent back, showed a bare number — so a result signed in
+                      euros read as dollars at the one moment somebody is
+                      changing it. The entry keeps whatever it was recorded in;
+                      this only says which that is. */}
+                  <span className="relative block">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13px] font-semibold text-text-tertiary">
+                      {goal?.unit === "percent"
+                        ? "%"
+                        : goal?.unit === "count"
+                          ? "#"
+                          : currencyMeta(a.currency ?? goal?.currency).symbol}
+                    </span>
+                    <input
+                      autoFocus
+                      value={draft.amount}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, amount: e.target.value }))
+                      }
+                      className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none focus:border-blue-subtle tnum"
+                    />
+                  </span>
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
