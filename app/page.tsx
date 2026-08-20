@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import {
   ArrowRight,
+  LogOut,
   BookOpenText,
   Bot,
   Check,
@@ -90,8 +91,14 @@ export default async function Home() {
                     forward, so testing the app as a rep meant clearing cookies
                     by hand. This signs out and drops you straight on the form. */}
                 <span className={styles.actionNote}>
-                  Signed in as {session.name || session.email} ·{" "}
-                  <a href="/api/auth/logout?next=/login">Use a different account</a>
+                  Signed in as {session.name || session.email}
+                  <a
+                    href="/api/auth/logout?next=/login"
+                    className={styles.switchAccount}
+                  >
+                    <LogOut size={13} aria-hidden="true" />
+                    Use a different account
+                  </a>
                 </span>
               </>
             ) : (

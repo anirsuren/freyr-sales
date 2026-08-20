@@ -77,7 +77,6 @@ const RAIL_DEFAULT = 380;
 const RAIL_MIN = 200;
 const RAIL_MAX = 900;
 
-const DEAL_COLORS = ["#0071E3", "#7C3AED", "#0891B2", "#B4318F", "#0F766E", "#6366F1"];
 
 /**
  * WHAT EACH COMPONENT ACTUALLY IS, KEYED TO THE GOAL (Anir, Aug 19: "why is
@@ -179,6 +178,22 @@ const GRAN_META: Record<Granularity, { color: string; icon: typeof CalendarDays 
   halves: { color: "#B4318F", icon: CalendarCheck },
   years: { color: "#0F766E", icon: CalendarFold },
 };
+
+/**
+ * A SEGMENT'S COLOUR IS ITS STATUS, NOT ITS SERIAL NUMBER (Anir, Aug 20:
+ * "Where did the purple come from? I should be able to see blue and the red
+ * stripe, so I don't see that reflected. It's confusing").
+ *
+ * These bars used to run through a six-colour palette so you could tell one
+ * deal from the next — but every other performance surface reads blue as
+ * signed off and red as sent back, so a purple slice invented a meaning the
+ * app does not have. The account's own logo beside the row already says which
+ * deal it is.
+ */
+function entryColor(a: PerfActual): string {
+  const st = entryStatus(a);
+  return st === "verified" ? "#0071E3" : st === "sent_back" ? "#DC2626" : "#C2410C";
+}
 
 export function GoalZoom({
   state,
@@ -932,6 +947,7 @@ export function GoalZoom({
                 members: [...people],
                 verified: familyValue(state, goal, { range: row.range, people, verifiedOnly: true }),
                 awaiting: familyValue(state, goal, { range: row.range, people, reportedOnly: true }),
+                sentBack: familyValue(state, goal, { range: row.range, people, sentBackOnly: true }),
               };
             })
             /**
@@ -970,6 +986,7 @@ export function GoalZoom({
                   name,
                   verified: familyValue(state, goal, { range: row.range, person: name, verifiedOnly: true }),
                   awaiting: familyValue(state, goal, { range: row.range, person: name, reportedOnly: true }),
+                  sentBack: familyValue(state, goal, { range: row.range, person: name, sentBackOnly: true }),
                 }))
                 .sort((a, b) => b.verified - a.verified)
             : [];
@@ -1006,7 +1023,7 @@ export function GoalZoom({
             }
             return (
               <div className="space-y-1">
-                {entries.map((a, entryIdx) => {
+                {entries.map((a) => {
                   const opp = a.opportunityId
                     ? opportunities.find((o) => o.id === a.opportunityId)
                     : undefined;
@@ -1023,10 +1040,7 @@ export function GoalZoom({
                              person's bar above. */
                           <span
                             className="h-2.5 w-1 shrink-0 rounded-full"
-                            style={{
-                              background:
-                                DEAL_COLORS[entryIdx % DEAL_COLORS.length],
-                            }}
+                            style={{ background: entryColor(a) }}
                           />
                         )}
                         {account ? (
@@ -1357,6 +1371,7 @@ export function GoalZoom({
                               title={`${r2.group.name} · ${row?.label ?? ""}`}
                               verified={r2.verified}
                               awaiting={r2.awaiting}
+                              sentBack={r2.sentBack}
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
@@ -1466,6 +1481,7 @@ export function GoalZoom({
                                 title={r2.group.name}
                                 verified={r2.verified}
                                 awaiting={r2.awaiting}
+                                sentBack={r2.sentBack}
                                 target={yearTarget}
                                 expectedPct={yearElapsed(goal.year) * 100}
                                 expected={pacing.expected}
@@ -1818,6 +1834,7 @@ export function GoalZoom({
                             title={`${p.name} · ${row?.label ?? ""}`}
                             verified={p.verified}
                             awaiting={p.awaiting}
+                            sentBack={p.sentBack}
                             target={yearTarget}
                             expectedPct={yearElapsed(goal.year) * 100}
                             expected={pacing.expected}
@@ -1881,16 +1898,15 @@ export function GoalZoom({
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               {entriesFor(
                                 new Set([p.name.trim().toLowerCase()])
-                              ).map((a, entryIdx) => (
+                              ).map((a) => (
                                 <span
                                   key={a.id}
                                   className={cn("block h-full", lit && "bar-lit")}
                                   style={{
                                     width: `${Math.min(100, (a.amount / maxP) * 100)}%`,
-                                    background:
-                                      DEAL_COLORS[entryIdx % DEAL_COLORS.length],
+                                    background: entryColor(a),
                                     opacity:
-                                      entryStatus(a) === "verified" ? 1 : 0.45,
+                                      entryStatus(a) === "verified" ? 1 : 0.55,
                                   }}
                                 />
                               ))}

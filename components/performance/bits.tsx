@@ -748,6 +748,7 @@ export function PaceTimeline({
   title,
   verified,
   awaiting,
+  sentBack = 0,
   target,
   expectedPct,
   unit,
@@ -760,6 +761,14 @@ export function PaceTimeline({
   title: React.ReactNode;
   verified: number;
   awaiting: number;
+  /**
+   * The slice of `awaiting` that was SENT BACK rather than merely unread
+   * (Anir, Aug 20: "I should be able to see blue and the red stripe, so I
+   * don't see that reflected. It's confusing"). The chart above this panel
+   * draws refused money in red; the drill-down was still calling it a pale
+   * blue "claimed, not checked yet", which is the one reading it is not.
+   */
+  sentBack?: number;
   target: number;
   /** 0-100. Where the calendar says this should be today. */
   expectedPct: number;
@@ -1043,12 +1052,21 @@ export function PaceTimeline({
               label="Verified, counts now"
               value={fmtAmount(unit, verified)}
             />
-            <PaceRow
-              swatch={accent}
-              faded
-              label="Claimed, not checked yet"
-              value={fmtAmount(unit, awaiting)}
-            />
+            {awaiting - sentBack > 0 && (
+              <PaceRow
+                swatch={accent}
+                faded
+                label="Claimed, not checked yet"
+                value={fmtAmount(unit, awaiting - sentBack)}
+              />
+            )}
+            {sentBack > 0 && (
+              <PaceRow
+                swatch="#DC2626"
+                label="Sent back, needs a fix"
+                value={fmtAmount(unit, sentBack)}
+              />
+            )}
             {/* NO SCHEDULE, NO VERDICT (Anir, Aug 16: "Who the fuck is saying
                 'must be at 375K'?"). Without a milestone there is nothing to
                 be ahead of or behind, so the row is simply absent rather than

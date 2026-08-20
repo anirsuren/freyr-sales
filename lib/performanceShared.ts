@@ -838,6 +838,8 @@ export type ValueFilter = {
   verifiedOnly?: boolean;
   /** Count only waiting entries (the pending amount). */
   reportedOnly?: boolean;
+  /** Count only claims a group owner has REFUSED — the red slice of pending. */
+  sentBackOnly?: boolean;
   componentGoalId?: string;
 };
 
@@ -866,6 +868,7 @@ export function familyValue(
     // claimed, still unverified, and still has to show up in the pending total
     // rather than vanishing from both sides of the sum.
     if (filter.reportedOnly && status === "verified") continue;
+    if (filter.sentBackOnly && status !== "sent_back") continue;
     total += a.amount;
   }
   return total;
