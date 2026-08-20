@@ -2048,6 +2048,20 @@ export function BarChart({
          * reach for, and it would only intercept the pointer.
          */
         const barInteractive = (d.tip?.length ?? 0) > 0;
+        /**
+         * THE RING IS THE COLOUR OF WHAT IT IS RINGING (Anir, Aug 20: "why is
+         * the outline green").
+         *
+         * A bar whose money is all sent back is red stripes with no verified
+         * money under it, but the hover ring took the bar's BASE colour, so a
+         * goal with nothing signed off wore a green outline the moment you
+         * pointed at it — the same lie the blue glow told over the red stripes
+         * on the goal rails. The ring follows the bigger slice instead.
+         */
+        const ringColor =
+          d.value > 0 && (d.pending ?? 0) > d.value / 2
+            ? (d.pendingColor ?? d.color ?? VIZ.blue)
+            : (d.color || VIZ.blue);
         return (
           <div
             key={i}
@@ -2195,9 +2209,7 @@ export function BarChart({
                         ? d.color || VIZ.blue
                         : "var(--border-light)",
                     boxShadow:
-                      lit === i
-                        ? `0 0 0 2px #fff, 0 0 0 4px ${d.color || VIZ.blue}`
-                        : undefined,
+                      lit === i ? `0 0 0 2px #fff, 0 0 0 4px ${ringColor}` : undefined,
                   }}
                 >
                   {/* The unverified slice: the same colour washed out, sitting
