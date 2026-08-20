@@ -31,6 +31,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
+  ENTRY_COLOR,
   entryStatus,
   entryStatusLabel,
   isPending,
@@ -938,9 +939,20 @@ export function PaceTimeline({
                 compact ? "h-2" : "h-2.5"
               )}
             >
+              {/* THE SAME STRIPE THE CHART DRAWS (Anir, Aug 20: "if you're
+                  doing red stripe, it should show red stripe everywhere, not
+                  just red"). Unverified money was a flat 32% wash here while
+                  the bar chart above it striped the identical figure, so the
+                  two panels described one fact in two visual languages. Red
+                  when a group owner refused it, burnt orange while it simply
+                  waits its turn. */}
               <span
-                className="absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${aPct}%`, background: accent, opacity: 0.32 }}
+                className="unverified-fill absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: `${aPct}%`,
+                  ["--fill" as string]:
+                    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                }}
               />
               <span
                 className="absolute inset-y-0 left-0 rounded-full"
@@ -1052,19 +1064,24 @@ export function PaceTimeline({
               label="Verified, counts now"
               value={fmtAmount(unit, verified)}
             />
+            {/* ONE ORDER, EVERYWHERE (Anir, Aug 20: "the order and stuff
+                matters... there shouldn't be any confusion"). Signed off, then
+                the thing somebody has to act on, then the thing that is merely
+                waiting its turn — the same order the track is drawn in and the
+                same order every panel lists them. */}
+            {sentBack > 0 && (
+              <PaceRow
+                swatch={ENTRY_COLOR.sent_back}
+                label="Sent back, needs a fix"
+                value={fmtAmount(unit, sentBack)}
+              />
+            )}
             {awaiting - sentBack > 0 && (
               <PaceRow
                 swatch={accent}
                 faded
                 label="Claimed, not checked yet"
                 value={fmtAmount(unit, awaiting - sentBack)}
-              />
-            )}
-            {sentBack > 0 && (
-              <PaceRow
-                swatch="#DC2626"
-                label="Sent back, needs a fix"
-                value={fmtAmount(unit, sentBack)}
               />
             )}
             {/* NO SCHEDULE, NO VERDICT (Anir, Aug 16: "Who the fuck is saying
@@ -1299,10 +1316,10 @@ export function PersonGoalPanel({
                   className={cn(
                     "ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
                     entryStatus(a) === "verified"
-                      ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
+                      ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
                       : entryStatus(a) === "sent_back"
-                        ? "bg-[rgba(220,38,38,0.10)] text-[color:#B02020]"
-                        : "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
+                        ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
+                        : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
                   )}
                 >
                   {entryStatus(a) === "reported" ? "Waiting" : entryStatusLabel(a)}

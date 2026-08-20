@@ -1033,11 +1033,15 @@ function TipHeader({
                   background: bar.color ?? color ?? VIZ.blue,
                 }}
               />
+              {/* Same stripe the bar itself wears — the tip used to paint
+                  this segment flat, so the card described the chart in a
+                  different visual language than the chart. */}
               <span
-                className="block h-full opacity-[0.30]"
+                className="unverified-fill block h-full"
                 style={{
                   width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
-                  background: bar.pendingColor ?? bar.color ?? color ?? VIZ.blue,
+                  ["--fill" as string]:
+                    bar.pendingColor ?? bar.color ?? color ?? VIZ.blue,
                 }}
               />
             </span>
@@ -2189,7 +2193,7 @@ export function BarChart({
                   {!!d.pending && d.value > 0 && (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-x-0 top-0"
+                      className="unverified-fill absolute inset-x-0 top-0"
                       style={{
                         height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
                         /**
@@ -2208,12 +2212,8 @@ export function BarChart({
                          * one colour at a glance and as provisional when you
                          * look at it.
                          */
-                        background: d.pendingColor
-                          ? // The veils are white, so laying them over an
-                            // explicit colour restripes the cap in that hue
-                            // rather than the bar's.
-                            `repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px), ${d.pendingColor}`
-                          : "repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px)",
+                        ["--fill" as string]:
+                          d.pendingColor ?? d.color ?? VIZ.blue,
                       }}
                     />
                   )}

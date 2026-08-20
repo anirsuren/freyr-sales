@@ -45,6 +45,7 @@ import {
   entryStatusLabel,
   familyValue,
   goalFamilyActuals,
+  ENTRY_COLOR,
   canVerifyEntry,
   fmtAmount,
   headedGroups,
@@ -492,7 +493,7 @@ export function OrgPerformanceTab({
                     pendingColor: goalFamilyActuals(state, g).some(
                       (e) => entryStatus(e) === "sent_back"
                     )
-                      ? "#DC2626"
+                      ? ENTRY_COLOR.sent_back
                       : undefined,
                     /* THE AMOUNT, NOT A LEDGER (Anir, Aug 16: "Maybe just see
                        the amount in the bar chart... u dont need to say $0
@@ -523,7 +524,7 @@ export function OrgPerformanceTab({
                       pendingColor: goalFamilyActuals(state, g).some(
                         (e) => entryStatus(e) === "sent_back"
                       )
-                        ? "#DC2626"
+                        ? ENTRY_COLOR.sent_back
                         : MONEY,
                       caption:
                         g.target > 0
@@ -580,12 +581,7 @@ export function OrgPerformanceTab({
                                tell two different stories: signed off is the
                                money colour, sent back is red, waiting its turn
                                is burnt orange. */
-                            color:
-                              st === "verified"
-                                ? MONEY
-                                : st === "sent_back"
-                                  ? "#DC2626"
-                                  : "#C2410C",
+                            color: ENTRY_COLOR[st],
                             caption:
                               g.target > 0
                                 ? `${Math.round(share)}% of target`
@@ -611,12 +607,7 @@ export function OrgPerformanceTab({
                               : []),
                             {
                               label: entryStatusLabel(entry),
-                              color:
-                                st === "verified"
-                                  ? "#16A34A"
-                                  : st === "sent_back"
-                                    ? "#DC2626"
-                                    : "#C2410C",
+                              color: ENTRY_COLOR[st],
                               icon:
                                 st === "verified"
                                   ? "verified"

@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  ENTRY_COLOR,
   actualValue,
   awaitingTheirFix,
   canVerifyEntry,
@@ -372,7 +373,7 @@ function EntryTimeline({
       // that is red — until it is answered, below.
       alert: wasSentBack(entry),
       icon: AlertCircle,
-      color: "#DC2626",
+      color: ENTRY_COLOR.sent_back,
     });
     if (entry.resubmittedAt) {
       steps.push({

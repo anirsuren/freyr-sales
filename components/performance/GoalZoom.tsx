@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
   currentFiscalYear,
+  type EntryStatus,
+  ENTRY_COLOR,
   entryStatus,
   isPending,
   familyValue,
@@ -190,9 +192,31 @@ const GRAN_META: Record<Granularity, { color: string; icon: typeof CalendarDays 
  * app does not have. The account's own logo beside the row already says which
  * deal it is.
  */
+/**
+ * THE ORDER EVERY BAR IS DRAWN IN (Anir, Aug 20: "the order and stuff matters
+ * ... there shouldn't be any confusion").
+ *
+ * A person's open bar drew its segments biggest-first, so a refused claim could
+ * land to the LEFT of signed-off money while every collapsed bar beside it drew
+ * signed-off first. Same money, opposite direction, one screen apart. Signed
+ * off, then what somebody has to act on, then what is simply unread.
+ */
+const SEGMENT_RANK: Record<EntryStatus, number> = {
+  verified: 0,
+  sent_back: 1,
+  reported: 2,
+};
+
+function inBarOrder(entries: PerfActual[]): PerfActual[] {
+  return [...entries].sort(
+    (a, b) =>
+      SEGMENT_RANK[entryStatus(a)] - SEGMENT_RANK[entryStatus(b)] ||
+      b.amount - a.amount
+  );
+}
+
 function entryColor(a: PerfActual): string {
-  const st = entryStatus(a);
-  return st === "verified" ? "#0071E3" : st === "sent_back" ? "#DC2626" : "#C2410C";
+  return ENTRY_COLOR[entryStatus(a)];
 }
 
 export function GoalZoom({
@@ -519,12 +543,15 @@ export function GoalZoom({
     ) => {
       const verified = val(range, { verifiedOnly: true });
       const awaiting = val(range, { reportedOnly: true });
+      // Box 1 had no idea any of its money had been refused, so the months
+      // column was the one panel with no red in it at all (Anir, Aug 20).
+      const sentBack = val(range, { sentBackOnly: true });
       const entries = familyActuals.filter((a) => inRange(a, range));
       const waitingCount = entries.filter(
         (a) => isPending(a)
       ).length;
       const ended = range[1] <= now;
-      return { label, sub, range, isNow, verified, awaiting, waitingCount, entries: entries.length, ended };
+      return { label, sub, range, isNow, verified, awaiting, sentBack, waitingCount, entries: entries.length, ended };
     };
     if (gran === "years") {
       return Array.from({ length: 5 }, (_, i) => {
@@ -1214,11 +1241,14 @@ export function GoalZoom({
                                 }}
                               />
                               <span
-                                className={cn(
-                                  "h-full bg-blue-primary opacity-[0.28]",
-                                  lit && "bar-lit"
-                                )}
-                                style={{ width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%` }}
+                                className={cn("unverified-fill h-full", lit && "bar-lit")}
+                                style={{
+                                  width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%`,
+                                  ["--fill" as string]:
+                                    r.sentBack > 0
+                                      ? ENTRY_COLOR.sent_back
+                                      : ENTRY_COLOR.reported,
+                                }}
                               />
                             </>
                           )}
@@ -1265,6 +1295,7 @@ export function GoalZoom({
                               title={r.label}
                               verified={r.verified}
                               awaiting={r.awaiting}
+                              sentBack={r.sentBack}
                               target={yearTarget}
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
@@ -1450,12 +1481,13 @@ export function GoalZoom({
                                   strengths, so a bar still measures one thing
                                   while saying how much of it is signed off. */}
                               <span
-                                className={cn(
-                                  "block h-full bg-blue-primary opacity-[0.28]",
-                                  lit && "bar-lit"
-                                )}
+                                className={cn("unverified-fill block h-full", lit && "bar-lit")}
                                 style={{
                                   width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
+                                  ["--fill" as string]:
+                                    r2.sentBack > 0
+                                      ? ENTRY_COLOR.sent_back
+                                      : ENTRY_COLOR.reported,
                                 }}
                               />
                             </span>
@@ -1896,17 +1928,23 @@ export function GoalZoom({
                         {(p.verified > 0 || p.awaiting > 0) &&
                           (openPeople.has(p.name) ? (
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                              {entriesFor(
-                                new Set([p.name.trim().toLowerCase()])
+                              {inBarOrder(
+                                entriesFor(new Set([p.name.trim().toLowerCase()]))
                               ).map((a) => (
                                 <span
                                   key={a.id}
-                                  className={cn("block h-full", lit && "bar-lit")}
+                                  className={cn(
+                                    "block h-full",
+                                    entryStatus(a) !== "verified" && "unverified-fill",
+                                    lit && "bar-lit"
+                                  )}
                                   style={{
                                     width: `${Math.min(100, (a.amount / maxP) * 100)}%`,
-                                    background: entryColor(a),
-                                    opacity:
-                                      entryStatus(a) === "verified" ? 1 : 0.55,
+                                    background:
+                                      entryStatus(a) === "verified"
+                                        ? entryColor(a)
+                                        : undefined,
+                                    ["--fill" as string]: entryColor(a),
                                   }}
                                 />
                               ))}
@@ -1921,12 +1959,13 @@ export function GoalZoom({
                               style={{ width: `${Math.min(100, (p.verified / maxP) * 100)}%` }}
                             />
                             <span
-                              className={cn(
-                                "block h-full bg-blue-primary opacity-[0.28]",
-                                lit && "bar-lit"
-                              )}
+                              className={cn("unverified-fill block h-full", lit && "bar-lit")}
                               style={{
                                 width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
+                                ["--fill" as string]:
+                                  p.sentBack > 0
+                                    ? ENTRY_COLOR.sent_back
+                                    : ENTRY_COLOR.reported,
                               }}
                             />
                           </span>

@@ -877,6 +877,31 @@ export function familyValue(
 /** Entries a given person is allowed to verify: they head a group the entry's
  *  person belongs to (Suren, Aug 13: "whoever has been identified as a group
  *  owner is the only person who can verify it"). */
+/**
+ * THE COLOUR OF A CLAIM'S STATUS, from the one place it is defined.
+ *
+ * Every performance surface used to retype these as hex, which is how the same
+ * sent-back money ended up red on the chart and pale blue in the panel below it
+ * (Anir, Aug 20). The tokens live in globals.css; this is the only mapping from
+ * status to token, so nothing downstream has to remember which red.
+ */
+export const ENTRY_COLOR: Record<EntryStatus, string> = {
+  verified: "var(--entry-verified)",
+  sent_back: "var(--entry-sent-back)",
+  reported: "var(--entry-waiting)",
+};
+
+/** The darker ink of the same three, for text and pills on a tinted ground. */
+export const ENTRY_INK: Record<EntryStatus, string> = {
+  verified: "var(--entry-verified-ink)",
+  sent_back: "var(--entry-sent-back-ink)",
+  reported: "var(--entry-waiting)",
+};
+
+export function entryColor(entry: Pick<PerfActual, "status">): string {
+  return ENTRY_COLOR[entryStatus(entry)];
+}
+
 export function canVerifyEntry(
   state: Pick<PerformanceState, "groups">,
   me: string,
