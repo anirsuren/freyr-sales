@@ -197,6 +197,25 @@ export function OfferingOverviewMain({
   // Next milestones: the gated next customer version first (admins, owners,
   // and approved exceptions only), then any remaining sheet notes. A note
   // that just repeats the structured next version is dropped as a duplicate.
+  /**
+   * THE HISTORY OBEYS THE SAME GATE AS THE ROADMAP ITSELF (found testing,
+   * Aug 20: the API redaction landed first and this page kept rendering
+   * "Added V9-SECRET" and its unannounced feature straight into a rep's HTML).
+   *
+   * Same treatment the server boundary applies: unreleased entries dropped,
+   * change lines generalised — a line names a version by its customer-facing
+   * label, and nothing reliably separates "V2.5 moved" from "Added V9".
+   */
+  const roadmapVersions = canSeeNextVersion
+    ? (o.roadmap_versions ?? [])
+    : (o.roadmap_versions ?? []).map((v) => ({
+        ...v,
+        changes: ["The roadmap was updated"],
+        releases: (v.releases || []).filter((r) => r.status === "released"),
+        roadmap_details: v.roadmap_details
+          ? { ...v.roadmap_details, nextExpectedLive: "", nextVersions: "", nextModules: [] }
+          : undefined,
+      }));
   const nextVersion = (canSeeNextVersion && roadmap?.nextVersions?.trim()) || "";
   const nextExpected = roadmap?.nextExpectedLive?.trim() || "";
   const nextMilestones: { label: string; body: string }[] = nextVersion
@@ -295,13 +314,13 @@ export function OfferingOverviewMain({
             <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
             Roadmap version history
             <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
-              {o.roadmap_versions?.length
-                ? `v${o.roadmap_versions[0].version}`
+              {roadmapVersions.length
+                ? `v${roadmapVersions[0].version}`
                 : "No changes yet"}
             </span>
           </summary>
           <div className="mt-3">
-            <RoadmapVersionHistory versions={o.roadmap_versions ?? []} />
+            <RoadmapVersionHistory versions={roadmapVersions} />
           </div>
         </details>
       </section>
