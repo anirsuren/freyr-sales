@@ -4842,7 +4842,15 @@ function LogActualModal({
                   : [
                       {
                         key: "weighted",
-                        label: `Weighted · ${opportunityConfidence(linkedOpp)}%`,
+                        /* A decided deal has no confidence left — same reason
+                           the deal row stopped saying "100% confident" under a
+                           Won badge. */
+                        label:
+                          linkedOpp.status === "Won"
+                            ? "Signed, in full"
+                            : linkedOpp.status === "Lost"
+                              ? "Lost"
+                              : `Weighted · ${opportunityConfidence(linkedOpp)}%`,
                         amount: weightedValue(linkedOpp),
                       },
                     ]),
