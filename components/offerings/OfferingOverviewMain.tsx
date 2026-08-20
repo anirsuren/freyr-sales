@@ -1,3 +1,4 @@
+import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
 import Link from "next/link";
 import {
   BarChart3,
@@ -12,6 +13,7 @@ import {
   Package,
   ReceiptText,
   Building2,
+  GitBranch,
 } from "lucide-react";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
@@ -278,6 +280,26 @@ export function OfferingOverviewMain({
             </p>
           </div>
         </div>
+        {/* WHAT THIS ROADMAP USED TO SAY (product owner, Aug 20: "Every time
+            there is a change in road map it has to be versioned. Just like how
+            you version a document"). It sits directly under the version a rep
+            is about to quote, because the question it answers — "did this move
+            since I told the client?" — only occurs to you while you are
+            looking at the number. Folded shut: it is history, not the headline. */}
+        {(o.roadmap_versions?.length ?? 0) > 0 && (
+          <details className="mt-5 max-w-[640px] pl-11">
+            <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
+              <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
+              Roadmap version history
+              <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
+                v{o.roadmap_versions![0].version}
+              </span>
+            </summary>
+            <div className="mt-3">
+              <RoadmapVersionHistory versions={o.roadmap_versions ?? []} />
+            </div>
+          </details>
+        )}
       </section>
 
 

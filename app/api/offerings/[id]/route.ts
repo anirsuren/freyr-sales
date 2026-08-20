@@ -236,8 +236,16 @@ export async function PATCH(
         )
     : [];
 
+  /* A version is credited to the signed-in person, from the session, never
+     from the body — the same rule material attribution follows. */
+  const savedByName = await uploaderName();
+  /* The history is server-owned: a body that carries one is ignored outright,
+     so nobody can forge a version or quietly drop one. */
+  delete (body as Record<string, unknown>).roadmap_versions;
   try {
-    const offering = await commitOfferingsChange(() => updateOffering(id, body));
+    const offering = await commitOfferingsChange(() =>
+      updateOffering(id, body, savedByName ?? undefined)
+    );
     if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (droppedPaths.length)
       await forgetMaterialText(droppedPaths).catch(() => undefined);

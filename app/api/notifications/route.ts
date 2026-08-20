@@ -4,6 +4,7 @@ import { buildNotifications } from "@/lib/notifications";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
+import { roadmapChangesForReader } from "@/lib/roadmapNotices";
 import { isOfferingsOnly } from "@/lib/release";
 import { readPerformance } from "@/lib/performance";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -51,6 +52,9 @@ export async function GET() {
         contacts: [],
         interactions: [],
         performance,
+        // A roadmap change is news about an OFFERING, so it belongs in the one
+        // workspace that is offerings-only just as much as anywhere else.
+        roadmaps: await roadmapChangesForReader(),
         ...nudges,
       }),
     });
@@ -71,6 +75,7 @@ export async function GET() {
     interactions,
     voiceConversations,
     performance,
+    roadmaps: await roadmapChangesForReader(),
     ...nudges,
   });
   return NextResponse.json({ notifications });

@@ -24,7 +24,14 @@ export type NotificationType =
   /** A goal result of yours needs attention: rejected, or waiting on your
    *  sign-off (Anir, Aug 20: "I didn't get a notification. There has to be
    *  something that gets notified because I sent it back"). */
-  | "performance";
+  | "performance"
+  /**
+   * A ROADMAP MOVED (product owner, Aug 20: "people should get notified if
+   * there are any changes to the roadmap"). Reps quote roadmaps to customers,
+   * so a date sliding without anyone saying so is how a client gets told the
+   * wrong thing.
+   */
+  | "roadmap";
 
 /**
  * How pressing an alert is. Five rows that all say "Follow-up due" read as five
@@ -162,6 +169,21 @@ function dayStamp(days: number, ahead: boolean): string {
   return ahead ? `in ${months}mo` : `${months}mo ago`;
 }
 
+/** One offering's roadmap history, as much of it as the reader may see. */
+export type RoadmapChangeInput = {
+  offeringId: string;
+  offeringName: string;
+  versions: {
+    version: number;
+    savedAt: string;
+    savedBy: string;
+    changes: string[];
+  }[];
+};
+
+/** How long a roadmap change stays worth a bell. */
+const ROADMAP_NOTICE_DAYS = 21;
+
 export function buildNotifications(input: {
   sessions: PitchSession[];
   customers: Customer[];
@@ -189,6 +211,12 @@ export function buildNotifications(input: {
    * open is a rejection nobody sees.
    */
   performance?: { state: PerformanceState; me: string } | null;
+  /**
+   * Offerings whose roadmap changed recently, newest version first. Derived
+   * from the stored version history rather than any new event log — the
+   * history IS the record of what changed and when.
+   */
+  roadmaps?: RoadmapChangeInput[];
 }): AppNotification[] {
   const {
     sessions,
@@ -490,7 +518,53 @@ export function buildNotifications(input: {
     }
   }
 
-  return perfRows.concat(securityRows).concat(out)
+  /**
+   * ROADMAP CHANGES (product owner, Aug 20: "people should get notified if
+   * there are any changes to the roadmap").
+   *
+   * One row per offering, not per version: three edits in an afternoon are one
+   * thing a rep needs to know, and three identical bells would be noise. The
+   * row names the newest version and what changed in it, and says how many
+   * other changes came with it.
+   */
+  const roadmapRows: AppNotification[] = [];
+  for (const r of input.roadmaps ?? []) {
+    const recent = (r.versions ?? [])
+      .filter((v) => {
+        const t = Date.parse(v.savedAt);
+        return (
+          Number.isFinite(t) && nowMs - t <= ROADMAP_NOTICE_DAYS * 24 * 60 * 60 * 1000
+        );
+      })
+      .sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt));
+    if (!recent.length) continue;
+    const latest = recent[0];
+    const alsoBefore = recent.length - 1;
+    const headline = latest.changes[0] || "Roadmap updated";
+    const more = latest.changes.length - 1;
+    roadmapRows.push({
+      id: `roadmap-${r.offeringId}-v${latest.version}`,
+      type: "roadmap",
+      title: `${r.offeringName} roadmap changed`,
+      body: latest.changes.join(" · ") || "The roadmap for this offering was updated.",
+      subject: `${r.offeringName} roadmap is now v${latest.version}`,
+      chip: `v${latest.version}`,
+      person: latest.savedBy || undefined,
+      detail: more > 0
+        ? `${headline}, and ${more} other change${more === 1 ? "" : "s"}.`
+        : `${headline}.`,
+      note: alsoBefore > 0
+        ? `${alsoBefore} earlier change${alsoBefore === 1 ? "" : "s"} in the last three weeks.`
+        : undefined,
+      /* Something a rep may already have quoted to a customer, so it sits with
+         the work of the day rather than in "later". */
+      urgency: "week",
+      href: `/offerings/${r.offeringId}`,
+      ts: latest.savedAt,
+    });
+  }
+
+  return perfRows.concat(securityRows).concat(roadmapRows).concat(out)
     .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
     .sort((a, b) => {
       // Your own account first: a rep can't be nagged about a customer while

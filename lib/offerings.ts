@@ -5,6 +5,7 @@
 // the sales-material artifacts attached to each offering.
 import { getDataMode } from "./dataMode";
 import { createClient } from "@supabase/supabase-js";
+import { nextRoadmapVersions, type RoadmapVersion } from "./roadmapVersions";
 import {
   canonicalMaterialFolder,
   isFixedMaterialFolder,
@@ -137,6 +138,14 @@ export interface Offering {
    *  the restricted next-version table without flattening them into generic
    *  release bullets. */
   roadmap_details?: OfferingRoadmapDetails;
+  /**
+   * EVERY CHANGE TO THIS ROADMAP, NEWEST FIRST (product owner, Aug 20: "Every
+   * time there is a change in road map it has to be versioned. Just like how
+   * you version a document").
+   *
+   * Written by the save path, never by a client body. See lib/roadmapVersions.
+   */
+  roadmap_versions?: RoadmapVersion[];
   /** WHO OWNS THIS OFFERING, as account records rather than a name string.
    *  Editing rights are decided by `memberId`, an exact match against the
    *  signed-in workspace account, never by matching a person's display name
@@ -2962,7 +2971,13 @@ function isFolderUnder(path: string, root: string): boolean {
 
 export function updateOffering(
   id: string,
-  data: Partial<Offering>
+  data: Partial<Offering>,
+  /**
+   * Who is saving, from the session. Present only on the routes that know a
+   * person; absent for imports and internal rewrites, which then leave the
+   * roadmap history alone rather than crediting a version to nobody.
+   */
+  savedBy?: string
 ): Offering | null {
   const i = activeStore().offerings.findIndex((o) => o.id === id);
   if (i === -1) return null;
@@ -2987,10 +3002,33 @@ export function updateOffering(
             ),
           }),
     };
+  /**
+   * VERSION THE ROADMAP BEFORE THE ROW MOVES ON.
+   *
+   * Computed here rather than in the route because this is the one place every
+   * roadmap edit funnels through, and it holds both the row as it stands and
+   * the patch about to land. A save that changes nothing on the roadmap mints
+   * nothing, so re-saving an offering never inflates its history. The history
+   * itself is never taken from the request body — a client cannot forge or
+   * erase a version.
+   */
+  const priorRow = activeStore().offerings[i];
+  const roadmapAfter = {
+    releases: normalizedData.releases ?? priorRow.releases,
+    roadmap_details:
+      normalizedData.roadmap_details === undefined
+        ? priorRow.roadmap_details
+        : normalizedData.roadmap_details,
+  };
+  const minted = savedBy
+    ? nextRoadmapVersions(priorRow, roadmapAfter, savedBy)
+    : null;
+
   activeStore().offerings[i] = {
-    ...activeStore().offerings[i],
+    ...priorRow,
     ...normalizedData,
     materials,
+    ...(minted ? { roadmap_versions: minted } : {}),
     id,
   };
   if (data.offering_type) ensureOfferingType(activeStore().offerings[i].offering_type);
