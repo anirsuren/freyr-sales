@@ -558,6 +558,17 @@ function Fact({
  * the same idea in red — it is not work waiting its turn, it is work somebody
  * has already refused.
  */
+/** The hairline between two facts on one row. A gap alone reads as a run-on
+ *  sentence; a rule says where one fact ends and the next begins. */
+function Rule() {
+  return (
+    <span
+      aria-hidden="true"
+      className="h-4 w-px shrink-0 bg-[color:var(--border-light)]"
+    />
+  );
+}
+
 export function SentBackCard({
   state,
   person,
@@ -608,52 +619,61 @@ export function SentBackCard({
         {rejected.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
           return (
-            /* TWO LINES, NOT ONE RUN-ON (Anir, Aug 20: "I don't like how
-               it's just all in one line. It looks ugly"). The money and what
-               it was against are the headline; who refused it, when, and what
-               they said are the story underneath. */
-            <li key={a.id} className="flex items-start gap-3 px-4 py-3">
-              <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <b className="text-[16px] font-bold text-text-primary tnum">
-                    {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
-                  </b>
-                  <span className="text-[13px] text-text-secondary">
-                    on {goal?.name ?? "a goal"}
+            /* ONE LINE, IN COLUMNS (Anir, Aug 20: "the orientation is
+               weird. maybe do put on one line but separate properly"). It was
+               a run-on sentence first and a two-line stack second; neither
+               told you where one fact ended and the next began. Same row,
+               divided — money, goal, who and when, their note, the button. */
+            <li key={a.id} className="flex items-center gap-3 px-4 py-3">
+              <b className="shrink-0 text-[16px] font-bold text-text-primary tnum">
+                {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+              </b>
+              <Rule />
+              <span className="shrink-0 text-[13px] text-text-secondary">
+                {goal?.name ?? "a goal"}
+              </span>
+              {a.sentBackBy && (
+                <>
+                  <Rule />
+                  {/* Who refused it, with their face — the first question
+                      anyone holding a rejection asks. */}
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                    <Avatar
+                      name={a.sentBackBy}
+                      className="h-[20px] w-[20px] shrink-0 text-[8px]"
+                    />
+                    {a.sentBackBy}
                   </span>
+                </>
+              )}
+              {a.sentBackAt && (
+                <span className="shrink-0 text-[11.5px] tnum text-text-tertiary">
+                  {stamp(a.sentBackAt).day}
+                  {stamp(a.sentBackAt).time
+                    ? ` at ${stamp(a.sentBackAt).time}`
+                    : ""}
                 </span>
-                {/* Who refused it, with their face — the first question anyone
-                    holding a rejection asks — then when. */}
-                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {a.sentBackBy && (
-                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                      <Avatar
-                        name={a.sentBackBy}
-                        className="h-[20px] w-[20px] shrink-0 text-[8px]"
-                      />
-                      {a.sentBackBy}
-                    </span>
-                  )}
-                  {a.sentBackAt && (
-                    <span className="text-[11.5px] tnum text-text-tertiary">
-                      {stamp(a.sentBackAt).day}
-                      {stamp(a.sentBackAt).time
-                        ? ` at ${stamp(a.sentBackAt).time}`
-                        : ""}
-                    </span>
-                  )}
-                </span>
-                {a.managerNote && (
-                  <span className="mt-1 block text-[12.5px] leading-snug text-text-secondary">
+              )}
+              {a.managerNote && (
+                <>
+                  <Rule />
+                  {/* The note is the one part with no fixed length, so it
+                      takes whatever room is left and clamps rather than
+                      pushing the button off the row. Opening the claim shows
+                      it in full. */}
+                  <span
+                    title={a.managerNote}
+                    className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary"
+                  >
                     <b className="text-text-primary">Their note: </b>
                     <i>&ldquo;{a.managerNote}&rdquo;</i>
                   </span>
-                )}
-              </span>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => onFix(a.id)}
-                className="mt-0.5 shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
+                className="ml-auto shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
               >
                 {isMe ? "Fix it" : "Open it"}
               </button>

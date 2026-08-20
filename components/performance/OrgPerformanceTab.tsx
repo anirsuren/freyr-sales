@@ -484,6 +484,14 @@ export function OrgPerformanceTab({
                         ? Math.round(pctMet(awaiting, g.target))
                         : 0,
                     color: MONEY,
+                    /* And the same red on the bar itself, not just in its
+                       tip (Anir, Aug 20: "the top of the bar should be the
+                       same color not that blue stripe"). */
+                    pendingColor: goalFamilyActuals(state, g).some(
+                      (e) => entryStatus(e) === "sent_back"
+                    )
+                      ? "#DC2626"
+                      : undefined,
                     /* THE AMOUNT, NOT A LEDGER (Anir, Aug 16: "Maybe just see
                        the amount in the bar chart... u dont need to say $0
                        verified"). Splitting it into verified and waiting put

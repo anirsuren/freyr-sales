@@ -1797,6 +1797,15 @@ export function BarChart({
      * and what's not").
      */
     pending?: number;
+    /**
+     * The unverified cap's own hue (Anir, Aug 20: "the top of the bar should
+     * be the same color not that blue stripe"). Rejected money read as the
+     * same friendly blue as the signed-off money below it, while the tip and
+     * the status pill beside it both called it out in red — so the chart was
+     * the one surface still saying "on track" about money somebody refused.
+     * Omitted keeps the bar's own colour, exactly as before.
+     */
+    pendingColor?: string;
     // TIP_ICONS key ("qualified", "company", …) — string, not a component, so
     // server components can pass it. Absent/unknown = no mark, same as today.
     icon?: string;
@@ -2199,8 +2208,12 @@ export function BarChart({
                          * one colour at a glance and as provisional when you
                          * look at it.
                          */
-                        background:
-                          "repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px)",
+                        background: d.pendingColor
+                          ? // The veils are white, so laying them over an
+                            // explicit colour restripes the cap in that hue
+                            // rather than the bar's.
+                            `repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px), ${d.pendingColor}`
+                          : "repeating-linear-gradient(45deg, rgba(var(--bar-veil), 0.80) 0 5px, rgba(var(--bar-veil), 0.62) 5px 10px)",
                       }}
                     />
                   )}
