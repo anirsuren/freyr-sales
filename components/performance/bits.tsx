@@ -786,8 +786,13 @@ function SegmentBrackets({
             className="block h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
             style={{ borderColor: p.color }}
           />
+          {/* A TRUNCATED AMOUNT IS NOT AN AMOUNT. The label was clipped to
+              its segment's share of the bar, so a narrow slice printed "$8…"
+              — the one thing the bracket exists to say. It stays on one line
+              and is allowed to overrun its slice: centred on the bracket it
+              measures, so it still reads as belonging to it. */}
           <span
-            className="mt-[3px] block truncate text-center text-[10px] font-bold tnum"
+            className="mt-[3px] block overflow-visible whitespace-nowrap text-center text-[10px] font-bold tnum"
             style={{ color: p.color }}
           >
             {fmtAmount(unit, p.value)}
@@ -966,28 +971,30 @@ export function PaceTimeline({
             {!hasSchedule && (
               <span
                 className="absolute flex flex-col items-center"
-                style={{ ...labelPos(aPct), top: 0 }}
+                style={{ ...labelPos(vPct), top: 0 }}
               >
-                {/* THE HEADLINE MATCHES ITS OWN BAR (Anir, Aug 20: the
-                    figure read blue over a green-and-red track). It is the
-                    total claimed, so it takes the colour of whatever the far
-                    end of that track is: green when it is all signed off, the
-                    colour of the trouble when it is not. */}
+                {/* THE HEADLINE IS WHAT COUNTS (Anir, Aug 20: "also fix that
+                    too", pointing at "$200K · 40%" in red).
+                    
+                    It used to be the total CLAIMED, painted red whenever any
+                    of it had been sent back — so a bar carrying $80K verified
+                    and $120K rejected announced "$200K" in the colour that
+                    means rejected, saying the whole lot was refused. The
+                    brackets under the same bar already said $80K and $120K
+                    separately, so the headline was arguing with them.
+                    
+                    It reads verified money now, in verified green, matching
+                    the % met on the row, the chart above it and the CSV. The
+                    claimed total is still right there as the length of the
+                    bar and the sum of the two brackets. */}
                 <span
                   className={cn(
                     "whitespace-nowrap font-bold tnum",
                     compact ? "text-[10px]" : "text-[12px]"
                   )}
-                  style={{
-                    color:
-                      awaiting <= 0
-                        ? ENTRY_COLOR.verified
-                        : sentBack > 0
-                          ? ENTRY_COLOR.sent_back
-                          : ENTRY_COLOR.reported,
-                  }}
+                  style={{ color: ENTRY_COLOR.verified }}
                 >
-                  {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
+                  {fmtAmount(unit, verified)} · {Math.round(vPct)}%
                 </span>
               </span>
             )}
