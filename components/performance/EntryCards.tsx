@@ -229,8 +229,8 @@ export function StatusPill({
           }}
           title={
             entry.sentBackBy
-              ? `${entry.sentBackBy} sent this back. Open it to read why`
-              : "Open it to read why this was sent back"
+              ? `${entry.sentBackBy} sent this back. Click to fix it`
+              : "Click to fix this claim"
           }
           className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.18)]"
         >
@@ -454,30 +454,33 @@ function EntryTimeline({
                   profile pictures, bro, when u say my name or whoever"). The
                   rest of the row already pairs the two; a bare string here
                   read like a different kind of thing. */}
-              <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
+              {/* THE CLOCK BELONGS TO THE DATE (Anir, Aug 20: "put the time
+                  after the date, not the name"). The time had been split onto
+                  its own line under the person, which read as a third fact
+                  about them rather than the rest of the stamp. When and who
+                  are two lines now, in that order, each whole. */}
+              <span className="flex flex-wrap items-baseline gap-x-1.5 text-[11.5px] text-text-secondary">
                 <span className={cn(!step.when && "italic text-text-tertiary", "tnum")}>
                   {stamp(step.when).day ??
                     step.fallback ??
                     (step.done ? "" : "not yet")}
                 </span>
-                {step.who && (
+                {stamp(step.when).time && (
                   <>
-                    {step.when && <span aria-hidden>·</span>}
-                    <span className="inline-flex items-center gap-1.5">
-                      <Avatar
-                        name={step.who}
-                        className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                      />
-                      {step.who}
+                    <span aria-hidden>·</span>
+                    <span className="tnum text-text-tertiary">
+                      {stamp(step.when).time}
                     </span>
                   </>
                 )}
               </span>
-              {/* The clock sits under the day, not beside it — the day is
-                  what you scan for, the time is what you check. */}
-              {stamp(step.when).time && (
-                <span className="block text-[11px] tnum text-text-tertiary">
-                  {stamp(step.when).time}
+              {step.who && (
+                <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                  <Avatar
+                    name={step.who}
+                    className="h-[18px] w-[18px] shrink-0 text-[8px]"
+                  />
+                  {step.who}
                 </span>
               )}
               {step.note && (
@@ -723,6 +726,19 @@ export function MyEntriesCard({
     setOpenRow(focusEntryId);
     const el = rowRefs.current[focusEntryId];
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // "Fix it" should START the fix, not just point at it. The row underneath
+    // is left open, so closing the form lands on the claim in full.
+    const entry = state.actuals.find((x) => x.id === focusEntryId);
+    if (entry && awaitingTheirFix(entry) && entry.person === person && run) {
+      setDropFor(null);
+      setEditFor(focusEntryId);
+      setDraft({
+        amount: String(entry.amount),
+        date: entry.date,
+        customer: entry.customer ?? "",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusEntryId]);
   /**
    * A LOCK NEEDS AN UNDO (bug, Aug 15). Verifying pulls the row out of the
@@ -909,9 +925,29 @@ export function MyEntriesCard({
                               ? () => setReviewing(a.id)
                               : undefined
                           }
-                          /* For the person who has to FIX it, the badge is
-                             the way to the note. */
-                          onOpen={() => setOpenRow(open ? null : a.id)}
+                          /**
+                           * A BADGE THAT SAYS "NEEDS A FIX" IS A BUTTON THAT
+                           * FIXES IT (Anir, Aug 20: "should be able to click
+                           * on that button"). It used to only fold the row
+                           * open — and on a row that was already open, that
+                           * read as a dead click. It opens the edit form, the
+                           * same one the pencil and the red card's Fix it
+                           * open, with the rejection note carried into it.
+                           */
+                          onOpen={
+                            canEdit
+                              ? () => {
+                                  setOpenRow(a.id);
+                                  setDropFor(null);
+                                  setEditFor(a.id);
+                                  setDraft({
+                                    amount: String(a.amount),
+                                    date: a.date,
+                                    customer: a.customer ?? "",
+                                  });
+                                }
+                              : () => setOpenRow(open ? null : a.id)
+                          }
                         />
                       </td>
                       <td className="px-4 py-3.5">
