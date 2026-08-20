@@ -1980,7 +1980,6 @@ export function GoalZoom({
                                         : undefined,
                                     ["--fill" as string]: entryColor(a),
                                     ["--bar-glow" as string]: entryColor(a),
-                                    ["--bar-glow" as string]: entryColor(a),
                                   }}
                                 />
                               ))}

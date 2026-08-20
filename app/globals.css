@@ -1765,27 +1765,6 @@ input {
 }
 
 /**
- * ONE LOOK FOR MONEY THAT IS NOT SIGNED OFF (Anir, Aug 20: "it has to be
- * perfectly consistent. If you're doing red stripe, it should show red stripe
- * everywhere, not just red").
- *
- * The bar chart striped its unverified cap while every other bar in the app
- * drew the same money as a flat pale wash, so the same fact wore three
- * different clothes depending on which panel you were looking at. This is that
- * one treatment: diagonal veils over whatever colour the status calls for —
- * red for sent back, burnt orange for waiting its turn. Set `--fill`.
- */
-.unverified-fill {
-  background:
-    repeating-linear-gradient(
-      45deg,
-      rgba(var(--bar-veil), 0.8) 0 5px,
-      rgba(var(--bar-veil), 0.62) 5px 10px
-    ),
-    var(--fill, #0071e3);
-}
-
-/**
  * ONE LOOK FOR MONEY THAT IS NOT SIGNED OFF (Anir, Aug 20: "If you're doing
  * red stripe, it should show red stripe everywhere, not just red").
  *
