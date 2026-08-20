@@ -66,9 +66,10 @@ export function PerformanceExport({
         actual,
         verified,
         waiting,
-        g.target > 0 ? Math.round(pctMet(actual, g.target) * 10) / 10 : "",
+        // Verdict columns judge verified money, same as the page (tick 6).
+        g.target > 0 ? Math.round(pctMet(verified, g.target) * 10) / 10 : "",
         Math.round(yearElapsed(g.year) * 1000) / 10,
-        paceVerdict(actual, g.target, g.year, g.measure),
+        paceVerdict(verified, g.target, g.year, g.measure),
         g.verified ? "yes" : "no",
         (g.assignments ?? []).map((a) => a.person).join("; "),
         (g.groupAssignments ?? [])

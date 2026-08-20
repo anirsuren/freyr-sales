@@ -133,6 +133,16 @@ function monthlyTotals(
    that counts, and the striped cap on top of it is money that does not yet. */
 const MONEY = ENTRY_COLOR.verified;
 
+/**
+ * PACE JUDGES THE MONEY THAT COUNTS (loop tick 6, Aug 20). With $100K due by
+ * the schedule, a goal read "Ahead" off $200K CLAIMED while $120K of that had
+ * been sent back and only $80K was verified — the same lie "Target met" told
+ * before Met and % Met moved to verified-only. A verdict flatters nobody.
+ */
+function verifiedFor(state: Pick<PerformanceState, "actuals">, g: PrimaryGoal): number {
+  return familyValue(state, g, { verifiedOnly: true });
+}
+
 /** Goal type → the TIP_ICONS key for the same mark it wears on every goal row.
  *  A string, because that is the only thing a tip datum may carry. */
 const TYPE_TIP_ICON: Record<string, string> = {
@@ -301,8 +311,16 @@ export function OrgPerformanceTab({
   const shown = picked.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
     if (paceFilter !== "all") {
-      const a = actualValue(state.actuals, g);
-      if (paceVerdict(a, g.target, g.year, g.measure, undefined, milestoneByNow(g)) !== paceFilter)
+      if (
+        paceVerdict(
+          verifiedFor(state, g),
+          g.target,
+          g.year,
+          g.measure,
+          undefined,
+          milestoneByNow(g)
+        ) !== paceFilter
+      )
         return false;
     }
     if (verFilter === "verified" && !g.verified) return false;
@@ -340,9 +358,18 @@ export function OrgPerformanceTab({
       case "verified":
         return Number(b.verified) - Number(a.verified);
       default: {
-        const rank = (g: PrimaryGoal, v: number) =>
-          PACE_RANK[paceVerdict(v, g.target, g.year, g.measure, undefined, milestoneByNow(g))];
-        return rank(a, av) - rank(b, bv);
+        const rank = (g: PrimaryGoal) =>
+          PACE_RANK[
+            paceVerdict(
+              verifiedFor(state, g),
+              g.target,
+              g.year,
+              g.measure,
+              undefined,
+              milestoneByNow(g)
+            )
+          ];
+        return rank(a) - rank(b);
       }
     }
   });
@@ -366,7 +393,7 @@ export function OrgPerformanceTab({
   ).length;
   const laggingCount = withValue.filter(
     (x) =>
-      paceVerdict(x.actual, x.goal.target, x.goal.year, x.goal.measure, undefined, milestoneByNow(x.goal)) ===
+      paceVerdict(x.verified, x.goal.target, x.goal.year, x.goal.measure, undefined, milestoneByNow(x.goal)) ===
       "lagging"
   ).length;
   const verifiedCount = shown.filter((g) => g.verified).length;
@@ -654,7 +681,7 @@ export function OrgPerformanceTab({
                     value: withValue.filter(
                       (x) =>
                         paceVerdict(
-                          x.actual,
+                          x.verified,
                           x.goal.target,
                           x.goal.year,
                           x.goal.measure,
@@ -676,7 +703,7 @@ export function OrgPerformanceTab({
                     value: withValue.filter(
                       (x) =>
                         paceVerdict(
-                          x.actual,
+                          x.verified,
                           x.goal.target,
                           x.goal.year,
                           x.goal.measure,
@@ -1148,7 +1175,7 @@ function GoalRows({
   const verifiedActual = familyValue({ actuals }, goal, { verifiedOnly: true });
   const sentBackActual = familyValue({ actuals }, goal, { sentBackOnly: true });
   const pace = paceVerdict(
-    actual,
+    verifiedActual,
     goal.target,
     goal.year,
     goal.measure,
@@ -1900,7 +1927,7 @@ function GoalRows({
                     .filter((x) => entryStatus(x) === "sent_back")
                     .reduce((sum, x) => sum + x.amount, 0);
                   const subPace = paceVerdict(
-                    subActual,
+                    subVerified,
                     s.target,
                     goal.year,
                     goal.measure
