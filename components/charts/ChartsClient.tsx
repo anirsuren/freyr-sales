@@ -1761,7 +1761,16 @@ export function BarChart({
   hideTipStats = false,
   tipRecordsLabel = "Records behind this bar",
   fillCard,
+  onBarClick,
 }: {
+  /**
+   * Clicking a column does something (Anir, Aug 19: "I feel like something
+   * should happen when I click on the bar... whatever it is, do it"). The
+   * chart and the table below are the same list twice — hovering already
+   * lights both — so a click opens that row rather than opening a page or
+   * stacking a dialog on top of the tip.
+   */
+  onBarClick?: (index: number) => void;
   data: {
     label: string;
     value: number;
@@ -2007,6 +2016,20 @@ export function BarChart({
             // so the wash stayed near-white on a near-black card. `var(--surface)`
             // is redefined under `.dark`, so it follows the theme by itself.
             className="group/bar relative z-[1] flex h-full min-w-0 cursor-pointer flex-col items-center rounded-md transition-colors hover:bg-[var(--surface)]"
+            role={onBarClick ? "button" : undefined}
+            tabIndex={onBarClick ? 0 : undefined}
+            aria-label={onBarClick ? `Open ${d.label}` : undefined}
+            onClick={onBarClick ? () => onBarClick(i) : undefined}
+            onKeyDown={
+              onBarClick
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onBarClick(i);
+                    }
+                  }
+                : undefined
+            }
             onMouseEnter={(e) => {
               showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
               if (syncId) donutSyncBroadcast(syncId, i);

@@ -263,14 +263,25 @@ export function GoalZoom({
    *  need"). Declared order otherwise, so the three always read in the same
    *  sequence once they are all live. */
   /**
-   * GREYED CARDS GO RIGHT (Anir, Aug 19: "the ones that are grayed out should
-   * be on the right"). One rule, driven by the same flag that greys them, so
-   * the order and the styling can never disagree — and deliberately no
-   * further tie-breaking beneath it ("it shouldn't be hard folded").
+   * A CARD IS GREY WHEN NOBODY CARRIES IT — and grey cards go right (Anir,
+   * Aug 19, three times: "if that's active, it's on the right", "the ones
+   * that are grayed out should be on the right", "why the fuck is the
+   * assigned offering last").
+   *
+   * The first two passes keyed both the greying and the order to SCOPE, so a
+   * component with a real person and real money was greyed and sorted last
+   * merely because that person sits outside the group being viewed, while two
+   * cards nobody has ever touched led the row. Emptiness is the thing being
+   * signalled, so emptiness is what drives both: a card with someone on it
+   * reads as live wherever they sit, and only the ones with nobody go grey
+   * and go last.
    */
+  const carriesNobody = (c: PrimaryGoal) =>
+    (c.assignments ?? []).length === 0 &&
+    !c.subgoals.some((sg) => sg.people.length > 0);
   const components = [
-    ...componentsDeclared.filter((c) => state.goals.some((g) => g.id === c.id)),
-    ...componentsDeclared.filter((c) => !state.goals.some((g) => g.id === c.id)),
+    ...componentsDeclared.filter((c) => !carriesNobody(c)),
+    ...componentsDeclared.filter((c) => carriesNobody(c)),
   ];
 
   /** Everyone who carries a goal, for the greyed cards to name. */
@@ -723,7 +734,8 @@ export function GoalZoom({
             const cPeople = new Set(cEntries.map((a) => a.person)).size;
             const cm = componentMeta(c);
             const cColor = cm?.color ?? typeMeta(c.type).color;
-            const away = outOfScope(c);
+            const away = carriesNobody(c);
+            const elsewhere = !away && outOfScope(c);
             const owners = carriedBy(c);
             return (
               <Card
@@ -764,37 +776,10 @@ export function GoalZoom({
                   </b>
                 </div>
                 {away ? (
-                  /* Not carried on this screen. It still belongs to the sum,
-                     so it stays visible — greyed, with the people who do
-                     carry it, or plainly that nobody does yet. */
-                  <div className="mt-2.5">
-                    {owners.length > 0 ? (
-                      <>
-                        <span className="flex flex-wrap items-center gap-1.5">
-                          {owners.slice(0, 4).map((n) => (
-                            <span key={n} className="flex items-center gap-1">
-                              <Avatar name={n} className="h-5 w-5 text-[7px]" />
-                              <span className="text-[11.5px] text-text-secondary">
-                                {n}
-                              </span>
-                            </span>
-                          ))}
-                          {owners.length > 4 && (
-                            <span className="text-[11px] text-text-tertiary tnum">
-                              +{owners.length - 4}
-                            </span>
-                          )}
-                        </span>
-                        <p className="mt-1.5 text-[11px] text-text-tertiary">
-                          carries this one, outside this group
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-[12px] text-text-secondary">
-                        Nobody carries this yet, so it adds nothing.
-                      </p>
-                    )}
-                  </div>
+                  /* Nobody is on it, so there is nothing to draw but the fact. */
+                  <p className="mt-2.5 text-[12px] text-text-secondary">
+                    Nobody carries this yet, so it adds nothing.
+                  </p>
                 ) : (
                 <>
                 <p className="mt-2.5 text-[21px] font-extrabold tnum">
@@ -841,6 +826,20 @@ export function GoalZoom({
                   />
                 </div>
                 </>
+                )}
+                {elsewhere && owners.length > 0 && (
+                  // Live, but held by people outside the group being viewed —
+                  // worth saying, not worth greying the card for.
+                  <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
+                    {owners.slice(0, 3).map((n) => (
+                      <span key={n} className="flex items-center gap-1">
+                        <Avatar name={n} className="h-[18px] w-[18px] text-[7px]" />
+                        {n}
+                      </span>
+                    ))}
+                    {owners.length > 3 && <span className="tnum">+{owners.length - 3}</span>}
+                    <span>· outside this group</span>
+                  </p>
                 )}
                 <p className="mt-2 text-[11px] leading-snug text-text-secondary">
                   {cm ? `${cm.blurb} ` : ""}

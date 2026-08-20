@@ -90,7 +90,7 @@ async function settleMetGoals(
    * from, so the server can answer this without being told.
    */
   const existingForLink = await (async () => {
-    if (!next.some((l) => l.met && !l.actualId)) return new Map<string, string>();
+    if (!next.some((l) => !l.actualId)) return new Map<string, string>();
     const perf = await readPerformance();
     const found = new Map<string, string>();
     for (const a of perf.actuals) {
@@ -138,14 +138,33 @@ async function settleMetGoals(
       } catch (error) {
         console.error("[opportunities] met entry failed:", error);
       }
-    } else if (!link.met && link.actualId) {
+    } else if (!link.met) {
+      /**
+       * THE HANDLE HAS TO BE FOUND, NOT ASSUMED (found testing, Aug 19).
+       *
+       * Un-marking Met only ran when the browser sent the link's actualId
+       * back. A client that rebuilt the rows without it left the entry
+       * standing on the goal while the deal said "not met" — the money still
+       * counted and nothing on the deal knew about it. Same lookup the Met
+       * branch above uses.
+       */
+      const handle =
+        link.actualId ??
+        existingForLink.get(
+          `${link.goalId}::${(link.person || after.owner || meName).trim().toLowerCase()}`
+        );
+      if (!handle) continue;
       try {
-        await removeActual(link.actualId);
+        await removeActual(handle);
         next[i] = { ...link, actualId: undefined, metAt: undefined };
         changed = true;
       } catch {
-        // Verified and locked: the number stays, and so does the handle so a
-        // future re-met cannot write it twice.
+        // Verified and locked: the number stays, and the handle stays with it
+        // so a future re-met adopts that entry instead of writing a second.
+        if (!link.actualId) {
+          next[i] = { ...link, actualId: handle };
+          changed = true;
+        }
       }
     }
   }

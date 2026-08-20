@@ -447,6 +447,19 @@ export function OrgPerformanceTab({
                 format="percent"
                 tipRecordsLabel="What this is made of"
                 syncId={syncId}
+                /* Click a column, open that goal's row underneath and go to
+                   it. Same list twice, so the click closes the loop the
+                   linked hover already opens. */
+                onBarClick={(i) => {
+                  const g = sorted[i];
+                  if (!g) return;
+                  if (!openIds.has(g.id)) toggleOpen(g.id);
+                  window.requestAnimationFrame(() => {
+                    document
+                      .querySelector(`[data-goal-row="${g.id}"]`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  });
+                }}
                 data={sorted.map((g) => {
                   const a = actualValue(state.actuals, g);
                   /**
@@ -1149,6 +1162,7 @@ function GoalRows({
       </Modal>
       <tr
         onClick={onToggle}
+        data-goal-row={goal.id}
         data-linked={linkedIndex === index ? "true" : undefined}
         className={cn(
           "cursor-pointer transition-all hover:bg-surface",
