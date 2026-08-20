@@ -771,8 +771,14 @@ function SegmentBrackets({
           className="min-w-0 shrink-0 px-[1.5px]"
           style={{ width: `${p.pct}%` }}
         >
+          {/* THE TICKS POINT AT THE BAR (Anir, Aug 20: "do it the opposite
+              way. The vertical lines should be pointing towards the bar").
+              Drawn with the rule on top, the bracket opened downwards and
+              read as a tray under the label instead of a measurement of the
+              segment above it. Rule on the bottom, ticks rising to meet the
+              bar they measure. */}
           <span
-            className="block h-[5px] rounded-t-[2px] border-x-[1.5px] border-t-[1.5px]"
+            className="block h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
             style={{ borderColor: p.color }}
           />
           <span
@@ -945,12 +951,24 @@ export function PaceTimeline({
                 className="absolute flex flex-col items-center"
                 style={{ ...labelPos(aPct), top: 0 }}
               >
+                {/* THE HEADLINE MATCHES ITS OWN BAR (Anir, Aug 20: the
+                    figure read blue over a green-and-red track). It is the
+                    total claimed, so it takes the colour of whatever the far
+                    end of that track is: green when it is all signed off, the
+                    colour of the trouble when it is not. */}
                 <span
                   className={cn(
                     "whitespace-nowrap font-bold tnum",
                     compact ? "text-[10px]" : "text-[12px]"
                   )}
-                  style={{ color: accent }}
+                  style={{
+                    color:
+                      awaiting <= 0
+                        ? ENTRY_COLOR.verified
+                        : sentBack > 0
+                          ? ENTRY_COLOR.sent_back
+                          : ENTRY_COLOR.reported,
+                  }}
                 >
                   {fmtAmount(unit, verified + awaiting)} · {Math.round(aPct)}%
                 </span>
@@ -1007,7 +1025,15 @@ export function PaceTimeline({
               {/* Every point on the track wears a dot, including the last one. */}
               <span
                 className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white"
-                style={{ left: `${aPct}%`, background: accent }}
+                style={{
+                  left: `${aPct}%`,
+                  background:
+                    awaiting <= 0
+                      ? ENTRY_COLOR.verified
+                      : sentBack > 0
+                        ? ENTRY_COLOR.sent_back
+                        : ENTRY_COLOR.reported,
+                }}
                 aria-hidden="true"
               />
               {hasSchedule && (
@@ -1019,7 +1045,8 @@ export function PaceTimeline({
               )}
               <span
                 className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] bg-white"
-                style={{ left: "100%", borderColor: accent }}
+                // The target marker is the finish line, not a status.
+                style={{ left: "100%", borderColor: "var(--text-tertiary)" }}
                 aria-hidden="true"
               />
             </div>

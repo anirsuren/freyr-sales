@@ -25,6 +25,7 @@ import { useStickyValue } from "@/lib/useStickyValue";
 import {
   currentFiscalYear,
   type EntryStatus,
+  type GoalUnit,
   ENTRY_COLOR,
   entryStatus,
   isPending,
@@ -212,6 +213,57 @@ function inBarOrder(entries: PerfActual[]): PerfActual[] {
     (a, b) =>
       SEGMENT_RANK[entryStatus(a)] - SEGMENT_RANK[entryStatus(b)] ||
       b.amount - a.amount
+  );
+}
+
+/**
+ * THE NUMBER BESIDE A NAME, IN THE COLOURS THE BARS USE (Anir, Aug 20: "the
+ * 80k and then the +120k above is what's confusing me").
+ *
+ * A green figure and a blue "+$120K" pill said nothing about what the plus
+ * WAS — added to what, by whom, why it was a different colour from the red
+ * stripe directly underneath it. Verified money is green like its half of the
+ * bar; the pill takes the colour and the word of whatever the rest of the bar
+ * is: sent back, or waiting.
+ */
+function RowTotals({
+  unit,
+  verified,
+  awaiting,
+  sentBack,
+}: {
+  unit: GoalUnit;
+  verified: number;
+  awaiting: number;
+  sentBack: number;
+}) {
+  const refused = sentBack > 0;
+  return (
+    <>
+      <b
+        className="shrink-0 text-right text-[11.5px] tnum"
+        style={verified > 0 ? { color: ENTRY_COLOR.verified } : undefined}
+      >
+        <span className={verified > 0 ? "" : "text-text-tertiary"}>
+          {fmtAmount(unit, verified)}
+        </span>
+      </b>
+      {awaiting > 0 && (
+        <span
+          className="shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold tnum"
+          style={{
+            background: refused
+              ? "rgba(220,38,38,0.12)"
+              : "rgba(0,113,227,0.12)",
+            color: refused
+              ? "var(--entry-sent-back-ink)"
+              : "var(--entry-waiting)",
+          }}
+        >
+          {fmtAmount(unit, awaiting)} {refused ? "sent back" : "waiting"}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -492,6 +544,7 @@ export function GoalZoom({
 
   const yearVerified = val(yearRange, { verifiedOnly: true });
   const yearAwaiting = val(yearRange, { reportedOnly: true });
+  const yearSentBack = val(yearRange, { sentBackOnly: true });
   const yearTarget =
     goal.target || components.reduce((s, c) => s + (c.target || 0), 0);
 
@@ -727,8 +780,21 @@ export function GoalZoom({
             </span>
           )}
           {yearAwaiting > 0 ? (
-            <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#0058B0] tnum">
-              +{fmtAmount(goal.unit, yearAwaiting)} waiting
+            <span
+              className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold tnum"
+              style={{
+                background:
+                  yearSentBack > 0
+                    ? "rgba(220,38,38,0.12)"
+                    : "rgba(0,113,227,0.12)",
+                color:
+                  yearSentBack > 0
+                    ? "var(--entry-sent-back-ink)"
+                    : "var(--entry-waiting)",
+              }}
+            >
+              {fmtAmount(goal.unit, yearAwaiting)}{" "}
+              {yearSentBack > 0 ? "sent back" : "waiting"}
             </span>
           ) : (
             yearTarget === 0 && (
@@ -1254,7 +1320,10 @@ export function GoalZoom({
                             </>
                           )}
                         </span>
-                        <b className="w-[74px] shrink-0 text-right text-[11.5px] tnum">
+                        <b
+                          className="w-[74px] shrink-0 text-right text-[11.5px] tnum"
+                          style={r.verified > 0 ? { color: ENTRY_COLOR.verified } : undefined}
+                        >
                           <span className={r.verified > 0 ? "" : "text-text-tertiary"}>
                             {fmtAmount(goal.unit, r.verified)}
                           </span>
@@ -1272,8 +1341,21 @@ export function GoalZoom({
                         {inPeriodAwaiting && (
                           <span className="flex w-[56px] shrink-0 justify-end">
                             {r.awaiting > 0 && (
-                              <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                                +{fmtAmount(goal.unit, r.awaiting)}
+                              <span
+                                className="whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold tnum"
+                                style={{
+                                  background:
+                                    r.sentBack > 0
+                                      ? "rgba(220,38,38,0.12)"
+                                      : "rgba(0,113,227,0.12)",
+                                  color:
+                                    r.sentBack > 0
+                                      ? "var(--entry-sent-back-ink)"
+                                      : "var(--entry-waiting)",
+                                }}
+                              >
+                                {fmtAmount(goal.unit, r.awaiting)}{" "}
+                                {r.sentBack > 0 ? "back" : "waiting"}
                               </span>
                             )}
                           </span>
@@ -1442,16 +1524,12 @@ export function GoalZoom({
                             <span className="min-w-0 flex-1">
                               <GroupPill name={r2.group.name} size="sm" />
                             </span>
-                            <b className="shrink-0 text-right text-[11.5px] tnum">
-                              <span className={r2.verified > 0 ? "" : "text-text-tertiary"}>
-                                {fmtAmount(goal.unit, r2.verified)}
-                              </span>
-                            </b>
-                            {r2.awaiting > 0 && (
-                              <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                                +{fmtAmount(goal.unit, r2.awaiting)}
-                              </span>
-                            )}
+                            <RowTotals
+                              unit={goal.unit}
+                              verified={r2.verified}
+                              awaiting={r2.awaiting}
+                              sentBack={r2.sentBack}
+                            />
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
                                 "this is still not a drop-down"). The people
                                 appeared on select with nothing on the row to
@@ -1590,6 +1668,11 @@ export function GoalZoom({
                                 person: name,
                                 reportedOnly: true,
                               });
+                              const sb = familyValue(state, goal, {
+                                range: row.range,
+                                person: name,
+                                sentBackOnly: true,
+                              });
                               return (
                                 /**
                                  * EACH PERSON'S OWN GOAL, AND HOW FAR ALONG
@@ -1632,19 +1715,12 @@ export function GoalZoom({
                                       />
                                     )}
                                   </span>
-                                  <b
-                                    className={cn(
-                                      "shrink-0 text-[11px] tnum",
-                                      v > 0 ? "text-text-primary" : "text-text-tertiary"
-                                    )}
-                                  >
-                                    {fmtAmount(goal.unit, v)}
-                                  </b>
-                                  {w > 0 && (
-                                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9px] font-bold text-[color:#0058B0] tnum">
-                                      +{fmtAmount(goal.unit, w)}
-                                    </span>
-                                  )}
+                                  <RowTotals
+                                    unit={goal.unit}
+                                    verified={v}
+                                    awaiting={w}
+                                    sentBack={sb}
+                                  />
                                   </span>
                                   {(() => {
                                     const mine = (goal.assignments ?? []).find(
@@ -1691,7 +1767,10 @@ export function GoalZoom({
                                               width: base
                                                 ? `${Math.min(100, (w / base) * 100)}%`
                                                 : "0%",
-                                              ["--fill" as string]: ENTRY_COLOR.reported,
+                                              ["--fill" as string]:
+                                                sb > 0
+                                                  ? ENTRY_COLOR.sent_back
+                                                  : ENTRY_COLOR.reported,
                                             }}
                                           />
                                         </span>
@@ -1906,16 +1985,12 @@ export function GoalZoom({
                             </span>
                           )}
                         </span>
-                        <b className="shrink-0 text-right text-[11.5px] tnum">
-                          <span className={p.verified > 0 ? "" : "text-text-tertiary"}>
-                            {fmtAmount(goal.unit, p.verified)}
-                          </span>
-                        </b>
-                        {p.awaiting > 0 && (
-                          <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold text-[color:#0058B0] tnum">
-                            +{fmtAmount(goal.unit, p.awaiting)}
-                          </span>
-                        )}
+                        <RowTotals
+                          unit={goal.unit}
+                          verified={p.verified}
+                          awaiting={p.awaiting}
+                          sentBack={p.sentBack}
+                        />
                         </span>
                         {/* Same as the group rows: full width underneath, and
                             only when there is something to draw. Open, the bar
