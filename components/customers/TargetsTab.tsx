@@ -228,7 +228,16 @@ export function TargetsTab({
 
       <Card className="mt-4 overflow-hidden p-0">
         <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
+          {/* THE SEARCH TAKES THE ROOM THAT IS LEFT (Anir, Aug 20: "why is
+              the search bar and filters messed up now"). It sat at a fixed
+              stub width, so when the filter pills grew — they each gained an
+              icon on Aug 19 — the row wrapped and left a search box you could
+              not read your own query in, with Add target stranded on a line of
+              its own. Same `grow` + `flex-1` the Customers and Opportunities
+              bars already use. */}
           <PrioritySearchInput
+            grow
+            className="min-w-[190px] flex-1"
             value={query}
             onChange={setQuery}
             placeholder="Search targets, owners, countries…"

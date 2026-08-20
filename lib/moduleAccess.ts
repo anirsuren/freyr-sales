@@ -3,9 +3,9 @@ import type { UserIdentityRole } from "./userIdentity";
 /**
  * WHO CAN OPEN WHICH MODULE (Freyr, Aug 12, via Anir).
  *
- *   Everyone (Sales Reps, Managers, Admins) — AI Agent, Offerings, Team.
- *   Managers and Admins only — FDL Components, Customers, Reports,
- *   Performance, Market Intel.
+ *   Everyone (Sales Reps, Managers, Admins) — AI Agent, Offerings, Team,
+ *   Performance, Opportunities, Market Intel.
+ *   Managers and Admins only — FDL Components, Customers, Reports.
  *
  * Roles in this app: "rep" = Sales Rep, "manager" = Manager, "admin" =
  * Admin. This is a VISIBILITY *and* ACCESS rule: the sidebar hides what a rep
@@ -17,7 +17,6 @@ export const MANAGER_ONLY_MODULES = [
   "/components",
   "/customers",
   "/reports",
-  "/market-intel",
 ] as const;
 
 /**
@@ -45,6 +44,14 @@ export const REP_MODULES = [
   "/team",
   "/performance",
   "/opportunities",
+  /**
+   * MARKET INTEL OPENED TO REPS (Anir, Aug 20: "they're not allowed to see
+   * market intel. No, I think they should be able to see market intel").
+   * It is company and industry news about the accounts they sell to, which is
+   * a rep's job to know before a call; nothing on it is anyone's private
+   * number.
+   */
+  "/market-intel",
 ] as const;
 
 /**

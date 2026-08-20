@@ -830,28 +830,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         width={420}
                         content={
                           <div>
-                            <div className="flex items-center gap-2.5 mb-2.5">
-                              <Avatar name={r.name} className="w-9 h-9 text-[12px]" />
-                              <div className="min-w-0">
-                                <p className="text-[13.5px] font-semibold text-text-primary truncate">
-                                  {r.name}
-                                </p>
-                                <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {r.title}
-                                </p>
-                                {/* Region gets its OWN line — no middot. Sharing a
-                                    line with the title meant long titles wrapped and
-                                    split the flag from its place (Anir: "the country
-                                    and the role should always be on separate lines.
-                                    You don't need that dot separator"). */}
-                                {r.region ? (
-                                  <RegionLabel
-                                    region={r.region}
-                                    className="whitespace-nowrap text-[11.5px] text-text-tertiary"
-                                  />
-                                ) : null}
-                              </div>
-                            </div>
+                            {/* NO IDENTITY HEADER (Anir, Aug 20: "this stuff
+                                is redundant. You already said it above"). The
+                                row you are hovering already shows the face, the
+                                name, the title and the region — repeating them
+                                inside the card spent its top third saying what
+                                the cursor is already pointing at. The card is
+                                the NUMBERS you cannot see in the row. */}
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary tnum">
                                 Quota attainment
