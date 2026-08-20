@@ -80,13 +80,42 @@ export default async function TeamPage() {
     // zeros everywhere until deals and meetings exist (Anir, Aug 6: "same
     // thing as fake mode, but all the data should say 0").
     const workspace = process.env.FREYR_WORKSPACE_ID;
-    const [directory, currentUser, memberProfiles] = await Promise.all([
+    const [directory, currentUser, memberProfiles, opps] = await Promise.all([
       workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
       getCurrentUser().catch(() => null),
       workspace
         ? readWorkspaceMemberProfiles(workspace).catch(() => new Map())
         : new Map(),
+      readOpportunities(),
     ]);
+    /**
+     * THE ZEROS WERE MEANT TO EXPIRE (Anir, Aug 6: "same thing as fake mode,
+     * but all the data should say 0" — written when the live workspace held
+     * no deals at all).
+     *
+     * 102 deals later they were still hardcoded, so this page said "Team
+     * pipeline $0 across 0 open deals" over a $10.6M pipeline. The fix that
+     * was supposed to land on Aug 20 went into the demo branch below, which
+     * live mode never reaches. Same arithmetic the Opportunities header uses:
+     * total is the sum of the offering rows, weighted applies each row's own
+     * confidence.
+     */
+    const openDeals = opps.opportunities.filter(
+      (o) => o.level !== "Future" && o.status !== "Won" && o.status !== "Lost"
+    );
+    const ownerTotals = new Map<
+      string,
+      { openValue: number; weighted: number; openCount: number }
+    >();
+    for (const deal of openDeals) {
+      if (!deal.owner) continue;
+      const key = deal.owner.trim().toLowerCase();
+      const row = ownerTotals.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
+      row.openValue += opportunityValue(deal);
+      row.weighted += Math.round(weightedValue(deal));
+      row.openCount += 1;
+      ownerTotals.set(key, row);
+    }
     /**
      * EVERY REAL ACCOUNT SHOWS (Anir, Aug 13: "Just show all the actual
      * accounts people have created… you can't have some stupid logic there").
@@ -141,6 +170,7 @@ export default async function TeamPage() {
     }));
     const reps: RosterRep[] = members.map((member) => {
       const title = memberProfiles.get(member.id)?.title.trim();
+      const mine = ownerTotals.get(member.name.trim().toLowerCase());
       return {
         identityKey: member.email || member.id,
         name: member.name,
@@ -153,9 +183,9 @@ export default async function TeamPage() {
         phone: "",
         linkedin: "",
         teamsUrl: member.email ? teamsChatUrl(member.email) : "",
-        openValue: 0,
-        weighted: 0,
-        openCount: 0,
+        openValue: mine?.openValue ?? 0,
+        weighted: mine?.weighted ?? 0,
+        openCount: mine?.openCount ?? 0,
         meetings: 0,
         quota: 0,
         wonFY: 0,
@@ -167,8 +197,23 @@ export default async function TeamPage() {
     });
     const rollup = [
       { icon: Users, label: "Team members", value: String(reps.length), sub: "in the workspace" },
-      { icon: Wallet, label: "Team pipeline", value: formatMoney(0), sub: "across 0 open deals" },
-      { icon: TrendingUp, label: "Weighted forecast", value: formatMoney(0), sub: "probability-adjusted" },
+      /* The header counts the whole floor, owned or not: most imported deals
+         carry no owner yet, and a deal nobody has claimed is still the team's
+         pipeline. */
+      {
+        icon: Wallet,
+        label: "Team pipeline",
+        value: formatMoney(openDeals.reduce((s, o) => s + opportunityValue(o), 0)),
+        sub: `across ${openDeals.length} open ${openDeals.length === 1 ? "deal" : "deals"}`,
+      },
+      {
+        icon: TrendingUp,
+        label: "Weighted forecast",
+        value: formatMoney(
+          Math.round(openDeals.reduce((s, o) => s + weightedValue(o), 0))
+        ),
+        sub: "probability-adjusted",
+      },
       { icon: CalendarCheck, label: "Meetings booked", value: "0", sub: "live across the team" },
     ];
     return (
