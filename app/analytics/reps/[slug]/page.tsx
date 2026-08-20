@@ -42,6 +42,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
+import { readOpportunities } from "@/lib/opportunities";
+import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
 
 /**
  * The teammate's own name in the tab. A static "Rep" made every open profile
@@ -122,10 +124,36 @@ export default async function RepPage({
       );
     }
     const memberTitle = memberProfiles.get(member.id)?.title.trim();
+    /**
+     * THEIR OWN DEALS, NOT FOUR ZEROS (the Team page told the same lie until
+     * today: tiles hardcoded to 0 while the workspace held a $10.6M pipeline).
+     *
+     * The roster now shows what each person is carrying, so clicking their
+     * name had to stop contradicting the row it was opened from. Same
+     * arithmetic as Team and Opportunities: total is the sum of the offering
+     * rows, weighted applies each row's own confidence. Meetings has no live
+     * source yet, so it stays an honest zero.
+     */
+    const myOpen = (await readOpportunities()).opportunities.filter(
+      (deal) =>
+        (deal.owner ?? "").trim().toLowerCase() === member.name.trim().toLowerCase() &&
+        deal.level !== "Future" &&
+        deal.status !== "Won" &&
+        deal.status !== "Lost"
+    );
+    const myValue = myOpen.reduce((sum, deal) => sum + opportunityValue(deal), 0);
+    const myWeighted = Math.round(
+      myOpen.reduce((sum, deal) => sum + weightedValue(deal), 0)
+    );
     const zeroTiles = [
-      { label: "Open pipeline", value: formatMoney(0), sub: "0 live deals", icon: DollarSign },
-      { label: "Weighted forecast", value: formatMoney(0), sub: "probability-adjusted", icon: TrendingUp },
-      { label: "Open deals", value: "0", sub: "in the pipeline", icon: Briefcase },
+      {
+        label: "Open pipeline",
+        value: formatMoney(myValue),
+        sub: `${myOpen.length} live ${myOpen.length === 1 ? "deal" : "deals"}`,
+        icon: DollarSign,
+      },
+      { label: "Weighted forecast", value: formatMoney(myWeighted), sub: "probability-adjusted", icon: TrendingUp },
+      { label: "Open deals", value: String(myOpen.length), sub: "in the pipeline", icon: Briefcase },
       { label: "Meetings", value: "0", sub: "booked", icon: CalendarCheck },
     ];
     return (
@@ -192,9 +220,48 @@ export default async function RepPage({
             <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
           ))}
         </div>
-        <p className="text-[12.5px] text-text-tertiary">
-          Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.
-        </p>
+        {myOpen.length === 0 ? (
+          <p className="text-[12.5px] text-text-tertiary">
+            Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.
+          </p>
+        ) : (
+          /* A profile opened from the roster has to show the deals behind the
+             tile, or the drill-down says less than the row it came from. */
+          <Card className="overflow-hidden p-0">
+            <div className="border-b border-border-light px-4 py-3">
+              <h2 className="text-[13px] font-bold text-text-primary">Open deals</h2>
+              <p className="mt-0.5 text-[12px] text-text-secondary">
+                Every current deal with {member.name.split(" ")[0]}&rsquo;s name on it.
+              </p>
+            </div>
+            <ul className="divide-y divide-border-light">
+              {myOpen.map((deal) => (
+                <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
+                  <CompanyLogo
+                    name={deal.customer}
+                    className="h-8 w-8 shrink-0 text-[9px]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold text-text-primary">
+                      {deal.name}
+                    </span>
+                    <span className="block truncate text-[12px] text-text-secondary">
+                      {deal.customer}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-[13px] font-bold text-text-primary tnum">
+                      {formatMoney(opportunityValue(deal))}
+                    </span>
+                    <span className="block text-[11.5px] font-semibold text-blue-primary tnum">
+                      {formatMoney(Math.round(weightedValue(deal)))} weighted
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </div>
     );
   }
