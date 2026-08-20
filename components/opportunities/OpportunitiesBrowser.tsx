@@ -2,6 +2,9 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Flag,
+  Target as TargetIcon,
+  ListChecks as ListChecksIcon,
   Briefcase,
   ChevronDown,
   Sparkles,
@@ -1845,14 +1848,101 @@ export function OpportunitiesBrowser({
               onChange={(line) => setEditing({ ...editing, rows: [line] })}
             />
 
+            <FormRoom icon={Flag} title="Where it stands" hint="Status, how this revenue is counted, and who owns it.">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {/* Suren, Aug 18: "don't call it levels; it's actually a revenue
+                  type." The stored field stays `level` — only the words moved. */}
+              <Field label="Revenue type">
+                <ColorSelect
+                  value={editing.level}
+                  ariaLabel="Revenue type"
+                  collapsible={false}
+                  className="w-full"
+                  minWidth={110}
+                  dense
+                  onChange={(v) => setEditing({ ...editing, level: v })}
+                  options={OPPORTUNITY_LEVELS.map((l) => ({
+                    value: l,
+                    label: l,
+                    color: LEVEL_COLOR[l],
+                    icon: LEVEL_ICON[l],
+                  }))}
+                />
+              </Field>
+              <Field label="Status">
+                <ColorSelect
+                  value={editing.status}
+                  ariaLabel="Opportunity status"
+                  collapsible={false}
+                  className="w-full"
+                  minWidth={110}
+                  dense
+                  onChange={(v) => setEditing({ ...editing, status: v })}
+                  options={[
+                    { value: "", label: "Not set", color: "#8E98A8" },
+                    ...OPPORTUNITY_STATUSES.map((st) => ({
+                      value: st,
+                      label: st,
+                      color: STATUS_COLOR[st],
+                      icon: STATUS_ICON[st],
+                    })),
+                  ]}
+                />
+              </Field>
+              <Field label="Owner">
+                {/* A dropdown like everything else (Anir, Aug 17) — the
+                    roster with faces, plus whatever name an imported deal
+                    already carries so editing never loses it. */}
+                <ColorSelect
+                  value={editing.owner}
+                  ariaLabel="Deal owner"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => setEditing({ ...editing, owner: v })}
+                  options={[
+                    { value: "", label: "Unassigned", color: "#8E98A8" },
+                    ...[...new Set([
+                      ...people,
+                      ...(editing.owner ? [editing.owner] : []),
+                    ])]
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((n) => ({
+                        value: n,
+                        label: n === meName ? `${n} (you)` : n,
+                        avatarName: n,
+                      })),
+                  ]}
+                />
+              </Field>
+              <Field
+                label="Opportunity id"
+                hint="Created by the system the moment the deal is saved (Suren, Aug 18: 'it should be system generated'). Numbers imported from Freyr's CRM stay exactly as they came in."
+              >
+                {/* Nobody types this anymore — it is assigned, not entered. */}
+                {editing.externalId ? (
+                  <p className={cn(inputCls, "flex items-center bg-surface/60 text-text-secondary tnum select-all")}>
+                    {editing.externalId}
+                  </p>
+                ) : (
+                  <p className={cn(inputCls, "flex items-center gap-1.5 bg-surface/60 tnum")}>
+                    <span className="font-semibold text-text-secondary">{nextOppId}</span>
+                    <span className="text-[11px] text-text-tertiary">on save</span>
+                  </p>
+                )}
+              </Field>
+              </div>
+            </FormRoom>
+
+
             {/* THE GOAL TABLE (Suren, Aug 18 call: "let them assign that goal,
                 let them assign the value for the goal, and then they may say
                 met. The moment they say met, you take this value and add it
                 against [the goal], and also put the person name. Let it be
                 manual right now."). Rows come from the Goal Master; nothing
                 touches performance until Met is on and the form is saved. */}
-            <Field
-              label="Goals this deal feeds"
+            <FormRoom
+              icon={TargetIcon}
+              title="Goals this deal feeds"
               hint="Nothing counts on performance until a row is marked met and saved."
             >
               <div className="space-y-2">
@@ -1986,96 +2076,17 @@ export function OpportunitiesBrowser({
                   <Plus size={11} strokeWidth={2.6} /> Add goal
                 </button>
               </div>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {/* Suren, Aug 18: "don't call it levels; it's actually a revenue
-                  type." The stored field stays `level` — only the words moved. */}
-              <Field label="Revenue type">
-                <ColorSelect
-                  value={editing.level}
-                  ariaLabel="Revenue type"
-                  collapsible={false}
-                  className="w-full"
-                  minWidth={110}
-                  dense
-                  onChange={(v) => setEditing({ ...editing, level: v })}
-                  options={OPPORTUNITY_LEVELS.map((l) => ({
-                    value: l,
-                    label: l,
-                    color: LEVEL_COLOR[l],
-                    icon: LEVEL_ICON[l],
-                  }))}
-                />
-              </Field>
-              <Field label="Status">
-                <ColorSelect
-                  value={editing.status}
-                  ariaLabel="Opportunity status"
-                  collapsible={false}
-                  className="w-full"
-                  minWidth={110}
-                  dense
-                  onChange={(v) => setEditing({ ...editing, status: v })}
-                  options={[
-                    { value: "", label: "Not set", color: "#8E98A8" },
-                    ...OPPORTUNITY_STATUSES.map((st) => ({
-                      value: st,
-                      label: st,
-                      color: STATUS_COLOR[st],
-                      icon: STATUS_ICON[st],
-                    })),
-                  ]}
-                />
-              </Field>
-              <Field label="Owner">
-                {/* A dropdown like everything else (Anir, Aug 17) — the
-                    roster with faces, plus whatever name an imported deal
-                    already carries so editing never loses it. */}
-                <ColorSelect
-                  value={editing.owner}
-                  ariaLabel="Deal owner"
-                  collapsible={false}
-                  className="w-full"
-                  onChange={(v) => setEditing({ ...editing, owner: v })}
-                  options={[
-                    { value: "", label: "Unassigned", color: "#8E98A8" },
-                    ...[...new Set([
-                      ...people,
-                      ...(editing.owner ? [editing.owner] : []),
-                    ])]
-                      .sort((a, b) => a.localeCompare(b))
-                      .map((n) => ({
-                        value: n,
-                        label: n === meName ? `${n} (you)` : n,
-                        avatarName: n,
-                      })),
-                  ]}
-                />
-              </Field>
-              <Field
-                label="Opportunity id"
-                hint="Created by the system the moment the deal is saved (Suren, Aug 18: 'it should be system generated'). Numbers imported from Freyr's CRM stay exactly as they came in."
-              >
-                {/* Nobody types this anymore — it is assigned, not entered. */}
-                {editing.externalId ? (
-                  <p className={cn(inputCls, "flex items-center bg-surface/60 text-text-secondary tnum select-all")}>
-                    {editing.externalId}
-                  </p>
-                ) : (
-                  <p className={cn(inputCls, "flex items-center gap-1.5 bg-surface/60 tnum")}>
-                    <span className="font-semibold text-text-secondary">{nextOppId}</span>
-                    <span className="text-[11px] text-text-tertiary">on save</span>
-                  </p>
-                )}
-              </Field>
-            </div>
+            </FormRoom>
 
             {/* ACTIVITIES, NOT A COMMENT BOX (Suren, Aug 18: "instead of next
                 steps and pending actions… ask them to add as many activities
                 as possible — whatever activity name, start date, end date,
                 and status. We don't need a fixed list."). */}
-            <Field label="Activities">
+            <FormRoom
+              icon={ListChecksIcon}
+              title="Activities"
+              hint="What's actually happening on this deal: a demo, a pilot, a bid defence."
+            >
               <div className="space-y-2">
                 {editing.activities.map((a, i) => (
                   <div
@@ -2160,9 +2171,10 @@ export function OpportunitiesBrowser({
                   </div>
                 ))}
                 {editing.activities.length === 0 && (
+                  /* The room's own header already says what an activity is;
+                     saying it again under it was the same sentence twice. */
                   <p className="text-[12px] text-text-tertiary">
-                    What&rsquo;s actually happening on this deal: a demo, a
-                    pilot, a bid defence. Add as many as you like.
+                    Nothing logged yet. Add as many as you like.
                   </p>
                 )}
                 <button
@@ -2178,7 +2190,7 @@ export function OpportunitiesBrowser({
                   <Plus size={11} strokeWidth={2.6} /> Add activity
                 </button>
               </div>
-            </Field>
+            </FormRoom>
 
             {/* PINNED, so Save never hides below the fold of a tall form
                 (Anir, Aug 17: "the save changes button in the bottom right…
@@ -2630,6 +2642,44 @@ function FutureSection({
  * amount is typed in whatever the client pays and USD is computed by the
  * admin rates.
  */
+/**
+ * ONE ROOM PER IDEA IN THE DEAL FORM (Anir, Aug 20, stuck in it: "There's no
+ * separation. There's only a separation on what's being sold. That's it.
+ * Everything under what's being sold, I'm really confused. I don't know what
+ * to do, especially the goals section, the revenue section, and the activity
+ * section").
+ *
+ * "What's being sold" already had a bounded room and read fine; everything
+ * after it was a flat run of controls with nothing saying where one idea
+ * ended and the next began. This is that same room, so the form is four
+ * bounded things instead of one bounded thing and a pile.
+ */
+function FormRoom({
+  icon: Icon,
+  title,
+  hint,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+          <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+        </span>
+        <span className="text-[12.5px] font-bold text-text-primary">{title}</span>
+        <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
+      </div>
+      {hint && <p className="-mt-1 text-[11.5px] text-text-secondary">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
 function SingleOfferingEditor({
   line,
   offerings,
