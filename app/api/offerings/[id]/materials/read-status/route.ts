@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { getOffering } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
-import { loadMaterialText, type MaterialTextEntry } from "@/lib/materialText";
+import {
+  loadMaterialText,
+  saveMaterialText,
+  type MaterialTextEntry,
+} from "@/lib/materialText";
+import { docsStorage } from "@/lib/docsStorage";
 import { isReadableFile } from "@/lib/fileText";
 import { indexStoredMaterialInBackground } from "@/lib/materialIndexing";
 
@@ -52,8 +57,29 @@ export async function POST(
   for (const path of paths) {
     const entry = (index as Record<string, MaterialTextEntry | undefined>)[path];
     const words = entry?.text ? entry.text.match(/\S+/g)?.length ?? 0 : 0;
-    if (words > 0) status[path] = { state: "read", words, bytes: entry?.bytes };
-    else if (entry)
+    if (words > 0) {
+      status[path] = { state: "read", words, bytes: entry?.bytes };
+      /**
+       * ENTRIES FROM BEFORE SIZES EXISTED (Anir, Aug 20: "I only see it on
+       * the future ones. Can you add it to all the current ones?"). The text
+       * is on file but the byte count is not. One HEAD against the stored
+       * object fills it in for good; once per path per container, and a
+       * failure just tries again in some future container.
+       */
+      if (entry && typeof entry.bytes !== "number" && !kicked.has(path)) {
+        kicked.add(path);
+        void (async () => {
+          try {
+            const { presignUrl } = await docsStorage.getDownloadUrl(path);
+            const head = await fetch(presignUrl, { method: "HEAD" });
+            const size = Number(head.headers.get("content-length") || 0);
+            if (size > 0) await saveMaterialText(path, { ...entry, bytes: size });
+          } catch {
+            /* the row simply keeps showing no size */
+          }
+        })();
+      }
+    } else if (entry)
       // An entry with no text is the indexer's RECORDED verdict: it held the
       // bytes, ran extraction and transcription, and found nothing to read.
       status[path] = { state: "no-text", words: 0, bytes: entry.bytes };
