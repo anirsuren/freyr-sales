@@ -211,3 +211,38 @@ export function EvidenceThumb({ file }: { file: { name: string; url: string } })
   );
 }
 
+/**
+ * THE PROOF AS A LINK, NOT AN EMBED (Anir, Aug 20: "let's not put this thing
+ * here. It doesn't make any sense. Don't put the file here. It's so ugly. Just
+ * have a nice link to open it on another page").
+ *
+ * A 260px PDF viewer inside a decision dialog buried the decision: the buttons
+ * sat below a scrolling document, and the document was unreadable at that size
+ * anyway. One row per file, opening full size in its own tab.
+ */
+export function EvidenceLinkRow({
+  file,
+}: {
+  file: { name: string; url: string };
+}) {
+  return (
+    <a
+      href={file.url}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2 transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+    >
+      <FileText
+        size={14}
+        strokeWidth={2}
+        className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+      />
+      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+        {file.name}
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-semibold text-blue-primary">
+        <ExternalLink size={12} strokeWidth={2.2} /> Open
+      </span>
+    </a>
+  );
+}

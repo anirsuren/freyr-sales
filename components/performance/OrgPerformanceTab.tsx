@@ -45,7 +45,9 @@ import {
   entryStatusLabel,
   familyValue,
   goalFamilyActuals,
+  canVerifyEntry,
   fmtAmount,
+  headedGroups,
   hasActuals,
   paceVerdict,
   pctMet,
@@ -1128,6 +1130,20 @@ function GoalRows({
     setVerifying(true);
   };
   /**
+   * MAY THIS READER SIGN THIS OFF (Anir, Aug 20: "why am I able to verify
+   * this? It's letting me verify this... I am the one who did it. I'm not the
+   * owner, right?").
+   *
+   * The server has always refused — a rep pressing Verify got a 403 — but the
+   * button was there to press, which is its own kind of broken: it advertises
+   * a power you do not have and answers with an error. Same question the
+   * server asks, asked before the pill decides whether it is a button.
+   */
+  const canSignOff = (who?: string) =>
+    who
+      ? canVerifyEntry(state, meName, who)
+      : headedGroups(state, meName).length > 0;
+  /**
    * MONEY STAYS IN THE CURRENCY IT WAS SIGNED IN (Anir, Aug 16: "it should be
    * in their original currency, and it can be different for each one").
    *
@@ -1386,6 +1402,7 @@ function GoalRows({
             nothingToVerify={goalFamilyActuals({ actuals }, goal).length === 0}
             onToggle={
               live &&
+              canSignOff() &&
               (goalFamilyActuals({ actuals }, goal).length > 0 || goal.verified)
                 ? () => setVerifying(true)
                 : undefined
@@ -1612,13 +1629,31 @@ function GoalRows({
                                     showed it. A goal that arrives from nobody
                                     is a goal nobody can ask about. */}
                                 {a.assignedBy && (
-                                  <span className="block truncate text-[10.5px] text-text-tertiary">
-                                    {a.assignedBy === "group"
-                                      ? "via their group"
-                                      : `Assigned by ${a.assignedBy}`}
-                                    {a.assignedAt
-                                      ? ` · ${a.assignedAt.slice(0, 10)}`
-                                      : ""}
+                                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] text-text-tertiary">
+                                    {a.assignedBy === "group" ? (
+                                      "via their group"
+                                    ) : (
+                                      <>
+                                        Assigned by
+                                        {/* A NAME COMES WITH A FACE (Anir,
+                                            Aug 20: "wherever you have the
+                                            name, have my profile picture.
+                                            It's not that hard for any
+                                            user"). */}
+                                        <span className="inline-flex items-center gap-1 font-semibold text-text-secondary">
+                                          <Avatar
+                                            name={a.assignedBy}
+                                            className="h-[15px] w-[15px] shrink-0 text-[6px]"
+                                          />
+                                          {a.assignedBy}
+                                        </span>
+                                      </>
+                                    )}
+                                    {a.assignedAt ? (
+                                      <span className="tnum">
+                                        · {a.assignedAt.slice(0, 10)}
+                                      </span>
+                                    ) : null}
                                   </span>
                                 )}
                               </span>
@@ -1683,7 +1718,7 @@ function GoalRows({
                                 verified={a.verified}
                                 size="sm"
                                 onToggle={
-                                  live
+                                  live && canSignOff(a.person)
                                     ? () =>
                                         askVerify({
                                           person: a.person,
@@ -1849,7 +1884,7 @@ function GoalRows({
                             verified={s.verified}
                             size="sm"
                             onToggle={
-                              live
+                              live && canSignOff()
                                 ? () =>
                                     askVerify({
                                       subgoalId: s.id,
@@ -1987,6 +2022,7 @@ function GoalRows({
                                     }
                                     onToggle={
                                       live &&
+                                      canSignOff(p.name) &&
                                       (hasActuals(actuals, {
                                         goalId: goal.id,
                                         subgoalId: s.id,

@@ -19,7 +19,9 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { EvidenceInline } from "./EvidenceViewer";
+import { EvidenceLinkRow } from "./EvidenceViewer";
+import { stamp } from "./EntryCards";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -180,8 +182,8 @@ export function VerifyGoalModal({
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
-            Approving counts the {fmtAmount(goal.unit, waiting)} still waiting
-            below. It all becomes verified money.
+            {fmtAmount(goal.unit, waiting)} below has not been checked yet.
+            Signing off here signs off that too.
           </span>
         </p>
       )}
@@ -205,13 +207,22 @@ export function VerifyGoalModal({
                   <span className="min-w-[7rem] flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                     {a.person}
                   </span>
+                  {/* THE ACCOUNT WEARS ITS MARK, like everywhere else in the
+                      app (Anir, Aug 20: "again, companylogo, time, etc"). */}
                   {a.customer && (
-                    <span className="min-w-0 truncate text-[11.5px] text-text-secondary">
-                      {a.customer}
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <CompanyLogo
+                        name={a.customer}
+                        className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                      />
+                      <span className="min-w-0 truncate text-[11.5px] text-text-secondary">
+                        {a.customer}
+                      </span>
                     </span>
                   )}
                   <span className="shrink-0 text-[11px] text-text-tertiary tnum">
                     {a.date}
+                    {stamp(a.addedAt).time ? ` · ${stamp(a.addedAt).time}` : ""}
                   </span>
                   <b className="shrink-0 text-[13px] text-text-primary tnum">
                     {fmtAmount(goal.unit, a.amount, a.currency)}
@@ -226,7 +237,7 @@ export function VerifyGoalModal({
                   >
                     {locked ? (
                       <>
-                        <CheckCircle2 size={11} strokeWidth={2.4} /> checked
+                        <CheckCircle2 size={11} strokeWidth={2.4} /> verified
                       </>
                     ) : (
                       <>
@@ -246,9 +257,9 @@ export function VerifyGoalModal({
                     a goal off without reading what it rests on is just
                     clicking a button. */}
                 {a.evidence?.length ? (
-                  <div className="mt-1.5 space-y-2 pl-8">
+                  <div className="mt-1.5 space-y-1.5 pl-8">
                     {a.evidence.map((e) => (
-                      <EvidenceInline key={e.url} file={e} height={260} />
+                      <EvidenceLinkRow key={e.url} file={e} />
                     ))}
                   </div>
                 ) : (

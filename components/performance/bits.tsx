@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
@@ -1158,9 +1159,10 @@ export function PersonGoalPanel({
       }),
       value: cell.value,
       pending: cell.pending,
-      // The exact string the tiles use, so one number never appears twice in
-      // two shapes on the same card.
-      caption: fmtAmount(goal.unit, cell.value),
+      // NO CAPTION (Anir, Aug 20: "why are you saying 200k twice"). The bar
+      // already prints its own value label above itself; a caption under it
+      // repeated the same figure in a lighter grey, on the bar AND in its
+      // tooltip. The formatter it needed is the reason the unit is passed in.
     }));
 
   const card = (label: string, value: string, tone?: string) => (
@@ -1242,22 +1244,42 @@ export function PersonGoalPanel({
           </p>
           <ul className="mt-1.5 divide-y divide-border-light">
             {mine.slice(0, 6).map((a) => (
+              /* LEFT-PACKED (Anir, Aug 20: "for latest entries, there's too
+                 much gap here between the left side and the right side, so
+                 that doesn't look good"). The middle column was `flex-1`, so
+                 on a row with no deal name it was an empty span holding the
+                 status pill half a screen away from the money it describes.
+                 The facts sit together now and the pill follows them. */
               <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
                 <span className="w-[74px] shrink-0 text-text-tertiary tnum">
                   {a.date}
                 </span>
-                <span className="font-semibold text-text-primary tnum">
-                  {fmtAmount(goal.unit, a.amount)}
+                <span className="shrink-0 font-semibold text-text-primary tnum">
+                  {fmtAmount(goal.unit, a.amount, a.currency)}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-text-secondary">
-                  {a.dealLabel ?? a.note ?? ""}
-                </span>
+                {/* The account wears its own mark here too. */}
+                {a.customer && (
+                  <span className="flex min-w-0 shrink items-center gap-1.5">
+                    <CompanyLogo
+                      name={a.customer}
+                      className="h-[16px] w-[16px] shrink-0 text-[6px]"
+                    />
+                    <span className="min-w-0 truncate text-text-secondary">
+                      {a.customer}
+                    </span>
+                  </span>
+                )}
+                {(a.dealLabel ?? a.note) && (
+                  <span className="min-w-0 truncate text-text-secondary">
+                    {a.dealLabel ?? a.note}
+                  </span>
+                )}
                 {/* Three states, three colours: signed off is green, sent
                     back is red, waiting on the owner is amber. It used to say
                     "Waiting" for both of the last two. */}
                 <span
                   className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                    "ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
                     entryStatus(a) === "verified"
                       ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
                       : entryStatus(a) === "sent_back"

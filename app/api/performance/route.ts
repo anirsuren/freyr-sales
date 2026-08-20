@@ -34,6 +34,7 @@ import {
   updateSubgoal,
 } from "@/lib/performance";
 import {
+  canVerifyEntry,
   visibleNamesFor,
   type GoalMeasure,
   type GoalUnit,
@@ -240,14 +241,25 @@ export async function POST(req: NextRequest) {
       );
     }
     if (op === "set-verified") {
-      // Verifying is a leadership act: a group head signs off their people,
-      // never themself alone acting as their own referee.
-      const heads = state.groups.some(
-        (g) => g.head.trim().toLowerCase() === me.name.trim().toLowerCase()
-      );
-      if (!heads) {
+      /**
+       * Verifying is a leadership act: a group head signs off THEIR OWN
+       * people, never themself acting as their own referee.
+       *
+       * This used to ask only whether the caller heads SOME group, which let
+       * the head of one team sign off a claim belonging to another team
+       * entirely. Where the request names a person, ask the same question the
+       * per-claim path asks: may I verify THIS person. Where it does not, the
+       * caller must at least head a group that carries the goal.
+       */
+      const target = person.trim();
+      const allowed = target
+        ? canVerifyEntry(state, me.name, target)
+        : state.groups.some(
+            (g) => g.head.trim().toLowerCase() === me.name.trim().toLowerCase()
+          );
+      if (!allowed) {
         return NextResponse.json(
-          { error: "Only group owners, managers and admins verify numbers." },
+          { error: "Only the group owner for this person can verify their numbers." },
           { status: 403 }
         );
       }

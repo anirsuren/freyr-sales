@@ -140,6 +140,40 @@ function smartTitle(text: string): string {
   return cleaned.length > 48 ? cleaned.slice(0, 47).trimEnd() + "…" : cleaned;
 }
 
+/**
+ * The pages this app actually has. A code span naming one of them is turned
+ * into a link; anything else stays literal text, so the agent can never mint a
+ * route that 404s or point at an API endpoint.
+ */
+const APP_ROUTES = new Set([
+  "agent",
+  "offerings",
+  "components",
+  "opportunities",
+  "customers",
+  "contacts",
+  "team",
+  "reports",
+  "performance",
+  "market-intel",
+  "admin",
+  "pipeline",
+  "forecast",
+  "analytics",
+  "activity",
+  "tasks",
+  "sessions",
+  "sequences",
+  "campaigns",
+  "recordings",
+  "voice",
+  "deals",
+  "dashboard",
+  "settings",
+  "notifications",
+  "search",
+]);
+
 // --- lightweight markdown: [link](/path), **bold**, *italic*, `code` + bullets -
 // Links are restricted to internal paths (href must start with "/") so the chat
 // can only ever deep-link inside the app, never to an external URL.
@@ -216,12 +250,39 @@ function renderInline(
           {injectEntities(m[7], entities, `${keyBase}-i${k}`)}
         </em>
       );
-    else if (m[8] != null)
-      nodes.push(
-        <code key={`${keyBase}-${k++}`} className="px-1 py-0.5 rounded bg-border-light text-[13px]">
-          {m[8]}
-        </code>
-      );
+    else if (m[8] != null) {
+      /**
+       * A PATH IN BACKTICKS IS A DOOR (Anir, Aug 20: "you should have the
+       * tags. I should be able to click, and you should be able to have a
+       * link, and it takes me there").
+       *
+       * The agent answers "go to FDL Components (`/components`)" all day, and
+       * every one of those was dead grey text you had to retype into the
+       * address bar. Fixing the PROMPT would only help the next answer; this
+       * fixes every answer, including the ones already on screen. Only paths
+       * whose first segment is a real page in this app become links, so a
+       * `/tmp/foo` or a `/api/...` in a code span stays exactly what it is.
+       */
+      const path = m[8].trim();
+      const head = path.split(/[/?#]/)[1] ?? "";
+      if (/^\/[A-Za-z0-9/_?=&.,%-]*$/.test(path) && APP_ROUTES.has(head)) {
+        nodes.push(
+          <Link
+            key={`${keyBase}-${k++}`}
+            href={path}
+            className="inline-flex items-center rounded bg-blue-light/70 border border-blue-subtle/60 px-1.5 py-0.5 font-semibold text-blue-primary no-underline hover:bg-blue-light hover:border-blue-subtle transition-colors"
+          >
+            {path}
+          </Link>
+        );
+      } else {
+        nodes.push(
+          <code key={`${keyBase}-${k++}`} className="px-1 py-0.5 rounded bg-border-light text-[13px]">
+            {m[8]}
+          </code>
+        );
+      }
+    }
     last = m.index + m[0].length;
   }
   if (last < s.length)
@@ -811,10 +872,31 @@ export function AgentChat({
       });
       setSendingId(id);
 
-      // Never let a slow or hung request freeze the composer — bail after 45s.
+      /**
+       * NEVER KILL AN ANSWER BECAUSE SOMEBODY LOOKED AWAY (Anir, Aug 20: "I
+       * asked a question, I went to another tab, and then I came back, and it
+       * didn't answer me").
+       *
+       * The guard here is for a request that has genuinely hung, so the
+       * composer is not frozen forever. But it was a flat 45s wall clock, and
+       * a real answer with tool use can run longer than that — so switching
+       * tabs for a minute was enough to have the reply shot in the back while
+       * nobody was watching. The countdown now only runs while the tab is
+       * visible: hidden, it keeps re-arming, and the fetch is left alone.
+       */
       const controller = new AbortController();
       requestControllerRef.current = controller;
-      const timer = setTimeout(() => controller.abort(), 45000);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const arm = () => {
+        timer = setTimeout(() => {
+          if (typeof document !== "undefined" && document.hidden) {
+            arm();
+            return;
+          }
+          controller.abort();
+        }, 45000);
+      };
+      arm();
       try {
         // Send the conversation so far so follow-ups ("make it shorter") have context.
         const prior = isNew

@@ -302,7 +302,7 @@ export function StatusPill({
  * a day someone picked, not a moment — have no clock to show and say so by
  * omission rather than by inventing midnight.
  */
-function stamp(iso?: string): { day?: string; time?: string } {
+export function stamp(iso?: string): { day?: string; time?: string } {
   if (!iso) return {};
   const day = iso.slice(0, 10);
   if (iso.length <= 10) return { day };

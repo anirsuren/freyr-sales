@@ -825,95 +825,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     <td className="px-4 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
                           pop-up like the grid"), the rep's mix + headline stats. */}
-                      <HoverCard
-                        side="bottom"
-                        width={420}
-                        content={
-                          <div>
-                            {/* NO IDENTITY HEADER (Anir, Aug 20: "this stuff
-                                is redundant. You already said it above"). The
-                                row you are hovering already shows the face, the
-                                name, the title and the region — repeating them
-                                inside the card spent its top third saying what
-                                the cursor is already pointing at. The card is
-                                the NUMBERS you cannot see in the row. */}
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary tnum">
-                                Quota attainment
-                              </span>
-                              <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
-                                {r.quota > 0 ? `${pct}%` : "No quota"}
-                              </span>
-                            </div>
-                            <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-3">
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: ac }} />
-                            </div>
-                            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Pipeline mix by stage</p>
-                            <div className="flex h-2.5 overflow-hidden rounded-full bg-surface">
-                              {r.stageValues.filter((stage) => stage.value > 0).map((stage) => (
-                                <span key={stage.stage} style={{ width: `${(stage.value / Math.max(r.openValue, 1)) * 100}%`, background: stage.color }} />
-                              ))}
-                            </div>
-                            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                              {r.stageValues.filter((stage) => stage.value > 0).map((stage) => (
-                                <div key={stage.stage} className="flex items-center gap-1.5 text-[10px]">
-                                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.color }} />
-                                  <span className="min-w-0 flex-1 text-text-secondary">{stage.stage}</span>
-                                  <span className="shrink-0 font-semibold text-text-primary tnum">{Math.round((stage.value / Math.max(r.openValue, 1)) * 100)}%</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="mt-2.5"><TripleStat rep={r} /></div>
-
-                            {topOpenDeals(r).length > 0 && (
-                              <div className="mt-3 border-t border-border-light pt-2.5">
-                                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Top open deals</p>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  {topOpenDeals(r).map((d, i) => (
-                                    <div key={`${d.company}-${d.contact}-${i}`} className="flex min-w-0 items-center gap-2 rounded-md bg-surface/55 px-2 py-1.5">
-                                      {/* Company logo AND the contact's face —
-                                          the person was named in text with no
-                                          photo while the account got a mark
-                                          (Anir, Jul 26: "profile pictures,
-                                          hello"). Every person shows a face. */}
-                                      {/* The company logo stands alone; the
-                                          person's face sits WITH their name on
-                                          the line below (Anir, Jul 27: "the
-                                          profile picture of the person needs to
-                                          come next to the name, and then just
-                                          leave the company logo where it is by
-                                          itself"). Overlapping the two marks
-                                          read as one blob and attached the face
-                                          to the wrong label. */}
-                                      <CompanyLogo name={d.company} className="h-[20px] w-[20px] shrink-0 text-[7px]" />
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</span>
-                                        <span className="mt-0.5 flex min-w-0 items-center gap-1">
-                                          <Avatar name={d.contact} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
-                                          <span className="min-w-0 truncate text-[9px] text-text-tertiary">{d.contact}</span>
-                                        </span>
-                                      </span>
-                                      <span className="shrink-0 text-[9.5px] text-text-secondary tnum">{formatMoney(d.value)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="mt-3 border-t border-border-light pt-2.5">
-                              <div className="mb-1 flex items-center justify-between">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Activity · last 10 weeks</p>
-                                <span className="text-[10px] text-text-tertiary tnum">{r.trend.reduce((s, x) => s + x, 0)} touches</span>
-                              </div>
-                              <Sparkline points={r.trend} height={52} interactive={false} />
-                            </div>
-                            <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
-                              View full breakdown →
-                            </p>
-                          </div>
-                        }
-                      >
-                        {/* ONLY THE NAME NAVIGATES (Anir, Aug 17: "when my
+{/* ONLY THE NAME NAVIGATES (Anir, Aug 17: "when my
                             cursor is on the name, that's the only time it
                             should take me to the separate page — otherwise
                             just the dropdown"). Everything else in this cell
@@ -934,13 +846,108 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           )}
                           <span className="min-w-0">
                             <span className="flex items-center gap-2">
-                              <Link
-                                href={`/analytics/reps/${r.slug}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="truncate text-[14px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
-                              >
-                                {r.name}
-                              </Link>
+{/* THE CARD OPENS FROM THE NAME (Anir, Aug 20: "I should only be
+                                  giving me this pop-up if my hover is over the
+                                  name of the person, not the entire row"). It
+                                  used to wrap the whole cell, so brushing past
+                                  the avatar or the title threw a 420px card over
+                                  the table. */}
+                              <HoverCard
+                                    side="bottom"
+                                    width={420}
+                                    content={
+                                      <div>
+                                        {/* NO IDENTITY HEADER (Anir, Aug 20: "this stuff
+                                            is redundant. You already said it above"). The
+                                            row you are hovering already shows the face, the
+                                            name, the title and the region — repeating them
+                                            inside the card spent its top third saying what
+                                            the cursor is already pointing at. The card is
+                                            the NUMBERS you cannot see in the row. */}
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary tnum">
+                                            Quota attainment
+                                          </span>
+                                          <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
+                                            {r.quota > 0 ? `${pct}%` : "No quota"}
+                                          </span>
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-3">
+                                          <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: ac }} />
+                                        </div>
+                                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Pipeline mix by stage</p>
+                                        <div className="flex h-2.5 overflow-hidden rounded-full bg-surface">
+                                          {r.stageValues.filter((stage) => stage.value > 0).map((stage) => (
+                                            <span key={stage.stage} style={{ width: `${(stage.value / Math.max(r.openValue, 1)) * 100}%`, background: stage.color }} />
+                                          ))}
+                                        </div>
+                                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                                          {r.stageValues.filter((stage) => stage.value > 0).map((stage) => (
+                                            <div key={stage.stage} className="flex items-center gap-1.5 text-[10px]">
+                                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.color }} />
+                                              <span className="min-w-0 flex-1 text-text-secondary">{stage.stage}</span>
+                                              <span className="shrink-0 font-semibold text-text-primary tnum">{Math.round((stage.value / Math.max(r.openValue, 1)) * 100)}%</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="mt-2.5"><TripleStat rep={r} /></div>
+
+                                        {topOpenDeals(r).length > 0 && (
+                                          <div className="mt-3 border-t border-border-light pt-2.5">
+                                            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Top open deals</p>
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                              {topOpenDeals(r).map((d, i) => (
+                                                <div key={`${d.company}-${d.contact}-${i}`} className="flex min-w-0 items-center gap-2 rounded-md bg-surface/55 px-2 py-1.5">
+                                                  {/* Company logo AND the contact's face —
+                                                      the person was named in text with no
+                                                      photo while the account got a mark
+                                                      (Anir, Jul 26: "profile pictures,
+                                                      hello"). Every person shows a face. */}
+                                                  {/* The company logo stands alone; the
+                                                      person's face sits WITH their name on
+                                                      the line below (Anir, Jul 27: "the
+                                                      profile picture of the person needs to
+                                                      come next to the name, and then just
+                                                      leave the company logo where it is by
+                                                      itself"). Overlapping the two marks
+                                                      read as one blob and attached the face
+                                                      to the wrong label. */}
+                                                  <CompanyLogo name={d.company} className="h-[20px] w-[20px] shrink-0 text-[7px]" />
+                                                  <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</span>
+                                                    <span className="mt-0.5 flex min-w-0 items-center gap-1">
+                                                      <Avatar name={d.contact} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
+                                                      <span className="min-w-0 truncate text-[9px] text-text-tertiary">{d.contact}</span>
+                                                    </span>
+                                                  </span>
+                                                  <span className="shrink-0 text-[9.5px] text-text-secondary tnum">{formatMoney(d.value)}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div className="mt-3 border-t border-border-light pt-2.5">
+                                          <div className="mb-1 flex items-center justify-between">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Activity · last 10 weeks</p>
+                                            <span className="text-[10px] text-text-tertiary tnum">{r.trend.reduce((s, x) => s + x, 0)} touches</span>
+                                          </div>
+                                          <Sparkline points={r.trend} height={52} interactive={false} />
+                                        </div>
+                                        <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
+                                          View full breakdown →
+                                        </p>
+                                      </div>
+                                    }
+                                  >
+                                  <Link
+                                    href={`/analytics/reps/${r.slug}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="truncate text-[14px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+                                  >
+                                    {r.name}
+                                  </Link>
+                              </HoverCard>
                               <RoleTag role={r.role} size="sm" className="shrink-0" />
                               {/* WHICH ONE AM I (Anir, Aug 13: "can you
                                   highlight who I am? I think that would be
@@ -972,7 +979,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             ) : null}
                           </span>
                         </span>
-                      </HoverCard>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex flex-col gap-1.5">
