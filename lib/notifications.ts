@@ -581,6 +581,11 @@ export function buildNotifications(input: {
     .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
     .slice(0, ROADMAP_ROWS_SHOWN);
   const roadmapRest = roadmapRows.length - roadmapShown.length;
+  const collapsedAllComponents =
+    roadmapRest > 0 &&
+    roadmapRows
+      .slice(roadmapShown.length)
+      .every((r) => (r.href || "").startsWith("/components"));
   if (roadmapRest > 0) {
     roadmapShown.push({
       id: "roadmap-more",
@@ -588,10 +593,16 @@ export function buildNotifications(input: {
       title: "More roadmaps changed",
       body: `${roadmapRest} other offering${roadmapRest === 1 ? "" : "s"} changed their roadmap recently.`,
       subject: `${roadmapRest} more roadmap${roadmapRest === 1 ? "" : "s"} changed`,
-      chip: "Offerings",
-      detail: "Open Offerings to see which ones.",
+      /* Point at the list the collapsed rows actually live on. They are all
+         components far more often than not — an offering roadmap has no editor
+         — and sending somebody to Offerings to find a component change is a
+         dead end. Mixed batches fall back to Offerings, which carries both. */
+      chip: collapsedAllComponents ? "Components" : "Offerings",
+      detail: collapsedAllComponents
+        ? "Open Components to see which ones."
+        : "Open Offerings to see which ones.",
       urgency: "week",
-      href: "/offerings",
+      href: collapsedAllComponents ? "/components" : "/offerings",
       ts: roadmapRows[roadmapShown.length]?.ts ?? new Date(nowMs).toISOString(),
     });
   }
