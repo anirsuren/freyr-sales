@@ -12,7 +12,7 @@ import {
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { MyEntriesCard, VerifyQueueCard } from "./EntryCards";
+import { MyEntriesCard, SentBackCard, VerifyQueueCard } from "./EntryCards";
 import { RoleChip } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -202,6 +202,10 @@ export function PeopleTab({
 
   /** Everyone the server lets you see, plus every group, reachable from the
    *  one search bar in the filter row. */
+  /** The claim the rejected-claims card sent you to, so the table below can
+   *  open it and scroll it into view. */
+  const [focusEntry, setFocusEntry] = useState<string | null>(null);
+
   const jumps = useMemo(
     () => [
       ...names
@@ -227,8 +231,17 @@ export function PeopleTab({
   return (
     <div>
       {/* The verification queue and this person's own entries stay: they are
-          about claims, not goals, and the Org screen has no equivalent. */}
+          about claims, not goals, and the Org screen has no equivalent.
+
+          THE REJECTED ONES GO FIRST, above even the owner's queue: a claim
+          somebody has already refused outranks one nobody has read yet. */}
       <div className="mb-4 space-y-4">
+        <SentBackCard
+          state={state}
+          person={person}
+          isMe={person === meName}
+          onFix={setFocusEntry}
+        />
         <VerifyQueueCard state={state} run={run} meName={meName} busy={false} />
       </div>
 
@@ -290,6 +303,7 @@ export function PeopleTab({
           person={person}
           run={run}
           meName={meName}
+          focusEntryId={focusEntry}
         />
       </div>
     </div>

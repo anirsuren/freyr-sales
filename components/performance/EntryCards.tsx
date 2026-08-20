@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   CalendarCheck2,
   Check,
@@ -546,12 +546,121 @@ function Fact({
  * it and when, the note it came back with, and the proof as thumbnails you
  * click to see full size.
  */
+/**
+ * YOUR REJECTED CLAIMS, AT THE TOP OF THE PAGE (Anir, Aug 20: "it's still not
+ * showing me this at the top... especially if it's sent back, because it needs
+ * my action item").
+ *
+ * A group owner has had a loud amber queue at the top of this screen for a
+ * while. The person on the other end of it had nothing: a rejection lived in a
+ * status column near the bottom of a table called "Logged results", below two
+ * charts, which is a place you find only if you already knew to look. This is
+ * the same idea in red — it is not work waiting its turn, it is work somebody
+ * has already refused.
+ */
+export function SentBackCard({
+  state,
+  person,
+  isMe,
+  onFix,
+}: {
+  state: PerformanceState;
+  person: string;
+  isMe: boolean;
+  onFix: (entryId: string) => void;
+}) {
+  const rejected = state.actuals
+    .filter(
+      (a) =>
+        a.person.trim().toLowerCase() === person.trim().toLowerCase() &&
+        awaitingTheirFix(a)
+    )
+    .sort((a, b) => ((a.sentBackAt ?? "") < (b.sentBackAt ?? "") ? 1 : -1));
+  if (rejected.length === 0) return null;
+  const who = person.split(" ")[0];
+  return (
+    <Card className="relative overflow-hidden border-[rgba(220,38,38,0.5)] p-0">
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
+      />
+      <div className="flex flex-wrap items-center gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-2.5">
+        <AlertCircle
+          size={16}
+          strokeWidth={2.4}
+          aria-hidden="true"
+          className="shrink-0 text-[color:#B02020]"
+        />
+        <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
+          {isMe
+            ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
+            : `Sent back to ${who}. ${rejected.length} waiting on them`}
+        </h3>
+        <span className="text-[12.5px] font-semibold text-text-secondary">
+          {isMe
+            ? "None of it counts toward your goals until you fix it and it is verified."
+            : "None of it counts until they fix it."}
+        </span>
+      </div>
+      <ul className="divide-y divide-border-light">
+        {rejected.map((a) => {
+          const goal = state.goals.find((g) => g.id === a.goalId);
+          return (
+            <li
+              key={a.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3"
+            >
+              <span className="text-[14px] font-bold text-text-primary tnum">
+                {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+              </span>
+              <span className="text-[13px] text-text-secondary">
+                on {goal?.name ?? "a goal"}
+              </span>
+              {/* Who refused it, with their face — the first question anyone
+                  holding a rejection asks. */}
+              {a.sentBackBy && (
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                  <Avatar
+                    name={a.sentBackBy}
+                    className="h-[20px] w-[20px] shrink-0 text-[8px]"
+                  />
+                  {a.sentBackBy}
+                </span>
+              )}
+              {a.sentBackAt && (
+                <span className="text-[11.5px] tnum text-text-tertiary">
+                  {stamp(a.sentBackAt).day}
+                  {stamp(a.sentBackAt).time ? ` at ${stamp(a.sentBackAt).time}` : ""}
+                </span>
+              )}
+              {a.managerNote && (
+                <span className="min-w-0 flex-1 text-[12.5px] text-text-secondary">
+                  <b className="text-text-primary">Their note: </b>
+                  <i>&ldquo;{a.managerNote}&rdquo;</i>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => onFix(a.id)}
+                className="ml-auto shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
+              >
+                {isMe ? "Fix it" : "Open it"}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
 export function MyEntriesCard({
   state,
   person,
   run,
   meName,
   busy = false,
+  focusEntryId = null,
 }: {
   state: PerformanceState;
   person: string;
@@ -559,6 +668,9 @@ export function MyEntriesCard({
   run?: RunOp;
   meName?: string;
   busy?: boolean;
+  /** Open this entry and scroll to it — how the rejected-claims card at the
+   *  top of the page hands you off to the row you have to fix. */
+  focusEntryId?: string | null;
 }) {
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
@@ -571,6 +683,16 @@ export function MyEntriesCard({
   /** Fixing a typo used to mean delete and re-enter, losing the upload. */
   const [editFor, setEditFor] = useState<string | null>(null);
   const [draft, setDraft] = useState({ amount: "", date: "", customer: "" });
+  /** Landing from the rejected-claims card: open that row and bring it into
+   *  view. Without the scroll the card at the top appears to do nothing on a
+   *  long page — the row it opened is two screens down. */
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  useEffect(() => {
+    if (!focusEntryId) return;
+    setOpenRow(focusEntryId);
+    const el = rowRefs.current[focusEntryId];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusEntryId]);
   /**
    * A LOCK NEEDS AN UNDO (bug, Aug 15). Verifying pulls the row out of the
    * queue, and the queue was the only place Send back lived — so a claim
@@ -676,6 +798,9 @@ export function MyEntriesCard({
                          colour"). It was the only one washed in blue; the goal
                          rows open onto plain surface with a blue rail down the
                          left, so this now does too. */
+                      ref={(el) => {
+                        rowRefs.current[a.id] = el;
+                      }}
                       className={cn(
                         "cursor-pointer transition-colors",
                         /* A rejected claim wears its rail whether the row is

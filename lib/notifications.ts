@@ -450,9 +450,11 @@ export function buildNotifications(input: {
         subject: `${amount} on ${goal?.name ?? "a goal"} was sent back`,
         chip: "Needs your fix",
         person: a.sentBackBy || undefined,
+        // The row prints the face and the name itself, so this line carries on
+        // from it rather than saying the name twice.
         detail: a.sentBackBy
-          ? `${a.sentBackBy} sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`
-          : "It does not count toward your goal until you fix it and it is verified.",
+          ? `sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`
+          : `Your group owner sent it back${a.managerNote ? `: "${a.managerNote}"` : ""}. It does not count until you fix it.`,
         urgency: "overdue",
         href: "/performance/people",
         ts: a.sentBackAt || a.addedAt || new Date(nowMs).toISOString(),

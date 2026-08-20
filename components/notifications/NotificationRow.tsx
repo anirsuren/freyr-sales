@@ -1,21 +1,9 @@
-import {
-  Target,
-  Briefcase,
-  CalendarClock,
-  ClipboardCheck,
-  Compass,
-  Flame,
-  PhoneCall,
-  Sparkles,
-  type LucideIcon,
-  Fingerprint,
-} from "lucide-react";
-import type { CSSProperties } from "react";
+import { Briefcase, Compass, Fingerprint, type LucideIcon } from "lucide-react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import type {
   AppNotification,
-  NotificationType,
   NotificationUrgency,
   SetupMark,
 } from "@/lib/notifications";
@@ -37,24 +25,6 @@ import type {
  * between rows — the account — is the thing you read first.
  */
 
-const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> = {
-  // Waiting on you.
-  review: { icon: ClipboardCheck, color: "#0071E3" },
-  // Trouble — burnt orange, the caution token (never amber/yellow).
-  rotting: { icon: Flame, color: "#C2410C" },
-  // A win.
-  signal: { icon: Sparkles, color: "#16A34A" },
-  // A commitment you made.
-  followup: { icon: CalendarClock, color: "#7C3AED" },
-  // A call.
-  voice: { icon: PhoneCall, color: "#0891B2" },
-  // Your own account. Overridden per row by SETUP_META below: the three setup
-  // rows are three different jobs and must not share one glyph.
-  security: { icon: Fingerprint, color: "#6D28D9" },
-  // A goal result needs somebody: blue, the app's "waiting on you" colour.
-  performance: { icon: Target, color: "#0071E3" },
-};
-
 /**
  * The account-setup rows, each with its own icon and colour. All three used to
  * inherit the fingerprint from `security`, so the walkthrough row and the job
@@ -71,18 +41,6 @@ export const SETUP_META: Record<SetupMark, { icon: LucideIcon; color: string }> 
   profile: { icon: Briefcase, color: "#0F766E" },
 };
 
-/**
- * Chip text. Most titles are already short enough to be a chip and stay word
- * for word; only the long ones are shortened, so the wording a rep learned on
- * one surface is the wording they see on the other.
- */
-const CHIP_LABEL: Record<string, string> = {
-  "Set up Touch ID": "Your account",
-  "Pitch awaiting your approval": "Approval needed",
-  "Voice call needs attention": "Call needs attention",
-  "Call analysis is ready": "Call ready",
-};
-
 /** Late is late: an overdue promise turns red wherever it appears. */
 const LATE_RED = "#B02020";
 const TODAY_ORANGE = "#C2410C";
@@ -91,16 +49,6 @@ export function urgencyColor(urgency?: NotificationUrgency): string | null {
   if (urgency === "overdue") return LATE_RED;
   if (urgency === "today") return TODAY_ORANGE;
   return null;
-}
-
-function rowMeta(n: AppNotification): { icon: LucideIcon; color: string } {
-  if (n.mark && SETUP_META[n.mark]) return SETUP_META[n.mark];
-  return TYPE_META[n.type] || TYPE_META.review;
-}
-
-function chipColor(n: AppNotification): string {
-  if (n.type === "followup" && n.urgency === "overdue") return LATE_RED;
-  return rowMeta(n).color;
 }
 
 /**
@@ -150,13 +98,7 @@ export function NotificationRow({
   notification: AppNotification;
   unread?: boolean;
 }) {
-  const Icon = rowMeta(n).icon;
-  const color = chipColor(n);
   const heading = n.subject || n.title;
-  const label = n.chip || CHIP_LABEL[n.title] || n.title;
-  // A chip that repeats the headline is noise, so it is dropped rather than
-  // printed twice. The detail line then takes the full width.
-  const showChip = label.trim().toLowerCase() !== heading.trim().toLowerCase();
   const stampColor = urgencyColor(n.urgency);
 
   return (
@@ -188,19 +130,18 @@ export function NotificationRow({
           )}
         </div>
 
+        {/* THE PERSON, NOT A CATEGORY (Anir, Aug 20: "I need to see who sent
+            it back in the notification. I don't like the tag you have where
+            you say 'needs your fix' or where you say 'your profile.' It
+            doesn't look good. I don't need that"). The chip named the KIND of
+            alert, which the mark on the left already says in colour and icon —
+            so it spent a whole line restating the row while the one fact that
+            actually needed a name went unprinted. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-          {showChip && (
-            <span
-              className="semantic-color-pill inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap"
-              style={
-                {
-                  "--semantic-color": color,
-                  "--semantic-bg": `${color}1A`,
-                } as CSSProperties
-              }
-            >
-              <Icon size={11} strokeWidth={2.4} aria-hidden="true" />
-              {label}
+          {n.person && (
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+              <Avatar name={n.person} className="h-[18px] w-[18px] shrink-0 text-[8px]" />
+              {n.person}
             </span>
           )}
           <span className="min-w-0 text-[12px] text-text-secondary leading-snug break-words">
