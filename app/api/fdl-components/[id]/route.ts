@@ -11,6 +11,8 @@ import {
   type FdlRelease,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
+import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
 
 /**
  * The ONLY shape a feature attachment URL may take: this component's own file
@@ -138,8 +140,14 @@ export async function PATCH(
   }
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const data = sanitize(body, existing);
+  /* A roadmap version is credited to the signed-in person, from the session,
+     never from the body. An unidentified caller edits without minting one
+     rather than crediting the change to nobody. */
+  const me = await getCurrentUser();
+  const savedBy = me.id === GENERIC_USER_IDENTITY.id ? undefined : me.name.trim() || undefined;
+  delete (body as Record<string, unknown>).roadmap_versions;
   const component = await commitOfferingsChange(() =>
-    updateFdlComponent(id, data)
+    updateFdlComponent(id, data, savedBy)
   );
   return NextResponse.json({ component });
 }

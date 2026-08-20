@@ -5,7 +5,11 @@
 // the sales-material artifacts attached to each offering.
 import { getDataMode } from "./dataMode";
 import { createClient } from "@supabase/supabase-js";
-import { nextRoadmapVersions, type RoadmapVersion } from "./roadmapVersions";
+import {
+  nextRoadmapVersions,
+  nextComponentVersions,
+  type RoadmapVersion,
+} from "./roadmapVersions";
 import {
   canonicalMaterialFolder,
   isFixedMaterialFolder,
@@ -235,6 +239,8 @@ export interface FdlComponent {
   type: FdlComponentType;
   releases: FdlRelease[];
   features: FdlFeature[];
+  /** Every change ever made to this component's releases, newest first. */
+  roadmap_versions?: RoadmapVersion[];
 }
 
 export interface OfferingRoadmapModuleRow {
@@ -3072,12 +3078,22 @@ export function createFdlComponent(data: {
 
 export function updateFdlComponent(
   id: string,
-  data: Partial<Omit<FdlComponent, "id">>
+  data: Partial<Omit<FdlComponent, "id">>,
+  /** Who is saving, from the session. Absent for internal rewrites, which then
+   *  leave the history alone rather than crediting a version to nobody. */
+  savedBy?: string
 ): FdlComponent | null {
   const list = fdlList();
   const i = list.findIndex((c) => c.id === id);
   if (i === -1) return null;
-  list[i] = { ...list[i], ...data, id };
+  /* Versioned before the row moves on, from the one place every component
+     edit funnels through. A save that leaves the releases alone mints
+     nothing, so renaming a component never inflates its roadmap history. */
+  const minted =
+    savedBy && data.releases
+      ? nextComponentVersions(list[i], { releases: data.releases }, savedBy)
+      : null;
+  list[i] = { ...list[i], ...data, ...(minted ? { roadmap_versions: minted } : {}), id };
   return list[i];
 }
 

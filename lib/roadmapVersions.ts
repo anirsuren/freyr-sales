@@ -230,3 +230,104 @@ export function nextRoadmapVersions(
      without bound inside a single catalogue row. */
   return [minted, ...history].slice(0, 60);
 }
+
+
+/* ------------------------------------------------------- FDL components */
+
+/**
+ * THE ROADMAP PEOPLE ACTUALLY EDIT.
+ *
+ * The offering-level roadmap has no editor any more — the form's own comment
+ * says it became "an editor for a screen nobody can open". What a human
+ * changes today is an FDL COMPONENT's releases, from the component page, and
+ * that is the roadmap Suren meant when he said every component has its own.
+ * Versioning had to reach it or the request was only half answered.
+ *
+ * Same contract as the offering side: a save that changes nothing mints
+ * nothing, versions never renumber, and the lines say what a person would say.
+ */
+export interface ComponentRelease {
+  id: string;
+  version: string;
+  date?: string;
+  status: "released" | "next";
+  current?: boolean;
+}
+
+export function describeComponentChange(
+  before: ComponentRelease[] = [],
+  after: ComponentRelease[] = []
+): string[] {
+  const changes: string[] = [];
+  const key = (r: ComponentRelease) => (r.version || "").trim().toLowerCase();
+  const prev = new Map(before.map((r) => [key(r), r]));
+  const next = new Map(after.map((r) => [key(r), r]));
+  for (const r of after) {
+    if (!prev.has(key(r)))
+      changes.push(`Added ${r.version || "a version"}${r.date ? ` (${r.date})` : ""}`);
+  }
+  for (const r of before) {
+    if (!next.has(key(r))) changes.push(`Removed ${r.version || "a version"}`);
+  }
+  for (const r of after) {
+    const was = prev.get(key(r));
+    if (!was) continue;
+    const name = r.version || "a version";
+    if (was.version !== r.version) changes.push(`Renamed ${was.version} to ${r.version}`);
+    if ((was.date || "") !== (r.date || "")) {
+      changes.push(
+        was.date && r.date
+          ? `${name} moved from ${was.date} to ${r.date}`
+          : r.date
+            ? `${name} dated ${r.date}`
+            : `${name} lost its date`
+      );
+    }
+    if (was.status !== r.status)
+      changes.push(
+        r.status === "released"
+          ? `${name} marked as released`
+          : `${name} marked as the next release`
+      );
+    /* The version sellers quote today. Moving that mark is the single most
+       consequential edit on this page, so it gets its own sentence. */
+    if (!was.current && r.current) changes.push(`${name} is now the current version`);
+    if (was.current && !r.current) changes.push(`${name} is no longer the current version`);
+  }
+  if (!changes.length && componentRoadmapChanged(before, after))
+    changes.push("Roadmap updated");
+  return changes;
+}
+
+/** Order is not a change: the component page sorts releases before drawing. */
+export function componentRoadmapChanged(
+  before: ComponentRelease[] = [],
+  after: ComponentRelease[] = []
+): boolean {
+  const norm = (rs: ComponentRelease[]) =>
+    stable([...rs].sort((a, b) => (a.version || "").localeCompare(b.version || "")));
+  return norm(before) !== norm(after);
+}
+
+export function nextComponentVersions(
+  before: { releases?: ComponentRelease[]; roadmap_versions?: RoadmapVersion[] },
+  after: { releases?: ComponentRelease[] },
+  savedBy: string
+): RoadmapVersion[] | null {
+  const a = before.releases ?? [];
+  const b = after.releases ?? [];
+  if (!componentRoadmapChanged(a, b)) return null;
+  const history = before.roadmap_versions ?? [];
+  const last = history.reduce((max, v) => Math.max(max, v.version || 0), 0);
+  return [
+    {
+      version: last + 1,
+      savedAt: new Date().toISOString(),
+      savedBy: savedBy.trim() || "Someone",
+      changes: describeComponentChange(a, b),
+      /* Stored in the shared shape so one history component renders both. */
+      releases: JSON.parse(JSON.stringify(b)),
+    },
+    ...history,
+  ].slice(0, 60);
+}
