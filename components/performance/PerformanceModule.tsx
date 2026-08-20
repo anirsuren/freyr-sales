@@ -2835,7 +2835,7 @@ function GoalPopupBody({
       ) : (
         <div className="mt-1.5 space-y-1.5">
           {soloAssignments.map((a) => {
-          const done = actualValue(state.actuals, goal, { person: a.person });
+          const done = actualValue(state.actuals, goal, { person: a.person, rates: state.rates });
           const donePct =
             a.target > 0 ? Math.min(100, Math.round((done / a.target) * 100)) : 0;
           const isOpen = openPerson === a.person;

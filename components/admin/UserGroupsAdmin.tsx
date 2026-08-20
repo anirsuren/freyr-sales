@@ -146,7 +146,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       const parts = goal.componentGoalIds ?? [];
       if (parts.length > 0 && parts.some((id) => present.has(id))) continue;
       target += goal.target || 0;
-      achieved += actualValue(scoped.actuals, goal);
+      achieved += actualValue(scoped.actuals, goal, { rates: scoped.rates });
     }
     const waiting = perf.actuals.filter(
       (a) => inGroup(a.person) && isPending(a)

@@ -55,7 +55,7 @@ export function PerformanceExport({
 
   function exportGoals() {
     const rows = goals.map((g) => {
-      const actual = actualValue(state.actuals, g);
+      const actual = actualValue(state.actuals, g, { rates: state.rates });
       const verified = familyValue(state, g, { verifiedOnly: true });
       const waiting = Math.max(0, actual - verified);
       return [

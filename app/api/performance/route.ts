@@ -545,7 +545,7 @@ export async function POST(req: NextRequest) {
         });
         break;
       case "remove-actual":
-        await removeActual(String(body.actualId ?? ""));
+        await removeActual(String(body.actualId ?? ""), me.name);
         break;
       case "add-group":
         await addGroup({

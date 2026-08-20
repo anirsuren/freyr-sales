@@ -174,8 +174,12 @@ export function VerifyGoalModal({
           </span>
           {goal.target > 0 && (
             <span className="ml-auto text-[11.5px] text-text-tertiary tnum">
+              {/* VERIFIED, not everything logged. This line sat beside a bar
+                  that says "$80K verified, $120K sent back" and announced
+                  "40% there" — counting the rejected money, in the one dialog
+                  whose whole job is deciding what counts. */}
               Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
-              {Math.round(pctMet(total, goal.target))}% there
+              {Math.round(pctMet(verified, goal.target))}% there
             </span>
           )}
         </div>

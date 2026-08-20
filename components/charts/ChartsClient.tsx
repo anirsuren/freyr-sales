@@ -1825,6 +1825,17 @@ export function BarChart({
     // A second, smaller line under the bar's value — e.g. the raw count
     // behind a percentage ("4 of 6"), so the bar shows both at rest.
     caption?: string;
+    /**
+     * PRINT SOMETHING OTHER THAN THE BAR'S HEIGHT.
+     *
+     * The performance bars are drawn to everything LOGGED, hatched above what
+     * is signed off, because the volume is worth seeing. The number over them
+     * is a verdict, and a verdict counts only verified money — otherwise a
+     * goal whose every dollar was rejected announced "100%" while the row
+     * under it said 40% (Anir, Aug 20). Same split the goal rows already use:
+     * the bar shows the claim, the number shows what counts.
+     */
+    valueLabel?: string;
     /** Draws the headline as a bar in the tip instead of spelling it out. */
     tipBar?: {
       done: number;
@@ -2116,7 +2127,7 @@ export function BarChart({
                   color={d.color || VIZ.blue}
                   label={d.label}
                   bar={d.tipBar}
-                  value={`${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
+                  value={d.valueLabel ?? `${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
                   // `tipNote` is the fuller sentence version of `caption` — one
                   // or the other, never both restating the same fact. And when
                   // the bar above already carries the figures, neither: the
@@ -2191,8 +2202,7 @@ export function BarChart({
                   className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 flex-col items-center whitespace-nowrap leading-tight"
                 >
                   <span className="text-[11px] font-semibold text-text-secondary tnum">
-                    {fmt(format, d.value)}
-                    {unit ? ` ${unit}` : ""}
+                    {d.valueLabel ?? `${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
                   </span>
                   {d.caption && (
                     <span className="text-[9.5px] font-medium text-text-tertiary tnum">

@@ -43,7 +43,7 @@ export default async function AdminPage() {
     year: g.year,
     type: g.type,
     target: g.target ?? 0,
-    actual: perf ? actualValue(perf.actuals, g) : 0,
+    actual: perf ? actualValue(perf.actuals, g, { rates: perf.rates }) : 0,
   }));
   const live = getDataMode() === "live";
 

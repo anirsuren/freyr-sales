@@ -345,8 +345,8 @@ export function OrgPerformanceTab({
   /** Sorted for reading, not for storage: worst pace first by default, so the
    *  goals that need somebody land at the top of the table. */
   const sorted = [...shown].sort((a, b) => {
-    const av = actualValue(state.actuals, a);
-    const bv = actualValue(state.actuals, b);
+    const av = actualValue(state.actuals, a, { rates: state.rates });
+    const bv = actualValue(state.actuals, b, { rates: state.rates });
     switch (sortBy) {
       case "name":
         return a.name.localeCompare(b.name);
@@ -387,7 +387,7 @@ export function OrgPerformanceTab({
    */
   const withValue = shown.map((g) => ({
     goal: g,
-    actual: actualValue(state.actuals, g),
+    actual: actualValue(state.actuals, g, { rates: state.rates }),
     // The tile counts the same way the row's badge does: a target is met when
     // the money that COUNTS reaches it.
     verified: familyValue(state, g, { verifiedOnly: true }),
@@ -500,7 +500,7 @@ export function OrgPerformanceTab({
                   });
                 }}
                 data={sorted.map((g) => {
-                  const a = actualValue(state.actuals, g);
+                  const a = actualValue(state.actuals, g, { rates: state.rates });
                   /**
                    * SOLID IS SIGNED OFF, HATCHED IS SOMEBODY'S WORD (Anir,
                    * Aug 15). The bar still reaches everything logged, so it
@@ -517,7 +517,27 @@ export function OrgPerformanceTab({
                   const awaiting = Math.max(0, a - verified);
                   return {
                     label: chartName(g.name),
+                    /**
+                     * THE HEADLINE COUNTS WHAT COUNTS (Anir, Aug 20: "it says
+                     * 'percent met' is at 100%, but that is so misleading...
+                     * it doesn't say 100% green anywhere", and again on his
+                     * rep's page, where this number read 100% while the row
+                     * underneath it read 40%).
+                     *
+                     * It used to be claimed money over target, so a goal whose
+                     * every dollar had been REJECTED still announced a
+                     * percentage as if it were progress. Verified money is the
+                     * same basis as the % Met column, the pace verdict and the
+                     * CSV, so the two numbers on one screen finally agree. The
+                     * bar still reaches everything logged — solid to verified,
+                     * hatched above it — so nothing is hidden, it is just no
+                     * longer counted as achieved.
+                     */
                     value: g.target > 0 ? Math.round(pctMet(a, g.target)) : 0,
+                    valueLabel:
+                      g.target > 0
+                        ? `${Math.round(pctMet(verified, g.target))}%`
+                        : undefined,
                     pending:
                       g.target > 0 && awaiting > 0
                         ? Math.round(pctMet(awaiting, g.target))
@@ -828,6 +848,10 @@ export function OrgPerformanceTab({
               { value: "ahead", label: "Ahead", color: "#0F766E" },
               { value: "ontrack", label: "On track", color: "#0071E3" },
               { value: "lagging", label: "Lagging", color: "#DC2626" },
+              /* The donut counts these and every row wears the chip, but the
+                 filter had no way to ask for them — the one standing you could
+                 see everywhere and select nowhere. Same violet as the chip. */
+              { value: "unscheduled", label: "No schedule", color: "#A855F7" },
               { value: "unset", label: "No target yet", color: "#8AB4E8" },
             ]}
           />
@@ -1164,7 +1188,7 @@ function GoalRows({
 }) {
   /** Which assigned person's numbers are unfolded under their row. */
   const [openPerson, setOpenPerson] = useState<string | null>(null);
-  const actual = actualValue(actuals, goal);
+  const actual = actualValue(actuals, goal, { rates: state.rates });
   /**
    * WHAT ACTUALLY COUNTS (Anir, Aug 20: "it says 'percent met' is at 100%, but
    * that is so misleading... when I click on the columns and tables, it
@@ -1226,7 +1250,7 @@ function GoalRows({
   const money = (v: number, from?: CurrencyCode) => fmtAmount(goal.unit, v, from);
   const periodDelta =
     goal.measure === "total"
-      ? actualValue(actuals, goal, {}, period)
+      ? actualValue(actuals, goal, { rates: state.rates }, period)
       : null;
 
   const recentLevelEntries =

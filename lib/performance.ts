@@ -1014,11 +1014,39 @@ export async function setRates(input: {
   await writeRow(state);
 }
 
-export async function removeActual(actualId: string): Promise<void> {
+export async function removeActual(
+  actualId: string,
+  /**
+   * WHO IS ASKING (found testing, Aug 20: a rep's POST reached the lookup and
+   * came back "That entry is gone", proving nothing stopped them).
+   *
+   * Every neighbour checks — updateActual, verifyActual, sendBackActual — and
+   * this one took an id and deleted it. The row only offers Delete on your own
+   * unlocked claim, so the screen behaved and the server trusted the screen,
+   * while entry ids travel to every browser in the page payload. Two things
+   * that let in: deleting a colleague's result, and deleting a rejection
+   * instead of fixing it, which erases the record that a manager refused it.
+   *
+   * Optional so the deal path (removeOpportunity sweeping its own linked
+   * claims) keeps working as it always has: that caller has already proved it
+   * owns the deal those claims hang off.
+   */
+  by?: string
+): Promise<void> {
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === actualId);
   // Same rule: an entry that is not there cannot be deleted successfully.
   if (!entry) throw new Error("That entry is gone. Refresh and retry.");
+  if (by) {
+    // Word for word the rule updateActual uses: yours to drop, or your group
+    // owner's to drop on your behalf.
+    const mine =
+      entry.person.trim().toLowerCase() === by.trim().toLowerCase() ||
+      entry.addedBy.trim().toLowerCase() === by.trim().toLowerCase();
+    if (!mine && !canVerifyEntry(state, by, entry.person)) {
+      throw new Error("Only the person who logged this, or their group owner, can delete it.");
+    }
+  }
   if ((entry.status ?? "verified") === "verified" && entry.verifiedBy) {
     // Verified means LOCKED (Suren, Aug 13: "once she verifies and then locks
     // it, that's all"). The group owner sends it back first if it is wrong.

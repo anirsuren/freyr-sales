@@ -1903,7 +1903,7 @@ export function ClaimReviewDialog({
                 the odd one out, which is exactly why the two read as
                 unrelated screens. Same bar, same words, same order. */}
             {goal && goal.target > 0 && (() => {
-              const signed = actualValue(state.actuals, goal, {}, undefined);
+              const signed = actualValue(state.actuals, goal, { rates: state.rates }, undefined);
               const donePct = Math.min(100, Math.round((signed / goal.target) * 100));
               const thisPct = Math.min(100, Math.round((a.amount / goal.target) * 100));
               return (

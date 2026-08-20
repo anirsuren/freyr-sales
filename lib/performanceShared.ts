@@ -377,10 +377,38 @@ type ActualFilter = {
  * (ratios, averages) report the latest entry instead — summing a win rate
  * would be a lie.
  */
+/**
+ * ONE GOAL'S MONEY, IN ONE CURRENCY.
+ *
+ * The totals were `total += a.amount` with no idea what those amounts were
+ * denominated in, so a EUR 500,000 result and a USD 500,000 result on the same
+ * goal added up to "€1M" and the goal declared itself 100% met. That is not
+ * hypothetical: settling a Met deal stamps the DEAL's currency onto the claim,
+ * so one euro deal against a dollar goal is all it takes.
+ *
+ * An entry with no code is in the goal's own money, as it always was. A
+ * foreign entry converts at the admin's rate. With no rate on file there is
+ * nothing honest to convert with, so it counts as recorded — exactly today's
+ * behaviour, and money never vanishes out of a total.
+ */
+function inGoalCurrency(
+  entry: Pick<PerfActual, "amount" | "currency">,
+  goalCurrency: CurrencyCode | undefined,
+  rates: CurrencyRates | undefined
+): number {
+  const to = goalCurrency ?? BASE_CURRENCY;
+  const from = entry.currency ?? to;
+  if (from === to) return entry.amount;
+  const converted = convert(entry.amount, from, to, rates ?? { [BASE_CURRENCY]: 1 });
+  return converted.exact ? converted.value : entry.amount;
+}
+
 export function actualValue(
   actuals: PerfActual[],
-  goal: Pick<PrimaryGoal, "id" | "measure" | "componentGoalIds">,
-  filter: ActualFilter = {},
+  goal: Pick<PrimaryGoal, "id" | "measure" | "componentGoalIds" | "currency">,
+  /** `rates` rides in the options so a caller holding the state can hand over
+   *  the admin's FX table without every call growing placeholder arguments. */
+  filter: ActualFilter & { rates?: CurrencyRates } = {},
   period?: PeriodKey,
   now = new Date()
 ): number {
@@ -410,7 +438,7 @@ export function actualValue(
         latest = a;
       }
     } else {
-      total += a.amount;
+      total += inGoalCurrency(a, goal.currency, filter.rates);
     }
   }
   return goal.measure === "level" ? (latest?.amount ?? 0) : total;
@@ -849,8 +877,8 @@ export type ValueFilter = {
  * filter. Verified is what counts; reported is shown as pending.
  */
 export function familyValue(
-  state: Pick<PerformanceState, "actuals">,
-  goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure">,
+  state: Pick<PerformanceState, "actuals"> & Partial<Pick<PerformanceState, "rates">>,
+  goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure" | "currency">,
   filter: ValueFilter = {}
 ): number {
   let total = 0;
@@ -869,7 +897,7 @@ export function familyValue(
     // rather than vanishing from both sides of the sum.
     if (filter.reportedOnly && status === "verified") continue;
     if (filter.sentBackOnly && status !== "sent_back") continue;
-    total += a.amount;
+    total += inGoalCurrency(a, goal.currency, state.rates);
   }
   return total;
 }
