@@ -29,6 +29,7 @@ import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { downloadMaterialCopy } from "@/components/offerings/materialActions";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
@@ -90,64 +91,6 @@ function uploadedAt(material: OfferingMaterial): string | null {
   if (!match) return null;
   const date = new Date(Number(match[1]));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function safeDownloadName(label: string): string {
-  return (
-    label
-      .trim()
-      .replace(/[\\/:*?"<>|]+/g, "-")
-      .replace(/\s+/g, " ")
-      .slice(0, 120) || "sales-material"
-  );
-}
-
-/**
- * Uploaded assets download their original bytes. Link-only catalogue rows do
- * not have bytes in storage, so they download a small portable HTML shortcut
- * instead of silently losing the download action.
- */
-function downloadMaterialCopy(material: OfferingMaterial): void {
-  if (material.docsPath) {
-    window.location.href = material.url;
-    return;
-  }
-  let source: URL;
-  try {
-    source = new URL(material.url, window.location.origin);
-  } catch {
-    return;
-  }
-  if (source.protocol !== "http:" && source.protocol !== "https:") return;
-  const escapeHtml = (value: string) =>
-    value.replace(
-      /[&<>"']/g,
-      (character) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[character] || character
-    );
-  const title = escapeHtml(material.label);
-  const href = escapeHtml(source.toString());
-  const blob = new Blob(
-    [
-      "<!doctype html><html><head><meta charset=\"utf-8\">",
-      `<meta http-equiv=\"refresh\" content=\"0;url=${href}\">`,
-      `<title>${title}</title></head><body>`,
-      `<p>Opening <a href=\"${href}\">${title}</a>…</p></body></html>`,
-    ],
-    { type: "text/html;charset=utf-8" }
-  );
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = objectUrl;
-  anchor.download = `${safeDownloadName(material.label)}.html`;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
 
 // A colour + icon tag pill (standing rule: never flat gray, never bare text).

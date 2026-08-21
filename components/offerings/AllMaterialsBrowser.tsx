@@ -2,7 +2,23 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, FolderOpen, X } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowUpRight,
+  Clock3,
+  Download,
+  ExternalLink,
+  FolderOpen,
+  Layers as SortLayers,
+  X,
+} from "lucide-react";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { Tooltip } from "@/components/ui/Tooltip";
+import {
+  downloadMaterialCopy,
+  isUploadedMaterial,
+  openMaterial,
+} from "@/components/offerings/materialActions";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -49,6 +65,7 @@ export function AllMaterialsBrowser({
   const [folders, setFolders] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
+  const [sort, setSort] = useState("offering");
 
   const offeringOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -94,6 +111,32 @@ export function AllMaterialsBrowser({
     });
   }, [rows, query, offerings, folders, stages, levels]);
 
+  const ordered = useMemo(() => {
+    const arr = [...visible];
+    const at = (row: MaterialRow) =>
+      Date.parse(row.material.addedAt || "") || 0;
+    if (sort === "name")
+      arr.sort((a, b) => a.material.label.localeCompare(b.material.label));
+    else if (sort === "folder")
+      arr.sort(
+        (a, b) =>
+          canonicalMaterialFolder(a.material).localeCompare(
+            canonicalMaterialFolder(b.material)
+          ) || a.material.label.localeCompare(b.material.label)
+      );
+    else if (sort === "recent") arr.sort((a, b) => at(b) - at(a));
+    else
+      /* "By offering" is the default: this page exists so a rep can see
+         several offerings at once, and grouping by the one they are thinking
+         about is how they read it. */
+      arr.sort(
+        (a, b) =>
+          a.offeringName.localeCompare(b.offeringName) ||
+          a.material.label.localeCompare(b.material.label)
+      );
+    return arr;
+  }, [visible, sort]);
+
   const clearAll = () => {
     setQuery("");
     setOfferings([]);
@@ -110,88 +153,126 @@ export function AllMaterialsBrowser({
 
   return (
     <div className="mt-5">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-white p-2.5">
-        <SearchPriority query={query}>
+      {/* THE SAME TOOLBAR AS OFFERINGS, to the pixel (Anir, Aug 21:
+          "whatever you have here on the offerings page, I like that search
+          bar — the size of it, the filter, the sort. Keep that on the sales
+          materials page, exactly that"). Same wrapper, same search-priority
+          behaviour, same Filter button, same divider before the display
+          cluster on the right. */}
+      <SearchPriority
+        query={query}
+        className="rise-in mb-4 flex flex-nowrap items-center gap-2.5 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <PrioritySearchInput
+            grow
             value={query}
             onChange={setQuery}
             placeholder="Search every material…"
             ariaLabel="Search sales materials"
+            iconSize={16}
+            className="min-w-[200px] flex-1"
+            iconClassName="left-3"
+            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
           />
-        </SearchPriority>
-        <OfferingsFilterMenu
-          onClearAll={clearAll}
-          groups={[
-            {
-              key: "offering",
-              label: "Offering",
-              values: offerings,
-              onChange: setOfferings,
-              options: offeringOptions,
-            },
-            {
-              key: "folder",
-              label: "Folder",
-              values: folders,
-              onChange: setFolders,
-              options: folderOptions,
-            },
-            {
-              key: "stage",
-              label: "Buyer's journey stage",
-              values: stages,
-              onChange: setStages,
-              options: JOURNEY_STAGES.map((stage) => ({
-                value: stage,
-                label: JOURNEY_STAGE_META[stage].label,
-                color: JOURNEY_STAGE_META[stage].color,
-              })),
-            },
-            {
-              key: "level",
-              label: "Who can view it",
-              values: levels,
-              /* A reader who cannot open AI-training files cannot filter for
-                 them either — the same rule the offering's own tab follows. */
-              onChange: setLevels,
-              options: ACCESS_LEVELS.filter(
-                (level) => isAdmin || level !== "agent_only"
-              ).map((level) => ({
-                value: level,
-                label: ACCESS_LEVEL_META[level].label,
-                color: ACCESS_LEVEL_META[level].color,
-              })),
-            },
-          ]}
-        />
-        {anyFilter && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1 rounded-lg px-2.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
-          >
-            <X size={13} strokeWidth={2.4} />
-            Clear
-          </button>
-        )}
-        <span className="ml-auto shrink-0 pr-1 text-[12.5px] text-text-secondary tnum">
-          {visible.length} of {rows.length}
-        </span>
-      </div>
+          <OfferingsFilterMenu
+            onClearAll={clearAll}
+            groups={[
+              {
+                key: "offering",
+                label: "Offering",
+                values: offerings,
+                onChange: setOfferings,
+                options: offeringOptions,
+              },
+              {
+                key: "folder",
+                label: "Folder",
+                values: folders,
+                onChange: setFolders,
+                options: folderOptions,
+              },
+              {
+                key: "stage",
+                label: "Buyer's journey stage",
+                values: stages,
+                onChange: setStages,
+                options: JOURNEY_STAGES.map((stage) => ({
+                  value: stage,
+                  label: JOURNEY_STAGE_META[stage].label,
+                  color: JOURNEY_STAGE_META[stage].color,
+                })),
+              },
+              {
+                key: "level",
+                label: "Who can view it",
+                values: levels,
+                /* A reader who cannot open AI-training files cannot filter for
+                   them either — the same rule the offering's own tab follows. */
+                onChange: setLevels,
+                options: ACCESS_LEVELS.filter(
+                  (level) => isAdmin || level !== "agent_only"
+                ).map((level) => ({
+                  value: level,
+                  label: ACCESS_LEVEL_META[level].label,
+                  color: ACCESS_LEVEL_META[level].color,
+                })),
+              },
+            ]}
+          />
+          {anyFilter && (
+            <button
+              type="button"
+              onClick={clearAll}
+              aria-label="Clear filters"
+              className="inline-flex h-10 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          )}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-border-light pl-2.5">
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+            Sort
+          </span>
+          <ColorSelect
+            value={sort}
+            onChange={setSort}
+            ariaLabel="Sort materials"
+            minWidth={150}
+            dense
+            collapsible={false}
+            className="w-[150px] shrink-0"
+            options={[
+              { value: "offering", label: "By offering", color: "#0071E3", icon: SortLayers },
+              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
+              { value: "recent", label: "Newest first", color: "#C2410C", icon: Clock3 },
+            ]}
+          />
+        </div>
+      </SearchPriority>
+
+      <p className="mb-3 text-[13px] text-text-secondary">
+        Showing <b className="text-text-primary tnum">{visible.length}</b> of{" "}
+        <b className="text-text-primary tnum">{rows.length}</b> materials
+        {anyFilter ? " · filters applied" : ""}
+      </p>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border-light bg-white">
         <table className="w-full min-w-[900px] table-fixed border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-              <th className="w-[30%] px-4 py-2.5">Material</th>
-              <th className="w-[22%] px-4 py-2.5">Offering</th>
+              <th className="w-[28%] px-4 py-2.5">Material</th>
+              <th className="w-[18%] px-4 py-2.5">Offering</th>
               <th className="w-[16%] px-4 py-2.5">Folder</th>
-              <th className="w-[18%] px-4 py-2.5">Stage</th>
-              <th className="w-[14%] px-4 py-2.5">Who can view</th>
+              <th className="w-[16%] px-4 py-2.5">Stage</th>
+              <th className="w-[13%] px-4 py-2.5">Who can view</th>
+              <th className="w-[9%] px-4 py-2.5 text-center">Open</th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => {
+            {ordered.map((row) => {
               const folder = canonicalMaterialFolder(row.material);
               const rowStages = materialJourneyStages(row.material);
               const level = row.material.accessLevel as AccessLevel | undefined;
@@ -201,9 +282,21 @@ export function AllMaterialsBrowser({
                   className="border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]"
                 >
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/offerings/${row.offeringId}#materials`}
-                      className="group/name inline-flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                    {/* THE NAME OPENS THE FILE (Anir, Aug 21: "when I click on
+                        it, it opens. Don't take me to the fucking offering,
+                        that's pointless then"). An uploaded file opens in the
+                        app's own viewer, which renders Word and PowerPoint as
+                        HTML; a pasted link opens where it points. Getting to
+                        the offering is a separate link, in its own column. */}
+                    <button
+                      type="button"
+                      onClick={() => openMaterial(row.offeringId, row.material)}
+                      title={
+                        isUploadedMaterial(row.material)
+                          ? `Open ${row.material.label}`
+                          : `Open the link behind ${row.material.label}`
+                      }
+                      className="group/name inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-left text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                     >
                       <span className="min-w-0 break-words">{row.material.label}</span>
                       <ExternalLink
@@ -211,7 +304,7 @@ export function AllMaterialsBrowser({
                         strokeWidth={2.2}
                         className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover/name:opacity-100"
                       />
-                    </Link>
+                    </button>
                     {row.material.description && (
                       <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
                         {row.material.description}
@@ -221,21 +314,32 @@ export function AllMaterialsBrowser({
                   <td className="px-4 py-3">
                     <Link
                       href={`/offerings/${row.offeringId}`}
-                      className="text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
+                      className="group/off inline-flex min-w-0 items-center gap-1 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
                     >
-                      {row.offeringName}
+                      <span className="min-w-0 break-words">{row.offeringName}</span>
+                      <ArrowUpRight
+                        size={12}
+                        strokeWidth={2.2}
+                        className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover/off:opacity-100"
+                      />
                     </Link>
                   </td>
                   <td className="px-4 py-3">
+                    {/* The folder is the one thing that SHOULD leave: it opens
+                        that folder inside its offering, where the rest of what
+                        is in it lives. */}
                     {folder ? (
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary">
+                      <Link
+                        href={`/offerings/${row.offeringId}?tab=materials&mf=${encodeURIComponent(folder)}`}
+                        className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
+                      >
                         <FolderOpen
                           size={12}
                           strokeWidth={2}
                           className="shrink-0 text-text-tertiary"
                         />
                         {folder}
-                      </span>
+                      </Link>
                     ) : (
                       <span className="text-text-tertiary">-</span>
                     )}
@@ -270,6 +374,42 @@ export function AllMaterialsBrowser({
                     ) : (
                       <span className="text-text-tertiary">-</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
+                      <Tooltip
+                        label={
+                          isUploadedMaterial(row.material) ? "Open preview" : "Open link"
+                        }
+                        side="top"
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Open ${row.material.label}`}
+                          onClick={() => openMaterial(row.offeringId, row.material)}
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                        >
+                          <ExternalLink size={14} strokeWidth={1.9} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip
+                        label={
+                          isUploadedMaterial(row.material)
+                            ? "Download original"
+                            : "Download link shortcut"
+                        }
+                        side="top"
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Download ${row.material.label}`}
+                          onClick={() => downloadMaterialCopy(row.material)}
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                        >
+                          <Download size={14} strokeWidth={1.9} />
+                        </button>
+                      </Tooltip>
+                    </div>
                   </td>
                 </tr>
               );
