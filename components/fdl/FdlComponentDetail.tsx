@@ -17,6 +17,10 @@ import {
   Clock,
   Building2,
   CalendarDays,
+  CalendarClock,
+  CalendarCheck2,
+  CalendarPlus,
+  CalendarX2,
   ChevronRight,
   Download,
   FileText,
@@ -37,6 +41,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { DateField } from "@/components/ui/DateField";
+import { Avatar } from "@/components/ui/Avatar";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   ColorSelect,
@@ -434,25 +439,60 @@ export function FdlComponentDetail({
    * history the app already keeps rather than storing the same fact twice. A
    * version minted before reasons existed simply has none to show.
    */
+  /**
+   * EVERY MOVE OF ONE VERSION'S DATE, as facts rather than sentences.
+   *
+   * The dialog draws these on a rail with a colour and a face (Anir, Aug 21:
+   * "it has to be more of a timeline, and I need colors, I need the profile
+   * picture"), so it needs the direction and the size of each move, not the
+   * English line the bell shows. The lines stay the stored form — one history,
+   * read two ways.
+   *
+   * THE LEADING "V" IS A DISPLAY CHOICE, NOT PART OF THE NAME (found by Anir
+   * on his own data: "I just moved the date. It still says it's been moved
+   * zero times"). Freyr stores these as "3.0.4" while the page prints
+   * "V3.0.4", so both spellings compare with the V stripped.
+   */
   function dateHistory(version: string) {
-    /* THE LEADING "V" IS A DISPLAY CHOICE, NOT PART OF THE NAME (found by
-       Anir on his own data, Aug 21: "I just moved the date. It still says
-       it's been moved zero times").
-       
-       Freyr stores these as "3.0.4" and the change lines are written from the
-       stored string, while the UI prints them through withV() as "V3.0.4".
-       Matching the printed form against the stored form found nothing, so a
-       real move sat in the history and the dialog above it said none had ever
-       happened. Both spellings are compared with the V stripped. */
     const bare = (text: string) => text.trim().toLowerCase().replace(/^v/, "");
     const wanted = bare(version);
-    const out: { at: string; by: string; line: string; reason?: string }[] = [];
-    for (const v of component.roadmap_versions ?? []) {
+    const out: {
+      at: string;
+      by: string;
+      from?: string;
+      to?: string;
+      kind: "later" | "earlier" | "set" | "cleared";
+      reason?: string;
+    }[] = [];
+    /* OLDEST FIRST. roadmap_versions is stored newest-first, which is how the
+       history panel reads, but a drift is measured from the beginning — and
+       reading it the stored way had "3 months earlier than first promised"
+       printed over a date that had in fact slipped two months. The rail
+       reverses it again at the point of drawing, where newest-at-top is the
+       rule (Anir, Aug 19: "Most recent at the top"). */
+    for (const v of [...(component.roadmap_versions ?? [])].reverse()) {
       for (const line of v.changes) {
-        const named = /^(.*?)\s+(moved from|dated|lost its date)\b/i.exec(line);
-        if (!named) continue;
-        if (bare(named[1]) !== wanted) continue;
-        out.push({ at: v.savedAt, by: v.savedBy, line, reason: v.reason });
+        const moved = /^(.*?)\s+moved from (\S+) to (\S+)$/i.exec(line);
+        const dated = /^(.*?)\s+dated (\S+)$/i.exec(line);
+        const cleared = /^(.*?)\s+lost its date$/i.exec(line);
+        const added = /^Added (.*?) \((\S+)\)$/i.exec(line);
+        const hit = moved || dated || cleared || added;
+        if (!hit) continue;
+        if (bare(hit[1]) !== wanted) continue;
+        const stamp = { at: v.savedAt, by: v.savedBy, reason: v.reason };
+        if (moved) {
+          const later = Date.parse(moved[3]) > Date.parse(moved[2]);
+          out.push({
+            ...stamp,
+            from: moved[2],
+            to: moved[3],
+            kind: later ? "later" : "earlier",
+          });
+        } else if (cleared) {
+          out.push({ ...stamp, kind: "cleared" });
+        } else {
+          out.push({ ...stamp, to: (dated || added)![2], kind: "set" });
+        }
       }
     }
     return out;
@@ -3353,6 +3393,59 @@ function UploadProgressRows({
   );
 }
 
+/** One recorded move of one version's date. */
+type DateMove = {
+  at: string;
+  by: string;
+  from?: string;
+  to?: string;
+  kind: "later" | "earlier" | "set" | "cleared";
+  reason?: string;
+};
+
+/**
+ * A COLOUR PER DIRECTION (Anir, Aug 21: "I need colors").
+ *
+ * These are the app's status colours doing status work, not decoration: a
+ * date that moved LATER is the thing sales has to go and re-tell a customer,
+ * a date that came IN is good news, and setting or clearing one is neither.
+ * Red and green mean here exactly what they mean everywhere else in Freyr.
+ */
+const MOVE_META = {
+  later: { color: "#DC2626", word: "later", Icon: CalendarClock },
+  earlier: { color: "#16A34A", word: "earlier", Icon: CalendarCheck2 },
+  set: { color: "#0071E3", word: "set", Icon: CalendarPlus },
+  cleared: { color: "#8E98A8", word: "removed", Icon: CalendarX2 },
+} as const;
+
+/** "3 days", "2 weeks", "5 months" — the size of a move, said the short way. */
+function gapWords(from: string, to: string): string {
+  const days = Math.abs(
+    Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000)
+  );
+  if (days < 14) return `${days} ${days === 1 ? "day" : "days"}`;
+  if (days < 60) {
+    const weeks = Math.round(days / 7);
+    return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+  }
+  const months = Math.round(days / 30);
+  return `${months} ${months === 1 ? "month" : "months"}`;
+}
+
+/**
+ * HOW FAR IT HAS DRIFTED IN TOTAL — the first date anybody was told, against
+ * where it stands now. A list of moves makes a reader do this arithmetic
+ * themselves, and this is the number the question was always about.
+ */
+function totalDrift(history: DateMove[]): { text: string; later: boolean } | null {
+  const first = history.find((m) => m.from || m.to);
+  const last = [...history].reverse().find((m) => m.to);
+  const start = first?.from || first?.to;
+  const end = last?.to;
+  if (!start || !end || start === end) return null;
+  return { text: gapWords(start, end), later: Date.parse(end) > Date.parse(start) };
+}
+
 /**
  * THE DATE CHIP, AND THE POP-UP BEHIND IT.
  *
@@ -3389,8 +3482,8 @@ function ReleaseDateChip({
   hasDate: boolean;
   versionLabel: string;
   disabled?: boolean;
-  /** Every past move of THIS version's date, newest first. */
-  history: { at: string; by: string; line: string; reason?: string }[];
+  /** Every past move of THIS version's date, oldest first. */
+  history: DateMove[];
   onSave: (next: string, reason: string) => Promise<boolean> | boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -3404,6 +3497,10 @@ function ReleaseDateChip({
     setReason("");
   }, [open, value]);
 
+  /* Only worth saying once there is more than one move: with a single move
+     the total drift IS that move, and printing both said the same fact twice
+     in adjacent lines, which is the thing Anir calls a restatement. */
+  const drift = history.length > 1 ? totalDrift(history) : null;
   const moved = draft !== value;
   // A reason is asked for only when the date actually MOVES. Setting one for
   // the first time has nothing to explain — there was no promise to break.
@@ -3447,8 +3544,12 @@ function ReleaseDateChip({
         onClose={() => setOpen(false)}
         title={`${versionLabel} — expected date`}
         stacked
+        /* ONE SIZE, whatever this version's history happens to be (Anir,
+           Aug 21: "just have a set dimension"). The timeline scrolls inside
+           it rather than stretching the box. */
+        dialogClassName="!h-[min(560px,calc(100vh-3rem))]"
       >
-        <div className="space-y-4">
+        <div className="flex min-h-full flex-col gap-4">
           <div>
             <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
               When is it expected?
@@ -3501,38 +3602,98 @@ function ReleaseDateChip({
           </div>
 
           <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-              This date has moved {history.length === 1 ? "once" : `${history.length} times`}
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+              {history.length === 0
+                ? "Never moved"
+                : history.length === 1
+                  ? "Moved once"
+                  : `Moved ${history.length} times`}
             </p>
+            {/* THE ONE NUMBER THE QUESTION IS ABOUT. Six weeks later somebody
+                asks "how far has this slipped?", and counting it off a list of
+                moves is the work this line saves them. Its own line, in
+                sentence case: inside the uppercase eyebrow it read as
+                shouting, and lost the word that carries the meaning. */}
+            {drift && (
+              <p
+                className="mb-2 text-[12.5px] font-semibold"
+                style={{
+                  color: drift.later ? MOVE_META.later.color : MOVE_META.earlier.color,
+                }}
+              >
+                {drift.text} {drift.later ? "later" : "earlier"} than first promised
+              </p>
+            )}
             {history.length === 0 ? (
               <p className="text-[12.5px] text-text-secondary">
-                Never moved since it was set.
+                Nobody has changed this date since it was set.
               </p>
             ) : (
-              <ul className="max-h-[168px] space-y-2 overflow-y-auto pr-1">
-                {history.map((entry, i) => (
-                  <li
-                    key={`${entry.at}-${i}`}
-                    className="rounded-lg border border-border-light bg-surface px-2.5 py-2"
-                  >
-                    <p className="text-[12.5px] font-medium text-text-primary">
-                      {entry.line}
-                    </p>
-                    <p className="mt-0.5 text-[11.5px] text-text-tertiary">
-                      {entry.by} · {formatDate(entry.at.slice(0, 10))}
-                    </p>
-                    {entry.reason && (
-                      <p className="mt-1 text-[12px] italic text-text-secondary">
-                        &ldquo;{entry.reason}&rdquo;
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              /* NEWEST AT THE TOP (Anir, Aug 19: "Most recent at the top"),
+                 on the same rail every other timeline in this app draws:
+                 a coloured disc per step, joined by a line. */
+              <ol className="max-h-[210px] overflow-y-auto pr-1">
+                {[...history].reverse().map((move, i, all) => {
+                  const meta = MOVE_META[move.kind];
+                  const MoveIcon = meta.Icon;
+                  return (
+                    <li key={`${move.at}-${i}`} className="flex gap-2.5">
+                      <span className="flex flex-col items-center">
+                        <span
+                          className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full"
+                          style={{ background: `${meta.color}1F`, color: meta.color }}
+                        >
+                          <MoveIcon size={12.5} strokeWidth={2.5} />
+                        </span>
+                        {i < all.length - 1 && (
+                          <span className="w-[2px] flex-1 bg-[color:var(--border-light)]" />
+                        )}
+                      </span>
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 pb-3 pt-0.5",
+                          i === all.length - 1 && "pb-0"
+                        )}
+                      >
+                        <span
+                          className="block text-[12.5px] font-semibold"
+                          style={{ color: meta.color }}
+                        >
+                          {move.kind === "cleared"
+                            ? "Date removed"
+                            : move.kind === "set"
+                              ? `Set to ${formatDate(move.to as string)}`
+                              : `${gapWords(move.from as string, move.to as string)} ${meta.word}`}
+                        </span>
+                        {move.from && move.to && (
+                          <span className="block text-[11.5px] text-text-secondary tnum">
+                            {formatDate(move.from)} → {formatDate(move.to)}
+                          </span>
+                        )}
+                        {/* A NAME IN THIS APP COMES WITH A FACE (Anir, Aug 19:
+                            "I need profile pictures, bro, when u say my name
+                            or whoever"). */}
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-text-secondary">
+                          <Avatar name={move.by} className="h-4 w-4 text-[7px]" />
+                          {move.by}
+                          <span className="text-text-tertiary">
+                            · {formatDate(move.at.slice(0, 10))}
+                          </span>
+                        </span>
+                        {move.reason && (
+                          <span className="mt-1 block border-l-2 border-border-light pl-2 text-[12px] italic text-text-secondary">
+                            &ldquo;{move.reason}&rdquo;
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-3">
+          <div className="mt-auto flex items-center justify-end gap-2 border-t border-border-light pt-3">
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
