@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  FolderOpen,
   Radar,
   LayoutDashboard,
   CalendarClock,
@@ -190,6 +191,29 @@ export function Sidebar({
     );
   };
 
+  /** An indented child of the item above it, quieter than a top-level row. */
+  const subNavLink = (item: { href: string; label: string; icon: LucideIcon }) => {
+    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onMobileClose}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "ml-[26px] flex items-center gap-2.5 rounded-md border-l-[3px] py-1.5 pl-3 pr-3 text-[13px] transition-colors",
+          active
+            ? "border-blue-primary bg-blue-light font-semibold text-blue-primary"
+            : "border-transparent text-text-secondary hover:bg-surface"
+        )}
+      >
+        <Icon size={16} strokeWidth={1.6} className="shrink-0" />
+        <span className="flex-1">{item.label}</span>
+      </Link>
+    );
+  };
+
   return (
     <aside
       data-tour="sidebar"
@@ -258,7 +282,29 @@ export function Sidebar({
 
       {/* Nav */}
       <nav aria-label="Primary" className="flex-1 px-3 overflow-y-auto">
-        <div className="space-y-0.5">{navItems.map(navLink)}</div>
+        <div className="space-y-0.5">
+          {navItems.map((item) => (
+            <Fragment key={item.href}>
+              {navLink(item)}
+              {/* SALES MATERIALS IS A SUBPAGE OF OFFERINGS (Anir, Aug 21, on
+                  the call, answering the reps' most repeated ask — "is there a
+                  shorter way to reach the sales materials?": "I'll just have
+                  it within Offerings as a subpage. You click Offerings, and
+                  then it'll show a subpage on the sidebar — Sales Materials").
+                  It appears once you are inside Offerings, indented under it,
+                  so the sidebar does not grow a permanent extra row for
+                  everyone who is somewhere else. */}
+              {item.href === "/offerings" &&
+                !collapsed &&
+                isActive(pathname, "/offerings") &&
+                subNavLink({
+                  href: "/offerings/materials",
+                  label: "Sales Materials",
+                  icon: FolderOpen,
+                })}
+            </Fragment>
+          ))}
+        </div>
       </nav>
 
       {/* Footer: settings + profile */}

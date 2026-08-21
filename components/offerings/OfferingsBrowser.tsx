@@ -32,6 +32,7 @@ import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingsFilterMenu } from "@/components/offerings/OfferingsFilterMenu";
+import { ColumnHeaderMenu } from "@/components/offerings/ColumnHeaderMenu";
 import { Building, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { servesMarket } from "@/lib/offeringCatalogue";
@@ -109,7 +110,9 @@ function goToMarketStatus(offering: HydratedOffering): GoToMarketStatus {
 
 // Sort options: also valid ?sort= deep-link values, kept in sync with the
 // rest of the filter bar so a sorted view can be shared/bookmarked.
-const SORTS = ["default", "name", "type", "category", "mapped"];
+/* "mapped" retired with the Most-complete option; owner / materials / gtm are
+   the columns the list view's own headings can sort by (Saras, Aug 21). */
+const SORTS = ["default", "name", "type", "category", "gtm", "owner", "materials"];
 
 export interface HydratedOffering {
   id: string;
@@ -344,6 +347,9 @@ export function OfferingsBrowser({
   const [ownerId, setOwnerId] = useState(initOwner);
   const [gtm, setGtm] = useState(initGtm);
   const [sort, setSort] = useState(initSort);
+  /* Direction belongs to the COLUMN HEADINGS, not to the toolbar's Sort
+     select, which offers one direction per option and always did. */
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   // Tile (cards) vs Grid (compact table). Suren's live-meeting ask.
   const [view, setView] = useState<"tile" | "grid">(initView);
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
@@ -498,6 +504,23 @@ export function OfferingsBrowser({
           a.offering_category.localeCompare(b.offering_category) ||
           a.offering_name.localeCompare(b.offering_name)
       );
+    else if (sort === "owner")
+      arr.sort((a, b) => {
+        const name = (o: HydratedOffering) =>
+          (o.owners || []).find((owner) => owner.status === "owner")?.name ?? "";
+        // Unowned last in ascending order: an empty string would otherwise
+        // sort to the top and bury the rows a rep can act on.
+        const an = name(a);
+        const bn = name(b);
+        if (!an !== !bn) return an ? -1 : 1;
+        return an.localeCompare(bn) || a.offering_name.localeCompare(b.offering_name);
+      });
+    else if (sort === "materials")
+      arr.sort(
+        (a, b) =>
+          b.materials.length - a.materials.length ||
+          a.offering_name.localeCompare(b.offering_name)
+      );
     else if (sort === "gtm") {
       /* Sellable first, then what is coming, then what nobody has decided —
          the order a rep reads a catalogue in, not alphabetical order of the
@@ -526,8 +549,17 @@ export function OfferingsBrowser({
           Number(hasOwner(b)) - Number(hasOwner(a)) ||
           Number(isMapped(b)) - Number(isMapped(a))
       );
-    return arr;
-  }, [filtered, sort]);
+    /* The comparators above are written ascending; a heading asking for Z-A
+       reverses the finished list rather than doubling every comparator. The
+       toolbar select never sets desc, so its behaviour is untouched. */
+    return sortDir === "desc" && sort !== "default" ? arr.reverse() : arr;
+  }, [filtered, sort, sortDir]);
+
+  /** A column heading asked to sort. Same state the toolbar's select drives. */
+  const applyColumnSort = (key: string, dir: "asc" | "desc") => {
+    setSort(key);
+    setSortDir(dir);
+  };
 
   const activeFilters = !!(q || ctId || mktId || otId || catId || status || ownerId || gtm);
   // Market and completeness arrive as self-clearing chips (see the filter bar).
@@ -560,14 +592,6 @@ export function OfferingsBrowser({
       o.materials.length > 0;
     // Suren's change #3: customer type is the primary qualifier. Lead the card
     // with the customer-type families it's for; the offering type moves below.
-    const fams = Array.from(
-      new Set(o.customerTypes.map((c) => c.family as string))
-    );
-    const families = [
-      ...FAMILY_ORDER.filter((f) => fams.includes(f)),
-      ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
-    ];
-    const hasCt = o.customerTypes.length > 0;
     const com = commerce?.[o.id];
     const mixSyncId = `offering-mix-${o.id}`;
     // The commercial mix behind the hover panel. Suren: "for the 'who is using
@@ -654,12 +678,9 @@ export function OfferingsBrowser({
                     competing pills. Up here it names the group before you read
                     the product, in the group's own colour. */}
                 {o.offering_category && (
-                  <p
-                    className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
-                    style={{
-                      color: categoryColorByName[o.offering_category] || "#2563EB",
-                    }}
-                  >
+                  /* Neutral, like the list view's category column (Saras,
+                     Aug 21: "you can remove the colours"). */
+                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
                     <span className="min-w-0 break-words">{o.offering_category}</span>
                   </p>
                 )}
@@ -695,57 +716,12 @@ export function OfferingsBrowser({
                 and at 34 the first avatar overlapped the word (Anir, Aug 9: "the
                 profile picture is literally intersecting"). One column width for
                 all three rows is the whole point of the grid. */}
+            {/* TYPE AND FOR ARE OFF THE TILE (Saras, Aug 21: "in the tile
+                view you had to remove the type and For entirely"). Both are
+                columns in the list view for anybody comparing on them; on a
+                card they were four lines of tagging above the one fact a rep
+                opens a tile for, which is who owns it. */}
             <dl className="grid grid-cols-[54px_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5">
-              <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
-                Type
-              </dt>
-              {/* A PILL, not coloured words (Anir, Aug 15: "where it says
-                  'Freya Fusion', for example, can you put that in a pill
-                  shape?"). It is the same value the table view already shows
-                  as a pill, so the two views now say it the same way. */}
-              <dd className="flex min-w-0">
-                <span
-                  className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
-                  style={
-                    {
-                      "--semantic-color":
-                        typeColorByName[o.offering_type] || "#7C3AED",
-                      "--semantic-bg": `${typeColorByName[o.offering_type] || "#7C3AED"}14`,
-                    } as CSSProperties
-                  }
-                >
-                  <span className="min-w-0 break-words">
-                    {o.offering_type || "Not set"}
-                  </span>
-                </span>
-              </dd>
-
-              <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
-                For
-              </dt>
-              {/* EACH FAMILY IN ITS OWN COLOUR, the same colour the table view
-                  gives it. This line used to paint all five names one flat
-                  teal, which happened to be Medical Devices' colour, so the
-                  card and the table disagreed about what colour a family is
-                  (Anir, Aug 14, with both views side by side). The separators
-                  stay neutral so the names themselves carry the coding. */}
-              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug">
-                <span className="min-w-0 break-words">
-                  {hasCt ? (
-                    families.map((f, index) => (
-                      <span key={f}>
-                        {index > 0 && (
-                          <span className="text-text-tertiary"> · </span>
-                        )}
-                        <span style={{ color: familyColor(f) }}>{f}</span>
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-text-tertiary">Not set</span>
-                  )}
-                </span>
-              </dd>
-
               {/* OWNER IS A THIRD ROW OF THE SAME GRID, not a strip below it.
                   Standing outside the label column, one owner sat inline and
                   two long names wrapped, so no two cards agreed (Anir, Aug 9:
@@ -1407,45 +1383,121 @@ export function OfferingsBrowser({
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
                   {/* px-4 like every other column: the header text must start
                       exactly where the cell text below it starts. */}
-                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
-                  {/* OWNER IS A COLUMN (Saras, Aug 21: "if we can, have a
-                      separate column for owner — currently the owner is
-                      showing up below the name of the offering. You can have a
-                      separate column for them so that it's easier for a rep to
-                      just go through and see which owner owns what"). Stacked
-                      under the name it could only be read one row at a time;
-                      in its own column the eye runs down it. */}
-                  <th className="px-4 py-2.5 w-[14%]">Owner</th>
-                  <th className="px-4 py-2.5 w-[18%]">Category</th>
-                  <th className="px-4 py-2.5 w-[14%]">Type</th>
-                  <th className="px-4 py-2.5 w-[12%]">Availability</th>
-                  <th className="px-4 py-2.5 w-[12%]">Who it&apos;s for</th>
-                  {/* Revenue and Trend are gone (Saras, Aug 21: "let's remove
-                      the revenue column and the trend column, they're not
-                      needed currently"). Both were empty dashes on every real
-                      row — the commercial rollup is mock-only — so they spent
-                      16% of the table saying nothing. */}
-                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
+                  {/* EXCEL'S OWN AFFORDANCE (Saras, Aug 21: "in the list
+                      view, can we just put the filters and sorting in the
+                      title of each column — like how we do it in Excel, where
+                      the header row itself lets you filter or sort. That would
+                      be more familiar for any rep. Only for the list view, for
+                      tile view we can retain it as it is").
+
+                      Same state as the toolbar's Filter button, so a filter
+                      set in one place shows in the other and the two can never
+                      disagree with what is on screen. */}
+                  <th className="px-4 py-2.5 w-[22%]">
+                    <ColumnHeaderMenu
+                      label="Offering"
+                      sortKey="name"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[14%]">
+                    <ColumnHeaderMenu
+                      label="Owner"
+                      sortKey="owner"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                      values={ownerIds}
+                      onValues={(next) => setOwnerId(next.join(","))}
+                      options={[
+                        ...ownerOptions.map((owner) => ({
+                          value: owner.memberId,
+                          label: owner.name,
+                          avatarName: owner.name,
+                        })),
+                        { value: "unassigned", label: "Not assigned", color: "#64748B" },
+                      ]}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[18%]">
+                    <ColumnHeaderMenu
+                      label="Category"
+                      sortKey="category"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                      values={catId ? catId.split(",") : []}
+                      onValues={(next) => setCatId(next.join(","))}
+                      options={offeringCategories.map((c, i) => ({
+                        value: c.id,
+                        label: c.name,
+                        color: FILTER_PALETTE[i % FILTER_PALETTE.length],
+                      }))}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[14%]">
+                    <ColumnHeaderMenu
+                      label="Type"
+                      sortKey="type"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                      values={otId ? otId.split(",") : []}
+                      onValues={(next) => setOtId(next.join(","))}
+                      options={offeringTypes.map((t, i) => ({
+                        value: t.id,
+                        label: t.name,
+                        color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
+                      }))}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[12%]">
+                    <ColumnHeaderMenu
+                      label="Availability"
+                      sortKey="gtm"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                      ascLabel="Sellable first"
+                      descLabel="Undecided first"
+                      values={gtmStatuses}
+                      onValues={(next) => setGtm(next.join(","))}
+                      options={[
+                        { value: "available", label: "Available Now", color: "#059669" },
+                        { value: "coming", label: "Coming Soon", color: "#C2410C" },
+                        { value: "tbd", label: "To Be Decided", color: "#4338CA" },
+                      ]}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[12%]">
+                    <ColumnHeaderMenu
+                      label="Who it's for"
+                      values={ctIds}
+                      onValues={(next) => setCtId(next.join(","))}
+                      options={customerTypes.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                        color: familyColor((c as { family?: string }).family || c.name),
+                      }))}
+                    />
+                  </th>
+                  <th className="px-4 py-2.5 w-[8%]">
+                    <ColumnHeaderMenu
+                      label="Materials"
+                      sortKey="materials"
+                      activeSortKey={sort}
+                      sortDir={sortDir}
+                      onSort={applyColumnSort}
+                      ascLabel="Most first"
+                      descLabel="Fewest first"
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((o) => {
-                  // Grid rows were bare gray text while the tiles were fully
-                  // colour-coded, same data, two moods (Anir, Jul 25: "the
-                  // grid view doesn't have any colors, and it's really dry").
-                  // Colours derive from list order, matching the dropdowns.
-                  const catIndex = offeringCategories.findIndex(
-                    (c) => c.name === o.offering_category
-                  );
-                  const catColor =
-                    catIndex >= 0 ? FILTER_PALETTE[catIndex % FILTER_PALETTE.length] : null;
-                  const typeIndex = offeringTypes.findIndex(
-                    (t) => t.name === o.offering_type
-                  );
-                  const typeColor =
-                    typeIndex >= 0
-                      ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
-                      : null;
                   const fams = Array.from(
                     new Set(o.customerTypes.map((c) => c.family as string))
                   );
@@ -1473,41 +1525,49 @@ export function OfferingsBrowser({
                         </Link>
                       </td>
                       <td className="px-4 py-3">
+                        {/* NAMES, NOT A HUDDLE OF FACES (Saras, Aug 21:
+                            "instead of the icons, let's just keep their names
+                            showing up"). Overlapping avatars answered "how
+                            many" when the column exists to answer "who" — you
+                            had to hover each one to read a name. The face
+                            stays beside the name, because a name in this app
+                            comes with a face (Anir, overruling the ask to drop
+                            them). */}
                         {grantedOwners.length > 0 ? (
-                          <span
-                            className="inline-flex min-w-0 items-center gap-1.5"
-                            aria-label={`Owner: ${grantedOwners.map((owner) => owner.name).join(", ")}`}
-                          >
-                            <PersonFan
-                              avatarClassName="h-5 w-5 text-[7px]"
-                              overlap={-6}
-                              people={grantedOwners.map((owner) => ({
-                                name: owner.name,
-                                role: owner.role || "Owns this offering",
-                                context: o.offering_name,
-                              }))}
-                            />
-                            {grantedOwners.length === 1 && (
-                              <span className="min-w-0 break-words text-[12.5px] text-text-primary">
-                                {grantedOwners[0].name}
-                              </span>
-                            )}
+                          <span className="flex min-w-0 flex-col gap-1">
+                            {grantedOwners.map((owner) => (
+                              <PersonHoverCard
+                                key={owner.memberId || owner.name}
+                                name={owner.name}
+                                role={owner.role || "Owns this offering"}
+                                context={o.offering_name}
+                              >
+                                <span className="hover-yield inline-flex min-w-0 items-center gap-1.5">
+                                  <Avatar
+                                    name={owner.name}
+                                    className="h-5 w-5 shrink-0 text-[7px]"
+                                  />
+                                  <span className="min-w-0 break-words text-[12.5px] text-text-primary">
+                                    {owner.name}
+                                  </span>
+                                </span>
+                              </PersonHoverCard>
+                            ))}
                           </span>
                         ) : (
                           <span className="text-text-tertiary">Not assigned</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {o.offering_category && catColor ? (
-                          <span
-                            className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-snug"
-                            style={
-                              {
-                                "--semantic-color": catColor,
-                                "--semantic-bg": `${catColor}14`,
-                              } as CSSProperties
-                            }
-                          >
+                        {/* PLAIN BLACK (Saras, Aug 21, second pass: "no
+                            colours, no background colours in the category
+                            column and type column — no font colours also,
+                            just black, plain black text"). The first pass kept
+                            the tinted chips; with everything else stripped
+                            they were the only colour left and became the
+                            loudest thing on the row. */}
+                        {o.offering_category ? (
+                          <span className="inline-flex max-w-full items-start text-[12px] leading-snug text-text-primary">
                             {/* COLOUR STAYS, THE GLYPH GOES (Saras, Aug 21:
                                 "remove all the colours here, except the
                                 background colour and the text of the category
@@ -1527,16 +1587,8 @@ export function OfferingsBrowser({
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {o.offering_type && typeColor ? (
-                          <span
-                            className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
-                            style={
-                              {
-                                "--semantic-color": typeColor,
-                                "--semantic-bg": `${typeColor}14`,
-                              } as CSSProperties
-                            }
-                          >
+                        {o.offering_type ? (
+                          <span className="inline-flex max-w-full items-start text-[12px] leading-snug text-text-primary">
                             <span
                               title={o.offering_type}
                               className="line-clamp-2 min-w-0 whitespace-normal break-words"

@@ -1723,7 +1723,7 @@ export function OpportunitiesBrowser({
           /* Fills the fixed-height dialog, so the pinned footer below lands on
              the bottom edge instead of floating halfway up with dead white
              under it when only one room is open. */
-          <div className="flex min-h-full flex-col gap-3.5">
+          <div className="flex min-h-full flex-col gap-3.5 pb-2">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Opportunity name" hint="What this deal is called internally.">
                 <input
@@ -2229,7 +2229,7 @@ export function OpportunitiesBrowser({
                 (Anir, Aug 17: "the save changes button in the bottom right…
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
-            <div className="sticky bottom-0 -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 py-3">
+            <div className="sticky bottom-[-20px] -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 pb-5 pt-3">
               {editing.id && canEdit && live && (
                 <button
                   type="button"
