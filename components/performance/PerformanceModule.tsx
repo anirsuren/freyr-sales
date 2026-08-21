@@ -4096,53 +4096,32 @@ function SubgoalEditorFields({
                   )}
                 </span>
                 {(() => {
-                  // Each person's slice of what this subgoal may spend, drawn
-                  // under their own box — a number alone never says whether
-                  // one person is holding the whole goal.
+                  // ONE PROGRESS BAR IN THIS BOX (Anir, Aug 20: "why are there
+                  // two progress bars… remove the one under the number"). Each
+                  // person's box used to carry its own miniature share bar, so
+                  // a list of two people drew three bars for one number. The
+                  // full-width bar under the list already measures the same
+                  // thing; the input keeps only the orange border that says
+                  // this one person is over the ceiling.
                   const own = parseAmountInput(r.target) ?? 0;
-                  const share =
-                    personCeiling > 0 ? (own / personCeiling) * 100 : 0;
                   const over = personCeiling > 0 && own > personCeiling;
                   return (
-                    <span className="flex w-[110px] shrink-0 flex-col gap-1">
-                      <input
-                        value={r.target}
-                        onChange={(e) =>
-                          setRows(
-                            rows.map((x, xi) =>
-                              xi === i ? { ...x, target: e.target.value } : x
-                            )
+                    <input
+                      value={r.target}
+                      onChange={(e) =>
+                        setRows(
+                          rows.map((x, xi) =>
+                            xi === i ? { ...x, target: e.target.value } : x
                           )
-                        }
-                        placeholder="Target"
-                        aria-label={"Target for " + r.name}
-                        className={cn(
-                          "h-[32px] w-full rounded-lg border bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle",
-                          over ? "border-[color:#C2410C]" : "border-border-light"
-                        )}
-                      />
-                      {own > 0 && personCeiling > 0 && (
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                            <span
-                              className={cn(
-                                "block h-full transition-all",
-                                over ? "bg-[color:#C2410C]" : "bg-blue-primary"
-                              )}
-                              style={{ width: `${Math.min(100, share)}%` }}
-                            />
-                          </span>
-                          <span
-                            className={cn(
-                              "shrink-0 text-[9.5px] font-semibold tnum",
-                              over ? "text-[color:#C2410C]" : "text-text-tertiary"
-                            )}
-                          >
-                            {Math.round(share)}%
-                          </span>
-                        </span>
+                        )
+                      }
+                      placeholder="Target"
+                      aria-label={"Target for " + r.name}
+                      className={cn(
+                        "h-[32px] w-[110px] shrink-0 rounded-lg border bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle",
+                        over ? "border-[color:#C2410C]" : "border-border-light"
                       )}
-                    </span>
+                    />
                   );
                 })()}
                 {confirmDrop === `person:${r.name}` ? (

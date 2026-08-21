@@ -253,6 +253,12 @@ function tipIsLong(items?: TipItem[]): boolean {
 // graph too, I would make it 0.25 seconds. Everything is either 1 second or
 // 0.25 seconds").
 export const CHART_TIP_OPEN_MS = 250;
+// How long after a card closes the chart still counts you as "reading it", so
+// the next bar opens with NO dwell. Bars are hit-tested on the painted bar
+// itself, so hopping to the neighbour always crosses dead space and always
+// fires a close — without this window every hop paid the 250ms dwell again and
+// the card stuttered instead of following the cursor.
+const TIP_SKIP_DELAY_MS = 400;
 
 function useChartHover() {
   const [hover, setHover] = useState<number | null>(null);
@@ -264,6 +270,15 @@ function useChartHover() {
   const [anchor, setAnchor] = useState<ChartAnchor | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Read synchronously inside show()/close(): state is a render behind, and the
+  // whole point is to know RIGHT NOW whether a card is already on screen.
+  const openIndex = useRef<number | null>(null);
+  const closedAt = useRef(0);
+  const setCard = useCallback((next: number | null) => {
+    if (next === null && openIndex.current !== null) closedAt.current = Date.now();
+    openIndex.current = next;
+    setHover((current) => (current === next ? current : next));
+  }, []);
 
   const stopOpening = useCallback(() => {
     if (openTimer.current) {
@@ -293,9 +308,20 @@ function useChartHover() {
     if (at !== undefined) setAnchor(at);
     setActive(index);
     stopOpening();
+    // A card that is ALREADY up switches to the new bar INSTANTLY. The dwell
+    // exists so a card doesn't flash up while you sweep past a chart on your
+    // way somewhere else — it has no business re-running once you're clearly
+    // reading the thing (Anir: "when I'm switching between the left and the
+    // right it kind of glitches… I don't think it's instant"). Without this the
+    // card sat there showing the PREVIOUS bar's numbers for a quarter second
+    // after the cursor had already moved on.
+    if (openIndex.current !== null || Date.now() - closedAt.current < TIP_SKIP_DELAY_MS) {
+      setCard(index);
+      return;
+    }
     openTimer.current = setTimeout(() => {
       openTimer.current = null;
-      setHover((current) => (current === index ? current : index));
+      setCard(index);
     }, CHART_TIP_OPEN_MS);
   }
 
@@ -312,17 +338,17 @@ function useChartHover() {
       // The dot leaves with the cursor either way; only the card lingers.
       setActive(null);
       if (graceMs <= 0) {
-        setHover(null);
+        setCard(null);
         setAnchor(null);
         return;
       }
       closeTimer.current = setTimeout(() => {
         closeTimer.current = null;
-        setHover(null);
+        setCard(null);
         setAnchor(null);
       }, graceMs);
     },
-    [keepOpen, stopOpening]
+    [keepOpen, stopOpening, setCard]
   );
 
   return { hover, active, anchor, show, move, close, keepOpen };
@@ -1025,6 +1051,16 @@ function TipHeader({
      */
     pendingColor?: string;
     caption?: string;
+    /**
+     * WHAT THE BAR IS MADE OF, IN WORDS AND MONEY (Anir, Aug 20: "I want the
+     * details, like whatever you have in the second — put it in the popup").
+     * The month panel on a goal has always split its bar into named bands —
+     * "Verified, counts now $80K" / "Sent back, needs a fix $120K" — while the
+     * chart tip drew the same two-tone bar and left the reader to guess which
+     * colour was which and how much each was worth. Same rows, same order,
+     * same words, so the tip and the panel are the same object.
+     */
+    bands?: { color: string; label: string; value: string; faded?: boolean }[];
   };
 }) {
   return (
@@ -1048,9 +1084,9 @@ function TipHeader({
         </span>
         {bar && (
           <span className="mt-2 block">
-            <span className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            <span className="flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
-                className="block h-full rounded-full"
+                className="block h-full"
                 style={{
                   width: `${Math.max(0, Math.min(100, bar.done))}%`,
                   background: bar.color ?? color ?? VIZ.blue,
@@ -1060,7 +1096,7 @@ function TipHeader({
                   this segment flat, so the card described the chart in a
                   different visual language than the chart. */}
               <span
-                className="unverified-fill-sm block h-full rounded-full"
+                className="unverified-fill-sm block h-full"
                 style={{
                   width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
                   ["--fill" as string]:
@@ -1071,6 +1107,29 @@ function TipHeader({
             {bar.caption && (
               <span className="mt-1 block text-[11px] text-text-secondary tnum">
                 {bar.caption}
+              </span>
+            )}
+            {!!bar.bands?.length && (
+              <span className="mt-2 block space-y-1">
+                {bar.bands.map((band) => (
+                  <span key={band.label} className="flex items-center gap-1.5">
+                    {/* Solid dot, faded for money merely waiting its turn —
+                        the SAME swatch the goal's own month panel draws, since
+                        the point of this block is that the two read as one
+                        thing. Stripes are how a BAR says "not signed off"; at
+                        8px they just muddy the colour. */}
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: band.color, opacity: band.faded ? 0.28 : 1 }}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
+                      {band.label}
+                    </span>
+                    <span className="text-[11px] font-semibold text-text-primary tnum">
+                      {band.value}
+                    </span>
+                  </span>
+                ))}
               </span>
             )}
           </span>
@@ -1861,6 +1920,7 @@ export function BarChart({
     valueLabel?: string;
     /** Draws the headline as a bar in the tip instead of spelling it out. */
     tipBar?: {
+      bands?: { color: string; label: string; value: string; faded?: boolean }[];
       done: number;
       pending?: number;
       color?: string;
@@ -2116,12 +2176,24 @@ export function BarChart({
             role={onBarClick ? "button" : undefined}
             tabIndex={onBarClick ? 0 : undefined}
             aria-label={onBarClick ? `Open ${d.label}` : undefined}
-            onClick={onBarClick ? () => onBarClick(i) : undefined}
+            onClick={
+              onBarClick
+                ? () => {
+                    // The click navigates; the card describing where you WERE
+                    // has no business following you there (Anir, Aug 20: "when
+                    // I click on the bar it scrolls me down, which is fine,
+                    // but then get rid of the pop-up").
+                    closeTip(0);
+                    onBarClick(i);
+                  }
+                : undefined
+            }
             onKeyDown={
               onBarClick
                 ? (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      closeTip(0);
                       onBarClick(i);
                     }
                   }

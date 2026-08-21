@@ -496,11 +496,27 @@ export function OrgPerformanceTab({
                   const g = sorted[i];
                   if (!g) return;
                   if (!openIds.has(g.id)) toggleOpen(g.id);
-                  window.requestAnimationFrame(() => {
-                    document
-                      .querySelector(`[data-goal-row="${g.id}"]`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  });
+                  /* WAIT FOR THE PANEL, THEN PUT THE ROW AT THE TOP (Anir,
+                     Aug 20: "it's not even scrolling me down properly... it's
+                     not scrolling me enough"). The old version measured on the
+                     next frame, before the drill-down had rendered, so it
+                     centred the row as it was while COLLAPSED and everything
+                     the click just opened landed below the fold. Now it waits
+                     for the drawer to exist and parks the row under the search
+                     bar, which gives the panel the whole screen. */
+                  let tries = 0;
+                  const land = () => {
+                    const row = document.querySelector(`[data-goal-row="${g.id}"]`);
+                    const panel = document.querySelector(`[data-goal-drawer="${g.id}"]`);
+                    if (!row || (!panel && tries++ < 40)) {
+                      window.requestAnimationFrame(land);
+                      return;
+                    }
+                    // `block: "start"` plus the row's own scroll-margin, so
+                    // the sticky top bar never parks on top of the goal name.
+                    row.scrollIntoView({ behavior: "smooth", block: "start" });
+                  };
+                  window.requestAnimationFrame(land);
                 }}
                 data={sorted.map((g) => {
                   const a = actualValue(state.actuals, g, { rates: state.rates });
@@ -518,6 +534,10 @@ export function OrgPerformanceTab({
                    */
                   const verified = verifiedValue(state, g);
                   const awaiting = Math.max(0, a - verified);
+                  // The red slice of what's waiting: money a group owner
+                  // REFUSED, which is not the same thing as money nobody has
+                  // got to yet, and the tip has to name both.
+                  const sentBack = familyValue(state, g, { sentBackOnly: true });
                   return {
                     label: chartName(g.name),
                     /**
@@ -601,6 +621,37 @@ export function OrgPerformanceTab({
                           : a > 0
                             ? `${fmtAmount(g.unit, a)} logged, no target set`
                             : "no target yet",
+                      /* SAME BANDS, SAME WORDS, SAME ORDER as the month panel
+                         inside the goal (Anir, Aug 20: "I want the details,
+                         like whatever you have in the second — put it in the
+                         popup"). Signed off first, then the thing somebody has
+                         to act on, then the thing merely waiting its turn. */
+                      bands: [
+                        {
+                          color: ENTRY_COLOR.verified,
+                          label: "Verified, counts now",
+                          value: fmtAmount(g.unit, verified),
+                        },
+                        ...(sentBack > 0
+                          ? [
+                              {
+                                color: ENTRY_COLOR.sent_back,
+                                label: "Sent back, needs a fix",
+                                value: fmtAmount(g.unit, sentBack),
+                              },
+                            ]
+                          : []),
+                        ...(awaiting - sentBack > 0
+                          ? [
+                              {
+                                color: ENTRY_COLOR.reported,
+                                label: "Claimed, not checked yet",
+                                value: fmtAmount(g.unit, awaiting - sentBack),
+                                faded: true,
+                              },
+                            ]
+                          : []),
+                      ],
                     },
                     /**
                      * WHERE THE MONEY CAME FROM, NOT WHAT IT WAS FILED UNDER
@@ -1318,7 +1369,10 @@ function GoalRows({
         data-goal-row={goal.id}
         data-linked={linkedIndex === index ? "true" : undefined}
         className={cn(
-          "cursor-pointer transition-all hover:bg-surface",
+          // A small gap above the row when a chart click scrolls to it —
+          // nothing inside the page scroller is sticky, so every pixel of
+          // headroom here is a pixel the drill-down below doesn't get.
+          "scroll-mt-6 cursor-pointer transition-all hover:bg-surface",
           // The open goal is the subject: a thick rail in its own type colour
           // down the left, a tinted header, and a hard edge above it so the
           // goal before it clearly ends.
@@ -1379,33 +1433,17 @@ function GoalRows({
           </span>
         </td>
         <td className="whitespace-nowrap px-4 py-4">
-          {/* A TARGET YOU CAN CHANGE FROM HERE (Anir, Aug 15: "shouldn't there
-              be an edit button here? If I want to remove or change the target,
-              how do I do that"). Setting one was already a click; changing one
-              meant a trip to the Goal Master. */}
+          {/* JUST THE NUMBER (Anir, Aug 20: "can you remove the edit button
+              next to the target? I think it's useless"). Changing a target was
+              given its own pencil here on Aug 15, but the row's Actions column
+              already carries one that opens the same editor — so this cell was
+              a second door to the same room, sitting on top of the figure the
+              column exists to show. Setting a FIRST target still lives here,
+              because nothing else offers it. */}
           {goal.target > 0 ? (
-            live ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditGoal(goal);
-                }}
-                title={`Change or clear the target on ${goal.name}`}
-                className="group/tg inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1.5 py-1 -mx-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface tnum"
-              >
-                {money(goal.target, goal.currency)}
-                <Pencil
-                  size={12}
-                  strokeWidth={2.2}
-                  className="text-text-tertiary opacity-0 transition-opacity group-hover/tg:opacity-100"
-                />
-              </button>
-            ) : (
-              <span className="text-[13px] font-semibold text-text-primary tnum">
-                {money(goal.target, goal.currency)}
-              </span>
-            )
+            <span className="text-[13px] font-semibold text-text-primary tnum">
+              {money(goal.target, goal.currency)}
+            </span>
           ) : live ? (
             <button
               type="button"
@@ -1624,7 +1662,7 @@ function GoalRows({
         </td>
       </tr>
       {open && (
-        <tr className="!border-t-0">
+        <tr className="!border-t-0" data-goal-drawer={goal.id}>
           {/* No tint and no border on the drill-down (Anir, Aug 15: "there
               are so many lines here... remove the rectangle that houses the
               three cards"). The cards inside carry their own outlines; a box

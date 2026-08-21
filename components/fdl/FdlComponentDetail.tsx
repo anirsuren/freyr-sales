@@ -3289,19 +3289,22 @@ function UploadProgressRows({
 /**
  * THE DATE CHIP THAT ACTUALLY OPENS A CALENDAR.
  *
- * Two things were wrong with the first attempt (Anir, Aug 15: "the fucking
- * button doesn't even work — the set a date"):
+ * Third attempt, and the first one that cannot silently do nothing (Anir,
+ * Aug 21, on production: "i cant edit the date here anywhere so fix it").
  *
- *  1. it lived inside the big row <button>, and an <input> inside a <button>
- *     is invalid HTML: the button swallows the click. The row is no longer one
- *     button, which fixes that half.
- *  2. a transparent <input type="date"> laid over a chip does not open
- *     anything when you click it. Chrome only opens the calendar from the
- *     little indicator glyph, which opacity-0 had just made invisible.
+ *  1. it used to live inside the big row <button>, and an <input> inside a
+ *     <button> is invalid HTML: the button swallowed the click.
+ *  2. then it was a real button calling showPicker() on an sr-only input.
+ *     showPicker throws on an element the browser doesn't consider rendered,
+ *     and the catch only set a fallback flag — so on the machines where it
+ *     threw, clicking the date did NOTHING AT ALL, with no way to tell.
  *
- * So: a real button that calls showPicker() on a hidden input. Where
- * showPicker is missing (older Safari), the input is focused and revealed
- * instead of silently doing nothing, which is the failure this is fixing.
+ * Now the click swaps the chip for a REAL, VISIBLE date input, focused and
+ * ready. showPicker is still attempted, because a native calendar popping
+ * open is the nicest outcome — but it is now decoration on top of an editor
+ * that is already on screen, never the only thing standing between him and
+ * the date. Dates move constantly on a roadmap (Anir, Aug 21: "rule number
+ * one, all the dates are always variable"), so clearing is here too.
  */
 function ReleaseDateChip({
   label,
@@ -3318,55 +3321,89 @@ function ReleaseDateChip({
   disabled?: boolean;
   onPick: (next: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [fallback, setFallback] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
 
-  function open() {
+  useEffect(() => {
+    if (!editing) return;
     const input = inputRef.current;
     if (!input) return;
-    try {
-      // showPicker throws if the input is not visible, hence the fallback.
-      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-      if (!("showPicker" in input)) setFallback(true);
-    } catch {
-      setFallback(true);
-    }
     input.focus();
+    try {
+      // A bonus when the browser allows it. The input is visible either way.
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+    } catch {
+      /* the visible input is the fallback */
+    }
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setEditing(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <span ref={wrapRef} className="inline-flex items-center gap-1">
+        <input
+          ref={inputRef}
+          type="date"
+          aria-label={`Date for ${versionLabel}`}
+          value={value}
+          disabled={disabled}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setEditing(false);
+            if (e.key === "Enter") setEditing(false);
+          }}
+          onChange={(event) => {
+            onPick(event.target.value);
+            if (event.target.value) setEditing(false);
+          }}
+          className="h-[26px] rounded-md border border-blue-subtle bg-white px-1.5 text-[11.5px] text-text-primary outline-none tnum focus:border-blue-primary"
+        />
+        {hasDate && (
+          <button
+            type="button"
+            disabled={disabled}
+            title={`Clear the date on ${versionLabel}`}
+            onClick={() => {
+              onPick("");
+              setEditing(false);
+            }}
+            className="cursor-pointer rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+          >
+            Clear
+          </button>
+        )}
+      </span>
+    );
   }
 
   return (
-    <span className="relative inline-flex items-center">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={open}
-        title={
-          hasDate
-            ? `Change the date on ${versionLabel}`
-            : `Set a date for ${versionLabel}`
-        }
-        className={cn(
-          "inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] tnum transition-colors disabled:opacity-50",
-          hasDate
-            ? "bg-surface text-text-secondary hover:bg-blue-light hover:text-blue-primary"
-            : "border border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
-        )}
-      >
-        <CalendarDays size={11} strokeWidth={2} />
-        {label}
-      </button>
-      <input
-        ref={inputRef}
-        type="date"
-        aria-label={`Date for ${versionLabel}`}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onPick(event.target.value)}
-        className={cn(
-          "absolute left-0 top-full z-20 mt-1 rounded-lg border border-border-light bg-white px-2 py-1 text-[12px] shadow-lg",
-          fallback ? "block" : "sr-only"
-        )}
-      />
-    </span>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => setEditing(true)}
+      title={
+        hasDate
+          ? `Change the date on ${versionLabel}`
+          : `Set a date for ${versionLabel}`
+      }
+      className={cn(
+        /* A BORDER, SO IT READS AS A FIELD (Anir, Aug 21: "oh i see it. but
+           its not clear at all"). The date sat in the same borderless grey
+           chip as "0 features" beside it, so the one thing on the row he can
+           change looked exactly like the one thing he cannot. */
+        "inline-flex cursor-pointer items-center gap-1 rounded-md border bg-white px-1.5 py-0.5 text-[11.5px] tnum transition-colors disabled:opacity-50",
+        hasDate
+          ? "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+          : "border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
+      )}
+    >
+      <CalendarDays size={11} strokeWidth={2} />
+      {label}
+      <Pencil size={9.5} strokeWidth={2.4} className="opacity-45" />
+    </button>
   );
 }
