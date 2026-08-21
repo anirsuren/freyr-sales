@@ -144,7 +144,7 @@ export function ConnectedComponents({
         <div>
           <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
             <Boxes size={16} strokeWidth={2} className="text-blue-primary" />
-            Components in this offering
+            FDL Components in this offering
           </h2>
           <p className="mt-0.5 text-[12.5px] text-text-secondary">
             An offering is a package, these are the software pieces inside it.

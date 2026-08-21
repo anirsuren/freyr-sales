@@ -34,7 +34,11 @@ export default async function MaterialPage({
   if (!offering) notFound();
 
   const currentUser = await getCurrentUser();
-  const visibleOffering = redactAgentOnlyMaterials(offering, currentUser.memberId);
+  const visibleOffering = redactAgentOnlyMaterials(
+    offering,
+    currentUser.memberId,
+    currentUser.role === "admin"
+  );
   const material = visibleOffering.materials.find(
     (item) => item.id === materialId && item.docsPath
   );

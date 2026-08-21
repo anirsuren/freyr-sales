@@ -1,5 +1,6 @@
 import { FolderOpen } from "lucide-react";
 import { MaterialsSection } from "@/components/offerings/MaterialsSection";
+import { MaterialTagGlossary } from "@/components/offerings/MaterialTagGlossary";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import type { Offering } from "@/lib/offerings";
 
@@ -44,6 +45,13 @@ export function OfferingMaterialsTab({
             Seller-ready assets, ordered by the way they are typically used.
           </p>
         </div>
+        {/* THE TAG GLOSSARY, top right (Saras, Aug 21, from the written rep
+            feedback: "they're a bit confused about what the tags mean... I
+            leave that up to your discretion, where you think it will be the
+            easiest and most convenient for them"). Directly above the filters
+            that use these words, and out of the way of anybody who already
+            knows what they mean. */}
+        <MaterialTagGlossary includeAgentOnly={admin} />
         {/* Only an owner can add — a control you cannot use should not look
             available. On an empty offering this is the only way in, so it sits
             in the header rather than inside the (absent) list. */}

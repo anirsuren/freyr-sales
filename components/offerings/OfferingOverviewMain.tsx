@@ -92,6 +92,7 @@ export function OfferingOverviewMain({
   admin,
   canSeeNextVersion = false,
   realMode = false,
+  beforeRelated,
 }: {
   offering: ReturnType<typeof hydrateOffering>;
   report: OfferingReport;
@@ -102,6 +103,8 @@ export function OfferingOverviewMain({
   realMode?: boolean;
   /** Unreleased roadmap versions are gated; sales reps never see them here. */
   canSeeNextVersion?: boolean;
+  /** Sections the page hands down to sit directly above Related offerings. */
+  beforeRelated?: React.ReactNode;
 }) {
   const description =
     o.offering_description ||
@@ -695,6 +698,10 @@ export function OfferingOverviewMain({
         )}
       </section>
       )}
+
+      {/* Slotted in by the page: target segments and markets, which used to
+          live in the right rail. */}
+      {beforeRelated}
 
       {related.length > 0 && (
         <section className="pt-7 border-t-2 border-border-light">

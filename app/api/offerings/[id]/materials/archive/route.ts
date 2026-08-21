@@ -85,7 +85,12 @@ export async function GET(
   const material = offering.materials.find((item) => item.docsPath === path);
   if (
     !material ||
-    !canViewOfferingMaterial(offering, material, actor.userId) ||
+    !canViewOfferingMaterial(
+      offering,
+      material,
+      actor.userId,
+      actor.role === "admin"
+    ) ||
     extensionOf(path) !== "zip"
   )
     return NextResponse.json(

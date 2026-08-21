@@ -29,7 +29,7 @@ import {
   listAssignablePeople,
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
-import { canManageOfferings, isAdmin } from "@/lib/role";
+import { canManageOfferings, getRole, isAdmin } from "@/lib/role";
 import {
   customerFamiliesPresent,
   customerFamilyColor,
@@ -94,7 +94,7 @@ export default async function OfferingDetailPage({
   // Agent-only rows must never be serialized into a non-owner's client tree.
   // Filtering only inside MaterialsSection would hide pixels while leaving the
   // full metadata in the RSC payload.
-  const o = redactAgentOnlyMaterials(hydrated, me.memberId);
+  const o = redactAgentOnlyMaterials(hydrated, me.memberId, me.role === "admin");
 
   /**
    * REPORTS IS BACK, MOCK ONLY. The Aug 4 offering-page rebuild rebuilt the
@@ -263,7 +263,7 @@ export default async function OfferingDetailPage({
           (x) => x.id !== raw.id && x.offering_category === raw.offering_category
         )
         .map((x) => redactUnverifiedOfferingPeople(x, people))
-        .map((x) => redactAgentOnlyMaterials(x, me.memberId))
+        .map((x) => redactAgentOnlyMaterials(x, me.memberId, me.role === "admin"))
     : [];
 
   const isMapped =
@@ -279,6 +279,7 @@ export default async function OfferingDetailPage({
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
   const canSeeNextCustomerVersion = await canViewNextCustomerVersion(o);
+  const role = await getRole();
   const dataMode = getDataMode();
   const commercialActionsEnabled = !isOfferingsOnly(dataMode);
 
@@ -478,7 +479,12 @@ export default async function OfferingDetailPage({
           // offering").
           {
             key: "components",
-            label: `Components (${(o.component_ids ?? []).length})`,
+            /* "FDL Components", not "Components" (Saras, Aug 21: "one or
+               two reps got confused about what components means — can you
+               just rename this to say FDL Components"). It is the name the
+               sidebar and the components page already use; only this tab was
+               still saying the ambiguous half of it. */
+            label: `FDL Components (${(o.component_ids ?? []).length})`,
             href: `/offerings/${o.id}?tab=components`,
           },
           ...(showOfferingCustomers
@@ -582,6 +588,114 @@ export default async function OfferingDetailPage({
             admin={admin}
             canSeeNextVersion={canSeeNextCustomerVersion}
             realMode={dataMode === "live"}
+            /* WHO IT IS FOR AND WHERE IT SELLS ARE MAIN-COLUMN FACTS (Saras,
+               Aug 21: "for any offering, can we move the target segments and
+               also the markets on this side of the page — the main side of the
+               page, above related offerings"). In a 340px rail the families
+               wrapped to a column of stubs; in the main column they get the
+               width they were always drawn for. */
+            beforeRelated={
+              <>
+            {/* Target segments — customer types grouped by family */}
+      <SectionCard title="Target segments" icon={Building2}>
+        {o.customerTypes.length === 0 ? (
+          admin ? (
+            <Link
+              href={`/offerings/${o.id}/edit`}
+              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2} /> Add customer types
+            </Link>
+          ) : (
+            <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+          )
+        ) : (
+          <div className="space-y-2.5">
+            {customerFamiliesPresent(o.customerTypes).map((fam) => {
+              const types = o.customerTypes.filter((c) => c.family === fam);
+              if (types.length === 0) return null; // hide families that don't apply
+              const famColor = familyStyle(fam);
+              return (
+                // Each family is its own tidy block with a colour accent, and
+                // the sizes sit side-by-side — not a tall left-aligned stack
+                // (Suren: "I don't like how they're all stacked on the left").
+                <div
+                  key={fam}
+                  className="rounded-xl border border-border-light bg-surface/30 p-3"
+                  style={{ borderLeft: `3px solid ${famColor}` }}
+                >
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-[0.05em] mb-2"
+                    style={{ color: famColor }}
+                  >
+                    {fam}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {types.map((c) => (
+                      <Tooltip
+                        key={c.id}
+                        label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
+                        side="top"
+                        align="left"
+                      >
+                        <Link
+                          href={`/offerings?type=${c.id}`}
+                          style={{
+                            background: sizeStyle(c.size).bg,
+                            color: sizeStyle(c.size).color,
+                          }}
+                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                        >
+                          {(() => {
+                            const TierIcon = sizeStyle(c.size).icon;
+                            return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
+                          })()}
+                          {c.size}
+                        </Link>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Markets */}
+      <SectionCard title={`Markets (${o.markets.length})`} icon={Globe}>
+        {o.markets.length === 0 ? (
+          admin ? (
+            <Link
+              href={`/offerings/${o.id}/edit`}
+              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2} /> Add markets
+            </Link>
+          ) : (
+            <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+          )
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {o.markets.map((m) => {
+              const st = marketStyle(m.name);
+              return (
+                <Link
+                  key={m.id}
+                  href={`/offerings?market=${m.id}`}
+                  style={{ background: st.bg, color: st.color }}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                >
+                  <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
+                  {m.name}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+              </>
+            }
           />
           {/* ---------------------------------------------------- SIDE rail */}
           {/* `stagger` — the rail's cards lift in one after another, the same
@@ -677,107 +791,14 @@ export default async function OfferingDetailPage({
               </SectionCard>
             )}
 
-            {/* Target segments — customer types grouped by family */}
-            <SectionCard title="Target segments" icon={Building2}>
-              {o.customerTypes.length === 0 ? (
-                admin ? (
-                  <Link
-                    href={`/offerings/${o.id}/edit`}
-                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-                  >
-                    <Plus size={13} strokeWidth={2} /> Add customer types
-                  </Link>
-                ) : (
-                  <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-                )
-              ) : (
-                <div className="space-y-2.5">
-                  {customerFamiliesPresent(o.customerTypes).map((fam) => {
-                    const types = o.customerTypes.filter((c) => c.family === fam);
-                    if (types.length === 0) return null; // hide families that don't apply
-                    const famColor = familyStyle(fam);
-                    return (
-                      // Each family is its own tidy block with a colour accent, and
-                      // the sizes sit side-by-side — not a tall left-aligned stack
-                      // (Suren: "I don't like how they're all stacked on the left").
-                      <div
-                        key={fam}
-                        className="rounded-xl border border-border-light bg-surface/30 p-3"
-                        style={{ borderLeft: `3px solid ${famColor}` }}
-                      >
-                        <p
-                          className="text-[11px] font-semibold uppercase tracking-[0.05em] mb-2"
-                          style={{ color: famColor }}
-                        >
-                          {fam}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {types.map((c) => (
-                            <Tooltip
-                              key={c.id}
-                              label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
-                              side="top"
-                              align="left"
-                            >
-                              <Link
-                                href={`/offerings?type=${c.id}`}
-                                style={{
-                                  background: sizeStyle(c.size).bg,
-                                  color: sizeStyle(c.size).color,
-                                }}
-                                className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
-                              >
-                                {(() => {
-                                  const TierIcon = sizeStyle(c.size).icon;
-                                  return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
-                                })()}
-                                {c.size}
-                              </Link>
-                            </Tooltip>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </SectionCard>
 
-            {/* Markets */}
-            <SectionCard title={`Markets (${o.markets.length})`} icon={Globe}>
-              {o.markets.length === 0 ? (
-                admin ? (
-                  <Link
-                    href={`/offerings/${o.id}/edit`}
-                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-                  >
-                    <Plus size={13} strokeWidth={2} /> Add markets
-                  </Link>
-                ) : (
-                  <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-                )
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {o.markets.map((m) => {
-                    const st = marketStyle(m.name);
-                    return (
-                      <Link
-                        key={m.id}
-                        href={`/offerings?market=${m.id}`}
-                        style={{ background: st.bg, color: st.color }}
-                        className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
-                      >
-                        <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
-                        {m.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </SectionCard>
-
-            {/* Current customers — who already uses it (from the revenue book) */}
-            {report.customers.length > 0 && (
+            {/* NOT FOR REPS (Saras, Aug 21: "let's remove this — we had
+                removed the Customers tab for reps, but they're still able to
+                see this, so this shouldn't be visible to them directly").
+                Hiding the Customers page and then naming its accounts, with
+                revenue, in a rail card was the same data through a side door.
+                Managers and admins still see it. */}
+            {report.customers.length > 0 && role !== "rep" && (
               <SectionCard
                 title={`Current customers (${report.customers.length})`}
                 icon={Building2}

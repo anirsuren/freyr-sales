@@ -631,7 +631,12 @@ export function OfferingsBrowser({
           href={`/offerings/${o.id}`}
           className="h-full"
           summary={
-            <div className="flex flex-col gap-3">
+            /* SMALLER TILES (Saras, Aug 21: "reducing the size of the tile
+               and keeping them slightly smaller"). With the icon and the
+               description gone there was nothing left holding the old height,
+               so the card was mostly padding. Tighter rhythm, one more column
+               on a wide screen, more of the catalogue on one screen. */
+            <div className="flex flex-col gap-2.5">
           {/* Offering name is the primary element (Suren's live-meeting ask,
               the customer-type families move down so they don't compete). */}
           {/* THE TILE IS TEXT NOW (Saras, Aug 21, relaying four or five reps:
@@ -677,7 +682,7 @@ export function OfferingsBrowser({
             )}
           </div>
 
-          <div className="mt-auto pt-3 border-t border-border-light space-y-2">
+          <div className="mt-auto pt-2.5 border-t border-border-light space-y-2">
             {/* TWO ROWS, ALWAYS THE SAME TWO ROWS. These used to be a
                 flex-wrap row of chips, so where a card broke depended on how
                 long its labels happened to be — no two cards in the grid
@@ -1644,7 +1649,7 @@ export function OfferingsBrowser({
                   ({g.items.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
                 {g.items.map((o, i) => renderCard(o, i))}
               </div>
             </div>
@@ -1667,7 +1672,7 @@ export function OfferingsBrowser({
                   ({g.items.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
                 {g.items.map((o, i) => renderCard(o, i))}
               </div>
             </div>
@@ -1676,7 +1681,7 @@ export function OfferingsBrowser({
       ) : (
         <div
           key="tile-view"
-          className="tab-panel grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch"
+          className="tab-panel grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch"
         >
           {sorted.map((o, i) => renderCard(o, i))}
         </div>

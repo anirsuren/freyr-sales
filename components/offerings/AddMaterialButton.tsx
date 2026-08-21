@@ -478,6 +478,24 @@ export function AddMaterialButton({
       return false;
     }
   })();
+  /**
+   * A PROPOSAL HAS TO SAY WHEN IT WENT OUT (Saras, Aug 21, from the rep
+   * feedback: "whenever an offering owner is uploading a file it should also
+   * be mentioned somewhere which month and year that proposal was submitted
+   * in... as soon as they choose the Proposals folder, the description should
+   * become mandatory. There should be a prompt saying 'enter month and year
+   * of proposal submission'. Just for the Proposals folder, not for anything
+   * else").
+   *
+   * A proposal with no date is the one file in the repository nobody can use:
+   * a rep cannot tell whether they are about to send a customer this year's
+   * pricing or 2023's.
+   */
+  const isProposalFolder = (value: string) =>
+    /(^|\/)proposals$/i.test((value || "").trim());
+  const proposalNeedsDate = (value: string, note: string) =>
+    isProposalFolder(value) && !note.trim();
+
   const fileReady = files.every((file) => {
     const key = fileKey(file);
     const override = fileOverrides[key] || {};
@@ -486,7 +504,12 @@ export function AddMaterialButton({
         (override.kind || kind) &&
         (override.folder || folder) &&
         (override.journeyStages || journeyStages).length &&
-        (override.accessLevel || accessLevel)
+        (override.accessLevel || accessLevel) &&
+        /* DIVISION IS REQUIRED NOW (Saras, Aug 21: "let's make this mandatory
+           as well, the division dropdown, because these two say required and
+           this doesn't"). */
+        (override.divisions ?? divisions).length &&
+        !proposalNeedsDate(override.folder || folder, description)
     );
   });
   const linkReady = Boolean(
@@ -496,7 +519,9 @@ export function AddMaterialButton({
       kind &&
       folder &&
       journeyStages.length &&
-      accessLevel
+      accessLevel &&
+      divisions.length &&
+      !proposalNeedsDate(folder, description)
   );
   const canSave = !busy && (files.length ? fileReady : linkReady);
   const folderOptions = allFolders(materials, [
@@ -1223,13 +1248,19 @@ export function AddMaterialButton({
               {/* DIVISION (Suren, Aug 13: "just one more tagging dropdown here,
                   which should say division, and then MPR, MDV, CON"). Multi
                   select for the same reason the journey stage is — "it can be
-                  all three combined". Optional: unlike the two above it does
-                  not block a save, because thousands of existing files have no
-                  division and nobody is going back to tag them. */}
+                  all three combined". Required as of Aug 21 (Saras: "let's
+                  make this mandatory as well, because these two say required
+                  and this doesn't"): a file nobody can attribute to a division
+                  is a file the division filter silently hides. */}
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Division</span>
                 <InfoHint text="Which Freyr division this file is for. Pick any combination." />
+                {!divisions.length && (
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                    Required
+                  </span>
+                )}
               </label>
               <MultiColorSelect
                 values={divisions}
@@ -1271,18 +1302,36 @@ export function AddMaterialButton({
               className="mb-1.5 flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
             >
               Material Description
-              <span className="text-[10px] font-medium normal-case tracking-normal text-text-tertiary">
-                Optional
-              </span>
+              {isProposalFolder(folder) ? (
+                !description.trim() && (
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                    Required
+                  </span>
+                )
+              ) : (
+                <span className="text-[10px] font-medium normal-case tracking-normal text-text-tertiary">
+                  Optional
+                </span>
+              )}
             </label>
             <textarea
               id="material-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              placeholder="One sentence on what this file is for: skip it if the title says enough."
+              placeholder={
+                isProposalFolder(folder)
+                  ? "Enter month and year of proposal submission, e.g. submitted March 2026"
+                  : "One sentence on what this file is for: skip it if the title says enough."
+              }
               className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-[14px] leading-snug text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
             />
+            {isProposalFolder(folder) && (
+              <p className="mt-1.5 text-[11.5px] leading-snug text-text-secondary">
+                Proposals need the month and year they were submitted, so the
+                next rep can tell this year&apos;s pricing from an old one.
+              </p>
+            )}
           </div>
 
           <div>

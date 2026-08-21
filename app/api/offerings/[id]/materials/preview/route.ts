@@ -117,7 +117,12 @@ export async function GET(
       { status: 403 }
     );
   const material = offering.materials.find((m) => m.docsPath === path);
-  if (!material || !canViewOfferingMaterial(offering, material, actor.userId))
+  if (!material || !canViewOfferingMaterial(
+      offering,
+      material,
+      actor.userId,
+      actor.role === "admin"
+    ))
     return NextResponse.json(
       { error: "That file is not on this offering" },
       { status: 404 }

@@ -878,7 +878,14 @@ export function MaterialsSection({
           allIcon={ShieldCheck}
           allColor="#0F766E"
           ariaLabel="Filter by access level"
-          options={ACCESS_LEVELS.map((l) => ({
+          /* A REP CANNOT FILTER FOR WHAT A REP CANNOT SEE (Saras, Aug 21,
+             counting the levels as two, not three: AI-only is "only admins and
+             the offering owner themselves"). Offering a filter that always
+             returns nothing invited exactly the question the glossary is there
+             to avoid. Owners and admins keep all three. */
+          options={ACCESS_LEVELS.filter(
+            (l) => canEdit || l !== "agent_only"
+          ).map((l) => ({
             value: l,
             label: ACCESS_LEVEL_META[l].label,
             color: ACCESS_LEVEL_META[l].color,
