@@ -830,7 +830,7 @@ export function OpportunitiesBrowser({
       }, 150);
       setTimeout(() => setFlashId(null), 2600);
     } catch (error) {
-      toast(error instanceof Error ? error.message : "That didn't save.");
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
     } finally {
       setBusy(false);
     }
@@ -851,7 +851,7 @@ export function OpportunitiesBrowser({
       toast(`${o.name} removed`);
       setConfirmRemove(null);
     } catch (error) {
-      toast(error instanceof Error ? error.message : "That didn't delete.");
+      toast(error instanceof Error ? error.message : "That didn't delete.", "error");
     } finally {
       setBusy(false);
     }
@@ -1504,7 +1504,7 @@ export function OpportunitiesBrowser({
           )}
         >
           <PageToolbar
-            className="mb-0"
+            bare
             query={query}
             onQuery={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
@@ -2609,7 +2609,7 @@ function FutureSection({
         {futures.length > 0 && (
           <div className="border-b border-border-light px-4 pb-3 pt-3">
             <PageToolbar
-              className="mb-0"
+              bare
               query={q}
               onQuery={setQ}
               placeholder="Search future deals, accounts, offerings…"

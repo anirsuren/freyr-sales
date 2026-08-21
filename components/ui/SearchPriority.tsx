@@ -177,15 +177,22 @@ export function PrioritySearchInput({
   const [focused, setFocused] = useState(false);
   const [slot, setSlot] = useState(0);
   /**
-   * Two different questions. `hinting` is "is the box empty, so is there a
-   * placeholder at all" — true even while focused, because the whole point is
-   * that the LONG line never gets rendered and cut off (Anir, Aug 20, looking
-   * at a focused box: "the search bar does not animate", and it was showing
-   * "…offerings, ow"). `rotating` is "should it be swapping right now", which
-   * stops the moment somebody is actually using the box.
+   * CLICK IN AND THE BOX GOES QUIET (Anir, Aug 21: "when I click on the
+   * thing, it doesn't disappear — the text, you see that").
+   *
+   * A placeholder is a prompt for somebody who has not started yet. Once the
+   * caret is in the box they have started, and leaving a suggestion sitting
+   * behind the cursor reads like text that is already there. So focus clears
+   * it — the rotating overlay AND the plain placeholder, on every search box
+   * in the app, not just the animated ones.
+   *
+   * `hinting` is "should the overlay be drawn at all"; `rotating` is "should
+   * it be swapping right now". Both are false while focused now, which also
+   * retires the old problem of a long line rendering half-cut ("…offerings,
+   * ow") — there is nothing to cut.
    */
-  const hinting = !!placeholders?.length && !value;
-  const rotating = hinting && !focused;
+  const hinting = !!placeholders?.length && !value && !focused;
+  const rotating = hinting;
   useEffect(() => {
     if (!rotating) return;
     /* Slow enough to read, and it stops the moment the box is used. Reduced
@@ -255,9 +262,10 @@ export function PrioritySearchInput({
           if (value) onChange("");
           inputRef.current?.blur();
         }}
-        /* The real placeholder goes quiet while the overlay is doing the
-           talking, so the two can never both be visible. */
-        placeholder={hinting ? "" : placeholder}
+        /* Nothing at all once the caret is in: the overlay is off (hinting
+           is false while focused) and the plain placeholder goes with it, so
+           an empty focused box is genuinely empty. */
+        placeholder={hinting || focused ? "" : placeholder}
         aria-label={ariaLabel ?? placeholder}
         // Replaced wholesale, not merged — see the note on the icon above.
         className={

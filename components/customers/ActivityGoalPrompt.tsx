@@ -131,7 +131,7 @@ export function ActivityGoalPrompt({
       );
       onClose();
     } catch (error) {
-      toast(error instanceof Error ? error.message : "That didn't save.");
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
     } finally {
       setBusy(false);
     }

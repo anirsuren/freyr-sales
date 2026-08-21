@@ -47,6 +47,7 @@ export function PageToolbar({
   sort,
   view,
   display,
+  bare = false,
   className,
 }: {
   query: string;
@@ -68,6 +69,17 @@ export function PageToolbar({
   view?: ReactNode;
   /** Anything else that belongs in the right-hand display cluster. */
   display?: ReactNode;
+  /**
+   * NO CHROME OF ITS OWN, for a page that has already drawn the box (Anir,
+   * Aug 21, on Opportunities: "you don't need three fucking rectangles, you
+   * only need two — you have a big white rectangle, then a gray rectangle,
+   * then also a search bar rectangle. Remove the outer rectangle").
+   *
+   * Opportunities puts its toolbar inside a Card, so the toolbar's own border
+   * and tint were a second frame nested in the first, with the search input's
+   * border making a third. Bare drops the frame and keeps the layout.
+   */
+  bare?: boolean;
   className?: string;
 }) {
   const hasDisplay = Boolean(sort || view || display);
@@ -75,7 +87,10 @@ export function PageToolbar({
     <SearchPriority
       query={query}
       className={cn(
-        "rise-in mb-4 flex flex-nowrap items-center gap-2.5 rounded-xl border border-border-light bg-[var(--surface)] p-2.5",
+        "rise-in flex flex-nowrap items-center gap-2.5",
+        bare
+          ? "mb-0"
+          : "mb-4 rounded-xl border border-border-light bg-[var(--surface)] p-2.5",
         className
       )}
     >

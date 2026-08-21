@@ -143,7 +143,7 @@ export function ActivityMasterCard({
       if (done) toast(done);
       return true;
     } catch (error) {
-      toast(error instanceof Error ? error.message : "That didn't save.");
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
       return false;
     } finally {
       setBusy(false);
