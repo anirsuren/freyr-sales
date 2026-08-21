@@ -31,22 +31,35 @@ export async function canViewNextCustomerVersion(
 
 /** Remove unreleased versions before an offering leaves a server boundary. */
 export function hideNextCustomerVersions<
-  T extends Pick<Offering, "releases" | "roadmap_details">
+  T extends Pick<Offering, "releases" | "roadmap_details" | "roadmap_versions">
 >(
   offering: T
 ): T {
+  const stripNext = <D extends Offering["roadmap_details"]>(d: D): D =>
+    d ? ({ ...d, nextExpectedLive: "", nextVersions: "", nextModules: [] } as D) : d;
   return {
     ...offering,
     releases: (offering.releases || []).filter(
       (release) => release.status === "released"
     ),
-    roadmap_details: offering.roadmap_details
-      ? {
-          ...offering.roadmap_details,
-          nextExpectedLive: "",
-          nextVersions: "",
-          nextModules: [],
-        }
-      : undefined,
+    roadmap_details: stripNext(offering.roadmap_details),
+    /**
+     * THE HISTORY IS A SIDE DOOR INTO THE SAME SECRET (found testing, Aug 20:
+     * a rep's payload correctly hid the unreleased release from `releases` and
+     * then handed them "Added V9-SECRET (2028-01-01)" plus the unannounced
+     * feature text inside a stored version).
+     *
+     * Each version carries a whole snapshot of the roadmap as it stood, so it
+     * needs exactly the redaction the live roadmap gets. The change lines go
+     * too: they name versions by their customer-facing label, and no reliable
+     * rule separates "V2.5 moved to June" from "Added V9". Same wording the
+     * bell uses for the same reader, so the two never disagree.
+     */
+    roadmap_versions: offering.roadmap_versions?.map((v) => ({
+      ...v,
+      changes: ["The roadmap was updated"],
+      releases: (v.releases || []).filter((r) => r.status === "released"),
+      roadmap_details: stripNext(v.roadmap_details),
+    })),
   };
 }
