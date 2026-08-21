@@ -1799,3 +1799,25 @@ input {
 @media (prefers-reduced-motion: reduce) {
   .search-hint { animation: none; }
 }
+
+/**
+ * THE SAME STRIPE, WOVEN FINER FOR A THIN RAIL (Anir, Aug 20: "when its multi
+ * color i think the shine thing is ugly… its like the green and red
+ * combination thats hapening").
+ *
+ * The pitch is tuned for the tall bars on the charts. On a 6px rail only one
+ * or two bands fit across a short segment, so the texture stopped reading as
+ * stripes and became a couple of chunky blocks butted against the solid green
+ * beside it. Half the pitch, same angle, same veils: at rail size it reads as
+ * a fine hatch, which is what "not counted yet" should look like next to a
+ * solid colour.
+ */
+.unverified-fill-sm {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(var(--bar-veil), 0.66) 0 2.5px,
+      rgba(var(--bar-veil), 0.52) 2.5px 5px
+    ),
+    var(--fill, var(--entry-verified));
+}

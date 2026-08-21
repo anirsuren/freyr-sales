@@ -29,6 +29,7 @@ import {
   type GoalUnit,
   ENTRY_COLOR,
   entryStatus,
+  entryStatusLabel,
   ENTRY_INK,
   isPending,
   familyValue,
@@ -1190,7 +1191,14 @@ export function GoalZoom({
                              opportunities, some goals may not be." */
                           <span>not linked to an opportunity</span>
                         )}
-                        {!verified && (
+                        {(
+                          /* SAY IT WHEN IT IS GOOD NEWS TOO (Anir, Aug 20:
+                             "also if this is verified i wat it to say
+                             verified. is it?" — it did not; only the bad
+                             states spoke, so a signed-off result was the one
+                             with nothing to say for itself). */
+                          true
+                        ) && (
                           /* IT SAID "waiting", IN BLUE, ON MONEY THAT WAS
                              REFUSED (found Aug 20 when Anir asked what these
                              chips are for). The test was `!verified`, which
@@ -1206,7 +1214,7 @@ export function GoalZoom({
                               color: ENTRY_INK[entryStatus(a)],
                             }}
                           >
-                            {entryStatus(a) === "sent_back" ? "sent back" : "waiting"}
+                            {entryStatusLabel(a).toLowerCase()}
                           </span>
                         )}
                       </span>
@@ -1307,14 +1315,14 @@ export function GoalZoom({
                         </b>
                         <span
                           className={cn(
-                            "flex flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)] transition-all",
+                            "flex flex-1 gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)] transition-all",
                             !empty && lit ? "h-2.5" : "h-1.5"
                           )}
                         >
                           {!empty && (
                             <>
                               <span
-                                className={cn("h-full", lit && "bar-lit")}
+                                className={cn("h-full rounded-full", lit && "bar-lit")}
                                 style={{
                                   width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
                                   background: ENTRY_COLOR.verified,
@@ -1322,7 +1330,7 @@ export function GoalZoom({
                                 }}
                               />
                               <span
-                                className={cn("unverified-fill h-full", lit && "bar-lit")}
+                                className={cn("unverified-fill-sm h-full rounded-full", lit && "bar-lit")}
                                 style={{
                                   width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%`,
                                   ["--fill" as string]:
@@ -1536,7 +1544,7 @@ export function GoalZoom({
                             />
                           </span>
                           {(r2.verified > 0 || r2.awaiting > 0) && (
-                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                            <span className="flex h-1.5 w-full gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               <span
                                 className={cn("block h-full", lit && "bar-lit")}
                                 style={{
@@ -1551,7 +1559,7 @@ export function GoalZoom({
                                   strengths, so a bar still measures one thing
                                   while saying how much of it is signed off. */}
                               <span
-                                className={cn("unverified-fill block h-full", lit && "bar-lit")}
+                                className={cn("unverified-fill-sm block h-full rounded-full", lit && "bar-lit")}
                                 style={{
                                   width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
                                   ["--fill" as string]:
@@ -1989,7 +1997,7 @@ export function GoalZoom({
                             faded, same as everywhere. */}
                         {(p.verified > 0 || p.awaiting > 0) &&
                           (openPeople.has(p.name) ? (
-                            <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                            <span className="flex h-1.5 w-full gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
                               {inBarOrder(
                                 entriesFor(new Set([p.name.trim().toLowerCase()]))
                               ).map((a) => (
@@ -1997,7 +2005,7 @@ export function GoalZoom({
                                   key={a.id}
                                   className={cn(
                                     "block h-full",
-                                    entryStatus(a) !== "verified" && "unverified-fill",
+                                    entryStatus(a) !== "verified" && "unverified-fill-sm",
                                     lit && "bar-lit"
                                   )}
                                   style={{
@@ -2013,7 +2021,7 @@ export function GoalZoom({
                               ))}
                             </span>
                           ) : (
-                          <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                          <span className="flex h-1.5 w-full gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
                             <span
                               className={cn("block h-full", lit && "bar-lit")}
                               style={{
@@ -2023,7 +2031,7 @@ export function GoalZoom({
                               }}
                             />
                             <span
-                              className={cn("unverified-fill block h-full", lit && "bar-lit")}
+                              className={cn("unverified-fill-sm block h-full rounded-full", lit && "bar-lit")}
                               style={{
                                 width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
                                 ["--fill" as string]:
