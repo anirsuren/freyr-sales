@@ -499,6 +499,20 @@ export function FdlComponentDetail({
   }
 
   const [confirmReleaseDelete, setConfirmReleaseDelete] = useState<string | null>(null);
+  /**
+   * MARKING THE CURRENT VERSION ASKS FIRST (Anir, Aug 21, after doing it by
+   * accident on production: "i just changed smthng i think i marked something
+   * as current on accident can u bring it back. it should have asked me for a
+   * popup there tbh").
+   *
+   * This is the single most consequential button on the page — the current
+   * version is what every seller quotes to every customer — and it sat one
+   * unguarded click away, in a row of chips, on a line you might be clicking
+   * for any other reason. Delete already asked. This is worse than delete: a
+   * deleted version is obviously gone, while a wrong current version looks
+   * completely normal and is simply a lie.
+   */
+  const [confirmCurrent, setConfirmCurrent] = useState<string | null>(null);
   async function removeRelease(id: string) {
     setConfirmReleaseDelete(null);
     await patch(
@@ -1216,7 +1230,7 @@ export function FdlComponentDetail({
                       {!release.current && canEdit && shipped && (
                         <button
                           type="button"
-                          onClick={() => void markCurrent(release.id)}
+                          onClick={() => setConfirmCurrent(release.id)}
                           disabled={busy}
                           title="Make this the version customers are on today"
                           className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg border border-[color:rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.05)] px-2 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:opacity-50"
@@ -1257,6 +1271,24 @@ export function FdlComponentDetail({
                           />
                         </>
                       )}
+                      <ConfirmDialog
+                        open={confirmCurrent === release.id}
+                        onClose={() => setConfirmCurrent(null)}
+                        onConfirm={() => {
+                          setConfirmCurrent(null);
+                          void markCurrent(release.id);
+                        }}
+                        title="Make this the current version?"
+                        body={
+                          <>
+                            Sellers will quote <b>{withV(release.version)}</b> as
+                            what customers are on today
+                            {current ? ` instead of ${withV(current)}.` : "."}
+                          </>
+                        }
+                        detail="It changes the roadmap, so it is recorded and everyone following this component hears about it."
+                        confirmLabel="Yes, make it current"
+                      />
                     </span>
                   </div>
 
