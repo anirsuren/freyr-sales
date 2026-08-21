@@ -227,6 +227,17 @@ export default async function OfferingsPage() {
         title="Offerings"
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <OfferingsGlossaryBar
+              offeringTypes={offeringTypes.length}
+              offeringCategories={offeringCategories.length}
+              customerTypes={customerTypes.length}
+            />
+            {canEdit && (
+              <span
+                aria-hidden="true"
+                className="mx-1 hidden h-5 w-px bg-border-light sm:block"
+              />
+            )}
             {canEdit && <ImportExcel />}
             {canEdit && (
               <NewOfferingButton
@@ -241,22 +252,6 @@ export default async function OfferingsPage() {
             )}
           </div>
         }
-      />
-
-      {/* WHAT THE REPS ASKED FOR (Saras, Aug 21, relaying four or five of
-          them through Anir: the page reads as busy and over-coloured, and
-          they want something more minimal).
-
-          Five stat cards became one glossary line. "Offerings 31" was the
-          same number the list under it already prints as "Showing 31 of 31",
-          and "Fully detailed" was a metric nobody had asked for on a page
-          people come to in order to FIND something. The three that stayed are
-          not statistics at all — they are master lists people need to reach,
-          and the count is there so the link is worth reading. */}
-      <OfferingsGlossaryBar
-        offeringTypes={offeringTypes.length}
-        offeringCategories={offeringCategories.length}
-        customerTypes={customerTypes.length}
       />
 
 

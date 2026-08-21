@@ -12,15 +12,8 @@ import {
   Sparkles,
   X,
   Package,
-  Users,
-  BookOpen,
   Layers,
-  LayoutGrid,
-  Table2,
-  Crown,
   Rocket,
-  CircleHelp,
-  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
@@ -34,14 +27,13 @@ import {
   AreaChart,
   DonutChart,
   DonutLegend,
-  Sparkline,
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
-import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { OfferingsFilterMenu } from "@/components/offerings/OfferingsFilterMenu";
+import { Building, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { servesMarket } from "@/lib/offeringCatalogue";
 import {
   SearchPriority,
@@ -50,7 +42,6 @@ import {
 } from "@/components/ui/SearchPriority";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { stripBriefFormatting } from "@/components/offerings/BriefText";
 
 // Distinct palette so each category / type gets its own colour dot in the
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
@@ -73,16 +64,6 @@ import { customerFamilyColor } from "@/lib/customerFamilies";
 // reserved"). That reasoning now lives beside the palette itself.
 const familyColor = customerFamilyColor;
 
-function offeringTypeFilterIcon(name: string): LucideIcon {
-  const normalized = name.toLowerCase();
-  if (normalized.includes("add on")) return Layers;
-  if (normalized.includes("module + module agent")) return Users;
-  if (normalized.includes("(agents)")) return Sparkles;
-  if (normalized.includes("(platform)")) return LayoutGrid;
-  if (normalized.includes("ai native")) return Rocket;
-  if (normalized.includes("freyr services")) return BookOpen;
-  return Package;
-}
 import type {
   CustomerType,
   Market,
@@ -97,44 +78,9 @@ import type {
 // into "• RIMS Data Entry… • RIMS Data QC…" — which reads as noise (Anir, Jul
 // 27: "why is it just a shit ton of text? It should never look like that").
 // On cards, drop the glyphs and separate the capabilities with a middot.
-function cardSummary(description: string): string {
-  const lines = description
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*[•\-*]\s*/, "").trim())
-    .filter(Boolean);
-  const summary =
-    lines.length > 1
-      ? lines.join(" · ")
-      : description.replace(/^\s*[•\-*]\s*/, "").trim();
-  return stripBriefFormatting(summary);
-}
 
 // One metadata chip on an offering card: colour-tinted background, matching
 // icon, never gray. Wraps rather than truncates — labels stay whole.
-function MetaChip({
-  icon: Icon,
-  label,
-  color,
-}: {
-  icon: LucideIcon;
-  label: string;
-  color: string;
-}) {
-  return (
-    <span
-      className="semantic-color-pill inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
-      style={
-        {
-          "--semantic-color": color,
-          "--semantic-bg": `${color}14`,
-        } as CSSProperties
-      }
-    >
-      <Icon size={10} strokeWidth={2.2} className="shrink-0" />
-      {label}
-    </span>
-  );
-}
 
 const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical", "Medical Devices", "Consumer Products"];
 
@@ -271,8 +217,11 @@ function OwnerRows({
 
           A single owner keeps their name in plain text: one face with no name
           would be a puzzle, and one name never threatens the layout. */}
-      <dt className="flex h-[26px] items-center gap-1 self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
-        <Crown size={10} strokeWidth={2.6} aria-hidden="true" />
+      {/* NEUTRAL, LIKE THE TWO LABELS ABOVE IT (Saras, Aug 21: "the font
+          colour of the owner, let's just keep that simply black... there is
+          no need for the crown icon either... let's just keep it neutral").
+          A purple crown made the label shout over the name beside it. */}
+      <dt className="flex h-[26px] items-center self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
         Owner
       </dt>
       <dd className="flex min-h-[26px] min-w-0 items-center self-start">
@@ -446,6 +395,9 @@ export function OfferingsBrowser({
     } catch {}
   }, [view, viewPreferenceReady]);
 
+  /** Somebody actually owns it — a granted owner, not a pending request. */
+  const hasOwner = (o: HydratedOffering) =>
+    (o.owners || []).some((owner) => owner.status === "owner");
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
 
@@ -546,18 +498,34 @@ export function OfferingsBrowser({
           a.offering_category.localeCompare(b.offering_category) ||
           a.offering_name.localeCompare(b.offering_name)
       );
-    else if (sort === "mapped")
+    else if (sort === "gtm") {
+      /* Sellable first, then what is coming, then what nobody has decided —
+         the order a rep reads a catalogue in, not alphabetical order of the
+         status words. */
+      const RANK: Record<string, number> = { available: 0, coming: 1, tbd: 2 };
       arr.sort(
         (a, b) =>
-          Number(isMapped(b)) - Number(isMapped(a)) ||
+          (RANK[goToMarketStatus(a)] ?? 3) - (RANK[goToMarketStatus(b)] ?? 3) ||
           a.offering_name.localeCompare(b.offering_name)
       );
+    }
     else
-      // "default": keep the catalog (sheet) order, but lead with the
-      // fully-detailed offerings so the page opens looking like a live catalog
-      // instead of a wall of blank cards. Array sort is stable, so the original
-      // catalog order is preserved within each group.
-      arr.sort((a, b) => Number(isMapped(b)) - Number(isMapped(a)));
+      /* "default": OWNED FIRST, UNOWNED LAST (Saras, Aug 21: "the top group
+         would be offerings with assigned owners... the second group will be
+         offerings with unassigned owners, and all of them will show at the
+         bottom. That's just one default grouping that will show for now").
+         
+         An offering with an owner is one a rep can act on: there is somebody
+         to ask. It used to lead with the fully-detailed ones instead, which
+         answered a different question — how complete is the catalogue —
+         nobody opens this page to ask. Detail is the tiebreak inside each
+         group, and array sort is stable, so the sheet's own order survives
+         underneath both. */
+      arr.sort(
+        (a, b) =>
+          Number(hasOwner(b)) - Number(hasOwner(a)) ||
+          Number(isMapped(b)) - Number(isMapped(a))
+      );
     return arr;
   }, [filtered, sort]);
 
@@ -666,13 +634,14 @@ export function OfferingsBrowser({
             <div className="flex flex-col gap-3">
           {/* Offering name is the primary element (Suren's live-meeting ask,
               the customer-type families move down so they don't compete). */}
+          {/* THE TILE IS TEXT NOW (Saras, Aug 21, relaying four or five reps:
+              the page is busy and over-coloured, they want minimal). "Within
+              the tiles themselves, let's remove these icons. We can also
+              remove the partial description." What stays is exactly her list:
+              the category heading, the name, the availability, the type, the
+              customers, the owner, and the material count. */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <OfferingIcon
-                name={o.offering_name}
-                category={o.offering_category}
-                className="w-9 h-9 shrink-0"
-              />
               <div className="min-w-0">
                 {/* CATEGORY IS AN EYEBROW, not a chip. It is the top-level
                     grouping and it already colours the tile's icon, so saying
@@ -686,7 +655,6 @@ export function OfferingsBrowser({
                       color: categoryColorByName[o.offering_category] || "#2563EB",
                     }}
                   >
-                    <Layers size={10} strokeWidth={2.6} aria-hidden="true" />
                     <span className="min-w-0 break-words">{o.offering_category}</span>
                   </p>
                 )}
@@ -701,12 +669,6 @@ export function OfferingsBrowser({
               className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0"
             />
           </div>
-          {o.offering_description && (
-            <p className="no-auto-tip text-[12.5px] text-text-secondary line-clamp-2 leading-relaxed">
-              {cardSummary(o.offering_description)}
-            </p>
-          )}
-
           <div className="flex flex-wrap items-center gap-1.5">
             {/* The clean timing status only: market-coverage / version notes
                 (future_availability) are free-form and live on the detail page. */}
@@ -747,12 +709,6 @@ export function OfferingsBrowser({
                     } as CSSProperties
                   }
                 >
-                  <Sparkles
-                    size={11}
-                    strokeWidth={2.4}
-                    aria-hidden="true"
-                    className="mt-[3px] shrink-0"
-                  />
                   <span className="min-w-0 break-words">
                     {o.offering_type || "Not set"}
                   </span>
@@ -769,12 +725,6 @@ export function OfferingsBrowser({
                   (Anir, Aug 14, with both views side by side). The separators
                   stay neutral so the names themselves carry the coding. */}
               <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug">
-                <Users
-                  size={11}
-                  strokeWidth={2.4}
-                  aria-hidden="true"
-                  className="translate-y-[1px] shrink-0 text-text-tertiary"
-                />
                 <span className="min-w-0 break-words">
                   {hasCt ? (
                     families.map((f, index) => (
@@ -1163,127 +1113,75 @@ export function OfferingsBrowser({
             each card, the "awaiting details" stat card), and both still filter
             from the URL, they just name themselves as a clearable chip below
             instead of owning a permanent control. */}
-        {/* No "Filter" label. The five pills read as filters on sight, and
-            the divider plus the SORT label on the right already say where one
-            job ends and the other begins — the word was spending width the
-            row needed for "GTM status" to spell itself out (Anir, Aug 7:
-            "remove the text that says filter"). */}
-        <MultiColorSelect
-          values={catId ? catId.split(",") : []}
-          onChange={(next) => setCatId(next.join(","))}
-          minWidth={150}
-          width={118}
-          maxWidth={190}
-          triggerLabel="Category"
-          dense
-          className="shrink-0"
-          allLabel="All categories"
-          ariaLabel="Filter by offering category"
-          allIcon={SortLayers}
-          allColor="#0F6E56"
-          options={[
-            ...offeringCategories.map((c, i) => ({
-              value: c.id,
-              label: c.name,
-              color: FILTER_PALETTE[i % FILTER_PALETTE.length],
-            })),
-          ]}
-        />
-        <MultiColorSelect
-          values={otId ? otId.split(",") : []}
-          onChange={(next) => setOtId(next.join(","))}
-          minWidth={150}
-          width={94}
-          maxWidth={180}
-          triggerLabel="Type"
-          dense
-          className="shrink-0"
-          allLabel="All types"
-          ariaLabel="Filter by offering type"
-          allIcon={SortPackage}
-          allColor="#C2410C"
-          options={[
-            ...offeringTypes.map((t, i) => ({
-              value: t.id,
-              label: t.name,
-              color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
-              icon: offeringTypeFilterIcon(t.name),
-            })),
-          ]}
-        />
-        <MultiColorSelect
-          values={gtmStatuses}
-          onChange={(next) => setGtm(next.join(","))}
-          minWidth={170}
-          width={150}
-          maxWidth={210}
-          triggerLabel="GTM status"
-          dense
-          className="shrink-0"
-          allLabel="All GTM statuses"
-          ariaLabel="Filter by go-to-market status"
-          allIcon={Rocket}
-          allColor="#0071E3"
-          options={[
-            { value: "available", label: "Available Now", color: "#059669", icon: SortComplete },
-            { value: "coming", label: "Coming Soon", color: "#C2410C", icon: Clock3 },
-            { value: "tbd", label: "To Be Decided", color: "#4338CA", icon: CircleHelp },
-          ]}
-        />
-        <MultiColorSelect
-          values={ownerIds}
-          onChange={(next) => setOwnerId(next.join(","))}
-          minWidth={160}
-          width={102}
-          maxWidth={160}
-          triggerLabel="Owner"
-          dense
-          className="shrink-0"
-          allLabel="All offering owners"
-          ariaLabel="Filter by offering owner"
-          allIcon={Crown}
-          allColor="#7C3AED"
-          options={[
-            ...ownerOptions.map((owner) => ({
-              value: owner.memberId,
-              label: owner.name,
-              color: "#7C3AED",
-              avatarName: owner.name,
-            })),
-            { value: "unassigned", label: "Not assigned", color: "#64748B", icon: CircleHelp },
-          ]}
-        />
-        <MultiColorSelect
-          values={ctIds}
-          onChange={(next) => setCtId(next.join(","))}
-          minWidth={150}
-          width={120}
-          maxWidth={160}
-          triggerLabel="Customer"
-          dense
-          className="shrink-0"
-          allLabel="All customer types"
-          ariaLabel="Filter by customer type"
-          allIcon={Users}
-          allColor="#0071E3"
-          options={[
-            // Colour says the FAMILY, the icon says the SIZE, the list used
-            // to encode only family, so Small/Mid/Large read identically
-            // (Anir, Jul 25: "you only have it color-coded by the category…
-            // not by the size").
-            ...customerTypes.map((c) => {
-              const size = String((c as { size?: string }).size || "");
-              return {
+        {/* ONE BUTTON, TWO LAYERS (Saras, Aug 21, carrying rep feedback that
+            named this twice: "what these e-commerce websites do — they keep
+            the filters in two layers. First they just show a button called
+            Filter, and only when you click on that they show you filter by
+            category, by type, by GTM status"). Five permanently-open coloured
+            selects were the single biggest source of the "busy and
+            over-coloured" complaint, and they were on screen whether or not
+            anybody was filtering. */}
+        <OfferingsFilterMenu
+          onClearAll={clearAll}
+          groups={[
+            {
+              key: "category",
+              label: "Category",
+              values: catId ? catId.split(",") : [],
+              onChange: (next) => setCatId(next.join(",")),
+              options: offeringCategories.map((c, i) => ({
+                value: c.id,
+                label: c.name,
+                color: FILTER_PALETTE[i % FILTER_PALETTE.length],
+              })),
+            },
+            {
+              key: "type",
+              label: "Type",
+              values: otId ? otId.split(",") : [],
+              onChange: (next) => setOtId(next.join(",")),
+              options: offeringTypes.map((t, i) => ({
+                value: t.id,
+                label: t.name,
+                color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
+              })),
+            },
+            {
+              key: "gtm",
+              label: "GTM status",
+              values: gtmStatuses,
+              onChange: (next) => setGtm(next.join(",")),
+              options: [
+                { value: "available", label: "Available Now", color: "#059669" },
+                { value: "coming", label: "Coming Soon", color: "#C2410C" },
+                { value: "tbd", label: "To Be Decided", color: "#4338CA" },
+              ],
+            },
+            {
+              key: "owner",
+              label: "Owner",
+              values: ownerIds,
+              onChange: (next) => setOwnerId(next.join(",")),
+              options: [
+                ...ownerOptions.map((owner) => ({
+                  value: owner.memberId,
+                  label: owner.name,
+                  avatarName: owner.name,
+                })),
+                { value: "unassigned", label: "Not assigned", color: "#64748B" },
+              ],
+            },
+            {
+              key: "customer",
+              label: "Customer",
+              values: ctIds,
+              onChange: (next) => setCtId(next.join(",")),
+              options: customerTypes.map((c) => ({
                 value: c.id,
                 label: c.name,
                 color: familyColor((c as { family?: string }).family || c.name),
-                icon: size.includes("Small")
-                  ? Store
-                  : size.includes("Mid")
-                    ? Building
-                    : BuildingLarge,
-              };
-            }),
+              })),
+            },
           ]}
         />
         {/* Market and completeness arrive by LINK, not by dropdown: the market
@@ -1381,7 +1279,14 @@ export function OfferingsBrowser({
               { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
               { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
-              { value: "mapped", label: "Most complete", color: "#059669", icon: SortComplete },
+              /* "Most complete" is gone (Saras, Aug 21: "this isn't really the
+                 most complete offering currently — Freya.Register is, and that
+                 isn't showing up at the top... we can also actually remove
+                 this sort option"). It ranked on whether three fields were
+                 non-empty, which is not what a reader means by complete, and a
+                 sort nobody can predict is worse than no sort. GTM status
+                 takes its place: what a rep can sell now, next, and later. */
+              { value: "gtm", label: "By GTM status", color: "#059669", icon: Rocket },
             ]}
           />
           {/* ONE BUTTON, NOT TWO. A two-button segmented control spent twice
@@ -1497,23 +1402,25 @@ export function OfferingsBrowser({
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
                   {/* px-4 like every other column: the header text must start
                       exactly where the cell text below it starts. */}
-                  <th className="px-4 py-2.5 w-[20%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
+                  {/* OWNER IS A COLUMN (Saras, Aug 21: "if we can, have a
+                      separate column for owner — currently the owner is
+                      showing up below the name of the offering. You can have a
+                      separate column for them so that it's easier for a rep to
+                      just go through and see which owner owns what"). Stacked
+                      under the name it could only be read one row at a time;
+                      in its own column the eye runs down it. */}
+                  <th className="px-4 py-2.5 w-[14%]">Owner</th>
                   <th className="px-4 py-2.5 w-[18%]">Category</th>
                   <th className="px-4 py-2.5 w-[14%]">Type</th>
-                  <th className="px-4 py-2.5 w-[11%]">Availability</th>
+                  <th className="px-4 py-2.5 w-[12%]">Availability</th>
                   <th className="px-4 py-2.5 w-[12%]">Who it&apos;s for</th>
-                  {/* Materials sits before the money columns: it is the one
-                      number in this table that is filled in today, and it is
-                      what a rep actually opens the row for (Anir, Aug 7:
-                      "shift the material column before revenue"). */}
-                  <th className="px-4 py-2.5 w-[9%]">Materials</th>
-                  <th className="px-4 py-2.5 w-[9%]">Revenue</th>
-                  {/* 7, not 5: at the table's 1280 floor a 5% Trend column is
-                      64px, and its own heading needs about 48px of that before
-                      the px-4 padding, so the word sat flush against the card
-                      edge (Anir, Aug 15: "that's not enough space for the trend
-                      column"). */}
-                  <th className="px-4 py-2.5 w-[7%]">Trend</th>
+                  {/* Revenue and Trend are gone (Saras, Aug 21: "let's remove
+                      the revenue column and the trend column, they're not
+                      needed currently"). Both were empty dashes on every real
+                      row — the commercial rollup is mock-only — so they spent
+                      16% of the table saying nothing. */}
+                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
                 </tr>
               </thead>
               <tbody>
@@ -1541,27 +1448,6 @@ export function OfferingsBrowser({
                     ...FAMILY_ORDER.filter((f) => fams.includes(f)),
                     ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
                   ];
-                  // Commercial columns (Team-roster pattern: number + stacked
-                  // share bar + trend spark), same server rollup as the tile
-                  // hover, so both views tell one story.
-                  const com = commerce?.[o.id];
-                  const revCustomers = (com?.customers ?? []).filter(
-                    (c) => c.revenue > 0
-                  );
-                  const shownRevenue = revCustomers.reduce(
-                    (s, c) => s + c.revenue,
-                    0
-                  );
-                  // The rollup ships the top accounts only, the tail still
-                  // has to occupy its share of the bar to stay honest.
-                  const restRevenue = Math.max(
-                    (com?.totalRevenue ?? 0) - shownRevenue,
-                    0
-                  );
-                  const restAccounts = Math.max(
-                    (com?.customerCount ?? 0) - revCustomers.length,
-                    0
-                  );
                   const grantedOwners = (o.owners || []).filter(
                     (owner) => owner.status === "owner"
                   );
@@ -1571,48 +1457,40 @@ export function OfferingsBrowser({
                       className="border-b border-border-light last:border-0 align-middle hover:bg-[var(--surface)] transition-colors"
                     >
                       <td className="px-4 py-3.5">
+                        {/* Just the name. The tile icon went with the rest of
+                            them (Saras, Aug 21: "same thing — if we can, just
+                            remove all the icons"). */}
                         <Link
                           href={`/offerings/${o.id}`}
-                          className="group/name -m-1.5 grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3 rounded-xl p-1.5 transition-colors hover:bg-blue-light/60"
+                          className="group/name -m-1.5 block min-w-0 rounded-xl p-1.5 text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors hover:bg-blue-light/60 group-hover/name:text-blue-primary"
                         >
-                          <OfferingIcon
-                            name={o.offering_name}
-                            category={o.offering_category}
-                            className="h-10 w-10 shrink-0 shadow-sm"
-                          />
-                          <span className="min-w-0 pt-0.5">
-                            <span className="block text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors group-hover/name:text-blue-primary">
-                              {o.offering_name}
-                            </span>
-                            {(grantedOwners.length > 0 || o.poc) && (
-                              <span
-                                className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {grantedOwners.length > 0 && (
-                                  <span
-                                    className="inline-flex items-center gap-1.5"
-                                    aria-label={`Owner: ${grantedOwners.map((owner) => owner.name).join(", ")}`}
-                                  >
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] text-blue-primary">
-                                      <Crown size={9} strokeWidth={2.6} aria-hidden="true" />
-                                      Owner
-                                    </span>
-                                    <PersonFan
-                                      avatarClassName="h-5 w-5 text-[7px]"
-                                      overlap={-6}
-                                      people={grantedOwners.map((owner) => ({
-                                        name: owner.name,
-                                        role: owner.role || "Owns this offering",
-                                        context: o.offering_name,
-                                      }))}
-                                    />
-                                  </span>
-                                )}
+                          {o.offering_name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        {grantedOwners.length > 0 ? (
+                          <span
+                            className="inline-flex min-w-0 items-center gap-1.5"
+                            aria-label={`Owner: ${grantedOwners.map((owner) => owner.name).join(", ")}`}
+                          >
+                            <PersonFan
+                              avatarClassName="h-5 w-5 text-[7px]"
+                              overlap={-6}
+                              people={grantedOwners.map((owner) => ({
+                                name: owner.name,
+                                role: owner.role || "Owns this offering",
+                                context: o.offering_name,
+                              }))}
+                            />
+                            {grantedOwners.length === 1 && (
+                              <span className="min-w-0 break-words text-[12.5px] text-text-primary">
+                                {grantedOwners[0].name}
                               </span>
                             )}
                           </span>
-                        </Link>
+                        ) : (
+                          <span className="text-text-tertiary">Not assigned</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
@@ -1625,18 +1503,13 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
-                            {/* Colour AND icon — the standing chip rule. The
-                                table's two chips were the only ones in the app
-                                wearing colour alone (Anir, Aug 15: "can you add
-                                the icons, like the little icons that are
-                                associated with it"). Layers is the same glyph
-                                the offering-categories master uses. */}
-                            <Layers
-                              size={11}
-                              strokeWidth={2.4}
-                              aria-hidden="true"
-                              className="mt-[3px] shrink-0"
-                            />
+                            {/* COLOUR STAYS, THE GLYPH GOES (Saras, Aug 21:
+                                "remove all the colours here, except the
+                                background colour and the text of the category
+                                column options — same for the type options").
+                                The chip rule that put an icon here in August
+                                was written for a page that no longer has forty
+                                other icons competing with it. */}
                             <span
                               title={o.offering_category}
                               className="line-clamp-2 min-w-0 whitespace-normal break-words"
@@ -1659,14 +1532,6 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
-                            {/* Same mark the card view gives an offering type,
-                                so the two views agree. */}
-                            <Sparkles
-                              size={11}
-                              strokeWidth={2.4}
-                              aria-hidden="true"
-                              className="mt-[3px] shrink-0"
-                            />
                             <span
                               title={o.offering_type}
                               className="line-clamp-2 min-w-0 whitespace-normal break-words"
@@ -1686,20 +1551,14 @@ export function OfferingsBrowser({
                         )}
                       </td>
                       <td className="px-4 py-3">
+                        {/* PLAIN TEXT (Saras, Aug 21: "let's also remove the
+                            background colours of the Who it's for column,
+                            we'll just keep them simple — black text, no
+                            background colour"). Five tinted pills per row, on
+                            every row, was the loudest block on the page. */}
                         {famList.length ? (
-                          <span className="flex flex-wrap gap-1">
-                            {famList.map((f) => (
-                              <span
-                                key={f}
-                                className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                                style={{
-                                  color: familyColor(f),
-                                  background: `${familyColor(f)}14`,
-                                }}
-                              >
-                                {f}
-                              </span>
-                            ))}
+                          <span className="block text-[12px] leading-relaxed text-text-primary">
+                            {famList.join(" · ")}
                           </span>
                         ) : (
                           <span className="text-text-secondary">-</span>
@@ -1755,67 +1614,6 @@ export function OfferingsBrowser({
                               {o.materials.length}
                             </Link>
                           </FolderPeek>
-                        ) : (
-                          <span className="text-text-tertiary">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {com && com.totalRevenue > 0 ? (
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-text-primary tnum">
-                              {formatMoney(com.totalRevenue)}
-                            </p>
-                            {/* Who that money comes from: a slim stacked bar
-                                (the Team table's pipeline-bar treatment), one
-                                segment per account, hover a segment for the
-                                name + amount. */}
-                            <div className="mt-1.5 flex h-1.5 w-full max-w-[150px] overflow-hidden rounded-full bg-surface">
-                              {revCustomers.map((c, ci) => (
-                                <span
-                                  key={c.id}
-                                  title={`${c.name} · ${formatMoney(c.revenue)}`}
-                                  className="h-full"
-                                  style={{
-                                    width: `${(c.revenue / com.totalRevenue) * 100}%`,
-                                    background:
-                                      FILTER_PALETTE[ci % FILTER_PALETTE.length],
-                                  }}
-                                />
-                              ))}
-                              {restRevenue > 0 && (
-                                <span
-                                  title={`${restAccounts} more account${
-                                    restAccounts === 1 ? "" : "s"
-                                  } · ${formatMoney(restRevenue)}`}
-                                  className="h-full"
-                                  style={{
-                                    width: `${(restRevenue / com.totalRevenue) * 100}%`,
-                                    background: "#8E98A8",
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-text-tertiary">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {com &&
-                        com.totalRevenue > 0 &&
-                        com.trend &&
-                        com.trend.points.length >= 2 ? (
-                          <div
-                            className="w-[92px]"
-                            aria-label={`${o.offering_name} revenue trend`}
-                          >
-                            <Sparkline
-                              points={com.trend.points}
-                              color="#16A34A"
-                              height={30}
-                              interactive={false}
-                            />
-                          </div>
                         ) : (
                           <span className="text-text-tertiary">-</span>
                         )}

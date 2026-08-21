@@ -51,8 +51,14 @@ export function OfferingsGlossaryBar({
 }) {
   const counts = [offeringTypes, offeringCategories, customerTypes];
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-x-1 gap-y-2 rounded-xl border border-border-light bg-white px-3 py-2">
-      <span className="mr-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+    /* ON THE TITLE LINE, not a band of its own (Saras, Aug 21: "the bar that
+       you've made, you can just shift them to the right side where your
+       current buttons are, essentially on the same line as the Offerings
+       title"). It was a full-width box costing a row of vertical space to say
+       three short things — the same weight problem as the five cards it
+       replaced. Inline it borrows the header's row and costs nothing. */
+    <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1">
+      <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
         Glossary
       </span>
       {ENTRIES.map((entry, i) => {
