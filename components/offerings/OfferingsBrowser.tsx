@@ -14,6 +14,7 @@ import {
   Package,
   Layers,
   Rocket,
+  Crown,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
@@ -33,6 +34,7 @@ import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingsFilterMenu } from "@/components/offerings/OfferingsFilterMenu";
 import { ColumnHeaderMenu } from "@/components/offerings/ColumnHeaderMenu";
+import { shortPersonName } from "@/lib/personName";
 import { Building, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { servesMarket } from "@/lib/offeringCatalogue";
@@ -240,7 +242,7 @@ function OwnerRows({
                 className="h-[20px] w-[20px] shrink-0 text-[7px]"
               />
               <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
-                {granted[0].name}
+                {shortPersonName(granted[0].name)}
               </span>
             </span>
           </PersonHoverCard>
@@ -271,6 +273,7 @@ export function OfferingsBrowser({
   commerce,
   newOfferingAction,
   realMode = false,
+  meMemberId,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
@@ -283,6 +286,8 @@ export function OfferingsBrowser({
   /** Live workspace. The commercial rollups have no contracts behind them
    *  there yet, so the hover dashboard stays in Mock until they do. */
   realMode?: boolean;
+  /** Who is reading, so the list can say which of these you own. */
+  meMemberId?: string | null;
   /**
    * The "New offering" pop-up trigger, handed down from the server page (it
    * needs server-only lists for its pickers, and this is a client component).
@@ -402,6 +407,21 @@ export function OfferingsBrowser({
   }, [view, viewPreferenceReady]);
 
   /** Somebody actually owns it — a granted owner, not a pending request. */
+  /**
+   * YOURS, SAID OUT LOUD (Anir, Aug 21: "I just added myself as an owner to
+   * Freya.Submit... it's not giving me any indication that I own this, so
+   * that's a problem. It has to visibly show something — maybe have the purple
+   * crown"). Purple is the colour ownership already wears everywhere in this
+   * app, so it is the crown, not a new invention.
+   */
+  const ownedByMe = (o: HydratedOffering) =>
+    Boolean(
+      meMemberId &&
+        (o.owners || []).some(
+          (owner) => owner.status === "owner" && owner.memberId === meMemberId
+        )
+    );
+
   const hasOwner = (o: HydratedOffering) =>
     (o.owners || []).some((owner) => owner.status === "owner");
   const isMapped = (o: HydratedOffering) =>
@@ -684,8 +704,24 @@ export function OfferingsBrowser({
                     <span className="min-w-0 break-words">{o.offering_category}</span>
                   </p>
                 )}
-                <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
-                  {o.offering_name}
+                <h3 className="flex items-start gap-1.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
+                  <span className="min-w-0">{o.offering_name}</span>
+                  {/* YOURS, SAID OUT LOUD (Anir, Aug 21: "I just added myself
+                      as an owner to Freya.Submit... it's not giving me any
+                      indication that I own this, so that's a problem. It has
+                      to visibly show something — maybe have the purple
+                      crown"). Purple is the colour ownership already wears in
+                      this app, so it is the crown, not a new invention. */}
+                  {ownedByMe(o) && (
+                    <PriorityTooltip label="You own this offering">
+                      <Crown
+                        size={13}
+                        strokeWidth={2.5}
+                        aria-label="You own this offering"
+                        className="mt-[3px] shrink-0 text-[color:#7C3AED]"
+                      />
+                    </PriorityTooltip>
+                  )}
                 </h3>
               </div>
             </div>
@@ -1517,12 +1553,24 @@ export function OfferingsBrowser({
                         {/* Just the name. The tile icon went with the rest of
                             them (Saras, Aug 21: "same thing — if we can, just
                             remove all the icons"). */}
-                        <Link
-                          href={`/offerings/${o.id}`}
-                          className="group/name -m-1.5 block min-w-0 rounded-xl p-1.5 text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors hover:bg-blue-light/60 group-hover/name:text-blue-primary"
-                        >
-                          {o.offering_name}
-                        </Link>
+                        <span className="flex min-w-0 items-start gap-1.5">
+                          <Link
+                            href={`/offerings/${o.id}`}
+                            className="group/name -m-1.5 block min-w-0 rounded-xl p-1.5 text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors hover:bg-blue-light/60 group-hover/name:text-blue-primary"
+                          >
+                            {o.offering_name}
+                          </Link>
+                          {ownedByMe(o) && (
+                            <PriorityTooltip label="You own this offering">
+                              <Crown
+                                size={13}
+                                strokeWidth={2.5}
+                                aria-label="You own this offering"
+                                className="mt-[3px] shrink-0 text-[color:#7C3AED]"
+                              />
+                            </PriorityTooltip>
+                          )}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         {/* NAMES, NOT A HUDDLE OF FACES (Saras, Aug 21:
@@ -1548,7 +1596,7 @@ export function OfferingsBrowser({
                                     className="h-5 w-5 shrink-0 text-[7px]"
                                   />
                                   <span className="min-w-0 break-words text-[12.5px] text-text-primary">
-                                    {owner.name}
+                                    {shortPersonName(owner.name)}
                                   </span>
                                 </span>
                               </PersonHoverCard>

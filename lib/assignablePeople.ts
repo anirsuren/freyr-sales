@@ -265,8 +265,18 @@ async function linkedInByMember(
   return found;
 }
 
+/**
+ * "SALES" WAS NOT A ROLE ANYBODY COULD NAME (Anir, Aug 21, reading the
+ * add-an-owner picker: "what does Sales mean? I know there's a manager role
+ * and an admin role, but what is Sales — me? Does that mean sales rep? Why are
+ * you just saying Sales?").
+ *
+ * "sales" is the LEGACY stored value for the rep role, and it leaked into the
+ * UI as if it were the role's name. The role is Sales rep, and the picker
+ * should say so beside Manager and Workspace admin.
+ */
 function roleLabel(role: string): string {
   if (role === "admin") return "Workspace admin";
   if (role === "manager") return "Manager";
-  return "Sales";
+  return "Sales rep";
 }

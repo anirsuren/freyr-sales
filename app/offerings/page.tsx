@@ -19,6 +19,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { getRole } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import { getDataMode } from "@/lib/dataMode";
 import {
@@ -173,6 +174,7 @@ export default async function OfferingsPage() {
   const markets = listMarkets();
   const offeringTypes = listOfferingTypes();
   const offeringCategories = listOfferingCategories();
+  const me = await getCurrentUser();
   const role = await getRole();
   const canEdit = role === "admin" || role === "manager";
 
@@ -264,6 +266,10 @@ export default async function OfferingsPage() {
           offeringCategories={offeringCategories}
           commerce={commerce}
           realMode={getDataMode() === "live"}
+          /* So the list can mark the offerings YOU own (Anir, Aug 21: "I
+             just added myself as an owner to Freya.Submit... it's not giving
+             me any indication that I own this, that's a problem"). */
+          meMemberId={me.memberId}
           newOfferingAction={
             canEdit ? (
               <NewOfferingButton
