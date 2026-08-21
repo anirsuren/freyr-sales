@@ -17,14 +17,19 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import {
   downloadMaterialCopy,
   isUploadedMaterial,
+  materialPreviewHref,
   openMaterial,
 } from "@/components/offerings/materialActions";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
+  MATERIAL_FORMATS,
+  MATERIAL_FORMAT_META,
   canonicalMaterialFolder,
+  materialFormat,
   materialJourneyStages,
   type AccessLevel,
   type JourneyStage,
@@ -65,6 +70,10 @@ export function AllMaterialsBrowser({
   const [folders, setFolders] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
+  /* "Show me every deck" is close to the exact cross-offering question this
+     page was built for, and it was the one facet the offering's own tab had
+     that this did not. */
+  const [formats, setFormats] = useState<string[]>([]);
   const [sort, setSort] = useState("offering");
 
   const offeringOptions = useMemo(() => {
@@ -98,6 +107,8 @@ export function AllMaterialsBrowser({
       }
       if (levels.length && !levels.includes(row.material.accessLevel || ""))
         return false;
+      if (formats.length && !formats.includes(materialFormat(row.material.kind)))
+        return false;
       if (!q) return true;
       return [
         row.material.label,
@@ -109,7 +120,7 @@ export function AllMaterialsBrowser({
         .filter(Boolean)
         .some((value) => (value as string).toLowerCase().includes(q));
     });
-  }, [rows, query, offerings, folders, stages, levels]);
+  }, [rows, query, offerings, folders, stages, levels, formats]);
 
   const ordered = useMemo(() => {
     const arr = [...visible];
@@ -143,13 +154,15 @@ export function AllMaterialsBrowser({
     setFolders([]);
     setStages([]);
     setLevels([]);
+    setFormats([]);
   };
   const anyFilter =
     !!query.trim() ||
     offerings.length > 0 ||
     folders.length > 0 ||
     stages.length > 0 ||
-    levels.length > 0;
+    levels.length > 0 ||
+    formats.length > 0;
 
   return (
     <div className="mt-5">
@@ -191,6 +204,17 @@ export function AllMaterialsBrowser({
                 values: folders,
                 onChange: setFolders,
                 options: folderOptions,
+              },
+              {
+                key: "format",
+                label: "Format",
+                values: formats,
+                onChange: setFormats,
+                options: MATERIAL_FORMATS.map((format) => ({
+                  value: format,
+                  label: MATERIAL_FORMAT_META[format].label,
+                  color: MATERIAL_FORMAT_META[format].color,
+                })),
               },
               {
                 key: "stage",
@@ -288,23 +312,40 @@ export function AllMaterialsBrowser({
                         app's own viewer, which renders Word and PowerPoint as
                         HTML; a pasted link opens where it points. Getting to
                         the offering is a separate link, in its own column. */}
-                    <button
-                      type="button"
-                      onClick={() => openMaterial(row.offeringId, row.material)}
-                      title={
+                    {/* HOVER THE NAME, SEE THE FILE (Anir, Aug 21: "there's
+                        still no pop-up"). The offering's own materials tab has
+                        rendered a live preview card on hover since Aug 8; this
+                        page shipped without it, so a rep scanning 28 files
+                        across offerings had to open every one to find out what
+                        it was. Same MaterialPeek component, so the two pages
+                        preview identically — and only the NAME triggers it,
+                        the rule that card was given the day it was built. */}
+                    <MaterialPeek
+                      material={row.material}
+                      previewUrl={
                         isUploadedMaterial(row.material)
-                          ? `Open ${row.material.label}`
-                          : `Open the link behind ${row.material.label}`
+                          ? `${materialPreviewHref(row.offeringId, row.material)}?embed=1`
+                          : null
                       }
-                      className="group/name inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-left text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                     >
-                      <span className="min-w-0 break-words">{row.material.label}</span>
-                      <ExternalLink
-                        size={12}
-                        strokeWidth={2.2}
-                        className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover/name:opacity-100"
-                      />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => openMaterial(row.offeringId, row.material)}
+                        title={
+                          isUploadedMaterial(row.material)
+                            ? `Open ${row.material.label}`
+                            : `Open the link behind ${row.material.label}`
+                        }
+                        className="group/name inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-left text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                      >
+                        <span className="min-w-0 break-words">{row.material.label}</span>
+                        <ExternalLink
+                          size={12}
+                          strokeWidth={2.2}
+                          className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover/name:opacity-100"
+                        />
+                      </button>
+                    </MaterialPeek>
                     {row.material.description && (
                       <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
                         {row.material.description}
