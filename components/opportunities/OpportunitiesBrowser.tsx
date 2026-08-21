@@ -19,7 +19,6 @@ import {
   Plus,
   Trash2,
   TrendingUp,
-  X,
   Target,
   Percent,
   Workflow,
@@ -39,15 +38,15 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { PageToolbar } from "@/components/ui/PageToolbar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn } from "@/lib/utils";
@@ -1497,10 +1496,17 @@ export function OpportunitiesBrowser({
       </div>
 
       <Card className="mt-4 overflow-hidden p-0">
-        <div className={cn("flex flex-wrap items-center gap-2 px-4 py-3", (shown.length === 0 || groupBy === "none") && "border-b border-border-light")}>
-          <PrioritySearchInput
-            value={query}
-            onChange={setQuery}
+        <div
+          className={cn(
+            "px-4 pt-3",
+            (shown.length === 0 || groupBy === "none") &&
+              "border-b border-border-light pb-3"
+          )}
+        >
+          <PageToolbar
+            className="mb-0"
+            query={query}
+            onQuery={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
             placeholders={[
               "Search deals…",
@@ -1508,81 +1514,94 @@ export function OpportunitiesBrowser({
               "Search offerings…",
               "Search owners…",
             ]}
-            className="min-w-[190px] flex-1"
-          />
-          {/* THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
-              "it's like how you do customers, and within the customers,
-              certain opportunities are coming"), so it leads the filters. */}
-          <MultiColorSelect
-            values={customerFilter}
-            ariaLabel="Filter by customer"
-            onChange={setCustomerFilter}
-            minWidth={210}
-            allLabel="All customers"
-            options={
-              // THE ACCOUNT'S OWN MARK, not a row of identical blue dots
-              // (Anir, Aug 16: "here you need to have the company logo").
-              customersInPipeline.map((c) => ({
-                value: c,
-                label: c,
-                logoName: c,
-              }))
+            searchAriaLabel="Search opportunities"
+            onClearAll={() => {
+              setQuery("");
+              setCustomerFilter([]);
+              setLevelFilter([]);
+              setStatusFilter([]);
+            }}
+            groups={[
+              {
+                // THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
+                // "it's like how you do customers, and within the customers,
+                // certain opportunities are coming"), so it leads the filters.
+                key: "customer",
+                label: "Customer",
+                values: customerFilter,
+                onChange: setCustomerFilter,
+                options: customersInPipeline.map((c) => ({
+                  value: c,
+                  label: c,
+                })),
+              },
+              {
+                key: "level",
+                label: "Revenue type",
+                values: levelFilter,
+                onChange: setLevelFilter,
+                options: OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
+                  value: l,
+                  label: l,
+                  color: LEVEL_COLOR[l],
+                })),
+              },
+              {
+                key: "status",
+                label: "Status",
+                values: statusFilter,
+                onChange: setStatusFilter,
+                options: OPPORTUNITY_STATUSES.map((st) => ({
+                  value: st,
+                  label: st,
+                  color: STATUS_COLOR[st],
+                })),
+              },
+            ]}
+            sortLabel="Group"
+            sort={
+              <ColorSelect
+                value={groupBy}
+                ariaLabel="Group rows"
+                onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
+                minWidth={180}
+                dense
+                collapsible={false}
+                className="w-[180px] shrink-0"
+                options={[
+                  { value: "none", label: "No grouping", color: "#8E98A8" },
+                  { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
+                  { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
+                ]}
+              />
+            }
+            display={
+              /* ONE button that knows which way it goes (Anir, Aug 19: "It
+                 should just be one button. It'll know if I close all or open
+                 all"): any card open means the next press closes everything;
+                 all shut means it opens everything. */
+              groupBy !== "none" && shown.length > 0
+                ? (() => {
+                    const allKeys = groupSections.map((sec) => sec.key);
+                    const anyOpen = allKeys.some((k) => !shutGroups.includes(k));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setShutGroups(anyOpen ? allKeys : [])}
+                        className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        {anyOpen ? (
+                          <ChevronsDownUp size={14} strokeWidth={2.2} />
+                        ) : (
+                          <ChevronsUpDown size={14} strokeWidth={2.2} />
+                        )}
+                        {anyOpen ? "Close all" : "Open all"}
+                      </button>
+                    );
+                  })()
+                : null
             }
           />
-          <MultiColorSelect
-            values={levelFilter}
-            ariaLabel="Filter by revenue type"
-            onChange={setLevelFilter}
-            allLabel="All revenue types"
-            options={OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
-              value: l,
-              label: l,
-              color: LEVEL_COLOR[l],
-            }))}
-          />
-          <ColorSelect
-            value={groupBy}
-            ariaLabel="Group rows"
-            onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
-            options={[
-              { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
-              { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
-            ]}
-          />
-          <MultiColorSelect
-            values={statusFilter}
-            ariaLabel="Filter by status"
-            onChange={setStatusFilter}
-            allLabel="Any status"
-            options={OPPORTUNITY_STATUSES.map((s) => ({
-              value: s,
-              label: s,
-              color: STATUS_COLOR[s],
-            }))}
-          />
-          {/* ONE button that knows which way it goes (Anir, Aug 19: "It
-              should just be one button. It'll know if I close all or open
-              all"): any card open means the next press closes everything;
-              all shut means it opens everything. */}
-          {groupBy !== "none" && shown.length > 0 && (() => {
-            const allKeys = groupSections.map((s) => s.key);
-            const anyOpen = allKeys.some((k) => !shutGroups.includes(k));
-            return (
-              <button
-                type="button"
-                onClick={() => setShutGroups(anyOpen ? allKeys : [])}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-              >
-                {anyOpen ? (
-                  <ChevronsDownUp size={14} strokeWidth={2.2} />
-                ) : (
-                  <ChevronsUpDown size={14} strokeWidth={2.2} />
-                )}
-                {anyOpen ? "Close all" : "Open all"}
-              </button>
-            );
-          })()}
         </div>
 
         {shown.length === 0 ? (
@@ -2588,58 +2607,49 @@ function FutureSection({
 
       <Card className="mt-4 overflow-hidden p-0">
         {futures.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
-            <PrioritySearchInput
-              value={q}
-              onChange={setQ}
+          <div className="border-b border-border-light px-4 pb-3 pt-3">
+            <PageToolbar
+              className="mb-0"
+              query={q}
+              onQuery={setQ}
               placeholder="Search future deals, accounts, offerings…"
               placeholders={[
                 "Search future deals…",
                 "Search accounts…",
                 "Search offerings…",
               ]}
-              className="min-w-[190px] flex-1"
-            />
-            <ColorSelect
-              value={customer}
-              onChange={setCustomer}
-              ariaLabel="Customer"
-              collapsible={false}
-              dense
-              minWidth={150}
-              options={[
-                { value: "all", label: "All customers" },
-                ...customers.map((c) => ({ value: c, label: c, logoName: c })),
+              searchAriaLabel="Search future deals"
+              onClearAll={() => {
+                setQ("");
+                setCustomer("all");
+                setQuarter("all");
+              }}
+              groups={[
+                {
+                  key: "customer",
+                  label: "Customer",
+                  values: customer === "all" ? [] : [customer],
+                  onChange: (next) => setCustomer(next[next.length - 1] ?? "all"),
+                  options: customers.map((c) => ({ value: c, label: c })),
+                },
+                {
+                  key: "quarter",
+                  label: "Target quarter",
+                  values: quarter === "all" ? [] : [quarter],
+                  onChange: (next) => setQuarter(next[next.length - 1] ?? "all"),
+                  options: quarters.map((qt) => ({
+                    value: qt,
+                    label: qt,
+                    color: "#7C3AED",
+                  })),
+                },
               ]}
+              display={
+                <span className="shrink-0 text-[12px] font-semibold text-text-tertiary tnum">
+                  {shownFutures.length} of {futures.length}
+                </span>
+              }
             />
-            <ColorSelect
-              value={quarter}
-              onChange={setQuarter}
-              ariaLabel="Target quarter"
-              collapsible={false}
-              dense
-              minWidth={140}
-              options={[
-                { value: "all", label: "Any quarter" },
-                ...quarters.map((qt) => ({ value: qt, label: qt, color: "#7C3AED" })),
-              ]}
-            />
-            {(q || customer !== "all" || quarter !== "all") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQ("");
-                  setCustomer("all");
-                  setQuarter("all");
-                }}
-                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-              >
-                <X size={12} strokeWidth={2.4} /> Clear
-              </button>
-            )}
-            <span className="text-[12px] font-semibold text-text-tertiary tnum">
-              {shownFutures.length} of {futures.length}
-            </span>
           </div>
         )}
         {futures.length === 0 ? (

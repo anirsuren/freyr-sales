@@ -11,15 +11,9 @@ import {
   Clock,
   Download,
   Layers,
-  LayoutGrid,
   Trash2,
-  Package,
-  Table2,
-  Unplug,
   Plus,
-  Search,
   Server,
-  X,
   CalendarRange,
   BellRing,
 } from "lucide-react";
@@ -27,13 +21,13 @@ import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/Offering
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Button } from "@/components/ui/Button";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { downloadDocx } from "@/lib/docx";
 import { withV } from "@/lib/version";
 import { useToast } from "@/components/ui/Toast";
+import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 
@@ -383,115 +377,82 @@ export function FdlComponentsBrowser({
         }
       />
       {components.length > 0 && (
-        <div className="rise-in mb-4 flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-1 sm:max-w-[340px]">
-            <Search
-              size={15}
-              strokeWidth={2}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-            />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search components…"
-              aria-label="Search components"
-              className="w-full rounded-lg border border-border-light bg-white py-2 pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
-            />
-          </label>
-          <ColorSelect
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Filter by component type"
-            dense
-            collapsible={false}
-            className="w-[160px] shrink-0"
-            options={[
-              { value: "", label: "All types", color: "#0071E3", icon: Boxes },
-              ...(["Module", "Agent", "Platform"] as FdlComponentType[]).map((t) => ({
-                value: t,
-                label: t,
-                color: FDL_TYPE_META[t].color,
-                icon: FDL_TYPE_META[t].Icon,
-              })),
-            ]}
-          />
-          <MultiColorSelect
-            values={offeringFilter}
-            onChange={setOfferingFilter}
-            allLabel="All offerings"
-            allIcon={Package}
-            ariaLabel="Filter by offering"
-            dense
-            collapsible={false}
-            width={186}
-            options={[
-              // The SAME hue and glyph the offering wears everywhere else
-              // (Anir, Aug 9: "make sure to have the right colors for each
-              // offering"). offeringMark is the one place that decides an
-              // offering's identity, so the filter, the chips in the table and
-              // the tiles on /offerings can never drift apart.
-              ...offeringNames.map((name) => {
-                const mark = offeringMark(name);
-                return {
+        <PageToolbar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Search components…"
+          searchAriaLabel="Search components"
+          onClearAll={() => {
+            setQuery("");
+            setTypeFilter("");
+            setOfferingFilter([]);
+            setStateFilter("");
+          }}
+          groups={[
+            {
+              key: "type",
+              label: "Type",
+              // Single-select underneath: the last pick wins, "" is all.
+              values: typeFilter ? [typeFilter] : [],
+              onChange: (next) => setTypeFilter(next[next.length - 1] ?? ""),
+              options: (["Module", "Agent", "Platform"] as FdlComponentType[]).map(
+                (t) => ({ value: t, label: t, color: FDL_TYPE_META[t].color })
+              ),
+            },
+            {
+              key: "offering",
+              label: "Offering",
+              values: offeringFilter,
+              onChange: setOfferingFilter,
+              options: [
+                // The SAME hue the offering wears everywhere else (Anir, Aug 9:
+                // "make sure to have the right colors for each offering").
+                // offeringMark is the one place that decides an offering's
+                // identity, so the filter, the chips in the table and the tiles
+                // on /offerings can never drift apart.
+                ...offeringNames.map((name) => ({
                   value: name,
                   label: name,
-                  color: mark.color,
-                  icon: mark.icon,
-                };
-              }),
-              {
-                value: UNCONNECTED,
-                label: "Not in an offering yet",
-                color: "#6D28D9",
-                icon: Unplug,
-              },
-            ]}
-          />
-          <ColorSelect
-            value={stateFilter}
-            onChange={setStateFilter}
-            ariaLabel="Filter by release state"
-            dense
-            collapsible={false}
-            className="w-[178px] shrink-0"
-            options={[
-              { value: "", label: "Any release state", color: "#0071E3", icon: Boxes },
-              {
-                value: "shipping",
-                label: "Has a current version",
-                color: "#1A7A35",
-                icon: CircleCheck,
-              },
-              {
-                value: "unreleased",
-                label: "No version yet",
-                color: "#6D28D9",
-                icon: Clock,
-              },
-              {
-                value: "next",
-                label: "Next version planned",
-                color: "#0E7490",
-                icon: Layers,
-              },
-            ]}
-          />
-          <span className="ml-auto text-[12.5px] text-text-secondary tnum">
-            {shown.length === components.length
-              ? `${components.length} components`
-              : `${shown.length} of ${components.length}`}
-          </span>
-          {/* One button, same as Offerings: the icon shows where the click
-              takes you rather than spending double the width on a segmented
-              control. */}
-          <ViewSelect
-            value={view}
-            onChange={chooseView}
-            tileValue="tile"
-            tableValue="table"
-          />
-        </div>
+                  color: offeringMark(name).color,
+                })),
+                {
+                  value: UNCONNECTED,
+                  label: "Not in an offering yet",
+                  color: "#6D28D9",
+                },
+              ],
+            },
+            {
+              key: "state",
+              label: "Release state",
+              values: stateFilter ? [stateFilter] : [],
+              onChange: (next) => setStateFilter(next[next.length - 1] ?? ""),
+              options: [
+                { value: "shipping", label: "Has a current version", color: "#1A7A35" },
+                { value: "unreleased", label: "No version yet", color: "#6D28D9" },
+                { value: "next", label: "Next version planned", color: "#0E7490" },
+              ],
+            },
+          ]}
+          display={
+            <span className="shrink-0 text-[12.5px] text-text-secondary tnum">
+              {shown.length === components.length
+                ? `${components.length} components`
+                : `${shown.length} of ${components.length}`}
+            </span>
+          }
+          view={
+            /* One button, same as Offerings: the icon shows where the click
+               takes you rather than spending double the width on a segmented
+               control. */
+            <ViewSelect
+              value={view}
+              onChange={chooseView}
+              tileValue="tile"
+              tableValue="table"
+            />
+          }
+        />
       )}
 
       {components.length === 0 ? (

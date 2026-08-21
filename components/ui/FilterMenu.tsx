@@ -7,7 +7,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
 /**
- * FIVE DROPDOWNS BECOME ONE BUTTON.
+ * FIVE DROPDOWNS BECOME ONE BUTTON — now the app's filter control, not the
+ * offerings page's (Anir, Aug 21: "whatever you have here on the offerings
+ * page, I like that search bar — the size of it, the filter, the sort. Same
+ * thing on FDL components, same thing on Opportunities, same thing on
+ * Customers, same on Team. Do it for all the pages").
  *
  * From Saras on the call (Aug 21), carrying rep feedback that named this
  * twice: "should we keep the filters like that instead of each filter showing
@@ -44,7 +48,7 @@ export type FilterGroup = {
   options: FilterOption[];
 };
 
-export function OfferingsFilterMenu({
+export function FilterMenu({
   groups,
   onClearAll,
 }: {

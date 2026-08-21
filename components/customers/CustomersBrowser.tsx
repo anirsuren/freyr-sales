@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload } from "lucide-react";
+import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
-  SearchPriority,
-  PrioritySearchInput,
-  PriorityLabel,
   PriorityTooltip,
 } from "@/components/ui/SearchPriority";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -562,41 +560,41 @@ export function CustomersBrowser({
           release (Anir, Jul 30: "the search bar shouldn't move like that — it
           should only expand to the right"). The old layout right-aligned a
           width-animated input, so its left edge jumped left on focus. */}
-      <SearchPriority
+      <PageToolbar
         query={query}
-        // rise-in, because the toolbar was the one strip that just appeared
-        // while the header above and the cards below lifted in (Anir, Aug 9:
-        // "the filter with the row and search bar doesn't animate with the
-        // rest of the page... it looks like it's an issue on the customers
-        // page too").
-        className="rise-in mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
-      >
-          <PrioritySearchInput
-            grow
-            className="flex-1"
-            value={query}
-            onChange={setQuery}
-            placeholder="Search customers…"
-            ariaLabel="Search customers"
-          />
-          <ColorSelect
-            value={healthFilter}
-            onChange={setHealthFilter}
-            minWidth={140}
-            options={[
-              { value: "all", label: "All health", color: "#0071E3" },
+        onQuery={setQuery}
+        placeholder="Search customers…"
+        searchAriaLabel="Search customers"
+        onClearAll={() => {
+          setQuery("");
+          setHealthFilter("all");
+        }}
+        groups={[
+          {
+            key: "health",
+            label: "Health",
+            // Single-select underneath, so picking one replaces the last.
+            values: healthFilter === "all" ? [] : [healthFilter],
+            onChange: (next) => setHealthFilter(next[next.length - 1] ?? "all"),
+            options: [
               { value: "healthy", label: "Healthy", color: HEALTH_COLOR.healthy.color },
               // Pulled from HEALTH_COLOR like its neighbours instead of a
               // hardcoded yellow — the option label is rendered AS this colour,
               // and #EAB308 was both illegible and out of sync with the badge.
               { value: "watch", label: "Watch", color: HEALTH_COLOR.watch.color },
               { value: "at_risk", label: "At risk", color: HEALTH_COLOR.at_risk.color },
-            ]}
-          />
+            ],
+          },
+        ]}
+        sort={
           <ColorSelect
             value={sort}
             onChange={setSort}
+            ariaLabel="Sort customers"
             minWidth={185}
+            dense
+            collapsible={false}
+            className="w-[185px] shrink-0"
             options={[
               // Icons alone rendered as a gray list — every option needs its
               // colour (standing rule: chips and dropdowns are never gray).
@@ -608,66 +606,81 @@ export function CustomersBrowser({
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
           />
-          <ColorSelect
-            value={Number.isFinite(perPage) ? String(perPage) : "all"}
-            onChange={changePerPage}
-            minWidth={120}
-            options={[
-              {
-                value: "all",
-                label: "All on one page",
-                icon: Rows3,
-                short: "All",
-                color: "#0071E3",
-              },
-              ...[8, 12, 24, 48].map<ColorOption>((n) => ({
-              value: String(n),
-              label: `${n} / page`,
-              icon: Rows3,
-              // Rows3 alone would collapse every page size to one identical
-              // glyph, so the compressed square shows the number itself.
-              short: String(n),
-              color: "#0071E3",
-            })),
-            ]}
-          />
-          {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
-              thing should be last. The download button and the select button:
-              you don't have to see what they are. Just have the icons, to the
-              left of that"). Their tooltips still name them on approach. */}
-          <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
-            <button
-              onClick={() => {
-                // Selecting works in BOTH layouts now — flipping people into
-                // the table was a surprise every time (Anir, Aug 12: "I should
-                // be able to check it off like on normal view too").
-                const next = !selectMode;
-                setSelectMode(next);
-                setSelected(new Set());
-              }}
-              aria-label={selectMode ? "Done selecting" : "Select accounts"}
-              aria-pressed={selectMode}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
-                selectMode
-                  ? "border-blue-primary bg-blue-light text-blue-primary"
-                  : "border-border text-text-secondary hover:bg-surface"
-              )}
-            >
-              <CheckSquare size={15} strokeWidth={1.8} />
-            </button>
-          </PriorityTooltip>
-          <PriorityTooltip label="Export CSV">
-            <button
-              onClick={exportCsv}
-              aria-label="Export CSV"
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-            >
-              <Download size={16} strokeWidth={1.5} />
-            </button>
-          </PriorityTooltip>
+        }
+        display={
+          <>
+            {/* PAGE SIZE IS A DISPLAY CONTROL, so it belongs in the display
+                cluster rather than in the filter run, where it had grown a
+                line of its own (Anir, Aug 21: "your customers page is weird,
+                there's literally a dropdown on its own line there"). */}
+            <ColorSelect
+              value={Number.isFinite(perPage) ? String(perPage) : "all"}
+              onChange={changePerPage}
+              ariaLabel="Rows per page"
+              minWidth={120}
+              dense
+              collapsible={false}
+              className="w-[120px] shrink-0"
+              options={[
+                {
+                  value: "all",
+                  label: "All on one page",
+                  icon: Rows3,
+                  short: "All",
+                  color: "#0071E3",
+                },
+                ...[8, 12, 24, 48].map<ColorOption>((n) => ({
+                  value: String(n),
+                  label: `${n} / page`,
+                  icon: Rows3,
+                  // Rows3 alone would collapse every page size to one identical
+                  // glyph, so the compressed square shows the number itself.
+                  short: String(n),
+                  color: "#0071E3",
+                })),
+              ]}
+            />
+            {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
+                thing should be last. The download button and the select
+                button: you don't have to see what they are. Just have the
+                icons, to the left of that"). */}
+            <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
+              <button
+                onClick={() => {
+                  // Selecting works in BOTH layouts now — flipping people into
+                  // the table was a surprise every time (Anir, Aug 12: "I should
+                  // be able to check it off like on normal view too").
+                  const next = !selectMode;
+                  setSelectMode(next);
+                  setSelected(new Set());
+                }}
+                aria-label={selectMode ? "Done selecting" : "Select accounts"}
+                aria-pressed={selectMode}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
+                  selectMode
+                    ? "border-blue-primary bg-blue-light text-blue-primary"
+                    : "border-border text-text-secondary hover:bg-surface"
+                )}
+              >
+                <CheckSquare size={15} strokeWidth={1.8} />
+              </button>
+            </PriorityTooltip>
+            <PriorityTooltip label="Export CSV">
+              <button
+                onClick={exportCsv}
+                aria-label="Export CSV"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-secondary transition-colors hover:bg-surface"
+              >
+                <Download size={16} strokeWidth={1.5} />
+              </button>
+            </PriorityTooltip>
+          </>
+        }
+        view={
           <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
-      </SearchPriority>
+        }
+      />
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">

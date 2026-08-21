@@ -172,7 +172,22 @@ export default async function TeamPage() {
       const title = memberProfiles.get(member.id)?.title.trim();
       const mine = ownerTotals.get(member.name.trim().toLowerCase());
       return {
-        identityKey: member.email || member.id,
+        /**
+         * THE MEMBERSHIP ROW, NOT THE ADDRESS (Anir, Aug 21: "when I click on
+         * Anir S, it's toggling both dropdowns — I have no idea why it's doing
+         * that").
+         *
+         * The directory legitimately holds more than one row for one address:
+         * "Anir S" the rep and "Anir Suren" the admin both sit on
+         * anir.s@freyrsolutions.com. Keying on the email gave the two rows one
+         * identity, so expanding either expanded both — and React saw two
+         * children with the same `key`, which is its own quiet corruption.
+         * member.id is unique per row, which is what a per-row control needs.
+         * The same duplicate-address fact bit the roadmap digest on Aug 21;
+         * there the answer was to collapse to one, here it is to keep them
+         * apart.
+         */
+        identityKey: member.id,
         name: member.name,
         slug: member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         title: title || "Title not set",

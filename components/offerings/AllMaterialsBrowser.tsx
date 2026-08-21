@@ -35,7 +35,7 @@ import {
   type JourneyStage,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
-import { OfferingsFilterMenu } from "@/components/offerings/OfferingsFilterMenu";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
 import { cn } from "@/lib/utils";
 
@@ -188,7 +188,7 @@ export function AllMaterialsBrowser({
             iconClassName="left-3"
             inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
           />
-          <OfferingsFilterMenu
+          <FilterMenu
             onClearAll={clearAll}
             groups={[
               {

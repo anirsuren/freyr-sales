@@ -2,11 +2,10 @@
 
 import { Fragment, useState } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
-  PrioritySearchInput,
-  SearchPriority,
 } from "@/components/ui/SearchPriority";
+import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
@@ -15,19 +14,13 @@ import {
   ArrowRight,
   ChevronDown,
   CalendarDays,
-  CircleSlash,
   DollarSign,
-  Globe,
   Globe2,
   Layers,
-  LayoutGrid,
   Mail,
   MapPin,
   Phone,
-  Search,
-  Table2,
   TrendingUp,
-  Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -514,94 +507,81 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             around it responded — the filters never yielded their labels, so
             this toolbar alone sat still (Anir, Aug 12: "you're still not
             doing the search bar thing here"). */}
-        <SearchPriority
+        <PageToolbar
           query={query}
-          className="mt-3 flex flex-wrap items-center gap-2"
-        >
-          <PrioritySearchInput
-            grow
-            className="min-w-[200px] flex-1"
-            value={query}
-            onChange={setQuery}
-            placeholder="Search the floor…"
-            ariaLabel="Search the sales floor"
-          />
-          <MultiColorSelect
-            values={roleFilter}
-            onChange={setRoleFilter}
-            allLabel="All roles"
-            allIcon={Users}
-            ariaLabel="Filter by role"
-            dense
-            width={132}
-            // Built from ROLE_META, not typed out again — this list had its own
-            // third scrambling of the palette (Rep was wearing Admin's teal), so
-            // filtering by Rep highlighted a colour no Rep chip ever used.
-            options={(["Admin", "Manager", "Rep"] as const).map((value) => {
-              const meta = ROLE_META[roleKey(value)];
-              return {
+          onQuery={setQuery}
+          placeholder="Search the floor…"
+          searchAriaLabel="Search the sales floor"
+          onClearAll={() => {
+            setQuery("");
+            setRoleFilter([]);
+            setRegionFilter([]);
+            setPipelineFilter([]);
+          }}
+          groups={[
+            {
+              key: "role",
+              label: "Role",
+              values: roleFilter,
+              onChange: setRoleFilter,
+              // Built from ROLE_META, not typed out again — this list had its
+              // own third scrambling of the palette (Rep was wearing Admin's
+              // teal), so filtering by Rep highlighted a colour no Rep chip
+              // ever used.
+              options: (["Admin", "Manager", "Rep"] as const).map((value) => ({
                 value,
-                label: meta.label,
-                color: meta.color,
-                icon: meta.icon,
-              };
-            })}
-          />
-          <MultiColorSelect
-            values={regionFilter}
-            onChange={setRegionFilter}
-            allLabel="All regions"
-            allIcon={Globe}
-            ariaLabel="Filter by region"
-            dense
-            width={150}
-            options={regions.map((region) => ({
-              value: region,
-              label: region,
-              color: "#0891B2",
-              icon: Globe,
-            }))}
-          />
-          <MultiColorSelect
-            values={pipelineFilter}
-            onChange={setPipelineFilter}
-            allLabel="Any pipeline"
-            allIcon={Layers}
-            ariaLabel="Filter by pipeline"
-            dense
-            width={152}
-            options={[
-              { value: "with", label: "Holding pipeline", color: "#1A7A35", icon: TrendingUp },
-              { value: "without", label: "Nothing open", color: "#B4318F", icon: CircleSlash },
-            ]}
-          />
-          <ColorSelect
-            value={sortBy}
-            onChange={setSortBy}
-            ariaLabel="Sort the floor"
-            dense
-            className="w-[150px] shrink-0"
-            options={[
-              { value: "pipeline", label: "Open pipeline", color: "#1A7A35", icon: TrendingUp },
-              { value: "deals", label: "Open deals", color: "#0071E3", icon: Layers },
-              { value: "meetings", label: "Meetings", color: "#6D28D9", icon: CalendarDays },
-              { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
-            ]}
-          />
-          {visible.length !== reps.length && (
-            <span className="text-[12px] text-text-secondary tnum">
-              {visible.length} of {reps.length}
-            </span>
-          )}
-          <span className="ml-auto flex items-center gap-2">
+                label: ROLE_META[roleKey(value)].label,
+                color: ROLE_META[roleKey(value)].color,
+              })),
+            },
+            {
+              key: "region",
+              label: "Region",
+              values: regionFilter,
+              onChange: setRegionFilter,
+              options: regions.map((region) => ({
+                value: region,
+                label: region,
+                color: "#0891B2",
+              })),
+            },
+            {
+              key: "pipeline",
+              label: "Pipeline",
+              values: pipelineFilter,
+              onChange: setPipelineFilter,
+              options: [
+                { value: "with", label: "Holding pipeline", color: "#1A7A35" },
+                { value: "without", label: "Nothing open", color: "#B4318F" },
+              ],
+            },
+          ]}
+          sort={
+            <ColorSelect
+              value={sortBy}
+              onChange={setSortBy}
+              ariaLabel="Sort the floor"
+              minWidth={150}
+              dense
+              collapsible={false}
+              className="w-[150px] shrink-0"
+              options={[
+                { value: "pipeline", label: "Open pipeline", color: "#1A7A35", icon: TrendingUp },
+                { value: "deals", label: "Open deals", color: "#0071E3", icon: Layers },
+                { value: "meetings", label: "Meetings", color: "#6D28D9", icon: CalendarDays },
+                { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
+              ]}
+            />
+          }
+          view={
             <ViewSelect
               value={view}
               onChange={setView}
               tileValue="grid"
               tableValue="table"
             />
-          </span>
-        </SearchPriority>
+          }
+        />
       </div>
 
       {/* key=view re-mounts the panel so switching grid↔table animates. It used

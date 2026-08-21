@@ -32,7 +32,7 @@ import {
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
-import { OfferingsFilterMenu } from "@/components/offerings/OfferingsFilterMenu";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { ColumnHeaderMenu } from "@/components/offerings/ColumnHeaderMenu";
 import { shortPersonName } from "@/lib/personName";
 import { Building, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
@@ -1138,7 +1138,7 @@ export function OfferingsBrowser({
             selects were the single biggest source of the "busy and
             over-coloured" complaint, and they were on screen whether or not
             anybody was filtering. */}
-        <OfferingsFilterMenu
+        <FilterMenu
           onClearAll={clearAll}
           groups={[
             {
@@ -1429,7 +1429,7 @@ export function OfferingsBrowser({
                       Same state as the toolbar's Filter button, so a filter
                       set in one place shows in the other and the two can never
                       disagree with what is on screen. */}
-                  <th className="px-4 py-2.5 w-[22%]">
+                  <th className="px-4 py-2.5 w-[19%]">
                     <ColumnHeaderMenu
                       label="Offering"
                       sortKey="name"
@@ -1507,7 +1507,7 @@ export function OfferingsBrowser({
                       ]}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[12%]">
+                  <th className="px-4 py-2.5 w-[13%]">
                     <ColumnHeaderMenu
                       label="Who it's for"
                       values={ctIds}
@@ -1519,7 +1519,7 @@ export function OfferingsBrowser({
                       }))}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[8%]">
+                  <th className="px-4 py-2.5 w-[10%]">
                     <ColumnHeaderMenu
                       label="Materials"
                       sortKey="materials"
@@ -1661,9 +1661,18 @@ export function OfferingsBrowser({
                             we'll just keep them simple — black text, no
                             background colour"). Five tinted pills per row, on
                             every row, was the loudest block on the page. */}
+                        {/* ONE PER LINE (Anir, Aug 21: "put each on one
+                            line"). Joined with separators the five families
+                            wrapped mid-name — "Bio / Pharmaceutical" split
+                            across two rows — so the column read as a
+                            paragraph instead of a list. */}
                         {famList.length ? (
-                          <span className="block text-[12px] leading-relaxed text-text-primary">
-                            {famList.join(" · ")}
+                          <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
+                            {famList.map((f) => (
+                              <span key={f} className="break-words">
+                                {f}
+                              </span>
+                            ))}
                           </span>
                         ) : (
                           <span className="text-text-secondary">-</span>
