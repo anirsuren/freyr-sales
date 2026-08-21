@@ -9,6 +9,8 @@ import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { readPerformance } from "@/lib/performance";
 import { getCurrentUser } from "@/lib/currentUser";
+import { RoadmapEmailSettings } from "@/components/notifications/RoadmapEmailSettings";
+import { initializeLiveOfferings, listFdlComponents, listOfferings } from "@/lib/offerings";
 
 export const metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
@@ -28,6 +30,33 @@ async function performanceForMe() {
   }
 }
 
+/**
+ * Everything a person could be following, so the settings block can name what
+ * they DO follow instead of printing ids. Read on the server with the rest of
+ * the page: the client half only ever fetches the subscription itself.
+ */
+async function followableRoadmaps() {
+  try {
+    await initializeLiveOfferings().catch(() => undefined);
+    return [
+      ...listFdlComponents().map((c) => ({
+        kind: "component" as const,
+        id: c.id,
+        name: c.name,
+        href: `/components/${c.id}`,
+      })),
+      ...listOfferings().map((o) => ({
+        kind: "offering" as const,
+        id: o.id,
+        name: o.offering_name,
+        href: `/offerings/${o.id}`,
+      })),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 export default async function NotificationsPage() {
   /**
    * THE SAME LIST THE BELL SHOWS.
@@ -38,10 +67,11 @@ export default async function NotificationsPage() {
    * notifications' doesn't even work"). Both surfaces now read the same
    * nudges and honour the same live-workspace rule.
    */
-  const [nudges, performance, roadmaps] = await Promise.all([
+  const [nudges, performance, roadmaps, followable] = await Promise.all([
     currentUserSetupNudges(),
     performanceForMe(),
     roadmapChangesForReader(),
+    followableRoadmaps(),
   ]);
 
   if (isOfferingsOnly(getDataMode())) {
@@ -60,6 +90,7 @@ export default async function NotificationsPage() {
           title="Notifications"
           subtitle="Anything still waiting on you."
         />
+        <RoadmapEmailSettings followable={followable} />
         <NotificationsCenter items={items} />
       </div>
     );
@@ -81,6 +112,7 @@ export default async function NotificationsPage() {
         title="Notifications"
         subtitle="Pitches to approve, deals going cold, and fresh buying signals."
       />
+      <RoadmapEmailSettings followable={followable} />
       <NotificationsCenter items={items} />
     </div>
   );

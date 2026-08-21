@@ -1710,9 +1710,20 @@ export function OpportunitiesBrowser({
         title={editing?.id ? `Edit ${editing.name}` : "New opportunity"}
         size="workflow"
         tall
+        /* ONE SIZE, WHATEVER IS OPEN (Anir, Aug 21: "when I press the dropdown
+           it changes the dimensions of it — just have a set dimension").
+           Four collapsible rooms means the dialog grew and shrank under the
+           cursor on every open and close, and the buttons you were reaching
+           for moved while you reached. The height is fixed and the body
+           scrolls inside it, the same treatment the goal editor and the heat
+           map already use. */
+        dialogClassName="!h-[min(760px,calc(100vh-3rem))]"
       >
         {editing && (
-          <div className="space-y-3.5">
+          /* Fills the fixed-height dialog, so the pinned footer below lands on
+             the bottom edge instead of floating halfway up with dead white
+             under it when only one room is open. */
+          <div className="flex min-h-full flex-col gap-3.5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Opportunity name" hint="What this deal is called internally.">
                 <input
@@ -2218,7 +2229,7 @@ export function OpportunitiesBrowser({
                 (Anir, Aug 17: "the save changes button in the bottom right…
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
-            <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 py-3">
+            <div className="sticky bottom-0 -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 py-3">
               {editing.id && canEdit && live && (
                 <button
                   type="button"

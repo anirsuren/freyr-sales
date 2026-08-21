@@ -45,6 +45,11 @@ const PUBLIC_WEBHOOK_PATHS = new Set([
   // bearer token and 401s without it, exactly as the webhooks above verify
   // their own provider secrets.
   "/api/cron/monthly",
+  // The roadmap digest, on the same terms: a scheduler has no session to
+  // present, and the route 401s on any request that does not carry
+  // CRON_SECRET as a bearer token. Added because a digest a scheduler cannot
+  // call is not a digest.
+  "/api/cron/roadmap-digest",
 ]);
 
 function isPublicPath(pathname: string): boolean {

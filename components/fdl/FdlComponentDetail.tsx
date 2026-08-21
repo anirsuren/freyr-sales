@@ -5,6 +5,7 @@ import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
+import { RoadmapFollowButton } from "@/components/notifications/RoadmapFollowButton";
 import { useRouter } from "next/navigation";
 import {
   GitBranch,
@@ -1846,6 +1847,11 @@ export function FdlComponentDetail({
             <InfoHint text="Every version this component has shipped or has planned. The check mark shows the current one, the version sellers quote." />
           </h2>
           <div className="flex shrink-0 items-center gap-2">
+            {/* Subscribe where the roadmap is, not on a settings page nobody
+                opens (product owner via Anir, Aug 21: "there should be an
+                option to subscribe for those notifications if there is any
+                change"). Left of Add version: reading is the common act. */}
+            <RoadmapFollowButton kind="component" id={component.id} compact />
             {canEdit && (
               <Button onClick={() => setAddingVersion(true)}>
                 <Plus size={14} strokeWidth={2.2} /> Add version
