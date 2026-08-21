@@ -1288,6 +1288,9 @@ export function FdlComponentDetail({
                         }
                         detail="It changes the roadmap, so it is recorded and everyone following this component hears about it."
                         confirmLabel="Yes, make it current"
+                        /* Nothing is destroyed here, so nothing is red
+                           (Anir, Aug 21: "why is that a red button?"). */
+                        tone="primary"
                       />
                     </span>
                   </div>
@@ -3534,6 +3537,9 @@ function ReleaseDateChip({
      in adjacent lines, which is the thing Anir calls a restatement. */
   const drift = history.length > 1 ? totalDrift(history) : null;
   const moved = draft !== value;
+  /* Later than what it says today — the only case that is bad news. */
+  const slipping =
+    moved && !!value && !!draft && Date.parse(draft) > Date.parse(value);
   // A reason is asked for only when the date actually MOVES. Setting one for
   // the first time has nothing to explain — there was no promise to break.
   const needsReason = moved && hasDate && draft !== "";
@@ -3729,11 +3735,22 @@ function ReleaseDateChip({
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
+            {/* RED WHEN IT IS BAD NEWS, BLUE OTHERWISE (Anir, Aug 21: "it
+                should be a red button if you're delaying it and then a blue
+                button if you're shortening it"). A date that slips is the one
+                somebody has to go and re-tell a customer, and the button
+                should say that before the click rather than after. Pulling a
+                date in, setting a first one, or clearing one is ordinary
+                work and wears the ordinary primary blue. */}
             <Button
               onClick={() => void save()}
               loading={saving}
               disabled={!moved || (needsReason && !reason.trim())}
+              variant={slipping ? "destructive" : "primary"}
             >
+              {/* The LABEL stays put. A button whose words change is a button
+                  whose width changes, which is the jitter Anir called out on
+                  the deal editor an hour earlier. The colour carries it. */}
               Save date
             </Button>
           </div>
