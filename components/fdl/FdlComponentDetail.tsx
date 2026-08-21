@@ -435,13 +435,23 @@ export function FdlComponentDetail({
    * version minted before reasons existed simply has none to show.
    */
   function dateHistory(version: string) {
-    const label = withV(version).toLowerCase();
+    /* THE LEADING "V" IS A DISPLAY CHOICE, NOT PART OF THE NAME (found by
+       Anir on his own data, Aug 21: "I just moved the date. It still says
+       it's been moved zero times").
+       
+       Freyr stores these as "3.0.4" and the change lines are written from the
+       stored string, while the UI prints them through withV() as "V3.0.4".
+       Matching the printed form against the stored form found nothing, so a
+       real move sat in the history and the dialog above it said none had ever
+       happened. Both spellings are compared with the V stripped. */
+    const bare = (text: string) => text.trim().toLowerCase().replace(/^v/, "");
+    const wanted = bare(version);
     const out: { at: string; by: string; line: string; reason?: string }[] = [];
     for (const v of component.roadmap_versions ?? []) {
       for (const line of v.changes) {
-        const low = line.toLowerCase();
-        if (!low.startsWith(label)) continue;
-        if (!/moved from|dated |lost its date/.test(low)) continue;
+        const named = /^(.*?)\s+(moved from|dated|lost its date)\b/i.exec(line);
+        if (!named) continue;
+        if (bare(named[1]) !== wanted) continue;
         out.push({ at: v.savedAt, by: v.savedBy, line, reason: v.reason });
       }
     }
