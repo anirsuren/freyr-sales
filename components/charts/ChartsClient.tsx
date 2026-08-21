@@ -219,11 +219,19 @@ function PointGuide({ left, color }: { left: string; color: string }) {
     />
   );
 }
-/** Grace period the tip stays open after the cursor leaves the chart element,
- *  so it can be walked INTO (Suren: "let them hover over the pop-up itself and
- *  scroll through"). Same idea as HoverCard's 110ms, a touch longer because a
- *  chart tip can sit a full card-gap away from the bar that opened it. */
-const TIP_CLOSE_GRACE_MS = 170;
+/**
+ * Grace period the tip stays open after the cursor leaves the chart element,
+ * so it can be walked INTO (Suren: "let them hover over the pop-up itself and
+ * scroll through").
+ *
+ * 170ms felt like the card was hanging on after you had clearly left (Anir,
+ * Aug 20: "when im going off the progress bar it has to go immediately theres
+ * like a delay now"). 90ms is still longer than the gap between two mousemove
+ * events, so walking from the bar onto the card keeps working, but letting go
+ * reads as instant. Cursor-into-card cancels it either way — the timer is only
+ * ever the fallback.
+ */
+const TIP_CLOSE_GRACE_MS = 90;
 
 /** A tip's record list is "long" when it would otherwise be truncated — the
  *  only case where the tip needs to become hoverable + scrollable. */
@@ -646,7 +654,17 @@ export type TipItem = {
    *  subject line (Anir, Aug 19: "When I hover over that, I need to see a
    *  progress bar... Make it more visual"). A list of amounts makes the
    *  reader do the division; the bar is that division, already done. */
-  bar?: { pct: number; color?: string; caption?: string };
+  bar?: {
+    pct: number;
+    color?: string;
+    caption?: string;
+    /**
+     * SOLID MEANS IT COUNTS (Anir's rule, and this row was breaking it: a
+     * claim a manager SENT BACK drew a solid red bar in the hover card, which
+     * says "this counts, in red" — the one thing it must not say).
+     */
+    striped?: boolean;
+  };
   /**
    * Chips the CALLER names outright, for vocabularies this file cannot be
    * expected to recognise — a goal, a claim's status (Anir, Aug 19: "when
@@ -876,10 +894,15 @@ function TipBreakdown({
                 >
                   <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface)]">
                     <span
-                      className="block h-full rounded-full"
+                      className={cn(
+                        "block h-full rounded-full",
+                        t.bar.striped && "unverified-fill-sm"
+                      )}
                       style={{
                         width: `${Math.max(2, Math.min(100, t.bar.pct))}%`,
-                        background: t.bar.color || VIZ.blue,
+                        ...(t.bar.striped
+                          ? { ["--fill" as string]: t.bar.color || VIZ.blue }
+                          : { background: t.bar.color || VIZ.blue }),
                       }}
                     />
                   </span>
@@ -1025,9 +1048,9 @@ function TipHeader({
         </span>
         {bar && (
           <span className="mt-2 block">
-            <span className="flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            <span className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
-                className="block h-full"
+                className="block h-full rounded-full"
                 style={{
                   width: `${Math.max(0, Math.min(100, bar.done))}%`,
                   background: bar.color ?? color ?? VIZ.blue,
@@ -1037,7 +1060,7 @@ function TipHeader({
                   this segment flat, so the card described the chart in a
                   different visual language than the chart. */}
               <span
-                className="unverified-fill block h-full"
+                className="unverified-fill-sm block h-full rounded-full"
                 style={{
                   width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
                   ["--fill" as string]:

@@ -651,6 +651,9 @@ export function OrgPerformanceTab({
                                money colour, sent back is red, waiting its turn
                                is burnt orange. */
                             color: ENTRY_COLOR[st],
+                            /* Striped unless it is signed off — the hover card
+                               obeys the same law as every bar on the page. */
+                            striped: st !== "verified",
                             caption:
                               g.target > 0
                                 ? `${Math.round(share)}% of target`
