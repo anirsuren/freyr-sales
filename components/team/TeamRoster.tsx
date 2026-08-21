@@ -487,7 +487,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
     });
 
   return (
-    <Card data-tour="team-roster" className="p-0 overflow-hidden">
+    <div data-tour="team-roster">
       {/* SEARCH ON THE LEFT, WHERE EVERY OTHER LIST PUTS IT (Anir, Aug 9:
           "not a good place for the search bar right? def on the left side
           needs to be there"). It was crammed against the view toggle in the
@@ -495,7 +495,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           where the eye starts and moved every time the heading changed width.
           Offerings, Customers and Components all open with a left-aligned
           search and keep view controls on the right; the floor now matches. */}
-      <div className="px-5 pt-4 pb-3 border-b border-border-light">
+      <div className="mb-3">
         <h2 className="text-[15px] font-semibold text-text-primary">
           The sales floor{" "}
           <span className="text-text-tertiary tnum font-normal">({reps.length})</span>
@@ -503,10 +503,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         <p className="text-[12.5px] text-text-tertiary mt-0.5">
           Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
         </p>
+      </div>
         {/* SearchPriority provider: without it the box focused but nothing
             around it responded — the filters never yielded their labels, so
             this toolbar alone sat still (Anir, Aug 12: "you're still not
-            doing the search bar thing here"). */}
+            doing the search bar thing here").
+
+            THE BAND IS NOT INSIDE THE CARD any more (Anir, Aug 21: "even the
+            team page, that gray shit is so close to the text"): a grey strip
+            nested in a white card, with a white search box nested in that,
+            was three frames deep and pushed in by the card's padding so it
+            lined up with nothing. It now sits on the page above the card,
+            the same as Offerings and Opportunities. */}
         <PageToolbar
           query={query}
           onQuery={setQuery}
@@ -582,8 +590,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             />
           }
         />
-      </div>
 
+      <Card className="p-0 overflow-hidden">
       {/* key=view re-mounts the panel so switching grid↔table animates. It used
           `page-in`, which is OPACITY-ONLY by design (a transform there would
           trap fixed/sticky descendants app-wide), at 0.24s with no movement
@@ -1118,7 +1126,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         </PinnableTable>
       )}
       </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 

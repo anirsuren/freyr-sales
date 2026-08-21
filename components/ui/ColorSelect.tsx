@@ -149,6 +149,7 @@ export function ColorSelect({
   triggerLabel,
   dense = false,
   autoOpen = false,
+  searchable: forceSearchable,
 }: {
   value: string;
   options: ColorOption[];
@@ -168,6 +169,16 @@ export function ColorSelect({
    *  the next step (Anir, Aug 17: "my eyes should go there… I don't know
    *  where to go after I click add offering"). */
   autoOpen?: boolean;
+  /**
+   * Force the search box on a list shorter than the ten-option threshold
+   * (Anir, Aug 21: "for the status, you definitely want to search for that
+   * there as well, with the press Enter to select that").
+   *
+   * Status has eight options, under the automatic bar, but it is a list
+   * people know the answer to before they open it — typing "wo" and pressing
+   * Enter beats reading eight rows.
+   */
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);

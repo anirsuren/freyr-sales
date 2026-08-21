@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { useFillHeight } from "@/components/ui/useFillHeight";
 import { IndustryTag } from "@/components/ui/IndustryTag";
@@ -1545,6 +1546,7 @@ export function CustomerOfferingHeatMap({
                   }}
                   className="h-10 bg-white text-[13px]"
                 />
+                <DateEcho value={dateValue(draft.potential_close_date)} />
               </Field>
               <Field label="Start date">
                 <Input
@@ -1563,6 +1565,7 @@ export function CustomerOfferingHeatMap({
                   }}
                   className="h-10 bg-white text-[13px]"
                 />
+                <DateEcho value={dateValue(draft.start_date)} />
               </Field>
               <Field label="End date">
                 <Input
@@ -1581,6 +1584,7 @@ export function CustomerOfferingHeatMap({
                   }}
                   className="h-10 bg-white text-[13px]"
                 />
+                <DateEcho value={dateValue(draft.end_date)} />
               </Field>
             </div>
 

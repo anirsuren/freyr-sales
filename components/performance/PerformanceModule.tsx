@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -3496,6 +3497,7 @@ function GoalEditorFields({
                             }
                             className="h-[34px] shrink-0 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
                           />
+                          <DateEcho value={m.date} />
                         </label>
                         <label className="flex shrink-0 flex-col gap-1">
                           <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -4961,6 +4963,7 @@ function LogActualModal({
               onChange={(e) => setDate(e.target.value)}
               className="mt-1 h-[40px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none tnum focus:border-blue-subtle"
             />
+            <DateEcho value={date} />
           </div>
         </div>
         {effectiveGoal?.measure === "level" && (

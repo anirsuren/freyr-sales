@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
@@ -3030,6 +3031,7 @@ export function FdlComponentDetail({
                 {status === "released" ? "Release date" : "Expected date"}
               </label>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={FIELD} />
+              <DateEcho value={date} />
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -1758,6 +1759,7 @@ export function OfferingReleasesTab({
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
+                <DateEcho value={date} />
               </div>
             </div>
           </section>

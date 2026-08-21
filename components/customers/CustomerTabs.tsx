@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
 import {
   Globe,
@@ -1995,6 +1996,7 @@ export function CustomerTabs({
                       onChange={(e) => setNoteFollow(e.target.value)}
                       className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
                     />
+                    <DateEcho value={noteFollow} />
                   </div>
                 </div>
               </div>
@@ -2413,6 +2415,7 @@ export function CustomerTabs({
                     onChange={(e) => set("close_date", e.target.value)}
                     className={fld}
                   />
+                  <DateEcho value={dealForm.close_date} />
                 </div>
               </div>
               <div>

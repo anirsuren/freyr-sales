@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -451,6 +452,7 @@ function RevenueSection({
                 onChange={(e) => setStart(e.target.value)}
                 className={inp}
               />
+              <DateEcho value={start} className="font-normal normal-case tracking-normal" />
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               End date
@@ -461,6 +463,7 @@ function RevenueSection({
                 onChange={(e) => setEnd(e.target.value)}
                 className={inp}
               />
+              <DateEcho value={end} className="font-normal normal-case tracking-normal" />
             </label>
           </div>
           <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">

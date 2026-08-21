@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Input } from "@/components/ui/Input";
@@ -119,6 +120,7 @@ export function OutcomeLogger({
               onChange={(e) => setFollowUp(e.target.value)}
               className="w-auto"
             />
+            <DateEcho value={followUp} />
           </div>
           <Button onClick={save} loading={saving}>
             Save Outcome

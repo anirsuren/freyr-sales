@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -486,6 +487,8 @@ export function OpportunitiesBrowser({
   };
   /** Each deal's frozen list position for this visit — see the sort below. */
   const stableRank = useRef<Map<string, number>>(new Map());
+  /** The deal saved a moment ago, held above everything until you navigate. */
+  const justAdded = useRef<string | null>(null);
   /** The draft exactly as the editor opened — Save stays greyed out until the
    *  form actually differs from it (Anir, Aug 18: "I didn't change anything,
    *  so why is it asking me to save?"). Null while adding a NEW deal, where
@@ -615,6 +618,23 @@ export function OpportunitiesBrowser({
         let top = Math.min(...ranks.values());
         for (const o of unseen) ranks.set(o.id, --top);
       }
+    }
+    /**
+     * THE ONE YOU JUST ADDED IS THE ONE YOU ARE LOOKING FOR (Anir, Aug 21:
+     * "when I add an opportunity it should show up at the top, not the
+     * bottom — that's why I picked the wrong one").
+     *
+     * The rank above already floats a NEW row, but the default grouping is
+     * "Group by customer", and the group is ordered by its best-placed deal
+     * from a ranks map that gets rebuilt whenever the list is re-read. So a
+     * fresh deal could land inside a Kenvue card halfway down 79 rows. This
+     * pins it below every other rank until the next visit, which also drags
+     * its group to the top, because a group sits where its best deal sits.
+     */
+    if (justAdded.current) {
+      const pinned = filtered.find((o) => o.id === justAdded.current);
+      if (pinned) ranks.set(pinned.id, Number.NEGATIVE_INFINITY);
+      else justAdded.current = null;
     }
     return filtered.sort(
       (a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0)
@@ -812,6 +832,7 @@ export function OpportunitiesBrowser({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "That didn't save.");
       const saved: Opportunity = data.opportunity;
+      if (!editing.id) justAdded.current = saved.id;
       setList((prev) =>
         editing.id
           ? prev.map((o) => (o.id === saved.id ? saved : o))
@@ -1495,17 +1516,18 @@ export function OpportunitiesBrowser({
         />
       </div>
 
-      <Card className="mt-4 overflow-hidden p-0">
-        <div
-          className={cn(
-            "px-4 pt-3",
-            (shown.length === 0 || groupBy === "none") &&
-              "border-b border-border-light pb-3"
-          )}
-        >
-          <PageToolbar
-            bare
-            query={query}
+      {/* THE TOOLBAR STANDS ON ITS OWN, exactly as it does on Offerings
+          (Anir, Aug 21: "you have a big white rectangle, then a gray
+          rectangle, then also a search bar rectangle — remove the outer
+          rectangle... whatever you have on the offerings page, put that on
+          the opportunities page"). It used to live INSIDE the results card,
+          which made the grey band a box in a box and pushed it in by the
+          card's own padding so it no longer lined up with anything else on
+          the page. Out here it is full width and the card below holds only
+          results. */}
+      <PageToolbar
+        className="mt-4"
+        query={query}
             onQuery={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
             placeholders={[
@@ -1600,24 +1622,29 @@ export function OpportunitiesBrowser({
                     );
                   })()
                 : null
-            }
-          />
-        </div>
+          }
+        />
 
-        {shown.length === 0 ? (
-          <EmptyState
-            icon={Briefcase}
-            title={list.length === 0 ? "No opportunities yet" : "Nothing matches"}
-            description={
-              list.length === 0
-                ? "Add the first deal and it shows up here, on its account, and as a line item under any goal it feeds."
-                : "Clear the search or the filters to see the rest of the pipeline."
-            }
-          />
-        ) : groupBy === "none" ? (
-          <div className="overflow-x-auto">{pipeTable(groupedShown)}</div>
-        ) : null}
-      </Card>
+      {/* The card now holds RESULTS ONLY, so when the rows have gone off into
+          their own group cards below there is nothing left for it to draw and
+          it does not render an empty frame. */}
+      {(shown.length === 0 || groupBy === "none") && (
+        <Card className="overflow-hidden p-0">
+          {shown.length === 0 ? (
+            <EmptyState
+              icon={Briefcase}
+              title={list.length === 0 ? "No opportunities yet" : "Nothing matches"}
+              description={
+                list.length === 0
+                  ? "Add the first deal and it shows up here, on its account, and as a line item under any goal it feeds."
+                  : "Clear the search or the filters to see the rest of the pipeline."
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">{pipeTable(groupedShown)}</div>
+          )}
+        </Card>
+      )}
 
       {/* SEPARATE CARDS, NOT ONE LONG TABLE — the Goal Master idiom exactly
           (Anir, Aug 18: "Look at performance goal master and separate it
@@ -1918,6 +1945,13 @@ export function OpportunitiesBrowser({
                   className="w-full"
                   minWidth={110}
                   dense
+                  /* Eight options sits under the automatic ten-option bar, but
+                     this is a list people know the answer to before they open
+                     it (Anir, Aug 21: "for the status, you definitely want to
+                     search for that there as well, with the press Enter to
+                     select that"). Typing "wo" + Enter beats reading eight
+                     rows. */
+                  searchable
                   onChange={(v) => setEditing({ ...editing, status: v })}
                   options={[
                     { value: "", label: "Not set", color: "#8E98A8" },
@@ -2159,37 +2193,43 @@ export function OpportunitiesBrowser({
                       aria-label={`Activity ${i + 1} name`}
                       className={cn(inputCls, "!w-auto min-w-[150px] flex-1")}
                     />
-                    <input
-                      type="date"
-                      value={a.startDate}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          activities: editing.activities.map((x) =>
-                            x.key === a.key ? { ...x, startDate: e.target.value } : x
-                          ),
-                        })
-                      }
-                      aria-label={`Activity ${i + 1} start date`}
-                      title="When this activity started"
-                      className={cn(inputCls, "!w-[138px] tnum")}
-                    />
-                    <span className="text-[11.5px] font-semibold text-text-tertiary">to</span>
-                    <input
-                      type="date"
-                      value={a.endDate}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          activities: editing.activities.map((x) =>
-                            x.key === a.key ? { ...x, endDate: e.target.value } : x
-                          ),
-                        })
-                      }
-                      aria-label={`Activity ${i + 1} end date`}
-                      title="When this activity ended, or should end"
-                      className={cn(inputCls, "!w-[138px] tnum")}
-                    />
+                    <span className="flex flex-col">
+                      <input
+                        type="date"
+                        value={a.startDate}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            activities: editing.activities.map((x) =>
+                              x.key === a.key ? { ...x, startDate: e.target.value } : x
+                            ),
+                          })
+                        }
+                        aria-label={`Activity ${i + 1} start date`}
+                        title="When this activity started"
+                        className={cn(inputCls, "!w-[138px] tnum")}
+                      />
+                      <DateEcho value={a.startDate} />
+                    </span>
+                    <span className="self-start pt-2.5 text-[11.5px] font-semibold text-text-tertiary">to</span>
+                    <span className="flex flex-col">
+                      <input
+                        type="date"
+                        value={a.endDate}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            activities: editing.activities.map((x) =>
+                              x.key === a.key ? { ...x, endDate: e.target.value } : x
+                            ),
+                          })
+                        }
+                        aria-label={`Activity ${i + 1} end date`}
+                        title="When this activity ended, or should end"
+                        className={cn(inputCls, "!w-[138px] tnum")}
+                      />
+                      <DateEcho value={a.endDate} />
+                    </span>
                     <ColorSelect
                       value={a.status}
                       ariaLabel={`Activity ${i + 1} status`}
@@ -2605,11 +2645,9 @@ function FutureSection({
         />
       </div>
 
-      <Card className="mt-4 overflow-hidden p-0">
-        {futures.length > 0 && (
-          <div className="border-b border-border-light px-4 pb-3 pt-3">
+      {futures.length > 0 && (
+          <div className="mt-4">
             <PageToolbar
-              bare
               query={q}
               onQuery={setQ}
               placeholder="Search future deals, accounts, offerings…"
@@ -2652,6 +2690,7 @@ function FutureSection({
             />
           </div>
         )}
+      <Card className={cn("overflow-hidden p-0", futures.length === 0 && "mt-4")}>
         {futures.length === 0 ? (
           <div className="px-4 py-8">
             <EmptyState
@@ -3040,6 +3079,7 @@ function SingleOfferingEditor({
             onChange={(e) => set({ estSignDate: e.target.value })}
             className={cn(inputCls, "mt-1 tnum")}
           />
+          <DateEcho value={line.estSignDate} />
         </div>
       </div>
 

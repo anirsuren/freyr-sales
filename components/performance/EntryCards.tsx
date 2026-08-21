@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { DateEcho } from "@/components/ui/DateEcho";
 import {
   CalendarCheck2,
   Check,
@@ -1359,6 +1360,7 @@ export function MyEntriesCard({
                     }
                     className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
                   />
+                  <DateEcho value={draft.date} />
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">

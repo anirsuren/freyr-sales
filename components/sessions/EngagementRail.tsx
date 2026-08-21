@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateEcho } from "@/components/ui/DateEcho";
 import { Send, Sparkles, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -132,6 +133,7 @@ export function EngagementRail({
                 value={followUp}
                 onChange={(e) => setFollowUp(e.target.value)}
               />
+              <DateEcho value={followUp} />
             </div>
             <div>
               <label className={labelCls}>Notes</label>
