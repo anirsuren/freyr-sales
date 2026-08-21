@@ -3166,7 +3166,10 @@ export function updateFdlComponent(
   data: Partial<Omit<FdlComponent, "id">>,
   /** Who is saving, from the session. Absent for internal rewrites, which then
    *  leave the history alone rather than crediting a version to nobody. */
-  savedBy?: string
+  savedBy?: string,
+  /** Why this edit happened, typed by the person making it. Stored on the
+   *  version it mints, so a history says why and not only what. */
+  reason?: string
 ): FdlComponent | null {
   const list = fdlList();
   const i = list.findIndex((c) => c.id === id);
@@ -3179,7 +3182,8 @@ export function updateFdlComponent(
       ? nextComponentVersions(
           list[i],
           { releases: data.releases, features: data.features },
-          savedBy
+          savedBy,
+          reason
         )
       : null;
   list[i] = { ...list[i], ...data, ...(minted ? { roadmap_versions: minted } : {}), id };

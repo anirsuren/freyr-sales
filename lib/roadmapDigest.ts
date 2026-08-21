@@ -123,9 +123,14 @@ export async function roadmapChangesSince(watermark: number): Promise<DigestSubj
  * who can open it — so their lines go through whole. If that page is ever
  * gated, this must follow it the same day.
  */
+/** A version's lines, with its stated reason appended to them. */
+function withReason(v: { changes: string[]; reason?: string }): string[] {
+  return v.reason ? [...v.changes, `Why: ${v.reason}`] : v.changes;
+}
+
 function linesFor(subject: DigestSubject, member: AccessMember): string[] {
   if (subject.kind === "component") {
-    return subject.versions.flatMap((v) => v.changes);
+    return subject.versions.flatMap(withReason);
   }
   const approved = new Set(
     (process.env.ROADMAP_NEXT_VIEWER_EMAILS || "")
@@ -139,7 +144,7 @@ function linesFor(subject: DigestSubject, member: AccessMember): string[] {
     (subject.offering ? isOfferingOwner(subject.offering, member.id) : false) ||
     Boolean(member.email && approved.has(member.email.toLowerCase()));
   return maySeeNext
-    ? subject.versions.flatMap((v) => v.changes)
+    ? subject.versions.flatMap(withReason)
     : ["The roadmap was updated"];
 }
 

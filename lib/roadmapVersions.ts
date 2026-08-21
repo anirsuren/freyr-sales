@@ -34,6 +34,19 @@ export interface RoadmapVersion {
   /** What changed, one plain-English line each. Never empty. */
   changes: string[];
   /**
+   * WHY, IN THE EDITOR'S OWN WORDS (Anir, Aug 21: "if someone changes it, he
+   * needs to see where it changed, and they should give a reason why it
+   * changed").
+   *
+   * The change lines say WHAT moved, which a diff can work out on its own. The
+   * only thing a diff can never recover is why — dev slipped, the customer
+   * asked, priorities moved — and that is the whole question anybody asks when
+   * they open a history six weeks later. Optional on the type because versions
+   * minted before this existed have none, and a save that changes something
+   * other than a date is not made to justify itself.
+   */
+  reason?: string;
+  /**
    * The roadmap AS IT STOOD after this save, so any version reads back whole.
    *
    * Two shapes share this field: an offering's releases carry `features`, an
@@ -387,7 +400,8 @@ export function nextComponentVersions(
     roadmap_versions?: RoadmapVersion[];
   },
   after: { releases?: ComponentRelease[]; features?: ComponentFeature[] },
-  savedBy: string
+  savedBy: string,
+  reason?: string
 ): RoadmapVersion[] | null {
   const a = before.releases ?? [];
   /* A save that sends only features leaves the versions exactly as they were,
@@ -404,6 +418,7 @@ export function nextComponentVersions(
       version: last + 1,
       savedAt: new Date().toISOString(),
       savedBy: savedBy.trim() || "Someone",
+      ...(reason?.trim() ? { reason: reason.trim().slice(0, 300) } : {}),
       changes: describeComponentChange(a, b, fa, fb),
       /* Stored in the shared shape so one history component renders both. */
       releases: JSON.parse(JSON.stringify(b)),

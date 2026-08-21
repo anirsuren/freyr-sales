@@ -120,6 +120,14 @@ export function RoadmapVersionHistory({
                     </li>
                   ))}
                 </ul>
+                {/* WHY, WHERE WHAT ALREADY IS. The lines above are recoverable
+                    from a diff; this sentence is the only thing that is not,
+                    and it is the first thing anybody asks. */}
+                {v.reason && (
+                  <p className="mt-2 border-l-2 border-blue-subtle pl-2.5 text-[12.5px] italic text-text-secondary">
+                    &ldquo;{v.reason}&rdquo;
+                  </p>
+                )}
                 {v.releases.length > 0 && (
                   <>
                     <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">

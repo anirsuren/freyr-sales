@@ -57,7 +57,10 @@ export async function roadmapChangesForReader(): Promise<RoadmapChangeInput[]> {
         version: v.version,
         savedAt: v.savedAt,
         savedBy: v.savedBy,
-        changes: v.changes,
+        /* The stated reason rides along with the lines it explains — a bell
+           row that says a date moved and not why sends the reader to the page
+           to find out, which is the trip the reason exists to save. */
+        changes: v.reason ? [...v.changes, `Why: ${v.reason}`] : v.changes,
       })),
     });
   }

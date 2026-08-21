@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { DateField } from "@/components/ui/DateField";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   ColorSelect,
@@ -411,15 +412,40 @@ export function FdlComponentDetail({
    * That's the problem there... the user gets confused"). So the promise was
    * one the app could not keep for any version that already existed.
    */
-  async function setReleaseDate(id: string, date: string) {
-    await patch(
+  async function setReleaseDate(id: string, date: string, reason?: string) {
+    return patch(
       {
         releases: component.releases.map((r) =>
           r.id === id ? { ...r, date: date || null } : r
         ),
+        changeReason: reason,
       },
       date ? "Date set." : "Date cleared."
     );
+  }
+
+  /**
+   * EVERY PAST MOVE OF ONE VERSION'S DATE, newest first — what the date
+   * dialog shows underneath the calendar (Anir, Aug 21: "when I click on the
+   * date it should bring up a pop-up, and then maybe you show it there as
+   * well").
+   *
+   * The stored change lines already name their version, so this reads the
+   * history the app already keeps rather than storing the same fact twice. A
+   * version minted before reasons existed simply has none to show.
+   */
+  function dateHistory(version: string) {
+    const label = withV(version).toLowerCase();
+    const out: { at: string; by: string; line: string; reason?: string }[] = [];
+    for (const v of component.roadmap_versions ?? []) {
+      for (const line of v.changes) {
+        const low = line.toLowerCase();
+        if (!low.startsWith(label)) continue;
+        if (!/moved from|dated |lost its date/.test(low)) continue;
+        out.push({ at: v.savedAt, by: v.savedBy, line, reason: v.reason });
+      }
+    }
+    return out;
   }
 
   const [confirmReleaseDelete, setConfirmReleaseDelete] = useState<string | null>(null);
@@ -868,8 +894,9 @@ export function FdlComponentDetail({
                               hasDate={Boolean(release.date)}
                               versionLabel={withV(release.version)}
                               disabled={busy}
-                              onPick={(next) =>
-                                void setReleaseDate(release.id, next)
+                              history={dateHistory(release.version)}
+                              onSave={(next, reason) =>
+                                setReleaseDate(release.id, next, reason)
                               }
                             />
                           ) : (
@@ -3317,24 +3344,26 @@ function UploadProgressRows({
 }
 
 /**
- * THE DATE CHIP THAT ACTUALLY OPENS A CALENDAR.
+ * THE DATE CHIP, AND THE POP-UP BEHIND IT.
  *
- * Third attempt, and the first one that cannot silently do nothing (Anir,
- * Aug 21, on production: "i cant edit the date here anywhere so fix it").
+ * Third rewrite, and the last two reasons are worth keeping:
  *
- *  1. it used to live inside the big row <button>, and an <input> inside a
- *     <button> is invalid HTML: the button swallowed the click.
- *  2. then it was a real button calling showPicker() on an sr-only input.
+ *  1. it lived inside the big row <button>, and an <input> inside a <button>
+ *     is invalid HTML: the button swallowed the click.
+ *  2. it was a real button calling showPicker() on an sr-only input.
  *     showPicker throws on an element the browser doesn't consider rendered,
- *     and the catch only set a fallback flag — so on the machines where it
- *     threw, clicking the date did NOTHING AT ALL, with no way to tell.
+ *     and the catch only set a flag — so on production the click did NOTHING
+ *     AT ALL ("i cant edit the date here anywhere so fix it"). The visible
+ *     native input that replaced it worked and looked like nothing else in the
+ *     app ("I don't like the UI. Can you make it a custom pop-up?").
  *
- * Now the click swaps the chip for a REAL, VISIBLE date input, focused and
- * ready. showPicker is still attempted, because a native calendar popping
- * open is the nicest outcome — but it is now decoration on top of an editor
- * that is already on screen, never the only thing standing between him and
- * the date. Dates move constantly on a roadmap (Anir, Aug 21: "rule number
- * one, all the dates are always variable"), so clearing is here too.
+ * So the chip opens the app's own dialog, and the dialog does three things the
+ * browser's calendar never could (Anir, Aug 21): it takes a REASON, because
+ * "they should give a reason why it changed" and a diff can recover what moved
+ * but never why; it SHOWS this date's own history right there, because "when I
+ * click on the date it should bring up a pop-up, and then maybe you show it
+ * there as well"; and it only commits on Save, so a stray click on a square
+ * cannot mint a version and mail everybody following this roadmap.
  */
 function ReleaseDateChip({
   label,
@@ -3342,98 +3371,171 @@ function ReleaseDateChip({
   hasDate,
   versionLabel,
   disabled,
-  onPick,
+  history,
+  onSave,
 }: {
   label: string;
   value: string;
   hasDate: boolean;
   versionLabel: string;
   disabled?: boolean;
-  onPick: (next: string) => void;
+  /** Every past move of THIS version's date, newest first. */
+  history: { at: string; by: string; line: string; reason?: string }[];
+  onSave: (next: string, reason: string) => Promise<boolean> | boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const wrapRef = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!editing) return;
-    const input = inputRef.current;
-    if (!input) return;
-    input.focus();
-    try {
-      // A bonus when the browser allows it. The input is visible either way.
-      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-    } catch {
-      /* the visible input is the fallback */
-    }
-    const onDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setEditing(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [editing]);
+    if (!open) return;
+    setDraft(value);
+    setReason("");
+  }, [open, value]);
 
-  if (editing) {
-    return (
-      <span ref={wrapRef} className="inline-flex items-center gap-1">
-        <input
-          ref={inputRef}
-          type="date"
-          aria-label={`Date for ${versionLabel}`}
-          value={value}
-          disabled={disabled}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setEditing(false);
-            if (e.key === "Enter") setEditing(false);
-          }}
-          onChange={(event) => {
-            onPick(event.target.value);
-            if (event.target.value) setEditing(false);
-          }}
-          className="h-[26px] rounded-md border border-blue-subtle bg-white px-1.5 text-[11.5px] text-text-primary outline-none tnum focus:border-blue-primary"
-        />
-        {hasDate && (
-          <button
-            type="button"
-            disabled={disabled}
-            title={`Clear the date on ${versionLabel}`}
-            onClick={() => {
-              onPick("");
-              setEditing(false);
-            }}
-            className="cursor-pointer rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
-          >
-            Clear
-          </button>
-        )}
-      </span>
-    );
+  const moved = draft !== value;
+  // A reason is asked for only when the date actually MOVES. Setting one for
+  // the first time has nothing to explain — there was no promise to break.
+  const needsReason = moved && hasDate && draft !== "";
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    const ok = await onSave(draft, reason);
+    setSaving(false);
+    if (ok) setOpen(false);
   }
 
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => setEditing(true)}
-      title={
-        hasDate
-          ? `Change the date on ${versionLabel}`
-          : `Set a date for ${versionLabel}`
-      }
-      className={cn(
-        /* A BORDER, SO IT READS AS A FIELD (Anir, Aug 21: "oh i see it. but
-           its not clear at all"). The date sat in the same borderless grey
-           chip as "0 features" beside it, so the one thing on the row he can
-           change looked exactly like the one thing he cannot. */
-        "inline-flex cursor-pointer items-center gap-1 rounded-md border bg-white px-1.5 py-0.5 text-[11.5px] tnum transition-colors disabled:opacity-50",
-        hasDate
-          ? "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-          : "border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
-      )}
-    >
-      <CalendarDays size={11} strokeWidth={2} />
-      {label}
-      <Pencil size={9.5} strokeWidth={2.4} className="opacity-45" />
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+        title={
+          hasDate ? `Change the date on ${versionLabel}` : `Set a date for ${versionLabel}`
+        }
+        className={cn(
+          /* A BORDER, SO IT READS AS A CONTROL (Anir, Aug 21: "oh i see it.
+             but its not clear at all"). The date sat in the same borderless
+             grey chip as "0 features" beside it, so the one thing on the row
+             he can change looked exactly like the one thing he cannot. */
+          "inline-flex cursor-pointer items-center gap-1 rounded-md border bg-white px-1.5 py-0.5 text-[11.5px] tnum transition-colors disabled:opacity-50",
+          hasDate
+            ? "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+            : "border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50"
+        )}
+      >
+        <CalendarDays size={11} strokeWidth={2} />
+        {label}
+        <Pencil size={9.5} strokeWidth={2.4} className="opacity-45" />
+      </button>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`${versionLabel} — expected date`}
+        stacked
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
+              When is it expected?
+            </p>
+            <DateField
+              value={draft}
+              onChange={setDraft}
+              ariaLabel={`Date for ${versionLabel}`}
+              placeholder="Pick a date"
+            />
+            {/* Roadmap dates move — that is the premise, not a failure (Anir:
+                "rule number one, all the dates are always variable in the
+                roadmap"). Clearing one is a normal act, so it is a button and
+                not something you have to know to do. */}
+            {draft && (
+              <button
+                type="button"
+                onClick={() => setDraft("")}
+                className="mt-1.5 cursor-pointer text-[11.5px] font-medium text-text-tertiary transition-colors hover:text-[color:#DC2626]"
+              >
+                Clear the date
+              </button>
+            )}
+          </div>
+
+          {/* ALWAYS HERE, so the dialog is one size (Anir, Aug 21: "when I
+              press the dropdown it changes the dimensions of it — just have a
+              set dimension"). Showing this only once a date had moved made the
+              box grow under the cursor at the exact moment somebody was
+              reaching for Save. */}
+          <div>
+            <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
+              Why is it moving?
+              {!needsReason && (
+                <span className="ml-1 font-normal text-text-tertiary">optional</span>
+              )}
+            </p>
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={300}
+              placeholder="e.g. dev capacity slipped a sprint"
+              className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+            />
+            <p className="mt-1.5 text-[11.5px] leading-snug text-text-secondary">
+              {needsReason && !reason.trim()
+                ? "A date somebody already quoted to a customer needs a sentence before it moves."
+                : "Sales quote these dates to customers. Whoever reads this later sees what it was, what it is now, and this sentence."}
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+              This date has moved {history.length === 1 ? "once" : `${history.length} times`}
+            </p>
+            {history.length === 0 ? (
+              <p className="text-[12.5px] text-text-secondary">
+                Never moved since it was set.
+              </p>
+            ) : (
+              <ul className="max-h-[168px] space-y-2 overflow-y-auto pr-1">
+                {history.map((entry, i) => (
+                  <li
+                    key={`${entry.at}-${i}`}
+                    className="rounded-lg border border-border-light bg-surface px-2.5 py-2"
+                  >
+                    <p className="text-[12.5px] font-medium text-text-primary">
+                      {entry.line}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+                      {entry.by} · {formatDate(entry.at.slice(0, 10))}
+                    </p>
+                    {entry.reason && (
+                      <p className="mt-1 text-[12px] italic text-text-secondary">
+                        &ldquo;{entry.reason}&rdquo;
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-3">
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void save()}
+              loading={saving}
+              disabled={!moved || (needsReason && !reason.trim())}
+            >
+              Save date
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

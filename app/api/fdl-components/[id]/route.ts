@@ -146,8 +146,13 @@ export async function PATCH(
   const me = await getCurrentUser();
   const savedBy = me.id === GENERIC_USER_IDENTITY.id ? undefined : me.name.trim() || undefined;
   delete (body as Record<string, unknown>).roadmap_versions;
+  /* Free text, and the one field on this route that IS taken from the body —
+     it is the editor's own sentence, which is the point of it. Trimmed and
+     capped where it is stored, never rendered as markup. */
+  const reason =
+    typeof body.changeReason === "string" ? body.changeReason : undefined;
   const component = await commitOfferingsChange(() =>
-    updateFdlComponent(id, data, savedBy)
+    updateFdlComponent(id, data, savedBy, reason)
   );
   return NextResponse.json({ component });
 }
