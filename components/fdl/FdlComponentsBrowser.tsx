@@ -21,6 +21,7 @@ import {
   Server,
   X,
   CalendarRange,
+  BellRing,
 } from "lucide-react";
 import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -231,6 +232,37 @@ export function FdlComponentsBrowser({
       setBusy(false);
     }
   }
+  /**
+   * WHICH OF THESE AM I BEING TOLD ABOUT (Anir, Aug 21: "I need to see which
+   * ones are notifying me if there's an update, so you have an icon that
+   * shows if it's being notified... it should be an icon as well as on the
+   * table view").
+   *
+   * Following was invisible from the list, so the only way to find out was to
+   * open all sixty-one components and look at each bell. One fetch, both
+   * views, and `everything` counts as following all of them — otherwise the
+   * switch that says "email me about every roadmap" would leave this page
+   * showing none.
+   */
+  const [followed, setFollowed] = useState<Set<string> | null>(null);
+  const [followsAll, setFollowsAll] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/roadmap-subscriptions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!alive || !data?.subscription) return;
+        setFollowed(new Set<string>(data.subscription.componentIds ?? []));
+        setFollowsAll(data.subscription.everything === true);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const notifying = (id: string) =>
+    followsAll || (followed?.has(id) ?? false);
+
   // FOURTEEN COMPONENTS ALREADY, AND MORE COMING. Offerings and Customers both
   // open with a search; this page made you read the grid (Anir, Aug 9: "we
   // probably need a search bar on the [FDL] fold, just saying").
@@ -508,8 +540,24 @@ export function FdlComponentsBrowser({
                           })()}
                           {component.type}
                         </p>
-                        <h3 className="text-[16px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
-                          {component.name}
+                        <h3 className="flex items-center gap-1.5 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
+                          <span className="min-w-0">{component.name}</span>
+                          {notifying(component.id) && (
+                            <Tooltip
+                              label={
+                                followsAll
+                                  ? "You get an email about every roadmap, this one included"
+                                  : "You get an email when this roadmap changes"
+                              }
+                            >
+                              <BellRing
+                                size={13}
+                                strokeWidth={2.3}
+                                aria-label="You are notified about this roadmap"
+                                className="shrink-0 text-blue-primary"
+                              />
+                            </Tooltip>
+                          )}
                         </h3>
                       </div>
                     </div>
@@ -616,6 +664,22 @@ export function FdlComponentsBrowser({
                             <span className="min-w-0 text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                               {component.name}
                             </span>
+                            {notifying(component.id) && (
+                              <Tooltip
+                                label={
+                                  followsAll
+                                    ? "You get an email about every roadmap, this one included"
+                                    : "You get an email when this roadmap changes"
+                                }
+                              >
+                                <BellRing
+                                  size={12.5}
+                                  strokeWidth={2.3}
+                                  aria-label="You are notified about this roadmap"
+                                  className="shrink-0 text-blue-primary"
+                                />
+                              </Tooltip>
+                            )}
                           </Link>
                         </td>
                         <td className="px-4 py-2.5">
