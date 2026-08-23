@@ -255,6 +255,9 @@ export function ColorSelect({
       if (e.key === "Enter") {
         if (!menuQuery.trim() || !enterPick) return;
         e.preventDefault();
+        /* Same reason as the search input below: the palette shortcut must
+           not see the Enter that picked an option. */
+        e.stopImmediatePropagation();
         onChange(enterPick.value);
         setMenuQuery("");
         setOpen(false);
@@ -576,6 +579,19 @@ export function ColorSelect({
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
+                    /* THE PICK IS CONSUMED HERE AND GOES NO FURTHER.
+                       TopBar has a global "Enter opens the command palette"
+                       shortcut, guarded by "is the user typing?". Committing
+                       a pick closes this menu, which unmounts the very input
+                       that made the guard true — so by the time the window
+                       listener ran, focus had fallen back to <body>, the
+                       guard passed, and the palette threw a full-screen
+                       backdrop over the page. Every click afterwards hit the
+                       backdrop and the app looked frozen. React attaches at
+                       the root, below window, so the native event has to be
+                       stopped explicitly. */
+                    e.stopPropagation();
+                    e.nativeEvent?.stopImmediatePropagation?.();
                     if (!enterPick) return;
                     onChange(enterPick.value);
                     setOpen(false);
@@ -1005,6 +1021,8 @@ export function MultiColorSelect({
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.nativeEvent?.stopImmediatePropagation?.();
                     // Same rule as the single select, except a multi keeps
                     // the menu up: tick the top match, clear the box, type
                     // the next name.

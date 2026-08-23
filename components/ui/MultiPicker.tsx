@@ -364,6 +364,10 @@ function DropdownPicker({
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
+                    /* Consumed here — see ColorSelect for why the palette
+                       shortcut must never see this keystroke. */
+                    e.stopPropagation();
+                    e.nativeEvent?.stopImmediatePropagation?.();
                     if (!searching || !enterPick) return;
                     pick(enterPick.id);
                     // A single-pick menu closes itself in `pick`; a multi
@@ -587,6 +591,8 @@ export function MultiPicker({
           const top = matches[0];
           if (!top) return;
           e.preventDefault();
+          e.stopPropagation();
+          e.nativeEvent?.stopImmediatePropagation?.();
           onToggle(top.id);
           setQuery("");
         }}

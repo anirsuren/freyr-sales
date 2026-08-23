@@ -292,6 +292,8 @@ export function PersonSelect({
                   const top = matches[0];
                   if (!top) return;
                   e.preventDefault();
+                  e.stopPropagation();
+                  e.nativeEvent?.stopImmediatePropagation?.();
                   onChange(top);
                   setOpen(false);
                 }}
