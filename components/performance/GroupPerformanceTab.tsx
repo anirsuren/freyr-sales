@@ -7,11 +7,13 @@ import { useRouter } from "next/navigation";
 import {
   knownPeople,
   scopeStateToPeople,
+  fmtAmount,
   type PerfGroup,
   type PerformanceState,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
+import { SetShareModal } from "./bits";
 import { GroupPill } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -60,6 +62,9 @@ export function GroupPerformanceTab({
     initialGroupId ?? (groups.length ? groups[0].id : null)
   );
   const group = groups.find((g) => g.id === pickedId) ?? groups[0] ?? null;
+  /** The goal whose GROUP share is being set — see scope.onSetTarget. */
+  const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   /**
    * COUNTING SCOPE = THE ROSTER, NOT THE CROWN (Suren, Aug 16: "the group
@@ -254,6 +259,7 @@ export function GroupPerformanceTab({
   );
 
   return (
+    <>
     <OrgPerformanceTab
       state={scoped}
       allGoals={state.goals}
@@ -266,6 +272,10 @@ export function GroupPerformanceTab({
       onEditSubgoal={onEditSubgoal}
       scope={{
         subjectKey: group?.id ?? "none",
+        /* Same rule as the People tab (Anir, Aug 23): the row shows THIS
+           GROUP'S number, so Set target sets the group's number — never the
+           org-wide annual target hiding behind the same words. */
+        onSetTarget: (g) => setShareGoal(g),
         goals: scoped.goals,
         noun: "goals in this group",
         picker,
@@ -308,5 +318,36 @@ export function GroupPerformanceTab({
           "Assign one to this group from the Goal Master, or give it to somebody in it. Either way it shows up here, and what its people log adds up into it.",
       }}
     />
+    {shareGoal && group && (() => {
+      const org = state.goals.find((g) => g.id === shareGoal.id);
+      const current =
+        (org?.groupAssignments ?? []).find((a) => a.groupId === group.id)
+          ?.target ?? 0;
+      return (
+        <SetShareModal
+          open
+          title={`${group.name}'s target on ${shareGoal.name}`}
+          contextLine={
+            org && org.target > 0
+              ? `The goal's annual target is ${fmtAmount(org.unit, org.target)}. This sets ${group.name}'s share of it.`
+              : `This sets ${group.name}'s share of this goal. The goal itself has no annual target yet — that lives in the Goal Master.`
+          }
+          unit={shareGoal.unit}
+          initial={current}
+          busy={shareBusy}
+          onSave={async (target) => {
+            setShareBusy(true);
+            const ok = await run(
+              { op: "assign-goal-group", goalId: shareGoal.id, groupId: group.id, target },
+              `${group.name}'s target on ${shareGoal.name} is now ${fmtAmount(shareGoal.unit, target)}`
+            );
+            setShareBusy(false);
+            if (ok) setShareGoal(null);
+          }}
+          onClose={() => setShareGoal(null)}
+        />
+      );
+    })()}
+    </>
   );
 }

@@ -258,6 +258,18 @@ export function OrgPerformanceTab({
     /** Goes in an exported filename, e.g. "group-test". */
     exportLabel?: string;
     /**
+     * WHAT "SET TARGET" MEANS ON THIS SCREEN (Anir, Aug 23: "u retard fix
+     * this, it's not working, I can't set target"). On a scoped screen the
+     * row's figure is the SUBJECT'S SHARE — a person's slice, a group's
+     * number — but the button opened the editor for the goal's org-wide
+     * annual target. His save landed on the org goal; the row he was looking
+     * at kept computing his own $0 share, so it read as a failed save. Two
+     * different numbers were wearing one button. When the host provides
+     * this, the button edits the share the row actually shows; the org
+     * screen keeps opening the goal editor.
+     */
+    onSetTarget?: (goal: PrimaryGoal) => void;
+    /**
      * WHAT ELSE THIS ONE SEARCH BAR CAN FIND (Anir, Aug 15: "why is there a
      * search a person button there? There's already a search bar on the left
      * with the filters. Just make sure I can search goals, people, groups,
@@ -1108,6 +1120,7 @@ export function OrgPerformanceTab({
                 <GoalRows
                   key={g.id}
                   onGoToMaster={onGoToMaster}
+                  onSetTarget={scope?.onSetTarget}
                   goal={g}
                   index={i}
                   syncId={syncId}
@@ -1225,6 +1238,7 @@ function GoalRows({
   onEditGoal,
   onEditSubgoal,
   onLogActual,
+  onSetTarget,
   allGoals,
 }: {
   goal: PrimaryGoal;
@@ -1244,6 +1258,8 @@ function GoalRows({
   period: PeriodKey;
   periodLabel: string;
   onEditGoal: (g: PrimaryGoal) => void;
+  /** Scoped screens: edit the share this row shows, not the org target. */
+  onSetTarget?: (g: PrimaryGoal) => void;
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
   state: PerformanceState;
@@ -1457,7 +1473,8 @@ function GoalRows({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onEditGoal(goal);
+                if (onSetTarget) onSetTarget(goal);
+                else onEditGoal(goal);
               }}
               className="cursor-pointer rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-bold text-blue-primary transition-colors hover:bg-[rgba(0,113,227,0.14)]"
             >

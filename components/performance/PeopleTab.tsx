@@ -7,9 +7,11 @@ import {
   visiblePeople,
   scopeStateToPeople,
   type PerformanceState,
+  fmtAmount,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
+import { SetShareModal } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import { MyEntriesCard, SentBackCard, VerifyQueueCard } from "./EntryCards";
@@ -89,6 +91,9 @@ export function PeopleTab({
 
   const [picked, setPicked] = useState<string | null>(validInitial);
   const [pickOpen, setPickOpen] = useState(false);
+  /** The goal whose PERSONAL share is being set — see scope.onSetTarget. */
+  const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
   const person = picked ?? meName;
   const first = person.trim().split(/\s+/)[0] || person;
 
@@ -268,6 +273,9 @@ export function PeopleTab({
         onEditSubgoal={onEditSubgoal}
         scope={{
         subjectKey: person,
+          /* "Set target" on a person's row sets THAT PERSON'S share (Anir,
+             Aug 23) — the row shows their share, so the button edits it. */
+          onSetTarget: (g) => setShareGoal(g),
           goals: scoped.goals,
           noun: "goals",
           picker,
@@ -318,6 +326,38 @@ export function PeopleTab({
           focusEntry={focusEntry}
         />
       </div>
+
+      {shareGoal && (() => {
+        /* The UNSCOPED goal, for the context line — the scoped copy's target
+           IS the share being edited, which is the confusion this fixes. */
+        const org = state.goals.find((g) => g.id === shareGoal.id);
+        const current =
+          (org?.assignments ?? []).find((a) => a.person === person)?.target ?? 0;
+        return (
+          <SetShareModal
+            open
+            title={`${first}'s target on ${shareGoal.name}`}
+            contextLine={
+              org && org.target > 0
+                ? `The goal's annual target is ${fmtAmount(org.unit, org.target)}. This sets ${first}'s own share of it.`
+                : `This sets ${first}'s own share of this goal. The goal itself has no annual target yet — that lives in the Goal Master.`
+            }
+            unit={shareGoal.unit}
+            initial={current}
+            busy={shareBusy}
+            onSave={async (target) => {
+              setShareBusy(true);
+              const ok = await run(
+                { op: "assign-goal", goalId: shareGoal.id, person, target },
+                `${first}'s target on ${shareGoal.name} is now ${fmtAmount(shareGoal.unit, target)}`
+              );
+              setShareBusy(false);
+              if (ok) setShareGoal(null);
+            }}
+            onClose={() => setShareGoal(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   Minus,
   ShieldQuestion,
   ShieldX,
+  X,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -37,6 +38,7 @@ import {
   isPending,
   fmtAmount,
   goalFamilyActuals,
+  parseAmountInput,
   pctMet,
   yearElapsed,
   type GoalUnit,
@@ -1490,5 +1492,110 @@ export function PersonGoalPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * SET THE SHARE THE ROW ACTUALLY SHOWS (Anir, Aug 23: "u retard fix this,
+ * it's not working, I can't set target").
+ *
+ * On People and Group performance a goal row's figure is the SUBJECT'S SHARE
+ * of the goal, but "Set target" opened the org-wide goal editor. He typed
+ * 670k, the org goal saved perfectly, and the row he was looking at kept
+ * computing his own $0 assignment — a save that worked, reading exactly like
+ * one that had not. This modal edits the number the row shows, and SAYS which
+ * number it is, with the org target named beside it so the two can never be
+ * confused again.
+ */
+export function SetShareModal({
+  open,
+  title,
+  contextLine,
+  unit,
+  initial,
+  busy,
+  onSave,
+  onClose,
+}: {
+  open: boolean;
+  /** e.g. "Anir's target on Billed / Collected Revenue" */
+  title: string;
+  /** Names the OTHER number: "The goal's annual target is $670K." */
+  contextLine?: string;
+  unit: GoalUnit;
+  initial: number;
+  busy: boolean;
+  onSave: (target: number) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(initial > 0 ? String(initial) : "");
+  useEffect(() => {
+    if (open) setText(initial > 0 ? String(initial) : "");
+  }, [open, initial]);
+  const parsed = parseAmountInput(text);
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/35" onClick={onClose} />
+      <div className="menu-in relative w-full max-w-[440px] rounded-2xl bg-white p-5 shadow-[0_24px_64px_-16px_rgba(15,23,42,0.45)]">
+        <p className="pr-8 text-[15px] font-bold text-text-primary">{title}</p>
+        {contextLine && (
+          <p className="mt-1 text-[12px] leading-snug text-text-secondary">{contextLine}</p>
+        )}
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-4 top-4 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+        >
+          <X size={16} strokeWidth={2.2} />
+        </button>
+        <div className="relative mt-3.5">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
+            {unit === "currency" ? "$" : unit === "percent" ? "%" : "#"}
+          </span>
+          <input
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && parsed !== null && parsed > 0 && !busy) {
+                e.preventDefault();
+                e.stopPropagation();
+                onSave(parsed);
+              }
+            }}
+            placeholder={unit === "currency" ? "e.g. 250K" : unit === "percent" ? "e.g. 45" : "e.g. 12"}
+            className="h-[42px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[14px] outline-none tnum focus:border-blue-subtle"
+          />
+        </div>
+        {text.trim() !== "" &&
+          (parsed !== null ? (
+            <p className="mt-1 text-[11px] text-text-tertiary tnum">
+              = {fmtAmount(unit, parsed)}
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-error">Numbers only, e.g. 250K</p>
+          ))}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy || parsed === null || parsed <= 0}
+            onClick={() => parsed !== null && onSave(parsed)}
+            className="cursor-pointer rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Save target"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
