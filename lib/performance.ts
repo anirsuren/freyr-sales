@@ -2139,6 +2139,20 @@ export async function setGoalMilestones(input: {
     })
     .filter((m): m is { date: string; amount: number } => m !== null)
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  /**
+   * ONE FIGURE PER DAY (found by the Aug 22 sweep). A milestone answers "how
+   * much is due BY this date", so two rows on the same day are two different
+   * answers to one question and the pace verdict would silently pick whichever
+   * sorted first. The goal editor already refuses to save them — "Milestone 2
+   * already covers 2026-09-30" — but the store did not, so the API accepted
+   * through the front door what the form blocks.
+   */
+  const clash = cleaned.find((m, i) => i > 0 && m.date === cleaned[i - 1].date);
+  if (clash) {
+    throw new Error(
+      `Two milestones cannot both be due on ${clash.date}. Give each one its own date.`
+    );
+  }
   goal.milestones = cleaned.length ? cleaned : undefined;
   await writeRow(state);
 }
