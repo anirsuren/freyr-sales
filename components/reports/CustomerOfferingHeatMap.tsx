@@ -73,6 +73,7 @@ import {
   type HeatMapOffering,
 } from "@/lib/customerOfferingHeatMap";
 import { useOpportunities } from "@/lib/useOpportunities";
+import { opportunityValue } from "@/lib/opportunitiesShared";
 import { formatMoney } from "@/lib/pipeline";
 import { useStoredView } from "@/lib/useStoredView";
 import type {
@@ -415,8 +416,38 @@ export function CustomerOfferingHeatMap({
   );
   const [editingExisting, setEditingExisting] = useState(false);
   const [draftIsNew, setDraftIsNew] = useState(false);
-  /** The pipeline, so an activity can name the deal it belongs to. */
+  /** The pipeline, so an activity can name the deal it belongs to — and, since
+   *  Aug 23, so the matrix itself is built from it (see resolveHeatMapCell). */
   const { opportunities: pipeline } = useOpportunities();
+  /** The pipeline in the shape the resolver wants. Memoised: every cell in a
+   *  16 × 31 matrix asks for it. */
+  const heatMapDeals = useMemo(
+    () =>
+      pipeline.map((o) => ({
+        id: o.id,
+        name: o.name,
+        customer: o.customer,
+        customerId: o.customerId,
+        /* The deal's own offering ids and labels, plus anything named on its
+           rows — an imported deal carries the former, one built in the form
+           carries the latter. */
+        offeringIds: [
+          ...o.offeringIds,
+          ...(o.lines ?? []).map((line) => line.offeringId).filter(Boolean),
+        ].filter((id): id is string => Boolean(id)),
+        offeringLabels: [
+          ...o.offeringLabels,
+          ...(o.lines ?? []).map((line) => line.offeringLabel).filter(Boolean),
+        ].filter((label): label is string => Boolean(label)),
+        value: opportunityValue(o),
+        currency: undefined,
+        status: o.status ?? (o.lines ?? [])[0]?.status ?? undefined,
+        level: o.level,
+        estSignDate: o.estSignDate ?? (o.lines ?? [])[0]?.estSignDate ?? undefined,
+        createdAt: o.createdAt,
+      })),
+    [pipeline]
+  );
   const [saving, setSaving] = useState(false);
   const [reportVersionId, setReportVersionId] = useState<string | null>(null);
   const [reportSelectionError, setReportSelectionError] = useState(false);
@@ -507,7 +538,7 @@ export function CustomerOfferingHeatMap({
 
     return searchFiltered.offerings.filter((offering) =>
       searchFiltered.customers.some((customer) => {
-        const resolved = resolveHeatMapCell(customer, offering);
+        const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
         if (
           activityFilter.length &&
           (!resolved.activity || !activityFilter.includes(resolved.activity))
@@ -523,6 +554,7 @@ export function CustomerOfferingHeatMap({
     );
   }, [
     activityFilter,
+    heatMapDeals,
     searchFiltered.customers,
     searchFiltered.offerings,
     statusFilter,
@@ -534,7 +566,7 @@ export function CustomerOfferingHeatMap({
 
     return searchFiltered.customers.filter((customer) =>
       matrixOfferings.some((offering) => {
-        const resolved = resolveHeatMapCell(customer, offering);
+        const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
         if (
           activityFilter.length &&
           (!resolved.activity || !activityFilter.includes(resolved.activity))
@@ -550,6 +582,7 @@ export function CustomerOfferingHeatMap({
     );
   }, [
     activityFilter,
+    heatMapDeals,
     matrixOfferings,
     searchFiltered.customers,
     statusFilter,
@@ -564,7 +597,7 @@ export function CustomerOfferingHeatMap({
     ) as Record<CustomerOfferingActivity, number>;
     for (const customer of customers) {
       for (const offering of offerings) {
-        const resolved = resolveHeatMapCell(customer, offering);
+        const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
         if (resolved.activity) counts[resolved.activity] += 1;
         if (resolved.activity && resolved.activity !== "lead") active += 1;
         if (resolved.engagement?.dollar_value)
@@ -579,10 +612,14 @@ export function CustomerOfferingHeatMap({
       coverage: total ? Math.round((covered / total) * 100) : 0,
       counts,
     };
-  }, [customers, offerings]);
+    /* heatMapDeals belongs here: the tiles read the same resolver the cells
+       do, so a new opportunity has to move them too. Without it the matrix
+       showed the deal and the summary above it did not (found straight after
+       wiring the pipeline in, Aug 23). */
+  }, [customers, offerings, heatMapDeals]);
 
   function cellPassesFilters(customer: Customer, offering: HeatMapOffering) {
-    const resolved = resolveHeatMapCell(customer, offering);
+    const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
     if (
       activityFilter.length &&
       (!resolved.activity || !activityFilter.includes(resolved.activity))
@@ -597,7 +634,7 @@ export function CustomerOfferingHeatMap({
   }
 
   function openCell(customer: Customer, offering: HeatMapOffering) {
-    const resolved = resolveHeatMapCell(customer, offering);
+    const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
     const history = engagementHistory(customer, offering.id);
     const storedDraft =
       usageForOffering(customer, offering.id)?.engagement_draft || null;
@@ -2034,7 +2071,7 @@ export function CustomerOfferingHeatMap({
                       </div>
                     </th>
                     {matrixOfferings.map((offering) => {
-                      const resolved = resolveHeatMapCell(customer, offering);
+                      const resolved = resolveHeatMapCell(customer, offering, heatMapDeals);
                       const activity = resolved.activity;
                       const meta = activity
                         ? CUSTOMER_OFFERING_ACTIVITIES[activity]

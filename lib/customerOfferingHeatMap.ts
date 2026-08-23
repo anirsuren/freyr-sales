@@ -2,6 +2,7 @@ import type {
   AccountDeal,
   Customer,
   CustomerOfferingActivity,
+  CustomerOfferingCurrency,
   CustomerOfferingEngagementVersion,
   CustomerOfferingStatus,
   OfferingUsage,
@@ -315,14 +316,123 @@ function derivedFromUsage(
 }
 
 /**
+ * THE PIPELINE IS THE RELATIONSHIP (Anir, Aug 23, after adding a J&J Medtech
+ * opportunity on Freya.intelligence and finding the report still showing that
+ * pairing as empty: "this report has to work differently now... that has to
+ * be connected to how you are managing opportunities").
+ *
+ * The matrix predates the Opportunities module. It could derive a cell from
+ * `account_deals` — the old per-customer deal list nobody writes to any more —
+ * so every deal created the way the app now works was invisible here, and the
+ * report quietly said "None" about accounts with live money on them.
+ *
+ * An opportunity belongs to a customer and carries offerings, which is exactly
+ * a cell. Its status maps onto the same five activities the matrix already
+ * speaks, so nothing new is invented: the deal's own words decide the cell.
+ * Explicit engagements still win — somebody who recorded an activity by hand
+ * has said something the pipeline has not.
+ */
+export type HeatMapOpportunity = {
+  id: string;
+  name: string;
+  customer: string;
+  customerId?: string;
+  offeringIds: string[];
+  offeringLabels: string[];
+  value: number;
+  currency?: CustomerOfferingCurrency;
+  status?: string;
+  level?: string;
+  estSignDate?: string;
+  createdAt?: string;
+};
+
+/** Which of the five activities a deal's status means. Same vocabulary the
+ *  matrix already uses, read off the words the deal itself carries. */
+function opportunityActivity(o: HeatMapOpportunity): CustomerOfferingActivity {
+  const status = normalized(o.status);
+  const level = normalized(o.level);
+  if (status.includes("won") || status.includes("signed")) return "contract";
+  if (status.includes("pilot") || status.includes("demo")) return "pilot";
+  if (
+    status.includes("propose") ||
+    status.includes("submitted") ||
+    status.includes("review") ||
+    status.includes("negotiat")
+  )
+    return "opportunity";
+  if (status.includes("qualify") || level.includes("future")) return "lead";
+  return "opportunity";
+}
+
+function derivedFromOpportunity(
+  customer: Customer,
+  offering: HeatMapOffering,
+  opportunities: HeatMapOpportunity[]
+): CustomerOfferingEngagementVersion | null {
+  const account = normalized(customer.company_name);
+  const offeringName = normalized(offering.name);
+  const mine = opportunities.filter((o) => {
+    const sameAccount = o.customerId
+      ? o.customerId === customer.id
+      : normalized(o.customer) === account;
+    if (!sameAccount) return false;
+    /* An id match is certain; the label is the fallback for a deal typed
+       before the offering existed in the catalogue. Exact name equality
+       only — the same rule dealMatchesOffering uses, for the same reason. */
+    return (
+      o.offeringIds.includes(offering.id) ||
+      o.offeringLabels.some((label) => normalized(label) === offeringName)
+    );
+  });
+  if (mine.length === 0) return null;
+  /* The furthest-along deal speaks for the cell: a signed contract outranks a
+     proposal outranks a lead, so an account with three deals reads as its
+     best one rather than whichever happened to sort first. */
+  const RANK: Record<CustomerOfferingActivity, number> = {
+    lead: 0,
+    opportunity: 1,
+    pilot: 2,
+    contract: 3,
+    delivery: 4,
+  };
+  const best = [...mine].sort(
+    (a, b) => RANK[opportunityActivity(b)] - RANK[opportunityActivity(a)]
+  )[0];
+  const activity = opportunityActivity(best);
+  const won = normalized(best.status).includes("won");
+  return {
+    id: `derived-opp-${best.id}`,
+    version: 1,
+    linked: true,
+    activity,
+    activity_description: best.name || null,
+    status: won ? "completed" : defaultStatusForActivity(activity),
+    /* Every deal on this pairing, not just the one that names the cell — the
+       report's "recorded value" has to be the money actually on the account. */
+    dollar_value: mine.reduce((sum, o) => sum + Math.max(0, Number(o.value) || 0), 0),
+    currency: best.currency || "USD",
+    start_date: best.createdAt?.slice(0, 10) || null,
+    end_date: null,
+    potential_close_date: best.estSignDate || null,
+    opportunity_ids: mine.map((o) => o.id),
+    proposal_ids: [],
+    contract_ids: [],
+    created_at: best.createdAt || new Date().toISOString(),
+    updated_at: best.createdAt || new Date().toISOString(),
+  };
+}
+
+/**
  * Resolve the single matrix cell without inventing customer data. Explicit
- * engagement versions win. Existing deals and offering usage provide a useful
- * read-only bridge for records created before this report existed. A customer
- * with no recorded relationship remains empty until an activity is recorded.
+ * engagement versions win. The pipeline, then existing deals and offering
+ * usage, provide the read-only bridge. A customer with no recorded
+ * relationship remains empty until an activity is recorded.
  */
 export function resolveHeatMapCell(
   customer: Customer,
-  offering: HeatMapOffering
+  offering: HeatMapOffering,
+  opportunities: HeatMapOpportunity[] = []
 ): ResolvedHeatMapCell {
   const history = engagementHistory(customer, offering.id);
   const explicit = history.find((version) => version.linked) || null;
@@ -345,6 +455,7 @@ export function resolveHeatMapCell(
     };
   }
   const derived =
+    derivedFromOpportunity(customer, offering, opportunities) ||
     derivedFromDeal(customer, offering) ||
     derivedFromUsage(customer, offering);
   if (derived) {
