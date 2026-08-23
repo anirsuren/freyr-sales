@@ -23,6 +23,7 @@ import {
   canVerifyEntry,
   entryStatus,
   goalFamilyActuals,
+  inGoalCurrency,
   isPending,
   fmtAmount,
   parseAmountInput,
@@ -820,10 +821,17 @@ export function MyEntriesCard({
         .map((m) => m.trim().toLowerCase())
         .includes(person.trim().toLowerCase())
     );
-  const mine = state.actuals
+  const all = state.actuals
     .filter((a) => a.person === person)
-    .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1))
-    .slice(0, 8);
+    .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1));
+  /* Eight newest, PLUS every claim still sent back (Aug 23 audit): the card's
+     header counts rejections wherever they are, so a ninth-newest sent-back
+     claim was being announced by a table that then did not contain it — a
+     fix nobody could reach from the one place that demands it. */
+  const mine = [
+    ...all.slice(0, 8),
+    ...all.slice(8).filter((a) => awaitingTheirFix(a)),
+  ];
   if (mine.length === 0) return null;
 
   return (
@@ -1559,7 +1567,23 @@ export function VerifyQueueCard({
      total. Amber is a status colour used AS a status — action required —
      never decoration. Empty, it settles back to the calm blue card. */
   const pending = queue.length > 0;
-  const onHold = queue.reduce((s, q) => s + (q.amount || 0), 0);
+  /* MONEY ONLY, in one currency (Aug 23 audit): this summed every waiting
+     claim's raw number — 12 meetings + 40 percent + €50,000 — and printed
+     the total with a dollar sign. Only currency-goal claims are money, and
+     each converts to USD before it joins the sum; one with no rate counts
+     as nothing rather than lying at 1:1. */
+  const onHold = queue.reduce((s, q) => {
+    const goal = state.goals.find(
+      (g) =>
+        g.id === q.goalId ||
+        (g.componentGoalIds ?? []).includes(q.goalId) ||
+        g.subgoals.some((x) => x.id === q.subgoalId)
+    );
+    const unitOf =
+      state.goals.find((g) => g.id === q.goalId)?.unit ?? goal?.unit;
+    if (unitOf !== "currency") return s;
+    return s + inGoalCurrency(q, undefined, state.rates);
+  }, 0);
   return (
     <Card
       className={cn(
@@ -1814,10 +1838,27 @@ export function VerifyQueueCard({
       )}
       {confirmBulk && (() => {
         const chosen = queue.filter((q) => picked.has(q.id));
-        const total = chosen.reduce((t, q) => t + (q.amount || 0), 0);
+        /* The bulk confirm adds ONLY like with like (Aug 23 audit): this
+           summed every picked claim's raw number regardless of unit — and a
+           mixed pick printed meetings + percents as dollars. Money converts
+           and sums; a mixed pick states the count of claims instead of
+           inventing a total. */
+        const units = new Set(
+          chosen.map((q) => state.goals.find((g) => g.id === q.goalId)?.unit ?? "currency")
+        );
+        const unit = units.size === 1 ? [...units][0] : null;
+        const total =
+          unit === null
+            ? 0
+            : chosen.reduce(
+                (t, q) =>
+                  t +
+                  (unit === "currency"
+                    ? inGoalCurrency(q, undefined, state.rates)
+                    : q.amount || 0),
+                0
+              );
         const people = [...new Set(chosen.map((q) => q.person))];
-        const unit =
-          state.goals.find((g) => g.id === chosen[0]?.goalId)?.unit ?? "currency";
         return (
           <Modal
             open
@@ -1826,7 +1867,11 @@ export function VerifyQueueCard({
           >
             <p className="text-[13.5px] leading-relaxed text-text-secondary">
               This signs off{" "}
-              <b className="text-text-primary tnum">{fmtAmount(unit, total)}</b>{" "}
+              <b className="text-text-primary tnum">
+                {unit === null
+                  ? `${chosen.length} ${chosen.length === 1 ? "claim" : "claims"}`
+                  : fmtAmount(unit, total)}
+              </b>{" "}
               from{" "}
               <b className="text-text-primary">
                 {people.length === 1 ? people[0] : `${people.length} people`}

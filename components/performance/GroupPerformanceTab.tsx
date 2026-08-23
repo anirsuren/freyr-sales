@@ -267,7 +267,9 @@ export function GroupPerformanceTab({
       live={live}
       run={run}
       onLogActual={onLogActual}
-      onGoToMaster={() => undefined}
+      /* This button read "Open the Goal Master" and did nothing (Aug 23
+         audit). It goes there now. */
+      onGoToMaster={() => router.push("/performance/goal-master")}
       onEditGoal={onEditGoal}
       onEditSubgoal={onEditSubgoal}
       scope={{

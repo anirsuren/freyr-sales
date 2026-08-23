@@ -391,7 +391,7 @@ type ActualFilter = {
  * nothing honest to convert with, so it counts as recorded — exactly today's
  * behaviour, and money never vanishes out of a total.
  */
-function inGoalCurrency(
+export function inGoalCurrency(
   entry: Pick<PerfActual, "amount" | "currency">,
   goalCurrency: CurrencyCode | undefined,
   rates: CurrencyRates | undefined

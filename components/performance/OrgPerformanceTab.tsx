@@ -371,9 +371,13 @@ export function OrgPerformanceTab({
       case "actual":
         return bv - av;
       case "met":
+        /* On VERIFIED money — the same basis the % met column beside it
+           shows (Aug 23 audit: this ranked by everything CLAIMED, so "Most
+           complete" could order the table differently from the very column
+           it appears to sort). */
         return (
-          (b.target > 0 ? pctMet(bv, b.target) : -1) -
-          (a.target > 0 ? pctMet(av, a.target) : -1)
+          (b.target > 0 ? pctMet(verifiedFor(state, b), b.target) : -1) -
+          (a.target > 0 ? pctMet(verifiedFor(state, a), a.target) : -1)
         );
       case "verified":
         return Number(b.verified) - Number(a.verified);
