@@ -308,7 +308,16 @@ export function ColorSelect({
       )
         setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    /* Escape dismisses THIS menu and stops there. It used to reach the
+       Modal's own Escape handler as well, so tapping Escape to back out of a
+       dropdown threw away the whole half-filled form behind it (found by the
+       Aug 22 UI sweep). */
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      setOpen(false);
+    };
     const onResize = () => setOpen(false);
     // The menu is position:fixed, measured once at open. Page scroll used to
     // leave it stranded mid-viewport while its trigger moved away (Anir,
@@ -763,7 +772,16 @@ export function MultiColorSelect({
       )
         setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    /* Escape dismisses THIS menu and stops there. It used to reach the
+       Modal's own Escape handler as well, so tapping Escape to back out of a
+       dropdown threw away the whole half-filled form behind it (found by the
+       Aug 22 UI sweep). */
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      setOpen(false);
+    };
     const onResize = () => setOpen(false);
     // The menu is position:fixed, measured once at open. Page scroll used to
     // leave it stranded mid-viewport while its trigger moved away (Anir,

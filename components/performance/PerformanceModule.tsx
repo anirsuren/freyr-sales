@@ -4564,6 +4564,12 @@ function LogActualModal({
                   if (v !== goalId) {
                     setSubgoalId("");
                     setPerson("");
+                    /* The booking belongs to the goal it was picked under.
+                       Leaving it set let a switch from one composite to
+                       another sail past the "which booking?" check and save
+                       the entry against the FIRST goal's component (found by
+                       the Aug 22 form audit). */
+                    setComponentId("");
                   }
                   setGoalId(v);
                 }}

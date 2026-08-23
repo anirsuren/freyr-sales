@@ -770,9 +770,14 @@ export function OpportunitiesBrowser({
           offeringId: r.offeringId || undefined,
           offeringLabel: r.offeringId ? undefined : r.offeringLabel || undefined,
           revenueType: r.revenueType || undefined,
-          value: r.value === "" ? 0 : Number(r.value),
+          /* Whole dollars. The box now tolerates a decimal point so "2.5m"
+             can be typed a character at a time; a half-finished "2.5" that
+             never got its suffix must not land as a $2.50 deal. */
+          value: r.value === "" ? 0 : Math.round(Number(r.value)) || 0,
           localValue:
-            r.localValue === "" ? undefined : Number(r.localValue) || undefined,
+            r.localValue === ""
+              ? undefined
+              : Math.round(Number(r.localValue)) || undefined,
           localCurrency: r.localCurrency || undefined,
           status: r.status || undefined,
           confidence: r.confidence === "" ? undefined : Number(r.confidence),
@@ -2450,7 +2455,15 @@ function Fact({
 function withCommas(digits: string): string {
   // Letters never belong in a money box (Anir, Aug 19: "why am I able to
   // write jjj?") — strip anything that is not a digit before grouping.
-  return digits.replace(/[^\d]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // ONE decimal point survives, because it has to: the K/M/B shorthand is
+  // typed a character at a time, and eating the dot turned "2.5m" into "25m"
+  // — twenty-five million (found by the Aug 22 UI sweep).
+  const clean = digits.replace(/[^\d.]/g, "");
+  const dot = clean.indexOf(".");
+  const whole = (dot === -1 ? clean : clean.slice(0, dot)).replace(/[^\d]/g, "");
+  const frac = dot === -1 ? null : clean.slice(dot + 1).replace(/[^\d]/g, "");
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return frac === null ? grouped : `${grouped}.${frac}`;
 }
 
 function ConfidenceSlider({
@@ -3094,7 +3107,10 @@ function SingleOfferingEditor({
                           ]
                       )
                     )
-                  : e.target.value.replace(/[^0-9]/g, "");
+                  : /* A lone trailing dot is a number being typed, not a
+                       broken one — "2." has to survive long enough for the
+                       "5m" to arrive. */
+                    typed.replace(/[^0-9.]/g, "").replace(/\.(?=.*\.)/g, "");
                 if (line.localCurrency) {
                   set({ localValue: text, value: usdFrom(text, line.localCurrency) });
                 } else {
