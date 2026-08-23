@@ -1516,6 +1516,7 @@ export function SetShareModal({
   busy,
   onSave,
   onClose,
+  onEditGoal,
 }: {
   open: boolean;
   /** e.g. "Anir's target on Billed / Collected Revenue" */
@@ -1527,6 +1528,10 @@ export function SetShareModal({
   busy: boolean;
   onSave: (target: number) => void;
   onClose: () => void;
+  /** The way through to the goal's own settings — name, year, schedule,
+   *  tracking, the org-wide target. Without it this dialog would be a dead
+   *  end for a manager who came here to change the goal itself. */
+  onEditGoal?: () => void;
 }) {
   const [text, setText] = useState(initial > 0 ? String(initial) : "");
   useEffect(() => {
@@ -1577,7 +1582,16 @@ export function SetShareModal({
           ) : (
             <p className="mt-1 text-[11px] text-error">Numbers only, e.g. 250K</p>
           ))}
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          {onEditGoal && (
+            <button
+              type="button"
+              onClick={onEditGoal}
+              className="mr-auto cursor-pointer text-[12.5px] font-semibold text-blue-primary underline-offset-2 hover:underline"
+            >
+              Edit the goal itself →
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

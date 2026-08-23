@@ -346,7 +346,12 @@ export function GroupPerformanceTab({
             setShareBusy(false);
             if (ok) setShareGoal(null);
           }}
-          onClose={() => setShareGoal(null)}
+          onEditGoal={() => {
+              const full = state.goals.find((g) => g.id === shareGoal.id);
+              setShareGoal(null);
+              if (full) onEditGoal(full);
+            }}
+            onClose={() => setShareGoal(null)}
         />
       );
     })()}

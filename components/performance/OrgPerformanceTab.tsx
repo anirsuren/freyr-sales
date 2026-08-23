@@ -1608,9 +1608,27 @@ function GoalRows({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onEditGoal(goal);
+                /* THE PENCIL EDITS THE NUMBER THIS ROW SHOWS (Anir, Aug 23,
+                   after the same trap caught him twice: "I had it at 600K,
+                   then I deleted it, I pressed Save, and boom, it doesn't go
+                   anywhere").
+
+                   It went somewhere — it emptied the goal's ORG-WIDE target,
+                   which is not the number in front of him. On People and
+                   Group screens the row's figure is the SUBJECT'S SHARE, and
+                   every control on that row has to mean the share. Fixing
+                   "Set target" alone left this pencil pointing at the other
+                   number, so the exact same bug came straight back through
+                   the next button along. The share dialog carries a link to
+                   the goal's own settings, so nothing is lost. */
+                if (onSetTarget) onSetTarget(goal);
+                else onEditGoal(goal);
               }}
-              title={`Edit ${goal.name}. Target, schedule, tracking`}
+              title={
+                onSetTarget
+                  ? `Set the target on ${goal.name} for this screen's subject`
+                  : `Edit ${goal.name}. Target, schedule, tracking`
+              }
               aria-label={`Edit ${goal.name}`}
               className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
             >
