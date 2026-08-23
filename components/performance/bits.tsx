@@ -986,6 +986,20 @@ export function PaceTimeline({
             >
               {fmtAmount(unit, 0)}
             </span>
+            {/* THE TARGET SITS WHERE THE TARGET IS (Anir, Aug 22: "why is the
+                500K so far? He should be on the right side, where 500K
+                actually is — just like the $0"). The number now mirrors the
+                zero: pinned over the track's right terminus, the circle it
+                labels, instead of leading a sentence that dragged it left. */}
+            <span
+              className={cn(
+                "absolute right-0 font-bold text-text-primary tnum",
+                compact ? "text-[9.5px]" : "text-[11px]"
+              )}
+              style={{ top: LANE - (compact ? 12 : 14) + 8 }}
+            >
+              {fmtAmount(unit, target)}
+            </span>
             {/* WHERE YOU ARE, IN THE LANE ABOVE — when nothing else is using
                 it (Anir, Aug 16: "you're not using the top of the progress
                 bar... I didn't ask you to shorten it. I asked you to actually
@@ -1139,14 +1153,6 @@ export function PaceTimeline({
                 />
               </span>
               <span className="mt-1 block text-right">
-                <b
-                  className={cn(
-                    "inline font-bold text-text-primary tnum",
-                    compact ? "text-[11px]" : "text-[12.5px]"
-                  )}
-                >
-                  {fmtAmount(unit, target)}
-                </b>{" "}
                 <span
                   className={cn(
                     "inline text-text-tertiary",

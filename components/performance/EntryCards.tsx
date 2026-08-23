@@ -1094,7 +1094,14 @@ export function MyEntriesCard({
                         <td
                           colSpan={8}
                           className={cn(
-                            "pb-4 pl-7 pr-4 pt-1",
+                            /* max-w-0 pins the spanning cell to the width the
+                               8 columns already have, so a wide expansion can
+                               never stretch the TABLE itself — expanding a
+                               row used to shove every column sideways and cut
+                               the last header off the card (Anir, Aug 22:
+                               "fix the column, it's not aligned — the last
+                               one"). */
+                            "max-w-0 pb-4 pl-7 pr-4 pt-1",
                             sentBack
                               ? "[box-shadow:inset_3px_0_0_0_#DC2626]"
                               : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"

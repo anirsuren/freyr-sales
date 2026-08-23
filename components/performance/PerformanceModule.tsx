@@ -4294,7 +4294,8 @@ function LogActualModal({
   const [offeringNames, setOfferingNames] = useState<Map<string, string>>(
     new Map()
   );
-  const [customerOpen, setCustomerOpen] = useState(false);
+  /** The "Not on the list. Type it" escape hatch is open. */
+  const [customerOther, setCustomerOther] = useState(false);
   const [customerId, setCustomerId] = useState("");
   /**
    * WHICH DEAL THIS NUMBER CAME OUT OF — one field, not two.
@@ -4419,14 +4420,6 @@ function LogActualModal({
 
   /** Accounts matching what has been typed. Empty query shows the list, so
    *  clicking the field offers the accounts rather than demanding a guess. */
-  const customerMatches = useMemo(() => {
-    const q = customer.trim().toLowerCase();
-    const hit = q
-      ? accounts.filter((a) => a.name.toLowerCase().includes(q))
-      : accounts;
-    return hit.slice(0, 8);
-  }, [accounts, customer]);
-
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === customerId) ?? null,
     [accounts, customerId]
@@ -4526,6 +4519,8 @@ function LogActualModal({
       setAmount("");
       setNote("");
       setCustomer("");
+      setCustomerId("");
+      setCustomerOther(false);
       setEvidence([]);
       setComponentId("");
       setLink("");
@@ -4678,67 +4673,74 @@ function LogActualModal({
               }
             />
           </label>
-          {/* PICK THE ACCOUNT, DO NOT DESCRIBE IT (Anir, Aug 15: "it should be
-              like a dropdown where they choose and they search up the
-              customer"). Free text meant one account arrived as "Takeda",
-              "Takeda Pharma" and "takeda - renewal", so no report could ever
-              group by customer. Still an input, so a brand-new logo that has
-              no account record yet can be typed. */}
-          <div className="relative mt-1">
-            <input
-              value={customer}
-              onChange={(e) => {
-                setCustomer(e.target.value);
-                // Typed by hand: this is no longer one of our accounts.
-                setCustomerId("");
-                setLink("");
-                setCustomerOpen(true);
-              }}
-              onFocus={() => setCustomerOpen(true)}
-              onBlur={() => window.setTimeout(() => setCustomerOpen(false), 150)}
-              /* ENTER TAKES THE TOP ROW, like every other dropdown in the app
-                 (Anir, Aug 22: "remember what I told u — when I press enter it
-                 chooses the first option, any dropdown"). ColorSelect and
-                 MultiPicker already did this; this box was hand-rolled and
-                 never got it, so typing "tak" and hitting Enter left the
-                 account unpicked and the deal list empty. */
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setCustomerOpen(false);
-                  return;
-                }
-                if (e.key !== "Enter") return;
-                const top = customerMatches[0];
-                if (!top) return;
-                e.preventDefault();
-                setCustomer(top.name);
-                setCustomerId(top.id);
-                setLink("");
-                setCustomerOpen(false);
-              }}
-              placeholder="Search your accounts…"
-              className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-            />
-            {customerOpen && customerMatches.length > 0 && (
-              <div className="menu-in absolute left-0 right-0 top-full z-30 mt-1 max-h-[240px] overflow-y-auto rounded-xl border border-border-light bg-white p-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]">
-                {customerMatches.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setCustomer(c.name);
-                      setCustomerId(c.id);
-                      setLink("");
-                      setCustomerOpen(false);
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-surface"
-                  >
-                    <CompanyLogo name={c.name} className="h-5 w-5 shrink-0" />
-                    {c.name}
-                  </button>
-                ))}
-              </div>
+          {/* A DROPDOWN LIKE EVERY OTHER FIELD (Anir, Aug 22: "why is it
+              search, why is it not a dropdown"). The bare text box was the
+              one field in the form that did not open a list. It is the app's
+              standard picker now — the 16 accounts with their logos, type to
+              narrow, Enter takes the top match — with the one escape hatch
+              kept: "Not on the list. Type it" swaps to an input for a win
+              whose account has no record yet, same idiom as the opportunity
+              form's customer field. */}
+          <div className="mt-1">
+            {customerOther ? (
+              <span className="relative block">
+                <input
+                  autoFocus
+                  value={customer}
+                  onChange={(e) => {
+                    setCustomer(e.target.value);
+                    setCustomerId("");
+                    setLink("");
+                  }}
+                  placeholder="Type the account name…"
+                  aria-label="Customer account name"
+                  className="h-[40px] w-full rounded-lg border border-border-light bg-white px-3 pr-10 text-[13px] outline-none focus:border-blue-subtle"
+                />
+                <button
+                  type="button"
+                  title="Back to the account list"
+                  aria-label="Back to the account list"
+                  onClick={() => setCustomerOther(false)}
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                >
+                  <ChevronDown size={15} strokeWidth={2} />
+                </button>
+              </span>
+            ) : (
+              <ColorSelect
+                value={customerId || (customer ? "__typed" : "")}
+                ariaLabel="Customer account"
+                collapsible={false}
+                className="w-full"
+                minWidth={280}
+                onChange={(val) => {
+                  if (val === "__typed") return;
+                  if (val === "__other") {
+                    setCustomerOther(true);
+                    return;
+                  }
+                  const hit = accounts.find((a) => a.id === val);
+                  setCustomer(hit ? hit.name : "");
+                  setCustomerId(hit ? val : "");
+                  setLink("");
+                }}
+                options={[
+                  { value: "", label: "Pick the account…", color: "#C7CDD6" },
+                  ...(customer && !customerId
+                    ? [{ value: "__typed", label: customer, color: "#0071E3" }]
+                    : []),
+                  {
+                    value: "__other",
+                    label: "Not on the list. Type it",
+                    color: "#8E98A8",
+                  },
+                  ...accounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                    logoName: a.name,
+                  })),
+                ]}
+              />
             )}
           </div>
         </div>

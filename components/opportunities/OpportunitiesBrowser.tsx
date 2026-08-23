@@ -407,6 +407,7 @@ export function OpportunitiesBrowser({
   people = [],
   meName,
   canEdit,
+  privileged = true,
   live,
 }: {
   opportunities: Opportunity[];
@@ -423,6 +424,12 @@ export function OpportunitiesBrowser({
   people?: string[];
   meName: string;
   canEdit: boolean;
+  /** Managers and admins touch every deal; a rep only their own. Drives
+   *  which rows draw the pencil at all (Anir, Aug 22, hitting the refusal
+   *  toast as a rep: "if I can't edit I shouldn't be able to edit it in the
+   *  first place — I should only be allowed to do the dropdown"). The server
+   *  keeps enforcing the same rule; this stops offering buttons it refuses. */
+  privileged?: boolean;
   live: boolean;
 }) {
   const { toast } = useToast();
@@ -879,6 +886,8 @@ export function OpportunitiesBrowser({
   }
 
   const writable = canEdit && live;
+  /** May THIS row be changed by the reader? Same rule the API applies. */
+  const mayTouch = (o: Opportunity) => privileged || (o.owner ?? "") === meName;
 
   /** THE ONE TABLE SHELL, shared by the flat list and the grouped cards —
    *  same columns everywhere, so separate cards still read as one table
@@ -1137,7 +1146,7 @@ export function OpportunitiesBrowser({
                         </td>
                         <td className="px-2 py-3.5">
                           <span className="flex items-center justify-end gap-0.5">
-                            {writable && (
+                            {writable && mayTouch(o) && (
                               <>
                                 <button
                                   type="button"
@@ -1470,6 +1479,7 @@ export function OpportunitiesBrowser({
           futures={futures}
           flashId={flashId}
           writable={writable}
+          mayTouch={mayTouch}
           offeringName={offeringName}
           colorForOffering={(o) =>
             o.offeringIds[0]
@@ -1555,6 +1565,7 @@ export function OpportunitiesBrowser({
                 options: customersInPipeline.map((c) => ({
                   value: c,
                   label: c,
+                  logoName: c,
                 })),
               },
               {
@@ -2563,6 +2574,7 @@ function ConfidenceSlider({
 function FutureSection({
   futures,
   writable,
+  mayTouch = () => true,
   offeringName,
   colorForOffering,
   onEdit,
@@ -2571,6 +2583,9 @@ function FutureSection({
 }: {
   futures: Opportunity[];
   writable: boolean;
+  /** Same per-row rule as the pipeline: only rows the reader may change
+   *  draw the pencil. */
+  mayTouch?: (o: Opportunity) => boolean;
   offeringName: Map<string, string>;
   colorForOffering: (o: Opportunity) => string;
   onEdit: (o: Opportunity) => void;
@@ -2681,7 +2696,7 @@ function FutureSection({
                   label: "Customer",
                   values: customer === "all" ? [] : [customer],
                   onChange: (next) => setCustomer(next[next.length - 1] ?? "all"),
-                  options: customers.map((c) => ({ value: c, label: c })),
+                  options: customers.map((c) => ({ value: c, label: c, logoName: c })),
                 },
                 {
                   key: "quarter",
@@ -2802,6 +2817,7 @@ function FutureSection({
                       </td>
                       {writable && (
                         <td className="px-2 py-2.5 pr-4 text-right">
+                          {mayTouch(o) && (
                           <span className="inline-flex items-center gap-1">
                             <button
                               type="button"
@@ -2820,6 +2836,7 @@ function FutureSection({
                               <Trash2 size={13} strokeWidth={2.2} />
                             </button>
                           </span>
+                          )}
                         </td>
                       )}
                     </tr>

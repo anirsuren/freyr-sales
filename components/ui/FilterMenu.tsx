@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -38,6 +39,10 @@ export type FilterOption = {
   color?: string;
   /** Draw a face instead of a dot — owners are people. */
   avatarName?: string;
+  /** Draw the company's mark instead of a dot — accounts are companies
+   *  (Anir, Aug 22, on the Customer filter's grey dots: "why would u remove
+   *  the company logos"). */
+  logoName?: string;
 };
 
 export type FilterGroup = {
@@ -192,7 +197,12 @@ export function FilterMenu({
                           on ? "text-text-primary" : "text-text-secondary"
                         )}
                       >
-                        {option.avatarName ? (
+                        {option.logoName ? (
+                          <CompanyLogo
+                            name={option.logoName}
+                            className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                          />
+                        ) : option.avatarName ? (
                           <Avatar
                             name={option.avatarName}
                             className="h-[18px] w-[18px] shrink-0 text-[7px]"

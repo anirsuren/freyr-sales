@@ -207,7 +207,13 @@ export function ColorSelect({
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const searchable = options.length > 10;
+  /* Typing while the menu is open ALWAYS searches (Anir, Aug 22: "if I
+     search up pro and press enter it should automatically go to Propose —
+     this applies to basically all dropdowns, regardless of whether it has a
+     search bar or not"). Short lists draw no box until a letter lands; the
+     first keystroke summons it with the letter already inside. */
+  const searchable =
+    (forceSearchable ?? options.length > 10) || menuQuery.trim() !== "";
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
@@ -231,6 +237,44 @@ export function ColorSelect({
   const enterPick =
     visibleOptions.find((o) => o.label.trim().toLowerCase() === menuQ) ??
     visibleOptions[0];
+
+  /* The route from "menu open" to "typed": printable keys land in the query
+     even before the search box exists, Enter commits the top match, Backspace
+     erases. Once the box has drawn, its own handlers take over (the guard
+     skips events already aimed at an input). */
+  useEffect(() => {
+    if (!open) return;
+    const onType = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)
+      )
+        return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Enter") {
+        if (!menuQuery.trim() || !enterPick) return;
+        e.preventDefault();
+        onChange(enterPick.value);
+        setMenuQuery("");
+        setOpen(false);
+        return;
+      }
+      if (e.key === "Backspace") {
+        if (!menuQuery) return;
+        e.preventDefault();
+        setMenuQuery((q) => q.slice(0, -1));
+        return;
+      }
+      if (e.key.length === 1) {
+        e.preventDefault();
+        setMenuQuery((q) => q + e.key);
+      }
+    };
+    document.addEventListener("keydown", onType);
+    return () => document.removeEventListener("keydown", onType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, menuQuery, enterPick]);
   const showDetailedTrigger = detailed && !compactTrigger;
   // The two-line "detailed" trigger never compacts — it isn't a toolbar shape.
   const searchHasPriority = useSearchPriority();
