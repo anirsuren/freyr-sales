@@ -621,10 +621,8 @@ export async function setVerified(input: {
         a.status = "verified";
         a.verifiedBy = input.by;
         a.verifiedAt = now;
-        a.managerNote = undefined;
-        a.sentBackBy = undefined;
-        a.sentBackAt = undefined;
-        a.resubmittedAt = undefined;
+        /* Same rule as verifyActual: approving a goal must not erase why one
+           of its claims was once sent back. */
       }
     }
   }
@@ -1075,10 +1073,20 @@ export async function verifyActual(input: {
   entry.status = "verified";
   entry.verifiedBy = input.by;
   entry.verifiedAt = new Date().toISOString();
-  entry.managerNote = undefined;
-  entry.sentBackBy = undefined;
-  entry.sentBackAt = undefined;
-  entry.resubmittedAt = undefined;
+  /**
+   * THE REJECTION STAYS ON THE RECORD (found testing the full loop, Aug 23).
+   *
+   * Signing off used to wipe managerNote, sentBackBy, sentBackAt and
+   * resubmittedAt — so the moment a claim was fixed and approved, every trace
+   * that it had ever been refused, by whom, and why, was gone. The timeline
+   * only draws its "Sent back" step when the note exists, so the finished
+   * claim read as if it had sailed through first time. That is the one
+   * history this module exists to keep.
+   *
+   * Nothing downstream reads the note as "currently rejected": the shouting
+   * red state is awaitingTheirFix, which needs status "reported" AND no
+   * resubmittedAt, and both of those are set by the fix flow, not here.
+   */
   await writeRow(state);
 }
 

@@ -977,6 +977,28 @@ export function verifiedValue(
  *
  * Null means "this is one of the defaults" — say nothing.
  */
+/**
+ * WHEN A GOAL WAS SET, in the plainest words (Anir, Aug 23: "it would be
+ * helpful to see when and who created the goal").
+ *
+ * The name alone answered half the question — the Org row has said "set by
+ * Anir Suren" since Aug 19, but never when, so an old target and one set this
+ * morning read identically. Month name spelled out for the same reason every
+ * date field in the app spells it: 08/09 is two different days depending on
+ * which office is reading it.
+ */
+export function goalCreatedOn(createdAt?: string): string | null {
+  const raw = (createdAt ?? "").trim();
+  if (!raw) return null;
+  const t = new Date(raw);
+  if (Number.isNaN(t.getTime())) return null;
+  return t.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function goalAuthor(createdBy?: string): string | null {
   const name = (createdBy ?? "").trim();
   if (!name) return null;

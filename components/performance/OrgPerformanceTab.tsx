@@ -45,6 +45,7 @@ import {
   entryStatusLabel,
   familyValue,
   goalAuthor,
+  goalCreatedOn,
   verifiedValue,
   goalFamilyActuals,
   ENTRY_COLOR,
@@ -1426,6 +1427,13 @@ function GoalRows({
                       className="h-3.5 w-3.5 shrink-0 text-[6px]"
                     />
                     <span className="truncate">{goalAuthor(goal.createdBy)}</span>
+                    {/* AND WHEN (Anir, Aug 23). A target set last quarter and
+                        one set this morning used to read identically. */}
+                    {goalCreatedOn(goal.createdAt) && (
+                      <span className="whitespace-nowrap tnum">
+                        on {goalCreatedOn(goal.createdAt)}
+                      </span>
+                    )}
                   </span>
                 )}
               </span>

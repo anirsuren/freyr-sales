@@ -37,6 +37,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { EvidencePicker } from "./EvidencePicker";
+import { SegmentBrackets } from "./bits";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -1953,66 +1954,74 @@ export function ClaimReviewDialog({
             title={locked ? "Unlock and send this claim back" : "Verify this claim"}
             size="workflow"
           >
-            {/* WHERE THIS ONE CLAIM SITS ON ITS GOAL (Anir, Aug 19: "shouldn't
-                there be some sort of progress bar in here?"; Aug 22, looking
-                at this exact band: "make this bar look better like the other
-                bars — clearly labeled").
+            {/* THE SAME MEASURED BAR AS EVERY OTHER SCREEN (Anir, Aug 23:
+                "this bar at the top — fix it, make it like the bars I like,
+                clearly labelled").
 
-                It used to be two flat blue segments reading "Counted /
-                This claim", and "Counted" was actualValue — everything
-                logged, this unread claim included — so the bar drew the same
-                $200K twice and the headline said "40% there" about money the
-                dialog itself had not yet decided to count. Now it is the
-                VerifyGoalModal band exactly: solid green is verified, the
-                stripe is this claim in its own status colour, and "% there"
-                judges verified money only. */}
+                It had its own private shape: a legend of coloured dots and a
+                percentage floating on the right. Every other bar in the
+                module is read the same way — $0 pinned at the left end, the
+                target pinned at the right end where the target actually is,
+                and a bracket under each segment naming the money it measures.
+                This one now is too, from the same SegmentBrackets component,
+                so it cannot drift from them again.
+
+                Solid green is signed off; the stripe is this claim in its own
+                status colour. "% there" counts verified money only — the one
+                dialog whose entire job is deciding what counts must not
+                announce a number that includes what it has not yet counted. */}
             {goal && goal.target > 0 && (() => {
               const status = entryStatus(a);
-              /* Signed-off money on this goal, MINUS this claim when the
-                 claim is itself the verified one — the claim gets its own
-                 labelled segment, so counting it here would draw it twice. */
               const verifiedOthers = goalFamilyActuals(state, goal)
                 .filter((x) => x.id !== a.id && entryStatus(x) === "verified")
                 .reduce((t, x) => t + (x.amount || 0), 0);
               const verifiedTotal =
                 verifiedOthers + (status === "verified" ? a.amount : 0);
-              const pct = (n: number) =>
-                `${Math.min(100, (n / goal.target) * 100)}%`;
+              const share = (n: number) =>
+                Math.min(100, (n / goal.target) * 100);
               const claimColor =
                 status === "verified"
                   ? ENTRY_COLOR.verified
                   : status === "sent_back"
                     ? ENTRY_COLOR.sent_back
                     : ENTRY_COLOR.reported;
+              const claimWord =
+                status === "verified"
+                  ? "this claim"
+                  : status === "sent_back"
+                    ? "this claim, sent back"
+                    : "this claim, waiting";
               return (
-                <div className="mb-3 rounded-xl bg-surface px-3.5 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[14px] font-bold text-text-primary">
+                <div className="mb-3 rounded-xl bg-surface px-3.5 pb-3 pt-2.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <b className="text-[13.5px] font-bold text-text-primary">
                       {goal.name}
-                    </span>
-                    <span className="text-[12px] text-text-secondary tnum">
-                      {/* VERIFIED, not everything logged — same rule as the
-                          goal dialog's line, for the same reason. */}
-                      Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
-                      {Math.round(pctMet(verifiedTotal, goal.target))}% there
+                    </b>
+                    <span className="text-[11.5px] text-text-secondary tnum">
+                      {Math.round(pctMet(verifiedTotal, goal.target))}% there,
+                      counting what is signed off
                     </span>
                   </div>
-                  <span className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                  {/* The two ends, labelled, exactly like the pace track. */}
+                  <div className="mt-2 flex items-baseline justify-between text-[10.5px] font-semibold text-text-tertiary tnum">
+                    <span>{fmtAmount(goal.unit, 0)}</span>
+                    <span className="font-bold text-text-primary">
+                      {fmtAmount(goal.unit, goal.target)}
+                    </span>
+                  </div>
+                  <span className="mt-1 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                     <span
                       className="block h-full"
                       style={{
-                        width: pct(verifiedOthers),
+                        width: `${share(verifiedOthers)}%`,
                         background: ENTRY_COLOR.verified,
                       }}
                     />
                     {status === "verified" ? (
-                      /* Locked: this claim is verified money, so its segment
-                         is the same solid green, split off by a hairline so
-                         the legend's two figures both point at something. */
                       <span
                         className="block h-full"
                         style={{
-                          width: pct(a.amount),
+                          width: `${share(a.amount)}%`,
                           background: ENTRY_COLOR.verified,
                           boxShadow:
                             verifiedOthers > 0
@@ -2024,37 +2033,47 @@ export function ClaimReviewDialog({
                       <span
                         className="unverified-fill block h-full"
                         style={{
-                          width: pct(a.amount),
+                          width: `${share(a.amount)}%`,
                           ["--fill" as string]: claimColor,
                         }}
                       />
                     )}
                   </span>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: ENTRY_COLOR.verified }}
-                      />
-                      Verified
-                      <b className="text-text-primary tnum">
-                        {fmtAmount(goal.unit, verifiedTotal)}
-                      </b>
-                    </span>
+                  <SegmentBrackets
+                    unit={goal.unit}
+                    parts={[
+                      {
+                        key: "signed",
+                        value: verifiedOthers,
+                        pct: share(verifiedOthers),
+                        color: ENTRY_COLOR.verified,
+                      },
+                      {
+                        key: "claim",
+                        value: a.amount,
+                        pct: share(a.amount),
+                        color: claimColor,
+                      },
+                    ]}
+                  />
+                  {/* The brackets carry the figures; this names them, so a
+                      reader never has to match a colour to a meaning. */}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[10.5px] text-text-tertiary">
+                    {verifiedOthers > 0 && (
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: ENTRY_COLOR.verified }}
+                        />
+                        already signed off
+                      </span>
+                    )}
                     <span className="flex items-center gap-1.5">
                       <span
                         className="h-2 w-2 rounded-full"
                         style={{ background: claimColor }}
                       />
-                      This claim
-                      {status !== "verified" && (
-                        <span className="text-text-tertiary">
-                          · {status === "sent_back" ? "sent back" : "waiting"}
-                        </span>
-                      )}
-                      <b className="text-text-primary tnum">
-                        {fmtAmount(goal.unit, a.amount)}
-                      </b>
+                      {claimWord}
                     </span>
                   </div>
                 </div>
@@ -2077,56 +2096,94 @@ export function ClaimReviewDialog({
               </span>
             </div>
 
-            <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-              <Fact label="Goal">{goal?.name ?? "Goal removed"}</Fact>
-              <Fact label="Subgoal">
-                {sub?.name ?? (
-                  <span className="text-text-tertiary">logged on the goal itself</span>
-                )}
-              </Fact>
-              <Fact label="Customer">
-                <CustomerCell customer={a.customer} customerId={a.customerId} />
-              </Fact>
-              <Fact label="Deal">
-                {a.dealLabel ?? (
-                  <span className="text-text-tertiary">not tied to a deal</span>
-                )}
-              </Fact>
-              <Fact label="Their note">
-                {a.note ?? <span className="text-text-tertiary">none</span>}
-              </Fact>
-            </div>
+            {/* THE FACTS ON THE LEFT, THE STORY DOWN THE SIDE (Anir, Aug 23:
+                "the timeline just looks ugly, it's taking up an unnecessary
+                amount of space... I like the vertical side thing, where it
+                gets on the right side completely and just shows a timeline").
 
-            {/* THE SAME TIMELINE THE ROW SHOWS (Anir, Aug 19: "When I press
-                Verify, it looks the same everywhere"). This used to be two
-                loose dates — "Result date" and "Entered" — which answered
-                when it happened but never when it was checked. */}
-            <div className="mt-4">
-              <EntryTimeline
-                entry={a}
-                person={a.person}
-                owners={(state.groups ?? [])
-                  .filter((g) => g.head && g.head !== a.person && (g.members ?? []).includes(a.person))
-                  .map((g) => g.head)
-                  .filter((h, i, all) => all.indexOf(h) === i)}
-              />
-            </div>
-
-            <div className="mt-4">
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                Proof
-              </span>
-              {a.evidence?.length ? (
-                <div className="mt-1.5 space-y-2">
-                  {a.evidence.map((e) => (
-                    <EvidenceInline key={e.url} file={e} />
-                  ))}
+                It ran full width across the middle, so four stacked steps set
+                the height of the whole dialog and pushed the proof and the
+                two buttons off the bottom. As a rail it is exactly as tall as
+                the facts beside it, and the dialog is only as tall as
+                whichever side is taller. Below 900px it drops back under the
+                facts rather than squeezing into a column too narrow to read.
+                Same pattern the expanded Logged-results row already uses. */}
+            <div className="mt-3.5 flex flex-col gap-5 lg:flex-row lg:gap-7">
+              <div className="min-w-0 flex-1">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+                  <Fact label="Goal">{goal?.name ?? "Goal removed"}</Fact>
+                  <Fact label="Subgoal">
+                    {sub?.name ?? (
+                      <span className="text-text-tertiary">logged on the goal itself</span>
+                    )}
+                  </Fact>
+                  <Fact label="Customer">
+                    <CustomerCell customer={a.customer} customerId={a.customerId} />
+                  </Fact>
+                  <Fact label="Deal">
+                    {a.dealLabel ?? (
+                      <span className="text-text-tertiary">not tied to a deal</span>
+                    )}
+                  </Fact>
+                  <Fact label="Their note">
+                    {a.note ?? <span className="text-text-tertiary">none</span>}
+                  </Fact>
                 </div>
-              ) : (
-                <p className="mt-1 text-[12.5px] text-text-secondary">
-                  Nothing attached. Send it back and ask for the contract or SOW.
-                </p>
-              )}
+
+                {/* THE PROOF DOES NOT LOAD ITSELF (Anir, Aug 23: "I don't like
+                    the preview in the popup, it's ugly" — and he had said it
+                    once before). A full-height render of whatever someone
+                    happened to attach was the tallest thing in a dialog whose
+                    job is a yes or a no, and a screenshot of a dark room told
+                    a verifier nothing they could not get from the filename.
+                    It is a row now: what it is called, and one click to open
+                    it properly. */}
+                <div className="mt-4">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+                    Proof
+                  </span>
+                  {a.evidence?.length ? (
+                    <div className="mt-1.5 space-y-1.5">
+                      {a.evidence.map((e) => (
+                        <button
+                          key={e.url}
+                          type="button"
+                          onClick={() => onPreview?.(e)}
+                          title={`Open ${e.name}`}
+                          className="group flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                        >
+                          <Paperclip
+                            size={13}
+                            strokeWidth={2.1}
+                            className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                            {e.name}
+                          </span>
+                          <span className="shrink-0 text-[11.5px] font-semibold text-blue-primary">
+                            View
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[12.5px] text-text-secondary">
+                      Nothing attached. Send it back and ask for the contract or SOW.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-border-light pt-4 lg:w-[248px] lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                <EntryTimeline
+                  entry={a}
+                  person={a.person}
+                  owners={(state.groups ?? [])
+                    .filter((g) => g.head && g.head !== a.person && (g.members ?? []).includes(a.person))
+                    .map((g) => g.head)
+                    .filter((h, i, all) => all.indexOf(h) === i)}
+                />
+              </div>
             </div>
 
             {sendingBack && (

@@ -396,6 +396,22 @@ function toDraft(
   };
 }
 
+/**
+ * The day a deal entered the pipeline, spelled out. Separate from its owner,
+ * which is who carries it now and can change hands (Anir, Aug 23).
+ */
+function createdOn(iso?: string): string | null {
+  const raw = (iso ?? "").trim();
+  if (!raw) return null;
+  const t = new Date(raw);
+  if (Number.isNaN(t.getTime())) return null;
+  return t.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function OpportunitiesBrowser({
   opportunities,
   offerings,
@@ -479,6 +495,31 @@ export function OpportunitiesBrowser({
    *  list re-sorts on save and the deal LOOKED like it vanished (Suren, Aug 18:
    *  "I was working on an opportunity. How can it disappear, man?"). */
   const [flashId, setFlashId] = useState<string | null>(null);
+  /**
+   * ARRIVING FROM SEARCH LANDS ON THE DEAL, not merely on the page. Global
+   * search indexes opportunities now, and a result that dropped you at the
+   * top of a 102-row pipeline would have been the same dead end the customer
+   * links were. Same flash-and-scroll the save path already uses.
+   */
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("deal");
+    if (!wanted) return;
+    if (list.some((o) => o.id === wanted && o.level === "Future")) {
+      setPipeView("future");
+    }
+    setFlashId(wanted);
+    const at = window.setTimeout(() => {
+      document
+        .querySelector(`[data-opp-row="${wanted}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 400);
+    const off = window.setTimeout(() => setFlashId(null), 3200);
+    return () => {
+      window.clearTimeout(at);
+      window.clearTimeout(off);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list.length]);
   /** X keeps the draft; Cancel throws it away. Both used to stash it, so an
    *  abandoned form could never be cleared — reopening New opportunity handed
    *  back last week's half-typed deal, and there was no way to start clean
@@ -1386,6 +1427,29 @@ export function OpportunitiesBrowser({
                                     </span>
                                   )}
                                 </div>
+                                {/* WHEN THIS DEAL WAS CREATED (Anir, Aug 23:
+                                    "same thing here, I need to see who and
+                                    when created this opportunity").
+
+                                    The owner is who carries it NOW, which is
+                                    a different fact and can change hands;
+                                    this is the day it entered the pipeline
+                                    and never moves. Month spelled out for the
+                                    same reason every date in the app is —
+                                    08/09 is two different days depending on
+                                    which office reads it. Deals imported from
+                                    the sheet carry their import stamp, which
+                                    is the truthful answer for them. */}
+                                {createdOn(o.createdAt) && (
+                                  <div>
+                                    <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                      Created
+                                    </span>
+                                    <span className="mt-1.5 block text-[12.5px] text-text-secondary tnum">
+                                      {createdOn(o.createdAt)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                               <div className="border-t border-border-light pt-3.5 sm:col-span-2">
                                 <OpportunityActivities

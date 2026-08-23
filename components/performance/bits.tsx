@@ -780,7 +780,7 @@ export function GroupPill({
  * bar was which. This measures them: a bracket under each segment, exactly as
  * wide as the segment, with its own amount underneath in its own colour.
  */
-function SegmentBrackets({
+export function SegmentBrackets({
   parts,
   unit,
 }: {

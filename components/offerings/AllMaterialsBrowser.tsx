@@ -29,8 +29,10 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   canonicalMaterialFolder,
+  materialFileTypeLabel,
   materialFormat,
   materialJourneyStages,
+  materialLinkHost,
   type AccessLevel,
   type JourneyStage,
   type OfferingMaterial,
@@ -115,6 +117,11 @@ export function AllMaterialsBrowser({
         row.material.description,
         row.offeringName,
         canonicalMaterialFolder(row.material),
+        /* Now that the row SAYS "Presentation · PPTX", searching either word
+           has to find it — a fact printed on screen that the search box does
+           not know is a small lie. */
+        MATERIAL_FORMAT_META[materialFormat(row.material.kind)].label,
+        materialFileTypeLabel(row.material),
         ...row.ownerNames,
       ]
         .filter(Boolean)
@@ -346,6 +353,50 @@ export function AllMaterialsBrowser({
                         />
                       </button>
                     </MaterialPeek>
+                    {/* WHAT KIND OF THING THIS IS, UNDER ITS NAME (Anir,
+                        Aug 23: "before you were showing me if it was a link,
+                        PDF, DOCX, PPTX etc. or the broad type — bring it back,
+                        right below the name").
+
+                        Two facts, one line, in the order you ask them: the
+                        broad format — one of the four an owner can upload —
+                        then the actual file behind it. "Presentation · PPTX"
+                        answers both "can I show this?" and "can I attach it?",
+                        which the format alone never did.
+
+                        LINK is the honest answer for a hosted page with no
+                        file behind it, never a guessed extension: an invented
+                        "MP4" would send a rep off to attach a file that does
+                        not exist. Those rows say where they actually go. */}
+                    {(() => {
+                      const format = MATERIAL_FORMAT_META[materialFormat(row.material.kind)];
+                      const FormatIcon = format.icon;
+                      const fileType = materialFileTypeLabel(row.material);
+                      const host = fileType === "LINK" ? materialLinkHost(row.material) : null;
+                      return (
+                        <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold text-text-tertiary">
+                          <FormatIcon
+                            size={11}
+                            strokeWidth={2.3}
+                            aria-hidden="true"
+                            className="shrink-0"
+                            style={{ color: format.color }}
+                          />
+                          <span style={{ color: format.color }}>{format.label}</span>
+                          <span aria-hidden="true" className="text-border-light">·</span>
+                          <span
+                            className="tracking-[0.04em]"
+                            title={
+                              fileType === "LINK"
+                                ? `Opens on ${host ?? "another site"} — a hosted link, not an uploaded file`
+                                : `${fileType} file`
+                            }
+                          >
+                            {fileType}
+                          </span>
+                        </span>
+                      );
+                    })()}
                     {row.material.description && (
                       <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
                         {row.material.description}

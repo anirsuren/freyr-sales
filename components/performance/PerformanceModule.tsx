@@ -65,6 +65,8 @@ import { cn } from "@/lib/utils";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
   fmtAmount,
+  goalAuthor,
+  goalCreatedOn,
   hasActuals,
   knownPeople,
   parseAmountInput,
@@ -2265,6 +2267,38 @@ function GoalPopupBody({
       </div>
       )}
 
+      {/* WHO SET THIS, AND WHEN (Anir, Aug 23: "it would be helpful to see
+          when and who created the goal — I thought I already said this").
+          He had: the Org row has carried "set by <name>" since Aug 19. It
+          never said when, and this panel — the one you actually open to
+          assign the goal — said neither. Same line, same helper, both
+          places, so they cannot drift apart.
+
+          Goals that came off Suren's sheet name a document rather than a
+          colleague; goalAuthor already returns null for those, so they stay
+          quiet instead of crediting a spreadsheet with a face. */}
+      {(goalAuthor(goal.createdBy) || goalCreatedOn(goal.createdAt)) && (
+        <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary">
+          Set by
+          {goalAuthor(goal.createdBy) ? (
+            <>
+              <Avatar
+                name={goalAuthor(goal.createdBy)!}
+                className="h-4 w-4 shrink-0 text-[7px]"
+              />
+              <b className="font-semibold text-text-secondary">
+                {goalAuthor(goal.createdBy)}
+              </b>
+            </>
+          ) : (
+            <b className="font-semibold text-text-secondary">someone since gone</b>
+          )}
+          {goalCreatedOn(goal.createdAt) && (
+            <span className="tnum">on {goalCreatedOn(goal.createdAt)}</span>
+          )}
+        </p>
+      )}
+
       {splitSubs.length >= 2 && (
         <div className="mt-3 rounded-xl border border-border-light bg-white p-3.5">
           <p className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
@@ -4280,6 +4314,9 @@ function LogActualModal({
   const [componentId, setComponentId] = useState("");
   const [person, setPerson] = useState("");
   const [amount, setAmount] = useState("");
+  /** Which "take the amount from this deal" chip was pressed, so the lit one
+   *  is the one you chose rather than every chip sharing that figure. */
+  const [pickedChip, setPickedChip] = useState<string | null>(null);
   /** What this one was signed in. Defaults to the goal's own currency, so a
    *  euro goal does not quietly collect dollars. */
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(BASE_CURRENCY);
@@ -4461,6 +4498,9 @@ function LogActualModal({
    *  still empty, so choosing a deal never rewrites a customer by hand. */
   function pickLink(next: string) {
     setLink(next);
+    /* A different deal means different chips; the old pressed one no longer
+       refers to anything on screen. */
+    setPickedChip(null);
     if (!next.startsWith("opp:")) return;
     const o = pipeline.find((x) => x.id === next.slice(4));
     if (!o) return;
@@ -4521,6 +4561,7 @@ function LogActualModal({
       setCustomer("");
       setCustomerId("");
       setCustomerOther(false);
+      setPickedChip(null);
       setEvidence([]);
       setComponentId("");
       setLink("");
@@ -4830,7 +4871,18 @@ function LogActualModal({
                 // value"). A deal is often signed one offering at a time, so
                 // the row that was actually signed is one click rather than a
                 // subtraction done in someone's head.
-                ...oppLines(linkedOpp).map((line, i, all) => {
+                /* ONLY WHEN THERE IS SOMETHING TO CHOOSE BETWEEN (Anir,
+                   Aug 23: "why is it making me select both? you see the
+                   issue? see how it can be confusing?").
+
+                   A one-offering deal made two chips carrying the identical
+                   number — "Contract value · $180K" and "Freya.Register ·
+                   $180K" — and because a chip lights up when its amount
+                   matches the box, clicking either lit BOTH. It read as two
+                   things you had to pick, for one figure. Per-offering chips
+                   only earn their place when the deal actually splits. */
+                ...(oppLines(linkedOpp).length > 1
+                  ? oppLines(linkedOpp).map((line, i, all) => {
                   const label = lineLabel(line, (id) => offeringNames.get(id));
                   // Two rows of the same offering (ARR + OTS) made two chips
                   // both saying "GRI" — the revenue type tells them apart.
@@ -4845,7 +4897,8 @@ function LogActualModal({
                         : label,
                     amount: line.value,
                   };
-                }),
+                })
+                  : []),
                 ...(opportunityConfidence(linkedOpp) === undefined
                   ? []
                   : [
@@ -4864,13 +4917,23 @@ function LogActualModal({
                       },
                     ]),
               ].map((f) => {
-                const on =
-                  parsed !== null && Math.round(parsed) === Math.round(f.amount);
+                /* The chip you pressed is the one that lights. Matching on
+                   the amount alone meant any two chips sharing a figure lit
+                   together — the Aug 23 report — and it would happen again
+                   the moment a deal's weighted value equalled a line's. The
+                   pressed key is cleared whenever the amount is typed or the
+                   deal changes, so a stale chip can never stay lit against a
+                   number nobody chose. */
+                const on = pickedChip === f.key && parsed !== null &&
+                  Math.round(parsed) === Math.round(f.amount);
                 return (
                   <button
                     key={f.key}
                     type="button"
-                    onClick={() => setAmount(String(Math.round(f.amount)))}
+                    onClick={() => {
+                      setPickedChip(f.key);
+                      setAmount(String(Math.round(f.amount)));
+                    }}
                     className={cn(
                       "cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors tnum",
                       on
@@ -4933,7 +4996,10 @@ function LogActualModal({
                 </span>
                 <input
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setPickedChip(null);
+                    setAmount(e.target.value);
+                  }}
                   placeholder={
                     unit === "currency"
                       ? "e.g. 250K"
