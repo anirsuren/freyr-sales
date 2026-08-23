@@ -39,7 +39,7 @@ export async function POST(
       { status: 503 }
     );
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     path?: string;
     filename?: string;
     /** Whether the browser's PUT failed — then we abort instead of commit. */

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   const sequenceId = String(body.sequenceId || "");
   const customerIds: string[] = Array.isArray(body.customerIds)
     ? body.customerIds.map(String)
@@ -144,7 +144,7 @@ export async function DELETE(request: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   const enrollmentId = String(body.enrollmentId || "");
   if (!enrollmentId) {
     return NextResponse.json({ ok: false, error: "Enrollment is required." }, { status: 400 });

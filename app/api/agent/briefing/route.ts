@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // an account. Deterministic structure + a narrated headline (Claude when keyed,
 // deterministic fallback otherwise). Never breaks the mock-first path.
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const context = body.context as AccountContext | undefined;
   if (!context || !context.company) {
     return NextResponse.json({ error: "Missing context" }, { status: 400 });

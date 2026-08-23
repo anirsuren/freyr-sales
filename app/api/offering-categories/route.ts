@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       { error: "View only: admin access required" },
       { status: 403 }
     );
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   if (!body.name || !String(body.name).trim()) {
     return NextResponse.json(
       { error: "Offering category name is required" },

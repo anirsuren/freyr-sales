@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const subject = String(body.subject || "").trim();
   const text = String(body.body || "").trim();
   if (!subject && !text) {
@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body.id || "");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const patch: Record<string, string> = {};
@@ -76,7 +76,7 @@ export async function DELETE(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body.id || "");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const db = getDb();

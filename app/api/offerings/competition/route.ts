@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
   const me = await getCurrentUser();
   const addedBy = me.name || "Teammate";
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const offeringId = String(body.offeringId ?? "").trim();
   if (!offeringId) {
     return NextResponse.json({ error: "Missing offeringId" }, { status: 400 });

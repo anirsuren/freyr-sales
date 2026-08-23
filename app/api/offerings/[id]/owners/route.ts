@@ -56,7 +56,7 @@ export async function POST(
   // account, so demanding a UUID there breaks ownership entirely (it did:
   // twelve verification tests went red because the test session carries the
   // local id). Live mode is the one that must never store a placeholder.
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     memberId?: string;
     name?: string;
     email?: string | null;

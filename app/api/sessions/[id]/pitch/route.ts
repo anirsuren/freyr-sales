@@ -23,7 +23,7 @@ export async function PATCH(
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const db = getDb();
 
   const session = await db.pitchSessions.get((await params).id);

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     workspaceId: actor.workspaceId,
     userId: actor.userId,
   };
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const goal = String(body.goal || "").trim();
   if (!goal) {
     return NextResponse.json({ error: "Missing goal" }, { status: 400 });

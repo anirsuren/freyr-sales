@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 // anything the agent did without approval. Human-approved sends aren't undoable
 // here (the play already went out); only act / autopilot runs are.
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const runId = String(body.runId || "");
   if (!runId) {
     return NextResponse.json({ error: "Missing runId" }, { status: 400 });

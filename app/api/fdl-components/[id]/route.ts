@@ -138,7 +138,7 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
   const data = sanitize(body, existing);
   /* A roadmap version is credited to the signed-in person, from the session,
      never from the body. An unidentified caller edits without minting one

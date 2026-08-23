@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const senderName = await authenticatedRequestActorName(req);
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const customerId = String(body.customerId || "");
   const variant = Math.max(0, Number(body.variant) || 0);
   const db = getDb();

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const name = String(body?.name ?? "").trim().slice(0, 80);
   const type = COMPONENT_TYPES.includes(body?.type) ? (body.type as FdlComponentType) : null;
   if (!name || !type) {

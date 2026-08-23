@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!actor) {
     return NextResponse.json({ error: "Sign in to attach files" }, { status: 403 });
   }
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     path?: string;
     name?: string;
   };

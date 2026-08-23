@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // the plan via Claude; without a key (or on any error) it falls back to the
 // deterministic `planGoal`, so the planner never goes dark.
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const goal = String(body.goal || "").trim();
   if (!goal) {
     return NextResponse.json({ error: "Missing goal" }, { status: 400 });

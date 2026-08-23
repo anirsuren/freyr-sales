@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       { status: 409 }
     );
   }
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   if (body.mode !== "live" && body.mode !== "mock") {
     return NextResponse.json({ error: "Mode must be live or mock." }, { status: 400 });
   }

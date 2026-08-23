@@ -30,7 +30,7 @@ export async function POST(
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const requestedRecipient = String(body.to || "").trim();
   const scheduleAt = body.scheduleAt ? String(body.scheduleAt) : null;
 

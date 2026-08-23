@@ -32,7 +32,7 @@ export async function PATCH(
       { error: "View only: admin access required" },
       { status: 403 }
     );
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const data: Partial<{
     name: string;
     family: CustomerFamily;

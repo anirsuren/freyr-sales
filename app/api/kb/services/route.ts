@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const db = getDb();
   const kb = await db.freyrKb.get();
   const sk = (kb?.structured_kb as any) || { services: [] };
@@ -48,7 +48,7 @@ export async function PATCH(req: Request) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const db = getDb();
   const kb = await db.freyrKb.get();
   const sk = (kb?.structured_kb as any) || { services: [] };

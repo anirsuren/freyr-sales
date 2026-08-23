@@ -19,7 +19,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const actorName = await authenticatedRequestActorName(req);
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const targetKey = String(body.target || "hubspot");
   const target = TARGETS[targetKey] || "CRM";
 

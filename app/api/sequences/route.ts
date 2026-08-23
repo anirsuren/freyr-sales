@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   const name = String(body.name || "").trim();
   const description = String(body.description || "").trim();
   const steps = validSteps(body.steps);

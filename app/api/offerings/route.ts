@@ -55,7 +55,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!(await canManageOfferings())) return FORBIDDEN;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   // Record identity, ownership and person rows are server-owned. A caller may
   // select active workspace accounts through `poc`; it may not inject an
   // arbitrary contacts/owners payload.

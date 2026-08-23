@@ -38,7 +38,7 @@ export async function PATCH(
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const from = sanitizeMaterialFolderPath(body.from);
   const to = sanitizeMaterialFolderPath(body.to);
   if (!from || !to)

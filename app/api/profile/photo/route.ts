@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   if (!validPhoto(body?.photo)) {
     return NextResponse.json(
       { error: "Send a PNG, JPEG, WEBP or GIF image under 1MB." },

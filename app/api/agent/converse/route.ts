@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
    * name survives only where it belongs, on the signature of a draft.
    */
   const firstName = actorName.trim().split(/\s+/)[0] || actorName;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const message = String(body.message || "").trim();
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });

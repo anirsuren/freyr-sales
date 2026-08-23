@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const patch: Partial<AgentPrefs> = {};
   if ("focus_industry" in body) {
     patch.focus_industry = body.focus_industry

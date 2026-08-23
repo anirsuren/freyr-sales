@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     filename?: string;
     contentType?: string;
   };

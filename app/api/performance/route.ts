@@ -148,7 +148,10 @@ export async function POST(req: NextRequest) {
   }
   const me = await getCurrentUser();
   const manager = isManagerOrAdmin(me.role);
-  const body = await req.json().catch(() => ({}));
+  /* `?? {}` as well as the catch: a body of literally `null` PARSES fine, so
+     the catch never fires and the first property read threw a 500 while every
+     other malformed body returned a clean 400 (found by the Aug 22 fuzz). */
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const op = String(body.op ?? "");
 
   /**

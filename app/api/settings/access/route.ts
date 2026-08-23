@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const grant = await adminGrant(request);
   if (!grant) return NextResponse.json({ error: "Workspace owner access required." }, { status: 403 });
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   // Accept the pre-rename spellings too: a stale admin tab can still POST
   // "sales"/"editor" for a few minutes after the deploy.
   const role: WorkspaceRole = normalizeWorkspaceRole(body.role) ?? "rep";

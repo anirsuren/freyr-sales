@@ -40,7 +40,7 @@ export async function DELETE(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const customerId = String(body.customerId || "");
   if (!customerId) {
     return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const customerId = String(body.customerId || "");
   const question = String(body.question || "").trim();
   const context = (body.context || {}) as AccountContext;

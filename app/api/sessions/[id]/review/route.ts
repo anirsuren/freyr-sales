@@ -31,7 +31,7 @@ export async function POST(
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const status = ACTION_TO_STATUS[String(body.action)];
   if (!status) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

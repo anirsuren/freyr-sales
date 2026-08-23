@@ -73,7 +73,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
   // Ownership is immutable through the generic editor. The dedicated admin
   // endpoint verifies the target against the active workspace directory; a
   // broad object spread here must never bypass that gate. Record identity and

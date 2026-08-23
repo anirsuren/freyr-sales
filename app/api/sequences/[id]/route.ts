@@ -42,7 +42,7 @@ export async function PATCH(
       { status: 403 }
     );
   }
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   const steps = Array.isArray(body.steps)
     ? body.steps
         .map((step: Partial<SequenceStep>) => ({

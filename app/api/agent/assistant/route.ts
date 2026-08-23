@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
 // Claude and reports a provider outage honestly instead of impersonating the
 // model with a canned response.
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const question = String(body.question || "").trim();
   const pageLabel = String(body.pageLabel || "Freyr");
   const subject = String(body.subject || "").trim(); // e.g. the account/contact on screen

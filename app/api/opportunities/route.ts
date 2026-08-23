@@ -214,7 +214,9 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const raw = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  /* See the performance route: a literal `null` body parses, so the catch
+     never fires and the read below threw a 500 instead of a 400. */
+  const raw = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
   const op = String(raw.op ?? "");
   const me = await getCurrentUser();
   const privileged = isManagerOrAdmin(me.role);

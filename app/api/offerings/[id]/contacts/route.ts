@@ -62,7 +62,7 @@ export async function POST(
   const gate = await guard(id);
   if (gate.error) return gate.error;
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     name?: string;
     role?: string;
     email?: string;
@@ -117,7 +117,7 @@ export async function PATCH(
   const gate = await guard(id);
   if (gate.error) return gate.error;
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     contactId?: string;
     name?: string;
     role?: string;

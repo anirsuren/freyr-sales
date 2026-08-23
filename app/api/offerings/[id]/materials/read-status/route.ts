@@ -43,7 +43,7 @@ export async function POST(
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = (await req.json().catch(() => ({}))) as { paths?: unknown };
+  const body = ((await req.json().catch(() => ({}))) ?? {}) as { paths?: unknown };
   const paths = Array.isArray(body.paths)
     ? body.paths.map(String).filter((p) => p.startsWith(`${id}/`)).slice(0, 200)
     : [];

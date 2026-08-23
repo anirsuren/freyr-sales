@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   }
   const denied = rejectRealModeAgentMutation();
   if (denied) return denied;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const kind = String(body.kind || "");
   const customerId = String(body.customerId || "");
   const verb = VERB[kind];

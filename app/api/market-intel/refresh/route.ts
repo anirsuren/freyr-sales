@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const options = {
     force: body?.force === true,
     onlyCompanyIds: Array.isArray(body?.only)

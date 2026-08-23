@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const zone = typeof body?.timeZone === "string" ? body.timeZone.trim() : "";
   // "" is a legitimate value: it means "go back to following this device".
   if (zone && !isValidTimeZone(zone)) {

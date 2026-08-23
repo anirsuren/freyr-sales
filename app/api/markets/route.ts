@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       { error: "View only: admin access required" },
       { status: 403 }
     );
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   if (!body.name || !String(body.name).trim()) {
     return NextResponse.json({ error: "Market name is required" }, { status: 400 });
   }

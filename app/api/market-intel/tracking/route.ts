@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const releaseWrite = await acquireTrackingWrite();
   try {
     // Link-only flows: the LinkedIn page is the whole form; everything else
@@ -103,7 +103,7 @@ export async function DELETE(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body?.id ?? "").trim();
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   const releaseWrite = await acquireTrackingWrite();

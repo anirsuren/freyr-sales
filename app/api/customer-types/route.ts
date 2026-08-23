@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       { error: "View only: admin access required" },
       { status: 403 }
     );
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const family = String(body.family || "").trim() as CustomerFamily;
   const size = String(body.size || "").trim() as CustomerSize;
   if (!family || !size) {

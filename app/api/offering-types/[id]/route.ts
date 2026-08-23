@@ -18,7 +18,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!(await canManageOfferings())) return FORBIDDEN;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const data: { name?: string; description?: string } = {};
   if (body.name != null) data.name = String(body.name);
   if (body.description != null) data.description = String(body.description);

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // but the answer always comes from Claude. Only the explicitly forced test mode
 // uses the deterministic responder.
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const question = String(body.question || "").trim();
   const context = (body.context || {}) as AccountContext;
   if (!question || !context.company) {

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
   const denied = rejectRealModeAgentMutation();
   if (denied) return denied;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {};
   const sequenceId = String(body.sequenceId || "reengage");
   const seq = getSequence(sequenceId);
   if (!seq) {
