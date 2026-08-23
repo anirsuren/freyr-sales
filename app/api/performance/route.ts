@@ -117,7 +117,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const me = await getCurrentUser();
-  const state = await readPerformance();
+  /* Sample mode stands the viewer in for a sample rep (see readPerformance),
+     and this route has to agree with the server-rendered page — otherwise the
+     first save would swap a state where the viewer carries nothing back over
+     the one they were looking at. */
+  const state = await readPerformance(
+    getDataMode() === "live" ? undefined : me.name
+  );
   /* MANAGERS SEE THE ORG, exactly as the page itself decides (found by the
      Aug 23 audit): app/performance/[tab]/page.tsx server-renders a manager
      the FULL state — "managers and admins see everything" — but this route

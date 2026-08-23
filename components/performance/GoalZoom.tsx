@@ -502,9 +502,21 @@ export function GoalZoom({
    * merge the 4th and 3rd column"). People by default, each unfolding onto
    * their own deals; widen only when you want to skip the drill.
    */
-  const [lineScope, setLineScope] = useState<"person" | "group" | "period">(
-    "person"
-  );
+  /**
+   * TWO WAYS TO READ BOX 3, NOT THREE (Anir, Aug 23: "instead of calling it
+   * group you have to call it list or detail — it is all the details of that
+   * individual records... when you have All then all the transactions show
+   * up. Then we don't need this August thing. Only People and then Details,
+   * that's all").
+   *
+   * It had People / Group / <the month>, and the last two answered nearly the
+   * same question — one filtered the records to a group, the other to a
+   * period — so the reader had to hold two overlapping filters in their head
+   * to work out which records they were looking at. Details is now simply
+   * every record behind this goal, and the month picker in box 1 is the only
+   * thing that narrows by time.
+   */
+  const [lineScope, setLineScope] = useState<"person" | "details">("person");
   /** Which person is unfolded onto their line items, inside box 3. */
   const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
   /**
@@ -1082,13 +1094,18 @@ export function GoalZoom({
            * under a person inside box 3, or as the whole of box 3 when the
            * scope is widened past the drill.
            */
-          const entriesFor = (names: Set<string> | null) =>
+          const entriesFor = (names: Set<string> | null, everyPeriod = false) =>
             familyActuals
-              .filter((a) => inRange(a, row.range))
+              .filter((a) => everyPeriod || inRange(a, row.range))
               .filter((a) => !names || names.has(a.person.trim().toLowerCase()))
               .sort((x, y) => y.amount - x.amount);
-          const lineItems = (names: Set<string> | null, indent: boolean) => {
-            const entries = entriesFor(names);
+          const lineItems = (
+            names: Set<string> | null,
+            indent: boolean,
+            /** Details ignores the month in box 1 — see lineScope. */
+            everyPeriod = false
+          ) => {
+            const entries = entriesFor(names, everyPeriod);
             if (entries.length === 0) {
               return (
                 /* ROOM TO BREATHE, CENTRED, QUIET (Anir, Aug 19: "can you
@@ -1102,9 +1119,11 @@ export function GoalZoom({
                     indent ? "min-h-[76px] py-5 text-[12px]" : "min-h-[92px] py-6 text-[12.5px]"
                   )}
                 >
-                  {indent
-                    ? "No deals logged in this period."
-                    : `Nothing logged against this goal in ${row?.label ?? "this period"}.`}
+                  {everyPeriod
+                    ? "Nothing has been logged against this goal yet."
+                    : indent
+                      ? "No deals logged in this period."
+                      : `Nothing logged against this goal in ${row?.label ?? "this period"}.`}
                 </p>
               );
             }
@@ -1238,7 +1257,9 @@ export function GoalZoom({
           const boxCls =
             "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
           const boxHead =
-            "flex items-center gap-2 border-b border-border-light bg-surface/60 px-3 py-2";
+            /* No wrapping in a box header: see the "3 · Line items" comment
+               below — a long group name used to break the heading in two. */
+            "flex flex-nowrap items-center gap-2 overflow-hidden border-b border-border-light bg-surface/60 px-3 py-2";
           return (
             <div className={cn("relative mt-3", fill && "flex min-h-0 flex-1 flex-col")}>
             <div
@@ -1802,13 +1823,27 @@ export function GoalZoom({
               {/* -------- Box 3: the picked group's people, same period */}
               <div className={boxCls}>
                 <div className={boxHead}>
-                  <b className="text-[12px] text-text-primary">
-                    3 · {lineScope === "person" ? "People" : "Line items"}
+                  {/* ONE LINE, ALWAYS (Anir, Aug 23: "it should show up on one
+                      line, the group name is fucking it up"). The heading, the
+                      group tag and the three-way switch shared a row that
+                      could wrap, so a long group name — "Marketing group" —
+                      broke "3 · Line items" across two lines and pushed the
+                      switch down with it. The heading never wraps now, and the
+                      group tag gives up its width first: it truncates to an
+                      ellipsis with the full name on hover, so the switch keeps
+                      its place whatever a group is called. */}
+                  <b className="shrink-0 whitespace-nowrap text-[12px] text-text-primary">
+                    3 · {lineScope === "person" ? "People" : "Details"}
                   </b>
                   {/* Same blue tag as every other group name (Anir, Aug 15:
                       "You have it red somewhere else... just make it blue"). */}
-                  {selGroup && lineScope !== "period" && (
-                    <GroupPill name={selGroup.group.name} size="sm" />
+                  {selGroup && lineScope === "person" && (
+                    <span
+                      className="min-w-0 truncate"
+                      title={selGroup.group.name}
+                    >
+                      <GroupPill name={selGroup.group.name} size="sm" />
+                    </span>
                   )}
                   {/* THE LINE ITEMS LIVE IN THIS COLUMN (Anir, Aug 16: "i dont
                       need a 4th column thats too much... it should be line
@@ -1824,8 +1859,7 @@ export function GoalZoom({
                     {(
                       [
                         ["person", "People"],
-                        ["group", "Group"],
-                        ["period", row?.label ?? "Period"],
+                        ["details", "Details"],
                       ] as const
                     ).map(([k, label]) => (
                       <button
@@ -1845,25 +1879,12 @@ export function GoalZoom({
                   </span>
                 </div>
                 <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
-                  {lineScope !== "person" ? (
-                    /* Widened past the drill: the deals themselves, no names.
-                       Group needs a group picked; the period does not. */
-                    lineScope === "group" && !selGroup ? (
-                      <p className="px-2 py-3 text-[12px] text-text-secondary">
-                        Pick a group in box 2 to see the deals behind it.
-                      </p>
-                    ) : (
-                      lineItems(
-                        lineScope === "period"
-                          ? null
-                          : new Set(
-                              selGroup
-                                ? selGroup.members.map((n) => n.toLowerCase())
-                                : []
-                            ),
-                        false
-                      )
-                    )
+                  {lineScope === "details" ? (
+                    /* EVERY RECORD BEHIND THIS GOAL. No group filter, no
+                       period filter — "when you have All then all the
+                       transactions show up". Narrowing by month is box 1's
+                       job and only box 1's. */
+                    lineItems(null, false, true)
                   ) : !selGroup ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       Pick a group in box 2 and its people line up here for the

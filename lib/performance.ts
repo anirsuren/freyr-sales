@@ -369,8 +369,26 @@ function uid(prefix: string): string {
     .slice(2, 7)}`;
 }
 
-export async function readPerformance(): Promise<PerformanceState> {
-  if (getDataMode() !== "live") return samplePerformance();
+/**
+ * THE SAMPLE WORKSPACE HAS TO INCLUDE WHOEVER IS LOOKING AT IT (Anir, Aug 23:
+ * "this is fake so let me see some goals here man").
+ *
+ * The sample plan is staffed by invented reps — Margaret Whitfield and
+ * friends — so People performance, which shows YOUR goals, greeted every real
+ * person with "You carry no goals yet". The one screen whose whole job is to
+ * be full of fake data was the one screen that was empty, and the standing
+ * rule for mock mode is that every page looks full.
+ *
+ * So the busiest sample rep is renamed to the viewer, everywhere they appear:
+ * assignments, subgoal shares, logged results, group rosters and the crown on
+ * the group they run. Nothing is invented for them — they inherit a rep who
+ * already carries goals across several teams, so the numbers stay consistent
+ * with the charts around them.
+ *
+ * Sample only. Live mode never passes a viewer and never takes this path.
+ */
+export async function readPerformance(viewer?: string): Promise<PerformanceState> {
+  if (getDataMode() !== "live") return samplePerformance(viewer);
   return readRow().catch(() => structuredClone(EMPTY_PERFORMANCE));
 }
 
@@ -1904,8 +1922,75 @@ const MOCK_GROUPS: [string, string, string, string[]][] = [
 
 let sampleCache: PerformanceState | null = null;
 
-function samplePerformance(): PerformanceState {
-  if (sampleCache) return structuredClone(sampleCache);
+/**
+ * The sample people the viewer stands in for. Two, deliberately: the head of
+ * Growth Accounts, so the viewer runs a group and has claims to verify, and
+ * the busiest rep in it, so their own goal list is genuinely full rather than
+ * technically non-empty. Merged into one person below.
+ */
+const SAMPLE_VIEWER_STANDINS = ["Margaret Whitfield", "Walter Hensley"];
+
+/** Rename the sample stand-ins to the viewer throughout, then MERGE them —
+ *  one person cannot hold two shares of the same subgoal, so the shares add
+ *  up and the duplicate row goes. */
+function asViewer(state: PerformanceState, viewer: string): PerformanceState {
+  const me = viewer.trim();
+  if (!me || SAMPLE_VIEWER_STANDINS.includes(me)) return state;
+  const swap = (n: string) => (SAMPLE_VIEWER_STANDINS.includes(n) ? me : n);
+  /** Collapse two shares that are now the same person into one. */
+  const mergeShares = <T extends { target?: number }>(
+    rows: T[],
+    nameOf: (r: T) => string
+  ): T[] => {
+    const out: T[] = [];
+    for (const row of rows) {
+      const hit = out.find((x) => nameOf(x) === nameOf(row));
+      if (hit) hit.target = (hit.target ?? 0) + (row.target ?? 0);
+      else out.push({ ...row });
+    }
+    return out;
+  };
+  return {
+    ...state,
+    goals: state.goals.map((g) => ({
+      ...g,
+      assignments: mergeShares(
+        (g.assignments ?? []).map((a) => ({
+          ...a,
+          person: swap(a.person),
+          assignedBy: swap(a.assignedBy ?? ""),
+        })),
+        (a) => a.person
+      ),
+      subgoals: g.subgoals.map((sg) => ({
+        ...sg,
+        owners: [...new Set(sg.owners.map(swap))],
+        people: mergeShares(
+          sg.people.map((p) => ({ ...p, name: swap(p.name) })),
+          (p) => p.name
+        ),
+      })),
+    })),
+    groups: state.groups.map((gr) => ({
+      ...gr,
+      head: swap(gr.head),
+      members: [...new Set(gr.members.map(swap))],
+      createdBy: swap(gr.createdBy ?? ""),
+    })),
+    actuals: state.actuals.map((a) => ({
+      ...a,
+      person: swap(a.person),
+      addedBy: swap(a.addedBy ?? ""),
+      ...(a.verifiedBy ? { verifiedBy: swap(a.verifiedBy) } : {}),
+    })),
+  };
+}
+
+function samplePerformance(viewer?: string): PerformanceState {
+  if (sampleCache) {
+    const copy = structuredClone(sampleCache);
+    return viewer ? asViewer(copy, viewer) : copy;
+  }
   const createdAt = `${MOCK_YEAR}-01-05T09:00:00.000Z`;
   const by = "Sample data";
   const goals: PrimaryGoal[] = [];
@@ -2117,7 +2202,8 @@ function samplePerformance(): PerformanceState {
     })),
     actuals,
   };
-  return structuredClone(sampleCache);
+  const built = structuredClone(sampleCache);
+  return viewer ? asViewer(built, viewer) : built;
 }
 
 /**

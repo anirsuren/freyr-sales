@@ -41,9 +41,14 @@ export default async function PerformanceTabPage({
   await requireServerMemberScope();
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
+  /* In sample mode the viewer stands in for a sample rep, so People
+     performance is full of goals rather than greeting them with "You carry
+     no goals yet" (Anir, Aug 23). getCurrentUser first, since the sample
+     needs the name; live mode ignores the argument entirely. */
+  const meFirst = await getCurrentUser();
   const [state, me, role, directory] = await Promise.all([
-    readPerformance(),
-    getCurrentUser(),
+    readPerformance(live ? undefined : meFirst.name),
+    Promise.resolve(meFirst),
     getRole(),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
   ]);

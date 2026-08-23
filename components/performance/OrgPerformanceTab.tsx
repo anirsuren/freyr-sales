@@ -399,6 +399,32 @@ export function OrgPerformanceTab({
   });
 
   /**
+   * FINANCIAL GOALS SIT WITH FINANCIAL GOALS (Anir, Aug 23: "why are you not
+   * showing that financial goals separate, why are you running these goals
+   * like this — can you have groupings?").
+   *
+   * The table ran all eleven goals as one undifferentiated list, so a revenue
+   * target and a count of trade shows sat on adjacent rows with nothing
+   * saying they answer different questions. The Goal Master has grouped by
+   * type since it was built; this is the same grouping, on the screen people
+   * actually read. Order within a type is whatever the sort above chose, so
+   * "worst pace first" still means what it says — inside each family.
+   */
+  const grouped = (() => {
+    const byType = new Map<string, PrimaryGoal[]>();
+    for (const g of sorted) {
+      const key = g.type || "Other";
+      const bucket = byType.get(key);
+      if (bucket) bucket.push(g);
+      else byType.set(key, [g]);
+    }
+    return [...byType.entries()];
+  })();
+  /** One family is not a grouping — it is the same flat list with a header
+   *  nobody needs, so it stays flat. */
+  const showTypeHeaders = grouped.length > 1;
+
+  /**
    * THE TILES COUNT WHAT YOU ARE LOOKING AT (Anir, Aug 19: "of course fix the
    * filters thing"). Opportunities has always recalculated its tiles as you
    * filter; here they described the whole plan while the table underneath
@@ -1120,11 +1146,33 @@ export function OrgPerformanceTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {sorted.map((g, i) => (
+              {grouped.flatMap(([type, goalsOfType]) => [
+                ...(showTypeHeaders
+                  ? [
+                      <tr key={`hd-${type}`} className="!border-t-0">
+                        <td
+                          colSpan={7}
+                          className="border-y border-border-light bg-surface/70 px-4 py-2"
+                        >
+                          <span className="flex items-center gap-2">
+                            <TypeChip type={type} size="sm" />
+                            <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                              {goalsOfType.length}{" "}
+                              {goalsOfType.length === 1 ? "goal" : "goals"}
+                            </span>
+                          </span>
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
+                ...goalsOfType.map((g) => {
+                  const i = sorted.indexOf(g);
+                  return (
                 <GoalRows
                   key={g.id}
                   onGoToMaster={onGoToMaster}
                   onSetTarget={scope?.onSetTarget}
+                  typeNamedAbove={showTypeHeaders}
                   goal={g}
                   index={i}
                   syncId={syncId}
@@ -1144,7 +1192,9 @@ export function OrgPerformanceTab({
                   onLogActual={onLogActual}
                   onEditSubgoal={onEditSubgoal}
                 />
-              ))}
+                  );
+                }),
+              ])}
             </tbody>
           </table>
         </Card>
@@ -1243,6 +1293,7 @@ function GoalRows({
   onEditSubgoal,
   onLogActual,
   onSetTarget,
+  typeNamedAbove,
   allGoals,
 }: {
   goal: PrimaryGoal;
@@ -1264,6 +1315,9 @@ function GoalRows({
   onEditGoal: (g: PrimaryGoal) => void;
   /** Scoped screens: edit the share this row shows, not the org target. */
   onSetTarget?: (g: PrimaryGoal) => void;
+  /** The family header above already says the type — don't repeat it on
+   *  every row underneath (breakdowns, not restatements). */
+  typeNamedAbove?: boolean;
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
   state: PerformanceState;
@@ -1428,7 +1482,10 @@ function GoalRows({
                 {goal.name}
               </Link>
               <span className="flex flex-wrap items-center gap-2">
-                <TypeChip type={goal.type} size="sm" />
+                {/* The grouped table names the family once, in the header
+                    above these rows, so repeating it on every row underneath
+                    was the same words eleven times. */}
+                {!typeNamedAbove && <TypeChip type={goal.type} size="sm" />}
                 <span className="text-[10.5px] text-text-tertiary tnum">
                   {goal.year}
                 </span>
