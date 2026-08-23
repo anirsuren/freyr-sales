@@ -518,18 +518,26 @@ export function CustomerOfferingHeatMap({
         offering.name.toLowerCase().includes(needle) ||
         offering.category.toLowerCase().includes(needle)
     );
-    return {
-      customers: customerMatches.length
-        ? customerMatches
-        : offeringMatches.length
-        ? customers
-        : [],
-      offerings: offeringMatches.length
-        ? offeringMatches
-        : customerMatches.length
-        ? offerings
-        : [],
-    };
+    /**
+     * ONE AXIS AT A TIME (Anir, Aug 23: searching "j&j" to check his J&J
+     * Medtech deal on Freya.intelligence, and finding the only column left
+     * was Freya.OmniObject — because "Ob-j-ect" contains a J).
+     *
+     * The matrix is customers DOWN and offerings ACROSS, so a search that
+     * narrows both at once answers a question nobody asked: it showed the
+     * account he wanted crossed with the offerings whose names happen to
+     * share letters with it, and hid the one offering he was looking for.
+     * Naming an account keeps every offering; naming an offering keeps every
+     * account; a term that hits both narrows both, because then it really is
+     * about both.
+     */
+    const hitsCustomers = customerMatches.length > 0;
+    const hitsOfferings = offeringMatches.length > 0;
+    if (hitsCustomers && !hitsOfferings)
+      return { customers: customerMatches, offerings };
+    if (hitsOfferings && !hitsCustomers)
+      return { customers, offerings: offeringMatches };
+    return { customers: customerMatches, offerings: offeringMatches };
   }, [customers, offerings, query]);
 
   const matrixOfferings = useMemo(() => {

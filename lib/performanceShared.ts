@@ -987,16 +987,40 @@ export function verifiedValue(
  * date field in the app spells it: 08/09 is two different days depending on
  * which office is reading it.
  */
-export function goalCreatedOn(createdAt?: string): string | null {
-  const raw = (createdAt ?? "").trim();
+/**
+ * A MOMENT, NOT A DAY (Anir, Aug 23: "wherever I say the date, I want to know
+ * the time too — look at the entire app").
+ *
+ * "August 23, 2026" is where a record STARTED to be true; two deals created
+ * eight hours apart read identically, and on the day something happened the
+ * date alone cannot tell you whether it was before or after the call you are
+ * about to walk into. Stamped values — created, logged, verified, sent back —
+ * carry the clock. Chosen values that are genuinely a day and nothing more —
+ * an est. sign date, a milestone due date — deliberately do not: there is no
+ * time to tell, and inventing midnight would be a fact nobody entered.
+ */
+export function stampedAt(iso?: string | null): string | null {
+  const raw = (iso ?? "").trim();
   if (!raw) return null;
   const t = new Date(raw);
   if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleDateString("en-US", {
+  const day = t.toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  /* Only a date came in — a bare yyyy-mm-dd carries no clock, so saying one
+     would be inventing it. */
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return day;
+  const time = t.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} at ${time}`;
+}
+
+export function goalCreatedOn(createdAt?: string): string | null {
+  return stampedAt(createdAt);
 }
 
 export function goalAuthor(createdBy?: string): string | null {

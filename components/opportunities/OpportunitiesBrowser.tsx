@@ -39,6 +39,7 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
+import { stampedAt } from "@/lib/performanceShared";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -400,17 +401,8 @@ function toDraft(
  * The day a deal entered the pipeline, spelled out. Separate from its owner,
  * which is who carries it now and can change hands (Anir, Aug 23).
  */
-function createdOn(iso?: string): string | null {
-  const raw = (iso ?? "").trim();
-  if (!raw) return null;
-  const t = new Date(raw);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+/** The deal's creation stamp, with its clock — see stampedAt. */
+const createdOn = stampedAt;
 
 export function OpportunitiesBrowser({
   opportunities,

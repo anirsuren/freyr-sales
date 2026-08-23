@@ -447,6 +447,161 @@ export function OrgPerformanceTab({
       "lagging"
   ).length;
   const verifiedCount = shown.filter((g) => g.verified).length;
+  /**
+   * ONLY COUNT WHAT CAN BE SIGNED OFF (Anir, Aug 23: "we verified two things,
+   * then down here it didn't say that — it asked me to verify again").
+   *
+   * The tile read "3 of 5" while two of those five said "Nothing to verify"
+   * in their own row: a goal with nothing logged against it has nothing to
+   * sign off, so counting it as unverified invented an outstanding job and
+   * made a fully signed-off screen look two short. The denominator is now the
+   * goals that actually have something to decide, and the sub-line says how
+   * many were set aside so the number never looks like it is hiding them.
+   */
+  /** Which families are folded shut — the Goal Master idiom, same behaviour. */
+  const [shutTypes, setShutTypes] = useState<string[]>([]);
+  const signableGoals = shown.filter(
+    (g) => goalFamilyActuals(state, g).length > 0 || g.verified
+  );
+  const nothingToSignOff = shown.length - signableGoals.length;
+  /** Same rule as the row's pill: an explicit sign-off, or every claim under
+   *  the goal already verified and locked. */
+  const goalIsSignedOff = (g: PrimaryGoal) =>
+    g.verified ||
+    (goalFamilyActuals(state, g).length > 0 &&
+      goalFamilyActuals(state, g).every((a) => entryStatus(a) === "verified"));
+  const verifiedOfSignable = signableGoals.filter(goalIsSignedOff).length;
+  /** ONE TABLE, DRAWN FOR WHATEVER LIST IT IS GIVEN — the whole plan when
+   *  there is only one family, or a single family inside its own foldable
+   *  card. Same columns and the same rows either way, so the two shapes can
+   *  never drift apart. */
+  const goalTable = (rows: PrimaryGoal[]) => (
+    <>
+          {/* TABLE-FIXED, BECAUSE EXPANDING A ROW MUST NOT MOVE THE COLUMNS.
+              With the default auto layout the browser re-solves every column
+              width whenever the drill-down's colSpan={7} row appears, and the
+              only column with no declared width absorbed the difference: Goal
+              lost 47px and Verified gained it, so the whole grid jumped
+              sideways on every open and close (Anir, Aug 14, with before and
+              after screenshots). Fixed layout means the header decides the
+              widths once and nothing below can renegotiate them.
+
+              Every column therefore needs a width except Goal, which is
+              deliberately left free to absorb the remainder. min-w is raised
+              to match: the declared columns total 778px, so 1000px keeps Goal
+              readable at the narrowest before the card starts scrolling. */}
+          <table className="w-full min-w-[1000px] table-fixed">
+            <thead>
+              <tr className="border-b border-border-light">
+                {(
+                  [
+                    { h: "Goal" },
+                    { h: "Target", hint: "The number to hit for the year. Set it here or in the Goal Master." },
+                    { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
+                    { h: "Met", hint: "Met means the actual has reached the target." },
+                    { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
+                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged. With nothing logged there is nothing to sign off." },
+                    { h: "Actions" },
+                  ] as { h: string; hint?: string }[]
+                ).map((col, i) => (
+                  <th
+                    key={i}
+                    className={cn(
+                      "px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                      // Column 0 (Goal) stays free and takes what is left.
+                      i >= 1 && i <= 3 && "w-[130px]",
+                      // % met carries a bar plus its value; 130 clipped it.
+                      i === 4 && "w-[150px]",
+                      // Verified holds "Not verified" + the VERIFY badge on one
+                      // line: 149px of pill plus the cell's 32px of padding.
+                      i === 5 && "w-[190px]",
+                      /* NARROW (Anir, Aug 16: "You don't need that much space
+                         for the last column. so that it stays on like one
+                         line"). 120px of Actions was squeezing the Goal cell
+                         until the name, the pace pill and the category
+                         wrapped onto three lines. */
+                      /* LEFT-ALIGNED LIKE EVERY OTHER HEADER (Anir, Aug 16:
+                         "the 'actions' text should be on the left it looks
+                         like its on the right aligned"). It was the only
+                         right-aligned heading in the table, which read as a
+                         mistake even though the controls under it are right
+                         aligned. Label left, controls right, same as the rest. */
+                      i === 6 && "w-[112px] !px-2"
+                    )}
+                  >
+                    {i === 6 ? (
+                      /* EXPAND EVERYTHING AT ONCE, from the head of the column
+                         the per-row buttons live in. */
+                      <span className="flex items-center gap-1.5">
+                        <span>{col.h}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenIds((prev) =>
+                              prev.size === sorted.length
+                                ? new Set()
+                                : new Set(sorted.map((g) => g.id))
+                            )
+                          }
+                          title={
+                            openIds.size === sorted.length
+                              ? "Collapse every goal"
+                              : "Expand every goal"
+                          }
+                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                        >
+                          {openIds.size === sorted.length ? (
+                            <ChevronsDownUp size={13.5} strokeWidth={2.2} />
+                          ) : (
+                            <ChevronsUpDown size={13.5} strokeWidth={2.2} />
+                          )}
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        {col.h}
+                        {col.hint && <InfoHint text={col.hint} />}
+                      </span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {rows.map((g) => {
+                const i = sorted.indexOf(g);
+                return (
+                <GoalRows
+                  key={g.id}
+                  onGoToMaster={onGoToMaster}
+                  onSetTarget={scope?.onSetTarget}
+                  typeNamedAbove={showTypeHeaders}
+                  goal={g}
+                  index={i}
+                  syncId={syncId}
+                  rates={state.rates ?? {}}
+                  dimmed={openIds.size > 0 && !openIds.has(g.id)}
+                  state={state}
+                  allGoals={allGoals}
+                  meName={meName}
+                  actuals={state.actuals}
+                  open={openIds.has(g.id)}
+                  onToggle={() => toggleOpen(g.id)}
+                  live={live}
+                  run={run}
+                  period={period}
+                  periodLabel={periodLabel}
+                  onEditGoal={onEditGoal}
+                  onLogActual={onLogActual}
+                  onEditSubgoal={onEditSubgoal}
+                />
+                );
+              })}
+            </tbody>
+          </table>
+    </>
+  );
+
   const periodLabel =
     PERIODS.find((p) => p.value === period)?.label ?? "This quarter";
 
@@ -489,9 +644,19 @@ export function OrgPerformanceTab({
         <StatTile
           icon={ShieldCheck}
           label="Verified"
-          value={`${verifiedCount} of ${shown.length}`}
+          value={
+            signableGoals.length
+              ? `${verifiedOfSignable} of ${signableGoals.length}`
+              : "·"
+          }
           color="#0F766E"
-          sub={words?.verifiedSub ?? "marked by leadership"}
+          sub={
+            !signableGoals.length
+              ? "nothing logged yet, so nothing to sign off"
+              : nothingToSignOff > 0
+                ? `${words?.verifiedSub ?? "marked by leadership"} · ${nothingToSignOff} with nothing to sign off`
+                : (words?.verifiedSub ?? "marked by leadership")
+          }
         />
       </div>
 
@@ -1053,151 +1218,55 @@ export function OrgPerformanceTab({
         <p className="mt-6 rounded-xl bg-surface px-4 py-6 text-center text-[13px] text-text-secondary">
           Nothing matches that search.
         </p>
-      ) : (
-        <Card className="mt-4 overflow-x-auto p-0">
-          {/* TABLE-FIXED, BECAUSE EXPANDING A ROW MUST NOT MOVE THE COLUMNS.
-              With the default auto layout the browser re-solves every column
-              width whenever the drill-down's colSpan={7} row appears, and the
-              only column with no declared width absorbed the difference: Goal
-              lost 47px and Verified gained it, so the whole grid jumped
-              sideways on every open and close (Anir, Aug 14, with before and
-              after screenshots). Fixed layout means the header decides the
-              widths once and nothing below can renegotiate them.
-
-              Every column therefore needs a width except Goal, which is
-              deliberately left free to absorb the remainder. min-w is raised
-              to match: the declared columns total 778px, so 1000px keeps Goal
-              readable at the narrowest before the card starts scrolling. */}
-          <table className="w-full min-w-[1000px] table-fixed">
-            <thead>
-              <tr className="border-b border-border-light">
-                {(
-                  [
-                    { h: "Goal" },
-                    { h: "Target", hint: "The number to hit for the year. Set it here or in the Goal Master." },
-                    { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
-                    { h: "Met", hint: "Met means the actual has reached the target." },
-                    { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
-                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged. With nothing logged there is nothing to sign off." },
-                    { h: "Actions" },
-                  ] as { h: string; hint?: string }[]
-                ).map((col, i) => (
-                  <th
-                    key={i}
+      ) : showTypeHeaders ? (
+        /* EXACTLY THE GOAL MASTER'S SHAPE (Anir, Aug 23: "it has to look
+           exactly how it does in Goal Master, with drop-downs and
+           separations"). A header row inside one long table grouped the goals
+           but did not separate them, and there was nothing to fold. One card
+           per family, its own foldable header, the table inside it — the same
+           component vocabulary, so the two screens read as one system. */
+        <div className="mt-4 space-y-3">
+          {grouped.map(([type, goalsOfType]) => {
+            const shut = shutTypes.includes(type);
+            return (
+              <Card key={type} className="overflow-hidden p-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShutTypes((current) =>
+                      current.includes(type)
+                        ? current.filter((t) => t !== type)
+                        : [...current, type]
+                    )
+                  }
+                  aria-expanded={!shut}
+                  className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"
+                >
+                  <ChevronDown
+                    size={15}
+                    strokeWidth={2.2}
                     className={cn(
-                      "px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
-                      // Column 0 (Goal) stays free and takes what is left.
-                      i >= 1 && i <= 3 && "w-[130px]",
-                      // % met carries a bar plus its value; 130 clipped it.
-                      i === 4 && "w-[150px]",
-                      // Verified holds "Not verified" + the VERIFY badge on one
-                      // line: 149px of pill plus the cell's 32px of padding.
-                      i === 5 && "w-[190px]",
-                      /* NARROW (Anir, Aug 16: "You don't need that much space
-                         for the last column. so that it stays on like one
-                         line"). 120px of Actions was squeezing the Goal cell
-                         until the name, the pace pill and the category
-                         wrapped onto three lines. */
-                      /* LEFT-ALIGNED LIKE EVERY OTHER HEADER (Anir, Aug 16:
-                         "the 'actions' text should be on the left it looks
-                         like its on the right aligned"). It was the only
-                         right-aligned heading in the table, which read as a
-                         mistake even though the controls under it are right
-                         aligned. Label left, controls right, same as the rest. */
-                      i === 6 && "w-[112px] !px-2"
+                      "shrink-0 text-text-tertiary transition-transform duration-200",
+                      shut && "-rotate-90"
                     )}
-                  >
-                    {i === 6 ? (
-                      /* EXPAND EVERYTHING AT ONCE, from the head of the column
-                         the per-row buttons live in. */
-                      <span className="flex items-center gap-1.5">
-                        <span>{col.h}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenIds((prev) =>
-                              prev.size === sorted.length
-                                ? new Set()
-                                : new Set(sorted.map((g) => g.id))
-                            )
-                          }
-                          title={
-                            openIds.size === sorted.length
-                              ? "Collapse every goal"
-                              : "Expand every goal"
-                          }
-                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                        >
-                          {openIds.size === sorted.length ? (
-                            <ChevronsDownUp size={13.5} strokeWidth={2.2} />
-                          ) : (
-                            <ChevronsUpDown size={13.5} strokeWidth={2.2} />
-                          )}
-                        </button>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        {col.h}
-                        {col.hint && <InfoHint text={col.hint} />}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light">
-              {grouped.flatMap(([type, goalsOfType]) => [
-                ...(showTypeHeaders
-                  ? [
-                      <tr key={`hd-${type}`} className="!border-t-0">
-                        <td
-                          colSpan={7}
-                          className="border-y border-border-light bg-surface/70 px-4 py-2"
-                        >
-                          <span className="flex items-center gap-2">
-                            <TypeChip type={type} size="sm" />
-                            <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                              {goalsOfType.length}{" "}
-                              {goalsOfType.length === 1 ? "goal" : "goals"}
-                            </span>
-                          </span>
-                        </td>
-                      </tr>,
-                    ]
-                  : []),
-                ...goalsOfType.map((g) => {
-                  const i = sorted.indexOf(g);
-                  return (
-                <GoalRows
-                  key={g.id}
-                  onGoToMaster={onGoToMaster}
-                  onSetTarget={scope?.onSetTarget}
-                  typeNamedAbove={showTypeHeaders}
-                  goal={g}
-                  index={i}
-                  syncId={syncId}
-                  rates={state.rates ?? {}}
-                  dimmed={openIds.size > 0 && !openIds.has(g.id)}
-                  state={state}
-                  allGoals={allGoals}
-                  meName={meName}
-                  actuals={state.actuals}
-                  open={openIds.has(g.id)}
-                  onToggle={() => toggleOpen(g.id)}
-                  live={live}
-                  run={run}
-                  period={period}
-                  periodLabel={periodLabel}
-                  onEditGoal={onEditGoal}
-                  onLogActual={onLogActual}
-                  onEditSubgoal={onEditSubgoal}
-                />
-                  );
-                }),
-              ])}
-            </tbody>
-          </table>
-        </Card>
+                  />
+                  <TypeChip type={type} />
+                  <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                    {goalsOfType.length}{" "}
+                    {goalsOfType.length === 1 ? "goal" : "goals"}
+                  </span>
+                </button>
+                {!shut && (
+                  <div className="tab-panel overflow-x-auto border-t border-border-light">
+                    {goalTable(goalsOfType)}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card className="mt-4 overflow-x-auto p-0">{goalTable(sorted)}</Card>
       )}
       </div>
     </div>
@@ -1619,7 +1688,30 @@ function GoalRows({
         </td>
         <td className="px-4 py-4">
           <VerifiedPill
-            verified={goal.verified}
+            /**
+             * SIGNED OFF IS SIGNED OFF (Anir, Aug 23: "we verified it, but it
+             * still says there was something to verify below").
+             *
+             * Two different things were both called verify: locking each
+             * claim, which is what he had just done at the top of the page,
+             * and this leadership flag on the goal. So a goal whose every
+             * logged result was verified and locked still wore "Not verified"
+             * and offered a Verify button — a second act with the same word,
+             * which reads as the first one not having taken.
+             *
+             * When every claim under a goal is verified there is, in plain
+             * English, nothing left to verify, so the pill says so. The flag
+             * itself is untouched and the pill stays clickable, so leadership
+             * can still record or undo an explicit sign-off; it just stops
+             * asking for work that is already done.
+             */
+            verified={
+              goal.verified ||
+              (goalFamilyActuals({ actuals }, goal).length > 0 &&
+                goalFamilyActuals({ actuals }, goal).every(
+                  (a) => entryStatus(a) === "verified"
+                ))
+            }
             size="sm"
             // Nothing logged means nothing to verify, so the pill stays as a
             // status and stops being a button (Anir, Aug 15: "I shouldn't be

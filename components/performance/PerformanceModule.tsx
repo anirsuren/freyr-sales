@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
   fmtAmount,
+  type PeriodKey,
   goalAuthor,
   goalCreatedOn,
   hasActuals,
@@ -296,6 +297,41 @@ export function PerformanceModule({
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
    *  signed in I should be able to"). */
+  /**
+   * WHICH DAY "LOG A RESULT" OPENS ON. The tabs keep their own period filter
+   * in localStorage under the same key OrgPerformanceTab writes, so the
+   * dialog can honour the month you are reading without the tabs having to
+   * thread it down. Today when today is inside that period; otherwise its
+   * last day (Anir, Aug 23: "if I'm in August it should auto-set it to 08/").
+   */
+  const [defaultLogDate, setDefaultLogDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  useEffect(() => {
+    if (!logOpen) return;
+    let stored = "";
+    try {
+      stored = window.localStorage.getItem("freyr.performance.period") ?? "";
+    } catch {
+      /* private mode: today is a perfectly good answer */
+    }
+    const period = stored.replace(/"/g, "") as PeriodKey;
+    const now = new Date();
+    const end =
+      period === "month"
+        ? new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        : period === "quarter"
+          ? new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0)
+          : period === "year"
+            ? new Date(now.getFullYear(), 11, 31)
+            : now;
+    const day = now <= end ? now : end;
+    setDefaultLogDate(
+      new Date(day.getTime() - day.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 10)
+    );
+  }, [logOpen]);
   const [logPrefill, setLogPrefill] = useState<{
     goalId: string;
     subgoalId: string | null;
@@ -601,6 +637,7 @@ export function PerformanceModule({
         }}
         run={run}
         busy={busy}
+        defaultDate={defaultLogDate}
       />
     </div>
   );
@@ -4346,6 +4383,7 @@ function LogActualModal({
   onClose,
   run,
   busy,
+  defaultDate,
 }: {
   open: boolean;
   state: PerformanceState;
@@ -4360,10 +4398,14 @@ function LogActualModal({
     note?: string;
     /** The activity a handoff came from — stamped onto the saved actual. */
     activityId?: string;
+    /** The day to open on. See the default below. */
+    date?: string;
   } | null;
   onClose: () => void;
   run: RunOp;
   busy: boolean;
+  /** The day the Date field opens on — see the state below. */
+  defaultDate: string;
 }) {
   const [goalId, setGoalId] = useState("");
   const [subgoalId, setSubgoalId] = useState("");
@@ -4376,6 +4418,19 @@ function LogActualModal({
   /** What this one was signed in. Defaults to the goal's own currency, so a
    *  euro goal does not quietly collect dollars. */
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(BASE_CURRENCY);
+  /**
+   * THE DATE OPENS ON A SENSIBLE DAY (Anir, Aug 23: "when I press Log a
+   * result and I have a month selected, it's supposed to auto-select the
+   * date — if I'm in August it should auto-set it to 08/").
+   *
+   * It opened blank, so every entry needed the date typed even when the
+   * screen behind the dialog had already said which month was being read —
+   * and a result logged for the month you are looking at is the common case
+   * by a distance. Today when today falls inside that month; otherwise the
+   * month's last day, because a result being logged for a month already gone
+   * belongs at its end, not on the 1st. Still a plain date field: anything
+   * here can be changed before saving.
+   */
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [customer, setCustomer] = useState("");
@@ -4502,7 +4557,15 @@ function LogActualModal({
       setLink("");
     }
     if (initial.note !== undefined) setNote(initial.note);
+    if (initial.date) setDate(initial.date);
   }, [open, initial]);
+
+  /* Opened with no date of its own: fall back to the default above. */
+  useEffect(() => {
+    if (!open) return;
+    setDate((current) => current || defaultDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultDate]);
 
   const goal = state.goals.find((g) => g.id === goalId) ?? null;
   // Composite goals (Booked Revenue) are never logged directly — the person
