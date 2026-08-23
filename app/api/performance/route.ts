@@ -104,6 +104,10 @@ function scopeState(state: PerformanceState, visible: Set<string>): PerformanceS
     })),
     groups: visibleGroups,
     actuals: state.actuals.filter((a) => has(a.person)),
+    /* The FX table is workspace facts, not somebody's numbers — dropping it
+       here made every scoped screen (and its CSV) count a converted entry as
+       zero the moment a save responded (Aug 23 audit). */
+    rates: state.rates,
   };
 }
 
@@ -114,7 +118,18 @@ export async function GET(req: NextRequest) {
   }
   const me = await getCurrentUser();
   const state = await readPerformance();
-  const visible = callerScope(state, me.name, me.role === "admin");
+  /* MANAGERS SEE THE ORG, exactly as the page itself decides (found by the
+     Aug 23 audit): app/performance/[tab]/page.tsx server-renders a manager
+     the FULL state — "managers and admins see everything" — but this route
+     scoped everyone below admin. So a manager's very first save answered
+     with group-scoped data, setState swapped it in, and other people's
+     numbers silently VANISHED from the Org screen until a reload. One rule,
+     both doors, the page's rule. */
+  const visible = callerScope(
+    state,
+    me.name,
+    me.role === "admin" || me.role === "manager"
+  );
   return NextResponse.json({
     state: visible ? scopeState(state, visible) : state,
   });
@@ -235,7 +250,15 @@ export async function POST(req: NextRequest) {
          before the store's own requireOwner check — which exists precisely
          to let a goal's OWNER set its schedule — could ever run. The store
          still refuses anyone who does not own the goal. */
-      op === "set-goal-milestones";
+      op === "set-goal-milestones" ||
+      /* Same swallowed-gate shape (Aug 23 audit): a GOAL-level sign-off names
+         no person, so this generic gate 403'd every non-manager group head
+         before set-verified's OWN block below — which already implements the
+         real rule ("where it does not name a person, the caller must at
+         least head a group that carries the goal") — could run. For a named
+         person that block asks canVerifyEntry, which is stricter than the
+         visibility test here, so nothing widens. */
+      op === "set-verified";
     if (!entryOps && (!person || !visible.has(person.trim()))) {
       return NextResponse.json(
         { error: "You can only do that for yourself or people in your group." },
@@ -585,7 +608,13 @@ export async function POST(req: NextRequest) {
     releaseWrite();
   }
   const state = await readPerformance();
-  const visible = callerScope(state, me.name, me.role === "admin");
+  // Same rule as GET: the page grants a manager the org view, so the save
+  // response must not quietly narrow it (Aug 23 audit).
+  const visible = callerScope(
+    state,
+    me.name,
+    me.role === "admin" || me.role === "manager"
+  );
   return NextResponse.json({
     ok: true,
     ...(warning ? { warning } : {}),

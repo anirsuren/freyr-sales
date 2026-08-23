@@ -1086,6 +1086,12 @@ export async function verifyActual(input: {
   if (!canVerifyEntry(state, input.by, entry.person)) {
     throw new Error("Only the group owner for this person can verify their numbers.");
   }
+  /* Already locked: the FIRST sign-off stands (Aug 23 audit). Re-verifying
+     overwrote verifiedBy/verifiedAt, so a double-click or a second owner
+     quietly rewrote who approved the money and when. */
+  if ((entry.status ?? "verified") === "verified" && entry.verifiedBy) {
+    return;
+  }
   entry.status = "verified";
   entry.verifiedBy = input.by;
   entry.verifiedAt = new Date().toISOString();

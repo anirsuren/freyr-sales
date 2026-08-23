@@ -51,6 +51,7 @@ import {
 } from "@/lib/performanceShared";
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
 import { ClaimReviewDialog } from "./EntryCards";
+import { EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
 import { weightedValue } from "@/lib/opportunitiesShared";
@@ -453,6 +454,7 @@ export function GoalZoom({
    *  from `selected`, which stays put so boxes 2 and 3 always have a period. */
   /** The claim being reviewed on the standalone page's verification rail. */
   const [reviewId, setReviewId] = useState<string | null>(null);
+  const [zoomPreview, setZoomPreview] = useState<{ name: string; url: string } | null>(null);
   /**
    * The standalone goal page renders this component from a SERVER component
    * and cannot hand down a `run` callback, which is why the old rail posted
@@ -2112,9 +2114,15 @@ export function GoalZoom({
             run={runOrPost}
             busy={false}
             onClose={() => setReviewId(null)}
+            /* Without this the proof row's View button was DEAD on this one
+               call site (Aug 23 audit) — the other two pass it. */
+            onPreview={setZoomPreview}
           />
         );
       })()}
+      {zoomPreview && (
+        <EvidencePreview file={zoomPreview} onClose={() => setZoomPreview(null)} />
+      )}
 
       {!embedded && (
       <div className="mt-4">

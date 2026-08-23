@@ -1212,6 +1212,14 @@ export function scopeStateToPeople(
         assignments,
         subgoals,
         target,
+        /* The schedule is the ORG's promise about the ORG's target. Scoped
+           to one person the target became their share, but the milestones
+           rode along untouched — so a rep carrying $300K was judged against
+           "must be at $250K by September", the org's line, and read as
+           behind from the day they were assigned (Aug 23 audit). A share has
+           no schedule of its own; the pace verdict stays honest by saying
+           nothing rather than judging against somebody else's calendar. */
+        milestones: undefined,
         // Verified at this altitude means every person in scope is signed off,
         // not the leadership flag that belongs to the org row.
         verified:
@@ -1228,5 +1236,8 @@ export function scopeStateToPeople(
     goals,
     groups: state.groups,
     actuals: state.actuals.filter((a) => mine(a.person)),
+    /* Same as the API's scopeState (Aug 23 audit): the rates ride along, or
+       Group and People count converted money as zero. */
+    rates: state.rates,
   };
 }

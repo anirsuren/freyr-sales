@@ -393,7 +393,10 @@ export function EntryTimeline({
       color: "#0071E3",
     },
   ];
-  if (entry.managerNote) {
+  if (entry.managerNote || entry.sentBackBy || entry.sentBackAt) {
+    /* A rejection with no note is still a rejection (Aug 23 audit): gating
+       this step on the note alone made a note-less send-back vanish from the
+       timeline while the red pill on the row still shouted about it. */
     steps.push({
       label: "Sent back",
       // The rejection carries its author now — a note from nobody left the
@@ -1461,7 +1464,16 @@ export function MyEntriesCard({
                     not mention. */}
                 <button
                   type="button"
-                  disabled={busy || uploadingEvidence}
+                  disabled={
+                    busy ||
+                    uploadingEvidence ||
+                    /* Garbage is a typo, not the old number (Aug 23 audit):
+                       this used to fall back to `parsed ?? a.amount`, so a
+                       rep fixing a rejected $120K who typed "125kk" silently
+                       RESUBMITTED the $120K the owner had just refused. */
+                    (draft.amount.trim() !== "" &&
+                      parseAmountInput(draft.amount) === null)
+                  }
                   onClick={async () => {
                     const parsed = parseAmountInput(draft.amount);
                     const okDone = await run(
@@ -1471,6 +1483,14 @@ export function MyEntriesCard({
                         amount: parsed ?? a.amount,
                         date: draft.date || a.date,
                         customer: draft.customer,
+                        /* The account link survives an edit that did not touch
+                           the customer (Aug 23 audit): the store rewrites
+                           customer AND customerId together, so sending the
+                           name without the id unlinked the account on every
+                           save — even one that only swapped the file. */
+                        ...(draft.customer.trim() === (a.customer ?? "").trim()
+                          ? { customerId: a.customerId }
+                          : {}),
                         evidence: draftEvidence,
                       },
                       awaitingTheirFix(a)
