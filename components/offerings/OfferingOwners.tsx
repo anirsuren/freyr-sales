@@ -99,8 +99,8 @@ function OwnerHoverCard({
               <p className="text-[14px] font-semibold leading-tight text-text-primary">
                 {owner.name}
                 {isYou && (
-                  <span className="ml-1.5 text-[11px] font-medium text-text-tertiary">
-                    (you)
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-light px-1.5 py-[1px] align-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                    You
                   </span>
                 )}
               </p>

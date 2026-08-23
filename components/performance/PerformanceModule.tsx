@@ -4696,6 +4696,26 @@ function LogActualModal({
               }}
               onFocus={() => setCustomerOpen(true)}
               onBlur={() => window.setTimeout(() => setCustomerOpen(false), 150)}
+              /* ENTER TAKES THE TOP ROW, like every other dropdown in the app
+                 (Anir, Aug 22: "remember what I told u — when I press enter it
+                 chooses the first option, any dropdown"). ColorSelect and
+                 MultiPicker already did this; this box was hand-rolled and
+                 never got it, so typing "tak" and hitting Enter left the
+                 account unpicked and the deal list empty. */
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setCustomerOpen(false);
+                  return;
+                }
+                if (e.key !== "Enter") return;
+                const top = customerMatches[0];
+                if (!top) return;
+                e.preventDefault();
+                setCustomer(top.name);
+                setCustomerId(top.id);
+                setLink("");
+                setCustomerOpen(false);
+              }}
               placeholder="Search your accounts…"
               className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
             />

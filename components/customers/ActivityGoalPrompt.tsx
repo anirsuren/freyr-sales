@@ -243,11 +243,14 @@ export function ActivityGoalPrompt({
               collapsible={false}
               className="w-full"
               onChange={setCreditTo}
-              options={roster.map((n) => ({
-                value: n,
-                label: n === meName ? `${n} (you)` : n,
-                avatarName: n,
-              }))}
+              options={[...roster]
+                .sort((a, b) => Number(b === meName) - Number(a === meName))
+                .map((n) => ({
+                  value: n,
+                  label: n,
+                  tag: n === meName ? "You" : undefined,
+                  avatarName: n,
+                }))}
             />
           </div>
         </div>

@@ -19,13 +19,14 @@ import {
 } from "lucide-react";
 import {
   ENTRY_COLOR,
-  actualValue,
   awaitingTheirFix,
   canVerifyEntry,
   entryStatus,
+  goalFamilyActuals,
   isPending,
   fmtAmount,
   parseAmountInput,
+  pctMet,
   verificationQueue,
   headedGroups,
   type PerfActual,
@@ -132,6 +133,7 @@ export function StatusPill({
   onVerify,
   waitingOnMe = false,
   onOpen,
+  owners,
 }: {
   entry: PerfActual;
   /** Present only for someone who may reopen this claim. */
@@ -147,6 +149,11 @@ export function StatusPill({
    * to be the way to the note rather than a label you then hunt around.
    */
   onOpen?: () => void;
+  /** The group head(s) who can verify this claim — their face rides on the
+   *  waiting pill (Anir, Aug 22: "I need to see who the group owner is, like
+   *  a profile picture — if it says waiting for owner I should be able to
+   *  see that right here"). */
+  owners?: string[];
 }) {
   if (entryStatus(entry) === "verified") {
     if (onUnlock) {
@@ -283,10 +290,30 @@ export function StatusPill({
       </button>
     );
   }
+  const heads = owners ?? [];
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#0058B0]">
-      <Hourglass size={12} strokeWidth={2.4} />{" "}
+    <span
+      /* The face says who; the tooltip spells the name without opening. */
+      title={
+        !waitingOnMe && heads.length > 0
+          ? `Waiting for ${heads.join(" or ")} to verify`
+          : undefined
+      }
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-[color:#0058B0]"
+    >
+      <Hourglass size={12} strokeWidth={2.4} className="shrink-0" />
       {waitingOnMe ? "Waiting for you to verify" : "Waiting for the group owner"}
+      {!waitingOnMe && heads.length > 0 && (
+        <span className="flex shrink-0 items-center -space-x-1.5">
+          {heads.slice(0, 2).map((n) => (
+            <Avatar
+              key={n}
+              name={n}
+              className="h-[18px] w-[18px] shrink-0 text-[7px] ring-2 ring-[color:#E4EFFC]"
+            />
+          ))}
+        </span>
+      )}
     </span>
   );
 }
@@ -320,9 +347,13 @@ export function stamp(iso?: string): { day?: string; time?: string } {
 export function EntryTimeline({
   entry,
   person,
+  owners,
 }: {
   entry: PerfActual;
   person: string;
+  /** Group head(s) the claim is waiting on — named on the waiting step, so
+   *  the expanded row answers "waiting on WHOM" without a hunt. */
+  owners?: string[];
 }) {
   /**
    * A MARK AND A COLOUR PER STEP (Anir, Aug 19: "each of them should have a
@@ -404,6 +435,9 @@ export function EntryTimeline({
         }
       : {
           label: "Waiting to be verified",
+          // The name and face of who has to act — the pill shows the face,
+          // this line says it in words.
+          who: owners?.[0],
           done: false,
           icon: Hourglass,
           // Waiting is BLUE in the app-wide scheme (green counts, red was
@@ -762,6 +796,18 @@ export function MyEntriesCard({
    * the server has always accepted it. Same op, same rule about who may do
    * it: only an owner of a group this person is in.
    */
+  /** The head(s) of every group this person belongs to — the people their
+   *  claim is waiting on. Excludes the person themselves: your own headship
+   *  is the "Waiting for you" branch, not a face on your own pill. */
+  const groupHeadsFor = (who: string): string[] => {
+    const heads: string[] = [];
+    for (const g of state.groups ?? []) {
+      if (!g.head || g.head === who) continue;
+      if (!(g.members ?? []).includes(who)) continue;
+      if (!heads.includes(g.head)) heads.push(g.head);
+    }
+    return heads;
+  };
   const iOwnThisPerson =
     !!run &&
     !!meName &&
@@ -917,6 +963,7 @@ export function MyEntriesCard({
                             over the status where it says Verified"). */}
                         <StatusPill
                           entry={a}
+                          owners={groupHeadsFor(a.person)}
                           waitingOnMe={iOwnThisPerson}
                           onUnlock={
                             iOwnThisPerson && status === "verified"
@@ -1188,7 +1235,7 @@ export function MyEntriesCard({
                                 divider, the way the drill-downs elsewhere
                                 separate a side panel from the facts. */}
                             <div className="shrink-0 border-t border-border-light pt-3 lg:w-[200px] lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                              <EntryTimeline entry={a} person={person} />
+                              <EntryTimeline entry={a} person={person} owners={groupHeadsFor(a.person)} />
                             </div>
                           </div>
 
@@ -1900,14 +1947,36 @@ export function ClaimReviewDialog({
             size="workflow"
           >
             {/* WHERE THIS ONE CLAIM SITS ON ITS GOAL (Anir, Aug 19: "shouldn't
-                there be some sort of progress bar in here?"). The goal-level
-                dialog has carried this band for a while; a single claim was
-                the odd one out, which is exactly why the two read as
-                unrelated screens. Same bar, same words, same order. */}
+                there be some sort of progress bar in here?"; Aug 22, looking
+                at this exact band: "make this bar look better like the other
+                bars — clearly labeled").
+
+                It used to be two flat blue segments reading "Counted /
+                This claim", and "Counted" was actualValue — everything
+                logged, this unread claim included — so the bar drew the same
+                $200K twice and the headline said "40% there" about money the
+                dialog itself had not yet decided to count. Now it is the
+                VerifyGoalModal band exactly: solid green is verified, the
+                stripe is this claim in its own status colour, and "% there"
+                judges verified money only. */}
             {goal && goal.target > 0 && (() => {
-              const signed = actualValue(state.actuals, goal, { rates: state.rates }, undefined);
-              const donePct = Math.min(100, Math.round((signed / goal.target) * 100));
-              const thisPct = Math.min(100, Math.round((a.amount / goal.target) * 100));
+              const status = entryStatus(a);
+              /* Signed-off money on this goal, MINUS this claim when the
+                 claim is itself the verified one — the claim gets its own
+                 labelled segment, so counting it here would draw it twice. */
+              const verifiedOthers = goalFamilyActuals(state, goal)
+                .filter((x) => x.id !== a.id && entryStatus(x) === "verified")
+                .reduce((t, x) => t + (x.amount || 0), 0);
+              const verifiedTotal =
+                verifiedOthers + (status === "verified" ? a.amount : 0);
+              const pct = (n: number) =>
+                `${Math.min(100, (n / goal.target) * 100)}%`;
+              const claimColor =
+                status === "verified"
+                  ? ENTRY_COLOR.verified
+                  : status === "sent_back"
+                    ? ENTRY_COLOR.sent_back
+                    : ENTRY_COLOR.reported;
               return (
                 <div className="mb-3 rounded-xl bg-surface px-3.5 py-3">
                   <div className="flex items-baseline justify-between gap-3">
@@ -1915,30 +1984,67 @@ export function ClaimReviewDialog({
                       {goal.name}
                     </span>
                     <span className="text-[12px] text-text-secondary tnum">
-                      Goal {fmtAmount(goal.unit, goal.target)} · {donePct}% there
+                      {/* VERIFIED, not everything logged — same rule as the
+                          goal dialog's line, for the same reason. */}
+                      Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
+                      {Math.round(pctMet(verifiedTotal, goal.target))}% there
                     </span>
                   </div>
                   <span className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
                     <span
-                      className="h-full bg-blue-primary"
-                      style={{ width: `${donePct}%` }}
+                      className="block h-full"
+                      style={{
+                        width: pct(verifiedOthers),
+                        background: ENTRY_COLOR.verified,
+                      }}
                     />
-                    <span
-                      className="h-full bg-blue-primary opacity-[0.35]"
-                      style={{ width: `${thisPct}%` }}
-                    />
+                    {status === "verified" ? (
+                      /* Locked: this claim is verified money, so its segment
+                         is the same solid green, split off by a hairline so
+                         the legend's two figures both point at something. */
+                      <span
+                        className="block h-full"
+                        style={{
+                          width: pct(a.amount),
+                          background: ENTRY_COLOR.verified,
+                          boxShadow:
+                            verifiedOthers > 0
+                              ? "inset 1.5px 0 0 rgba(255,255,255,0.75)"
+                              : undefined,
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="unverified-fill block h-full"
+                        style={{
+                          width: pct(a.amount),
+                          ["--fill" as string]: claimColor,
+                        }}
+                      />
+                    )}
                   </span>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary">
                     <span className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-blue-primary" />
-                      Counted
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: ENTRY_COLOR.verified }}
+                      />
+                      Verified
                       <b className="text-text-primary tnum">
-                        {fmtAmount(goal.unit, signed)}
+                        {fmtAmount(goal.unit, verifiedTotal)}
                       </b>
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-blue-primary opacity-[0.35]" />
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: claimColor }}
+                      />
                       This claim
+                      {status !== "verified" && (
+                        <span className="text-text-tertiary">
+                          · {status === "sent_back" ? "sent back" : "waiting"}
+                        </span>
+                      )}
                       <b className="text-text-primary tnum">
                         {fmtAmount(goal.unit, a.amount)}
                       </b>
@@ -1989,7 +2095,14 @@ export function ClaimReviewDialog({
                 loose dates — "Result date" and "Entered" — which answered
                 when it happened but never when it was checked. */}
             <div className="mt-4">
-              <EntryTimeline entry={a} person={a.person} />
+              <EntryTimeline
+                entry={a}
+                person={a.person}
+                owners={(state.groups ?? [])
+                  .filter((g) => g.head && g.head !== a.person && (g.members ?? []).includes(a.person))
+                  .map((g) => g.head)
+                  .filter((h, i, all) => all.indexOf(h) === i)}
+              />
             </div>
 
             <div className="mt-4">

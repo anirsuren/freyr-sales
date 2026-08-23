@@ -429,11 +429,18 @@ export function OpportunityActivities({
                     collapsible={false}
                     className="w-full"
                     onChange={(v) => setDraft((d) => ({ ...d, person: v }))}
-                    options={roster.map((n) => ({
-                      value: n,
-                      label: n === bridge?.meName ? `${n} (you)` : n,
-                      avatarName: n,
-                    }))}
+                    options={[...roster]
+                      .sort(
+                        (a, b) =>
+                          Number(b === bridge?.meName) -
+                          Number(a === bridge?.meName)
+                      )
+                      .map((n) => ({
+                        value: n,
+                        label: n,
+                        tag: n === bridge?.meName ? "You" : undefined,
+                        avatarName: n,
+                      }))}
                   />
                 </div>
               ) : (

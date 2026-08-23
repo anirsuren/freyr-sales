@@ -216,7 +216,12 @@ export function PersonSelect({
   }, [open]);
 
   const q = query.trim().toLowerCase();
-  const matches = people.filter((p) => !q || p.toLowerCase().includes(q));
+  /* YOU COME FIRST (Anir, Aug 22: "if you think people are always going to
+     choose themselves, have it always be the first option"). The rest keeps
+     its incoming order; the sort is stable. */
+  const matches = people
+    .filter((p) => !q || p.toLowerCase().includes(q))
+    .sort((a, b) => Number(isMe(b)) - Number(isMe(a)));
   const exact = people.some((p) => p.toLowerCase() === q);
 
   return (
@@ -241,7 +246,7 @@ export function PersonSelect({
             <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text-primary">
               {value}
               {isMe(value) && (
-                <span className="ml-1 font-semibold text-text-tertiary">(you)</span>
+                <span className="ml-1.5 inline-flex shrink-0 items-center rounded-full bg-blue-light px-1.5 py-[1px] align-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">You</span>
               )}
             </span>
           </>
@@ -276,6 +281,20 @@ export function PersonSelect({
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                /* Same house rule as every other searchable dropdown: Enter
+                   commits the top match (Anir, Aug 22). */
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setOpen(false);
+                    return;
+                  }
+                  if (e.key !== "Enter") return;
+                  const top = matches[0];
+                  if (!top) return;
+                  e.preventDefault();
+                  onChange(top);
+                  setOpen(false);
+                }}
                 placeholder="Search people…"
                 className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
               />
@@ -301,7 +320,7 @@ export function PersonSelect({
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
                   {p}
                   {isMe(p) && (
-                    <span className="ml-1 font-semibold text-text-tertiary">(you)</span>
+                    <span className="ml-1.5 inline-flex shrink-0 items-center rounded-full bg-blue-light px-1.5 py-[1px] align-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">You</span>
                   )}
                 </span>
                 {roles?.[p.trim()] && <RoleChip role={roles[p.trim()]} />}

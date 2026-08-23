@@ -575,6 +575,21 @@ export function MultiPicker({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        /* The dropdown variant above already commits the top row on Enter;
+           the inline one never did (Anir, Aug 22: "when I press enter it
+           chooses the first option, any dropdown"). */
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false);
+            return;
+          }
+          if (e.key !== "Enter") return;
+          const top = matches[0];
+          if (!top) return;
+          e.preventDefault();
+          onToggle(top.id);
+          setQuery("");
+        }}
         placeholder={selected.length ? "Add another…" : placeholder}
         className="h-[34px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
       />

@@ -1976,14 +1976,22 @@ export function OpportunitiesBrowser({
                   onChange={(v) => setEditing({ ...editing, owner: v })}
                   options={[
                     { value: "", label: "Unassigned", color: "#8E98A8" },
+                    /* You first, wearing the blue tag — not alphabetised into
+                       the middle of the roster (Anir, Aug 22: "have it always
+                       be the first option... clearly label with a blue tag"). */
                     ...[...new Set([
                       ...people,
                       ...(editing.owner ? [editing.owner] : []),
                     ])]
-                      .sort((a, b) => a.localeCompare(b))
+                      .sort(
+                        (a, b) =>
+                          Number(b === meName) - Number(a === meName) ||
+                          a.localeCompare(b)
+                      )
                       .map((n) => ({
                         value: n,
-                        label: n === meName ? `${n} (you)` : n,
+                        label: n,
+                        tag: n === meName ? "You" : undefined,
                         avatarName: n,
                       })),
                   ]}
@@ -2073,10 +2081,15 @@ export function OpportunitiesBrowser({
                       options={[
                         { value: "", label: "Deal owner", color: "#8E98A8" },
                         ...[...new Set([...people, ...(r.person ? [r.person] : [])])]
-                          .sort((a, b) => a.localeCompare(b))
+                          .sort(
+                            (a, b) =>
+                              Number(b === meName) - Number(a === meName) ||
+                              a.localeCompare(b)
+                          )
                           .map((n) => ({
                             value: n,
-                            label: n === meName ? `${n} (you)` : n,
+                            label: n,
+                            tag: n === meName ? "You" : undefined,
                             avatarName: n,
                           })),
                       ]}
@@ -3048,7 +3061,23 @@ function SingleOfferingEditor({
                 String(line.localCurrency ? line.localValue : line.value)
               )}
               onChange={(e) => {
-                const text = e.target.value.replace(/[^0-9]/g, "");
+                /* 250K IS A NUMBER HERE TOO (Anir, Aug 22, typing in this
+                   exact box: "why can't I enter 250k here"). The Log-a-result
+                   amount takes K/M/B shorthand; this box silently ate the
+                   letter. The moment the letter lands, it expands — typing
+                   2 5 0 k paints 250,000. */
+                const typed = e.target.value.replace(/\s|,/g, "");
+                const short = /^([0-9]*\.?[0-9]+)([kKmMbB])$/.exec(typed);
+                const text = short
+                  ? String(
+                      Math.round(
+                        Number(short[1]) *
+                          ({ k: 1e3, m: 1e6, b: 1e9 } as const)[
+                            short[2].toLowerCase() as "k" | "m" | "b"
+                          ]
+                      )
+                    )
+                  : e.target.value.replace(/[^0-9]/g, "");
                 if (line.localCurrency) {
                   set({ localValue: text, value: usdFrom(text, line.localCurrency) });
                 } else {
@@ -3056,7 +3085,7 @@ function SingleOfferingEditor({
                 }
               }}
               inputMode="decimal"
-              placeholder="e.g. 500000"
+              placeholder="e.g. 500000 or 500K"
               aria-label="Deal value"
               className={cn(inputCls, "mt-0 min-w-0 flex-1 tnum")}
             />

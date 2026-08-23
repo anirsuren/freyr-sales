@@ -45,6 +45,13 @@ export type ColorOption = {
    *  e.g. "12" for "12 / page", so the collapsed square still tells you the
    *  value instead of repeating one generic glyph for every option. */
   short?: string;
+  /**
+   * A small blue pill after the label — "You" on the signed-in person's own
+   * row (Anir, Aug 22: "clearly label with a blue tag 'you' after the name,
+   * instead of grey text — make it blue and pop more"). A word, not a
+   * parenthesis, so your own name is findable at a glance.
+   */
+  tag?: string;
 };
 
 /** Shared motion for the compress/expand — see components/ui/SearchPriority. */
@@ -433,8 +440,13 @@ export function ColorSelect({
             // switched, so the slack drains smoothly instead of vanishing.
             style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
           >
-            <span className={cn("block truncate", showDetailedTrigger && "text-[12.5px] font-semibold leading-tight")}>
-              {triggerLabel || selected?.label}
+            <span className={cn("flex min-w-0 items-center", showDetailedTrigger && "text-[12.5px] font-semibold leading-tight")}>
+              <span className="truncate">{triggerLabel || selected?.label}</span>
+              {!triggerLabel && selected?.tag && (
+                <span className="ml-1.5 inline-flex shrink-0 items-center rounded-full bg-blue-light px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                  {selected.tag}
+                </span>
+              )}
             </span>
             {showDetailedTrigger && selected?.description && (
               <span className="mt-0.5 block truncate text-[9.5px] leading-tight text-text-tertiary">
@@ -557,6 +569,11 @@ export function ColorSelect({
                     )}
                   >
                     {o.label}
+                    {o.tag && (
+                      <span className="ml-1.5 inline-flex shrink-0 items-center rounded-full bg-blue-light px-1.5 py-[1px] align-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                        {o.tag}
+                      </span>
+                    )}
                   </span>
                   {detailed && o.description && (
                     <span className="mt-1 block whitespace-normal text-[10.5px] font-normal leading-snug text-text-tertiary">
