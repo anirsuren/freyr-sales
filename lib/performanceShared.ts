@@ -400,7 +400,25 @@ function inGoalCurrency(
   const from = entry.currency ?? to;
   if (from === to) return entry.amount;
   const converted = convert(entry.amount, from, to, rates ?? { [BASE_CURRENCY]: 1 });
-  return converted.exact ? converted.value : entry.amount;
+  /**
+   * NO RATE MEANS NO NUMBER, NEVER A SILENT 1:1 (found by the Aug 22 sweep,
+   * proved end to end: ₹100,000 logged against a $1,000,000 goal with no INR
+   * rate on file read "$100K · 10% met" on Org performance — an 83x
+   * overstatement of about US$1,200, and it survived sign-off because the
+   * verifier saw "$100K" too).
+   *
+   * Returning the raw figure was the one place in the app that guessed. The
+   * opportunity form has always refused to ("No EUR rate set yet — an admin
+   * adds it on the Performance page; until then this deal has no USD value"),
+   * and lib/currency's own doctrine is that an inexact conversion is not a
+   * conversion. Performance now agrees: the entry stays on the list in the
+   * currency it was signed in, and contributes nothing to a total it cannot
+   * honestly join until an admin enters the rate.
+   *
+   * Nothing on screen moves today — every goal, deal and actual in the
+   * workspace is USD, and USD→USD returns above this line.
+   */
+  return converted.exact ? converted.value : 0;
 }
 
 export function actualValue(
