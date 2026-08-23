@@ -13,6 +13,7 @@ import {
 } from "@/lib/opportunities";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
+import { withPerformanceWrite } from "@/lib/performanceQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,20 @@ async function settleMetGoals(
 ): Promise<Opportunity> {
   const links = after.goalLinks ?? [];
   if (links.length === 0 && !(before?.goalLinks ?? []).length) return after;
+  /* IN THE SAME LINE AS EVERY OTHER PERFORMANCE WRITE (Aug 23 audit). This
+     function reads the performance row, then logs and removes entries — and
+     it used to do so OUTSIDE the write queue the performance API stands in,
+     so a deal save racing a logged result could erase either one, both with
+     a 200. Same store, same queue. */
+  return withPerformanceWrite(() => settleMetGoalsLocked(before, after, meName));
+}
+
+async function settleMetGoalsLocked(
+  before: Opportunity | null,
+  after: Opportunity,
+  meName: string
+): Promise<Opportunity> {
+  const links = after.goalLinks ?? [];
   const next = [...links];
   let changed = false;
 
@@ -262,14 +277,17 @@ export async function POST(req: NextRequest) {
       }
       if (op === "remove") {
         // A deleted deal takes its unverified met entries with it, same as a
-        // deleted goal row; verified entries are locked and stay.
-        for (const link of target.goalLinks ?? []) {
-          if (link.actualId) {
-            try {
-              await removeActual(link.actualId);
-            } catch {}
+        // deleted goal row; verified entries are locked and stay. Queued for
+        // the same reason settleMetGoals is.
+        await withPerformanceWrite(async () => {
+          for (const link of target.goalLinks ?? []) {
+            if (link.actualId) {
+              try {
+                await removeActual(link.actualId);
+              } catch {}
+            }
           }
-        }
+        });
         await removeOpportunity(id);
         return NextResponse.json({ ok: true });
       }

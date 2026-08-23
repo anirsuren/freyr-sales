@@ -478,6 +478,15 @@ export async function removeGoal(goalId: string): Promise<void> {
   }
   state.goals = state.goals.filter((g) => g.id !== goalId);
   state.actuals = state.actuals.filter((a) => a.goalId !== goalId);
+  /* A composite must not keep pointing at a component that is gone (Aug 23
+     audit): the dangling id made the parent read as still-composite, whose
+     dialog then demanded "which booking?" from a list with a hole in it. */
+  for (const g of state.goals) {
+    if (g.componentGoalIds?.includes(goalId)) {
+      const left = g.componentGoalIds.filter((id) => id !== goalId);
+      g.componentGoalIds = left.length ? left : undefined;
+    }
+  }
   await writeRow(state);
 }
 
@@ -961,6 +970,13 @@ export async function assignSubgoalToGroup(input: {
       verified: false,
       assignedBy: "group",
     });
+    /* SAME RULE AS A DIRECT ASSIGNMENT (Aug 23 audit): a sign-off covers
+       what was there when it was signed. assignGoal reopens the goal when a
+       new person joins it; this path added a whole roster of unverified
+       people under a subgoal and goal still flying their green pills. The
+       new people genuinely have not been checked, so the flags reopen. */
+    sub.verified = false;
+    goal.verified = false;
   }
   await writeRow(state);
 }

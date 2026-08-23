@@ -43,17 +43,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/**
- * The tail of the write queue (see the comment in POST). Hung on globalThis so
- * a dev-server hot reload of this module cannot hand two requests two separate
- * "empty" queues and put us straight back where we started.
- */
-declare global {
-  // eslint-disable-next-line no-var
-  var __FREYR_PERFORMANCE_WRITE_QUEUE__: Promise<void> | undefined;
-}
-let performanceWriteQueue: Promise<void> =
-  globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ ?? Promise.resolve();
+// Imported for its global queue declaration and to share one line with every
+// other performance writer.
+import "@/lib/performanceQueue";
+
 
 // THREE KINDS OF PEOPLE WALK IN (Suren, Aug 12): the org head sees everything,
 // a group owner sees exactly their group ("Rukmini should not have access to
@@ -236,7 +229,13 @@ export async function POST(req: NextRequest) {
       op === "verify-actual" ||
       op === "send-back-actual" ||
       op === "update-actual" ||
-      op === "remove-actual";
+      op === "remove-actual" ||
+      /* No body.person on this op either (found by the Aug 23 audit): the
+         person-gate below demanded one, so every non-manager was 403'd here
+         before the store's own requireOwner check — which exists precisely
+         to let a goal's OWNER set its schedule — could ever run. The store
+         still refuses anyone who does not own the goal. */
+      op === "set-goal-milestones";
     if (!entryOps && (!person || !visible.has(person.trim()))) {
       return NextResponse.json(
         { error: "You can only do that for yourself or people in your group." },
@@ -278,12 +277,15 @@ export async function POST(req: NextRequest) {
   // Offerings already solved this with a promise queue in
   // commitOfferingsChange; this is the same idea at the one boundary every
   // performance write passes through, so the ops themselves stay untouched.
-  const previousWrite = performanceWriteQueue;
+  // The queue itself now lives in lib/performanceQueue so the opportunities
+  // route's goal-met writes stand in the SAME line — it used to walk past
+  // this file's local queue entirely (Aug 23 audit).
+  const previousWrite =
+    globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ ?? Promise.resolve();
   let releaseWrite: () => void = () => undefined;
-  performanceWriteQueue = new Promise<void>((resolve) => {
+  globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ = new Promise<void>((resolve) => {
     releaseWrite = resolve;
   });
-  globalThis.__FREYR_PERFORMANCE_WRITE_QUEUE__ = performanceWriteQueue;
   await previousWrite.catch(() => undefined);
 
   try {

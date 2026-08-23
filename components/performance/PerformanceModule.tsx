@@ -1034,11 +1034,18 @@ function MasterTab({
                       <td className="whitespace-nowrap px-4 py-4 text-[13px] font-semibold text-text-primary tnum">
                         {g.target > 0 ? (
                           fmtAmount(g.unit, g.target)
-                        ) : live ? (
+                        ) : live && isManager ? (
                           /* A REAL button, not blue-painted text: clicking the
                              words used to just collapse the row it sat in
                              (Anir, Aug 19: "I can't even click on the Set
-                             the target button anymore"). */
+                             the target button anymore").
+
+                             MANAGERS ONLY (Aug 23 audit): a rep reaches the
+                             Goal Master too, and update-goal 403s for them —
+                             so this was a button whose Save could only ever
+                             fail. Same rule as the pencil on a deal you do
+                             not own: never offer a control the server must
+                             refuse. The server is unchanged. */
                           <button
                             type="button"
                             title={`Set the target on ${g.name}`}
@@ -1050,6 +1057,10 @@ function MasterTab({
                           >
                             Set the target →
                           </button>
+                        ) : live ? (
+                          /* A rep sees the fact (no target yet), not a call
+                             to action they are not allowed to answer. */
+                          <span className="text-[13px] text-text-tertiary">·</span>
                         ) : (
                           <span className="text-[11.5px] font-semibold text-blue-primary">
                             Set the target →
@@ -3625,6 +3636,13 @@ function GoalEditorFields({
             !type ||
             !unit ||
             (type === "__new" && !newType.trim()) ||
+            /* Text in the box that does not parse is a typo, not a zero
+               (found by the Aug 23 audit): save() falls back to
+               `parsedTarget ?? 0`, so "670kk" would have quietly WIPED an
+               existing target to $0 while the red "Numbers only" line was
+               already saying the number is broken. The button now waits for
+               the box to be empty or valid. */
+            (target.trim() !== "" && parsedTarget === null) ||
             milestoneProblem !== null ||
             unchanged
           }
@@ -4279,8 +4297,38 @@ type AccountOption = {
   deals: { id: string; label: string }[];
 };
 
-/** A file on its way to storage: percentage while it travels, then done, or
- *  the reason it stopped. */
+/**
+ * ONE CHIP PER FIGURE (Anir, Aug 23, pointing at "Contract value · $180K"
+ * and "Freya.Register · $180K" both lit: "why is it making me select both?
+ * u see the issue? see how it can be confusing?").
+ *
+ * On a one-offering deal the whole-deal figure IS the offering's figure, and
+ * on a Won deal the weighted figure equals both — the same money offered
+ * three times under three names, every chip lighting at once because "which
+ * chip is on" is decided by amount. One rule now: a figure appears once. The
+ * decided wording wins over the generic one ("Signed, in full" beats
+ * "Contract value" on a Won deal), the first occurrence wins otherwise, and
+ * a Lost deal's $0 weighted chip disappears entirely — a zero quick-fill is
+ * not a suggestion anybody needs.
+ */
+function dedupeAmountChips(
+  chips: { key: string; label: string; amount: number }[]
+): { key: string; label: string; amount: number }[] {
+  const seen = new Map<number, { key: string; label: string; amount: number }>();
+  for (const chip of chips) {
+    if (chip.key === "weighted" && chip.amount === 0) continue;
+    const at = Math.round(chip.amount);
+    const held = seen.get(at);
+    if (!held) {
+      seen.set(at, chip);
+    } else if (chip.key === "weighted" && /Signed|Lost/.test(chip.label)) {
+      // Same figure, but the decided wording says more than the generic one.
+      seen.set(at, { ...chip, key: held.key });
+    }
+  }
+  return [...seen.values()];
+}
+
 function LogActualModal({
   open,
   state,
@@ -4432,7 +4480,19 @@ function LogActualModal({
     // Arriving from an activity: the amount and account came off the record
     // that was just logged, so they land filled in rather than retyped.
     if (initial.amount !== undefined) setAmount(initial.amount);
-    if (initial.customer !== undefined) setCustomer(initial.customer);
+    if (initial.customer !== undefined) {
+      setCustomer(initial.customer);
+      /* The handoff carries a customer NAME, not an account id — and the
+         dialog keeps its state between opens on purpose. Left alone, an
+         abandoned draft's customerId and deal link rode under the new name
+         (found by the Aug 23 audit), so a claim handed off from a Takeda
+         activity could save silently traced to the PREVIOUS draft's account
+         and opportunity. The name is the only fact the handoff asserts; the
+         id and the link start over with it. */
+      setCustomerId("");
+      setCustomerOther(false);
+      setLink("");
+    }
     if (initial.note !== undefined) setNote(initial.note);
   }, [open, initial]);
 
@@ -4447,6 +4507,19 @@ function LogActualModal({
     ? (components.find((c) => c.id === componentId) ?? null)
     : goal;
   const sub = effectiveGoal?.subgoals.find((s) => s.id === subgoalId) ?? null;
+  /* The server's own rule (lib/performance.ts logActual): a person DIRECTLY
+     assigned on the goal logs on the goal itself even when subgoals exist
+     for other teams. The form demanded a subgoal regardless (found by the
+     Aug 23 audit), refusing in the browser what the store explicitly
+     allows — and the subgoal dropdown only lists subgoals, so the directly-
+     assigned person could never submit at all. */
+  const needsSubgoal =
+    effectiveGoal !== null &&
+    effectiveGoal.subgoals.length > 0 &&
+    !subgoalId &&
+    !(effectiveGoal.assignments ?? []).some(
+      (a) => a.person.trim() === person.trim()
+    );
   // Which unit the Amount field wears. On a composite, effectiveGoal is null
   // until a component is picked, and falling through to the count default put
   // a "#" and "e.g. 12" on a goal whose target is $900K (Anir, Aug 14). A
@@ -5036,7 +5109,16 @@ function LogActualModal({
             {amount.trim() !== "" &&
               (parsed !== null ? (
                 <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
-                  = {fmtAmount(effectiveGoal?.unit ?? unit ?? "count", parsed)}
+                  {/* In the currency the entry is being logged in — a €250K
+                     claim echoing "= $250K" was asserting a conversion nobody
+                     made (Aug 23 audit). */}
+                  = {fmtAmount(
+                    effectiveGoal?.unit ?? unit ?? "count",
+                    parsed,
+                    (effectiveGoal?.unit ?? unit) === "currency"
+                      ? entryCurrency
+                      : undefined
+                  )}
                 </p>
               ) : (
                 <p className="mt-1 whitespace-nowrap text-[10.5px] text-error">
@@ -5092,12 +5174,7 @@ function LogActualModal({
           const missing: string[] = [];
           if (!goalId) missing.push("the goal");
           if (composite && !componentId) missing.push("which goal it feeds");
-          if (
-            effectiveGoal !== null &&
-            effectiveGoal.subgoals.length > 0 &&
-            !subgoalId
-          )
-            missing.push("the subgoal");
+          if (needsSubgoal) missing.push("the subgoal");
           if (!person.trim()) missing.push("whose number it is");
           if (parsed === null) missing.push("the amount");
           if (effectiveGoal?.unit === "currency" && evidence.length === 0)
@@ -5115,9 +5192,7 @@ function LogActualModal({
             busy ||
             !goalId ||
             (composite && !componentId) ||
-            (effectiveGoal !== null &&
-              effectiveGoal.subgoals.length > 0 &&
-              !subgoalId) ||
+            needsSubgoal ||
             !person.trim() ||
             parsed === null ||
             uploading ||
