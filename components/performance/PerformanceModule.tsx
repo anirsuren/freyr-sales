@@ -390,7 +390,12 @@ export function PerformanceModule({
             <h1 className="sr-only">
               {showMaster ? "Goal Master" : room.label}
             </h1>
-            <div className="inline-flex flex-wrap items-center gap-1 rounded-full bg-surface p-1">
+            {/* The four tabs are ONE strip, always (Anir, Aug 23: "it's
+                moving the 4 page toggles"). flex-wrap let a crowded header
+                break Goal Master onto a second line, which read as a fifth
+                control adrift under the other four. They scroll together on a
+                narrow screen instead of splitting up. */}
+            <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {visibleTabs.map((key) => {
                 const r = ROOMS[key];
                 const Icon = r.icon;
@@ -457,11 +462,14 @@ export function PerformanceModule({
               <HelpCircle size={13} strokeWidth={2.2} />
               How this works
             </button>
-            {!live && (
-              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-                Sample data — switch to Real mode to work with the live plan
-              </span>
-            )}
+            {/* NO SECOND ANNOUNCEMENT OF THE SAME FACT (Anir, Aug 23: "it's
+                moving the 4 page toggles, it's already a message in the top
+                right"). A full-width blue bar across the top of the app
+                already says every screen is sample data; repeating it here as
+                a fourteen-word pill stole enough width from this row to wrap
+                the four tabs onto two lines, which is a layout bug caused
+                purely by saying something twice. The banner stays; this
+                goes. */}
           </div>
         </div>
         {/* No subtitle under the selector (Anir, Aug 15: "remove this text
