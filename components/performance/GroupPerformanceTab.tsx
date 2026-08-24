@@ -82,10 +82,51 @@ export function GroupPerformanceTab({
     [group]
   );
 
-  const scoped = useMemo(
-    () => (group ? scopeStateToPeople(state, members, group.id) : state),
-    [state, members, group]
+  /**
+   * A GROUP'S SCREEN IS ABOUT THE GROUP'S GOALS (Anir, Aug 23: "it said 5
+   * goals when he only assigned one goal to that group").
+   *
+   * scopeStateToPeople keeps any goal ANYONE in the roster carries, which is
+   * right for a person's screen and wrong for a group's: he gave Marketing
+   * group exactly one goal and the tile said five, because he is a member and
+   * personally carries four others that have nothing to do with marketing.
+   * One overlapping member was enough to drag a whole goal onto a team that
+   * was never given it.
+   *
+   * So when a group HAS been handed goals, those are its screen. When it has
+   * not — which is every group in the sample plan, and "group 2" here — the
+   * old behaviour stands, because what its people carry is the only answer
+   * available and an empty screen would be a worse lie than a broad one. The
+   * subtitle says which of the two you are looking at, so the number is never
+   * a mystery.
+   */
+  const ownGoalIds = useMemo(
+    () =>
+      new Set(
+        group
+          ? state.goals
+              .filter((g) =>
+                (g.groupAssignments ?? []).some((a) => a.groupId === group.id)
+              )
+              .map((g) => g.id)
+          : []
+      ),
+    [state.goals, group]
   );
+  const scoped = useMemo(() => {
+    if (!group) return state;
+    const all = scopeStateToPeople(state, members, group.id);
+    if (ownGoalIds.size === 0) return all;
+    const goals = all.goals.filter((g) => ownGoalIds.has(g.id));
+    const goalIds = new Set(goals.map((g) => g.id));
+    return {
+      ...all,
+      goals,
+      /* The results have to follow the goals, or the tiles would count money
+         logged against a goal the table no longer shows. */
+      actuals: all.actuals.filter((a) => goalIds.has(a.goalId)),
+    };
+  }, [state, members, group, ownGoalIds]);
 
   /** The one search bar reaches the other groups and every person from here
    *  too (Anir, Aug 15: "I can search goals, people, groups, etc."). */
@@ -289,9 +330,14 @@ export function GroupPerformanceTab({
         // they're on").
         words: {
           trackedLabel: "Goals in this group",
-          trackedSub: group
-            ? `carried by ${members.length} ${members.length === 1 ? "person" : "people"}`
-            : "carried by its people",
+          /* Which of the two answers this screen is giving — see the scoped
+             memo above. Without it "3 goals" could mean two different things
+             on two different groups and look like the same fact. */
+          trackedSub: !group
+            ? "carried by its people"
+            : ownGoalIds.size > 0
+              ? `handed to this group · ${members.length} ${members.length === 1 ? "person" : "people"} in it`
+              : `nothing handed to this group yet, so these are what its ${members.length} ${members.length === 1 ? "person carries" : "people carry"}`,
           verifiedSub: group
             ? `signed off by ${group.head.split(" ")[0]}`
             : "signed off by the group owner",
