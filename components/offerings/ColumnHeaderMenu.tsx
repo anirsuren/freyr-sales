@@ -226,28 +226,28 @@ export function ColumnHeaderMenu({
                           on ? "text-text-primary" : "text-text-secondary"
                         )}
                       >
+                        {/* Same checkbox as the Filter menu (Saras, Aug 24:
+                            "with just checkboxes for each of these,
+                            everywhere") — this list does the same job from
+                            the column heading, so it has to look the same. */}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border transition-colors",
+                            on
+                              ? "border-blue-primary bg-blue-primary text-white"
+                              : "border-border bg-white"
+                          )}
+                        >
+                          {on && <Check size={11} strokeWidth={3} />}
+                        </span>
                         {option.avatarName ? (
                           <Avatar
                             name={option.avatarName}
                             className="h-[18px] w-[18px] shrink-0 text-[7px]"
                           />
-                        ) : (
-                          <span
-                            aria-hidden="true"
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{
-                              background: option.color || "var(--text-tertiary)",
-                            }}
-                          />
-                        )}
+                        ) : null}
                         <span className="min-w-0 flex-1 break-words">{option.label}</span>
-                        {on && (
-                          <Check
-                            size={13}
-                            strokeWidth={2.6}
-                            className="shrink-0 text-blue-primary"
-                          />
-                        )}
                       </button>
                     );
                   })}

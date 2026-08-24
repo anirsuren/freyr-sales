@@ -17,6 +17,7 @@ import {
   X,
   ExternalLink,
   Files,
+  Pill,
   Crown,
   FilterX,
   Route,
@@ -43,6 +44,7 @@ import {
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   DIVISION_META,
+  DIVISIONS,
   JOURNEY_STAGE_META,
   materialDivisions,
   MATERIAL_FORMATS,
@@ -185,6 +187,12 @@ export function MaterialsSection({
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
+  /** DIVISION IS THE FOURTH FILTER (Saras, Aug 24: "let's add a new filter
+   *  called Division here in Sales Materials, which will have three things —
+   *  MPR, MDV, CON. Based on the Division column, we can have this fourth
+   *  filter"). The column already exists on every row; the filter is what
+   *  makes it usable on a 25-file offering. */
+  const [divisions, setDivisions] = useState<string[]>([]);
   /** The literal extension — PDF, MP4, PPTX, CSV. Separate from `formats`,
    *  which is the four broad families. */
   // ONE view for files: the details table (Change Request point 25, Saras,
@@ -570,6 +578,7 @@ export function MaterialsSection({
     formats.length > 0 ||
     stages.length > 0 ||
     levels.length > 0 ||
+    divisions.length > 0 ||
     query.trim().length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
@@ -656,6 +665,11 @@ export function MaterialsSection({
       )
         return false;
       if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
+      if (
+        divisions.length &&
+        !materialDivisions(m).some((d) => divisions.includes(d))
+      )
+        return false;
       return true;
     })
     .sort(
@@ -833,6 +847,21 @@ export function MaterialsSection({
             label: ACCESS_LEVEL_META[l].label,
             color: ACCESS_LEVEL_META[l].color,
             icon: ACCESS_LEVEL_META[l].icon,
+          }))}
+        />
+        <MultiColorSelect
+          values={divisions}
+          onChange={setDivisions}
+          minWidth={132}
+          allLabel="All divisions"
+          allIcon={Pill}
+          allColor="#C026D3"
+          ariaLabel="Filter by division"
+          options={DIVISIONS.map((d) => ({
+            value: d,
+            label: `${d} · ${DIVISION_META[d].label}`,
+            color: DIVISION_META[d].color,
+            icon: DIVISION_META[d].icon,
           }))}
         />
         {/* Add lives on the same row as the filters (Anir: "put this filter
@@ -1221,23 +1250,29 @@ export function MaterialsSection({
                           row already names underneath its title (Anir, Aug 7:
                           "only the file format tags should show up… you have
                           to remove this"). */}
-                      <span className="flex flex-col items-start gap-1">
-                        <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
-                        {/* EVERY ROW SAYS ONE. A real extension when the source
-                            names one; LINK when the row is a hosted page with
-                            no file behind it. Never a guessed extension — an
-                            invented "MP4" would send a rep off to attach a file
-                            that does not exist. */}
-                        <span
-                          className="pl-0.5 text-[10px] font-semibold tracking-[0.04em] text-text-tertiary"
-                          title={
-                            fileType === "LINK"
-                              ? `Opens on ${materialLinkHost(material) ?? "another site"}, a hosted link, not an uploaded file`
-                              : `${fileType} file`
-                          }
-                        >
-                          {fileType}
-                        </span>
+                      {/* PLAIN TEXT, NO PILL, NO ICON, NO EXTENSION (Anir,
+                          Aug 24, three cuts to the same cell):
+
+                          1. "These duplicate file format tags — we don't need
+                             the MP4 part, because knowing that it's a video is
+                             enough for a sales rep or for anybody. It says
+                             'presentation' but then it also says 'PPTX'. Same
+                             across this whole column." The extension line was
+                             the word again in shorthand.
+                          2. "Remove the font colours and background colours
+                             from these two columns, the file format column and
+                             the buyer's journey stage column — just black font
+                             with no background."
+                          3. "You can also remove the icons here, because the
+                             icon of what type of file is already here" — the
+                             row already opens with a format icon beside the
+                             file name, so the pill's icon was the third time
+                             the same fact was stated in one row.
+
+                          Access level keeps its pill: "access level column is
+                          fine as it is, no need to make any change there." */}
+                      <span className="block text-[12.5px] text-text-primary">
+                        {formatMeta.label}
                       </span>
                     </td>
                     <td className="px-3 py-3 align-middle">
@@ -1249,7 +1284,14 @@ export function MaterialsSection({
                       <div className="flex flex-col items-start gap-1">
                         {stagesForMaterial.length ? stagesForMaterial.map((stage) => {
                           const meta = JOURNEY_STAGE_META[stage];
-                          return <TagPill key={stage} label={meta.short} color={meta.color} icon={meta.icon} />;
+                          return (
+                            <span
+                              key={stage}
+                              className="block text-[12.5px] text-text-primary"
+                            >
+                              {meta.short}
+                            </span>
+                          );
                         }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                       </div>
                     </td>

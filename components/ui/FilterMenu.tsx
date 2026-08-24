@@ -53,6 +53,11 @@ export type FilterGroup = {
   options: FilterOption[];
 };
 
+/** Two columns side by side: the categories, and the options in one of them. */
+const LEFT_W = 168;
+const PANEL_W = 430;
+const PANEL_H = 300;
+
 export function FilterMenu({
   groups,
   onClearAll,
@@ -61,12 +66,15 @@ export function FilterMenu({
   onClearAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  /** The category whose options are showing on the right. Set by hover as
+   *  well as click — see the panel below. */
   const [layer, setLayer] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
 
   const active = groups.reduce((n, g) => n + g.values.length, 0);
+  const chosenGroups = groups.filter((g) => g.values.length > 0).length;
   const current = groups.find((g) => g.key === layer) || null;
 
   // Portalled and positioned from the trigger's rect, the same escape every
@@ -78,7 +86,7 @@ export function FilterMenu({
       const node = buttonRef.current;
       if (!node) return;
       const r = node.getBoundingClientRect();
-      const width = 264;
+      const width = PANEL_W;
       setBox({
         top: r.bottom + 6,
         left: Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8)),
@@ -129,8 +137,18 @@ export function FilterMenu({
         ref={buttonRef}
         type="button"
         onClick={() => {
-          setOpen((prev) => !prev);
-          setLayer(null);
+          setOpen((prev) => {
+            /* OPEN ON A CATEGORY, NOT ON A HINT. The right pane started blank
+               with "hover a category to see what you can filter by", so the
+               first thing the menu showed was an instruction rather than the
+               filters (Saras, Aug 24, asked for the options to be "showing up
+               on the right side itself"). Landing on the first group means the
+               menu is useful the instant it opens, and hovering still switches
+               groups exactly as before. */
+            if (!prev) setLayer(groups[0]?.key ?? null);
+            else setLayer(null);
+            return !prev;
+          });
         }}
         aria-expanded={open}
         aria-label="Filter offerings"
@@ -157,115 +175,186 @@ export function FilterMenu({
             ref={panelRef}
             role="dialog"
             aria-label="Filter offerings"
-            style={{ top: box.top, left: box.left, width: 264 }}
+            style={{ top: box.top, left: box.left, width: PANEL_W }}
             className="menu-in fixed z-[130] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
-            {current ? (
-              <>
-                <div className="flex items-center gap-1.5 border-b border-border-light px-2 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setLayer(null)}
-                    aria-label="Back to all filters"
-                    className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary"
-                  >
-                    <ChevronLeft size={15} strokeWidth={2.2} />
-                  </button>
-                  <span className="text-[12.5px] font-semibold text-text-primary">
-                    {current.label}
-                  </span>
-                  {current.values.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => current.onChange([])}
-                      className="ml-auto cursor-pointer rounded-md px-1.5 py-0.5 text-[11.5px] font-medium text-text-tertiary transition-colors hover:text-blue-primary"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-[300px] overflow-y-auto py-1">
-                  {current.options.map((option) => {
-                    const on = current.values.includes(option.value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => toggle(current, option.value)}
-                        className={cn(
-                          "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-surface",
-                          on ? "text-text-primary" : "text-text-secondary"
-                        )}
-                      >
-                        {option.logoName ? (
-                          <CompanyLogo
-                            name={option.logoName}
-                            className="h-[18px] w-[18px] shrink-0 text-[6px]"
-                          />
-                        ) : option.avatarName ? (
-                          <Avatar
-                            name={option.avatarName}
-                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden="true"
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ background: option.color || "var(--text-tertiary)" }}
-                          />
-                        )}
-                        <span className="min-w-0 flex-1 break-words">{option.label}</span>
-                        {on && (
-                          <Check
-                            size={13}
-                            strokeWidth={2.6}
-                            className="shrink-0 text-blue-primary"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="py-1">
-                  {groups.map((group) => (
+            {/* CATEGORIES LEFT, THEIR OPTIONS RIGHT (Saras, Aug 24 call,
+                with a shopping site as the reference: "currently we click the
+                filter button, then click category, then see all the options
+                within category. If we can have the options within category
+                showing up on the right side itself, if someone hovers").
+
+                Drilling meant one category at a time and a trip back through
+                a chevron to reach the next, so choosing across three
+                categories was six clicks and two of them were undo. Both
+                columns are on screen at once now; hovering a category swaps
+                the right-hand pane, clicking still works for touch and for
+                the keyboard, and nothing is ever more than one move away. */}
+            <div className="flex" style={{ height: PANEL_H }}>
+              <div
+                className="shrink-0 overflow-y-auto border-r border-border-light py-1"
+                style={{ width: LEFT_W }}
+                onMouseLeave={() => undefined}
+              >
+                {groups.map((group) => {
+                  const on = group.key === layer;
+                  return (
                     <button
                       key={group.key}
                       type="button"
+                      onMouseEnter={() => setLayer(group.key)}
+                      onFocus={() => setLayer(group.key)}
                       onClick={() => setLayer(group.key)}
-                      className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-2 text-left text-[12.5px] text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+                      aria-expanded={on}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-2 px-2.5 py-2 text-left text-[12.5px] transition-colors",
+                        on
+                          ? "bg-blue-light font-semibold text-blue-primary"
+                          : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                      )}
                     >
-                      <span className="min-w-0 flex-1">{group.label}</span>
+                      <span className="min-w-0 flex-1 break-words">{group.label}</span>
                       {group.values.length > 0 && (
-                        <span className="shrink-0 rounded-full bg-blue-light px-1.5 text-[10.5px] font-bold text-blue-primary tnum">
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-1.5 text-[10.5px] font-bold tnum",
+                            on
+                              ? "bg-blue-primary text-white"
+                              : "bg-blue-light text-blue-primary"
+                          )}
+                        >
                           {group.values.length}
                         </span>
                       )}
                       <ChevronRight
                         size={14}
                         strokeWidth={2.2}
-                        className="shrink-0 text-text-tertiary"
+                        className={cn(
+                          "shrink-0",
+                          on ? "text-blue-primary" : "text-text-tertiary"
+                        )}
                       />
                     </button>
-                  ))}
-                </div>
-                {active > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClearAll();
-                      setOpen(false);
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-1.5 border-t border-border-light px-2.5 py-2 text-left text-[12px] font-medium text-text-secondary transition-colors hover:text-[color:#DC2626]"
-                  >
-                    <X size={13} strokeWidth={2.4} />
-                    Clear all filters
-                  </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-col">
+                {current ? (
+                  <>
+                    <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                        {current.label}
+                      </span>
+                      {current.values.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => current.onChange([])}
+                          className="shrink-0 cursor-pointer rounded-md px-1.5 py-0.5 text-[11.5px] font-medium text-text-tertiary transition-colors hover:text-blue-primary"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto py-1">
+                      {current.options.map((option) => {
+                        const on = current.values.includes(option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => toggle(current, option.value)}
+                            className={cn(
+                              "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-surface",
+                              on ? "text-text-primary" : "text-text-secondary"
+                            )}
+                          >
+                            {/* A CHECKBOX, NOT A DOT (Saras, Aug 24: "can we
+                                replace these colour buttons, dots, whatever
+                                you want to call them, with just checkboxes
+                                for each of these, everywhere").
+
+                                The dot carried the category's colour and the
+                                tick sat at the far right, so whether a row
+                                was chosen had to be read at the opposite end
+                                from where the eye starts — and the dot itself
+                                looked like decoration rather than a control.
+                                A checkbox says both things in one mark, in
+                                the place people look for it. Logos and faces
+                                stay: they identify the thing, which a colour
+                                dot never did. */}
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border transition-colors",
+                                on
+                                  ? "border-blue-primary bg-blue-primary text-white"
+                                  : "border-border bg-white"
+                              )}
+                            >
+                              {on && <Check size={11} strokeWidth={3} />}
+                            </span>
+                            {option.logoName ? (
+                              <CompanyLogo
+                                name={option.logoName}
+                                className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                              />
+                            ) : option.avatarName ? (
+                              <Avatar
+                                name={option.avatarName}
+                                className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                              />
+                            ) : null}
+                            <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="flex h-full items-center justify-center px-4 text-center text-[12px] text-text-tertiary">
+                    Hover a category to see what you can filter by.
+                  </p>
                 )}
-              </>
-            )}
+              </div>
+            </div>
+
+            {/* THE RUNNING COUNT, IN WORDS (Saras, Aug 24: "at the end it
+                should show somewhere that you've chosen three filters, or
+                however many they've checked"). The trigger carries a number
+                and each category carries its own, but nothing said the total
+                in a sentence — so a reader with two categories part-filled
+                had to add up the pills themselves. */}
+            <div className="flex items-center gap-2 border-t border-border-light px-2.5 py-2">
+              <span className="min-w-0 flex-1 text-[12px] text-text-secondary">
+                {active === 0 ? (
+                  "No filters chosen"
+                ) : (
+                  <>
+                    <b className="font-semibold text-text-primary tnum">{active}</b>{" "}
+                    {active === 1 ? "filter" : "filters"} chosen
+                    {chosenGroups > 1 && (
+                      <span className="text-text-tertiary">
+                        {" "}across {chosenGroups} categories
+                      </span>
+                    )}
+                  </>
+                )}
+              </span>
+              {active > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClearAll();
+                    setOpen(false);
+                  }}
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-secondary transition-colors hover:text-[color:#DC2626]"
+                >
+                  <X size={13} strokeWidth={2.4} />
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>,
           document.body
         )}

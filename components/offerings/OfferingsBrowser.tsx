@@ -15,6 +15,7 @@ import {
   Layers,
   Rocket,
   Crown,
+  CircleDashed,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
@@ -206,59 +207,58 @@ function OwnerRows({
 }) {
   const granted = (owners || []).filter((o) => o.status === "owner");
   if (granted.length === 0) return null;
+  const shown = granted.slice(0, 2);
+  const rest = granted.slice(2);
   return (
     <>
-      {/* ONE LINE, WHATEVER THE COUNT (Anir, Aug 9: "if there are like ten
-          owners, how is this gonna look? Genuinely, I still don't like the way
-          it looks").
+      {/* NAMES, NOT FACES (Saras, Aug 24: "can we replace these icons with
+          just the names of the offering owners? ... I think you can maybe keep
+          commas or dots between them").
 
-          A name-per-line column meant an offering with ten owners grew a card
-          ten rows taller than the one beside it, wrecking the grid's symmetry,
-          and even at two owners the label sat in a tall empty column that read
-          as a mistake. Faces overlap instead, the way they already do on the
-          campaigns page and on a component's customers, so the row is exactly
-          one line tall at one owner or at twenty, and hovering any face names
-          that person.
-
-          A single owner keeps their name in plain text: one face with no name
-          would be a puzzle, and one name never threatens the layout. */}
+          Faces were how this row survived an offering with ten owners: one
+          line tall at any count, hover to learn who. But a row of initials in
+          circles is a puzzle you have to solve — nobody recognises "AF AS" —
+          while the single-owner card beside it said "Priyanka M." in plain
+          text and was instantly readable. So names win, and the count problem
+          is solved by TRUNCATING instead: two names, then "+N", so the row is
+          still exactly one line whether an offering has one owner or twenty,
+          and the +N names the rest on hover. */}
       {/* NEUTRAL, LIKE THE TWO LABELS ABOVE IT (Saras, Aug 21: "the font
           colour of the owner, let's just keep that simply black... there is
-          no need for the crown icon either... let's just keep it neutral").
-          A purple crown made the label shout over the name beside it. */}
+          no need for the crown icon either... let's just keep it neutral"). */}
       <dt className="flex h-[26px] items-center self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
         Owner
       </dt>
       <dd className="flex min-h-[26px] min-w-0 items-center self-start">
-        {granted.length === 1 ? (
-          <PersonHoverCard
-            name={granted[0].name}
-            role={granted[0].role || "Owns this offering"}
-            context={offeringName}
-          >
-            <span className="hover-yield inline-flex min-w-0 items-center gap-1.5 rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
-              <Avatar
-                name={granted[0].name}
-                className="h-[20px] w-[20px] shrink-0 text-[7px]"
-              />
-              <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
-                {shortPersonName(granted[0].name)}
-              </span>
+        <span className="hover-yield inline-flex min-w-0 flex-wrap items-center text-[11.5px] font-semibold leading-snug text-text-primary">
+          {shown.map((owner, index) => (
+            <span key={owner.memberId} className="inline-flex min-w-0 items-center">
+              {index > 0 && (
+                <span aria-hidden className="px-1 text-text-tertiary">
+                  ·
+                </span>
+              )}
+              <PersonHoverCard
+                name={owner.name}
+                role={owner.role || "Owns this offering"}
+                context={offeringName}
+              >
+                <span className="min-w-0 break-words rounded px-0.5 transition-colors hover:bg-surface">
+                  {shortPersonName(owner.name)}
+                </span>
+              </PersonHoverCard>
             </span>
-          </PersonHoverCard>
-        ) : (
-          <span className="hover-yield inline-flex min-w-0">
-            <PersonFan
-              people={granted.map((o) => ({
-                name: o.name,
-                role: o.role || "Owns this offering",
-                context: offeringName,
-              }))}
-              avatarClassName="h-[22px] w-[22px] text-[8px]"
-              max={6}
-            />
-          </span>
-        )}
+          ))}
+          {rest.length > 0 && (
+            <PriorityTooltip
+              label={rest.map((owner) => owner.name).join(", ")}
+            >
+              <span className="ml-1 cursor-default rounded-md bg-surface px-1.5 py-[1px] text-[10.5px] font-bold text-text-secondary">
+                +{rest.length}
+              </span>
+            </PriorityTooltip>
+          )}
+        </span>
       </dd>
     </>
   );
@@ -424,6 +424,16 @@ export function OfferingsBrowser({
 
   const hasOwner = (o: HydratedOffering) =>
     (o.owners || []).some((owner) => owner.status === "owner");
+  /** The tile view's default split: owned offerings first, unowned last.
+   *  Deliberately NOT a sort option — it is how the tile view always reads. */
+  const ownerGroupsOf = (items: HydratedOffering[]) => {
+    const assigned = items.filter(hasOwner);
+    const unassigned = items.filter((o) => !hasOwner(o));
+    return [
+      { key: "assigned" as const, label: "Assigned Offering Owners", items: assigned },
+      { key: "unassigned" as const, label: "Unassigned", items: unassigned },
+    ].filter((g) => g.items.length > 0);
+  };
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
 
@@ -606,6 +616,28 @@ export function OfferingsBrowser({
   // "we don't need an export download button at all"). Reports still exports.
 
   const renderCard = (o: HydratedOffering, i: number) => {
+    /**
+     * THE CATEGORY'S COLOUR, ON THREE THINGS (Saras, Aug 24: "maybe a midway
+     * between what it was earlier and what it is currently — the category
+     * names in different font colours based on the categories, and the
+     * borders of the box and this line the same colour as the font").
+     *
+     * The tile went fully neutral on Aug 21 because it was over-coloured, and
+     * that traded one problem for another: a wall of identical grey cards
+     * with no way to tell one family from another at a glance. This is the
+     * middle: colour carries exactly one meaning — which category this is —
+     * and it says it three times quietly (the eyebrow, the card's edge, the
+     * rule under the name) rather than once loudly in a pastel blob.
+     */
+    const catColor = o.offering_category
+      ? categoryColorByName[o.offering_category] || "#2563EB"
+      : null;
+    /** The edge and the rule are TINTS of the eyebrow's colour, not the colour
+     *  itself: at full strength a 1px box around every card turns a grid of 31
+     *  into a highlighter set. The eyebrow stays solid so the hue is stated
+     *  once, clearly, and echoed twice quietly. */
+    const catEdge = catColor ? `${catColor}59` : undefined; // 35%
+    const catRule = catColor ? `${catColor}7A` : undefined; // 48%
     const mapped =
       o.customerTypes.length > 0 ||
       o.markets.length > 0 ||
@@ -674,6 +706,7 @@ export function OfferingsBrowser({
         <HoverExpandCard
           href={`/offerings/${o.id}`}
           className="h-full"
+          accent={catEdge}
           summary={
             /* SMALLER TILES (Saras, Aug 21: "reducing the size of the tile
                and keeping them slightly smaller"). With the icon and the
@@ -698,9 +731,10 @@ export function OfferingsBrowser({
                     competing pills. Up here it names the group before you read
                     the product, in the group's own colour. */}
                 {o.offering_category && (
-                  /* Neutral, like the list view's category column (Saras,
-                     Aug 21: "you can remove the colours"). */
-                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
+                  <p
+                    className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
+                    style={{ color: catColor ?? undefined }}
+                  >
                     <span className="min-w-0 break-words">{o.offering_category}</span>
                   </p>
                 )}
@@ -725,21 +759,31 @@ export function OfferingsBrowser({
                 </h3>
               </div>
             </div>
+            {/* The arrow joins the colour scheme rather than staying the one
+                grey thing left on the card (Saras, Aug 24: "maybe the arrows
+                can have the colours same as the category colours"). Dimmed at
+                rest so it never competes with the name, full strength under
+                the cursor, which also makes the whole card feel clickable. */}
             <ChevronRight
               size={16}
               strokeWidth={1.6}
-              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0"
+              style={{ color: catColor ?? undefined }}
+              className="shrink-0 text-text-tertiary opacity-55 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {/* The clean timing status only: market-coverage / version notes
-                (future_availability) are free-form and live on the detail page. */}
-            {o.current_availability && (
-              <AvailabilityPill value={o.current_availability} size="sm" />
-            )}
-          </div>
+          {/* THE LINE COMES STRAIGHT UNDER THE NAME (Saras, Aug 24: "can we
+              shift this below? This line should move up — directly under the
+              name of the offering"). It used to sit below the availability
+              pill and above the owner, which put the card's one rule in the
+              middle of the facts rather than under its title. The pill moves
+              into the fact list as its own row, so everything below the rule
+              is a labelled row and nothing floats. */}
+          <div
+            className="-mt-0.5 h-px w-full"
+            style={{ background: catRule ?? "var(--border-light)" }}
+          />
 
-          <div className="mt-auto pt-2.5 border-t border-border-light space-y-2">
+          <div className="mt-auto space-y-2">
             {/* TWO ROWS, ALWAYS THE SAME TWO ROWS. These used to be a
                 flex-wrap row of chips, so where a card broke depended on how
                 long its labels happened to be — no two cards in the grid
@@ -766,6 +810,22 @@ export function OfferingsBrowser({
                   type and the for"). Now the label column is fixed and the
                   names stack under one another however long they are. */}
               <OwnerRows owners={o.owners} offeringName={o.offering_name} />
+              {/* GTM STATUS IS A LABELLED ROW (Saras, Aug 24: "below Owner
+                  you can just add another title called GTM Status, and there
+                  just show this Available now"). It was a loose pill floating
+                  above the fact grid, so the one thing every card has in
+                  common was the one thing that did not line up between
+                  cards. */}
+              {o.current_availability && (
+                <>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                    GTM
+                  </dt>
+                  <dd className="min-w-0">
+                    <AvailabilityPill value={o.current_availability} size="sm" />
+                  </dd>
+                </>
+              )}
             </dl>
             {/* POC is off the card (Anir, Aug 7: "you can remove the POC
                 aspect"). Owner is the person a rep needs from a tile; the
@@ -1098,6 +1158,8 @@ export function OfferingsBrowser({
     }
   }
 
+  const ownerGroups = ownerGroupsOf(sorted);
+
   const inputCls =
     "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
@@ -1111,6 +1173,12 @@ export function OfferingsBrowser({
         className="rise-in rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {/* THE SEARCH STOPS EATING THE ROW (Saras, Aug 24: "I think you can
+            also reduce the search bar size"). It was `flex-1` against a single
+            Filter button, so on a wide screen it stretched to ~700px to search
+            a list of 31 names, and pushed Filter into the middle of an empty
+            row. Capped instead: wide enough for a real query, and Filter now
+            sits beside it on the left where the eye already is. */}
         <PrioritySearchInput
           grow
           value={q}
@@ -1118,7 +1186,7 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          className="min-w-[200px] flex-1"
+          className="w-full min-w-[180px] max-w-[380px]"
           iconClassName="left-3"
           inputClassName={`${inputCls} w-full pl-9 pr-3`}
         />
@@ -1292,8 +1360,15 @@ export function OfferingsBrowser({
             collapsible={false}
             className="w-[150px] shrink-0"
             options={[
-              { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
-              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              /* EVERY OPTION READS AS "SORT BY ..." (Saras, Aug 24: "can we
+                 just have 'Sort by recommended' — adding the word by before
+                 recommended, also before name, and in the brackets just say
+                 A to Z"). Three of the five already began with "By"; the two
+                 that did not read as labels rather than as an instruction the
+                 word SORT beside them completes. And "(A, Z)" was shorthand
+                 for a phrase nobody shortens out loud. */
+              { value: "default", label: "By recommended", color: "#0071E3", icon: SortSpark },
+              { value: "name", label: "By name (A to Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
               { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
               /* "Most complete" is gone (Saras, Aug 21: "this isn't really the
@@ -1399,15 +1474,21 @@ export function OfferingsBrowser({
                 really properly aligned, especially in the last column"). It now
                 fits, and Category is wide enough to hold its longest name,
                 "Submissions and Document Operations", on ONE line. */}
-            {/* 1280, not 1040: at the narrow end Category had ~134px of text
-                width and Type ~82px, so "Regulatory Information Management"
-                and "Freya Fusion (Module)" each wrapped to THREE lines and
-                the row grew to match (Anir, Aug 15: "the category name and
-                the type are on two lines max... if I need to scroll
-                horizontally on the table that's fine"). The extra width buys
-                both of them a second line instead of a third, and the card
-                already scrolls sideways. */}
-            <table className="w-full min-w-[1280px] table-fixed text-[13px] border-collapse">
+            {/* 1120, DOWN FROM 1280 (Anir, Aug 24, at 100% zoom: "there's a
+                lot of white space in between columns — can we make them more
+                compact, maybe try to have all the columns show up at 100%
+                zoom, or if not all, at least one more?").
+
+                The 1280 was bought to keep Category and Type on two lines
+                instead of three. What paid the 160px back is the offering NAME
+                column, which he then released: "for the offering name I think
+                it's big — is that why it's doing that? It's fine if that wraps
+                around... the row height is high anyway, so they can use that
+                space to make the columns compact." Name drops 19% → 15% and
+                spends the slack on the two columns that were wrapping, and the
+                cell padding tightens from px-4 to px-3 — another ~56px of pure
+                gutter across seven columns. */}
+            <table className="w-full min-w-[1120px] table-fixed text-[13px] border-collapse [&_td]:px-3 [&_th]:px-3">
               <thead>
                 {/* WIDTHS SIZED TO THE HEADINGS, NOT JUST THE CELLS (Anir,
                     Aug 9: MATERIALS was printing straight through REVENUE).
@@ -1416,7 +1497,11 @@ export function OfferingsBrowser({
                     into the next column. whitespace-nowrap makes any future
                     mistake here show up as a scroll rather than as two words
                     on top of each other. */}
-                <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+                {/* 12.5px, UP FROM 11 (Saras, Aug 24: "can we also increase
+                    the font size of these column headers?"). At 11px with
+                    letter-spacing they read as a caption above the table
+                    rather than as the names of its columns. */}
+                <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
                   {/* px-4 like every other column: the header text must start
                       exactly where the cell text below it starts. */}
                   {/* EXCEL'S OWN AFFORDANCE (Saras, Aug 21: "in the list
@@ -1429,7 +1514,7 @@ export function OfferingsBrowser({
                       Same state as the toolbar's Filter button, so a filter
                       set in one place shows in the other and the two can never
                       disagree with what is on screen. */}
-                  <th className="px-4 py-2.5 w-[19%]">
+                  <th className="px-4 py-2.5 w-[15%]">
                     <ColumnHeaderMenu
                       label="Offering"
                       sortKey="name"
@@ -1438,7 +1523,7 @@ export function OfferingsBrowser({
                       onSort={applyColumnSort}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[14%]">
+                  <th className="px-4 py-2.5 w-[13%]">
                     <ColumnHeaderMenu
                       label="Owner"
                       sortKey="owner"
@@ -1457,7 +1542,7 @@ export function OfferingsBrowser({
                       ]}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[18%]">
+                  <th className="px-4 py-2.5 w-[19%]">
                     <ColumnHeaderMenu
                       label="Category"
                       sortKey="category"
@@ -1473,7 +1558,7 @@ export function OfferingsBrowser({
                       }))}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[14%]">
+                  <th className="px-4 py-2.5 w-[15%]">
                     <ColumnHeaderMenu
                       label="Type"
                       sortKey="type"
@@ -1507,7 +1592,7 @@ export function OfferingsBrowser({
                       ]}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[13%]">
+                  <th className="px-4 py-2.5 w-[16%]">
                     <ColumnHeaderMenu
                       label="Who it's for"
                       values={ctIds}
@@ -1534,6 +1619,17 @@ export function OfferingsBrowser({
               </thead>
               <tbody>
                 {sorted.map((o) => {
+                  /* A POP OF COLOUR ON THE LEFT EDGE (Saras, Aug 24: "if you
+                     choose pink for GRI, maybe we can have this much of the
+                     border just be pink — just some distinction here, very
+                     subtle, but it still brings a pop of colour and some
+                     visual aid to 'okay, this belongs to this category'").
+                     An inset shadow rather than a border-left: it paints
+                     inside the cell, so no column shifts by 3px and the
+                     header strip's cloned widths still line up. */
+                  const rowAccent = o.offering_category
+                    ? categoryColorByName[o.offering_category] || null
+                    : null;
                   const fams = Array.from(
                     new Set(o.customerTypes.map((c) => c.family as string))
                   );
@@ -1549,7 +1645,14 @@ export function OfferingsBrowser({
                       key={o.id}
                       className="border-b border-border-light last:border-0 align-middle hover:bg-[var(--surface)] transition-colors"
                     >
-                      <td className="px-4 py-3.5">
+                      <td
+                        className="px-4 py-3.5"
+                        style={
+                          rowAccent
+                            ? { boxShadow: `inset 3px 0 0 0 ${rowAccent}` }
+                            : undefined
+                        }
+                      >
                         {/* Just the name. The tile icon went with the rest of
                             them (Saras, Aug 21: "same thing — if we can, just
                             remove all the icons"). */}
@@ -1788,22 +1891,53 @@ export function OfferingsBrowser({
           ))}
         </div>
       ) : (
-        <div
-          key="tile-view"
-          /* THREE ACROSS ON A LAPTOP (Saras, on the Aug 24 call with Anir:
-             "when they keep the zoom level at 100%, they should see at least
-             three offerings in a row in the tile view — that's happening in
-             Chrome, but in Edge it's only showing two").
+        /* OWNED FIRST, UNOWNED AFTER — BY DEFAULT, NOT BY CHOICE (Anir, Aug 24:
+           "in the tile view, at the top, all the offerings which have assigned
+           offering owners will be visible under the heading 'Assigned Offering
+           Owners'. Those which don't have any offering owners assigned will be
+           displayed at the bottom under the group 'Unassigned'... just a
+           default grouping, so nothing else. It doesn't need to be part of any
+           filter or any sorting. If anybody is at the tile view, those are the
+           two groups that they should see.")
 
-             Nothing to do with the browser: the third column started at
-             xl (1280px), and Edge's window furniture plus this app's 260px
-             sidebar left her viewport just under it while Chrome's cleared
-             it. A 30px difference in chrome decided how many offerings a rep
-             could see. It starts at lg (1024px) now, which every laptop
-             clears at 100% zoom, and a fourth still arrives at 2xl. */
-          className="tab-panel grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch"
-        >
-          {sorted.map((o, i) => renderCard(o, i))}
+           An unowned offering is a gap in the catalogue, not a category of
+           product, and it was scattered through the grid where only a person
+           reading every card would notice it. Two headings turn the whole
+           backlog into one block you can see the size of. The heading only
+           appears when there is something on both sides: on a fully owned
+           catalogue, a lone "Assigned Offering Owners" heading over everything
+           says nothing. */
+        <div key="tile-view" className="tab-panel space-y-6">
+          {ownerGroups.map((g) => (
+            <div key={g.key}>
+              {ownerGroups.length > 1 && (
+                <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
+                  {g.key === "assigned" ? (
+                    <Crown size={12} strokeWidth={2.2} className="text-[color:#7C3AED]" />
+                  ) : (
+                    <CircleDashed size={12} strokeWidth={2.2} className="text-text-tertiary" />
+                  )}
+                  {g.label}
+                  <span className="text-text-tertiary/70 tnum">({g.items.length})</span>
+                </h2>
+              )}
+              {/* THREE ACROSS ON A LAPTOP (Saras, on the Aug 24 call with Anir:
+                  "when they keep the zoom level at 100%, they should see at
+                  least three offerings in a row in the tile view — that's
+                  happening in Chrome, but in Edge it's only showing two").
+
+                  Nothing to do with the browser: the third column started at
+                  xl (1280px), and Edge's window furniture plus this app's 260px
+                  sidebar left her viewport just under it while Chrome's cleared
+                  it. A 30px difference in chrome decided how many offerings a
+                  rep could see. It starts at lg (1024px) now, which every
+                  laptop clears at 100% zoom, and a fourth still arrives at
+                  2xl. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
+                {g.items.map((o, i) => renderCard(o, i))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

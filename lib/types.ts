@@ -61,6 +61,11 @@ export interface Customer {
   geography: string | null;
   enrichment_summary: string | null;
   created_at: string;
+  /** WHO PUT THIS ACCOUNT IN (Anir, Aug 23: "same thing for: Offering,
+   *  Opportunities, Customers, Team"). Optional and blank on everything that
+   *  predates the field — those accounts show their date alone rather than an
+   *  invented author. Distinct from `owner`, which is who works it now. */
+  created_by?: string | null;
   last_enriched_at: string;
   owner?: string | null;
   owner_user_id?: string | null;

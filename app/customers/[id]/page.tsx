@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
+import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
@@ -170,6 +171,12 @@ export default async function CustomerDetailPage({
               {customer.industry && <IndustryTag industry={customer.industry} />}
               <SizeBadge tier={customer.size_tier} />
             </div>
+            {/* When this account arrived, and who filed it (Anir, Aug 23). */}
+            <CreatedStamp
+              by={customer.created_by}
+              at={customer.created_at}
+              className="mt-1.5 text-[11.5px] text-text-tertiary"
+            />
           </div>
         </div>
         <div className="flex items-center gap-4">

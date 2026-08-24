@@ -1,4 +1,5 @@
 import {
+  Building2,
   Dna,
   FlaskConical,
   Pill,
@@ -33,8 +34,10 @@ import type { CustomerFamily } from "./offerings";
 
 export const CUSTOMER_FAMILY_ORDER: readonly CustomerFamily[] = [
   "Pharmaceutical",
+  "Pharmaceuticals",
   "Biologics",
   "Bio Pharmaceutical",
+  "Bio Pharmaceuticals",
   "Medical Devices",
   "Consumer Products",
 ];
@@ -43,9 +46,13 @@ export const CUSTOMER_FAMILY_META: Record<
   CustomerFamily,
   { color: string; icon: LucideIcon }
 > = {
+  // The singular and plural spellings of a family are the SAME family wearing
+  // the same colour and glyph — an admin adding an S must not repaint it.
   Pharmaceutical: { color: "#0071E3", icon: Pill },
+  Pharmaceuticals: { color: "#0071E3", icon: Pill },
   Biologics: { color: "#DB2777", icon: Dna },
   "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
+  "Bio Pharmaceuticals": { color: "#7C3AED", icon: FlaskConical },
   "Medical Devices": { color: "#0F766E", icon: Stethoscope },
   // Was #C2410C, a rust orange. A customer type is an identity, and warm
   // orange/amber is reserved for status in this app (Anir, Aug 14). Cyan is
@@ -54,14 +61,24 @@ export const CUSTOMER_FAMILY_META: Record<
   "Consumer Products": { color: "#0891B2", icon: ShoppingBag },
 };
 
-/** The family's colour. Falls back to Pharmaceutical's blue rather than gray:
- *  an unlisted family is a data problem to fix, not a reason to render a
- *  colourless chip. */
+/** The family's colour. Falls back to a stable hue picked from the name rather
+ *  than to gray, and rather than to Pharmaceutical's blue: an admin may rename
+ *  a family (Aug 24), and every renamed family collapsing onto the same blue
+ *  would make two different segments look like one. Same name in, same colour
+ *  out, forever. */
+const FAMILY_FALLBACK_HUES = ["#2563EB", "#DB2777", "#0D9488", "#7C3AED", "#0891B2", "#9E1A72"];
 export function customerFamilyColor(family: string): string {
-  return (
-    CUSTOMER_FAMILY_META[family as CustomerFamily]?.color ??
-    CUSTOMER_FAMILY_META.Pharmaceutical.color
-  );
+  const known = CUSTOMER_FAMILY_META[family as CustomerFamily]?.color;
+  if (known) return known;
+  let hash = 0;
+  for (let i = 0; i < family.length; i++) hash = (hash * 31 + family.charCodeAt(i)) >>> 0;
+  return FAMILY_FALLBACK_HUES[hash % FAMILY_FALLBACK_HUES.length];
+}
+
+/** The family's icon, with the same tolerance. A renamed family keeps a real
+ *  glyph instead of crashing on an undefined meta entry. */
+export function customerFamilyIcon(family: string): LucideIcon {
+  return CUSTOMER_FAMILY_META[family as CustomerFamily]?.icon ?? Building2;
 }
 
 /**

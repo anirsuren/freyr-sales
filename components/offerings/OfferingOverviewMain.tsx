@@ -56,7 +56,9 @@ function availabilityNotes(text: string): { label: string | null; body: string }
     });
 }
 
-function SectionHeading({
+/** Exported so the sections the page passes in through `beforeRelated`
+ *  (Target segments, Markets) wear the exact same heading, not a copy of it. */
+export function SectionHeading({
   icon: Icon,
   title,
   description,

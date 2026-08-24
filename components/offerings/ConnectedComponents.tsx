@@ -444,17 +444,33 @@ export function ConnectedComponents({
                     </span>
                     <FdlTypeChip type={component.type} />
                   </div>
-                  <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                    {current
-                      ? `Current version ${withV(current)}`
-                      : "No version recorded yet"}
-                    {" · "}
-                    {component.releases.length}{" "}
-                    {component.releases.length === 1 ? "version" : "versions"}
-                    {" · "}
-                    {component.features.length}{" "}
-                    {component.features.length === 1 ? "feature" : "features"}
-                  </p>
+                  {/* THE COUNTS LINE IS FOR PEOPLE WHO MAINTAIN COMPONENTS,
+                      NOT PEOPLE WHO SELL THEM (Saras, Aug 24: "within FDL
+                      Components, for a sales rep specifically, can you remove
+                      this entire row for each component — number of versions,
+                      number of features and so on? We can just have the name
+                      of the component, this Module part, and which version
+                      this offering powers").
+
+                      A rep in a customer conversation needs the version this
+                      offering is scoped to, which is the labelled field right
+                      below; "3 versions · 7 features" is inventory detail that
+                      lives on the component's own page. Owners and admins keep
+                      it, because for them it IS the state of the thing they
+                      maintain. */}
+                  {canEdit && (
+                    <p className="mt-1.5 text-[12.5px] text-text-secondary">
+                      {current
+                        ? `Current version ${withV(current)}`
+                        : "No version recorded yet"}
+                      {" · "}
+                      {component.releases.length}{" "}
+                      {component.releases.length === 1 ? "version" : "versions"}
+                      {" · "}
+                      {component.features.length}{" "}
+                      {component.features.length === 1 ? "feature" : "features"}
+                    </p>
+                  )}
                 </Link>
 
                 {/* WHICH VERSION THIS OFFERING SELLS. Naming the component was

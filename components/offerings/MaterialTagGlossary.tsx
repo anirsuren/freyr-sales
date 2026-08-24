@@ -106,7 +106,7 @@ export function MaterialTagGlossary({
         className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
       >
         <BookOpen size={13} strokeWidth={2.1} />
-        What do these tags mean?
+        What do these filters mean?
       </button>
 
       {open &&

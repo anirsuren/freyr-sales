@@ -17,10 +17,14 @@ import {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
-import { OfferingOverviewMain } from "@/components/offerings/OfferingOverviewMain";
+import {
+  OfferingOverviewMain,
+  SectionHeading,
+} from "@/components/offerings/OfferingOverviewMain";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -358,14 +362,24 @@ export default async function OfferingDetailPage({
 
       {/* Header: identity on the left, primary actions on the right */}
       <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-        <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
-          <OfferingIcon
-            name={o.offering_name}
-            category={o.offering_category}
-            className="w-11 h-11 shrink-0"
+        <div className="min-w-0">
+          <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
+            <OfferingIcon
+              name={o.offering_name}
+              category={o.offering_category}
+              className="w-11 h-11 shrink-0"
+            />
+            {o.offering_name}
+          </h1>
+          {/* Who filed it and when (Anir, Aug 23). Under the name, where a
+              provenance line belongs, and silent on the rows that predate the
+              field rather than guessing an author. */}
+          <CreatedStamp
+            by={o.created_by}
+            at={o.created_at}
+            className="mt-1.5 pl-14 text-[11.5px] text-text-tertiary"
           />
-          {o.offering_name}
-        </h1>
+        </div>
 
         {/* All actions on one line (Anir: single line to save space) —
             OfferingActions keeps its two + the admin buttons as `extra`. */}
@@ -596,104 +610,143 @@ export default async function OfferingDetailPage({
                width they were always drawn for. */
             beforeRelated={
               <>
-            {/* Target segments — customer types grouped by family */}
-      <SectionCard title="Target segments" icon={Building2}>
-        {o.customerTypes.length === 0 ? (
-          admin ? (
-            <Link
-              href={`/offerings/${o.id}/edit`}
-              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-            >
-              <Plus size={13} strokeWidth={2} /> Add customer types
-            </Link>
-          ) : (
-            <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-          )
-        ) : (
-          <div className="space-y-2.5">
-            {customerFamiliesPresent(o.customerTypes).map((fam) => {
-              const types = o.customerTypes.filter((c) => c.family === fam);
-              if (types.length === 0) return null; // hide families that don't apply
-              const famColor = familyStyle(fam);
-              return (
-                // Each family is its own tidy block with a colour accent, and
-                // the sizes sit side-by-side — not a tall left-aligned stack
-                // (Suren: "I don't like how they're all stacked on the left").
-                <div
-                  key={fam}
-                  className="rounded-xl border border-border-light bg-surface/30 p-3"
-                  style={{ borderLeft: `3px solid ${famColor}` }}
-                >
-                  <p
-                    className="text-[11px] font-semibold uppercase tracking-[0.05em] mb-2"
-                    style={{ color: famColor }}
-                  >
-                    {fam}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {types.map((c) => (
-                      <Tooltip
-                        key={c.id}
-                        label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
-                        side="top"
-                        align="left"
-                      >
+            {/* WHO IT IS FOR AND WHERE IT SELLS, SIDE BY SIDE, IN THE PAGE'S
+                OWN SECTION SHAPE (Saras, Aug 24: "can we keep the target
+                segment section and the market section the same format as these
+                sections — the headings — and have everything uniform? They're
+                currently in boxes, the ones above them are not, so just
+                standardise that. Can we put them side by side? ... there's a
+                lot of white space here, so cut this in half and put the
+                markets here").
+
+                They were the last two SectionCards on a page where every other
+                block is a bordered-bottom <section> with an icon heading, so
+                they read as a different page stapled onto the end of this one.
+                Markets is a short chip list that was spending a full-width row
+                on four flags; paired with the segments it fills the gap the
+                segments column leaves. */}
+            <section className="py-7 border-b border-border-light">
+              <div className="grid gap-8 lg:grid-cols-2">
+                <div>
+                  <SectionHeading
+                    icon={Building2}
+                    title="Target segments"
+                    description="The kinds of company this is sold to, and at what size."
+                  />
+                  <div className="mt-5 pl-11">
+                    {o.customerTypes.length === 0 ? (
+                      admin ? (
                         <Link
-                          href={`/offerings?type=${c.id}`}
-                          style={{
-                            background: sizeStyle(c.size).bg,
-                            color: sizeStyle(c.size).color,
-                          }}
-                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                          href={`/offerings/${o.id}/edit`}
+                          className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
                         >
-                          {(() => {
-                            const TierIcon = sizeStyle(c.size).icon;
-                            return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
-                          })()}
-                          {c.size}
+                          <Plus size={13} strokeWidth={2} /> Add customer types
                         </Link>
-                      </Tooltip>
-                    ))}
+                      ) : (
+                        <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+                      )
+                    ) : (
+                      <div className="space-y-2.5">
+                        {customerFamiliesPresent(o.customerTypes).map((fam) => {
+                          const types = o.customerTypes.filter((c) => c.family === fam);
+                          if (types.length === 0) return null; // hide families that don't apply
+                          return (
+                            /* THE FAMILY NAME IS BLACK AND THE EDGE IS PLAIN
+                               (Anir, Aug 24: "let's also remove the font
+                               colours of the segment headings, you can just
+                               keep them black — these five segment headings...
+                               even this box, you don't need to have this colour
+                               bifurcation here, this is on the very left. You
+                               can retain the colours of the sizes themselves:
+                               Small can still be blue, Mid size green, Large
+                               purple").
+
+                               Two colour dimensions in one small block meant
+                               the heading's hue and the chips' hues argued
+                               about which one you were meant to read. The size
+                               chips keep theirs because size is the fact being
+                               compared; the family is only the label above
+                               them. */
+                            <div
+                              key={fam}
+                              className="rounded-xl border border-border-light bg-surface/30 p-3"
+                            >
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-primary">
+                                {fam}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {types.map((c) => (
+                                  <Tooltip
+                                    key={c.id}
+                                    label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
+                                    side="top"
+                                    align="left"
+                                  >
+                                    <Link
+                                      href={`/offerings?type=${c.id}`}
+                                      style={{
+                                        background: sizeStyle(c.size).bg,
+                                        color: sizeStyle(c.size).color,
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                                    >
+                                      {(() => {
+                                        const TierIcon = sizeStyle(c.size).icon;
+                                        return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
+                                      })()}
+                                      {c.size}
+                                    </Link>
+                                  </Tooltip>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
 
-      {/* Markets */}
-      <SectionCard title={`Markets (${o.markets.length})`} icon={Globe}>
-        {o.markets.length === 0 ? (
-          admin ? (
-            <Link
-              href={`/offerings/${o.id}/edit`}
-              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-            >
-              <Plus size={13} strokeWidth={2} /> Add markets
-            </Link>
-          ) : (
-            <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-          )
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {o.markets.map((m) => {
-              const st = marketStyle(m.name);
-              return (
-                <Link
-                  key={m.id}
-                  href={`/offerings?market=${m.id}`}
-                  style={{ background: st.bg, color: st.color }}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
-                >
-                  <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
-                  {m.name}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
+                <div>
+                  <SectionHeading
+                    icon={Globe}
+                    title={`Markets (${o.markets.length})`}
+                    description="The regions this offering is cleared to sell into."
+                  />
+                  <div className="mt-5 pl-11">
+                    {o.markets.length === 0 ? (
+                      admin ? (
+                        <Link
+                          href={`/offerings/${o.id}/edit`}
+                          className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+                        >
+                          <Plus size={13} strokeWidth={2} /> Add markets
+                        </Link>
+                      ) : (
+                        <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+                      )
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {o.markets.map((m) => {
+                          const st = marketStyle(m.name);
+                          return (
+                            <Link
+                              key={m.id}
+                              href={`/offerings?market=${m.id}`}
+                              style={{ background: st.bg, color: st.color }}
+                              className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                            >
+                              <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
+                              {m.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
               </>
             }
           />

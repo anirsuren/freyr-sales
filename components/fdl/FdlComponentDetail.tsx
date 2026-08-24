@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
+import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
@@ -1586,6 +1587,15 @@ export function FdlComponentDetail({
             </button>
           )}
         </div>
+        {/* WHO ADDED THIS COMPONENT, AND WHEN (Anir, Aug 23: "I need to see who
+            created these FDL components, including the time"). Silent on the
+            components that predate the field — every one of them is older than
+            the record of who made it. */}
+        <CreatedStamp
+          by={component.created_by}
+          at={component.created_at}
+          className="mt-1.5 pl-[52px] text-[11.5px] text-text-tertiary"
+        />
         {/* THE OFFERING WEARS ITS OWN MARK, AND THE ACTION LOOKS LIKE ONE
             (Anir, Aug 9: "that part that says Freya.Register should be in a
             pill with the icon... the Add to an Offering button, I don't even
@@ -1989,8 +1999,8 @@ export function FdlComponentDetail({
                 onChange={setVersionsView}
                 tileValue="list"
                 tableValue="timeline"
-                tileLabel="List"
-                tableLabel="Timeline"
+                tileLabel="List view"
+                tableLabel="Timeline view"
                 tileIcon={Rows3}
                 tableIcon={GanttChartSquare}
               />

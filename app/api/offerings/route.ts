@@ -130,6 +130,14 @@ export async function POST(req: Request) {
     );
   }
   try {
+    /* WHO ADDED IT, recorded at the moment it is added (Anir, Aug 23: "I need
+       to see who created these... same thing for Offering, Opportunities,
+       Customers, Team"). The generic identity is not a person, so it records
+       nobody rather than a placeholder name. */
+    const author = await getCurrentUser().catch(() => null);
+    if (author && author.id !== GENERIC_USER_IDENTITY.id) {
+      body.created_by = author.name.trim() || undefined;
+    }
     const offering = await commitOfferingsChange(() => createOffering(body));
     const [visible] = await redactOfferingsForCurrentUser([
       redactUnverifiedOfferingPeople(offering, people),

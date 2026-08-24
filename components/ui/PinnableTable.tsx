@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pin } from "lucide-react";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * PIN THE HEADER SO IT IS STILL THERE HALFWAY DOWN (Anir, Aug 13: "for all of
- * these pages where there's a huge table, have the option to pin the table. It
- * should be like a button somewhere, and then it'll actually show up when I
- * scroll down and see everything").
+ * THE COLUMN HEADERS ARE ALWAYS THERE HALFWAY DOWN — NO BUTTON, NO CHOICE.
+ *
+ * This began as a pin you had to find and press (Anir, Aug 13: "for all of
+ * these pages where there's a huge table, have the option to pin the table").
+ * Aug 24 he watched himself use it and cut the control: "if I click on this,
+ * the header row is always visible — I think we can do that by default... there
+ * is no need for the pin, you can remove that." Nobody scrolls a 120-row table
+ * hoping the headers go away, so the setting only ever had one useful value.
  *
  * Why this is not four lines of CSS: every wide table in this app lives inside
  * `overflow-x-auto` so it can scroll sideways on a narrow window. In CSS, a
@@ -26,197 +28,40 @@ import { cn } from "@/lib/utils";
  * the real markup, so it cannot drift from the columns beneath it, and it
  * disappears the moment the table itself does.
  *
- * THE CONTROL LIVES ON THE TABLE ITSELF, NOT IN THE TOOLBAR. It moved twice:
- * first a labelled row of its own (cost a line on five pages), then an icon in
- * the toolbar (its appearing and disappearing shoved the neighboring controls
- * around — Anir, Aug 13: "I don't like how you're moving the rest of that
- * row... move that pin icon somewhere else"). Now PinnableTable renders its
- * own small corner control over the header's right edge, and a twin inside
- * the floating strip so pinning can be undone from anywhere. Toolbars never
- * shift again.
- *
- * The button and the table are far apart in the tree, so the choice lives in a
- * tiny store keyed by table id rather than being passed down through pages.
- * It is remembered, so pinning is a decision made once.
+ * THE SIDEWAYS SCROLLBAR GETS THE SAME TREATMENT. A wide table's horizontal
+ * bar lives at the BOTTOM of the table, so on a 120-row table you had to scroll
+ * to the end of the page before you could scroll sideways (Anir, Aug 24: "if I
+ * have to scroll left to right, I first have to scroll all the way down"). The
+ * same clone trick answers it: a thin proxy bar fixed to the bottom of the
+ * window, its scrollLeft wired to the real scroller in both directions, shown
+ * only while the table both overflows sideways and runs off the bottom.
  */
 
-const STORE_PREFIX = "freyr.pinnedTable.";
-
-const pinnedById = new Map<string, boolean>();
-const listeners = new Map<string, Set<() => void>>();
-
-function readStored(id: string): boolean {
-  try {
-    return localStorage.getItem(STORE_PREFIX + id) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function subscribe(id: string, fn: () => void): () => void {
-  const set = listeners.get(id) ?? new Set();
-  set.add(fn);
-  listeners.set(id, set);
-  return () => set.delete(fn);
-}
-
-function setPinned(id: string, next: boolean) {
-  pinnedById.set(id, next);
-  try {
-    localStorage.setItem(STORE_PREFIX + id, next ? "1" : "0");
-  } catch {
-    // A blocked localStorage only costs the memory of the choice.
-  }
-  listeners.get(id)?.forEach((fn) => fn());
+/**
+ * The floating strip is measured from live DOM rects, so it can only be built
+ * on the client. The server renders the plain table and the effects take over
+ * after mount — the same reason this was hydration-safe when it was a stored
+ * preference.
+ */
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
 }
 
 /**
- * The server always renders "not pinned" and the client corrects it after
- * mount — localStorage does not exist during the server render, and disagreeing
- * about the first paint is a hydration error.
+ * KEPT AS A NO-OP ON PURPOSE. Two pages render this on their "Showing N of N"
+ * line; the headers now stay put with no control at all (Anir, Aug 24: "there
+ * is no need for the pin, you can remove that"), so the button renders nothing
+ * rather than the callers each growing a conditional.
  */
-function usePinned(id: string): boolean {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    if (!pinnedById.has(id)) pinnedById.set(id, readStored(id));
-    setHydrated(true);
-    listeners.get(id)?.forEach((fn) => fn());
-  }, [id]);
-  const value = useSyncExternalStore(
-    useCallback((fn) => subscribe(id, fn), [id]),
-    () => pinnedById.get(id) ?? false,
-    () => false
-  );
-  return hydrated ? value : false;
-}
-
-/** The pin, in the table's top-right corner. The absolute position lives on an
- *  OUTER span: Tooltip wraps its child in a positioned span of its own, and an
- *  absolute button inside that anchors to the tooltip's tiny box, not the table.
- *
- *  THE CORNER IS THE FALLBACK NOW, NOT THE ANSWER. It clips the tail of the
- *  longest last-column label ("TREND" reads as "TREN") and padding the last
- *  <th> does not fix it: these tables are `w-full` with the last column already
- *  squeezed to its own text, so a 44px gutter only makes the label overflow its
- *  padding box. Measured, not assumed: the label ended at x=1464 with the pin at
- *  x=1445, before and after.
- *
- *  Two placements I invented were both worse. Below the table it sat 3084px down
- *  the Team page, 2244px from the header it controls. In its own strip above the
- *  table it read as a stray floating button.
- *
- *  Anir's placement is the one that works, because it lands on a line that
- *  already exists instead of inventing one: the "Showing N of N" count line,
- *  right-aligned (Aug 14: "move the pin logo to the right, on the same line as
- *  the 31 offerings... the pin is always going to cover that last column, so
- *  it's never going to be visible"). Pages that have that line render
- *  <PinTableButton compact/> there and pass showCornerPin={false}. Pages that
- *  do not still get the corner, which is why this stays.
- *
- *  The floating header keeps its own pin either way. Once the page has scrolled
- *  far enough for the strip to appear, the count line is long gone, and that pin
- *  is the only way left to unpin. */
-function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
-  const pinned = usePinned(id);
-  return (
-    <span
-      className={cn(
-        "absolute z-20",
-        floating ? "right-2 top-1/2 -translate-y-1/2" : "right-1.5 top-1.5"
-      )}
-    >
-      <Tooltip label={pinned ? "Unpin the column headers" : "Keep the column headers visible while you scroll"}>
-        <button
-          type="button"
-          aria-label={pinned ? "Unpin the column headers" : "Pin the column headers"}
-          aria-pressed={pinned}
-          onClick={() => setPinned(id, !pinned)}
-          /**
-           * THE PIN SITS ON TOP OF A COLUMN HEADER, SO IT DOES NOT WEAR A
-           * BACKGROUND UNTIL YOU REACH FOR IT.
-           *
-           * It is absolutely positioned in the table's corner, which means it
-           * always covers whatever the last column is called — and it was a
-           * filled chip: blue once pinned, a white blob before that. Scrolled
-           * far enough for the floating strip, it obscured that header
-           * outright (Anir, Aug 14, with a screenshot: "that pin icon should
-           * be completely transparent... when my mouse hovers over it, then
-           * it can turn properly").
-           *
-           * So the chip is a hover state now. At rest there is only the glyph,
-           * dimmed enough to sit over a header without competing with it and
-           * solid enough to still be findable. Pinned-ness is carried by the
-           * icon itself — filled and blue — not by a plate behind it, so the
-           * state stays readable with nothing covered.
-           */
-          className={cn(
-            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-transparent transition-all",
-            "hover:border-border-light hover:bg-white hover:text-blue-primary hover:shadow-sm",
-            "focus-visible:border-border-light focus-visible:bg-white focus-visible:text-blue-primary",
-            pinned
-              ? "text-blue-primary opacity-90"
-              : "text-text-tertiary opacity-55 hover:opacity-100"
-          )}
-        >
-          <Pin size={13} strokeWidth={2} className={cn(pinned && "fill-current")} />
-        </button>
-      </Tooltip>
-    </span>
-  );
-}
-
-export function PinTableButton({
-  id,
-  className,
-  label = "header",
-  compact,
-}: {
+export function PinTableButton(_props: {
   id: string;
   className?: string;
   label?: string;
-  /** Sits on a text line rather than in a toolbar, so it matches the row's
-   *  height instead of setting it. Used by the "Showing N of N" lines. */
   compact?: boolean;
 }) {
-  const pinned = usePinned(id);
-  return (
-    <div
-      className={cn(
-        "inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white",
-        className
-      )}
-    >
-      <Tooltip
-        label={
-          pinned
-            ? `Let the ${label} scroll away again`
-            : `Keep the ${label} on screen while you scroll`
-        }
-      >
-        <button
-          type="button"
-          onClick={() => setPinned(id, !pinned)}
-          aria-label={
-            pinned ? `Unpin the ${label}` : `Pin the ${label} to the top`
-          }
-          aria-pressed={pinned}
-          className={cn(
-            "flex cursor-pointer items-center justify-center transition-colors",
-            compact ? "h-7 w-7" : "h-9 w-9",
-            pinned
-              ? "bg-blue-light text-blue-primary"
-              : "text-text-secondary hover:bg-surface hover:text-text-primary"
-          )}
-        >
-          <Pin
-            size={compact ? 13 : 15}
-            strokeWidth={1.9}
-            className={pinned ? "rotate-45" : undefined}
-          />
-        </button>
-      </Tooltip>
-    </div>
-  );
+  return null;
 }
 
 export function PinnableTable({
@@ -230,13 +75,18 @@ export function PinnableTable({
   children: React.ReactNode;
   className?: string;
   wrapperClassName?: string;
-  /** Pass false when the page puts a <PinTableButton> on its count line, so
-   *  the corner pin stops sitting on top of the last column header. */
+  /** Vestigial: the corner pin is gone. Callers still pass it. */
   showCornerPin?: boolean;
 }) {
-  const pinned = usePinned(id);
+  const pinned = useMounted();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const floatRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const [rail, setRail] = useState<{
+    left: number;
+    width: number;
+    inner: number;
+  } | null>(null);
   const [floating, setFloating] = useState<{
     top: number;
     left: number;
@@ -361,9 +211,81 @@ export function PinnableTable({
     };
   }, [floating]);
 
+  // ---- the sideways scrollbar, brought up to the bottom of the window.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const measure = () => {
+      const rect = scroller.getBoundingClientRect();
+      const overflows = scroller.scrollWidth - scroller.clientWidth > 4;
+      // Only worth showing while the table runs PAST the bottom of the window:
+      // if its own bar is already on screen, a second one is noise.
+      const runsOffTheBottom = rect.bottom > window.innerHeight - 4;
+      const onScreen = rect.top < window.innerHeight && rect.bottom > 0;
+      setRail((prev) => {
+        if (!(overflows && runsOffTheBottom && onScreen)) {
+          return prev === null ? prev : null;
+        }
+        const next = {
+          left: rect.left,
+          width: rect.width,
+          inner: scroller.scrollWidth,
+        };
+        return prev &&
+          prev.left === next.left &&
+          prev.width === next.width &&
+          prev.inner === next.inner
+          ? prev
+          : next;
+      });
+    };
+
+    measure();
+    const page = document.getElementById("main-content");
+    page?.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    return () => {
+      page?.removeEventListener("scroll", measure);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, []);
+
+  // Two-way sync: dragging the proxy scrolls the table, and scrolling the table
+  // (or the floating header strip) moves the proxy back.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const proxy = railRef.current;
+    if (!scroller || !proxy || !rail) return;
+    let lock = false;
+    const fromProxy = () => {
+      if (lock) return;
+      lock = true;
+      scroller.scrollLeft = proxy.scrollLeft;
+      lock = false;
+    };
+    const fromTable = () => {
+      if (lock) return;
+      lock = true;
+      proxy.scrollLeft = scroller.scrollLeft;
+      lock = false;
+    };
+    proxy.scrollLeft = scroller.scrollLeft;
+    proxy.addEventListener("scroll", fromProxy, { passive: true });
+    scroller.addEventListener("scroll", fromTable, { passive: true });
+    return () => {
+      proxy.removeEventListener("scroll", fromProxy);
+      scroller.removeEventListener("scroll", fromTable);
+    };
+  }, [rail]);
+
   return (
     <div className={cn("relative", className)}>
-      {showCornerPin && <PinCorner id={id} />}
       <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
         {children}
       </div>
@@ -389,20 +311,25 @@ export function PinnableTable({
                 width: floating.width,
               }}
             />
-            <div
-              className="fixed z-40"
-              style={{
-                top: floating.top,
-                left: floating.left,
-                width: floating.width,
-                height: 0,
-              }}
-            >
-              <div className="relative h-10">
-                <PinCorner id={id} floating />
-              </div>
-            </div>
           </>,
+          document.body
+        )}
+
+      {/* THE SIDEWAYS BAR, AT THE BOTTOM OF THE WINDOW INSTEAD OF THE BOTTOM
+          OF THE TABLE. Portalled for the same reason as the header strip: the
+          animated `.tab-panel` ancestor would otherwise become the containing
+          block for `position: fixed`. */}
+      {rail &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={railRef}
+            aria-hidden="true"
+            className="freyr-rail fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden border-t border-border-light bg-white/95 backdrop-blur-sm"
+            style={{ left: rail.left, width: rail.width, height: 14 }}
+          >
+            <div style={{ width: rail.inner, height: 1 }} />
+          </div>,
           document.body
         )}
     </div>

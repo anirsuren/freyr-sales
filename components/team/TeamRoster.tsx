@@ -29,6 +29,7 @@ import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { PinnableTable } from "@/components/ui/PinnableTable";
+import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -76,6 +77,12 @@ export type RosterRep = {
    * plausible time for somebody who does not exist.
    */
   lastSeenAt?: string | null;
+  /** WHEN THEY JOINED THE WORKSPACE (Anir, Aug 23: "same thing for: Offering,
+   *  Opportunities, Customers, Team"). Real workspace members carry the date
+   *  their membership row was created; the synthetic roster carries null and
+   *  simply says nothing, rather than inventing a start date for somebody who
+   *  does not exist. */
+  joinedAt?: string | null;
 };
 
 // The rep's biggest open deals across every stage — for the row-hover "Top open
@@ -656,6 +663,11 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <p className="text-[12px] text-text-secondary truncate">
                           {r.title}
                         </p>
+                        <CreatedStamp
+                          verb="Joined"
+                          at={r.joinedAt}
+                          className="mt-0.5 text-[11px] text-text-tertiary"
+                        />
                       </div>
                       <span className="relative z-10 flex shrink-0 items-center gap-1.5">
                         <TeamsButton url={r.teamsUrl} name={r.name} />
@@ -965,6 +977,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                 className="whitespace-nowrap text-[12px] text-text-secondary"
                               />
                             ) : null}
+                            {/* WHEN THEY JOINED (Anir, Aug 23: "same thing
+                                for: Offering, Opportunities, Customers, Team
+                                — when they joined"). On the name cell, under
+                                the region, in both views: the table is the
+                                default one, so putting it only on the tile
+                                would have shipped it where nobody looks.
+                                Silent for the synthetic roster, which has no
+                                real join date to report. */}
+                            <CreatedStamp
+                              verb="Joined"
+                              at={r.joinedAt}
+                              className="block whitespace-nowrap text-[11px] text-text-tertiary"
+                            />
                           </span>
                         </span>
                     </td>

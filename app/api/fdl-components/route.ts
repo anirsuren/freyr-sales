@@ -7,6 +7,7 @@ import {
   type FdlComponentType,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,9 @@ export async function POST(req: Request) {
     );
   }
   await initializeLiveOfferings().catch(() => undefined);
+  const me = await getCurrentUser().catch(() => null);
   const component = await commitOfferingsChange(() =>
-    createFdlComponent({ name, type })
+    createFdlComponent({ name, type, createdBy: me?.name || undefined })
   );
   return NextResponse.json({ component });
 }

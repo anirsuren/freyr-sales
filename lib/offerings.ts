@@ -35,10 +35,21 @@ export {
   type OfferingMaterial,
 } from "./offeringMaterials";
 
+/**
+ * The five customer families. BOTH SPELLINGS OF THE TWO PLURALISED ONES ARE
+ * LISTED (Anir, Aug 24: "make this Pharmaceuticals and make this Bio
+ * Pharmaceuticals, so add an S here"). The stored rows carry whichever an
+ * admin last saved, and the colour/icon/order tables key off this union, so
+ * dropping the singular spellings would repaint a family the moment the S was
+ * added and repaint it back if anyone undid it. Aliases cost two lines and
+ * make the rename a pure data change.
+ */
 export type CustomerFamily =
   | "Pharmaceutical"
+  | "Pharmaceuticals"
   | "Biologics"
   | "Bio Pharmaceutical"
+  | "Bio Pharmaceuticals"
   | "Medical Devices"
   | "Consumer Products";
 export type CustomerSize = "Small" | "Mid size" | "Large";
@@ -161,6 +172,15 @@ export interface Offering {
    *  they are display only and are never consulted for access. */
   owners: OfferingOwner[];
   created_at: string;
+  /** WHO PUT THIS IN THE CATALOGUE (Anir, Aug 23: "I need to see who created
+   *  these FDL components, including the time. Same thing for: Offering,
+   *  Opportunities, Customers, Team").
+   *
+   *  Optional, and left EMPTY on everything that predates the field. There is
+   *  no honest way to name the author of a row created before anyone was
+   *  recorded, and inventing one would put a real person's name against work
+   *  they may not have done. Those rows show their date alone. */
+  created_by?: string;
 }
 
 /** One person to talk to about an offering. Freyr-internal: the SME or service
@@ -241,6 +261,12 @@ export interface FdlComponent {
   features: FdlFeature[];
   /** Every change ever made to this component's releases, newest first. */
   roadmap_versions?: RoadmapVersion[];
+  /** WHEN AND BY WHOM THIS COMPONENT WAS ADDED (Anir, Aug 23: "I need to see
+   *  who created these FDL components, including the time"). Both optional and
+   *  both blank on the components that predate the field — a component with no
+   *  recorded author shows nothing rather than a guess. */
+  created_at?: string;
+  created_by?: string;
 }
 
 export interface OfferingRoadmapModuleRow {
@@ -2573,6 +2599,53 @@ export function updateCustomerType(
   return activeStore().customerTypes[i];
 }
 
+/**
+ * RENAME A WHOLE CUSTOMER FAMILY (Anir, Aug 24: "in admin access, when I go to
+ * customer types, we can edit the individual types of customers within the
+ * heading, but we can't edit the heading name itself. Can you make this
+ * editable as well, only for admins? Say if I want to change the name of
+ * Medical Devices to something else, I can just edit it from here and the name
+ * of the customer type will change").
+ *
+ * SAFE BY CONSTRUCTION, the same way renameMarket is: offerings reference
+ * customer types by `customer_type_ids`, never by family name, so nothing can
+ * be orphaned by a rename. Every row in the family moves together and its
+ * derived display name ("<family> - <size>") is recomputed, because family and
+ * size ARE the identity of a customer type and the name is only their echo.
+ *
+ * Refuses a merge. Renaming "Medical Devices" onto "Biologics" would silently
+ * fuse two families whose rows would then collide on family+size — the exact
+ * duplicate createCustomerType already refuses to make.
+ */
+export function renameCustomerFamily(
+  from: string,
+  to: string
+): { renamed: CustomerType[]; error?: string } {
+  const next = to.trim();
+  const previous = from.trim();
+  if (!next) return { renamed: [], error: "A name is required." };
+  if (next === previous) return { renamed: [] };
+  const store = activeStore();
+  const rows = store.customerTypes.filter((c) => c.family === previous);
+  if (rows.length === 0) return { renamed: [], error: `${previous} not found.` };
+  const clash = store.customerTypes.some(
+    (c) => c.family !== previous && c.family.toLowerCase() === next.toLowerCase()
+  );
+  if (clash)
+    return {
+      renamed: [],
+      error: `${next} already exists. Pick a different name.`,
+    };
+  const renamed: CustomerType[] = [];
+  for (const row of store.customerTypes) {
+    if (row.family !== previous) continue;
+    row.family = next as CustomerFamily;
+    row.name = `${next} - ${row.size}`;
+    renamed.push(row);
+  }
+  return { renamed };
+}
+
 export function listMarkets(): Market[] {
   return [...activeStore().markets];
 }
@@ -2973,6 +3046,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     releases: data.releases || [],
     roadmap_details: data.roadmap_details,
     created_at: new Date().toISOString(),
+    created_by: data.created_by || undefined,
   };
   ensureOfferingType(record.offering_type);
   ensureOfferingCategory(record.offering_category);
@@ -3149,6 +3223,9 @@ export function getFdlComponent(id: string): FdlComponent | null {
 export function createFdlComponent(data: {
   name: string;
   type: FdlComponentType;
+  /** Who added it, from the session. Recorded so the component can say who
+   *  put it there and when (Anir, Aug 23). */
+  createdBy?: string;
 }): FdlComponent {
   const component: FdlComponent = {
     id: `fdl-${Math.random().toString(36).slice(2, 9)}`,
@@ -3156,6 +3233,8 @@ export function createFdlComponent(data: {
     type: data.type,
     releases: [],
     features: [],
+    created_at: new Date().toISOString(),
+    created_by: data.createdBy || undefined,
   };
   fdlList().unshift(component);
   return component;

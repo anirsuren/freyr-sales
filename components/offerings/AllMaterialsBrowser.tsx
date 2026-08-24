@@ -21,6 +21,8 @@ import {
   openMaterial,
 } from "@/components/offerings/materialActions";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { PinnableTable } from "@/components/ui/PinnableTable";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -28,6 +30,8 @@ import {
   JOURNEY_STAGE_META,
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
+  DIVISION_META,
+  materialDivisions,
   canonicalMaterialFolder,
   materialFileTypeLabel,
   materialFormat,
@@ -290,16 +294,37 @@ export function AllMaterialsBrowser({
         {anyFilter ? " · filters applied" : ""}
       </p>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-border-light bg-white">
-        <table className="w-full min-w-[900px] table-fixed border-collapse text-[13px]">
+      {/* SAME TABLE BEHAVIOUR AS EVERY OTHER WIDE TABLE (Anir, Aug 24): the
+          column headers stay put while you scroll, and the sideways scrollbar
+          comes to the bottom of the window instead of living 40 rows down. */}
+      <PinnableTable
+        id="all-materials"
+        className="mt-4 rounded-xl border border-border-light bg-white"
+      >
+        <table className="w-full min-w-[1180px] table-fixed border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-              <th className="w-[28%] px-4 py-2.5">Material</th>
-              <th className="w-[18%] px-4 py-2.5">Offering</th>
-              <th className="w-[16%] px-4 py-2.5">Folder</th>
-              <th className="w-[16%] px-4 py-2.5">Stage</th>
-              <th className="w-[13%] px-4 py-2.5">Who can view</th>
-              <th className="w-[9%] px-4 py-2.5 text-center">Open</th>
+              {/* THE SAME COLUMNS AS THE OFFERING'S OWN TAB, PLUS THE TWO
+                  THIS PAGE ADDS (Saras, Aug 24: "we already have those columns
+                  within the offering pages — it's only if you try to access
+                  sales materials through the sidebar that those columns are
+                  missing. Just add the owner column and the file format
+                  column... file format, owner, and division").
+
+                  Two doors onto the same files must not describe them
+                  differently: a rep who learns the table on one page should
+                  read the other without relearning it. Offering and Folder are
+                  the two this page adds, because here a file has to say which
+                  offering it belongs to. */}
+              <th className="w-[22%] px-4 py-2.5">Material</th>
+              <th className="w-[10%] px-4 py-2.5">File format</th>
+              <th className="w-[14%] px-4 py-2.5">Offering</th>
+              <th className="w-[11%] px-4 py-2.5">Folder</th>
+              <th className="w-[12%] px-4 py-2.5">Stage</th>
+              <th className="w-[11%] px-4 py-2.5">Who can view</th>
+              <th className="w-[8%] px-4 py-2.5">Division</th>
+              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
+              <th className="w-[7%] px-4 py-2.5 text-center">Open</th>
             </tr>
           </thead>
           <tbody>
@@ -353,55 +378,20 @@ export function AllMaterialsBrowser({
                         />
                       </button>
                     </MaterialPeek>
-                    {/* WHAT KIND OF THING THIS IS, UNDER ITS NAME (Anir,
-                        Aug 23: "before you were showing me if it was a link,
-                        PDF, DOCX, PPTX etc. or the broad type — bring it back,
-                        right below the name").
-
-                        Two facts, one line, in the order you ask them: the
-                        broad format — one of the four an owner can upload —
-                        then the actual file behind it. "Presentation · PPTX"
-                        answers both "can I show this?" and "can I attach it?",
-                        which the format alone never did.
-
-                        LINK is the honest answer for a hosted page with no
-                        file behind it, never a guessed extension: an invented
-                        "MP4" would send a rep off to attach a file that does
-                        not exist. Those rows say where they actually go. */}
-                    {(() => {
-                      const format = MATERIAL_FORMAT_META[materialFormat(row.material.kind)];
-                      const FormatIcon = format.icon;
-                      const fileType = materialFileTypeLabel(row.material);
-                      const host = fileType === "LINK" ? materialLinkHost(row.material) : null;
-                      return (
-                        <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold text-text-tertiary">
-                          <FormatIcon
-                            size={11}
-                            strokeWidth={2.3}
-                            aria-hidden="true"
-                            className="shrink-0"
-                            style={{ color: format.color }}
-                          />
-                          <span style={{ color: format.color }}>{format.label}</span>
-                          <span aria-hidden="true" className="text-border-light">·</span>
-                          <span
-                            className="tracking-[0.04em]"
-                            title={
-                              fileType === "LINK"
-                                ? `Opens on ${host ?? "another site"} — a hosted link, not an uploaded file`
-                                : `${fileType} file`
-                            }
-                          >
-                            {fileType}
-                          </span>
-                        </span>
-                      );
-                    })()}
                     {row.material.description && (
                       <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
                         {row.material.description}
                       </p>
                     )}
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    {/* Plain text, no pill, no icon, no extension — the same
+                        cut the offering's own table took the same day (Anir,
+                        Aug 24: "we don't need the MP4 part, knowing that it's
+                        a video is enough"). */}
+                    <span className="block text-[12.5px] text-text-primary">
+                      {MATERIAL_FORMAT_META[materialFormat(row.material.kind)].label}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <Link
@@ -442,6 +432,45 @@ export function AllMaterialsBrowser({
                         {rowStages
                           .map((stage) => JOURNEY_STAGE_META[stage as JourneyStage].label)
                           .join(" · ")}
+                      </span>
+                    ) : (
+                      <span className="text-text-tertiary">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {/* Division keeps its pills: it is a three-letter code, and
+                        MPR / MDV / CON mean nothing at a glance without the
+                        colour and icon that name them. */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {materialDivisions(row.material).length ? (
+                        materialDivisions(row.material).map((d) => {
+                          const meta = DIVISION_META[d];
+                          return (
+                            <span
+                              key={d}
+                              title={meta.label}
+                              className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{ color: meta.color, background: `${meta.color}14` }}
+                            >
+                              {meta.short}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <span className="text-text-tertiary">-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.material.addedBy ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar
+                          name={row.material.addedBy}
+                          className="h-6 w-6 shrink-0 text-[8px]"
+                        />
+                        <span className="min-w-0 break-words text-[12px] text-text-primary">
+                          {row.material.addedBy}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-text-tertiary">-</span>
@@ -513,7 +542,7 @@ export function AllMaterialsBrowser({
             Nothing matches those filters.
           </p>
         )}
-      </div>
+      </PinnableTable>
     </div>
   );
 }

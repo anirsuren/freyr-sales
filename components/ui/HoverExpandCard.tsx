@@ -20,6 +20,7 @@ export function HoverExpandCard({
   href,
   className,
   stretchSummary = false,
+  accent,
 }: {
   summary: ReactNode;
   extra: ReactNode;
@@ -32,6 +33,12 @@ export function HoverExpandCard({
    *  agent like that… it's only one line instead of two. JUST ADD A LINE").
    *  Opt-in, so every other card in the app keeps its exact current layout. */
   stretchSummary?: boolean;
+  /** Paint the card's edge in a caller-chosen colour — the offerings tile uses
+   *  its category's colour so a row of cards is sorted by eye before it is read
+   *  (Saras, Aug 24: "the borders of the box and this line can be the same
+   *  colour as the font"). Inline, so it wins over the hover border class and
+   *  the card keeps its identity while it is expanded. */
+  accent?: string | null;
 }) {
   const summaryRef = useRef<HTMLDivElement>(null);
   const [summaryHeight, setSummaryHeight] = useState(56);
@@ -59,6 +66,8 @@ export function HoverExpandCard({
     // animation when I click"). 0.97 matches the app-wide button press.
     "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75"
   );
+
+  const accentStyle = accent ? ({ borderColor: accent } as CSSProperties) : undefined;
 
   const body = (
     <>
@@ -94,11 +103,13 @@ export function HoverExpandCard({
       {/* The real, visible card comes FIRST in DOM so any `.first()` selector
           (and screen-reader focus) lands on it, not the hidden clone below. */}
       {href ? (
-        <Link href={href} className={cardCls}>
+        <Link href={href} className={cardCls} style={accentStyle}>
           {body}
         </Link>
       ) : (
-        <div className={cardCls}>{body}</div>
+        <div className={cardCls} style={accentStyle}>
+          {body}
+        </div>
       )}
       {/* Reserve only measured space, not an invisible copy of the content.
           The old clone made every label appear twice to search, tests and

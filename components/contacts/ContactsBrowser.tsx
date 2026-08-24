@@ -236,7 +236,7 @@ export function ContactsBrowser({
             onChange={setLayout}
             tileValue="grid"
             tableValue="list"
-            tableLabel="List"
+            tableLabel="List view"
           />
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select contacts"}>
             <button

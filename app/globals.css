@@ -1821,3 +1821,32 @@ input {
     ),
     var(--fill, var(--entry-verified));
 }
+
+/* THE SIDEWAYS SCROLLBAR THAT COMES TO YOU (Anir, Aug 24: "these have the
+   scroll bar available to me, but if I have to scroll left to right, I first
+   have to scroll all the way down"). PinnableTable pins a thin proxy bar to the
+   bottom of the window and wires its scrollLeft to the real table's. It is only
+   useful if the bar itself is VISIBLE at rest — macOS hides overlay scrollbars
+   until you scroll, which would make the strip look like an empty grey band —
+   so this one is drawn explicitly on both platforms. */
+.freyr-rail {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-tertiary) transparent;
+}
+.freyr-rail::-webkit-scrollbar {
+  height: 10px;
+  -webkit-appearance: none;
+}
+.freyr-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+.freyr-rail::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+.freyr-rail::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-secondary) 75%, transparent);
+  background-clip: content-box;
+}

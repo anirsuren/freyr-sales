@@ -21,7 +21,13 @@ import type {
   CustomerSize,
 } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
-import { CUSTOMER_FAMILY_META } from "@/lib/customerFamilies";
+import { Tooltip } from "@/components/ui/Tooltip";
+import {
+  CUSTOMER_FAMILY_META,
+  customerFamiliesPresent,
+  customerFamilyColor,
+  customerFamilyIcon,
+} from "@/lib/customerFamilies";
 import { flagForGeography } from "@/lib/countryFlags";
 
 const FIELD =
@@ -76,6 +82,8 @@ export function CustomerTypesManager({
   const [busy, setBusy] = useState(false);
 
   const [family, setFamily] = useState<CustomerFamily>("Pharmaceutical");
+  const [editingFamily, setEditingFamily] = useState<string | null>(null);
+  const [familyDraft, setFamilyDraft] = useState("");
   const [size, setSize] = useState<CustomerSize>("Small");
   const [productType, setProductType] = useState("");
   const [revenue, setRevenue] = useState("");
@@ -130,6 +138,33 @@ export function CustomerTypesManager({
       }
     } catch {
       toast("Couldn't save the customer type.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Renaming the family heading. Admin only, same gate as editing one of the
+   *  definitions under it (Anir, Aug 24: "the change is for everyone, but the
+   *  access to edit this is only with admins"). */
+  async function saveFamilyName() {
+    if (!editingFamily || !familyDraft.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/customer-types/family", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ family: editingFamily, name: familyDraft }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`Renamed to ${data.name}.`);
+        setEditingFamily(null);
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't rename the customer type.", "error");
+      }
+    } catch {
+      toast("Couldn't rename the customer type.", "error");
     } finally {
       setBusy(false);
     }
@@ -245,15 +280,20 @@ export function CustomerTypesManager({
   // revenue / employees / focus vary by size) — far more scannable than a flat,
   // repetitive table.
   const sizeOrder: Record<string, number> = { Small: 0, "Mid size": 1, Large: 2 };
-  const groups = FAMILIES.map((fam) => ({
+  /* GROUPED BY WHAT IS STORED, ORDERED BY THE CANONICAL LIST. This used to
+     map over FAMILIES and filter, which silently dropped any family whose name
+     was not one of the five literals — fine while the names were frozen,
+     wrong the moment an admin can rename one. `customerFamiliesPresent` keeps
+     the known five in their canonical order and puts anything else at the end
+     rather than in an "Other" bucket, so a family does not appear to vanish
+     the instant it is renamed. */
+  const groups = customerFamiliesPresent(customerTypes).map((fam) => ({
     fam,
     types: customerTypes
       .filter((c) => c.family === fam)
       .sort((a, b) => (sizeOrder[a.size] ?? 9) - (sizeOrder[b.size] ?? 9)),
   })).filter((g) => g.types.length > 0);
-  const otherTypes = customerTypes.filter(
-    (c) => !FAMILIES.includes(c.family as CustomerFamily)
-  );
+  const otherTypes: CustomerType[] = [];
 
   // Every family+size pair is seeded, so the form usually refines an existing
   // definition rather than adding a new one — reflect that in the button/hint so
@@ -488,19 +528,76 @@ export function CustomerTypesManager({
 
       {/* Definitions, grouped by family */}
       {groups.map(({ fam, types }) => {
-        const fm = FAMILY_META[fam];
-        const FIcon = fm.icon;
+        /* Tolerant lookups: once a family can be renamed, the meta table is a
+           table of DEFAULTS, not an exhaustive index. */
+        const famColor = customerFamilyColor(fam);
+        const FIcon = customerFamilyIcon(fam);
         return (
         <Card key={fam} className="p-0 overflow-hidden">
           <div className="p-4 border-b border-border-light flex items-start gap-3">
             <span
               className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: `${fm.color}14`, color: fm.color }}
+              style={{ background: `${famColor}14`, color: famColor }}
             >
               <FIcon size={17} strokeWidth={1.8} />
             </span>
-            <div className="min-w-0">
-              <h3 className="text-[15px] font-semibold text-text-primary">{fam}</h3>
+            <div className="min-w-0 flex-1">
+              {/* THE HEADING IS EDITABLE TOO (Anir, Aug 24: "we can edit the
+                  individual types of customers within the heading, but we
+                  can't edit the heading name itself — can you make this
+                  editable as well, only for admins?"). Inline, in place, so
+                  the rename happens where the name is read; every size under
+                  it moves with it, because family + size together are the
+                  identity of a customer type. */}
+              {editingFamily === fam ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    autoFocus
+                    value={familyDraft}
+                    onChange={(e) => setFamilyDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveFamilyName();
+                      if (e.key === "Escape") setEditingFamily(null);
+                    }}
+                    aria-label={`Rename ${fam}`}
+                    className="min-w-0 flex-1 rounded-lg border border-blue-subtle bg-white px-2.5 py-1 text-[15px] font-semibold text-text-primary outline-none focus:border-blue-primary"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy || !familyDraft.trim()}
+                    onClick={saveFamilyName}
+                    className="inline-flex cursor-pointer items-center rounded-md bg-blue-primary px-3 py-1 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingFamily(null)}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border px-3 py-1 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-[15px] font-semibold text-text-primary">{fam}</h3>
+                  {canManageLists && (
+                    <Tooltip label={`Rename ${fam}`}>
+                      <button
+                        type="button"
+                        aria-label={`Rename ${fam}`}
+                        onClick={() => {
+                          setFamilyDraft(fam);
+                          setEditingFamily(fam);
+                        }}
+                        className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                      >
+                        <Pencil size={12.5} strokeWidth={2} />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
               <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed max-w-[680px]">
                 {types[0].product_type}
               </p>

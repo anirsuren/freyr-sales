@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, LayoutGrid, Table2, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, Rows3, type LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
 
@@ -39,10 +39,14 @@ export function ViewSelect<T extends string>({
   onChange,
   tileValue,
   tableValue,
-  tileLabel = "Tiles",
-  tableLabel = "Rows",
+  tileLabel = "Tile view",
+  tableLabel = "List view",
   tileIcon: TileIcon = LayoutGrid,
-  tableIcon: TableIcon = Table2,
+  // A LIST ICON FOR THE LIST (Saras, Aug 24: "the tile view icon is perfectly
+  // fine — the list view icon, if we can change that"). Table2 draws a grid
+  // with an outer frame, which at 15px reads as a second, squarer tile icon;
+  // three stacked rows says "rows" at a glance.
+  tableIcon: TableIcon = Rows3,
   className,
 }: {
   value: T;
@@ -179,11 +183,17 @@ export function ViewSelect<T extends string>({
         {options.map(({ value: optionValue, label, Icon }) => {
           const active = optionValue === value;
           return (
-            <Tooltip key={optionValue} label={active ? `Showing ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}>
+            /* THE TOOLTIP IS THE DESTINATION'S NAME, FULL STOP (Saras, Aug 24:
+               "when I hover over this it says Showing tiles — can it say Tile
+               view? And here it should say List view instead of Show rows").
+               Two different sentences for the same button, one of them phrased
+               as a command and one as a status, made the pair read as two
+               unrelated controls. */
+            <Tooltip key={optionValue} label={label}>
               <button
                 type="button"
                 onClick={() => onChange(optionValue)}
-                aria-label={`Show ${label.toLowerCase()}`}
+                aria-label={label}
                 aria-pressed={active}
                 className={cn(
                   "flex h-9 w-9 cursor-pointer items-center justify-center transition-colors",
@@ -203,7 +213,7 @@ export function ViewSelect<T extends string>({
 
   return (
     <div ref={boxRef} className={cn("relative inline-flex shrink-0", className)}>
-      <Tooltip label={`Showing ${current.label.toLowerCase()}`}>
+      <Tooltip label={current.label}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
