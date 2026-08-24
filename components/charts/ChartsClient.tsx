@@ -2014,7 +2014,22 @@ export function BarChart({
    * scales to its own data, because there is no fixed ceiling to scale to.
    */
   const dataMax = Math.max(...data.map((d) => d.value), 1);
-  const max = format === "percent" ? Math.max(100, dataMax) : dataMax;
+  /**
+   * 100 IS THE CEILING, NOT THE TALLEST BAR (Anir, Aug 24, at a group whose
+   * meetings goal came in at 1015%: "if it's above 100% just cap it at 100%.
+   * That's why it's doing that. That's why the last bar chart is so small
+   * too").
+   *
+   * My first pass allowed `Math.max(100, dataMax)`, which is the same bug in a
+   * politer form: one goal that overshot its target ten times over redefined
+   * the axis for the whole chart, so a 74% goal beside it drew at 7% of the
+   * plot and looked like a failure. A percent axis has a fixed, meaningful
+   * ceiling, and past it the extra is not more progress worth drawing — the
+   * label already says 1015%.
+   */
+  const max = format === "percent" ? 100 : dataMax;
+  /** What a bar is allowed to DRAW, as opposed to what it says it is. */
+  const plotted = (value: number) => (format === "percent" ? Math.min(value, max) : value);
   /**
    * NOTHING LOGGED YET SHOULD NOT RESERVE A FULL-HEIGHT PLOT.
    *
@@ -2327,7 +2342,7 @@ export function BarChart({
                   if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
-                  height: `${(d.value / max) * 100}%`,
+                  height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,
                   // Every bar keeps its FULL colour at all times. Fading the
                   // siblings to 0.4 read as damage, not emphasis (Suren: "I
@@ -2389,7 +2404,7 @@ export function BarChart({
                       aria-hidden="true"
                       className="unverified-fill absolute inset-x-0 top-0"
                       style={{
-                        height: `${Math.min(100, (d.pending / d.value) * 100)}%`,
+                        height: `${Math.min(100, (plotted(d.pending) / plotted(d.value)) * 100)}%`,
                         /**
                          * NOT SIGNED OFF = STRIPED (Anir, Aug 15: "if it's not
                          * verified, show it like a stripe").

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
@@ -1106,51 +1107,66 @@ export function OrgPerformanceTab({
               { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
             ]}
           />
-          <ColorSelect
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Goal type"
-            dense
-            minWidth={170}
-            options={[
-              { value: "all", label: "All goal types", color: "#0071E3" },
-              ...state.types.map((t) => ({
-                value: t,
-                label: t,
-                color: typeMeta(t).color,
-                icon: typeMeta(t).icon,
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={paceFilter}
-            onChange={setPaceFilter}
-            ariaLabel="Standing"
-            dense
-            minWidth={150}
-            options={[
-              { value: "all", label: "Any standing", color: "#0071E3" },
-              { value: "met", label: "Target met", color: "#16A34A" },
-              { value: "ahead", label: "Ahead", color: "#0F766E" },
-              { value: "ontrack", label: "On track", color: "#0071E3" },
-              { value: "lagging", label: "Lagging", color: "#DC2626" },
-              /* The donut counts these and every row wears the chip, but the
-                 filter had no way to ask for them — the one standing you could
-                 see everywhere and select nowhere. Same violet as the chip. */
-              { value: "unscheduled", label: "No schedule", color: "#A855F7" },
-              { value: "unset", label: "No target yet", color: "#8AB4E8" },
-            ]}
-          />
-          <ColorSelect
-            value={verFilter}
-            onChange={setVerFilter}
-            ariaLabel="Verified"
-            dense
-            minWidth={140}
-            options={[
-              { value: "all", label: "Verified + not", color: "#0071E3" },
-              { value: "verified", label: "Verified", color: "#16A34A" },
-              { value: "unverified", label: "Not verified", color: "#0058B0" },
+          {/* THREE FILTERS BEHIND ONE BUTTON, LIKE EVERY OTHER LIST (Anir,
+              Aug 24: "can you make this look better? There are just so many
+              filters here. Do whatever you did on the other things").
+
+              Goal type, standing and verified were three permanently-open
+              coloured selects sitting on screen whether or not anybody was
+              filtering — the same complaint that produced the two-layer Filter
+              menu on Offerings, then Targets. Sort and the period window stay
+              out: sort is not a filter, and the period changes what every
+              number on the page MEANS, so it is the one control that has to be
+              readable without opening anything.
+
+              These are single-select underneath while FilterMenu is multi —
+              same bridge FDL Components uses: the last pick wins, and an empty
+              array is "all". */}
+          <FilterMenu
+            onClearAll={() => {
+              setTypeFilter("all");
+              setPaceFilter("all");
+              setVerFilter("all");
+            }}
+            groups={[
+              {
+                key: "type",
+                label: "Goal type",
+                values: typeFilter === "all" ? [] : [typeFilter],
+                onChange: (next) => setTypeFilter(next[next.length - 1] ?? "all"),
+                options: state.types.map((t) => ({
+                  value: t,
+                  label: t,
+                  color: typeMeta(t).color,
+                })),
+              },
+              {
+                key: "standing",
+                label: "Standing",
+                values: paceFilter === "all" ? [] : [paceFilter],
+                onChange: (next) => setPaceFilter(next[next.length - 1] ?? "all"),
+                options: [
+                  { value: "met", label: "Target met", color: "#16A34A" },
+                  { value: "ahead", label: "Ahead", color: "#0F766E" },
+                  { value: "ontrack", label: "On track", color: "#0071E3" },
+                  { value: "lagging", label: "Lagging", color: "#DC2626" },
+                  /* The donut counts these and every row wears the chip, but
+                     the filter had no way to ask for them — the one standing
+                     you could see everywhere and select nowhere. */
+                  { value: "unscheduled", label: "No schedule", color: "#A855F7" },
+                  { value: "unset", label: "No target yet", color: "#8AB4E8" },
+                ],
+              },
+              {
+                key: "verified",
+                label: "Verified",
+                values: verFilter === "all" ? [] : [verFilter],
+                onChange: (next) => setVerFilter(next[next.length - 1] ?? "all"),
+                options: [
+                  { value: "verified", label: "Verified", color: "#16A34A" },
+                  { value: "unverified", label: "Not verified", color: "#0058B0" },
+                ],
+              },
             ]}
           />
           <ColorSelect
