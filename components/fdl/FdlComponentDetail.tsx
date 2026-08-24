@@ -10,6 +10,7 @@ import { RoadmapFollowButton } from "@/components/notifications/RoadmapFollowBut
 import { useRouter } from "next/navigation";
 import {
   GitBranch,
+  ChevronDown,
   GanttChartSquare,
   Rows3,
   ArrowLeft,
@@ -2044,8 +2045,19 @@ export function FdlComponentDetail({
               has had no editor since the tab was replaced — so the history has
               to live here, next to the versions it records. */}
           {(component.roadmap_versions?.length ?? 0) >= 0 && (
-            <details className="mb-4">
-              <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
+            /* IT HAS TO LOOK LIKE SOMETHING YOU CLICK (Anir, Aug 23: "people
+               are not going to know they have to click on Roadmap version
+               history — it doesn't look like something you'd click on. Can
+               you make it more like a dropdown? That's what it is").
+
+               It was a line of grey text with an icon, indistinguishable from
+               the labels around it, so the whole change history sat one click
+               away behind something nobody would think to press. It wears the
+               app's dropdown clothes now: a bordered control with a chevron
+               that turns as it opens — the same shape every other foldable
+               section on this page uses. */
+            <details className="group mb-4">
+              <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary [&::-webkit-details-marker]:hidden">
                 <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
                 Roadmap version history
                 <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
@@ -2053,6 +2065,12 @@ export function FdlComponentDetail({
                     ? `v${component.roadmap_versions[0].version}`
                     : "No changes yet"}
                 </span>
+                <ChevronDown
+                  size={14}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className="shrink-0 text-text-tertiary transition-transform duration-200 group-open:rotate-180"
+                />
               </summary>
               <div className="mt-3">
                 <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
@@ -3456,17 +3474,21 @@ const MOVE_META = {
 } as const;
 
 /** "3 days", "2 weeks", "5 months" — the size of a move, said the short way. */
+/**
+ * DAYS, ALWAYS (Anir, Aug 23: "why are you saying two months, bro? Say the
+ * amount of days. I don't want to see [anything else] between any two given
+ * points").
+ *
+ * "2 months" is a rounding of anything between 46 and 75 days. A date that
+ * moved is a question people answer in days — how much later, how long until
+ * — so rounding it into a friendlier word threw away the only precision the
+ * sentence had.
+ */
 function gapWords(from: string, to: string): string {
   const days = Math.abs(
     Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000)
   );
-  if (days < 14) return `${days} ${days === 1 ? "day" : "days"}`;
-  if (days < 60) {
-    const weeks = Math.round(days / 7);
-    return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
-  }
-  const months = Math.round(days / 30);
-  return `${months} ${months === 1 ? "month" : "months"}`;
+  return `${days.toLocaleString()} ${days === 1 ? "day" : "days"}`;
 }
 
 /**

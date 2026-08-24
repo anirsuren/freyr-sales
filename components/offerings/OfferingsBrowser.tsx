@@ -1758,7 +1758,7 @@ export function OfferingsBrowser({
                   ({g.items.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
                 {g.items.map((o, i) => renderCard(o, i))}
               </div>
             </div>
@@ -1781,7 +1781,7 @@ export function OfferingsBrowser({
                   ({g.items.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch">
                 {g.items.map((o, i) => renderCard(o, i))}
               </div>
             </div>
@@ -1790,7 +1790,18 @@ export function OfferingsBrowser({
       ) : (
         <div
           key="tile-view"
-          className="tab-panel grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch"
+          /* THREE ACROSS ON A LAPTOP (Saras, on the Aug 24 call with Anir:
+             "when they keep the zoom level at 100%, they should see at least
+             three offerings in a row in the tile view — that's happening in
+             Chrome, but in Edge it's only showing two").
+
+             Nothing to do with the browser: the third column started at
+             xl (1280px), and Edge's window furniture plus this app's 260px
+             sidebar left her viewport just under it while Chrome's cleared
+             it. A 30px difference in chrome decided how many offerings a rep
+             could see. It starts at lg (1024px) now, which every laptop
+             clears at 100% zoom, and a fourth still arrives at 2xl. */
+          className="tab-panel grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 items-stretch"
         >
           {sorted.map((o, i) => renderCard(o, i))}
         </div>

@@ -465,8 +465,17 @@ export function VersionTimeline({
                 className="h-full w-px bg-blue-primary/70"
                 style={{ boxShadow: "0 0 8px rgba(0,113,227,0.35)" }}
               />
+              {/* TODAY SAYS WHICH DAY IT IS (Anir, Aug 23: "when you're
+                  saying today, I don't know what today is — can you mark that
+                  date as well"). The axis ticks are fortnightly, so the line
+                  landed between two of them and the reader had to interpolate
+                  to know what it was pointing at. */}
               <span className="absolute top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
-                Today
+                Today ·{" "}
+                {new Date(today).toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "short",
+                })}
               </span>
             </div>
           )}
@@ -490,13 +499,13 @@ export function VersionTimeline({
             const barWidth = Math.max(0, xOf(solidEnd) - x);
             const ghostWidth =
               ghostEnd === null ? 0 : Math.max(0, xOf(ghostEnd) - xOf(solidEnd));
+            /* DAYS, ALWAYS (Anir, Aug 23: "why are you saying two months,
+               bro? Say the amount of days. Between any two given points").
+               "2 months" is a rounding of anything from 46 to 75 days, and
+               the question this label answers — how long until it ships, how
+               long did that version hold — is one people count in days. */
             const days = Math.round((solidEnd - release.ms) / DAY);
-            const heldFor =
-              days >= 60
-                ? `${Math.round(days / 30)} months`
-                : days >= 14
-                  ? `${Math.round(days / 7)} weeks`
-                  : `${days} days`;
+            const heldFor = `${days.toLocaleString()} ${days === 1 ? "day" : "days"}`;
             const lane = lanes[index];
             const pillTop = PILL_LANE_TOPS[lane];
             const stemTop = pillTop + PILL_H;

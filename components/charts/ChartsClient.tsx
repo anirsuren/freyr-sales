@@ -2305,6 +2305,31 @@ export function BarChart({
                     </span>
                   )}
                 </span>
+                {/* THE REST OF THE WAY, IN A WHISPER (Anir, Aug 23: "can you
+                    put a light 100% on these bar charts — really light,
+                    subtle. That way I can see exactly where I need to get to.
+                    It should be clear that this is not actually actualised
+                    yet, but you can imagine — 51% will show about half of
+                    that").
+
+                    Bars were drawn to their own value against empty space, so
+                    a 51% bar and a 3% bar told you their share only through
+                    the caption; the distance still to run was invisible. This
+                    is the full target, painted at 7% of the bar's own colour
+                    — enough to read the gap, far too faint to mistake for
+                    money that exists. It sits behind the bar and takes no
+                    space of its own, so nothing above or below moves. */}
+                {d.value > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 rounded-t-md"
+                    style={{
+                      height: `${Math.max(0, (max / d.value) * 100)}%`,
+                      background: d.color || VIZ.blue,
+                      opacity: 0.07,
+                    }}
+                  />
+                )}
                 <div
                   className="chart-bar relative h-full w-full overflow-hidden rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
                   style={{

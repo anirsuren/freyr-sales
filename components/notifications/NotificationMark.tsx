@@ -121,10 +121,28 @@ export function NotificationMark({
     );
   }
 
+  /**
+   * A FACE ONCE, NOT TWICE (Anir, Aug 23: "I don't need to see the person's
+   * profile picture on the left because you're already seeing it below. I
+   * need to see the full icon there instead").
+   *
+   * With no account to name, this drew the person's headshot with a 13px type
+   * badge clipped onto its corner — and the row underneath already names that
+   * person, with their face, in full. So the left mark spent its whole
+   * footprint repeating the line below it and shrank the one thing it could
+   * usefully say (which KIND of alert this is) down to eight pixels. The type
+   * icon takes the whole mark instead, at the same size as every other row's,
+   * in its own colour.
+   */
   return (
-    <span className={cn("relative shrink-0 w-8 h-8", className)}>
-      <Avatar name={person!} className="w-8 h-8 text-[11px]" />
-      {badge}
+    <span
+      className={cn(
+        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]",
+        BADGE[type] || "bg-blue-primary text-white",
+        className
+      )}
+    >
+      <Icon size={16} strokeWidth={2} />
     </span>
   );
 }
