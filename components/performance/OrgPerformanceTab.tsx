@@ -652,9 +652,9 @@ export function OrgPerformanceTab({
           color="#0F766E"
           sub={
             !signableGoals.length
-              ? "nothing logged yet, so nothing to sign off"
+              ? "nothing to sign off yet"
               : nothingToSignOff > 0
-                ? `${words?.verifiedSub ?? "marked by leadership"} · ${nothingToSignOff} with nothing to sign off`
+                ? `${nothingToSignOff} with nothing to sign off`
                 : (words?.verifiedSub ?? "marked by leadership")
           }
         />

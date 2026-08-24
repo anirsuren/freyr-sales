@@ -21,7 +21,17 @@ export function StatTile({
   warn?: boolean;
 }) {
   return (
-    <Card className="p-4">
+    /* EVERY TILE THE SAME HEIGHT, WHATEVER ITS WORDS (Anir, Aug 23: "your
+       four cards at the top... they're kind of asymmetrical. It looks weird
+       because of that last one, it's like two lines or something").
+
+       Each tile sized itself to its own content, so one longer sub-line made
+       that card taller than the three beside it and the row lost its
+       baseline. h-full inside a grid row makes every tile as tall as the
+       tallest, and the value sits at the bottom of whatever height that is —
+       so the big numbers line up across the row even when one caption wraps.
+       Symmetry is a standing rule here, not a preference. */
+    <Card className="flex h-full flex-col p-4">
       <div className="flex items-center gap-2.5 mb-3">
         <span
           className={cn(
@@ -36,7 +46,7 @@ export function StatTile({
           {label}
         </span>
       </div>
-      <p className="flex items-baseline gap-1.5 flex-wrap">
+      <p className="mt-auto flex items-baseline gap-1.5 flex-wrap">
         <span
           className={cn(
             "font-bold leading-none tnum tracking-[-0.01em]",

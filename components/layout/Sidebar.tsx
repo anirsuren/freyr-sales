@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   FolderOpen,
   Radar,
@@ -29,6 +29,10 @@ import {
   Boxes,
   Gauge,
   ShieldCheck,
+  CircleUserRound,
+  ClipboardList,
+  Swords,
+  Globe2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -106,6 +110,8 @@ export function Sidebar({
 }) {
   const pathname = usePathname() || "";
   const currentUser = useCurrentUser();
+  /** Market Intel picks its room with ?tab=, so the sidebar has to read it. */
+  const search = useSearchParams().toString();
   // The signed-in user's uploaded picture, shared by every avatar of them.
   const { photo: myPhoto } = useMyPhoto();
   const offeringsOnly = isOfferingsOnly(dataMode);
@@ -193,7 +199,14 @@ export function Sidebar({
 
   /** An indented child of the item above it, quieter than a top-level row. */
   const subNavLink = (item: { href: string; label: string; icon: LucideIcon }) => {
-    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    /* Market Intel's rooms are query strings on one route, so comparing paths
+       alone would light all three at once. Compare what is in the address bar:
+       the path for a real sub-route, the path AND its ?tab= for a room. */
+    const [itemPath, itemQuery = ""] = item.href.split("?");
+    const active =
+      itemQuery || search
+        ? pathname === itemPath && (search ?? "") === itemQuery
+        : pathname === itemPath || pathname.startsWith(itemPath + "/");
     const Icon = item.icon;
     return (
       <Link
@@ -302,6 +315,43 @@ export function Sidebar({
                   label: "Sales Materials",
                   icon: FolderOpen,
                 })}
+
+              {/* THE SAME IDIOM FOR THE OTHER TWO MODULES THAT HAVE ROOMS
+                  (Anir, Aug 23: "when I click on Performance, the same way
+                  you have Sales Material within Offerings, I want the tabs to
+                  show up in the sidebar" — then "same thing for market
+                  intelligence too").
+
+                  Both modules keep their in-page tab strip; this is a second
+                  door, so you can jump straight to the room you want from
+                  wherever you are rather than landing on one and switching.
+                  Only while you are inside the module, and only what your
+                  role may open — a rep gets People performance and Goal
+                  Master, which is exactly the two rooms they have. */}
+              {item.href === "/performance" &&
+                !collapsed &&
+                isActive(pathname, "/performance") &&
+                (currentUser.role !== "rep"
+                  ? [
+                      { href: "/performance/org", label: "Org performance", icon: Gauge },
+                      { href: "/performance/groups", label: "Group performance", icon: UsersRound },
+                      { href: "/performance/people", label: "People performance", icon: CircleUserRound },
+                      { href: "/performance/goal-master", label: "Goal Master", icon: ClipboardList },
+                    ]
+                  : [
+                      { href: "/performance/people", label: "People performance", icon: CircleUserRound },
+                      { href: "/performance/goal-master", label: "Goal Master", icon: ClipboardList },
+                    ]
+                ).map(subNavLink)}
+
+              {item.href === "/market-intel" &&
+                !collapsed &&
+                isActive(pathname, "/market-intel") &&
+                [
+                  { href: "/market-intel", label: "Customer Intelligence", icon: Building2 },
+                  { href: "/market-intel?tab=competitors", label: "Competitor Intelligence", icon: Swords },
+                  { href: "/market-intel?tab=market", label: "Market Intelligence", icon: Globe2 },
+                ].map(subNavLink)}
             </Fragment>
           ))}
         </div>

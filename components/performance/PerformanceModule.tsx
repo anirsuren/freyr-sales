@@ -2333,22 +2333,21 @@ function GoalPopupBody({
           Goals that came off Suren's sheet name a document rather than a
           colleague; goalAuthor already returns null for those, so they stay
           quiet instead of crediting a spreadsheet with a face. */}
-      {(goalAuthor(goal.createdBy) || goalCreatedOn(goal.createdAt)) && (
+      {/* NAME A PERSON OR SAY NOTHING (Anir, Aug 23: "why are you saying 'set
+          by someone since gone'? What does that even mean. If there's no
+          owner you don't have to put that. Never say that."). Goals that came
+          off Suren's sheet have a document in createdBy, not a colleague, so
+          this line simply does not appear for them. */}
+      {goalAuthor(goal.createdBy) && (
         <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary">
           Set by
-          {goalAuthor(goal.createdBy) ? (
-            <>
-              <Avatar
-                name={goalAuthor(goal.createdBy)!}
-                className="h-4 w-4 shrink-0 text-[7px]"
-              />
-              <b className="font-semibold text-text-secondary">
-                {goalAuthor(goal.createdBy)}
-              </b>
-            </>
-          ) : (
-            <b className="font-semibold text-text-secondary">someone since gone</b>
-          )}
+          <Avatar
+            name={goalAuthor(goal.createdBy)!}
+            className="h-4 w-4 shrink-0 text-[7px]"
+          />
+          <b className="font-semibold text-text-secondary">
+            {goalAuthor(goal.createdBy)}
+          </b>
           {goalCreatedOn(goal.createdAt) && (
             <span className="tnum">on {goalCreatedOn(goal.createdAt)}</span>
           )}
