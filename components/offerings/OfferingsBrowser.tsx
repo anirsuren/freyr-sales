@@ -207,8 +207,13 @@ function OwnerRows({
 }) {
   const granted = (owners || []).filter((o) => o.status === "owner");
   if (granted.length === 0) return null;
-  const shown = granted.slice(0, 2);
-  const rest = granted.slice(2);
+  /* EVERY OWNER, NAMED (Anir, Aug 24: "no way you can't do this — you can't
+     just say plus one, you fill this all out"). This capped at two with a "+N"
+     to keep the row one line tall, which was solving a problem the tile does
+     not have: the offerings here carry one to three owners, and hiding the
+     third behind a chip meant the card answered "who owns this?" with "some of
+     them". The row wraps if it must; every card in a grid row stretches to the
+     tallest anyway, so the cost is a few pixels and the gain is the fact. */
   return (
     <>
       {/* FACE AND NAME, NOT ONE OR THE OTHER (Saras, Aug 24: "can we replace
@@ -235,8 +240,8 @@ function OwnerRows({
         Owner
       </dt>
       <dd className="flex min-h-[26px] min-w-0 items-center self-start">
-        <span className="hover-yield inline-flex min-w-0 flex-wrap items-center text-[11.5px] font-semibold leading-snug text-text-primary">
-          {shown.map((owner, index) => (
+        <span className="hover-yield inline-flex min-w-0 flex-wrap items-center gap-y-0.5 text-[11.5px] font-semibold leading-snug text-text-primary">
+          {granted.map((owner, index) => (
             <span key={owner.memberId} className="inline-flex min-w-0 items-center">
               {index > 0 && (
                 <span aria-hidden className="px-1 text-text-tertiary">
@@ -260,15 +265,6 @@ function OwnerRows({
               </PersonHoverCard>
             </span>
           ))}
-          {rest.length > 0 && (
-            <PriorityTooltip
-              label={rest.map((owner) => owner.name).join(", ")}
-            >
-              <span className="ml-1 cursor-default rounded-md bg-surface px-1.5 py-[1px] text-[10.5px] font-bold text-text-secondary">
-                +{rest.length}
-              </span>
-            </PriorityTooltip>
-          )}
         </span>
       </dd>
     </>

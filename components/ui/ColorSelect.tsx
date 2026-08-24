@@ -455,13 +455,35 @@ export function ColorSelect({
    * and owns the consequence in its own layout. That is one deliberate call
    * site instead of every select in the app.
    */
+  /**
+   * WIDE ENOUGH FOR THE LABEL IT IS ACTUALLY SHOWING (Anir, Aug 24, at the
+   * Offerings sort reading "By recomme…" and the Customers page reading "All
+   * on o…": "make sure this filter actually shows up. No dots." A control whose
+   * own name is cut off is a control you have to hover to read.
+   *
+   * Note what this does NOT do — it does not size from the longest OPTION,
+   * which is the thing the memo above forbids and for good reason. It sizes
+   * from the CURRENT one: bounded, usually short, and it changes only when the
+   * selection changes. `minWidth` is still the caller's floor.
+   *
+   * 6.9px per character is the measured average for this app's 13px face; the
+   * constant is the trigger's own chrome (dot, gaps, chevron, padding).
+   */
+  const shownLabel = String(triggerLabel || selected?.label || "");
+  const fitWidth = compact
+    ? SP_COMPACT_SIZE
+    : Math.max(
+        minWidth,
+        Math.ceil(shownLabel.length * 6.9) + (selected ? 34 : 12) + 34
+      );
+
   return (
     <div
       ref={ref}
       className={cn("relative transition-[min-width]", SP_MOTION, className)}
       style={{
         width: compact ? SP_COMPACT_SIZE : undefined,
-        minWidth: compact ? SP_COMPACT_SIZE : minWidth,
+        minWidth: fitWidth,
       }}
     >
       <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>

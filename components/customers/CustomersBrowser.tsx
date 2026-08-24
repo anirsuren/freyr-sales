@@ -617,10 +617,17 @@ export function CustomersBrowser({
               value={Number.isFinite(perPage) ? String(perPage) : "all"}
               onChange={changePerPage}
               ariaLabel="Rows per page"
+              /* NO HARD WIDTH (Anir, Aug 24: "why is the 'all on one page' not
+                 even showing up? You can't do that"). A fixed 120px box cut
+                 "All on one page" to "All on o…", so the one option whose name
+                 explains what it does was the one you could not read. The
+                 select sizes to whatever it is currently showing now; 120 stays
+                 as the floor so the short "8 / page" labels do not shrink the
+                 control every time you page. */
               minWidth={120}
               dense
               collapsible={false}
-              className="w-[120px] shrink-0"
+              className="shrink-0"
               options={[
                 {
                   value: "all",

@@ -690,9 +690,17 @@ export function OrgPerformanceTab({
                 No goals match these filters, so there is nothing to chart.
               </p>
             ) : (
-            <div className="-mx-5 -mb-5 mt-3 min-h-0 flex-1">
+            /* TALLER, BECAUSE THE 100% IS THE POINT OF THIS CHART (Anir,
+               Aug 24: "why is the 100% so small? That 100% can go at least
+               1.5 times bigger"). The card's height came from the donut beside
+               it, which left about 110px of actual plot — so the faint
+               full-target backdrop, the thing that shows how far each goal
+               still has to run, was a 110px box holding a 36px bar. A floor on
+               the plot makes this card set the row's height instead of
+               inheriting it. */
+            <div className="-mx-5 -mb-5 mt-3 min-h-[290px] flex-1">
               <BarChart
-                height={190}
+                height={290}
                 fillCard={20}
                 format="percent"
                 tipRecordsLabel="What this is made of"

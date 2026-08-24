@@ -87,9 +87,23 @@ export function FilterMenu({
       if (!node) return;
       const r = node.getBoundingClientRect();
       const width = PANEL_W;
+      /* CENTRED ON THE BUTTON THAT OPENED IT (Anir, Aug 24: "this is ugly...
+         it's too much to the right. The entire thing should be centred —
+         centred around the original filter button").
+
+         It used to be left-ALIGNED to the button, which on a 430px two-pane
+         panel threw the whole thing 350px out to the right of a 90px button,
+         so the panel looked like it belonged to whatever control happened to
+         sit further along the toolbar. Centring anchors it to its own trigger.
+         Still clamped to the viewport, so a Filter button near the right edge
+         gets a panel that stops at the edge rather than one that hangs off it. */
+      const centred = r.left + r.width / 2 - width / 2;
       setBox({
         top: r.bottom + 6,
-        left: Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8)),
+        left: Math.min(
+          Math.max(8, centred),
+          Math.max(8, window.innerWidth - width - 8)
+        ),
       });
     };
     place();

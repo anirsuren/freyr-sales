@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, CalendarDays, Crosshair, DollarSign, Layers, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Building2, CalendarDays, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -10,9 +10,9 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { cn } from "@/lib/utils";
 import {
@@ -237,71 +237,115 @@ export function TargetsTab({
               bars already use. */}
           <PrioritySearchInput
             grow
-            className="min-w-[190px] flex-1"
+            className="min-w-[200px] flex-1"
             value={query}
             onChange={setQuery}
             placeholder="Search targets, owners, countries…"
             ariaLabel="Search targets"
+            iconSize={16}
+            iconClassName="left-3"
+            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
           />
-          <MultiColorSelect
-            values={domains}
-            ariaLabel="Domain"
-            onChange={setDomains}
-            allLabel="All domains"
-            options={TARGET_DOMAINS.map((d) => ({
-              value: d,
-              label: TARGET_DOMAIN_META[d].label,
-              color: TARGET_DOMAIN_META[d].color,
-              icon: TARGET_DOMAIN_META[d].icon,
-            }))}
+          {/* ONE FILTER BUTTON, LIKE EVERY OTHER LIST PAGE (Anir, Aug 24:
+              "I'm assuming you're gonna need the filters here too on the
+              customers targets page. Just do the same thing everywhere, keep
+              it consistent").
+
+              Six permanently-open dropdowns wrapped onto a second line and
+              pushed Add target down with them, and they were on screen whether
+              or not anybody was filtering — the exact complaint that produced
+              the two-layer Filter menu on Offerings in the first place. Same
+              component, same two panes, same footer count. */}
+          <FilterMenu
+            onClearAll={() => {
+              setDomains([]);
+              setTierPick([]);
+              setQuarterPick([]);
+              setConnectionPick([]);
+              setHqPick([]);
+              setOwnerPick([]);
+            }}
+            groups={[
+              {
+                key: "domain",
+                label: "Domain",
+                values: domains,
+                onChange: setDomains,
+                options: TARGET_DOMAINS.map((d) => ({
+                  value: d,
+                  label: TARGET_DOMAIN_META[d].label,
+                  color: TARGET_DOMAIN_META[d].color,
+                })),
+              },
+              {
+                key: "tier",
+                label: "Tier",
+                values: tierPick,
+                onChange: setTierPick,
+                options: tiers.map((t) => ({ value: t, label: t, color: tierColor(t) })),
+              },
+              ...(quarters.length
+                ? [
+                    {
+                      key: "quarter",
+                      label: "Quarter",
+                      values: quarterPick,
+                      onChange: setQuarterPick,
+                      options: quarters.map((q) => ({
+                        value: q,
+                        label: q,
+                        color: "#0071E3",
+                      })),
+                    },
+                  ]
+                : []),
+              ...(connections.length
+                ? [
+                    {
+                      key: "connection",
+                      label: "Connection",
+                      values: connectionPick,
+                      onChange: setConnectionPick,
+                      options: connections.map((c) => ({
+                        value: c,
+                        label: c,
+                        color: "#0F9E8E",
+                      })),
+                    },
+                  ]
+                : []),
+              ...(hqs.length
+                ? [
+                    {
+                      key: "hq",
+                      label: "Country",
+                      values: hqPick,
+                      onChange: setHqPick,
+                      options: hqs.map((h) => ({
+                        value: h,
+                        label: hqFlag(h) ? `${hqFlag(h)} ${h}` : h,
+                        color: "#5E5CE6",
+                      })),
+                    },
+                  ]
+                : []),
+              ...(owners.length
+                ? [
+                    {
+                      key: "owner",
+                      label: "Owner",
+                      values: ownerPick,
+                      onChange: setOwnerPick,
+                      options: owners.map((o) => ({
+                        value: o,
+                        label: o,
+                        avatarName: o,
+                      })),
+                    },
+                  ]
+                : []),
+            ]}
           />
-          <MultiColorSelect
-            values={tierPick}
-            ariaLabel="Tier"
-            onChange={setTierPick}
-            allLabel="All tiers"
-            options={tiers.map((t) => ({ value: t, label: t, color: tierColor(t), icon: Layers }))}
-          />
-          {quarters.length > 0 && (
-            <MultiColorSelect
-              values={quarterPick}
-              ariaLabel="Quarter"
-              onChange={setQuarterPick}
-              allLabel="All quarters"
-              options={quarters.map((q) => ({ value: q, label: q, color: "#0071E3", icon: CalendarDays }))}
-            />
-          )}
-          {connections.length > 0 && (
-            <MultiColorSelect
-              values={connectionPick}
-              ariaLabel="Connection"
-              onChange={setConnectionPick}
-              allLabel="Any connection"
-              options={connections.map((c) => ({ value: c, label: c, color: "#0F9E8E" }))}
-            />
-          )}
-          {hqs.length > 0 && (
-            <MultiColorSelect
-              values={hqPick}
-              ariaLabel="HQ country"
-              onChange={setHqPick}
-              allLabel="All countries"
-              options={hqs.map((h) => ({
-                value: h,
-                label: hqFlag(h) ? `${hqFlag(h)} ${h}` : h,
-                color: "#5E5CE6",
-              }))}
-            />
-          )}
-          {owners.length > 0 && (
-            <MultiColorSelect
-              values={ownerPick}
-              ariaLabel="Owner"
-              onChange={setOwnerPick}
-              allLabel="All owners"
-              options={owners.map((o) => ({ value: o, label: o, avatarName: o }))}
-            />
-          )}
           {live && canEdit && (
             <Button className="ml-auto shrink-0" onClick={() => setAdding(true)}>
               <Plus size={14} strokeWidth={2.2} /> Add target
