@@ -1996,7 +1996,25 @@ export function BarChart({
     close: closeTip,
     keepOpen,
   } = useChartHover();
-  const max = Math.max(...data.map((d) => d.value), 1);
+  /**
+   * A PERCENT CHART IS SCALED 0-100, ALWAYS. NOT TO ITS TALLEST BAR.
+   *
+   * Anir, Aug 24, at "How far along each goal is" with a 51% bar filling the
+   * whole column: "that's not showing me 100% in that grey thing. It says 51%
+   * met, but where is the 100%? I want 100% for all of them."
+   *
+   * He is right and it was worse than a missing backdrop. Scaling to the data
+   * max meant the leading goal ALWAYS drew a full-height bar whatever its
+   * percentage, so a catalogue where the best goal sat at 3% looked exactly
+   * like one where it sat at 99% — and the faint 100% ghost, which is drawn at
+   * the top of the plot, coincided exactly with that bar and vanished. Half a
+   * target has to look like half.
+   *
+   * Only percent charts are pinned. An absolute chart (money, counts) still
+   * scales to its own data, because there is no fixed ceiling to scale to.
+   */
+  const dataMax = Math.max(...data.map((d) => d.value), 1);
+  const max = format === "percent" ? Math.max(100, dataMax) : dataMax;
   /**
    * NOTHING LOGGED YET SHOULD NOT RESERVE A FULL-HEIGHT PLOT.
    *
@@ -2263,6 +2281,34 @@ export function BarChart({
               className="relative flex min-h-0 w-full flex-1 items-end justify-center px-1.5"
               style={{ paddingTop: labelRoom }}
             >
+              {/* THE REST OF THE WAY, IN A WHISPER (Anir, Aug 23: "can you put
+                  a light 100% on these bar charts — really light, subtle. That
+                  way I can see exactly where I need to get to... 51% will show
+                  about half of that"), and again on Aug 24 when the 51% bar
+                  had no ghost at all: "where is the 100%? I want 100% for all
+                  of them."
+
+                  It lives in the TRACK, not inside the bar. Inside the bar its
+                  height had to be expressed as a multiple of the bar's own
+                  height, which is exact for a 51% bar and nonsense for a 0%
+                  one — a 4px stub times 1,000,000% — so the empty goals, the
+                  ones with the most ground to cover, were the ones that showed
+                  no target at all. Here "full height" simply means the plot's
+                  full height, the same for every column whatever its value.
+
+                  Painted at 7% of the bar's own colour: enough to read the gap,
+                  far too faint to mistake for progress that exists. It takes no
+                  space of its own, so nothing above or below moves. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 left-1.5 right-1.5 flex justify-center"
+                style={{ top: labelRoom }}
+              >
+                <span
+                  className="h-full w-[72%] min-w-[14px] max-w-[88px] rounded-t-md"
+                  style={{ background: d.color || VIZ.blue, opacity: 0.07 }}
+                />
+              </span>
               {/* Label + bar are ONE object: the label is a child of the bar,
                   so when the bar lifts under the cursor the number rides up
                   with it, exactly as far, at exactly the same speed (Suren:
@@ -2319,17 +2365,7 @@ export function BarChart({
                     — enough to read the gap, far too faint to mistake for
                     money that exists. It sits behind the bar and takes no
                     space of its own, so nothing above or below moves. */}
-                {d.value > 0 && (
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 bottom-0 rounded-t-md"
-                    style={{
-                      height: `${Math.max(0, (max / d.value) * 100)}%`,
-                      background: d.color || VIZ.blue,
-                      opacity: 0.07,
-                    }}
-                  />
-                )}
+
                 <div
                   className="chart-bar relative h-full w-full overflow-hidden rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
                   style={{
