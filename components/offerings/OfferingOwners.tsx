@@ -415,19 +415,26 @@ export function OfferingOwners({
                   Owner
                 </span>
               </Tooltip>
-              {/* YOU CAN ONLY TAKE AWAY YOUR OWN ACCESS.
-                  This used to appear on every row for an admin, so one stray
-                  click could strip a colleague's edit rights without them ever
-                  knowing (Anir, Jul 29: "I shouldn't be able to remove other
-                  owners, like only myself"). Ownership is now given by an
-                  admin and surrendered by the person holding it, which means a
-                  permission never disappears behind someone's back. */}
-              {o.memberId === myMemberId && (
+              {/* YOUR OWN ACCESS, OR ANYONE'S IF YOU ARE AN ADMIN.
+                  Self-only was the rule from Jul 29 ("I shouldn't be able to
+                  remove other owners, like only myself"), and Anir reversed it
+                  on Aug 24 with the case that broke it: "since Raj Vinesh isn't
+                  the owner of Freya.Artwork any more, I tried to remove him as
+                  the editor using my admin access but couldn't figure out how."
+                  An offering whose only way out of ownership runs through the
+                  person who left has no way out at all. Admins only, never
+                  managers, and always through the confirm dialog — which says
+                  plainly that the person will not be told. */}
+              {(o.memberId === myMemberId || isAdmin) && (
                 <button
                   onClick={() => setConfirmOwner(o)}
                   disabled={busy === o.memberId}
                   className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-[color:#B02020] disabled:opacity-50"
-                  aria-label="Give up your ownership"
+                  aria-label={
+                    o.memberId === myMemberId
+                      ? "Give up your ownership"
+                      : `Remove ${o.name} as an owner`
+                  }
                 >
                   <X size={14} strokeWidth={2} />
                 </button>

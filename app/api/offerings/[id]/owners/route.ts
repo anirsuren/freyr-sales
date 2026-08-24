@@ -104,7 +104,7 @@ export async function POST(
  * anyone's. Releasing is not deleting: the offering itself is untouched.
  */
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -118,21 +118,32 @@ export async function DELETE(
   const target = url.searchParams.get("memberId") || user.memberId;
 
   /**
-   * OWNERSHIP IS SURRENDERED, NEVER TAKEN.
+   * SURRENDERED BY THE HOLDER, OR REVOKED BY AN ADMIN. NOBODY ELSE.
    *
-   * An admin used to be able to release anyone's claim, and the UI offered it
-   * on every row. Hiding that button is not a permission — the request still
-   * worked — so the rule belongs here: this endpoint releases the caller's own
-   * claim and nothing else (Anir, Jul 29: "I shouldn't be able to remove other
-   * owners, like only myself"). A pending REQUEST is different and is still
-   * declined by an admin through its own path; that is refusing to grant, not
-   * revoking something already held.
+   * This was self-release only, on Anir's instruction (Jul 29: "I shouldn't be
+   * able to remove other owners, like only myself"). He reversed it himself on
+   * Aug 24, with the case that showed why: "add a way to remove another person
+   * as the editor of a specific offering page — since Raj Vinesh isn't the
+   * owner of Freya.Artwork any more, I tried to remove him as the editor using
+   * my admin access but couldn't figure out how to do it."
+   *
+   * People leave teams and change roles, and an offering whose only path out of
+   * ownership runs through the person who left has no path out at all. So an
+   * ADMIN may revoke, and the gate is deliberately `isAdmin` and not
+   * `canManageOfferings` — a manager can create and edit offerings but must not
+   * be able to strip a colleague's access. The confirm dialog on the way in
+   * still says whose access is disappearing, because they are not told.
    */
   if (target !== user.memberId) {
-    return NextResponse.json(
-      { error: "You can only give up your own ownership." },
-      { status: 403 }
-    );
+    // Same actor check the grant path uses, so giving and taking ownership are
+    // gated identically and cannot drift apart.
+    const actor = await verifiedWorkflowActor(req);
+    if (!actor || actor.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only a workspace admin can remove another owner." },
+        { status: 403 }
+      );
+    }
   }
   if (!isOfferingOwner(offering, target)) {
     return NextResponse.json({

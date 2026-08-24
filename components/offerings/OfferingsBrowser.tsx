@@ -211,18 +211,23 @@ function OwnerRows({
   const rest = granted.slice(2);
   return (
     <>
-      {/* NAMES, NOT FACES (Saras, Aug 24: "can we replace these icons with
-          just the names of the offering owners? ... I think you can maybe keep
-          commas or dots between them").
+      {/* FACE AND NAME, NOT ONE OR THE OTHER (Saras, Aug 24: "can we replace
+          these icons with just the names of the offering owners? ... you can
+          maybe keep commas or dots between them" — then Anir, immediately
+          after, on the result: "you're not showing the profile pictures, why
+          would you remove that").
 
-          Faces were how this row survived an offering with ten owners: one
-          line tall at any count, hover to learn who. But a row of initials in
-          circles is a puzzle you have to solve — nobody recognises "AF AS" —
-          while the single-owner card beside it said "Priyanka M." in plain
-          text and was instantly readable. So names win, and the count problem
-          is solved by TRUNCATING instead: two names, then "+N", so the row is
-          still exactly one line whether an offering has one owner or twenty,
-          and the +N names the rest on hover. */}
+          What was actually wrong was a HUDDLE OF FACES WITH NO NAMES: a row of
+          overlapping initials that nobody can decode without hovering each
+          one, next to a single-owner card that read "Priyanka M." in plain
+          text. Reading it as "drop the photos" was the wrong half — a person
+          in this app always arrives with their headshot
+          ([[logos-photos-system]]), and the list view has always shown both.
+
+          So both: photo + name, dot-separated. The ten-owner problem the fan
+          existed to solve is handled by TRUNCATING instead — two people, then
+          "+N" that names the rest on hover — so the row is exactly one line
+          whether an offering has one owner or twenty. */}
       {/* NEUTRAL, LIKE THE TWO LABELS ABOVE IT (Saras, Aug 21: "the font
           colour of the owner, let's just keep that simply black... there is
           no need for the crown icon either... let's just keep it neutral"). */}
@@ -243,8 +248,14 @@ function OwnerRows({
                 role={owner.role || "Owns this offering"}
                 context={offeringName}
               >
-                <span className="min-w-0 break-words rounded px-0.5 transition-colors hover:bg-surface">
-                  {shortPersonName(owner.name)}
+                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
+                  <Avatar
+                    name={owner.name}
+                    className="h-[20px] w-[20px] shrink-0 text-[7px]"
+                  />
+                  <span className="min-w-0 break-words">
+                    {shortPersonName(owner.name)}
+                  </span>
                 </span>
               </PersonHoverCard>
             </span>
@@ -1173,12 +1184,18 @@ export function OfferingsBrowser({
         className="rise-in rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        {/* THE SEARCH STOPS EATING THE ROW (Saras, Aug 24: "I think you can
-            also reduce the search bar size"). It was `flex-1` against a single
-            Filter button, so on a wide screen it stretched to ~700px to search
-            a list of 31 names, and pushed Filter into the middle of an empty
-            row. Capped instead: wide enough for a real query, and Filter now
-            sits beside it on the left where the eye already is. */}
+        {/* IDENTICAL TO PageToolbar's SEARCH, DOWN TO THE CLASS STRING (Anir,
+            Aug 24: "keep the search bar consistent everywhere — whatever you
+            have in FDL Components is good, put that on Offerings and everywhere
+            else where that search bar with the filter is there").
+
+            It was briefly capped at 380px to stop it stretching across a wide
+            row (Saras, earlier the same call), and that made this the one page
+            whose search was a different width from every other page's. Between
+            "shorter" and "the same as everywhere else", he picked the same:
+            consistency is the thing a rep notices moving between pages. Back to
+            `min-w-[200px] flex-1`, which is what PageToolbar gives FDL
+            Components, Opportunities, Customers and Team. */}
         <PrioritySearchInput
           grow
           value={q}
@@ -1186,9 +1203,9 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          className="w-full min-w-[180px] max-w-[380px]"
+          className="min-w-[200px] flex-1"
           iconClassName="left-3"
-          inputClassName={`${inputCls} w-full pl-9 pr-3`}
+          inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
         />
         {/* Three dropdowns, one row. Five of them pushed the display cluster
             (sort / view / export) onto a lonely second line (Anir, Jul 28:
@@ -1624,9 +1641,15 @@ export function OfferingsBrowser({
                      border just be pink — just some distinction here, very
                      subtle, but it still brings a pop of colour and some
                      visual aid to 'okay, this belongs to this category'").
-                     An inset shadow rather than a border-left: it paints
-                     inside the cell, so no column shifts by 3px and the
-                     header strip's cloned widths still line up. */
+                     A GRADIENT, NOT A BORDER OR AN INSET SHADOW. Two reasons.
+                     A real border-left shifts every column by 3px and breaks
+                     the sticky header strip's cloned widths. And a full-height
+                     stripe butts against its neighbours' stripes, so a run of
+                     same-category rows fused into one unbroken bar down the
+                     page (Anir, Aug 24: "I don't like this — can you give a
+                     little bit of a gap so it doesn't look like that? It's
+                     just one big rectangle"). The gradient insets the stripe
+                     8px top and bottom, so each row's mark is its own. */
                   const rowAccent = o.offering_category
                     ? categoryColorByName[o.offering_category] || null
                     : null;
@@ -1649,7 +1672,12 @@ export function OfferingsBrowser({
                         className="px-4 py-3.5"
                         style={
                           rowAccent
-                            ? { boxShadow: `inset 3px 0 0 0 ${rowAccent}` }
+                            ? {
+                                backgroundImage: `linear-gradient(to bottom, transparent 0 8px, ${rowAccent} 8px calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
+                                backgroundSize: "3px 100%",
+                                backgroundRepeat: "no-repeat",
+                                backgroundPosition: "left center",
+                              }
                             : undefined
                         }
                       >

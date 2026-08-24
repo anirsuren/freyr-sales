@@ -783,13 +783,23 @@ export function MaterialsSection({
             which is why it looked "way too right" and then snapped back into
             place the moment focus collapsed the filters and the row fit again
             (Anir, Aug 13). Now it fits in both states, so nothing moves. */}
+        {/* THE SAME SEARCH BAR AS EVERY OTHER PAGE (Anir, Aug 24: "keep the
+            search bar consistent everywhere — whatever you have in FDL
+            Components is good, put that on Offerings and everywhere else where
+            that search bar with the filter is there"). This one was left to
+            size itself from PrioritySearchInput's own defaults, so it sat a few
+            pixels shorter than the toolbar it lives in; now it carries
+            PageToolbar's exact class string. */}
         <PrioritySearchInput
           grow
-          className="min-w-[120px] flex-1"
+          className="min-w-[200px] flex-1"
           value={query}
           onChange={setQuery}
           placeholder="Search materials…"
           ariaLabel="Search sales materials"
+          iconSize={16}
+          iconClassName="left-3"
+          inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
         />
         <MultiColorSelect
           values={formats}

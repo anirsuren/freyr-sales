@@ -1,18 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { Pin } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * THE COLUMN HEADERS ARE ALWAYS THERE HALFWAY DOWN — NO BUTTON, NO CHOICE.
+ * THE COLUMN HEADERS ARE PINNED BY DEFAULT, AND YOU CAN UNPIN THEM.
  *
  * This began as a pin you had to find and press (Anir, Aug 13: "for all of
  * these pages where there's a huge table, have the option to pin the table").
- * Aug 24 he watched himself use it and cut the control: "if I click on this,
- * the header row is always visible — I think we can do that by default... there
- * is no need for the pin, you can remove that." Nobody scrolls a 120-row table
- * hoping the headers go away, so the setting only ever had one useful value.
+ * On Aug 24 he watched himself use it and moved the default, twice in one
+ * sitting: first "there is no need for the pin, you can remove that", then, on
+ * seeing it gone, "I want there to still be a pin — they have to click it to
+ * unpin. By default that should always be pinned, on every single page with a
+ * table."
+ *
+ * Which is the right shape: the useful default was never the one that shipped
+ * (nobody scrolls a 120-row table hoping the headers go away), but the control
+ * still has to exist for the one person who wants their screen back. So the
+ * stored preference stays and its default flips — only an explicit unpin turns
+ * it off — and the control is the transparent corner glyph, which costs no
+ * layout at all ("it shouldn't take up space").
  *
  * Why this is not four lines of CSS: every wide table in this app lives inside
  * `overflow-x-auto` so it can scroll sideways on a narrow window. In CSS, a
@@ -37,17 +47,139 @@ import { cn } from "@/lib/utils";
  * only while the table both overflows sideways and runs off the bottom.
  */
 
+const STORE_PREFIX = "freyr.pinnedTable.";
+
+const pinnedById = new Map<string, boolean>();
+const listeners = new Map<string, Set<() => void>>();
+
 /**
- * The floating strip is measured from live DOM rects, so it can only be built
- * on the client. The server renders the plain table and the effects take over
- * after mount — the same reason this was hydration-safe when it was a stored
- * preference.
+ * PINNED UNLESS SOMEBODY SAID OTHERWISE. The stored value used to default to
+ * OFF, which meant every table shipped unpinned and the headers scrolled away
+ * for anyone who never found the control (Anir, Aug 24: "by default that should
+ * always be pinned, on every single page with a table"). Only an explicit "0" —
+ * a deliberate unpin — turns it off, so an absent key reads as pinned.
  */
-function useMounted(): boolean {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted;
+function readStored(id: string): boolean {
+  try {
+    return localStorage.getItem(STORE_PREFIX + id) !== "0";
+  } catch {
+    return true;
+  }
 }
+
+function subscribe(id: string, fn: () => void): () => void {
+  const set = listeners.get(id) ?? new Set();
+  set.add(fn);
+  listeners.set(id, set);
+  return () => set.delete(fn);
+}
+
+function setPinned(id: string, next: boolean) {
+  pinnedById.set(id, next);
+  try {
+    localStorage.setItem(STORE_PREFIX + id, next ? "1" : "0");
+  } catch {
+    // A blocked localStorage only costs the memory of the choice.
+  }
+  listeners.get(id)?.forEach((fn) => fn());
+}
+
+/**
+ * The server renders "not pinned" and the client corrects it after mount —
+ * localStorage does not exist during the server render, and disagreeing about
+ * the first paint is a hydration error. The strip is measured from live DOM
+ * rects anyway, so it could never have been built server-side.
+ */
+function usePinned(id: string): boolean {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    if (!pinnedById.has(id)) pinnedById.set(id, readStored(id));
+    setHydrated(true);
+    listeners.get(id)?.forEach((fn) => fn());
+  }, [id]);
+  const value = useSyncExternalStore(
+    useCallback((fn) => subscribe(id, fn), [id]),
+    () => pinnedById.get(id) ?? true,
+    () => false
+  );
+  return hydrated ? value : false;
+}
+
+/** The pin, in the table's top-right corner. The absolute position lives on an
+ *  OUTER span: Tooltip wraps its child in a positioned span of its own, and an
+ *  absolute button inside that anchors to the tooltip's tiny box, not the table.
+ *
+ *  THE CORNER IS THE FALLBACK NOW, NOT THE ANSWER. It clips the tail of the
+ *  longest last-column label ("TREND" reads as "TREN") and padding the last
+ *  <th> does not fix it: these tables are `w-full` with the last column already
+ *  squeezed to its own text, so a 44px gutter only makes the label overflow its
+ *  padding box. Measured, not assumed: the label ended at x=1464 with the pin at
+ *  x=1445, before and after.
+ *
+ *  Two placements I invented were both worse. Below the table it sat 3084px down
+ *  the Team page, 2244px from the header it controls. In its own strip above the
+ *  table it read as a stray floating button.
+ *
+ *  Anir's placement is the one that works, because it lands on a line that
+ *  already exists instead of inventing one: the "Showing N of N" count line,
+ *  right-aligned (Aug 14: "move the pin logo to the right, on the same line as
+ *  the 31 offerings... the pin is always going to cover that last column, so
+ *  it's never going to be visible"). Pages that have that line render
+ *  <PinTableButton compact/> there and pass showCornerPin={false}. Pages that
+ *  do not still get the corner, which is why this stays.
+ *
+ *  The floating header keeps its own pin either way. Once the page has scrolled
+ *  far enough for the strip to appear, the count line is long gone, and that pin
+ *  is the only way left to unpin. */
+function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
+  const pinned = usePinned(id);
+  return (
+    <span
+      className={cn(
+        "absolute z-20",
+        floating ? "right-2 top-1/2 -translate-y-1/2" : "right-1.5 top-1.5"
+      )}
+    >
+      <Tooltip label={pinned ? "Unpin the column headers" : "Keep the column headers visible while you scroll"}>
+        <button
+          type="button"
+          aria-label={pinned ? "Unpin the column headers" : "Pin the column headers"}
+          aria-pressed={pinned}
+          onClick={() => setPinned(id, !pinned)}
+          /**
+           * THE PIN SITS ON TOP OF A COLUMN HEADER, SO IT DOES NOT WEAR A
+           * BACKGROUND UNTIL YOU REACH FOR IT.
+           *
+           * It is absolutely positioned in the table's corner, which means it
+           * always covers whatever the last column is called — and it was a
+           * filled chip: blue once pinned, a white blob before that. Scrolled
+           * far enough for the floating strip, it obscured that header
+           * outright (Anir, Aug 14, with a screenshot: "that pin icon should
+           * be completely transparent... when my mouse hovers over it, then
+           * it can turn properly").
+           *
+           * So the chip is a hover state now. At rest there is only the glyph,
+           * dimmed enough to sit over a header without competing with it and
+           * solid enough to still be findable. Pinned-ness is carried by the
+           * icon itself — filled and blue — not by a plate behind it, so the
+           * state stays readable with nothing covered.
+           */
+          className={cn(
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-transparent transition-all",
+            "hover:border-border-light hover:bg-white hover:text-blue-primary hover:shadow-sm",
+            "focus-visible:border-border-light focus-visible:bg-white focus-visible:text-blue-primary",
+            pinned
+              ? "text-blue-primary opacity-90"
+              : "text-text-tertiary opacity-55 hover:opacity-100"
+          )}
+        >
+          <Pin size={13} strokeWidth={2} className={cn(pinned && "fill-current")} />
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
+
 
 /**
  * KEPT AS A NO-OP ON PURPOSE. Two pages render this on their "Showing N of N"
@@ -75,10 +207,14 @@ export function PinnableTable({
   children: React.ReactNode;
   className?: string;
   wrapperClassName?: string;
-  /** Vestigial: the corner pin is gone. Callers still pass it. */
+  /** Vestigial. The corner pin is drawn on every table now, because the pages
+   *  that used to pass false did so to make room for a <PinTableButton> on
+   *  their count line, and that button is a no-op (Anir, Aug 24: "it shouldn't
+   *  take up space — it should be a transparent thing, like whatever you had
+   *  before on the last column"). */
   showCornerPin?: boolean;
 }) {
-  const pinned = useMounted();
+  const pinned = usePinned(id);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const floatRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
@@ -286,6 +422,7 @@ export function PinnableTable({
 
   return (
     <div className={cn("relative", className)}>
+      <PinCorner id={id} />
       <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
         {children}
       </div>
@@ -311,6 +448,19 @@ export function PinnableTable({
                 width: floating.width,
               }}
             />
+            <div
+              className="fixed z-40"
+              style={{
+                top: floating.top,
+                left: floating.left,
+                width: floating.width,
+                height: 0,
+              }}
+            >
+              <div className="relative h-10">
+                <PinCorner id={id} floating />
+              </div>
+            </div>
           </>,
           document.body
         )}
