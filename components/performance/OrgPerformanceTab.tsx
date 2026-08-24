@@ -690,17 +690,24 @@ export function OrgPerformanceTab({
                 No goals match these filters, so there is nothing to chart.
               </p>
             ) : (
-            /* TALLER, BECAUSE THE 100% IS THE POINT OF THIS CHART (Anir,
-               Aug 24: "why is the 100% so small? That 100% can go at least
-               1.5 times bigger"). The card's height came from the donut beside
-               it, which left about 110px of actual plot — so the faint
-               full-target backdrop, the thing that shows how far each goal
-               still has to run, was a 110px box holding a 36px bar. A floor on
-               the plot makes this card set the row's height instead of
-               inheriting it. */
-            <div className="-mx-5 -mb-5 mt-3 min-h-[290px] flex-1">
+            /* THE PLOT GREW, THE CARD BARELY DID (Anir, Aug 24, twice):
+               "why is the 100% so small? That 100% can go at least 1.5 times
+               bigger", then, at a card that had doubled: "that's too fucking
+               big — why are you increasing the size of the white container?
+               Don't increase the size of the rectangle. Whatever the size was
+               before was fine."
+
+               Both are satisfiable because the two are not the same number.
+               The card was 214px and the faint 100% backdrop inside it was
+               70px; the other 144px is the title, the value labels above each
+               bar, the axis labels under them and the scroll strip. Asking the
+               plot for 200px instead of letting it inherit ~146px lifts the
+               backdrop to ~110px — the 1.5x he asked for — while the card
+               moves 214 -> ~254, which is the difference between a card and
+               the same card. */
+            <div className="-mx-5 -mb-5 mt-3 min-h-[200px] flex-1">
               <BarChart
-                height={290}
+                height={200}
                 fillCard={20}
                 format="percent"
                 tipRecordsLabel="What this is made of"
