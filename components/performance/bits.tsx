@@ -977,13 +977,23 @@ export function PaceTimeline({
                some text on top"). With a schedule it holds "must be at"; with
                none it holds where you are — so the space is used either way
                and nothing sits on the track. */
-            /* CLEARANCE FOR THE END LABELS (Anir, Aug 23: "the endpoints
-               text, 0 and 400, you got to move it up a little bit — you also
-               have to make sure it doesn't touch the circle"). The right-hand
-               figure sits directly over the target's circle, and at 11px bold
-               its descenders were landing on the ring. Four more pixels of
-               lane, and the labels lift clear of it. */
-            style={{ paddingTop: LANE + 12 }}
+            /* TWO LANES, NOT ONE (Anir, Aug 23: first "the endpoints text, 0
+               and 400, you got to move it up a little bit… make sure it
+               doesn't touch the circle", then — when I lifted them — "bro,
+               what is this, do you even look at what you did", with 4,567 ·
+               100% printed straight through the 450).
+
+               There are two different labels above this track: where you have
+               got to, which rides over the fill and therefore ends up at the
+               right edge on a goal that is met, and the two end markers. I
+               raised the end markers into the first one's lane and made them
+               collide at exactly the moment a goal is finished — the moment
+               anyone most wants to read it.
+
+               So they get a lane each: progress on top, the ends beneath it,
+               the track below that, and every one of them clear of the
+               circles. */
+            style={{ paddingTop: LANE + 18 }}
           >
             {/* THE ZERO END, SAID ONCE, UP TOP (Anir, Aug 20: "where you say
                 $0, put that $0 on top... you can move it up for sure"). The
@@ -993,7 +1003,7 @@ export function PaceTimeline({
                 "absolute left-0 font-semibold text-text-tertiary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 12 : 14) }}
+              style={{ top: LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, 0)}
             </span>
@@ -1007,7 +1017,7 @@ export function PaceTimeline({
                 "absolute right-0 font-bold text-text-primary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 12 : 14) }}
+              style={{ top: LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, target)}
             </span>
