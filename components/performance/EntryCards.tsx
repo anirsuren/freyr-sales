@@ -346,6 +346,28 @@ export function stamp(iso?: string): { day?: string; time?: string } {
   };
 }
 
+/**
+ * THE SAME MOMENT, SPELLED OUT (Anir, Aug 23: "everywhere I have the date I
+ * need the time too"). The timeline printed "2026-08-23 · 6:04 PM" — a
+ * machine's date bolted to a person's clock. Every other date in the app says
+ * its month in words, for the reason that has never changed: 08/09 is two
+ * different days depending on which office is reading it.
+ */
+function stampWords(iso?: string): { day?: string; time?: string } {
+  const raw = stamp(iso);
+  if (!raw.day) return raw;
+  const t = new Date(iso!.length <= 10 ? `${raw.day}T12:00:00` : iso!);
+  if (Number.isNaN(t.getTime())) return raw;
+  return {
+    day: t.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    time: raw.time,
+  };
+}
+
 export function EntryTimeline({
   entry,
   person,
@@ -508,15 +530,15 @@ export function EntryTimeline({
                   are two lines now, in that order, each whole. */}
               <span className="flex flex-wrap items-baseline gap-x-1.5 text-[11.5px] text-text-secondary">
                 <span className={cn(!step.when && "italic text-text-tertiary", "tnum")}>
-                  {stamp(step.when).day ??
+                  {stampWords(step.when).day ??
                     step.fallback ??
                     (step.done ? "" : "not yet")}
                 </span>
-                {stamp(step.when).time && (
+                {stampWords(step.when).time && (
                   <>
                     <span aria-hidden>·</span>
                     <span className="tnum text-text-tertiary">
-                      {stamp(step.when).time}
+                      {stampWords(step.when).time}
                     </span>
                   </>
                 )}

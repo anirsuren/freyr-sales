@@ -16,6 +16,7 @@ import {
   pctMet,
   type PerformanceState,
   type PrimaryGoal,
+  resultWhen,
 } from "@/lib/performanceShared";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
@@ -260,7 +261,7 @@ export function VerifyGoalModal({
                       )}
                       <span className="shrink-0 text-text-tertiary tnum">
                         {a.customer ? "· " : ""}
-                        {a.date}
+                        {resultWhen(a)}
                         {stamp(a.addedAt).time ? ` · ${stamp(a.addedAt).time}` : ""}
                       </span>
                     </span>

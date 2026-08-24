@@ -45,6 +45,7 @@ import {
   type Pace,
   type PerformanceState,
   type PrimaryGoal,
+  resultWhen,
 } from "@/lib/performanceShared";
 import { BarChart } from "@/components/charts/Charts";
 
@@ -976,7 +977,13 @@ export function PaceTimeline({
                some text on top"). With a schedule it holds "must be at"; with
                none it holds where you are — so the space is used either way
                and nothing sits on the track. */
-            style={{ paddingTop: LANE + 8 }}
+            /* CLEARANCE FOR THE END LABELS (Anir, Aug 23: "the endpoints
+               text, 0 and 400, you got to move it up a little bit — you also
+               have to make sure it doesn't touch the circle"). The right-hand
+               figure sits directly over the target's circle, and at 11px bold
+               its descenders were landing on the ring. Four more pixels of
+               lane, and the labels lift clear of it. */
+            style={{ paddingTop: LANE + 12 }}
           >
             {/* THE ZERO END, SAID ONCE, UP TOP (Anir, Aug 20: "where you say
                 $0, put that $0 on top... you can move it up for sure"). The
@@ -986,7 +993,7 @@ export function PaceTimeline({
                 "absolute left-0 font-semibold text-text-tertiary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 12 : 14) + 8 }}
+              style={{ top: LANE - (compact ? 12 : 14) }}
             >
               {fmtAmount(unit, 0)}
             </span>
@@ -1000,7 +1007,7 @@ export function PaceTimeline({
                 "absolute right-0 font-bold text-text-primary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 12 : 14) + 8 }}
+              style={{ top: LANE - (compact ? 12 : 14) }}
             >
               {fmtAmount(unit, target)}
             </span>
@@ -1449,7 +1456,7 @@ export function PersonGoalPanel({
                  The facts sit together now and the pill follows them. */
               <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
                 <span className="w-[74px] shrink-0 text-text-tertiary tnum">
-                  {a.date}
+                  {resultWhen(a)}
                 </span>
                 <span className="shrink-0 font-semibold text-text-primary tnum">
                   {fmtAmount(goal.unit, a.amount, a.currency)}

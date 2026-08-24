@@ -1023,6 +1023,35 @@ export function goalCreatedOn(createdAt?: string): string | null {
   return stampedAt(createdAt);
 }
 
+/**
+ * WHEN A RESULT HAPPENED, AND WHEN IT WAS PUT IN (Anir, Aug 23: "like I said
+ * bro, everywhere I have the date I need the fucking time too").
+ *
+ * A logged result carries two different moments and only one of them has a
+ * clock. `date` is the day the money landed — a day the person picked, with
+ * no time in it, so inventing one would be putting a fact on the record that
+ * nobody entered. `addedAt` is when they typed it, and that is stamped to the
+ * minute. Rows printed the bare "2026-08-19" and neither read as English nor
+ * said when anything was actually done.
+ *
+ * So: the day it happened, spelled out, plus the clock from the moment it was
+ * entered — "August 19, 2026 · logged 5:48 PM". Where there is no entry stamp
+ * the day stands alone rather than borrowing a time from somewhere else.
+ */
+export function resultWhen(entry: {
+  date?: string;
+  addedAt?: string;
+}): string {
+  const day = stampedAt(entry.date) ?? entry.date ?? "";
+  const stamped = entry.addedAt ? new Date(entry.addedAt) : null;
+  if (!stamped || Number.isNaN(stamped.getTime())) return day;
+  const time = stamped.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} · logged ${time}`;
+}
+
 export function goalAuthor(createdBy?: string): string | null {
   const name = (createdBy ?? "").trim();
   if (!name) return null;

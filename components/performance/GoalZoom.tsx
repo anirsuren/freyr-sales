@@ -48,6 +48,7 @@ import {
   type PerfActual,
   type PerformanceState,
   type PrimaryGoal,
+  resultWhen,
 } from "@/lib/performanceShared";
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
 import { ClaimReviewDialog } from "./EntryCards";
@@ -1192,7 +1193,7 @@ export function GoalZoom({
                             <span>·</span>
                           </>
                         )}
-                        <span className="tnum">{a.date}</span>
+                        <span className="tnum">{resultWhen(a)}</span>
                         {opp ? (
                           <>
                             {opp.status && (
@@ -2194,7 +2195,7 @@ export function GoalZoom({
                       {fmtAmount(goal.unit, a.amount)}
                     </b>
                     <span className="text-[10.5px] text-text-tertiary tnum">
-                      {a.date}
+                      {resultWhen(a)}
                     </span>
                     {/* REVIEW, THEN DECIDE — never a one-click lock (Anir,
                         Aug 16: "at the bottom where it auto-verified it. It

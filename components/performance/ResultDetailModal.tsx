@@ -14,6 +14,7 @@ import {
   fmtAmount,
   type PerfActual,
   type PrimaryGoal,
+  resultWhen,
 } from "@/lib/performanceShared";
 
 /**
@@ -51,7 +52,10 @@ export function ResultDetailModal({
   const when = stamp(entry.addedAt);
 
   return (
-    <Modal open={open} onClose={onClose} title="This result" size="wide">
+    /* WIDE ENOUGH FOR A RAIL BESIDE THE FACTS (Anir, Aug 23: "if there's 20
+       steps it's going to look bad — make the popup bigger, and I'm
+       envisioning the right side being for the timeline"). */
+    <Modal open={open} onClose={onClose} title="This result" size="workflow">
       {/* THE HEADLINE IS THE MONEY AND WHAT BECAME OF IT — the same two-sided
           shape the sign-off dialog's entry cards use. */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-surface/50 px-3.5 py-3">
@@ -77,7 +81,9 @@ export function ResultDetailModal({
         </span>
       </div>
 
-      <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3.5 flex flex-col gap-5 lg:flex-row lg:gap-7">
+        <div className="min-w-0 flex-1">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Fact label="Logged by">
           <span className="flex items-center gap-1.5">
             <Avatar name={entry.person} className="h-5 w-5 shrink-0 text-[8px]" />
@@ -85,13 +91,9 @@ export function ResultDetailModal({
           </span>
         </Fact>
         <Fact label="Result date">
-          <span className="tnum">{entry.date}</span>
-          {when.day && (
-            <span className="text-text-tertiary">
-              {" "}· entered {when.day}
-              {when.time ? ` · ${when.time}` : ""}
-            </span>
-          )}
+          {/* resultWhen already says the day AND when it was entered, so the
+              old trailing "· entered …" printed the same fact twice. */}
+          <span className="tnum">{resultWhen(entry)}</span>
         </Fact>
         {entry.customer && (
           <Fact label="Customer">
@@ -149,11 +151,18 @@ export function ResultDetailModal({
         </div>
       </div>
 
-      {/* EntryTimeline carries its own "Timeline" heading — adding one above
-          it printed two headings for one list, the same duplication the deal
-          form had. */}
-      <div className="mt-4 border-t border-border-light pt-3.5">
-        <EntryTimeline entry={entry} person={entry.person} />
+        </div>
+
+        {/* THE STORY DOWN THE SIDE, not through the middle (Anir, Aug 23).
+            Full width, four steps already set the height of the whole dialog
+            and twenty would run off the bottom of the screen. As a rail it is
+            only as tall as the facts beside it, and a long history scrolls
+            inside itself rather than pushing the dialog taller. Below 1024px
+            it drops back underneath, where a narrow column would be worse
+            than a stacked one. EntryTimeline carries its own heading. */}
+        <div className="shrink-0 border-t border-border-light pt-4 lg:max-h-[420px] lg:w-[262px] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <EntryTimeline entry={entry} person={entry.person} />
+        </div>
       </div>
     </Modal>
   );
