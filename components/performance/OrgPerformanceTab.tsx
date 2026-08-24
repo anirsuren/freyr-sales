@@ -1173,16 +1173,48 @@ export function OrgPerformanceTab({
           {/* THE SAME ONE BUTTON THE PIPELINE HAS (Anir, Aug 19: "can I have
               the same thing on the performance page, wherever you did the
               close all and open all"). It knows which way it goes: anything
-              open closes everything, all shut opens everything. */}
+              open closes everything, all shut opens everything.
+
+              IT FOLDS THE GROUPS, NOT THE GOALS (Anir, Aug 24: "pressing open
+              and close all... does not open and close the actual items but the
+              dropdown categories"). The goals grew type groups on Aug 23 —
+              Goal Master's own shape — and this button predated them, so it
+              still threw open every individual goal's drill-down: ten stacked
+              panels, several screens of detail, from one click. What a
+              collapse-all is for is the level of structure you are navigating,
+              and on this screen that is the family. Opening a goal stays a
+              per-goal decision, which is the only place it has ever been
+              useful.
+
+              When there is only one family there are no group headers to fold,
+              so it falls back to the goals themselves rather than becoming a
+              button that does nothing. */}
           {shown.length > 0 && (() => {
             const allIds = shown.map((g) => g.id);
-            const anyOpen = allIds.some((id) => openIds.has(id));
+            const allTypes = grouped.map(([type]) => type);
+            const groupsFold = showTypeHeaders && allTypes.length > 0;
+            const anyOpen = groupsFold
+              ? allTypes.some((t) => !shutTypes.includes(t))
+              : allIds.some((id) => openIds.has(id));
             return (
               <button
                 type="button"
-                onClick={() =>
-                  setOpenIds(anyOpen ? new Set() : new Set(allIds))
+                aria-label={
+                  groupsFold
+                    ? anyOpen
+                      ? "Collapse every goal type"
+                      : "Expand every goal type"
+                    : anyOpen
+                      ? "Close every goal"
+                      : "Open every goal"
                 }
+                onClick={() => {
+                  if (groupsFold) {
+                    setShutTypes(anyOpen ? allTypes : []);
+                    return;
+                  }
+                  setOpenIds(anyOpen ? new Set() : new Set(allIds));
+                }}
                 className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
               >
                 {anyOpen ? (
