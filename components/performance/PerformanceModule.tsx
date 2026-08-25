@@ -196,6 +196,9 @@ export function PerformanceModule({
   const searchParams = useSearchParams();
   const jumpPerson = searchParams.get("person");
   const jumpGroup = searchParams.get("group");
+  /* A goal named in the URL opens on arrival, so a link from the Admin group
+     card lands ON the goal rather than near it (Anir, Aug 25). */
+  const jumpGoal = searchParams.get("goal");
   const [state, setState] = useState<PerformanceState>(initial);
   const tab = routeTab;
   const showMaster = routeMaster;
@@ -547,6 +550,7 @@ export function PerformanceModule({
         ) : tab === "groups" ? (
           <GroupPerformanceTab
             initialGroupId={jumpGroup}
+            focusGoalId={jumpGoal}
             state={state}
             meName={meName}
             live={live}

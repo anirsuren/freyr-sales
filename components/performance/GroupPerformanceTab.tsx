@@ -45,6 +45,7 @@ export function GroupPerformanceTab({
   onEditGoal,
   onEditSubgoal,
   initialGroupId = null,
+  focusGoalId = null,
 }: {
   state: PerformanceState;
   meName: string;
@@ -55,6 +56,8 @@ export function GroupPerformanceTab({
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
   /** Landed here from a search on another tab: open on that group. */
   initialGroupId?: string | null;
+  /** Deep-linked goal, opened on arrival. */
+  focusGoalId?: string | null;
 }) {
   const router = useRouter();
   const groups = state.groups;
@@ -302,6 +305,7 @@ export function GroupPerformanceTab({
   return (
     <>
     <OrgPerformanceTab
+      focusGoalId={focusGoalId}
       state={scoped}
       allGoals={state.goals}
       meName={meName}

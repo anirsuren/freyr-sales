@@ -15,6 +15,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
 import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -558,6 +559,18 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     already opens the editor (Anir, Aug 15: "we don't need the
                     add or remove people because there's already an edit
                     button"). */}
+                {/* AND UNDER THE PEOPLE, THE GOALS (Anir, Aug 25: "I want to
+                    see all their goals and how they're doing on the goals...
+                    when I click the dropdown below the people, it shows me the
+                    goals, and then I can click into each goal"). */}
+                {perf && (
+                  <GroupGoalsDrilldown
+                    state={perf}
+                    groupId={g.id}
+                    groupName={g.name}
+                    members={roster}
+                  />
+                )}
               </div>
             )}
             </div>

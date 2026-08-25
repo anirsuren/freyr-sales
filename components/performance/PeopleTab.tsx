@@ -37,6 +37,7 @@ import type { RunOp } from "./PerformanceModule";
  * name, then that people name can come").
  */
 export function PeopleTab({
+  focusGoalId = null,
   state,
   live,
   run,
@@ -47,6 +48,8 @@ export function PeopleTab({
   onEditSubgoal,
   initialPerson = null,
 }: {
+  /** Deep-linked goal, opened on arrival. */
+  focusGoalId?: string | null;
   state: PerformanceState;
   live: boolean;
   run: RunOp;
@@ -273,6 +276,7 @@ export function PeopleTab({
       </div>
 
       <OrgPerformanceTab
+        focusGoalId={focusGoalId}
         state={scoped}
         meName={meName}
         live={live}

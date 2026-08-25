@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Crown,
   CheckCircle2,
@@ -192,6 +192,7 @@ export function OrgPerformanceTab({
   onEditGoal,
   onEditSubgoal,
   scope,
+  focusGoalId = null,
 }: {
   state: PerformanceState;
   meName: string;
@@ -211,6 +212,8 @@ export function OrgPerformanceTab({
   /** The unfiltered goal plan, when this screen is showing a scoped copy.
    *  Lets a rollup still draw the components the scope removed. */
   allGoals?: PrimaryGoal[];
+  /** Land with this goal already open and scrolled to, from a deep link. */
+  focusGoalId?: string | null;
   scope?: {
     /**
      * Changes when the subject does — a different group, a different person.
@@ -298,7 +301,12 @@ export function OrgPerformanceTab({
   /** Which goals are expanded. A set, not one id, so Expand all can open them
    *  together (Anir, Aug 16: "at the end it should be like [a button] to
    *  expand all"). */
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    /* ARRIVING ON A GOAL OPENS IT (Anir, Aug 25: he wanted to reach a goal's
+       verifications from the Admin group card; a link that lands on the page
+       with the goal still shut is the same dead end he called out). */
+    () => new Set(focusGoalId ? [focusGoalId] : [])
+  );
   const toggleOpen = (id: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -306,6 +314,28 @@ export function OrgPerformanceTab({
       else next.add(id);
       return next;
     });
+  /**
+   * PUT THE LINKED GOAL UNDER THE TOP BAR once its drawer exists. Measuring on
+   * the next frame lands on the row as it was while collapsed, which is the
+   * bug the bar-click handler below already worked around.
+   */
+  useEffect(() => {
+    if (!focusGoalId) return;
+    let tries = 0;
+    let raf = 0;
+    const land = () => {
+      const row = document.querySelector(`[data-goal-row="${focusGoalId}"]`);
+      const panel = document.querySelector(`[data-goal-drawer="${focusGoalId}"]`);
+      if (!row || (!panel && tries++ < 40)) {
+        raf = window.requestAnimationFrame(land);
+        return;
+      }
+      row.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    raf = window.requestAnimationFrame(land);
+    return () => window.cancelAnimationFrame(raf);
+  }, [focusGoalId]);
+
   /** What YOU want to read the numbers in. A lens, never a stored fact. */
   /** Channel the chart and the table below it share for linked hover. */
   const syncId = `perf-${scope?.exportLabel ?? "org"}`;
