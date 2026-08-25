@@ -18,6 +18,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn, formatDate } from "@/lib/utils";
 import type { AdminEmailRecord } from "@/lib/adminEmail";
 import { RichTextBox } from "./RichTextBox";
+import { OwnerDigestPicker } from "./OwnerDigestPicker";
 
 /**
  * WRITING AND SENDING AN EMAIL FROM THE APP (Anir, Aug 25: "have you added
@@ -168,6 +169,19 @@ export function EmailComposer() {
             nothing leaves the building. Switch to Real to deliver.
           </p>
         )}
+
+        {/* START FROM A DRAFT (Saras, Aug 25: "can you make an automated email
+            draft for offering owners?"). It fills To, Subject and the message;
+            everything stays editable, and nothing sends until Send is pressed
+            twice like any other mail. */}
+        <OwnerDigestPicker
+          onLoad={(draft) => {
+            setTo(draft.to);
+            setSubject(draft.subject);
+            setBody(draft.html);
+            setConfirming(false);
+          }}
+        />
 
         <div className="mt-4 space-y-3.5">
           <label className="block">
