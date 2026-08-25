@@ -63,6 +63,7 @@ export function OfferingMaterialsTab({
         canEdit={admin}
         canRenameFolders={workspaceAdmin}
         materialFolders={o.materialFolders ?? []}
+        offeringType={o.offering_type}
         ownerNames={(o.owners ?? [])
           .filter((owner) => owner.status === "owner")
           .map((owner) => owner.name)}
@@ -75,6 +76,7 @@ export function OfferingMaterialsTab({
               offeringName={o.offering_name}
               materials={o.materials}
               materialFolders={o.materialFolders ?? []}
+              offeringType={o.offering_type}
               compact
             />
           ) : undefined

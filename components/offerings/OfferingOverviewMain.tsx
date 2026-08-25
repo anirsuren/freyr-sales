@@ -108,10 +108,21 @@ export function OfferingOverviewMain({
   /** Sections the page hands down to sit directly above Related offerings. */
   beforeRelated?: React.ReactNode;
 }) {
-  const description =
-    o.offering_description ||
-    o.offeringType?.description ||
-    "No description has been added for this offering yet.";
+  /**
+   * THE BRIEF IS THIS OFFERING'S BRIEF, OR NOTHING (Anir, Aug 25, on
+   * Freya.Artwork: "if I go into edit mode, the offering brief is blank —
+   * there's no brief added here. So if it's blank it should also show up as
+   * blank on screen outside edit mode. What it does is it comes up with this
+   * description... it's the same as the offering TYPE description").
+   *
+   * Falling back to the type's description made every empty offering wear the
+   * Freya Fusion platform blurb as if somebody had written it about that
+   * offering. A reader could not tell an authored brief from a borrowed one,
+   * and an owner opening the editor found a field that did not match what the
+   * page had just shown them. Empty is honest; the type's own description is
+   * still one card away in the rail.
+   */
+  const description = o.offering_description || "";
   const avgRevenue = Math.round(
     report.totalRevenue / Math.max(report.customerCount, 1)
   );
@@ -260,12 +271,19 @@ export function OfferingOverviewMain({
               bullet a service within the service. They render as real
               capability cards now instead of a pasted block of text; a plain
               prose description still renders as prose. */}
+          {!description.trim() ? (
+            <p className="text-[13px] text-text-tertiary">
+              No brief written yet.
+              {admin ? " Open the editor to add one." : ""}
+            </p>
+          ) : (
           <OfferingCapabilities
             text={description}
             offeringName={o.offering_name}
             offeringType={o.offering_type}
             styles={o.service_card_styles}
           />
+          )}
         </div>
       </section>
 

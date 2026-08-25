@@ -650,6 +650,65 @@ export const MATERIAL_FOLDER_TREE = [
   { name: "Others" },
 ] as const;
 
+/**
+ * SERVICES GET A DIFFERENT SHELF (Anir, Aug 25): "there needs to be a different
+ * folder structure for offerings that fall under either Freyr Services or
+ * Freyr AI Native Services... about 15 offerings currently."
+ *
+ * Three differences from the standard twelve, in his words:
+ *   - "we will remove this Product Sheet folder, this won't be there"
+ *   - "you have to replace the Product Demos folder with a Videos folder"
+ *   - "replace the name Product Brief with Service Brief"
+ * Everything else "will remain as is."
+ *
+ * A service has no product sheet and no product demo; it has a brief and a
+ * reel. The other ten folders are the same shelf either way, so a rep moving
+ * between a module and a service is not learning a second filing system.
+ */
+export const SERVICE_OFFERING_TYPES = [
+  "Freyr Services",
+  "Freyr AI Native Services",
+] as const;
+
+export function isServiceOfferingType(type: string | null | undefined): boolean {
+  const t = (type ?? "").trim().toLowerCase();
+  return SERVICE_OFFERING_TYPES.some((s) => s.toLowerCase() === t);
+}
+
+export const SERVICE_MATERIAL_FOLDER_TREE = [
+  { name: "Service Brief" },
+  {
+    name: "Videos",
+    children: ["Marketing Demos", "Internal Demos", "Recorded Client Demos"],
+  },
+  ...MATERIAL_FOLDER_TREE.filter(
+    (f) => !["Product Sheet", "Product Brief", "Product Demos"].includes(f.name)
+  ),
+] as const;
+
+/** The tree this offering's type actually uses. */
+export function materialFolderTreeFor(
+  offeringType: string | null | undefined
+): readonly { readonly name: string; readonly children?: readonly string[] }[] {
+  return isServiceOfferingType(offeringType)
+    ? (SERVICE_MATERIAL_FOLDER_TREE as never)
+    : (MATERIAL_FOLDER_TREE as never);
+}
+
+const flatten = (
+  tree: readonly { readonly name: string; readonly children?: readonly string[] }[]
+): string[] =>
+  tree.flatMap((folder) => [
+    folder.name,
+    ...(folder.children ? folder.children.map((c) => `${folder.name}/${c}`) : []),
+  ]);
+
+export function fixedMaterialFoldersFor(
+  offeringType: string | null | undefined
+): string[] {
+  return flatten(materialFolderTreeFor(offeringType));
+}
+
 /** Every selectable path, including the two parent folders that have children. */
 export const FIXED_MATERIAL_FOLDERS: string[] = MATERIAL_FOLDER_TREE.flatMap(
   (folder) => [
@@ -660,7 +719,13 @@ export const FIXED_MATERIAL_FOLDERS: string[] = MATERIAL_FOLDER_TREE.flatMap(
   ]
 );
 
-const FIXED_MATERIAL_FOLDER_SET = new Set(FIXED_MATERIAL_FOLDERS);
+/* Both shelves. A folder is "fixed" if EITHER tree names it: an offering can
+   change type, and a file already filed under Product Demos must not become
+   an orphan the moment it does. */
+const FIXED_MATERIAL_FOLDER_SET = new Set([
+  ...FIXED_MATERIAL_FOLDERS,
+  ...flatten(SERVICE_MATERIAL_FOLDER_TREE as never),
+]);
 
 export function isFixedMaterialFolder(value: unknown): value is string {
   return (
@@ -848,9 +913,12 @@ export function buildMaterialFolderUploadPlan(
  */
 export function allFolders(
   materials: { folder?: string }[],
-  stored: string[] = []
+  stored: string[] = [],
+  /** The offering's type, so a service gets the service shelf. Omitted =
+   *  the standard twelve, which is what every non-service offering uses. */
+  offeringType?: string | null
 ): string[] {
-  const paths = new Set<string>(FIXED_MATERIAL_FOLDERS);
+  const paths = new Set<string>(fixedMaterialFoldersFor(offeringType));
   const addWithAncestors = (value: unknown) => {
     const path = sanitizeMaterialFolderPath(value);
     if (!path) return;

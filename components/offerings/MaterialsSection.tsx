@@ -26,6 +26,8 @@ import {
   Pencil,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -155,6 +157,7 @@ export function MaterialsSection({
   canEdit = false,
   canRenameFolders = false,
   materialFolders = [],
+  offeringType,
   preferenceOwnerId,
   ownerNames = [],
 }: {
@@ -162,6 +165,10 @@ export function MaterialsSection({
   /** Folders an owner made that hold nothing yet; the rest are implied by the
    *  files. Passed in so an empty folder survives a reload. */
   materialFolders?: string[];
+  /** Drives which folder shelf this offering gets: services drop Product
+   *  Sheet, rename Product Brief to Service Brief and Product Demos to
+   *  Videos (Anir, Aug 25). */
+  offeringType?: string | null;
   /** Rendered at the right end of the filter row (the "+" add button). */
   action?: React.ReactNode;
   /** Needed to delete a row through the offering PATCH. */
@@ -601,7 +608,7 @@ export function MaterialsSection({
     ? materials.filter((m) => !isSalesVisible(m)).length
     : 0;
   const folders = useMemo(
-    () => allFolders(mine, materialFolders),
+    () => allFolders(mine, materialFolders, offeringType),
     [mine, materialFolders]
   );
   const subFolders =
@@ -801,78 +808,69 @@ export function MaterialsSection({
           iconClassName="left-3"
           inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
         />
-        <MultiColorSelect
-          values={formats}
-          onChange={setFormats}
-          minWidth={136}
-          allLabel="All formats"
-          allIcon={Files}
-          allColor="#0071E3"
-          ariaLabel="Filter by file format"
-          options={MATERIAL_FORMATS.map((f) => ({
-            value: f,
-            label: MATERIAL_FORMAT_META[f].label,
-            color: MATERIAL_FORMAT_META[f].color,
-            icon: MATERIAL_FORMAT_META[f].icon,
-          }))}
-        />
-        {/* NO SECOND FORMAT FILTER (Suren, Aug 13: "is there a difference
-            between all formats and all file types? … we can remove the filter
-            of all file types, and we can just retain the simple all formats").
-            There was no difference worth a control: "All formats" already cuts
-            by video / presentation / document, and this re-cut the same files
-            by extension. Two dropdowns, one question. */}
-        <MultiColorSelect
-          values={stages}
-          onChange={setStages}
-          minWidth={150}
-          allLabel="All buyer's journey stages"
-          allIcon={Route}
-          allColor="#7C3AED"
-          ariaLabel="Filter by buyer's journey stage"
-          options={JOURNEY_STAGES.map((s) => ({
-            value: s,
-            label: JOURNEY_STAGE_META[s].label,
-            color: JOURNEY_STAGE_META[s].color,
-            icon: JOURNEY_STAGE_META[s].icon,
-          }))}
-        />
-        <MultiColorSelect
-          values={levels}
-          onChange={setLevels}
-          minWidth={144}
-          allLabel="All access levels"
-          allIcon={ShieldCheck}
-          allColor="#0F766E"
-          ariaLabel="Filter by access level"
-          /* A REP CANNOT FILTER FOR WHAT A REP CANNOT SEE (Saras, Aug 21,
-             counting the levels as two, not three: AI-only is "only admins and
-             the offering owner themselves"). Offering a filter that always
-             returns nothing invited exactly the question the glossary is there
-             to avoid. Owners and admins keep all three. */
-          options={ACCESS_LEVELS.filter(
-            (l) => canEdit || l !== "agent_only"
-          ).map((l) => ({
-            value: l,
-            label: ACCESS_LEVEL_META[l].label,
-            color: ACCESS_LEVEL_META[l].color,
-            icon: ACCESS_LEVEL_META[l].icon,
-          }))}
-        />
-        <MultiColorSelect
-          values={divisions}
-          onChange={setDivisions}
-          minWidth={132}
-          allLabel="All divisions"
-          allIcon={Pill}
-          allColor="#C026D3"
-          ariaLabel="Filter by division"
-          options={DIVISIONS.map((d) => ({
-            value: d,
-            label: `${d} · ${DIVISION_META[d].label}`,
-            color: DIVISION_META[d].color,
-            icon: DIVISION_META[d].icon,
-          }))}
+        {/* ONE FILTER BUTTON, LIKE EVERY OTHER LIST PAGE (Anir, Aug 25: "in
+            one single dropdown menu for the filters? Yeah, we can do that,
+            just like the other pages"). Four permanently-open dropdowns filled
+            the row and pushed the view toggle and the "+" around; the two-layer
+            menu is the shape Offerings, Targets and Solutioning already use. */}
+        <FilterMenu
+          onClearAll={() => {
+            setFormats([]);
+            setStages([]);
+            setLevels([]);
+            setDivisions([]);
+          }}
+          groups={[
+            {
+              key: "format",
+              label: "Format",
+              values: formats,
+              onChange: setFormats,
+              options: MATERIAL_FORMATS.map((f) => ({
+                value: f,
+                label: MATERIAL_FORMAT_META[f].label,
+                color: MATERIAL_FORMAT_META[f].color,
+              })),
+            },
+            {
+              key: "stage",
+              label: "Buyer's journey",
+              values: stages,
+              onChange: setStages,
+              options: JOURNEY_STAGES.map((j) => ({
+                value: j,
+                label: JOURNEY_STAGE_META[j].label,
+                color: JOURNEY_STAGE_META[j].color,
+              })),
+            },
+            {
+              key: "access",
+              label: "Access level",
+              values: levels,
+              onChange: setLevels,
+              /* A REP CANNOT FILTER FOR WHAT A REP CANNOT SEE (Saras, Aug 21):
+                 AI-only is owners and admins, so offering it to everyone else
+                 invited the question the glossary exists to avoid. */
+              options: ACCESS_LEVELS.filter(
+                (l) => canEdit || l !== "agent_only"
+              ).map((l) => ({
+                value: l,
+                label: ACCESS_LEVEL_META[l].label,
+                color: ACCESS_LEVEL_META[l].color,
+              })),
+            },
+            {
+              key: "division",
+              label: "Division",
+              values: divisions,
+              onChange: setDivisions,
+              options: DIVISIONS.map((d) => ({
+                value: d,
+                label: `${d} · ${DIVISION_META[d].label}`,
+                color: DIVISION_META[d].color,
+              })),
+            },
+          ]}
         />
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
@@ -1040,7 +1038,24 @@ export function MaterialsSection({
                   <span className="block break-words text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                     {name}
                   </span>
-                  <span className="mt-0.5 block text-[11.5px] text-text-secondary">
+                  {/* GREEN WHEN THERE IS SOMETHING IN IT (Anir, Aug 25: "I can
+                      see from the very beginning that two materials have been
+                      uploaded, but I have to open each of these to see which
+                      folder they are in. Can we make that text green whenever a
+                      file is uploaded inside a folder... just so it's visually
+                      very easy to know which folder the files are in").
+                      Twelve folders reading "0 files" in the same grey as the
+                      one holding the file made finding it a hunt. Green is a
+                      status colour used AS a status here — there is something
+                      here — which is exactly what the reservation allows. */}
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[11.5px]",
+                      count > 0
+                        ? "font-semibold text-[color:#1A7A35]"
+                        : "text-text-secondary"
+                    )}
+                  >
                     <span className="tnum">{count}</span>{" "}
                     {count === 1 ? "file" : "files"}
                     {nested > 0 && (
@@ -1138,6 +1153,14 @@ export function MaterialsSection({
                     centres, because it is a fixed row of icons. */}
                 <th className="px-4 py-3 align-middle">File name</th>
                 <th className="px-3 py-3 align-middle">File format</th>
+                {/* FOLDER IS A COLUMN NOW (Anir, Aug 25: "in the file view,
+                    when we're just looking at the list of files, can you add a
+                    column called Folder? Currently the folder name is visible
+                    below the title of the file — instead of it being visible
+                    there, let's put this in a separate column"). Under the
+                    name it read as part of the description; in its own column
+                    it sorts, scans and lines up with everything else. */}
+                <th className="px-3 py-3 align-middle">Folder</th>
                 <th className="px-3 py-3 align-middle">Access level</th>
                 <th className="px-3 py-3 align-middle">Buyer&apos;s journey stage(s)</th>
                 <th className="px-3 py-3 align-middle">Division</th>
@@ -1225,16 +1248,13 @@ export function MaterialsSection({
                           >
                             <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
                           </MaterialPeek>
-                          {/* Folder only. The file type moved into the FILE
-                              FORMAT column, under the format pill, where the
-                              two facts about the file's shape sit together
-                              (Anir, Aug 8: "put the file format right below
-                              where it says video... in a second column"). */}
-                          <span className="block break-words text-[10.5px] text-text-tertiary">
-                            {materialFolderLabel(material.folder || "Others")}
-                          </span>
+                          {/* BLACK, NOT GREY (Anir, Aug 25: "can we keep the
+                              descriptions in black font only? They need to be
+                              visible and emphasized"). A description is the one
+                              line that says what the file actually is; grey
+                              filed it with the metadata. */}
                           {material.description && (
-                            <span className="mt-1 block break-words text-[11px] leading-snug text-text-secondary">
+                            <span className="mt-1 block break-words text-[11px] leading-snug text-text-primary">
                               {material.description}
                             </span>
                           )}
@@ -1283,6 +1303,11 @@ export function MaterialsSection({
                           fine as it is, no need to make any change there." */}
                       <span className="block text-[12.5px] text-text-primary">
                         {formatMeta.label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <span className="block break-words text-[12.5px] text-text-secondary">
+                        {materialFolderLabel(material.folder || "Others")}
                       </span>
                     </td>
                     <td className="px-3 py-3 align-middle">

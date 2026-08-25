@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownAZ,
   ArrowUpRight,
+  ChevronDown,
   Clock3,
   Download,
   ExternalLink,
@@ -133,6 +134,19 @@ export function AllMaterialsBrowser({
     });
   }, [rows, query, offerings, folders, stages, levels, formats]);
 
+  /* GROUPED BY OFFERING, FOLDED, BY DEFAULT (Anir, Aug 25: "can we have a
+     default grouping of these materials... like how Windows already offers
+     grouping — group by type and it automatically filters the list by
+     collapsible groups. Actually, instead of categories, should we make the
+     groups based on the offering itself? Let's do that, and that will be the
+     default. Anybody who enters this page through the sidebar should see them
+     automatically grouped").
+
+     Every column stays exactly as it is; the grouping only inserts a header
+     row per offering. Shut groups live in a Set so the default is OPEN, and
+     collapsing one is the deliberate act. */
+  const [shutOfferings, setShutOfferings] = useState<Set<string>>(new Set());
+
   const ordered = useMemo(() => {
     const arr = [...visible];
     const at = (row: MaterialRow) =>
@@ -158,6 +172,18 @@ export function AllMaterialsBrowser({
       );
     return arr;
   }, [visible, sort]);
+
+  /** The rows, in the order above, cut into one block per offering. Sorting
+   *  still decides the order INSIDE each block and which block comes first. */
+  const offeringGroups = useMemo(() => {
+    const out: { id: string; name: string; rows: typeof ordered }[] = [];
+    for (const row of ordered) {
+      const last = out[out.length - 1];
+      if (last && last.id === row.offeringId) last.rows.push(row);
+      else out.push({ id: row.offeringId, name: row.offeringName, rows: [row] });
+    }
+    return out;
+  }, [ordered]);
 
   const clearAll = () => {
     setQuery("");
@@ -316,28 +342,82 @@ export function AllMaterialsBrowser({
                   read the other without relearning it. Offering and Folder are
                   the two this page adds, because here a file has to say which
                   offering it belongs to. */}
-              <th className="w-[22%] px-4 py-2.5">Material</th>
-              <th className="w-[10%] px-4 py-2.5">File format</th>
-              <th className="w-[14%] px-4 py-2.5">Offering</th>
+              {/* THE ORDER ANIR ASKED FOR, Aug 25, reading it left to right:
+                  "Materials, File format, Offering, Folder, Access level" —
+                  and "'who can view this' has to be changed to Access level."
+                  Stage, Division and Uploaded by follow.
+
+                  THE HEADERS AND THE CELLS HAD DRIFTED APART. Division sat
+                  under "Who can view", Uploaded by under "Division" and the
+                  access-level pill under "Uploaded by" — I appended two
+                  columns to the header and inserted their cells in a different
+                  place ("the text is incorrect according to the column
+                  headers. Do you see this?"). Header and body are written in
+                  one order now, and the browser check counts them and reads
+                  the first row cell by cell so it can never drift again. */}
+              <th className="w-[20%] px-4 py-2.5">Material</th>
+              <th className="w-[9%] px-4 py-2.5">File format</th>
+              <th className="w-[13%] px-4 py-2.5">Offering</th>
               <th className="w-[11%] px-4 py-2.5">Folder</th>
-              <th className="w-[12%] px-4 py-2.5">Stage</th>
-              <th className="w-[11%] px-4 py-2.5">Who can view</th>
+              <th className="w-[11%] px-4 py-2.5">Access level</th>
+              <th className="w-[11%] px-4 py-2.5">Stage</th>
               <th className="w-[8%] px-4 py-2.5">Division</th>
-              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
+              {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
+                  of two letters ("Inay / at / Paw / ar"). */}
+              <th className="w-[16%] px-4 py-2.5">Uploaded by</th>
               <th className="w-[7%] px-4 py-2.5 text-center">Open</th>
             </tr>
           </thead>
           <tbody>
-            {ordered.map((row) => {
+            {offeringGroups.map((group) => {
+              const shut = shutOfferings.has(group.id);
+              return (
+                <Fragment key={group.id}>
+                  {/* The group band: click anywhere on it to fold, the same
+                      disclosure idiom the goal tables use. */}
+                  <tr
+                    onClick={() =>
+                      setShutOfferings((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.id)) next.delete(group.id);
+                        else next.add(group.id);
+                        return next;
+                      })
+                    }
+                    className="cursor-pointer border-b border-border-light bg-surface/70 transition-colors hover:bg-blue-light/30"
+                  >
+                    <td colSpan={9} className="px-4 py-2.5">
+                      <span className="flex items-center gap-2">
+                        <ChevronDown
+                          size={14}
+                          strokeWidth={2.2}
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform duration-200",
+                            shut && "-rotate-90"
+                          )}
+                        />
+                        <span className="text-[12.5px] font-semibold text-text-primary">
+                          {group.name}
+                        </span>
+                        <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                          {group.rows.length}{" "}
+                          {group.rows.length === 1 ? "material" : "materials"}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                  {!shut &&
+                    group.rows.map((row) => {
               const folder = canonicalMaterialFolder(row.material);
               const rowStages = materialJourneyStages(row.material);
               const level = row.material.accessLevel as AccessLevel | undefined;
               return (
                 <tr
                   key={`${row.offeringId}:${row.material.id}`}
-                  className="border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]"
+                  className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)]"
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     {/* THE NAME OPENS THE FILE (Anir, Aug 21: "when I click on
                         it, it opens. Don't take me to the fucking offering,
                         that's pointless then"). An uploaded file opens in the
@@ -393,7 +473,7 @@ export function AllMaterialsBrowser({
                       {MATERIAL_FORMAT_META[materialFormat(row.material.kind)].label}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     <Link
                       href={`/offerings/${row.offeringId}`}
                       className="group/off inline-flex min-w-0 items-center gap-1 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
@@ -406,7 +486,7 @@ export function AllMaterialsBrowser({
                       />
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     {/* The folder is the one thing that SHOULD leave: it opens
                         that folder inside its offering, where the rest of what
                         is in it lives. */}
@@ -426,7 +506,27 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
+                    {level ? (
+                      /* The one place colour still earns its keep on this
+                         page: who may open a file is a rule, not a label, and
+                         it is the tag the glossary exists to explain. */
+                      <span
+                        className={cn(
+                          "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                        )}
+                        style={{
+                          color: ACCESS_LEVEL_META[level].color,
+                          background: `${ACCESS_LEVEL_META[level].color}14`,
+                        }}
+                      >
+                        {ACCESS_LEVEL_META[level].label}
+                      </span>
+                    ) : (
+                      <span className="text-text-tertiary">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 align-top">
                     {rowStages.length ? (
                       <span className="text-[12px] text-text-primary">
                         {rowStages
@@ -437,7 +537,7 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     {/* Division keeps its pills: it is a three-letter code, and
                         MPR / MDV / CON mean nothing at a glance without the
                         colour and icon that name them. */}
@@ -461,7 +561,7 @@ export function AllMaterialsBrowser({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     {row.material.addedBy ? (
                       <span className="flex min-w-0 items-center gap-2">
                         <Avatar
@@ -476,27 +576,7 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    {level ? (
-                      /* The one place colour still earns its keep on this
-                         page: who may open a file is a rule, not a label, and
-                         it is the tag the glossary exists to explain. */
-                      <span
-                        className={cn(
-                          "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        )}
-                        style={{
-                          color: ACCESS_LEVEL_META[level].color,
-                          background: `${ACCESS_LEVEL_META[level].color}14`,
-                        }}
-                      >
-                        {ACCESS_LEVEL_META[level].label}
-                      </span>
-                    ) : (
-                      <span className="text-text-tertiary">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 align-top">
                     <div className="flex items-center justify-center gap-1">
                       <Tooltip
                         label={
@@ -533,6 +613,9 @@ export function AllMaterialsBrowser({
                     </div>
                   </td>
                 </tr>
+              );
+                    })}
+                </Fragment>
               );
             })}
           </tbody>

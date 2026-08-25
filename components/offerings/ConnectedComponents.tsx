@@ -13,6 +13,7 @@ import {
   Link2,
   Plus,
   Unlink,
+  Search,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -92,6 +93,20 @@ export function ConnectedComponents({
   })).filter((g) => g.items.length > 0);
 
   const available = all.filter((c) => !connectedIds.has(c.id));
+  /** SEARCH IN THE CONNECT DIALOG (Anir, Aug 25: "for an offering owner in the
+   *  FDL Components tab, when they try to connect a component, can you also add
+   *  a search bar at the top in case they want to search for a specific
+   *  component?"). Thirty-odd components in a 300px scroller is a hunt; every
+   *  other picker in this app searches. */
+  const [pickQuery, setPickQuery] = useState("");
+  const pickQ = pickQuery.trim().toLowerCase();
+  const availableShown = pickQ
+    ? available.filter(
+        (c) =>
+          c.name.toLowerCase().includes(pickQ) ||
+          c.type.toLowerCase().includes(pickQ)
+      )
+    : available;
 
   async function saveIds(ids: string[], done: string) {
     return savePatch({ component_ids: ids }, done);
@@ -559,8 +574,29 @@ export function ConnectedComponents({
             }}
             className="space-y-4"
           >
+            <div className="relative">
+              <Search
+                size={14}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              />
+              <input
+                autoFocus
+                value={pickQuery}
+                onChange={(e) => setPickQuery(e.target.value)}
+                placeholder="Search components…"
+                aria-label="Search components"
+                className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </div>
+            {availableShown.length === 0 ? (
+              <p className="px-1 py-6 text-center text-[12.5px] text-text-tertiary">
+                No component matches “{pickQuery.trim()}”.
+              </p>
+            ) : (
             <ul className="max-h-72 space-y-1.5 overflow-y-auto">
-              {available.map((component) => {
+              {availableShown.map((component) => {
                 const active = picked.includes(component.id);
                 return (
                   <li key={component.id}>
@@ -591,6 +627,7 @@ export function ConnectedComponents({
                 );
               })}
             </ul>
+            )}
             <div className="flex items-center justify-between gap-3">
               <Link
                 href="/components"

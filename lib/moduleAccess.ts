@@ -47,15 +47,18 @@ export const REP_MODULES = [
   // Requesting a presentation, submission or meeting IS a rep's job — the
   // whole solutioning flow starts with them (Suren, Aug 24).
   "/solutioning",
-  /**
-   * MARKET INTEL OPENED TO REPS (Anir, Aug 20: "they're not allowed to see
-   * market intel. No, I think they should be able to see market intel").
-   * It is company and industry news about the accounts they sell to, which is
-   * a rep's job to know before a call; nothing on it is anyone's private
-   * number.
-   */
-  "/market-intel",
 ] as const;
+
+/**
+ * MARKET INTEL IS CLOSED TO REPS AGAIN (Anir, Aug 25: "can we hide the Market
+ * Intel module for everybody with rep access? Let's do that ASAP").
+ *
+ * He opened it to them on Aug 20 — "I think they should be able to see market
+ * intel" — and closed it again after watching a rep's screen on the Aug 25
+ * call. Both calls are his; this is the current one. The module still ships
+ * for managers and admins, and re-opening it is putting "/market-intel" back
+ * in the list above.
+ */
 
 /**
  * TEAM IS NOT FINISHED, SO NOBODY BUT ADMINS SEES IT YET (Anir, Aug 16: "the

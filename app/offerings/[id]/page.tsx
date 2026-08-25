@@ -371,14 +371,23 @@ export default async function OfferingDetailPage({
             />
             {o.offering_name}
           </h1>
-          {/* Who filed it and when (Anir, Aug 23). Under the name, where a
-              provenance line belongs, and silent on the rows that predate the
-              field rather than guessing an author. */}
-          <CreatedStamp
-            by={o.created_by}
-            at={o.created_at}
-            className="mt-1.5 pl-14 text-[11.5px] text-text-tertiary"
-          />
+          {/* THE DATE ONLY WHEN SOMEBODY IS NAMED (Anir, Aug 25: "this new
+              thing pops up, the date the offering was added on — can we get
+              this removed? This isn't really needed. It comes up under all the
+              offerings").
+
+              He asked for who-and-when on Aug 23, and every offering predates
+              the field, so the line printed a bare seeded timestamp under every
+              title — provenance with the provenance missing. It appears again
+              the moment an offering is created by a real person, which is what
+              he actually asked for. */}
+          {o.created_by ? (
+            <CreatedStamp
+              by={o.created_by}
+              at={o.created_at}
+              className="mt-1.5 pl-14 text-[11.5px] text-text-tertiary"
+            />
+          ) : null}
         </div>
 
         {/* All actions on one line (Anir: single line to save space) —
@@ -593,7 +602,13 @@ export default async function OfferingDetailPage({
             canEdit={admin}
           />
         ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
+        /* 75/25, NOT 1fr + A FIXED RAIL (Anir, Aug 25: "make this side of the
+           page a bit smaller so that this side can be bigger... the majority of
+           the main data is on this side, this is just supplementary data, so we
+           don't need to give it that much space. 75-25 of these two"). A fixed
+           340px rail took a third of a 1100px content column and grew
+           proportionally worse the narrower the window. */
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-6 mt-6 items-start">
           {/* ---------------------------------------------------- MAIN column */}
           <OfferingOverviewMain
             offering={o}
@@ -688,11 +703,20 @@ export default async function OfferingDetailPage({
                                         background: sizeStyle(c.size).bg,
                                         color: sizeStyle(c.size).color,
                                       }}
-                                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                                      /* SMALLER, SO THE THREE SIZES SIT ON ONE
+                                         ROW (Anir, Aug 25: "can we reduce the
+                                         font size of these boxes? If I'm at
+                                         100% zoom they spill over. What I want
+                                         is for these three to fit together in
+                                         one row: small, mid-size and large").
+                                         The segments column halved when the
+                                         page went 75/25, so three chips at
+                                         12px wrapped after two. */
+                                      className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
                                     >
                                       {(() => {
                                         const TierIcon = sizeStyle(c.size).icon;
-                                        return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
+                                        return <TierIcon size={10} strokeWidth={2.3} aria-hidden="true" />;
                                       })()}
                                       {c.size}
                                     </Link>

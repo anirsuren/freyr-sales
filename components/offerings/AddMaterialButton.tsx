@@ -218,6 +218,7 @@ export function AddMaterialButton({
   offeringName,
   materials,
   materialFolders = [],
+  offeringType,
   variant = "link",
   compact = false,
 }: {
@@ -229,6 +230,8 @@ export function AddMaterialButton({
   materials: OfferingMaterial[];
   /** Empty owner-created folders that cannot be inferred from a material. */
   materialFolders?: string[];
+  /** Services get a different folder shelf (Anir, Aug 25). */
+  offeringType?: string | null;
   variant?: "link" | "button";
   /** Icon-only "+" trigger for tight toolbars. */
   compact?: boolean;
@@ -260,7 +263,7 @@ export function AddMaterialButton({
   // Aug 12: "the parent folder shouldn't be an option — they should choose
   // between the subfolders"). The open folder only preselects when it's a
   // leaf, and the pickers below list leaves only.
-  const allKnownFolders = allFolders(materials, materialFolders);
+  const allKnownFolders = allFolders(materials, materialFolders, offeringType);
   const openFolderIsLeaf =
     !!openFolder &&
     !allKnownFolders.some(

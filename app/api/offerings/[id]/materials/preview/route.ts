@@ -50,6 +50,36 @@ type Preview =
       sheets: {
         name: string;
         rows: (string | number | boolean | null)[][];
+        /**
+         * THE WORKBOOK'S OWN FORMATTING, CELL BY CELL (Anir, Aug 25, looking
+         * at a Freyr sheet in the viewer next to the same file in Excel: "in
+         * view mode it looks completely unformatted, but when I download it,
+         * it actually has some formatting, some colours, alignment... hard to
+         * understand without any formatting. If that format is also visible in
+         * view mode it will be much better for the end user").
+         *
+         * A sparse map keyed "r:c" so an unstyled sheet costs nothing on the
+         * wire, and only the handful of things that carry meaning are read:
+         * fill, text colour, bold/italic, horizontal alignment. Not a
+         * rendering engine — the point is that a header band still looks like
+         * a header band.
+         */
+        styles?: Record<
+          string,
+          {
+            bg?: string;
+            color?: string;
+            bold?: boolean;
+            italic?: boolean;
+            align?: "left" | "center" | "right";
+          }
+        >;
+        /** Column widths in Excel's character units, so a Title column stays
+         *  wide and a "#" column stays narrow. */
+        widths?: (number | null)[];
+        /** Merged ranges as [startRow, startCol, endRow, endCol], relative to
+         *  the trimmed grid: a merged title row must not repeat its text. */
+        merges?: [number, number, number, number][];
         totalRows: number;
         totalColumns: number;
         truncated: boolean;
@@ -234,7 +264,20 @@ export async function GET(
 
     if (ext === "xlsx" || ext === "xls") {
       const XLSX = await import("xlsx");
-      const book = XLSX.read(buffer, { type: "buffer" });
+      /* cellStyles asks SheetJS to keep each cell's `s` (style) record — it is
+         dropped by default, which is why the preview had nothing to show. */
+      const book = XLSX.read(buffer, { type: "buffer", cellStyles: true });
+
+      /** Excel colours arrive as ARGB ("FF1F3864"), a theme index, or an
+       *  indexed palette entry. Only a real RGB is trusted; anything else is
+       *  left alone rather than guessed at, because a wrong colour is worse
+       *  than none. */
+      const rgb = (value: unknown): string | undefined => {
+        const raw = (value as { rgb?: string } | undefined)?.rgb;
+        if (typeof raw !== "string") return undefined;
+        const hex = raw.length === 8 ? raw.slice(2) : raw;
+        return /^[0-9a-fA-F]{6}$/.test(hex) ? `#${hex.toUpperCase()}` : undefined;
+      };
       // Send cell values, not SheetJS's unstyled HTML. The client builds a
       // proper workbook surface with row/column headers, sticky coordinates,
       // grid lines and two-directional scrolling. The old HTML output was a
@@ -303,9 +346,91 @@ export async function GET(
                 return trimmed;
               })
             : [[null]];
+        /* Styles for the cells that survived the trim, addressed in the
+           TRIMMED grid's coordinates so the client never has to know where the
+           sheet's used range began. */
+        const styles: Record<string, Record<string, unknown>> = {};
+        if (lastRow >= 0) {
+          for (let r = 0; r <= lastRow; r++) {
+            for (let c = 0; c <= lastColumn; c++) {
+              const address = XLSX.utils.encode_cell({
+                r: decoded.s.r + r,
+                c: decoded.s.c + c,
+              });
+              const cell = worksheet[address] as
+                | { s?: Record<string, unknown> }
+                | undefined;
+              const style = cell?.s as
+                | {
+                    fill?: { fgColor?: unknown; patternType?: string };
+                    font?: { color?: unknown; bold?: boolean; italic?: boolean };
+                    alignment?: { horizontal?: string };
+                  }
+                | undefined;
+              if (!style) continue;
+              const entry: Record<string, unknown> = {};
+              // "none" is Excel's way of saying no fill at all.
+              if (style.fill && style.fill.patternType !== "none") {
+                const bg = rgb(style.fill.fgColor);
+                // White on white is the default, not a decision worth sending.
+                if (bg && bg !== "#FFFFFF") entry.bg = bg;
+              }
+              const color = rgb(style.font?.color);
+              if (color && color !== "#000000") entry.color = color;
+              if (style.font?.bold) entry.bold = true;
+              if (style.font?.italic) entry.italic = true;
+              const align = style.alignment?.horizontal;
+              if (align === "center" || align === "right" || align === "left")
+                entry.align = align;
+              if (Object.keys(entry).length > 0) styles[`${r}:${c}`] = entry;
+            }
+          }
+        }
+
+        /* Column widths, in Excel's character units. `wch` is what the file
+           stores; `wpx` appears when a reader has already converted. */
+        const cols = (worksheet["!cols"] ?? []) as {
+          wch?: number;
+          wpx?: number;
+          hidden?: boolean;
+        }[];
+        const widths =
+          lastColumn >= 0
+            ? Array.from({ length: lastColumn + 1 }, (_, c) => {
+                const col = cols[decoded.s.c + c];
+                if (!col || col.hidden) return null;
+                if (typeof col.wch === "number") return col.wch;
+                if (typeof col.wpx === "number") return col.wpx / 7;
+                return null;
+              })
+            : [];
+
+        /* Merged ranges, clipped to the trimmed grid and rebased onto it. A
+           merged title spanning A1:E1 must render as one wide cell, not five. */
+        const merges: [number, number, number, number][] = [];
+        for (const m of (worksheet["!merges"] ?? []) as {
+          s: { r: number; c: number };
+          e: { r: number; c: number };
+        }[]) {
+          const sr = m.s.r - decoded.s.r;
+          const sc = m.s.c - decoded.s.c;
+          const er = m.e.r - decoded.s.r;
+          const ec = m.e.c - decoded.s.c;
+          if (sr < 0 || sc < 0 || sr > lastRow || sc > lastColumn) continue;
+          merges.push([
+            sr,
+            sc,
+            Math.min(er, lastRow),
+            Math.min(ec, lastColumn),
+          ]);
+        }
+
         return {
           name,
           rows: usedRows,
+          styles: Object.keys(styles).length ? (styles as never) : undefined,
+          widths: widths.some((w) => w != null) ? widths : undefined,
+          merges: merges.length ? merges : undefined,
           totalRows: lastRow >= 0 ? lastRow + 1 : 1,
           totalColumns: lastRow >= 0 ? lastColumn + 1 : 1,
           // Truncated only when CONTENT hits the window edge — a stale declared

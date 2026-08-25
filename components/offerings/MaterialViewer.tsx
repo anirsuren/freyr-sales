@@ -66,6 +66,20 @@ type SheetCell = string | number | boolean | null;
 type Sheets = {
   name: string;
   rows: SheetCell[][];
+  /** The workbook's own formatting, sent by the preview route: a sparse map
+   *  keyed "row:col" plus column widths and merged ranges (Anir, Aug 25). */
+  styles?: Record<
+    string,
+    {
+      bg?: string;
+      color?: string;
+      bold?: boolean;
+      italic?: boolean;
+      align?: "left" | "center" | "right";
+    }
+  >;
+  widths?: (number | null)[];
+  merges?: [number, number, number, number][];
   totalRows: number;
   totalColumns: number;
   truncated: boolean;
@@ -932,10 +946,72 @@ export function MaterialViewer({
                     )
                   )
                 );
+                /**
+                 * THE WORKBOOK'S OWN LOOK, CARRIED THROUGH (Anir, Aug 25:
+                 * "somebody uploads an Excel and in view mode it looks
+                 * completely unformatted, but when I download it, it actually
+                 * has formatting, colours, alignment... hard to understand
+                 * without any formatting").
+                 *
+                 * The preview route now sends fills, text colours, bold,
+                 * italic, alignment, column widths and merged ranges. Three
+                 * lookups build from that: which cells a merge swallows (they
+                 * render as nothing), the span the anchor cell carries, and the
+                 * inline style for any cell that has one.
+                 */
+                const merges = currentSheet.merges ?? [];
+                const swallowed = new Set<string>();
+                const spanAt = new Map<string, { rows: number; cols: number }>();
+                for (const [sr, sc, er, ec] of merges) {
+                  spanAt.set(`${sr}:${sc}`, {
+                    rows: er - sr + 1,
+                    cols: ec - sc + 1,
+                  });
+                  for (let r = sr; r <= er; r++)
+                    for (let c = sc; c <= ec; c++)
+                      if (!(r === sr && c === sc)) swallowed.add(`${r}:${c}`);
+                }
+                const styleFor = (r: number, c: number) => {
+                  const st = currentSheet.styles?.[`${r}:${c}`];
+                  if (!st) return undefined;
+                  return {
+                    background: st.bg,
+                    color: st.color,
+                    fontWeight: st.bold ? 700 : undefined,
+                    fontStyle: st.italic ? "italic" : undefined,
+                    textAlign: st.align,
+                  } as React.CSSProperties;
+                };
                 return (
                   <>
                     <div className="material-sheet-grid material-scroll min-h-0 flex-1 overflow-auto">
                       <table aria-label={`${currentSheet.name} spreadsheet`}>
+                        {/* Excel's character units, ~7px each, clamped so one
+                            very wide column cannot push everything else off
+                            the screen. */}
+                        {currentSheet.widths && (
+                          <colgroup>
+                            <col />
+                            {Array.from({ length: columnCount }, (_, column) => {
+                              const w = currentSheet.widths?.[column];
+                              return (
+                                <col
+                                  key={column}
+                                  style={
+                                    w
+                                      ? {
+                                          width: `${Math.min(
+                                            Math.max(Math.round(w * 7), 56),
+                                            420
+                                          )}px`,
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              );
+                            })}
+                          </colgroup>
+                        )}
                         <thead>
                           <tr>
                             <th className="material-sheet-corner" aria-label="Row numbers" />
@@ -950,9 +1026,21 @@ export function MaterialViewer({
                           {currentSheet.rows.map((row, rowIndex) => (
                             <tr key={rowIndex}>
                               <th scope="row">{rowIndex + 1}</th>
-                              {Array.from({ length: columnCount }, (_, column) => (
-                                <td key={column}>{row[column] ?? ""}</td>
-                              ))}
+                              {Array.from({ length: columnCount }, (_, column) => {
+                                if (swallowed.has(`${rowIndex}:${column}`))
+                                  return null;
+                                const span = spanAt.get(`${rowIndex}:${column}`);
+                                return (
+                                  <td
+                                    key={column}
+                                    colSpan={span?.cols}
+                                    rowSpan={span?.rows}
+                                    style={styleFor(rowIndex, column)}
+                                  >
+                                    {row[column] ?? ""}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>

@@ -643,8 +643,14 @@ export function OfferingsBrowser({
      *  itself: at full strength a 1px box around every card turns a grid of 31
      *  into a highlighter set. The eyebrow stays solid so the hue is stated
      *  once, clearly, and echoed twice quietly. */
-    const catEdge = catColor ? `${catColor}59` : undefined; // 35%
-    const catRule = catColor ? `${catColor}7A` : undefined; // 48%
+    /* THINNER AND MORE TRANSPARENT (Anir, Aug 25: "slightly thinner and more
+       transparent for the background colours on the tiles"). At 35% on the
+       edge and 48% on the rule, nine cards in view read as nine coloured
+       boxes; the hue is meant to whisper which family a card belongs to, not
+       outline it. 22% and 34% keep it legible against white and let the card
+       go back to being a card. */
+    const catEdge = catColor ? `${catColor}38` : undefined; // 22%
+    const catRule = catColor ? `${catColor}57` : undefined; // 34%
     const mapped =
       o.customerTypes.length > 0 ||
       o.markets.length > 0 ||
@@ -739,10 +745,27 @@ export function OfferingsBrowser({
                     the product, in the group's own colour. */}
                 {o.offering_category && (
                   <p
-                    className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
+                    /* A SMIDGE SMALLER (Anir, Aug 25: "reduce the font size of
+                       these category names just by a smidge — the title of the
+                       offering needs to be the main thing that pops out"). At
+                       10px bold in a saturated hue the eyebrow was competing
+                       with the 15px name below it; 9px lets the name lead
+                       while the colour still does its grouping job. */
+                    className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.07em]"
                     style={{ color: catColor ?? undefined }}
                   >
-                    <span className="min-w-0 break-words">{o.offering_category}</span>
+                    {/* ONE LINE, ALWAYS (Anir, Aug 25: "the category name has
+                        to only come in one line always"). "Submissions and
+                        Document Operations" wrapped to two and shoved the
+                        offering name down, so cards in the same row stopped
+                        agreeing about where the name sits. It truncates now and
+                        the full text is one hover away. */}
+                    <span
+                      title={o.offering_category}
+                      className="min-w-0 truncate"
+                    >
+                      {o.offering_category}
+                    </span>
                   </p>
                 )}
                 <h3 className="flex items-start gap-1.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
@@ -842,9 +865,13 @@ export function OfferingsBrowser({
                 so they read as decoration next to a number that already tells
                 the story (Anir, Aug 7: "you can remove those icons, just have
                 sales material number"). */}
+            {/* "SALES MATERIAL", NOT "MATERIAL" (Anir, Aug 25). The app has one
+                name for these files everywhere else — the tab, the sidebar room
+                and the page title all say Sales Materials — and the tile was
+                the one place that shortened it. */}
             {o.materials.length > 0 && (
               <p className="text-[11px] text-text-tertiary">
-                {o.materials.length} material
+                {o.materials.length} sales material
                 {o.materials.length === 1 ? "" : "s"}
               </p>
             )}
