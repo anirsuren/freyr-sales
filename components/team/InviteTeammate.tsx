@@ -2,7 +2,8 @@
 
 import { FULL_NAME_HINT, isFullName } from "@/lib/fullName";
 import { useState } from "react";
-import { UserPlus, UserRound, UsersRound, ShieldCheck } from "lucide-react";
+import { UserPlus, PencilRuler,
+  UserRound, UsersRound, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -19,12 +20,16 @@ import { useToast } from "@/components/ui/Toast";
 const ROLE_OPTIONS: ColorOption[] = [
   { value: "Rep", label: "Rep", color: "#0071E3", icon: UserRound },
   { value: "Manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role") — the solution team
+     has to be invitable from the same door as everyone else. */
+  { value: "Solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
   { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
 const ACCESS_ROLE: Record<string, string> = {
   Rep: "rep",
   Manager: "manager",
+  Solutions: "solutions",
   Admin: "admin",
 };
 

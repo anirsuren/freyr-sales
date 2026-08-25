@@ -310,7 +310,7 @@ export function SolutioningModule({
           <EmptyState
             icon={ClipboardList}
             title="No requests yet."
-            description="Ask for a presentation, a submission or a meeting — the Solutions team picks it up from here, and you close it when it's delivered."
+            description="Ask for a presentation, a submission or a meeting. The Solutions team picks it up from here, and you close it when it's delivered."
             action={
               live ? (
                 <button
@@ -337,7 +337,7 @@ export function SolutioningModule({
           <PinnableTable id="solutioning-requests">
             <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-border-light text-left text-[12px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
+                <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
                   <th className="w-[24%] px-4 py-2.5">Request</th>
                   <th className="w-[14%] px-4 py-2.5">Customer</th>
                   <th className="w-[16%] px-4 py-2.5">Against</th>

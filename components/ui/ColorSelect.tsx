@@ -785,14 +785,66 @@ export function MultiColorSelect({
   // draws (Anir, Aug 18: "you have to look at all the things and make sure
   // you have search bars for the big dropdowns").
   const [query, setQuery] = useState("");
-  const searchable = options.length > 10;
+  /* Same law as the single select (Anir, Aug 22: "this applies to basically
+     all dropdowns, regardless of whether it has a search bar or not"): short
+     lists draw no box until a letter lands; the first keystroke summons it
+     with the letter already inside. The multi had only given Enter to lists
+     long enough to earn a search box, so a two-option menu ignored the key
+     entirely — found clicking through the Solutioning create dialog, where
+     Enter on a customer's two deals picked nothing. */
+  const searchable = options.length > 10 || query.trim() !== "";
   const q = query.trim().toLowerCase();
   const visibleOptions = q
     ? options.filter((o) => o.label.toLowerCase().includes(q))
     : options;
+  const enterPick =
+    visibleOptions.find((o) => o.label.trim().toLowerCase() === q) ??
+    visibleOptions[0];
   useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
+  /* The route from "menu open" to "typed", multi edition: printable keys land
+     in the query before the box exists, Enter TICKS the top match and keeps
+     the menu up (a multi is picked from repeatedly), Backspace erases. Events
+     already aimed at an input are the box's own business. */
+  useEffect(() => {
+    if (!open) return;
+    const onType = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)
+      )
+        return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Enter") {
+        if (!enterPick) return;
+        e.preventDefault();
+        // The palette shortcut and the dialog behind must not see this Enter.
+        e.stopImmediatePropagation();
+        onChange(
+          values.includes(enterPick.value)
+            ? values.filter((v) => v !== enterPick.value)
+            : [...values, enterPick.value]
+        );
+        setQuery("");
+        return;
+      }
+      if (e.key === "Backspace") {
+        if (!query) return;
+        e.preventDefault();
+        setQuery((prev) => prev.slice(0, -1));
+        return;
+      }
+      if (e.key.length === 1) {
+        e.preventDefault();
+        setQuery((prev) => prev + e.key);
+      }
+    };
+    document.addEventListener("keydown", onType);
+    return () => document.removeEventListener("keydown", onType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, query, enterPick, values]);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
