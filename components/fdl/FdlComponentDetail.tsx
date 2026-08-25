@@ -40,6 +40,7 @@ import {
   Table2,
   Trash2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -95,6 +96,91 @@ const FIELD =
 
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/**
+ * A SECTION YOU CAN PUT AWAY (Anir, Aug 25: "the features section, the
+ * customers running this section, and the compare versions section should be
+ * kind of dropdowns. I should be able to hide them").
+ *
+ * This page runs long — a timeline, every version, every feature, every
+ * customer, and a comparison grid — and somebody who came to read one of those
+ * had to scroll past all the others. Folding is a preference, not a view, so
+ * it is remembered: closing Features once should not reopen it on the next
+ * component you visit.
+ *
+ * Read in an effect, never during render, or the server's "open" and the
+ * browser's stored "closed" disagree and React throws away the whole tree.
+ */
+function useFold(key: string) {
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    try {
+      setOpen(localStorage.getItem(`freyr.fdl.fold.${key}`) !== "0");
+    } catch {
+      /* private mode: sections just stay open */
+    }
+  }, [key]);
+  const toggle = () =>
+    setOpen((wasOpen) => {
+      try {
+        localStorage.setItem(`freyr.fdl.fold.${key}`, wasOpen ? "0" : "1");
+      } catch {
+        /* nothing to remember it with; the fold still works for this visit */
+      }
+      return !wasOpen;
+    });
+  return [open, toggle] as const;
+}
+
+/**
+ * The heading of a foldable section: the icon, the name, a count that stays
+ * readable while the section is shut, and the chevron. The whole thing is the
+ * button (Anir, Jul 30: "it shouldn't just be that when I click on it… when I
+ * just click on the entire dropdown"), and any InfoHint stays OUTSIDE it —
+ * a hint is not part of the control, and nesting one button in another is
+ * invalid HTML.
+ */
+function FoldHeading({
+  icon: Icon,
+  title,
+  count,
+  open,
+  onToggle,
+}: {
+  icon: LucideIcon;
+  title: string;
+  /** How much is inside. Shown only while shut, so an open section is unchanged. */
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      title={open ? `Hide ${title}` : `Show ${title}`}
+      className="-m-1 flex cursor-pointer items-center gap-2 rounded-lg p-1 text-[15px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+    >
+      <Icon size={15} strokeWidth={2} className="text-blue-primary" />
+      {title}
+      {!open && typeof count === "number" && (
+        <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
+          {count}
+        </span>
+      )}
+      <ChevronDown
+        size={15}
+        strokeWidth={2.2}
+        aria-hidden="true"
+        className={cn(
+          "shrink-0 text-text-tertiary transition-transform duration-200",
+          !open && "-rotate-90"
+        )}
+      />
+    </button>
+  );
 }
 
 function orderedReleases(component: FdlComponent): FdlRelease[] {
@@ -802,6 +888,14 @@ export function FdlComponentDetail({
 
   const CARD =
   "rise-in rounded-xl border border-border-light bg-white p-5 shadow-card";
+
+  /* THE THREE LONG SECTIONS FOLD (Anir, Aug 25: "the features section, the
+     customers running this section, and the compare versions section should be
+     kind of dropdowns. I should be able to hide them"). Remembered per
+     section, so shutting Features once keeps it shut on the next component. */
+  const [featuresOpen, toggleFeatures] = useFold("features");
+  const [customersOpen, toggleCustomers] = useFold("customers");
+  const [compareOpen, toggleCompare] = useFold("compare");
 
 
   /** ONE VERSION'S FULL CARD — header, features, files, customers,
@@ -2066,7 +2160,12 @@ export function FdlComponentDetail({
                app's dropdown clothes now: a bordered control with a chevron
                that turns as it opens — the same shape every other foldable
                section on this page uses. */
-            <details className="group mb-4">
+            /* AND IT NEEDS AIR ABOVE IT (Anir, Aug 25: "the roadmap history is
+               literally touching the timeline"). The control carried only a
+               bottom margin, so it sat flush against the timeline's baseline
+               labels and read as part of the chart rather than as its own
+               thing to press. */
+            <details className="group mb-4 mt-5">
               <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary [&::-webkit-details-marker]:hidden">
                 <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
                 Roadmap version history
@@ -2115,10 +2214,14 @@ export function FdlComponentDetail({
               sibling on a real flex row now, and the sentence "Showing what is
               in" is gone: the control says what it is. */}
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-              <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
-            </h2>
-            {releases.length > 0 && (
+            <FoldHeading
+              icon={ListChecks}
+              title="Features"
+              count={component.features.length}
+              open={featuresOpen}
+              onToggle={toggleFeatures}
+            />
+            {featuresOpen && releases.length > 0 && (
               <MultiColorSelect
                 values={shownVersionIds}
                 onChange={setShownVersionIds}
@@ -2133,9 +2236,11 @@ export function FdlComponentDetail({
             <InfoHint text="What is in one version. Pick the version beside the heading. To compare two versions side by side, use the Compare versions card lower down." />
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {canEdit && (
+            {featuresOpen && canEdit && (
               /* Same square as Add customer: on this page a plus always means
-                 add, and it always looks the same (Anir, Aug 9). */
+                 add, and it always looks the same (Anir, Aug 9). Gone while the
+                 section is folded away: adding a feature into a list you
+                 cannot see is a trap. */
               <Tooltip
                 label={
                   releases.length === 0
@@ -2157,6 +2262,8 @@ export function FdlComponentDetail({
           </div>
         </div>
 
+        {featuresOpen && (
+          <>
         {/* ONE VERSION, NOT A MATRIX. A tick column per version turned this
             into a second comparison table sitting above the real one (Suren,
             Aug 9: "I already have a comparison table... why the heck are you
@@ -2513,22 +2620,29 @@ export function FdlComponentDetail({
             </table>
           </div>
         )}
+          </>
+        )}
       </section>
 
       {/* ------------------------------------------------------ customers */}
       <section className={CARD}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
-            Customers running this
+          <div className="flex min-w-0 items-center gap-2">
+            <FoldHeading
+              icon={Building2}
+              title="Customers running this"
+              count={connected.length}
+              open={customersOpen}
+              onToggle={toggleCustomers}
+            />
             <InfoHint text="Every customer using this component, and which version they are on. It is the same record their own page shows, just reached from this side." />
-          </h2>
+          </div>
           {/* ONE LINE: how you look at the list, then the one action on it
               (Anir, Aug 9: "the tile or row thing should be in line with the
               add customer button and the add customer button can just be a
               white + with a blue square"). */}
           <div className="flex shrink-0 items-center gap-2">
-            {connected.length > 0 && releases.length > 1 && (
+            {customersOpen && connected.length > 0 && releases.length > 1 && (
               <MultiColorSelect
                 values={customerVersions}
                 onChange={setCustomerVersions}
@@ -2540,7 +2654,7 @@ export function FdlComponentDetail({
                 minWidth={185}
               />
             )}
-            {connected.length > 0 && (
+            {customersOpen && connected.length > 0 && (
               <ViewSelect
                 value={customerView}
                 onChange={setCustomerView}
@@ -2548,7 +2662,7 @@ export function FdlComponentDetail({
                 tableValue="table"
               />
             )}
-            {canEdit && unconnected.length > 0 && (
+            {customersOpen && canEdit && unconnected.length > 0 && (
               <Tooltip label="Add a customer">
                 <button
                   type="button"
@@ -2563,6 +2677,8 @@ export function FdlComponentDetail({
             )}
           </div>
         </div>
+        {customersOpen && (
+          <>
         {connected.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             No customer is recorded on this component yet. Add one here, or
@@ -2777,6 +2893,8 @@ export function FdlComponentDetail({
             )}
           </>
         )}
+          </>
+        )}
       </section>
 
       {/* -------------------------------------------------------- compare */}
@@ -2784,11 +2902,17 @@ export function FdlComponentDetail({
         <section className={CARD}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                <GitCompareArrows size={15} strokeWidth={2} className="text-blue-primary" /> Compare versions
+              <div className="flex min-w-0 items-center gap-2">
+                <FoldHeading
+                  icon={GitCompareArrows}
+                  title="Compare versions"
+                  count={compareReleases.length}
+                  open={compareOpen}
+                  onToggle={toggleCompare}
+                />
                 <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
-              </h2>
-              <p className="mt-1 text-[12.5px] text-text-secondary">
+              </div>
+              <p className={cn("mt-1 text-[12.5px] text-text-secondary", !compareOpen && "hidden")}>
                 {compareReleases.length >= 2
                   ? `Comparing ${compareReleases
                       .map((r) => withV(r.version))
@@ -2803,7 +2927,7 @@ export function FdlComponentDetail({
                 think the dropdown and the 'comparing these two versions' text
                 is positioned correctly"). Same rule he set for the customers
                 header: how you look at it, then what you do with it. */}
-            <div className="flex shrink-0 items-center gap-2">
+            <div className={cn("flex shrink-0 items-center gap-2", !compareOpen && "hidden")}>
               <MultiColorSelect
                 values={compareIds}
                 onChange={setCompareIds}
@@ -2833,6 +2957,8 @@ export function FdlComponentDetail({
               )}
             </div>
           </div>
+          {compareOpen && (
+            <>
           {compareReleases.length >= 2 && compareRows.length === 0 ? (
             /* Two versions picked and neither carries a single feature. The
                table used to render its header over nothing, which reads as a
@@ -2904,6 +3030,8 @@ export function FdlComponentDetail({
             <p className="mt-3 rounded-lg border border-dashed border-border bg-blue-light/30 px-3 py-2.5 text-[12.5px] text-text-secondary">
               Pick one more version and the table appears here.
             </p>
+          )}
+            </>
           )}
         </section>
       )}
