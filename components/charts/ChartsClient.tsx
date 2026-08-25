@@ -1861,8 +1861,17 @@ export function BarChart({
   hideTipStats = false,
   tipRecordsLabel = "Records behind this bar",
   fillCard,
+  hideLabelDots = false,
   onBarClick,
 }: {
+  /**
+   * NO KEY BESIDE THE AXIS LABEL (Anir, Aug 25: "why is there a red dot next
+   * to August?"). A dot beside a label is a SERIES key; on a chart plotting
+   * ONE thing over time it identifies nothing, while wearing a hue that on
+   * two of the four goal types reads as an alert on a month that is fine.
+   * Charts with a single series pass this; the many-series ones keep theirs.
+   */
+  hideLabelDots?: boolean;
   /**
    * Clicking a column does something (Anir, Aug 19: "I feel like something
    * should happen when I click on the bar... whatever it is, do it"). The
@@ -2453,7 +2462,7 @@ export function BarChart({
                 title={d.label}
                 className="line-clamp-2 w-full break-words text-[11px] leading-[1.2] text-text-tertiary"
               >
-                {!d.logo && (d.dotColor || d.color) && (
+                {!hideLabelDots && !d.logo && (d.dotColor || d.color) && (
                   <span
                     aria-hidden
                     className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"

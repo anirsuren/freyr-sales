@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { PersonGoalPanel } from "@/components/performance/bits";
 import { cn } from "@/lib/utils";
 import {
   actualValue,
@@ -62,8 +63,17 @@ export function GroupGoalsDrilldown({
   groupName: string;
   members: string[];
 }) {
-  const [open, setOpen] = useState(false);
+  /* OPEN ON ARRIVAL (Anir, Aug 25: "when I click on the group, it will
+     automatically show me the goals"). Opening a group to find one more closed
+     thing between you and the goals is a step nobody asked for. */
+  const [open, setOpen] = useState(true);
   const [openGoal, setOpenGoal] = useState<string | null>(null);
+  /* AND A DROPDOWN PER PERSON (Anir, Aug 25: "for each person within the goal,
+     I have a dropdown. I should be able to click on sales meetings, and then it
+     shows me all the people, but then I can individually click into each
+     person"). Opening a goal used to unroll every member's full panel at once,
+     which is why three levels of nesting read as one wall. */
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
 
   const scoped = scopeStateToPeople(state, members, groupId);
   const goals = scoped.goals;
@@ -107,7 +117,7 @@ export function GroupGoalsDrilldown({
       </button>
 
       {open && (
-        <div className="tab-panel mt-2 space-y-1.5">
+        <div className="tab-panel mt-2 space-y-2">
           {goals.length === 0 ? (
             <p className="px-1 text-[12.5px] text-text-secondary">
               Nobody in {groupName} carries a goal yet. Assign one on the Goal
@@ -150,15 +160,29 @@ export function GroupGoalsDrilldown({
               );
 
               return (
+                /* AN OPEN GOAL IS ONE BLOCK (Anir, Aug 25: "you have to do a
+                   better job of separating it because it's really confusing...
+                   literally everything from the group all the way down to each
+                   individual person has to be easily separated"). The rail and
+                   the tint are the deal table's own idiom for "this header and
+                   everything under it are the same thing". */
                 <div
                   key={goal.id}
-                  className="overflow-hidden rounded-lg border border-border-light bg-white"
+                  className={cn(
+                    "overflow-hidden rounded-xl border bg-white transition-colors",
+                    isOpen
+                      ? "border-blue-subtle [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                      : "border-border-light"
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => setOpenGoal(isOpen ? null : goal.id)}
                     aria-expanded={isOpen}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface"
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
+                      isOpen ? "bg-surface" : "hover:bg-surface"
+                    )}
                   >
                     <ChevronRight
                       size={13}
@@ -180,7 +204,15 @@ export function GroupGoalsDrilldown({
                             style={{ width: `${pct}%` }}
                           />
                         </span>
-                        <span className="shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-text-secondary tnum">
+                        {/* THE PERCENTAGE, ON EVERY GOAL (Anir, Aug 25: "for
+                            each goal, I need to see the percentages too"). The
+                            row printed the raw pair and left the reader to do
+                            the division. Capped at 100 like every other verdict
+                            in the module. */}
+                        <span className="shrink-0 whitespace-nowrap text-[12px] font-bold text-blue-primary tnum">
+                          {pct}%
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-[11.5px] text-text-secondary tnum">
                           {money(achieved, goal.unit)} of {money(target, goal.unit)}
                         </span>
                       </>
@@ -193,38 +225,98 @@ export function GroupGoalsDrilldown({
                   </button>
 
                   {isOpen && (
-                    <div className="tab-panel border-t border-border-light bg-surface/50 px-3 py-2.5">
+                    <div className="tab-panel border-t border-border-light bg-surface/60 px-3 py-2.5 pl-5">
                       {rows.length === 0 ? (
                         <p className="text-[12px] text-text-secondary">
                           Nobody in this group has logged against it yet.
                         </p>
                       ) : (
+                        /* THE SAME PANEL THE PERFORMANCE ROOMS DRAW (Anir,
+                           Aug 25: "it should actually show me enough stuff,
+                           kind of like how you are showing it on the
+                           performance piece... visually pretty similar at
+                           least, on people performance or group performance,
+                           with that line with the brackets that show the line
+                           and the target").
+
+                           Not a lookalike: PersonGoalPanel itself, so the
+                           target/counted/waiting cards, the bracketed track
+                           with its target marker, month by month and the entry
+                           list are the identical thing in both places and
+                           cannot drift apart. */
                         <div className="space-y-1.5">
-                          {rows.map((r) => (
-                            <div
-                              key={r.person}
-                              className="flex flex-wrap items-center gap-2 rounded-md bg-white px-2.5 py-1.5"
-                            >
-                              <Avatar
-                                name={r.person}
-                                className="h-6 w-6 shrink-0 text-[8px]"
-                              />
-                              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-text-primary">
-                                {r.person}
-                              </span>
-                              <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
-                                {money(r.done, goal.unit)}
-                                {r.share > 0 && (
-                                  <> of {money(r.share, goal.unit)}</>
+                          {rows.map((r) => {
+                            const mine = openPerson === `${goal.id}:${r.person}`;
+                            const theirPct =
+                              r.share > 0
+                                ? Math.min(100, Math.round((r.done / r.share) * 100))
+                                : null;
+                            return (
+                              <div
+                                key={r.person}
+                                className="overflow-hidden rounded-lg border border-border-light bg-white"
+                              >
+                                <button
+                                  type="button"
+                                  aria-expanded={mine}
+                                  onClick={() =>
+                                    setOpenPerson(mine ? null : `${goal.id}:${r.person}`)
+                                  }
+                                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface"
+                                >
+                                  <ChevronRight
+                                    size={12}
+                                    strokeWidth={2.3}
+                                    aria-hidden="true"
+                                    className={cn(
+                                      "shrink-0 text-text-tertiary transition-transform duration-200",
+                                      mine && "rotate-90 text-blue-primary"
+                                    )}
+                                  />
+                                  <Avatar
+                                    name={r.person}
+                                    className="h-6 w-6 shrink-0 text-[8px]"
+                                  />
+                                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                                    {r.person}
+                                  </span>
+                                  {theirPct !== null && (
+                                    <>
+                                      <span className="hidden h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] sm:flex">
+                                        <span
+                                          className="block h-full rounded-full bg-blue-primary"
+                                          style={{ width: `${theirPct}%` }}
+                                        />
+                                      </span>
+                                      <span className="shrink-0 whitespace-nowrap text-[12px] font-bold text-blue-primary tnum">
+                                        {theirPct}%
+                                      </span>
+                                    </>
+                                  )}
+                                  <span className="shrink-0 whitespace-nowrap text-[11.5px] text-text-secondary tnum">
+                                    {money(r.done, goal.unit)}
+                                    {r.share > 0 && <> of {money(r.share, goal.unit)}</>}
+                                  </span>
+                                  {r.waiting.length > 0 && (
+                                    <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
+                                      {r.waiting.length} to verify
+                                    </span>
+                                  )}
+                                </button>
+                                {mine && (
+                                  <div className="tab-panel border-t border-border-light bg-white px-3 py-2.5">
+                                    <PersonGoalPanel
+                                      goal={goal}
+                                      person={r.person}
+                                      target={r.share}
+                                      done={r.done}
+                                      state={state}
+                                    />
+                                  </div>
                                 )}
-                              </span>
-                              {r.waiting.length > 0 && (
-                                <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
-                                  {r.waiting.length} waiting on you
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                       {/* THE WAY TO ACTUALLY DO SOMETHING ABOUT IT. Reading

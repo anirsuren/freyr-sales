@@ -46,6 +46,7 @@ import {
   type PerformanceState,
   type PrimaryGoal,
   resultWhen,
+  resultWhenParts,
 } from "@/lib/performanceShared";
 import { BarChart } from "@/components/charts/Charts";
 
@@ -1326,8 +1327,22 @@ export function PersonGoalPanel({
   const left = Math.max(0, target - done);
   const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
 
-  // Month by month, oldest first. Only months that carry something, so a
-  // brand-new goal shows one honest bar instead of twelve empty ones.
+  /**
+   * EVERY MONTH OF THE YEAR, NOT ONLY THE ONES WITH SOMETHING IN THEM (Anir,
+   * Aug 25: "the month-by-month part — what even is that, bro? Why are you
+   * only showing August? If it's month by month, you can show me all the
+   * months, and just August is just gonna have the value").
+   *
+   * It used to plot the months present in the data, so a goal with one entry
+   * drew a single bar filling the card and called it "month by month" — no
+   * sense of when in the year that was, whether anything came before it, or
+   * how much of the year is left. Twelve months with one bar standing in
+   * August says all three at a glance.
+   *
+   * APRIL FIRST: Freyr's year runs April to March, the same order the rest of
+   * this module counts in (see yearElapsed, which was fixed for exactly this
+   * reason).
+   */
   const byMonth = new Map<string, { value: number; pending: number }>();
   for (const a of mine) {
     const key = a.date.slice(0, 7);
@@ -1336,23 +1351,41 @@ export function PersonGoalPanel({
     if (isPending(a)) cell.pending += a.amount;
     byMonth.set(key, cell);
   }
-  const months = [...byMonth.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, cell]) => ({
-      label: new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
-        month: "short",
-      }),
-      value: cell.value,
-      pending: cell.pending,
-      color: ENTRY_COLOR.verified,
-      pendingColor:
-        sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
-      dotColor: typeMeta(goal.type).color,
-      // NO CAPTION (Anir, Aug 20: "why are you saying 200k twice"). The bar
-      // already prints its own value label above itself; a caption under it
-      // repeated the same figure in a lighter grey, on the bar AND in its
-      // tooltip. The formatter it needed is the reason the unit is passed in.
-    }));
+  const fiscalMonths: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const m = 3 + i; // 3 = April, zero-based
+    const year = goal.year + Math.floor(m / 12);
+    fiscalMonths.push(`${year}-${String((m % 12) + 1).padStart(2, "0")}`);
+  }
+  /* Anything logged outside the goal's own year still has to appear, or the
+     chart would quietly drop an entry the totals above it are counting. */
+  for (const key of byMonth.keys()) {
+    if (!fiscalMonths.includes(key)) fiscalMonths.push(key);
+  }
+  const months = fiscalMonths
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => {
+      const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
+      return {
+        label: new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
+          month: "short",
+        }),
+        value: cell.value,
+        pending: cell.pending,
+        color: ENTRY_COLOR.verified,
+        pendingColor:
+          sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+        /* NO IDENTITY DOT (Anir, Aug 25: "why is there a red dot next to
+           August?"). A dot beside an axis label is a SERIES key, and this
+           chart has one series — so it identified nothing, while wearing the
+           goal type's hue, which on two of the four types is close enough to
+           red to read as an alert on a month that is fine. */
+        // NO CAPTION (Anir, Aug 20: "why are you saying 200k twice"). The bar
+        // already prints its own value label above itself; a caption under it
+        // repeated the same figure in a lighter grey, on the bar AND in its
+        // tooltip. The formatter it needed is the reason the unit is passed in.
+      };
+    });
 
   const card = (label: string, value: string, tone?: string) => (
     <div className="rounded-lg border border-border-light bg-white px-3 py-2.5">
@@ -1439,6 +1472,7 @@ export function PersonGoalPanel({
                 formatter draws these now, so the chart and the tiles say the
                 same number the same way, currency symbol included. */}
             <BarChart
+              hideLabelDots
               data={months}
               height={140}
               format={goal.unit === "currency" ? "money" : "number"}
@@ -1465,8 +1499,24 @@ export function PersonGoalPanel({
                  status pill half a screen away from the money it describes.
                  The facts sit together now and the pill follows them. */
               <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
-                <span className="w-[74px] shrink-0 text-text-tertiary tnum">
-                  {resultWhen(a)}
+                {/* TWO LINES, ONE FACT EACH (Anir, Aug 25). One string in a
+                    74px column wrapped wherever it ran out of room — "August
+                    16, / 2026 · / logged 5:47 / PM" — four lines and a date
+                    broken in half. */}
+                <span className="w-[104px] shrink-0 leading-tight text-text-tertiary tnum">
+                  {(() => {
+                    const { day, time } = resultWhenParts(a);
+                    return (
+                      <>
+                        <span className="block whitespace-nowrap">{day}</span>
+                        {time && (
+                          <span className="block whitespace-nowrap text-[11px]">
+                            logged {time}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </span>
                 <span className="shrink-0 font-semibold text-text-primary tnum">
                   {fmtAmount(goal.unit, a.amount, a.currency)}
@@ -1483,17 +1533,24 @@ export function PersonGoalPanel({
                     </span>
                   </span>
                 )}
-                {(a.dealLabel ?? a.note) && (
-                  <span className="min-w-0 truncate text-text-secondary">
-                    {a.dealLabel ?? a.note}
-                  </span>
-                )}
+                {/* THE ROW USES THE WIDTH IT HAS (Anir, Aug 25: "under Latest
+                    Entries, why is everything aligned to the left? You have a
+                    lot of space on the right, it just looks weird").
+
+                    Aug 20's complaint was the opposite and both are right: the
+                    gap was bad when the middle was an EMPTY flex-1 span holding
+                    the pill half a screen from the money it describes. What
+                    fills the space now is the deal name, and the status sits
+                    at the right edge where a status belongs. */}
+                <span className="min-w-0 flex-1 truncate text-text-secondary">
+                  {a.dealLabel ?? a.note ?? ""}
+                </span>
                 {/* Three states, three colours: signed off is green, sent
                     back is red, waiting on the owner is amber. It used to say
                     "Waiting" for both of the last two. */}
                 <span
                   className={cn(
-                    "ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                    "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
                     entryStatus(a) === "verified"
                       ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
                       : entryStatus(a) === "sent_back"

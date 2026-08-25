@@ -1038,6 +1038,32 @@ export function goalCreatedOn(createdAt?: string): string | null {
  * entered — "August 19, 2026 · logged 5:48 PM". Where there is no entry stamp
  * the day stands alone rather than borrowing a time from somewhere else.
  */
+/**
+ * THE DAY AND THE TIME AS TWO FACTS (Anir, Aug 25: "look at the latest
+ * entries. That's supposed to show up on two lines: one for the date and one
+ * for the time").
+ *
+ * resultWhen glues them into one string, and in a narrow column that string
+ * wrapped wherever it ran out of room — "August 16, / 2026 · / logged 5:47 /
+ * PM", four lines and a broken date. Callers that have two lines to give it
+ * take the parts instead.
+ */
+export function resultWhenParts(entry: { date?: string; addedAt?: string }): {
+  day: string;
+  time: string | null;
+} {
+  const day = stampedAt(entry.date) ?? entry.date ?? "";
+  const stamped = entry.addedAt ? new Date(entry.addedAt) : null;
+  if (!stamped || Number.isNaN(stamped.getTime())) return { day, time: null };
+  return {
+    day,
+    time: stamped.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
+}
+
 export function resultWhen(entry: {
   date?: string;
   addedAt?: string;
