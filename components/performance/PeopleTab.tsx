@@ -14,7 +14,12 @@ import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { SetShareModal } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { MyEntriesCard, SentBackCard, VerifyQueueCard } from "./EntryCards";
+import {
+  MyEntriesCard,
+  SentBackCard,
+  SentBackWatchCard,
+  VerifyQueueCard,
+} from "./EntryCards";
 import { RoleChip } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -260,6 +265,11 @@ export function PeopleTab({
           onFix={askFix}
         />
         <VerifyQueueCard state={state} run={run} meName={meName} busy={false} />
+        {/* WHAT YOU SENT BACK, under what is waiting on you (Anir, Aug 24:
+            "where the fuck did it go... it's not showing up anywhere"). The
+            verify queue answers "what needs me?"; this answers "what am I
+            waiting on?", which had no answer at all on a manager's screen. */}
+        <SentBackWatchCard state={state} meName={meName} />
       </div>
 
       <OrgPerformanceTab

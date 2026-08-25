@@ -1255,7 +1255,29 @@ export function GoalZoom({
           const maxP = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...groupPeople.map((p) => p.verified));
-          const boxCls =
+          /**
+   * A GROUP CARD IS MEASURED AGAINST THE GROUP'S OWN TARGET (Anir, Aug 24,
+   * reading "Marketing group · 90 · 90%" on a group whose assigned target is
+   * 400: "that percentage is not the group's").
+   *
+   * Every group card passed `yearTarget` — the goal's target as seen by
+   * whoever's screen it was — so the number next to a group's name answered a
+   * different question from the one its label asked. On the org screen it read
+   * 20 of 1,000 = 2%; on the rep's own screen the same card read 90 of her 100
+   * share = 90%. Neither is how the group is doing.
+   *
+   * A group that has been given its own number is judged by it. A group with no
+   * assignment falls back to the parent target, which is the honest answer:
+   * there is nothing else to measure it against.
+   */
+  const groupTarget = (groupId: string) => {
+    const assigned = (goal.groupAssignments ?? []).find(
+      (ga) => ga.groupId === groupId
+    );
+    return assigned && assigned.target > 0 ? assigned.target : yearTarget;
+  };
+
+  const boxCls =
             "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
           const boxHead =
             /* No wrapping in a box header: see the "3 · Line items" comment
@@ -1513,7 +1535,7 @@ export function GoalZoom({
                               verified={r2.verified}
                               awaiting={r2.awaiting}
                               sentBack={r2.sentBack}
-                              target={yearTarget}
+                              target={groupTarget(r2.group.id)}
                               expectedPct={yearElapsed(goal.year) * 100}
                               expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}
@@ -1619,7 +1641,7 @@ export function GoalZoom({
                                 verified={r2.verified}
                                 awaiting={r2.awaiting}
                                 sentBack={r2.sentBack}
-                                target={yearTarget}
+                                target={groupTarget(r2.group.id)}
                                 expectedPct={yearElapsed(goal.year) * 100}
                                 expected={pacing.expected}
                                 expectedDueLabel={pacing.dueLabel}

@@ -21,6 +21,7 @@ import {
   ENTRY_COLOR,
   awaitingTheirFix,
   canVerifyEntry,
+  stampedAt,
   entryStatus,
   goalFamilyActuals,
   inGoalCurrency,
@@ -638,6 +639,103 @@ function Rule() {
       aria-hidden="true"
       className="h-4 w-px shrink-0 bg-[color:var(--border-light)]"
     />
+  );
+}
+
+/**
+ * WHAT YOU SENT BACK, AND WHO IS SITTING ON IT.
+ *
+ * Anir, Aug 24, minutes after rejecting a claim: "I sent it back but nothing's
+ * there. Where the fuck did it go? Is it in People performance? Where is the
+ * shit that I just sent back? It's not showing up anywhere."
+ *
+ * He was right, and the send-back had worked perfectly — the claim was
+ * `sent_back` with his note on it within the second. The hole was on HIS side.
+ * A rejected claim leaves the verify queue on purpose (it is no longer waiting
+ * on him) and lands on the rep's screen as a red card, so the person who has to
+ * act sees it. The person who ASKED for the fix got one sentence of grey text
+ * at the bottom of an empty queue — "1 claim is sent back and waiting on them
+ * to fix" — with no row, no name, no amount and nothing to click.
+ *
+ * So a manager could not answer "what am I waiting on?" without signing in as
+ * each of their reps. This is that list: every claim this reader rejected that
+ * is still unfixed, newest first, with the note they wrote so they do not have
+ * to remember what they asked for.
+ *
+ * Red rail like the rep's card — it is the same claim in the same state — but
+ * no "Fix it" button, because it is not theirs to fix.
+ */
+export function SentBackWatchCard({
+  state,
+  meName,
+}: {
+  state: PerformanceState;
+  meName: string;
+}) {
+  const waiting = state.actuals
+    .filter(
+      (a) =>
+        awaitingTheirFix(a) &&
+        // Their own rejected claims are the rep-facing SentBackCard's job; this
+        // card is about other people's, so the two never print the same row.
+        a.person.trim().toLowerCase() !== meName.trim().toLowerCase() &&
+        canVerifyEntry(state, meName, a.person)
+    )
+    .sort((a, b) => ((a.sentBackAt ?? "") < (b.sentBackAt ?? "") ? 1 : -1));
+  if (waiting.length === 0) return null;
+  return (
+    <Card className="relative overflow-hidden border-[rgba(220,38,38,0.4)] p-0">
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
+      />
+      <div className="flex items-start gap-2 border-b border-[rgba(220,38,38,0.22)] bg-[rgba(220,38,38,0.05)] px-4 py-3">
+        <RotateCcw
+          size={16}
+          strokeWidth={2.4}
+          aria-hidden="true"
+          className="mt-px shrink-0 text-[color:#B02020]"
+        />
+        <span className="min-w-0">
+          <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
+            You sent {waiting.length} {waiting.length === 1 ? "claim" : "claims"}{" "}
+            back. Waiting on a fix
+          </h3>
+          <span className="mt-0.5 block text-[12.5px] text-text-secondary">
+            None of it counts until they fix it and you sign it off.
+          </span>
+        </span>
+      </div>
+      <ul className="divide-y divide-border-light">
+        {waiting.map((a) => {
+          const goal = state.goals.find((g) => g.id === a.goalId);
+          return (
+            <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
+              <b className="shrink-0 text-[16px] font-bold text-text-primary tnum">
+                {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+              </b>
+              <span className="min-w-0 text-[12.5px] font-semibold text-text-primary">
+                {goal?.name ?? "Goal removed"}
+              </span>
+              <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-secondary">
+                <Avatar name={a.person} className="h-5 w-5 shrink-0 text-[7px]" />
+                {a.person}
+              </span>
+              {a.sentBackAt && (
+                <span className="shrink-0 text-[11.5px] text-text-tertiary">
+                  sent back {stampedAt(a.sentBackAt)}
+                </span>
+              )}
+              {a.managerNote && (
+                <span className="min-w-0 basis-full text-[12px] text-text-secondary">
+                  You wrote: <i>&ldquo;{a.managerNote}&rdquo;</i>
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 
@@ -2057,6 +2155,28 @@ export function ClaimReviewDialog({
                 status colour. "% there" counts verified money only — the one
                 dialog whose entire job is deciding what counts must not
                 announce a number that includes what it has not yet counted. */}
+            {/* THE TIMELINE IS A FULL-HEIGHT RAIL DOWN THE RIGHT (Anir,
+                Aug 24: "the timeline should go on the complete right side.
+                That line right underneath the X — that's where it needs to
+                go. Extend that vertical line up so it takes that portion, and
+                everything else is to the left. That's a lot more space, and if
+                I'm scrolling on the timeline that's the only place I'm
+                scrolling").
+
+                It was already a rail, but it started halfway down — under the
+                bar and the claimant card, which both ran full width — so it
+                got the bottom third of the dialog and four steps filled it.
+                Twenty steps would have set the height of the whole dialog and
+                pushed the two buttons off the bottom, which is the failure he
+                was predicting.
+
+                Now the split starts at the header rule: everything about the
+                claim is one scrolling column on the left, the story is its own
+                scrolling column on the right, and neither can push the other
+                or the footer around. Below 1024px it stacks, because a 248px
+                column of timestamps is unreadable on a phone. */}
+            <div className="flex min-h-0 flex-col gap-5 lg:h-[min(60vh,520px)] lg:flex-row lg:gap-0">
+              <div className="min-w-0 flex-1 lg:overflow-y-auto lg:pr-6">
             {goal && goal.target > 0 && (() => {
               const status = entryStatus(a);
               const verifiedOthers = goalFamilyActuals(state, goal)
@@ -2195,8 +2315,8 @@ export function ClaimReviewDialog({
                 whichever side is taller. Below 900px it drops back under the
                 facts rather than squeezing into a column too narrow to read.
                 Same pattern the expanded Logged-results row already uses. */}
-            <div className="mt-3.5 flex flex-col gap-5 lg:flex-row lg:gap-7">
-              <div className="min-w-0 flex-1">
+            <div className="mt-3.5">
+              <div className="min-w-0">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                   <Fact label="Goal">{goal?.name ?? "Goal removed"}</Fact>
                   <Fact label="Subgoal">
@@ -2260,8 +2380,12 @@ export function ClaimReviewDialog({
                   )}
                 </div>
               </div>
+            </div>
+              </div>
 
-              <div className="shrink-0 border-t border-border-light pt-4 lg:w-[248px] lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+              {/* The rail: its own scroller, so a twenty-step history scrolls
+                  inside this column and nothing else on the screen moves. */}
+              <div className="shrink-0 border-t border-border-light pt-4 lg:min-h-0 lg:w-[268px] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
                 <EntryTimeline
                   entry={a}
                   person={a.person}
