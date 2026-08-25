@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownAZ,
@@ -24,6 +24,7 @@ import {
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -185,6 +186,9 @@ export function AllMaterialsBrowser({
     return out;
   }, [ordered]);
 
+  const TABLE_CLASS =
+    "w-full min-w-[1560px] table-fixed border-collapse text-[13px]";
+
   const clearAll = () => {
     setQuery("");
     setOfferings([]);
@@ -201,236 +205,16 @@ export function AllMaterialsBrowser({
     levels.length > 0 ||
     formats.length > 0;
 
-  return (
-    <div className="mt-5">
-      {/* THE SAME TOOLBAR AS OFFERINGS, to the pixel (Anir, Aug 21:
-          "whatever you have here on the offerings page, I like that search
-          bar — the size of it, the filter, the sort. Keep that on the sales
-          materials page, exactly that"). Same wrapper, same search-priority
-          behaviour, same Filter button, same divider before the display
-          cluster on the right. */}
-      <SearchPriority
-        query={query}
-        className="rise-in mb-4 flex flex-nowrap items-center gap-2.5 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <PrioritySearchInput
-            grow
-            value={query}
-            onChange={setQuery}
-            placeholder="Search every material…"
-            ariaLabel="Search sales materials"
-            iconSize={16}
-            className="min-w-[200px] flex-1"
-            iconClassName="left-3"
-            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
-          />
-          <FilterMenu
-            onClearAll={clearAll}
-            groups={[
-              {
-                key: "offering",
-                label: "Offering",
-                values: offerings,
-                onChange: setOfferings,
-                options: offeringOptions,
-              },
-              {
-                key: "folder",
-                label: "Folder",
-                values: folders,
-                onChange: setFolders,
-                options: folderOptions,
-              },
-              {
-                key: "format",
-                label: "Format",
-                values: formats,
-                onChange: setFormats,
-                options: MATERIAL_FORMATS.map((format) => ({
-                  value: format,
-                  label: MATERIAL_FORMAT_META[format].label,
-                  color: MATERIAL_FORMAT_META[format].color,
-                })),
-              },
-              {
-                key: "stage",
-                label: "Buyer's journey stage",
-                values: stages,
-                onChange: setStages,
-                options: JOURNEY_STAGES.map((stage) => ({
-                  value: stage,
-                  label: JOURNEY_STAGE_META[stage].label,
-                  color: JOURNEY_STAGE_META[stage].color,
-                })),
-              },
-              {
-                key: "level",
-                label: "Who can view it",
-                values: levels,
-                /* A reader who cannot open AI-training files cannot filter for
-                   them either — the same rule the offering's own tab follows. */
-                onChange: setLevels,
-                options: ACCESS_LEVELS.filter(
-                  (level) => isAdmin || level !== "agent_only"
-                ).map((level) => ({
-                  value: level,
-                  label: ACCESS_LEVEL_META[level].label,
-                  color: ACCESS_LEVEL_META[level].color,
-                })),
-              },
-            ]}
-          />
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clearAll}
-              aria-label="Clear filters"
-              className="inline-flex h-10 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-          )}
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-border-light pl-2.5">
-          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
-            Sort
-          </span>
-          <ColorSelect
-            value={sort}
-            onChange={setSort}
-            ariaLabel="Sort materials"
-            minWidth={150}
-            dense
-            collapsible={false}
-            className="w-[150px] shrink-0"
-            options={[
-              { value: "offering", label: "By offering", color: "#0071E3", icon: SortLayers },
-              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
-              { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
-              { value: "recent", label: "Newest first", color: "#C2410C", icon: Clock3 },
-            ]}
-          />
-        </div>
-      </SearchPriority>
-
-      <p className="mb-3 text-[13px] text-text-secondary">
-        Showing <b className="text-text-primary tnum">{visible.length}</b> of{" "}
-        <b className="text-text-primary tnum">{rows.length}</b> materials
-        {anyFilter ? " · filters applied" : ""}
-      </p>
-
-      {/* SAME TABLE BEHAVIOUR AS EVERY OTHER WIDE TABLE (Anir, Aug 24): the
-          column headers stay put while you scroll, and the sideways scrollbar
-          comes to the bottom of the window instead of living 40 rows down. */}
-      <PinnableTable
-        id="all-materials"
-        className="mt-4 rounded-xl border border-border-light bg-white"
-      >
-        <table className="w-full min-w-[1560px] table-fixed border-collapse text-[13px]">
-          <thead>
-            <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-              {/* THE SAME COLUMNS AS THE OFFERING'S OWN TAB, PLUS THE TWO
-                  THIS PAGE ADDS (Saras, Aug 24: "we already have those columns
-                  within the offering pages — it's only if you try to access
-                  sales materials through the sidebar that those columns are
-                  missing. Just add the owner column and the file format
-                  column... file format, owner, and division").
-
-                  Two doors onto the same files must not describe them
-                  differently: a rep who learns the table on one page should
-                  read the other without relearning it. Offering and Folder are
-                  the two this page adds, because here a file has to say which
-                  offering it belongs to. */}
-              {/* THE ORDER ANIR ASKED FOR, Aug 25, reading it left to right:
-                  "Materials, File format, Offering, Folder, Access level" —
-                  and "'who can view this' has to be changed to Access level."
-                  Stage, Division and Uploaded by follow.
-
-                  THE HEADERS AND THE CELLS HAD DRIFTED APART. Division sat
-                  under "Who can view", Uploaded by under "Division" and the
-                  access-level pill under "Uploaded by" — I appended two
-                  columns to the header and inserted their cells in a different
-                  place ("the text is incorrect according to the column
-                  headers. Do you see this?"). Header and body are written in
-                  one order now, and the browser check counts them and reads
-                  the first row cell by cell so it can never drift again. */}
-              <th className="w-[20%] px-4 py-2.5">Material</th>
-              <th className="w-[7%] px-4 py-2.5">File format</th>
-              <th className="w-[11%] px-4 py-2.5">Offering</th>
-              <th className="w-[12%] px-4 py-2.5">Folder</th>
-              <th className="w-[9%] px-4 py-2.5">Access level</th>
-              <th className="w-[11%] px-4 py-2.5">Stage</th>
-              <th className="w-[10%] px-4 py-2.5">Division</th>
-              {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
-                  of two letters ("Inay / at / Paw / ar"). */}
-              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
-              {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
-                  actions, and it has to be aligned left"). "Open" named one of
-                  the two buttons under it and centred them, so the header sat
-                  over the gap between them. */}
-              <th className="w-[7%] px-4 py-2.5">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {offeringGroups.map((group) => {
-              const shut = shutOfferings.has(group.id);
-              return (
-                <Fragment key={group.id}>
-                  {/* The group band: click anywhere on it to fold, the same
-                      disclosure idiom the goal tables use. */}
-                  <tr
-                    onClick={() =>
-                      setShutOfferings((current) => {
-                        const next = new Set(current);
-                        if (next.has(group.id)) next.delete(group.id);
-                        else next.add(group.id);
-                        return next;
-                      })
-                    }
-                    className="cursor-pointer border-y border-border-light bg-surface transition-colors hover:bg-blue-light/40"
-                  >
-                    {/* THE BAND SAYS WHERE A GROUP STARTS (Anir, Aug 25: "the
-                        separations are bad... look at the performance one,
-                        because you can clearly see how it is separated"). It
-                        was a 70%-opacity tint one shade off the rows under it,
-                        with the offering's name at the same size as its files:
-                        nothing announced a new group. Full surface, a rule top
-                        AND bottom, the blue rail the performance tables use to
-                        say "everything under here is one thing", and the count
-                        as a pill rather than loose grey text. */}
-                    <td
-                      colSpan={9}
-                      className="px-4 py-3 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                    >
-                      <span className="flex items-center gap-2">
-                        <ChevronDown
-                          size={14}
-                          strokeWidth={2.2}
-                          aria-hidden="true"
-                          className={cn(
-                            "shrink-0 transition-transform duration-200",
-                            shut ? "-rotate-90 text-text-tertiary" : "text-blue-primary"
-                          )}
-                        />
-                        <span className="text-[13.5px] font-semibold text-text-primary">
-                          {group.name}
-                        </span>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-text-tertiary tnum">
-                          {group.rows.length}
-                        </span>
-                      </span>
-                    </td>
-                  </tr>
-                  {!shut &&
-                    group.rows.map((row) => {
+  /** One material, one row — identical in the grouped cards and the flat
+   *  pinned table, so the two views can never drift. */
+  const materialRow = (row: (typeof ordered)[number]) => {
               const folder = canonicalMaterialFolder(row.material);
               const rowStages = materialJourneyStages(row.material);
               const level = row.material.accessLevel as AccessLevel | undefined;
               return (
                 <tr
                   key={`${row.offeringId}:${row.material.id}`}
-                  className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)] [&>td:first-child]:[box-shadow:inset_3px_0_0_0_var(--blue-subtle)]"
+                  className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)]"
                 >
                   <td className="px-4 py-3 align-top">
                     {/* THE NAME OPENS THE FILE (Anir, Aug 21: "when I click on
@@ -631,18 +415,260 @@ export function AllMaterialsBrowser({
                   </td>
                 </tr>
               );
-                    })}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-        {visible.length === 0 && (
-          <p className="px-4 py-8 text-center text-[13px] text-text-secondary">
-            Nothing matches those filters.
-          </p>
-        )}
-      </PinnableTable>
+  };
+
+  /** The nine headings, in the order Anir set on Aug 25, shared by every
+   *  table this page draws. */
+  const columnHeads = (
+          <thead>
+            <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+              {/* THE SAME COLUMNS AS THE OFFERING'S OWN TAB, PLUS THE TWO
+                  THIS PAGE ADDS (Saras, Aug 24: "we already have those columns
+                  within the offering pages — it's only if you try to access
+                  sales materials through the sidebar that those columns are
+                  missing. Just add the owner column and the file format
+                  column... file format, owner, and division").
+
+                  Two doors onto the same files must not describe them
+                  differently: a rep who learns the table on one page should
+                  read the other without relearning it. Offering and Folder are
+                  the two this page adds, because here a file has to say which
+                  offering it belongs to. */}
+              {/* THE ORDER ANIR ASKED FOR, Aug 25, reading it left to right:
+                  "Materials, File format, Offering, Folder, Access level" —
+                  and "'who can view this' has to be changed to Access level."
+                  Stage, Division and Uploaded by follow.
+
+                  THE HEADERS AND THE CELLS HAD DRIFTED APART. Division sat
+                  under "Who can view", Uploaded by under "Division" and the
+                  access-level pill under "Uploaded by" — I appended two
+                  columns to the header and inserted their cells in a different
+                  place ("the text is incorrect according to the column
+                  headers. Do you see this?"). Header and body are written in
+                  one order now, and the browser check counts them and reads
+                  the first row cell by cell so it can never drift again. */}
+              <th className="w-[20%] px-4 py-2.5">Material</th>
+              <th className="w-[7%] px-4 py-2.5">File format</th>
+              <th className="w-[11%] px-4 py-2.5">Offering</th>
+              <th className="w-[12%] px-4 py-2.5">Folder</th>
+              <th className="w-[9%] px-4 py-2.5">Access level</th>
+              <th className="w-[11%] px-4 py-2.5">Stage</th>
+              <th className="w-[10%] px-4 py-2.5">Division</th>
+              {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
+                  of two letters ("Inay / at / Paw / ar"). */}
+              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
+              {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
+                  actions, and it has to be aligned left"). "Open" named one of
+                  the two buttons under it and centred them, so the header sat
+                  over the gap between them. */}
+              <th className="w-[7%] px-4 py-2.5">Actions</th>
+            </tr>
+          </thead>
+  );
+
+  return (
+    <div className="mt-5">
+      {/* THE SAME TOOLBAR AS OFFERINGS, to the pixel (Anir, Aug 21:
+          "whatever you have here on the offerings page, I like that search
+          bar — the size of it, the filter, the sort. Keep that on the sales
+          materials page, exactly that"). Same wrapper, same search-priority
+          behaviour, same Filter button, same divider before the display
+          cluster on the right. */}
+      <SearchPriority
+        query={query}
+        className="rise-in mb-4 flex flex-nowrap items-center gap-2.5 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <PrioritySearchInput
+            grow
+            value={query}
+            onChange={setQuery}
+            placeholder="Search every material…"
+            ariaLabel="Search sales materials"
+            iconSize={16}
+            className="min-w-[200px] flex-1"
+            iconClassName="left-3"
+            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary transition-shadow focus:border-blue-subtle focus:shadow-input-focus focus:outline-none"
+          />
+          <FilterMenu
+            onClearAll={clearAll}
+            groups={[
+              {
+                key: "offering",
+                label: "Offering",
+                values: offerings,
+                onChange: setOfferings,
+                options: offeringOptions,
+              },
+              {
+                key: "folder",
+                label: "Folder",
+                values: folders,
+                onChange: setFolders,
+                options: folderOptions,
+              },
+              {
+                key: "format",
+                label: "Format",
+                values: formats,
+                onChange: setFormats,
+                options: MATERIAL_FORMATS.map((format) => ({
+                  value: format,
+                  label: MATERIAL_FORMAT_META[format].label,
+                  color: MATERIAL_FORMAT_META[format].color,
+                })),
+              },
+              {
+                key: "stage",
+                label: "Buyer's journey stage",
+                values: stages,
+                onChange: setStages,
+                options: JOURNEY_STAGES.map((stage) => ({
+                  value: stage,
+                  label: JOURNEY_STAGE_META[stage].label,
+                  color: JOURNEY_STAGE_META[stage].color,
+                })),
+              },
+              {
+                key: "level",
+                label: "Who can view it",
+                values: levels,
+                /* A reader who cannot open AI-training files cannot filter for
+                   them either — the same rule the offering's own tab follows. */
+                onChange: setLevels,
+                options: ACCESS_LEVELS.filter(
+                  (level) => isAdmin || level !== "agent_only"
+                ).map((level) => ({
+                  value: level,
+                  label: ACCESS_LEVEL_META[level].label,
+                  color: ACCESS_LEVEL_META[level].color,
+                })),
+              },
+            ]}
+          />
+          {anyFilter && (
+            <button
+              type="button"
+              onClick={clearAll}
+              aria-label="Clear filters"
+              className="inline-flex h-10 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          )}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-border-light pl-2.5">
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+            Sort
+          </span>
+          <ColorSelect
+            value={sort}
+            onChange={setSort}
+            ariaLabel="Sort materials"
+            minWidth={150}
+            dense
+            collapsible={false}
+            className="w-[150px] shrink-0"
+            options={[
+              { value: "offering", label: "By offering", color: "#0071E3", icon: SortLayers },
+              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
+              { value: "recent", label: "Newest first", color: "#C2410C", icon: Clock3 },
+            ]}
+          />
+        </div>
+      </SearchPriority>
+
+      <p className="mb-3 text-[13px] text-text-secondary">
+        Showing <b className="text-text-primary tnum">{visible.length}</b> of{" "}
+        <b className="text-text-primary tnum">{rows.length}</b> materials
+        {anyFilter ? " · filters applied" : ""}
+      </p>
+
+      {sort === "offering" ? (
+        /* SEPARATE CARDS, NOT ONE LONG TABLE (Anir, Aug 25: "separate it
+           properly... look at the pages I mentioned"). The pages he means —
+           the opportunities groups and the Goal Master — already learned this
+           the same way (Aug 18: "Look at performance goal master and separate
+           it like that"): a band row inside one table can never separate
+           anything, because however loud the band, every group still shares
+           every edge. Each offering is its own card with the blue folding
+           header those pages wear, and what lies between the cards is the
+           page itself. */
+        <div className="mt-4 space-y-6">
+          {offeringGroups.map((group) => {
+            const shut = shutOfferings.has(group.id);
+            return (
+              <div
+                key={group.id}
+                className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShutOfferings((current) => {
+                      const next = new Set(current);
+                      if (next.has(group.id)) next.delete(group.id);
+                      else next.add(group.id);
+                      return next;
+                    })
+                  }
+                  aria-expanded={!shut}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
+                    !shut && "border-b border-border-light"
+                  )}
+                >
+                  <ChevronDown
+                    size={15}
+                    strokeWidth={2.2}
+                    className={cn(
+                      "shrink-0 text-text-tertiary transition-transform duration-200",
+                      shut && "-rotate-90"
+                    )}
+                  />
+                  <OfferingIcon name={group.name} className="h-6 w-6 shrink-0" />
+                  <b className="text-[13px] text-text-primary">{group.name}</b>
+                  <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                    {group.rows.length}{" "}
+                    {group.rows.length === 1 ? "material" : "materials"}
+                  </span>
+                </button>
+                {!shut && (
+                  <div className="tab-panel overflow-x-auto">
+                    <table className={TABLE_CLASS}>
+                      {columnHeads}
+                      <tbody>{group.rows.map(materialRow)}</tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {visible.length === 0 && (
+            <p className="rounded-xl border border-border-light bg-white px-4 py-8 text-center text-[13px] text-text-secondary">
+              Nothing matches those filters.
+            </p>
+          )}
+        </div>
+      ) : (
+        /* The flat sorts stay one pinned table — sticky headers and the
+           bottom-of-window scrollbar make sense when it IS one list. */
+        <PinnableTable
+          id="all-materials"
+          className="mt-4 rounded-xl border border-border-light bg-white"
+        >
+          <table className={TABLE_CLASS}>
+            {columnHeads}
+            <tbody>{ordered.map(materialRow)}</tbody>
+          </table>
+          {visible.length === 0 && (
+            <p className="px-4 py-8 text-center text-[13px] text-text-secondary">
+              Nothing matches those filters.
+            </p>
+          )}
+        </PinnableTable>
+      )}
     </div>
   );
 }
