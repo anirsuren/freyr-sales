@@ -158,6 +158,14 @@ export function MaterialViewer({
   /** Two seconds of "copied", so the click is acknowledged. */
   const [copied, setCopied] = useState(false);
   /**
+   * THE SERVER'S PDF OF AN OFFICE FILE, when LibreOffice printed one (Anir,
+   * Aug 25: "the way it looks when I download and open it is the exact way it
+   * has to look in the app"). A blob URL: fetched once here, handed to the
+   * same PdfViewer a native PDF uses, so a deck pages and zooms exactly like
+   * a PDF because it IS one.
+   */
+  const [convertedPdf, setConvertedPdf] = useState<string | null>(null);
+  /**
    * The link is THIS page with ?material=<id> on it, which the materials
    * section reads on load and opens straight into the viewer. Built from the
    * live location so it carries the right host — localhost while reviewing,
@@ -311,6 +319,7 @@ export function MaterialViewer({
   useEffect(() => {
     setStatus("loading");
     setMessage(null);
+    setConvertedPdf(null);
     setSheets(null);
     setListing(null);
     setSlides(null);
@@ -359,6 +368,32 @@ export function MaterialViewer({
 
     (async () => {
       try {
+        /* THE REAL RENDERER FIRST. LibreOffice on the server prints the file
+           to PDF — the only rendering that survives real designers' decks —
+           and the in-browser reconstructions below become the fallback for
+           hosts without it (the route answers 501 there). Files inside ZIP
+           archives keep the old path: the route converts stored files, not
+           archive members. */
+        if (!archiveMember && ["pptx", "ppt", "docx", "doc"].includes(ext)) {
+          try {
+            const pdfUrl = `/api/offerings/${offeringId}/materials/pdf?path=${encodeURIComponent(path)}`;
+            /* HEAD first: it runs the same conversion and warms the cache,
+               but answers with headers only — so the bytes travel once, when
+               PdfViewer fetches the URL itself. The page's CSP does not allow
+               connecting to blob: URLs, which is why this is a URL handoff
+               and not a blob. */
+            const probe = await fetch(pdfUrl, { method: "HEAD", cache: "no-store" });
+            if (probe.ok) {
+              if (!live) return;
+              setConvertedPdf(pdfUrl);
+              setStatus("ready");
+              return;
+            }
+          } catch {
+            /* conversion unreachable: the old renderers still work */
+          }
+        }
+
         if (ext === "docx" || ext === "pptx") {
           // The raw file, from our own route — same origin, already authorised.
           const res = await fetch(inlineUrl, { cache: "no-store" });
@@ -933,11 +968,11 @@ export function MaterialViewer({
               A PDF and a video are excluded: the PDF plugin has its own zoom
               and its own page counter, and nobody zooms a video. */}
           <div
-            style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}
+            style={{ zoom: (isNative && ext === "pdf") || convertedPdf ? 1 : zoom }}
             className={
               isVideo
                 ? "flex h-full items-center justify-center"
-                : listing || ext === "pdf"
+                : listing || ext === "pdf" || convertedPdf
                   ? "h-full"
                   : sheets
                     ? // A workbook is a full-height surface like the PDF and
@@ -954,6 +989,9 @@ export function MaterialViewer({
           {isNative && ext === "pdf" && (
             <PdfViewer src={inlineUrl} label={currentLabel} bare={embed} />
           )}
+          {convertedPdf && (
+            <PdfViewer src={convertedPdf} label={currentLabel} bare={embed} />
+          )}
           {isText && (
             <iframe
               src={inlineUrl}
@@ -968,8 +1006,9 @@ export function MaterialViewer({
             <img src={inlineUrl} alt={currentLabel} className="mx-auto max-h-[68vh] rounded-lg" />
           )}
 
-          {/* Word and PowerPoint render into here, with their own layout. */}
-          {(ext === "docx" || ext === "pptx") && (
+          {/* Word and PowerPoint reconstructions — only for hosts where the
+              server could not print a real PDF. */}
+          {!convertedPdf && (ext === "docx" || ext === "pptx") && (
             <div
               ref={host}
               className={
@@ -1250,7 +1289,9 @@ export function MaterialViewer({
             everything you do to the document is in one place. */}
         {/* Embed = the document and a scrollbar, nothing floating over it
             (Anir, Aug 8: "you don't need zoom or anything"). */}
-        {!embed && status === "ready" && (pageCount > 1 || !isNative) && !listing && (
+        {/* A converted deck pages inside PdfViewer, which brings its own
+            controls — this bar would say "1 of 0" over it. */}
+        {!embed && !convertedPdf && status === "ready" && (pageCount > 1 || !isNative) && !listing && (
           // z-10 because a Word table renders positioned cells that otherwise
           // paint over the bar and swallow its clicks.
           <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">

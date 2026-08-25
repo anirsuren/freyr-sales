@@ -23,6 +23,17 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=8080 \
     HOSTNAME=0.0.0.0
+# LIBREOFFICE RENDERS THE SALES MATERIALS (Anir, Aug 25: a deck's preview must
+# look exactly like the downloaded file). /api/offerings/[id]/materials/pdf
+# shells out to soffice to print PowerPoint and Word files to PDF; without it
+# the route answers 501 and the viewer falls back to the old in-browser
+# reconstructions. Impress+Writer only (no Calc/Base), plus the font families
+# decks actually use — without fonts a headless conversion draws tofu.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      libreoffice-impress libreoffice-writer \
+      fonts-liberation fonts-dejavu-core fontconfig && \
+    rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
