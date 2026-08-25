@@ -10,6 +10,11 @@ import {
 import { isAutoApprovedEmail } from "./authEmailPolicy";
 import { authUrl } from "./authOrigin";
 import { sendTransactionalEmail, type EmailResult } from "./email";
+import {
+  notifyAccessChanged,
+  notifyMemberJoined,
+  notifyRoleChanged,
+} from "./adminNotify";
 import { getDataMode } from "./dataMode";
 import { legacyAccountTypeForMember } from "./legacyAccountClassification";
 
@@ -462,6 +467,21 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       }
       activated = active.data;
     }
+    /**
+     * THE OTHER HALF OF THE INVITATION (Anir, Aug 25: "when they sign up and
+     * create the account, it sends me an email because it went from Pending to
+     * whatever, because they signed up, so I need to know").
+     *
+     * Deliberately not awaited: a mail that fails must never undo a signup
+     * that succeeded. The person is in either way; the admins simply were not
+     * told, which adminNotify logs.
+     */
+    void notifyMemberJoined({
+      name: (activated.display_name || user.name || email || "Somebody").trim(),
+      email: email || "",
+      role,
+      viaInvitation: !!invitationId,
+    });
     return {
       status: "approved",
       workspaceId: workspace,
@@ -909,17 +929,56 @@ export async function touchMemberPresence(workspace: string, memberId: string) {
 export async function updateWorkspaceMember(
   workspace: string,
   memberId: string,
-  patch: { role?: WorkspaceRole; active?: boolean; displayName?: string }
+  patch: { role?: WorkspaceRole; active?: boolean; displayName?: string },
+  /** Who made the change, for the notification. */
+  changedBy?: string
 ) {
   const client = adminClient();
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.role) update.app_role = patch.role;
   if (typeof patch.active === "boolean") update.active = patch.active;
   if (patch.displayName) update.display_name = patch.displayName;
+  /* Read the person BEFORE the write, so the notification can say what the
+     role changed FROM. After the update that fact is gone. */
+  const before = await client
+    .from("app_users")
+    .select("display_name, email, app_role, active")
+    .eq("id", memberId)
+    .eq("workspace_id", workspace)
+    .maybeSingle();
+
   const result = await client
     .from("app_users")
     .update(update)
     .eq("id", memberId)
     .eq("workspace_id", workspace);
   if (result.error) throw new Error(result.error.message);
+
+  /**
+   * TELL THE ADMINS (Anir, Aug 25: "every time someone joins or someone's role
+   * is changed, I need an email going from our inbox to the admins"). Not
+   * awaited, for the same reason as the signup notice: the change already
+   * happened and must stand whatever the mail does.
+   */
+  const who = before.data;
+  if (who) {
+    const name = (who.display_name || who.email || "Somebody").trim();
+    if (patch.role && patch.role !== who.app_role) {
+      void notifyRoleChanged({
+        name,
+        email: who.email || "",
+        from: String(who.app_role || "unknown"),
+        to: patch.role,
+        changedBy: changedBy || "An admin",
+      });
+    }
+    if (typeof patch.active === "boolean" && patch.active !== who.active) {
+      void notifyAccessChanged({
+        name,
+        email: who.email || "",
+        active: patch.active,
+        changedBy: changedBy || "An admin",
+      });
+    }
+  }
 }

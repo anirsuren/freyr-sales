@@ -211,6 +211,43 @@ export default async function TeamPage() {
         joinedAt: member.joinedAt,
       };
     });
+
+    /**
+     * AND THE PEOPLE WHO WERE INVITED AND HAVE NOT ARRIVED (Anir, Aug 25:
+     * "it's gonna show up as the person in this list of people, but it's
+     * gonna say Pending, and it's gonna be in yellow").
+     *
+     * They are not members yet, so they carry no pipeline and no presence —
+     * every number is an honest zero rather than a blank that reads as broken.
+     * The moment they sign up the invitation is marked accepted, they become a
+     * real member row, and the badge disappears on its own.
+     */
+    const invited: RosterRep[] = (directory?.invitations ?? []).map((inv) => ({
+      identityKey: `invite:${inv.id}`,
+      name: (inv.name || inv.email.split("@")[0] || "Invited teammate").trim(),
+      slug: `invite-${inv.id}`,
+      title: "Invited, not signed up yet",
+      role: ACCESS_ROLE[String(inv.role).toLowerCase()] ?? "Rep",
+      pending: true,
+      invitedExpiresAt: inv.expiresAt,
+      invitedBy: inv.invitedBy,
+      region: "",
+      email: inv.email,
+      phone: "",
+      linkedin: "",
+      teamsUrl: "",
+      openValue: 0,
+      weighted: 0,
+      openCount: 0,
+      meetings: 0,
+      quota: 0,
+      wonFY: 0,
+      trend: [],
+      stageValues: zeroStages,
+      lastSeenAt: null,
+    }));
+    reps.push(...invited);
+
     const rollup = [
       { icon: Users, label: "Team members", value: String(reps.length), sub: "in the workspace" },
       /* The header counts the whole floor, owned or not: most imported deals

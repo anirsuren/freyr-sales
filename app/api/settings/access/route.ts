@@ -102,14 +102,22 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-      await updateWorkspaceMember(grant.workspaceId, body.memberId || "", { role });
+      await updateWorkspaceMember(
+        grant.workspaceId,
+        body.memberId || "",
+        { role },
+        grant.displayName || "An admin"
+      );
     } else if (body.action === "deactivate" || body.action === "reactivate") {
       if (body.action === "deactivate" && body.memberId === grant.userId) {
         return NextResponse.json({ error: "You cannot suspend your own owner account." }, { status: 400 });
       }
-      await updateWorkspaceMember(grant.workspaceId, body.memberId || "", {
-        active: body.action === "reactivate",
-      });
+      await updateWorkspaceMember(
+        grant.workspaceId,
+        body.memberId || "",
+        { active: body.action === "reactivate" },
+        grant.displayName || "An admin"
+      );
     } else {
       return NextResponse.json({ error: "Unsupported access action." }, { status: 400 });
     }

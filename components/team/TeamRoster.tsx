@@ -21,6 +21,7 @@ import {
   MapPin,
   Phone,
   TrendingUp,
+  Hourglass,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -42,7 +43,7 @@ import {
 } from "@/components/charts/Charts";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export type RosterRep = {
   identityKey: string;
@@ -50,6 +51,17 @@ export type RosterRep = {
   slug: string;
   title: string;
   role: "Admin" | "Manager" | "Rep";
+  /**
+   * INVITED, NOT ARRIVED (Anir, Aug 25: "it's gonna show up as the person in
+   * this list of people, but it's gonna say Pending, and it's gonna be in
+   * yellow"). An invitation that was sent and never accepted was invisible on
+   * the one page whose job is showing who is in the workspace — you had to go
+   * to Settings to find out whether anybody was waiting.
+   */
+  pending?: boolean;
+  /** When the invitation expires, so a stale one reads as stale. */
+  invitedExpiresAt?: string | null;
+  invitedBy?: string | null;
   you?: boolean;
   region: string;
   email: string;
@@ -654,6 +666,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             {r.name}
                           </Link>
                           <RoleTag role={r.role} size="sm" className="relative z-10 shrink-0" />
+                          {r.pending && (
+                            <span
+                              title={
+                                r.invitedExpiresAt
+                                  ? `Invited${r.invitedBy ? ` by ${r.invitedBy}` : ""} · expires ${formatDate(r.invitedExpiresAt)}`
+                                  : "Invited, has not signed up yet"
+                              }
+                              className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309]"
+                            >
+                              <Hourglass size={10} strokeWidth={2.6} aria-hidden="true" />
+                              Pending
+                            </span>
+                          )}
                         </div>
                         {/* Title alone — the region moved to its own full-width
                             row under the rule so "UK & Ireland" never truncates
@@ -949,6 +974,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   </Link>
                               </HoverCard>
                               <RoleTag role={r.role} size="sm" className="shrink-0" />
+                              {r.pending && (
+                                <span
+                                  title={
+                                    r.invitedExpiresAt
+                                      ? `Invited${r.invitedBy ? ` by ${r.invitedBy}` : ""} · expires ${formatDate(r.invitedExpiresAt)}`
+                                      : "Invited, has not signed up yet"
+                                  }
+                                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309]"
+                                >
+                                  <Hourglass size={10} strokeWidth={2.6} aria-hidden="true" />
+                                  Pending
+                                </span>
+                              )}
                               {/* WHICH ONE AM I (Anir, Aug 13: "can you
                                   highlight who I am? I think that would be
                                   helpful. like whichever account i am"). On a
