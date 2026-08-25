@@ -6,7 +6,7 @@ import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
-export const metadata = { title: "Performance" };
+export const metadata = { title: "Goals" };
 export const dynamic = "force-dynamic";
 
 /**

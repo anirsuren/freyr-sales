@@ -38,8 +38,21 @@ const ROW_ID = "solutioning";
 
 export type SolutioningKind = "submission" | "presentation" | "meeting";
 
-/** Suren's submission types, plus the honest escape hatch. */
-export const SUBMISSION_TYPES = ["RFP", "RFI", "Proposal", "Other"] as const;
+/**
+ * THREE SUBMISSION TYPES, AND ONLY THREE (Suren, Aug 25, narrowing what he
+ * said on Aug 24): "one is an RFI submission, one is an RFP submission, one is
+ * a regular proposal — these are only three submission types I'm looking at.
+ * If somebody wants a rate card it will be some proposal, because it is not a
+ * document type. What I'm going to track is: how many RFIs, how many RFPs, how
+ * many proposals. That's all — I don't want to go into rate cards, this and
+ * that."
+ *
+ * "Other" was the escape hatch on the first cut. It is gone from the picker
+ * because a fourth bucket is exactly how "how many RFPs" stops being
+ * answerable. Anything already stored as Other still displays; nothing is
+ * rewritten and nothing new can be created that way.
+ */
+export const SUBMISSION_TYPES = ["RFI", "RFP", "Proposal"] as const;
 
 export type RequestStatus = "initiated" | "in_progress" | "completed";
 

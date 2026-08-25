@@ -111,7 +111,7 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
   { cap: "Browse offerings & open sales materials", admin: true, manager: true, rep: true },
   { cap: "Ask the assistant", admin: true, manager: true, rep: true },
   {
-    cap: "Open FDL Components, Customers, Reports, Performance & Market Intel",
+    cap: "Open FDL Components, Customers, Reports, Goals & Market Intel",
     admin: true,
     manager: true,
     rep: false,

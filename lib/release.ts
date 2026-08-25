@@ -95,6 +95,18 @@ const RELEASED_MODULE_PREFIXES = [
   // submissions and meetings, requested by sales, fulfilled by the new
   // Solutions role). Real mode starts empty and honest; mock is seeded.
   "/solutioning",
+  // THE AUG 25 MODULES, from Suren's data-model call: Leads (the thousands
+  // before the hundreds), Revenue Accruals (the month-by-month plan and the
+  // month-on-month gap) and Contracts (where sales logically closes, and the
+  // shared repository the delivery platform reads by reference). All three
+  // start admin-only in lib/moduleAccess; releasing them here is what lets an
+  // admin open them in Real mode at all.
+  "/leads",
+  "/revenue-accruals",
+  "/contracts",
+  // /goals is the door with Suren's name on it; it redirects to /performance,
+  // which is already released above.
+  "/goals",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

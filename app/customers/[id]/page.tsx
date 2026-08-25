@@ -10,6 +10,9 @@ import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
+import { getRole } from "@/lib/role";
+import { buildCustomer360 } from "@/lib/customer360";
+import { BAND_ICONS, Customer360 } from "@/components/customers/Customer360";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
 import { initializeLiveOfferings, listFdlComponents } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
@@ -133,6 +136,39 @@ export default async function CustomerDetailPage({
   const fdlComponents = listFdlComponents();
   const canEditComponents = await canManageOfferings();
 
+  /**
+   * EVERYTHING CONNECTED TO THIS ACCOUNT (Suren, Aug 25: "when I go to a
+   * particular customer, I want to get all the view of the customer one shot —
+   * how many opportunities are running, how many meetings are happening, how
+   * many presentations are happening, how many submissions have I done").
+   *
+   * Each band is gated on what this person may actually open, and the contacts
+   * band is filled in here because this page already holds them.
+   */
+  const c360 = await buildCustomer360(
+    customer.id,
+    customer.company_name,
+    await getRole()
+  ).catch(() => []);
+  if (c360.length) {
+    c360.splice(1, 0, {
+      key: "contacts",
+      label: "Contacts",
+      icon: BAND_ICONS.contacts,
+      color: "#0891B2",
+      count: contacts.length,
+      href: `/customers/${customer.id}?tab=contacts`,
+      hrefLabel: "All contacts",
+      empty: "Nobody is on file at this account yet.",
+      items: contacts.map((c) => ({
+        id: c.id,
+        title: c.full_name,
+        sub: [c.job_title, c.email].filter(Boolean).join(" · "),
+      })),
+    });
+  }
+
+
   return (
     <div>
       <RecordView
@@ -221,6 +257,19 @@ export default async function CustomerDetailPage({
           <ReEnrichButton customerId={customer.id} />
         </div>
       </div>
+
+      {/* EVERYTHING CONNECTED TO THIS ACCOUNT, ABOVE THE TABS (Suren, Aug 25:
+          "one customer perspective will get everything, one shot").
+
+          Deliberately not inside a tab. Real mode shows only two of the nine
+          tabs — Digital components and Activity — so a panel on Overview would
+          have been invisible to exactly the people who asked for it, and the
+          whole point is that it reads before you choose a tab at all. */}
+      {c360.length > 0 && (
+        <div className="mb-5">
+          <Customer360 company={customer.company_name} bands={c360} />
+        </div>
+      )}
 
       <CustomerTabs
         customer={customer}

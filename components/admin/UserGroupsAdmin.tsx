@@ -242,7 +242,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
           <UsersRound size={16} strokeWidth={2} className="text-blue-primary" />
           User groups
-          <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Performance; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
+          <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Goals; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
         </p>
         {/* Always here. It used to unmount while the popup was open, so
             opening the editor made the button vanish from the page behind it
@@ -595,7 +595,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   (Anir, Aug 15: "again, group name has to be in the pill,
                   and blue"). */}
               <NamePill>{confirmRemove.name}</NamePill> disappears from
-              Performance. Its people and their goals are untouched. Only the
+              Goals. Its people and their goals are untouched. Only the
               grouping goes.
             </>
           ) : (

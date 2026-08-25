@@ -8,6 +8,7 @@ import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import {
   EMPTY_OPPORTUNITIES,
   normalizeConfidence,
+  effectiveRevenueType,
   normalizeLevel,
   normalizeRevenueType,
   normalizeStatus,
@@ -197,6 +198,25 @@ function normalizeOne(raw: unknown): Opportunity | null {
   const labelsFromRows = rows
     .map((x) => x.offeringLabel)
     .filter((x): x is string => Boolean(x));
+  /**
+   * REVENUE TYPE IS READ OFF THE CONFIDENCE, EVERY TIME (Suren, Aug 25).
+   *
+   * Doing it here rather than only on save means a row imported months ago
+   * with a hand-typed level can never contradict its own percentage — the
+   * offering page was showing "High confidence · 25%" until this landed, which
+   * is precisely the confusion he asked to remove. Every reader in the app —
+   * charts, filters, grouping, exports, goals — goes through this normalizer,
+   * so they all agree without one of them being taught the rule separately.
+   *
+   * A deal with no confidence at all keeps its stored word. See
+   * effectiveRevenueType for why.
+   */
+  const storedLevel = normalizeLevel(r.level);
+  const derivedLevel = effectiveRevenueType({
+    level: storedLevel,
+    confidence: normalizeConfidence(r.confidence),
+    lines: rows,
+  });
   return {
     id: str(r.id, 60) || uid(),
     externalId: str(r.externalId, 60) || undefined,
@@ -210,7 +230,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
       ? [...new Set(labelsFromRows)]
       : strList(r.offeringLabels, 160),
     lines: rows.length ? rows : undefined,
-    level: normalizeLevel(r.level),
+    level: derivedLevel,
     status: normalizeStatus(r.status),
     revenueType: normalizeRevenueType(r.revenueType),
     value: total,

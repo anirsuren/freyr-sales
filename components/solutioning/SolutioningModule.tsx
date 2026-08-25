@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  AlarmClock,
   Briefcase,
   CalendarClock,
   CalendarDays,
@@ -17,6 +18,7 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
+  Timer,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -146,6 +148,40 @@ export function SolutioningModule({
   );
   const inProgress = state.requests.filter((r) => r.status === "in_progress");
   const completed = state.requests.filter((r) => r.status === "completed");
+
+  /**
+   * TURNAROUND — the only analysis he asked this module for (Suren, Aug 25):
+   * "the requests are coming in; if the requests are not fulfilled by a certain
+   * timeline then I know they are all backed up and they are not doing the
+   * right thing. And if a submission start date was this and you have not done
+   * a submission till some point in time, that means your average submission
+   * time in an RFP situation is acceptable. So I can get those analysis —
+   * that's all I need to know. I don't have to go into any other details."
+   *
+   * Two numbers, deliberately: how long a closed request took on average, and
+   * how long the oldest open one has been sitting. The second is the one that
+   * catches a backlog, because an average made only of finished work hides a
+   * queue nobody has touched.
+   */
+  const DAY = 86_400_000;
+  const daysBetween = (from?: string, to?: string) => {
+    const a = Date.parse(from ?? "");
+    const b = to ? Date.parse(to) : Date.now();
+    return Number.isFinite(a) && Number.isFinite(b)
+      ? Math.max(0, Math.round((b - a) / DAY))
+      : null;
+  };
+  const turnarounds = completed
+    .map((r) => daysBetween(r.requestedAt, r.completedAt))
+    .filter((d): d is number => d !== null);
+  const avgTurnaround = turnarounds.length
+    ? Math.round(turnarounds.reduce((s, d) => s + d, 0) / turnarounds.length)
+    : null;
+  const openAges = open
+    .map((r) => ({ r, days: daysBetween(r.requestedAt) }))
+    .filter((x): x is { r: SolutionRequest; days: number } => x.days !== null)
+    .sort((a, b) => b.days - a.days);
+  const oldestOpen = openAges[0] ?? null;
   const people = solutioningPeople(state).slice(0, 8);
 
   async function post(body: Record<string, unknown>, doing: string) {
@@ -200,7 +236,10 @@ export function SolutioningModule({
         }
       />
 
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Six tiles, in rows that always fill: three at lg, six at xl. Symmetry
+          is a standing rule here — a 4-column grid holding six would have left
+          two orphans on their own line. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <StatTile
           icon={ClipboardList}
           label="Open requests"
@@ -232,6 +271,27 @@ export function SolutioningModule({
           value={String(completed.length)}
           color="#1A7A35"
           sub="closed by the requester"
+        />
+        <StatTile
+          icon={Timer}
+          label="Average turnaround"
+          value={avgTurnaround === null ? "—" : `${avgTurnaround}d`}
+          color="#0F766E"
+          sub={
+            avgTurnaround === null
+              ? "nothing closed yet"
+              : `across ${turnarounds.length} closed ${turnarounds.length === 1 ? "request" : "requests"}`
+          }
+        />
+        <StatTile
+          icon={AlarmClock}
+          /* AMBER, NOT RED: a request that has been waiting a while is a nudge
+             for the queue, not somebody's failure. */
+          label="Longest waiting"
+          value={oldestOpen ? `${oldestOpen.days}d` : "—"}
+          color="#B45309"
+          warn={!!oldestOpen && oldestOpen.days >= 14}
+          sub={oldestOpen ? oldestOpen.r.ref : "nothing open"}
         />
       </div>
 
@@ -427,6 +487,8 @@ export function SolutioningModule({
           members={members}
           prefillCustomerId={search.get("customer")}
           prefillOpportunityId={search.get("opportunity")}
+          prefillCompany={search.get("company")}
+          prefillLead={search.get("lead")}
           onCreate={async (input) => {
             const data = await post({ op: "create", ...input }, "create");
             if (data?.request) {
@@ -806,6 +868,8 @@ function NewRequestDialog({
   members,
   prefillCustomerId,
   prefillOpportunityId,
+  prefillCompany,
+  prefillLead,
 }: {
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
@@ -814,12 +878,32 @@ function NewRequestDialog({
   members: string[];
   prefillCustomerId: string | null;
   prefillOpportunityId: string | null;
+  /** A company NAME, from a lead that may have no account yet. */
+  prefillCompany: string | null;
+  /** LEAD-0001, so the request records where it came from. */
+  prefillLead: string | null;
 }) {
   const [kind, setKind] = useState<SolutioningKind | null>(null);
   const [title, setTitle] = useState("");
   const [subtype, setSubtype] = useState("RFP");
   const [presType, setPresType] = useState("");
-  const [customerId, setCustomerId] = useState(prefillCustomerId ?? "");
+  /**
+   * ARRIVING FROM A LEAD (Suren, Aug 25: a request can be raised "at the
+   * customer level, or at the lead level, or at the opportunity level").
+   *
+   * A lead usually has no account yet — that is what makes it a lead — so the
+   * company arrives as a NAME rather than an id. If an account of that name
+   * already exists it is selected; if not, the picker stays empty and the lead
+   * is written into the details instead of being silently dropped.
+   */
+  const matchedByName = prefillCompany
+    ? (customers.find(
+        (c) => c.name.trim().toLowerCase() === prefillCompany.trim().toLowerCase()
+      )?.id ?? "")
+    : "";
+  const [customerId, setCustomerId] = useState(
+    prefillCustomerId ?? matchedByName
+  );
   const [oppIds, setOppIds] = useState<string[]>(
     prefillOpportunityId ? [prefillOpportunityId] : []
   );
@@ -830,7 +914,11 @@ function NewRequestDialog({
   const [neededBy, setNeededBy] = useState("");
   const [meetingAt, setMeetingAt] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
-  const [details, setDetails] = useState("");
+  const [details, setDetails] = useState(
+    prefillLead
+      ? `From lead ${prefillLead}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
+      : ""
+  );
   const [saving, setSaving] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId) ?? null;

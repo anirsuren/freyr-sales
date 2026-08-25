@@ -35,17 +35,20 @@ const GLOBAL: ManualSection = {
   keywords: [],
   title: "Freyr Sales Intelligence. The basics",
   body: `This is Freyr's internal sales platform. The left rail in the live
-workspace is: Agent, Offerings, FDL Components, Customers, Team, Reports,
-Performance, Market Intel, Admin. Settings and Notifications are reached from
+workspace is: Agent, Offerings, FDL Components, Opportunities, Solutioning,
+Leads, Revenue Accruals, Contracts, Customers, Team, Reports, Goals, Market
+Intel, Admin. Settings and Notifications are reached from
 the top bar, not the rail. FDL Components lives at /components.
 
 WHO CAN OPEN WHAT. This is a real block, not just a hidden menu item: a rep who
 types the URL is sent back to Offerings.
   - Everyone (Rep, Manager, Admin): Agent, Offerings, Team, Settings,
     Notifications.
-  - Managers and Admins only: FDL Components, Customers, Reports, Performance,
+  - Managers and Admins only: FDL Components, Customers, Reports, Goals,
     Market Intel.
-  - Admins only: Admin. Managers cannot open it.
+  - Admins only: Admin, Solutioning, Leads, Revenue Accruals and Contracts.
+    Managers cannot open those either — every module that shipped on Aug 24-25
+    starts closed until Anir opens it.
 So "a rep cannot see Customers" is correct behaviour, not a fault. Editing
 inside a module is gated further, and each page says so below.
 
@@ -89,9 +92,27 @@ const SECTIONS: ManualSection[] = [
     title: "Opportunities",
     body: `Opportunities is the live pipeline as records rather than a
 spreadsheet. One row per deal, with the columns from Freyr's own pipeline
-sheet: level (Pipeline / Go get / High confidence), the client, the offerings
+sheet: revenue type, the client, the offerings
 it covers, ARR or OTS, estimated sign date, total contract value, status,
 confidence %, next steps, and Freyr's own opportunity id.
+
+REVENUE TYPE IS NOT PICKED. Since Aug 25 it is read off the confidence bar:
+under 95% is Pipeline, 95 to 98 is High confidence, 99 and above is Go get.
+Suren's reason: "people are not understanding that difference between go get
+and high confidence and the confidence level percentage — so to avoid that
+confusion can we club these two." The bar snaps to fives up to 95 and then to
+99 and 100, so every verdict is reachable by dragging; typing an exact figure
+still accepts anything, 72 or 97 included.
+
+Future is separate and still chosen by hand, because it says WHEN the money
+lands rather than how likely it is: a deal can be 99% certain and still be
+future revenue that arrives in a later financial year. A deal carrying no
+confidence at all keeps whatever level it was imported with, because a blank
+cell is not a verdict.
+
+STATUSES: Qualify, Pilot, Propose, Submitted to client, Create contract, Under
+review, On hold, Won, Lost. "Create contract" is the hand-off point — a deal
+sitting there with no contract drafted shows in a queue on the Contracts page.
 
 WEIGHTED means value x confidence — the probability-adjusted figure. A $800K
 deal at 60% confidence shows $480K weighted. The tiles at the top give the
@@ -114,6 +135,107 @@ deal's own owner. Mock mode shows Freyr's real pipeline as sample data and
 refuses writes.`,
   },
   {
+    routes: ["/leads"],
+    keywords: [
+      "lead", "leads", "inbound", "enquiry", "enquiries", "demo request",
+      "qualify", "qualifying", "disqualified", "converted", "lead source",
+      "website enquiry", "nurturing",
+    ],
+    title: "Leads",
+    body: `Leads is everything that came in before it is a deal. Suren's reason
+for keeping it separate from Opportunities: "there will be thousands of leads,
+but out of those only hundreds can be your opportunities — that is why you want
+to keep something as a lead, so that you don't discuss those 3000 items, you
+discuss only the opportunity."
+
+A lead is an inbound nobody has qualified yet: a demo request from the website,
+a card from a conference, a referral. It carries who, which company, a source,
+an owner, and what they asked about.
+
+WHAT HAPPENS AT LEAD LEVEL: a meeting or a presentation, never a submission
+("at the lead level I do a meeting and presentation, not at the contact level,
+because contact is just a contact database"). The arrow on a lead row hands it
+to Solutioning with the lead already named.
+
+STATUSES: New, Contacted, Qualifying, Nurturing, Converted, Disqualified. A
+converted lead points at the opportunity it became and is never deleted.
+
+The page leads with the two numbers a lead list exists for: how many nobody has
+touched, and how many are going stale (open and untouched 21 days or more).
+
+ADMIN ONLY for now, like every module that shipped on Aug 25.`,
+  },
+  {
+    routes: ["/revenue-accruals"],
+    keywords: [
+      "accrual", "accruals", "revenue accrual", "month by month", "monthly plan",
+      "spread evenly", "freeze", "frozen sheet", "snapshot", "deviation",
+      "month on month", "slipped", "invalidate", "flagged", "gap",
+    ],
+    title: "Revenue Accruals",
+    body: `Revenue Accruals is when the money on each deal is planned to land,
+month by month, and what moved since last month. Its own module rather than a
+tab on the deal, in Suren's words, "because you can see one report across it —
+you cannot go from opportunity to opportunity."
+
+A plan spreads a contract value across months. "Spread evenly" is the simple
+formula he asked for; the rounding remainder lands on the last month so the
+rows always add back to the contract value exactly.
+
+THREE RULES THAT ARE NOT NEGOTIABLE:
+  1. Nothing auto-pushes. A missed month is never moved forward by the app.
+     Manoj: "if you keep pushing it, then I am off the hook — you will never
+     catch hold of me."
+  2. A missed month is FLAGGED, not deleted: "it is not removing, you can
+     invalidate — but there has to be a flag which says it is not validating,
+     and you go and fix it." The flag is worked out fresh on every render, so
+     it turns itself on the moment the month turns over.
+  3. The gap is the report. Freeze a month and every later change is measured
+     against that frozen sheet, per month AND per deal.
+
+A deal whose money SLIPPED from one month to the next nets to zero, so it is
+labelled "slipped" and ranked by how much moved rather than by the net. That
+case is the whole point: "how many opportunities we thought will close in July
+are not closed in July and are now spilling into August."
+
+"No numbers yet" lists open deals carrying money nobody has planned, which is
+the other half of what he asked for. Freezing can be undone for the current
+month. ADMIN ONLY for now.`,
+  },
+  {
+    routes: ["/contracts"],
+    keywords: [
+      "contract", "contracts", "signed", "schedule revenue", "delivery basket",
+      "contract reference", "fr-c", "handoff", "hand off", "baseline",
+      "contract repository",
+    ],
+    title: "Contracts",
+    body: `Contracts is where sales logically closes. A deal reaches "Create
+contract" and the contract is drafted here.
+
+WHAT IT HOLDS, deliberately only this: contract id, contract name, the
+customer, the value, the dates, the owner, and schedule revenue. Suren: "from
+here I need the baseline of the contract — what is a contract, who is a
+customer, what is a value."
+
+WHAT IT DOES NOT HOLD: projects, invoicing and resourcing. Those live on the
+delivery platform Anish is building. "Here you cannot see the project details,
+or how invoicing is done, or who are the resources working on it."
+
+THE HANDSHAKE: every contract carries a reference like FR-C-0001, minted once
+and never rewritten, because "that ID will act as a link between this system
+and that system." It is printed on every row for exactly that reason.
+
+SCHEDULE REVENUE SUPERSEDES THE ACCRUAL PLAN once a contract is Ready for
+delivery or Signed: "once it is executed you do not need the accrual revenue in
+this sense — schedule revenue is more reliable, because that is decided after
+the contract started." A Draft supersedes nothing; sales is still typing.
+
+STATUSES: Draft, Ready for delivery (the completed package sitting in the
+delivery team's basket), Signed, Cancelled. A draft lists what it still needs
+before it can be handed over. ADMIN ONLY for now.`,
+  },
+  {
     routes: ["/performance"],
     keywords: [
       "goal", "goals", "target", "quota", "actual", "result", "log", "verify",
@@ -121,8 +243,9 @@ refuses writes.`,
       "performance", "pace", "lagging", "subgoal", "roll up", "rollup",
       "evidence", "claim", "sign off", "tracked", "tracking",
     ],
-    title: "Performance",
-    body: `Performance is open to Managers and Admins only; a Rep who opens it
+    title: "Goals",
+    body: `Goals (the page still lives at /performance) is open to Managers and
+Admins only; a Rep who opens it
 is redirected to Offerings. It has four tabs, each its own URL:
   /performance/org          "Org performance" — the whole company
   /performance/groups       "Group performance" — one department at a time
@@ -423,7 +546,7 @@ offering revenue yet" and explains that reps log revenue on each customer.
 
 EXPORTING. "Export CSV" at the top gives the whole revenue book in one file:
 headline totals, then revenue per offering, then every contract with its end
-date. Performance has its own separate export for goals and logged entries, and
+date. Goals has its own separate export for goals and logged entries, and
 Customers exports the rows you have selected.
 
 THE HEAT MAP. It is called the "Customer Offering Heat Map" and it is its own
@@ -550,7 +673,7 @@ group" and asks for a "Group name", a "Group owner" (the person who runs that
 group's performance and verifies its people's numbers) and "People in the
 group". Save with "Create group"; all three are required. Rows expand to show
 who is inside, the pencil edits, and the bin asks "Remove this group?" first,
-warning that the group disappears from Performance while its people and their
+warning that the group disappears from Goals while its people and their
 goals are untouched. A person can be in more than one group. Groups are exactly
 what Performance means by "group", and picking the owner does not automatically
 put them in the group.`,

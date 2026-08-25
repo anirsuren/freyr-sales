@@ -4,6 +4,9 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  FileSignature,
+  CalendarRange,
+  UserPlus,
   FolderOpen,
   Radar,
   LayoutDashboard,
@@ -64,6 +67,13 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   // Solutions role fulfils (Suren, Aug 24). Sits by Opportunities because
   // that is what most requests are against.
   { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
+  /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes
+     an opportunity, an opportunity plans its accrued revenue, and a contract
+     is where sales closes it. All three are admin-only for now
+     (lib/moduleAccess NEW_MODULES_ADMIN_ONLY). */
+  { href: "/leads", label: "Leads", icon: UserPlus },
+  { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange },
+  { href: "/contracts", label: "Contracts", icon: FileSignature },
   { href: "/customers", label: "Customers", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/team", label: "Team", icon: UsersRound },
@@ -74,7 +84,11 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
   { href: "/reports", label: "Reports", icon: FileBarChart },
-  { href: "/performance", label: "Performance", icon: Gauge },
+  /* Suren, Aug 25: "we are calling it Performance but I don't want to call
+     it performance — it's a goal view, the view is based on goals, it's
+     actually Goals." The URL stays /performance so every bookmark, deep
+     link and shared goal URL keeps working; /goals redirects here. */
+  { href: "/performance", label: "Goals", icon: Gauge },
   { href: "/market-intel", label: "Market Intel", icon: Radar },
   { href: "/activity", label: "Activity", icon: Rss },
   // Running the workspace — user groups and system status. Its own page in

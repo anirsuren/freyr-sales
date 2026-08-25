@@ -795,7 +795,7 @@ const FREYA_REGISTER_ROADMAP_DETAILS: OfferingRoadmapDetails = {
       previous: "-",
     },
     {
-      area: "Performance",
+      area: "Goals",
       current: "Lazy-loading improvements across grids",
       previous: "Dynamic wizard introduced for LCM",
     },

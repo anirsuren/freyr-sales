@@ -43,6 +43,8 @@ import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 import { readOpportunities } from "@/lib/opportunities";
+import { buildPerson360 } from "@/lib/person360";
+import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
 
 /**
@@ -156,6 +158,10 @@ export default async function RepPage({
       { label: "Open deals", value: String(myOpen.length), sub: "in the pipeline", icon: Briefcase },
       { label: "Meetings", value: "0", sub: "booked", icon: CalendarCheck },
     ];
+    const person360 = await buildPerson360(
+      member.name,
+      (await getCurrentUser()).role
+    ).catch(() => []);
     return (
       <div className="space-y-5">
         <BackButton fallback="/team" label="Back to team" />
@@ -220,6 +226,19 @@ export default async function RepPage({
             <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
           ))}
         </div>
+        {/* EVERYTHING WITH THIS PERSON'S NAME ON IT (Suren, Aug 25: "I click
+            on the person's name… wherever he's been called an owner, those
+            will come… I want one short understanding of what is this guy
+            doing"). Not filtered by job title — his explicit instruction was
+            that a person plays whatever roles the records say they play. */}
+        {person360.length > 0 && (
+          <Customer360
+            company={member.name}
+            heading={`Everything ${member.name.split(" ")[0]} owns`}
+            emptyLine={`Nothing across the app carries ${member.name.split(" ")[0]}'s name yet.`}
+            bands={person360}
+          />
+        )}
         {myOpen.length === 0 ? (
           <p className="text-[12.5px] text-text-tertiary">
             Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.

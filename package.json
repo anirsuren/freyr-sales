@@ -15,6 +15,7 @@
     "test:e2e": "playwright test tests/verify.spec.ts --reporter=list",
     "test:folder-upload": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/material-folder-upload.test.mjs",
     "test:content-agent": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/content-agent.test.mjs",
+    "test:rules": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/aug25-rules.test.mjs",
     "live": "curl -sS -X POST localhost:3001/api/settings/data-mode -H 'content-type: application/json' -d '{\"mode\":\"live\"}'"
   },
   "dependencies": {

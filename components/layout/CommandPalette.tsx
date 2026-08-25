@@ -60,7 +60,7 @@ const NAV: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Customers", href: "/customers", icon: Building2 },
   { label: "Contacts", href: "/contacts", icon: Contact },
   { label: "Team", href: "/team", icon: UsersRound },
-  { label: "Performance", href: "/performance", icon: Gauge },
+  { label: "Goals", href: "/performance", icon: Gauge },
   { label: "Reports", href: "/reports", icon: FileBarChart },
   { label: "Market Intel", href: "/market-intel", icon: Radar },
   { label: "Sequences", href: "/sequences", icon: Zap },

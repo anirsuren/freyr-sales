@@ -132,7 +132,7 @@ function pageLabel(path: string): string {
     [/^\/components/, "FDL Components"],
     [/^\/market-intel\/[^/]+/, "a tracked company"],
     [/^\/market-intel/, "Market Intel"],
-    [/^\/performance/, "Performance"],
+    [/^\/performance/, "Goals"],
     [/^\/admin/, "Admin"],
     [/^\/notifications/, "Notifications"],
     [/^\/settings/, "Settings"],
@@ -184,7 +184,7 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
       "Which competitors are most active?",
       "Any acquisitions worth knowing about?",
     ]],
-    ["Performance", [
+    ["Goals", [
       "How is the org tracking against target?",
       "Who is lagging the calendar?",
       "What still needs verifying?",

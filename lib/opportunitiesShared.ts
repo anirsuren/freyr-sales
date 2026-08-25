@@ -35,6 +35,84 @@ export const OPPORTUNITY_LEVELS = [
 export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
 
 /**
+ * REVENUE TYPE IS NO LONGER PICKED — IT IS READ OFF THE CONFIDENCE BAR
+ * (Suren, Aug 25 call).
+ *
+ * The problem in his words: "the meetings that we're having with Sudhir and
+ * the sales team, people are not understanding that difference between go get
+ * and high confidence and the confidence level percentage — so they're saying
+ * if I'm saying already 80%, that's high confidence, right? So to avoid that
+ * confusion can we club these two."
+ *
+ * And the rule, also his: "0 to 80 you can play around whatever you want to
+ * play around. The moment you say 95 that I will treat it as high confidence.
+ * If you say 99 it is go get. 100 is just one step there, 99 I'm there, so
+ * that means it's go get." Manoj: "99 means paperwork is pending." Suren:
+ * "yeah, whatever the definition of go get is, 99, I'm okay with that."
+ *
+ * So the person sets ONE number and the label follows. Two fields that could
+ * disagree became one that cannot.
+ *
+ * FUTURE IS NOT ON THIS SCALE. It is a statement about WHEN the money lands,
+ * not how likely it is: "I might sign today but this revenue will come in a
+ * year and a half or two years." A deal can be 99% certain and still be
+ * future revenue, so it stays a separate flag rather than a confidence band.
+ */
+export const CONFIDENCE_GO_GET = 99;
+export const CONFIDENCE_HIGH = 95;
+
+export function revenueTypeFromConfidence(
+  confidence: number | undefined,
+  futureRevenue?: boolean
+): OpportunityLevel {
+  if (futureRevenue) return "Future";
+  const c = typeof confidence === "number" && Number.isFinite(confidence) ? confidence : 0;
+  if (c >= CONFIDENCE_GO_GET) return "Go get";
+  if (c >= CONFIDENCE_HIGH) return "High confidence";
+  return "Pipeline";
+}
+
+/**
+ * THE REVENUE TYPE TO SHOW FOR A DEAL THAT ALREADY EXISTS.
+ *
+ * Derived from the confidence whenever there IS one, so a row can never read
+ * "High confidence · 25%" — which is the exact contradiction Suren asked to
+ * remove: "people are not understanding that difference between go get and
+ * high confidence and the confidence level percentage."
+ *
+ * WHEN NOBODY HAS SET A CONFIDENCE, the stored word stands. 76 of the live
+ * rows came from his own workbook, where the level was a column and the
+ * confidence often was not; rewriting those to "Pipeline" would be inventing
+ * a verdict from an empty cell rather than reading one. A deal with no
+ * confidence keeps whatever it was imported as until somebody moves the bar.
+ *
+ * Future is never derived: it says WHEN the money lands, not how likely it is.
+ */
+export function effectiveRevenueType(deal: {
+  level: OpportunityLevel;
+  confidence?: number;
+  lines?: { confidence?: number }[];
+}): OpportunityLevel {
+  if (deal.level === "Future") return "Future";
+  /* One offering per opportunity since Aug 17, so the row's own confidence is
+     the deal's when it carries one. */
+  const rowConfidence = (deal.lines ?? []).find(
+    (l) => typeof l.confidence === "number"
+  )?.confidence;
+  const confidence = rowConfidence ?? deal.confidence;
+  if (typeof confidence !== "number") return deal.level;
+  return revenueTypeFromConfidence(confidence, false);
+}
+
+/** The sentence under the bar, so nobody has to remember the two numbers. */
+export function revenueTypeRule(level: OpportunityLevel): string {
+  if (level === "Future") return "Revenue lands in a later financial year";
+  if (level === "Go get") return `${CONFIDENCE_GO_GET}% and up — paperwork is the only thing left`;
+  if (level === "High confidence") return `${CONFIDENCE_HIGH}% to ${CONFIDENCE_GO_GET - 1}%`;
+  return `Under ${CONFIDENCE_HIGH}%`;
+}
+
+/**
  * The working status. His sheet carries these plus blanks; blank means nobody
  * has set one yet, which is why the field is nullable rather than defaulted —
  * a guessed status on a real deal is worse than no status.
@@ -47,6 +125,11 @@ export const OPPORTUNITY_STATUSES = [
   "Pilot",
   "Propose",
   "Submitted to client",
+  /** Suren, Aug 25: "you can have one more status here — submitted to client,
+   *  and after that, create contract… so there you close the thing." This is
+   *  where sales logically hands off: the contract is drafted here and the
+   *  delivery side picks the package up. See lib/contracts.ts. */
+  "Create contract",
   "Under review",
   "On hold",
   "Won",

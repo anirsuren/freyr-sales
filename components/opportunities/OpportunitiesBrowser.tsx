@@ -26,6 +26,7 @@ import {
   CalendarClock,
   Search,
   FlaskConical,
+  FileSignature,
   FileText,
   Send,
   Hourglass,
@@ -56,6 +57,8 @@ import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredView } from "@/lib/useStoredView";
 import {
   OPPORTUNITY_LEVELS,
+  revenueTypeFromConfidence,
+  revenueTypeRule,
   OPPORTUNITY_STATUSES,
   REVENUE_TYPES,
   offeringCount,
@@ -112,6 +115,7 @@ const STATUS_ICON: Record<string, LucideIcon> = {
   Pilot: FlaskConical,
   Propose: FileText,
   "Submitted to client": Send,
+  "Create contract": FileSignature,
   "Under review": Hourglass,
   "On hold": PauseCircle,
   Won: Trophy,
@@ -128,6 +132,9 @@ const STATUS_COLOR: Record<string, string> = {
   Pilot: "#5E5CE6",
   Propose: "#0071E3",
   "Submitted to client": "#7C3AED",
+  /* Deep indigo: the last sales step before delivery owns it. Not green —
+     green is Won, and drafting a contract is not the same as signing one. */
+  "Create contract": "#4338CA",
   "Under review": "#B4318F",
   "On hold": "#8E98A8",
   Won: "#16A34A",
@@ -835,7 +842,15 @@ export function OpportunitiesBrowser({
             met: r.met,
             actualId: r.actualId,
           })),
-        level: editing.level,
+        /* Derived on the way out as well as on screen, so a legacy row that
+           was saved with a hand-picked level lands consistent the moment
+           anybody edits it. */
+        level: revenueTypeFromConfidence(
+          editing.rows[0]?.confidence === "" || editing.rows[0]?.confidence === undefined
+            ? undefined
+            : Number(editing.rows[0].confidence),
+          editing.level === "Future"
+        ),
         status: editing.status || undefined,
         owner: editing.owner || undefined,
         nextSteps: editing.nextSteps || undefined,
@@ -2008,24 +2023,65 @@ export function OpportunitiesBrowser({
               summary={`${editing.status || "No status"} · ${editing.owner || "Unassigned"}`}
             >
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {/* Suren, Aug 18: "don't call it levels; it's actually a revenue
-                  type." The stored field stays `level` — only the words moved. */}
+              {/* REVENUE TYPE IS READ, NOT PICKED (Suren, Aug 25: "instead of
+                  the user selecting this… the person only says confidence
+                  level. You play with the bar — the moment you put it at 99,
+                  that means I'll take it as go get"). Two fields that could
+                  disagree are now one that cannot, which is the whole point:
+                  "people are not understanding that difference between go get
+                  and high confidence and the confidence level percentage."
+
+                  Future is deliberately NOT on the same scale. It answers WHEN
+                  the money lands, not how likely it is ("I might sign today
+                  but this revenue will come in a year and a half"), so a 99%
+                  deal can still be future revenue. */}
               <Field label="Revenue type">
-                <ColorSelect
-                  value={editing.level}
-                  ariaLabel="Revenue type"
-                  collapsible={false}
-                  className="w-full"
-                  minWidth={110}
-                  dense
-                  onChange={(v) => setEditing({ ...editing, level: v })}
-                  options={OPPORTUNITY_LEVELS.map((l) => ({
-                    value: l,
-                    label: l,
-                    color: LEVEL_COLOR[l],
-                    icon: LEVEL_ICON[l],
-                  }))}
-                />
+                {(() => {
+                  const isFuture = editing.level === "Future";
+                  const conf =
+                    editing.rows[0]?.confidence === "" ||
+                    editing.rows[0]?.confidence === undefined
+                      ? undefined
+                      : Number(editing.rows[0].confidence);
+                  const derived = revenueTypeFromConfidence(conf, isFuture);
+                  const Icon = LEVEL_ICON[derived];
+                  return (
+                    <div className="mt-1 space-y-1.5">
+                      <div
+                        data-derived-revenue-type={derived}
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-[7px] text-[13px] font-semibold"
+                        style={{
+                          background: `${LEVEL_COLOR[derived]}18`,
+                          color: LEVEL_COLOR[derived],
+                        }}
+                      >
+                        {Icon && <Icon size={13} strokeWidth={2.3} />}
+                        {derived}
+                      </div>
+                      <p className="text-[11px] leading-snug text-text-tertiary">
+                        {isFuture
+                          ? "Set by the box below."
+                          : `Set by the confidence bar. ${revenueTypeRule(derived)}.`}
+                      </p>
+                      <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-semibold text-text-secondary">
+                        <input
+                          type="checkbox"
+                          checked={isFuture}
+                          onChange={(e) =>
+                            setEditing({
+                              ...editing,
+                              level: e.target.checked
+                                ? "Future"
+                                : revenueTypeFromConfidence(conf, false),
+                            })
+                          }
+                          className="h-3.5 w-3.5 accent-[color:#7C3AED]"
+                        />
+                        Future revenue
+                      </label>
+                    </div>
+                  );
+                })()}
               </Field>
               <Field label="Status">
                 <ColorSelect
@@ -2540,6 +2596,28 @@ function withCommas(digits: string): string {
   return frac === null ? grouped : `${grouped}.${frac}`;
 }
 
+/**
+ * WHERE THE THUMB LANDS. Fives everywhere, plus 99.
+ *
+ * Anir set the fives on Aug 17 ("the bar moves smoothly but the numbers go
+ * every 5 — I can still enter in 72"), and that stands. But Suren's Aug 25
+ * rule turns on one number the fives skip straight over: "the moment you say
+ * 95 that I will treat it as high confidence; if you say 99 it is go get. 100
+ * is just one step there — 99, I'm there, so that means it's go get."
+ *
+ * Dragging could reach 95 and 100 and never 99, so the one gesture he
+ * described could not produce the one verdict he described. Above 95 the stops
+ * become 95 / 99 / 100; below it nothing changes. Typing an exact figure is
+ * untouched and still accepts 72, or 97.
+ */
+function snapConfidence(raw: number): number {
+  const n = Math.max(0, Math.min(100, raw));
+  if (n <= 95) return Math.round(n / 5) * 5;
+  /* 96, 97 round back to 95; 98 and 99 land on 99; 100 stays 100. */
+  if (n >= 99.5) return 100;
+  return n >= 97.5 ? 99 : 95;
+}
+
 function ConfidenceSlider({
   value,
   onChange,
@@ -2605,7 +2683,7 @@ function ConfidenceSlider({
           onChange={(e) => {
             const raw = Number(e.target.value);
             setDrag(raw);
-            onChange(String(Math.round(raw / 5) * 5));
+            onChange(String(snapConfidence(raw)));
           }}
           onPointerUp={() => setDrag(null)}
           onBlur={() => setDrag(null)}
@@ -3206,6 +3284,40 @@ function SingleOfferingEditor({
               onChange={(val) => set({ confidence: val })}
             />
           </div>
+          {/* THE VERDICT SITS UNDER THE BAR THAT SETS IT (Suren, Aug 25: "you
+              play with the bar — the moment you put it at 99, that means I'll
+              take it as go get"). It also reads in "Where it stands" further
+              down, but that panel is folded shut while somebody is dragging
+              this, and a rule you cannot see while you use it is a rule
+              nobody learns. */}
+          {(() => {
+            const conf =
+              line.confidence === "" || line.confidence === undefined
+                ? undefined
+                : Number(line.confidence);
+            const derived = revenueTypeFromConfidence(conf, false);
+            const Icon = LEVEL_ICON[derived];
+            return (
+              <p
+                data-confidence-verdict={derived}
+                className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary"
+              >
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold"
+                  style={{
+                    background: `${LEVEL_COLOR[derived]}18`,
+                    color: LEVEL_COLOR[derived],
+                  }}
+                >
+                  {Icon && <Icon size={11} strokeWidth={2.4} />}
+                  {derived}
+                </span>
+                {conf === undefined
+                  ? "Move the bar and the revenue type follows."
+                  : `${revenueTypeRule(derived)} — the revenue type follows the bar.`}
+              </p>
+            );
+          })()}
         </div>
         <div className="min-w-0">
           <label className={labelCls}>Est. sign</label>
@@ -3227,7 +3339,7 @@ function SingleOfferingEditor({
             </span>
           ) : (
             <span className="font-semibold text-[color:#B45309]">
-              No {line.localCurrency} rate set yet — an admin adds it on the Performance page; until then this deal has no USD value.
+              No {line.localCurrency} rate set yet — an admin adds it on the Goals page; until then this deal has no USD value.
             </span>
           )}
         </p>

@@ -43,6 +43,9 @@ export const REP_MODULES = [
   "/offerings",
   "/team",
   "/performance",
+  /* The same page under the name Suren gave it on Aug 25. /goals redirects
+     to /performance, so it has to be reachable by everyone /performance is. */
+  "/goals",
   "/opportunities",
 ] as const;
 
@@ -63,6 +66,21 @@ export const REP_MODULES = [
  * not because of what it does.
  */
 export const SOLUTIONING_ADMIN_ONLY = true;
+
+/**
+ * EVERY MODULE THAT SHIPPED ON AUG 25 STARTS CLOSED — the standing rule Anir
+ * set that same day, on seeing Solutioning in a rep's sidebar: "when I ask you
+ * to add a new module, you have to hide it for reps, only usable by admin."
+ *
+ * Leads, Revenue Accruals and Contracts are all brand new and all built from
+ * Suren's Aug 25 call. Whether a rep ever sees them is Anir's decision, not
+ * mine; opening one is deleting its path from this list.
+ */
+export const NEW_MODULES_ADMIN_ONLY = [
+  "/leads",
+  "/revenue-accruals",
+  "/contracts",
+] as const;
 
 /**
  * MARKET INTEL IS CLOSED TO REPS AGAIN (Anir, Aug 25: "can we hide the Market
@@ -124,6 +142,11 @@ export function canAccessModule(
   // default, so no role picks it up by being none of the above.
   if (SOLUTIONING_ADMIN_ONLY && isUnder(path, "/solutioning")) {
     return role === "admin" || role === "solutions";
+  }
+  // Same rule, same place in the order: ahead of the rep whitelist and the
+  // manager default, so nothing picks these up by being none of the above.
+  if (NEW_MODULES_ADMIN_ONLY.some((m) => isUnder(path, m))) {
+    return role === "admin";
   }
   // Signing in, your own settings, the notification list, the tour: these are
   // not modules and locking a rep out of them would lock them out of the app.

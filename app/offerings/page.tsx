@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { Grid3x3 } from "lucide-react";
+import { canAccessModule } from "@/lib/moduleAccess";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   OfferingsBrowser,
@@ -177,6 +180,9 @@ export default async function OfferingsPage() {
   const me = await getCurrentUser();
   const role = await getRole();
   const canEdit = role === "admin" || role === "manager";
+  /* The heat map reads across every customer and every deal, so it follows the
+     report page's own gate rather than the offering-edit one. */
+  const canSeeHeatMap = canAccessModule("/reports", role);
 
   // Commercial reality per offering — revenue, seats, and WHO is using it —
   // so the card hover is a mini-dashboard like the Customers page, not just a
@@ -234,6 +240,26 @@ export default async function OfferingsPage() {
               offeringCategories={offeringCategories.length}
               customerTypes={customerTypes.length}
             />
+            {/* THE HEAT MAP LIVES IN OFFERINGS NOW (Suren, Aug 25: "this is
+                the kind of report that I want to see… this report should show
+                up in the offerings. Against all the offerings, against all the
+                opportunities, I should be able to take a view — show the dollar
+                value, or all activities, or only which are in pilot, which are
+                under contract, which are on delivery").
+
+                The report itself already exists and already does every one of
+                those views; what it did not have was a door here, so an
+                offering owner had to know to look under Reports. Managers and
+                admins only, the same as the report page. */}
+            {canSeeHeatMap && (
+              <Link
+                href="/reports/customer-offering-heat-map"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <Grid3x3 size={13} strokeWidth={2.2} />
+                Coverage heat map
+              </Link>
+            )}
             {canEdit && (
               <span
                 aria-hidden="true"

@@ -10,7 +10,7 @@ import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { notFound, redirect } from "next/navigation";
 
-export const metadata = { title: "Performance" };
+export const metadata = { title: "Goals" };
 export const dynamic = "force-dynamic";
 
 /**

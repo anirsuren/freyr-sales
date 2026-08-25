@@ -233,8 +233,8 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "performance-goals",
     route: "/performance",
     kind: "feature",
-    pageName: "Performance",
-    eyebrow: "Performance",
+    pageName: "Goals",
+    eyebrow: "Goals",
     title: "Goals and how they are tracking",
     description:
       "The goals the company set, who owns each one, and the numbers against them. Empty until targets are filled in. Nothing here is guessed.",

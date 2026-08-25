@@ -66,6 +66,9 @@ import {
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { canViewNextCustomerVersion } from "@/lib/roadmapAccess";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
+import { OfferingOpportunities } from "@/components/offerings/OfferingOpportunities";
+import { readOpportunities } from "@/lib/opportunities";
+import type { Opportunity as OpportunityRecord } from "@/lib/opportunitiesShared";
 import {
   OfferingCustomers,
   type OfferingCustomerRow,
@@ -125,8 +128,9 @@ export default async function OfferingDetailPage({
       ? "reports"
       : query?.tab === "materials"
         ? "materials"
-        : query?.tab === "customers" && showOfferingCustomers
-          ? "customers"
+        : (query?.tab === "opportunities" || query?.tab === "customers") &&
+            showOfferingCustomers
+          ? "opportunities"
           : query?.tab === "competition"
             ? "competition"
           : query?.tab === "components" ||
@@ -191,6 +195,50 @@ export default async function OfferingDetailPage({
     })
     .filter((row): row is OfferingCustomerRow => row !== null)
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  /**
+   * THE DEALS ON THIS OFFERING (Suren, Aug 25: "as an offering owner I want to
+   * see all the opportunities in my offering that I am working against — I
+   * don't have to go to the opportunities module to see them").
+   *
+   * An opportunity carries its offering in two places: `offeringIds` on the
+   * deal, and `offeringId` on its single offering row. Both are read, because
+   * an imported row and a hand-made one do not always fill the same one.
+   * Grouped by customer so an account's deals sit together, then by value.
+   */
+  const offeringOpportunities = showOfferingCustomers
+    ? (
+        await readOpportunities().catch(() => ({
+          opportunities: [] as OpportunityRecord[],
+        }))
+      ).opportunities
+        .filter((deal: OpportunityRecord) => {
+          if ((deal.offeringIds ?? []).includes(raw.id)) return true;
+          return (deal.lines ?? []).some((l) => l.offeringId === raw.id);
+        })
+        .map((deal: OpportunityRecord) => {
+          /* When the deal has a row for THIS offering, that row's own numbers
+             are the truthful ones — a multi-row legacy deal's top-line value
+             covers offerings this page is not about. */
+          const line = (deal.lines ?? []).find((l) => l.offeringId === raw.id);
+          return {
+            id: deal.id,
+            name: deal.name,
+            customer: deal.customer,
+            customerId: deal.customerId,
+            level: deal.level,
+            status: line?.status ?? deal.status,
+            value: line?.value ?? deal.value ?? 0,
+            confidence: line?.confidence ?? deal.confidence,
+            estSignDate: line?.estSignDate ?? deal.estSignDate,
+            owner: deal.owner,
+          };
+        })
+        .sort(
+          (a: { customer: string; value: number }, b: { customer: string; value: number }) =>
+            a.customer.localeCompare(b.customer) || (b.value || 0) - (a.value || 0)
+        )
+    : [];
 
   // Contract lines for this offering, nearest expiry first — the rail's
   // second card.
@@ -513,14 +561,18 @@ export default async function OfferingDetailPage({
           ...(showOfferingCustomers
             ? [
                 {
-                  key: "customers",
+                  key: "opportunities",
                   // Zero says zero, the same as Sales Materials and Components
                   // above (Anir, Aug 8: "If there's zero, then say zero").
                   // Hiding it made one tab bar use two conventions at once, so
                   // a new offering read "Sales Materials (0) · Components (0) ·
                   // Customers · Competition" (found Aug 14 walking the flows).
-                  label: `Customers (${offeringCustomers.length})`,
-                  href: `/offerings/${o.id}?tab=customers`,
+                  /* Suren, Aug 25: "instead of saying customers you should
+                     say opportunities here… as an offering owner I want to see
+                     all the opportunities in my offering." ?tab=customers still
+                     resolves here so old links and bookmarks land right. */
+                  label: `Opportunities (${offeringOpportunities.length})`,
+                  href: `/offerings/${o.id}?tab=opportunities`,
                 },
               ]
             : []),
@@ -577,11 +629,22 @@ export default async function OfferingDetailPage({
             workspaceAdmin={await isAdmin()}
             preferenceOwnerId={me.memberId || me.id}
           />
-        ) : tab === "customers" ? (
-          <OfferingCustomers
-            rows={offeringCustomers}
-            offeringName={o.offering_name}
-          />
+        ) : tab === "opportunities" ? (
+          <>
+            <OfferingOpportunities
+              rows={offeringOpportunities}
+              offeringName={o.offering_name}
+            />
+            {/* The delivery half of the same question, kept rather than
+                deleted: who is live on this offering and on which version
+                (Suren, Aug 9: "for all the customers, along with which release
+                is going on"). Deals lead because that is what the offering
+                owner opens the tab for. */}
+            <OfferingCustomers
+              rows={offeringCustomers}
+              offeringName={o.offering_name}
+            />
+          </>
         ) : tab === "competition" ? (
           <OfferingCompetition
             offeringId={o.id}
