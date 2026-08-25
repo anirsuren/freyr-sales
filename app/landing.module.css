@@ -126,10 +126,17 @@
   letter-spacing: -0.012em;
 }
 
-.actions { margin-top: 31px; display: flex; align-items: center; gap: 18px; }
+.actions { margin-top: 31px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .primaryAction {
   display: inline-flex;
   align-items: center;
+  /* ONE LINE, ALWAYS (Anir, Aug 25: "can you fix these buttons, like the Open
+     Sales Intelligence one, just to be on one line? I don't know why you're
+     making it on two"). It shares a flex row with the signed-in note, so as
+     that note grew the button was the thing that gave — and a call to action
+     broken across two lines mid-phrase reads as a layout fault. */
+  white-space: nowrap;
+  flex-shrink: 0;
   gap: 13px;
   min-height: 54px;
   padding: 0 22px;
@@ -154,6 +161,7 @@
 .switchAccount {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: 6px;
   margin-left: 4px;
   padding: 7px 13px;
