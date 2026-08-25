@@ -567,6 +567,29 @@ export function MaterialsSection({
     if (requested) setViewing(requested);
   }, [materials, searchParams]);
 
+  /**
+   * OPENING A FILE PUTS IT IN THE URL, so the address bar is a shareable link
+   * (Anir, Aug 25: "I should just be able to copy the URL, and then that URL
+   * takes me directly to open the thing").
+   *
+   * `?material=<id>` has always OPENED the viewer — the effect above has read
+   * it since it shipped — but clicking a file never wrote it, so the one thing
+   * anybody would try (open a file, copy the address, send it to a colleague)
+   * handed them the offering page instead of the file. replace(), not push():
+   * opening a file is not a place you should have to press Back out of, and
+   * closeViewer takes the param straight off again.
+   */
+  const openViewer = useCallback(
+    (material: OfferingMaterial) => {
+      setViewing(material);
+      if (!material.id || searchParams.get("material") === material.id) return;
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.set("material", material.id);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
   const closeViewer = useCallback(() => {
     setViewing(null);
     if (!searchParams.has("material")) return;
@@ -996,7 +1019,7 @@ export function MaterialsSection({
                 onOpenFolder={goToFolder}
                 onOpenMaterial={(material) =>
                   material.docsPath
-                    ? setViewing(material)
+                    ? openViewer(material)
                     : window.open(material.url, "_blank", "noopener,noreferrer")
                 }
               >
@@ -1194,7 +1217,7 @@ export function MaterialsSection({
                       // link, or the drag handle.
                       const target = event.target as HTMLElement;
                       if (target.closest("button, a, [draggable]")) return;
-                      if (uploaded) setViewing(material);
+                      if (uploaded) openViewer(material);
                       else window.open(material.url, "_blank", "noopener,noreferrer");
                     }}
                     className={`cursor-pointer transition-colors hover:bg-blue-light/20 ${
@@ -1230,7 +1253,7 @@ export function MaterialsSection({
                         )}
                       <button
                         type="button"
-                        onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
+                        onClick={() => uploaded ? openViewer(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
                         className="flex min-w-0 items-center gap-2.5 text-left"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
@@ -1489,7 +1512,7 @@ export function MaterialsSection({
                   // app-owned preview URL into a new tab, never the raw bytes.
                   if (!uploaded || e.metaKey || e.ctrlKey || e.shiftKey) return;
                   e.preventDefault();
-                  setViewing(material);
+                  openViewer(material);
                 }}
                 className={`group flex cursor-pointer gap-3 rounded-2xl border border-border-light bg-white py-3 pr-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
                   columns === 4

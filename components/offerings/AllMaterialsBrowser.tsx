@@ -327,7 +327,7 @@ export function AllMaterialsBrowser({
         id="all-materials"
         className="mt-4 rounded-xl border border-border-light bg-white"
       >
-        <table className="w-full min-w-[1180px] table-fixed border-collapse text-[13px]">
+        <table className="w-full min-w-[1560px] table-fixed border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
               {/* THE SAME COLUMNS AS THE OFFERING'S OWN TAB, PLUS THE TWO
@@ -356,16 +356,20 @@ export function AllMaterialsBrowser({
                   one order now, and the browser check counts them and reads
                   the first row cell by cell so it can never drift again. */}
               <th className="w-[20%] px-4 py-2.5">Material</th>
-              <th className="w-[9%] px-4 py-2.5">File format</th>
-              <th className="w-[13%] px-4 py-2.5">Offering</th>
-              <th className="w-[11%] px-4 py-2.5">Folder</th>
-              <th className="w-[11%] px-4 py-2.5">Access level</th>
+              <th className="w-[7%] px-4 py-2.5">File format</th>
+              <th className="w-[11%] px-4 py-2.5">Offering</th>
+              <th className="w-[12%] px-4 py-2.5">Folder</th>
+              <th className="w-[9%] px-4 py-2.5">Access level</th>
               <th className="w-[11%] px-4 py-2.5">Stage</th>
-              <th className="w-[8%] px-4 py-2.5">Division</th>
+              <th className="w-[10%] px-4 py-2.5">Division</th>
               {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
                   of two letters ("Inay / at / Paw / ar"). */}
-              <th className="w-[16%] px-4 py-2.5">Uploaded by</th>
-              <th className="w-[7%] px-4 py-2.5 text-center">Open</th>
+              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
+              {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
+                  actions, and it has to be aligned left"). "Open" named one of
+                  the two buttons under it and centred them, so the header sat
+                  over the gap between them. */}
+              <th className="w-[7%] px-4 py-2.5">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -384,25 +388,36 @@ export function AllMaterialsBrowser({
                         return next;
                       })
                     }
-                    className="cursor-pointer border-b border-border-light bg-surface/70 transition-colors hover:bg-blue-light/30"
+                    className="cursor-pointer border-y border-border-light bg-surface transition-colors hover:bg-blue-light/40"
                   >
-                    <td colSpan={9} className="px-4 py-2.5">
+                    {/* THE BAND SAYS WHERE A GROUP STARTS (Anir, Aug 25: "the
+                        separations are bad... look at the performance one,
+                        because you can clearly see how it is separated"). It
+                        was a 70%-opacity tint one shade off the rows under it,
+                        with the offering's name at the same size as its files:
+                        nothing announced a new group. Full surface, a rule top
+                        AND bottom, the blue rail the performance tables use to
+                        say "everything under here is one thing", and the count
+                        as a pill rather than loose grey text. */}
+                    <td
+                      colSpan={9}
+                      className="px-4 py-3 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                    >
                       <span className="flex items-center gap-2">
                         <ChevronDown
                           size={14}
                           strokeWidth={2.2}
                           aria-hidden="true"
                           className={cn(
-                            "shrink-0 text-text-tertiary transition-transform duration-200",
-                            shut && "-rotate-90"
+                            "shrink-0 transition-transform duration-200",
+                            shut ? "-rotate-90 text-text-tertiary" : "text-blue-primary"
                           )}
                         />
-                        <span className="text-[12.5px] font-semibold text-text-primary">
+                        <span className="text-[13.5px] font-semibold text-text-primary">
                           {group.name}
                         </span>
-                        <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                          {group.rows.length}{" "}
-                          {group.rows.length === 1 ? "material" : "materials"}
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-text-tertiary tnum">
+                          {group.rows.length}
                         </span>
                       </span>
                     </td>
@@ -415,7 +430,7 @@ export function AllMaterialsBrowser({
               return (
                 <tr
                   key={`${row.offeringId}:${row.material.id}`}
-                  className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)]"
+                  className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)] [&>td:first-child]:[box-shadow:inset_3px_0_0_0_var(--blue-subtle)]"
                 >
                   <td className="px-4 py-3 align-top">
                     {/* THE NAME OPENS THE FILE (Anir, Aug 21: "when I click on
@@ -500,7 +515,9 @@ export function AllMaterialsBrowser({
                           strokeWidth={2}
                           className="shrink-0 text-text-tertiary"
                         />
-                        {folder}
+                        <span className="min-w-0">
+                          {folder.split("/").join(" · ")}
+                        </span>
                       </Link>
                     ) : (
                       <span className="text-text-tertiary">-</span>
@@ -541,7 +558,7 @@ export function AllMaterialsBrowser({
                     {/* Division keeps its pills: it is a three-letter code, and
                         MPR / MDV / CON mean nothing at a glance without the
                         colour and icon that name them. */}
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex items-center gap-1 [&>span]:px-1.5">
                       {materialDivisions(row.material).length ? (
                         materialDivisions(row.material).map((d) => {
                           const meta = DIVISION_META[d];
@@ -577,7 +594,7 @@ export function AllMaterialsBrowser({
                     )}
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center gap-1">
                       <Tooltip
                         label={
                           isUploadedMaterial(row.material) ? "Open preview" : "Open link"

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Briefcase,
   CalendarClock,
   CalendarDays,
   ChevronDown,
@@ -611,99 +612,163 @@ function RequestRow({
       </td>
     </tr>
     {open && (
-      <tr className="border-b border-border-light last:border-0">
+      /* THE SAME OPEN-ROW AS OPPORTUNITIES (Anir, Aug 25: "this Solutioning
+         page is so ugly... look at all of the other tables where you did it
+         and just do the same thing, because the separations are bad. You're
+         not doing anything that you're doing on the other one").
+
+         He was right and the diff was the whole answer. This panel was a bare
+         four-column grid on a 40%-opacity grey: nothing said where the open
+         row began, nothing said where one fact ended and the next started, and
+         four equal columns gave the request's own words the same weight as a
+         document count. The deal table has solved all three — a blue rail down
+         the left edge so the open row is unmistakably one block, a white card
+         floating on full grey, and substance first with the quiet facts in a
+         ruled-off rail. Same bones here, same order. */
+      <tr className="!border-t-0 bg-surface">
         {/* max-w-0 on the cell so the panel can never stretch the table —
             the same trap the claim table hit on Aug 23. */}
-        <td colSpan={8} className="max-w-0 bg-surface/40 px-4 py-4">
-          <div className="tab-panel grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                What they asked for
-              </p>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
-                {r.details || "No details written on the request."}
-              </p>
-              {r.kind === "meeting" && r.meetingAt && (
-                <p className="mt-2 text-[12px] text-text-secondary">
-                  Meeting on <b className="tnum">{stampedAt(r.meetingAt)}</b>
-                </p>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Against
-              </p>
-              {r.opportunityLabels.length + r.contactNames.length === 0 ? (
-                <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                  The customer itself
-                </p>
-              ) : (
-                <div className="mt-1.5 space-y-1">
-                  {r.opportunityLabels.map((label) => (
-                    <p key={label} className="text-[12px] text-text-secondary">
-                      · {label}
-                    </p>
-                  ))}
-                  {r.contactNames.map((name) => (
-                    <p
-                      key={name}
-                      className="flex items-center gap-1.5 text-[12px] text-text-secondary"
-                    >
-                      <Avatar name={name} className="h-[16px] w-[16px] shrink-0 text-[6px]" />
-                      {name}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Documents
-              </p>
-              {r.docs.length === 0 ? (
-                <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                  Nothing added yet
-                </p>
-              ) : (
-                <div className="mt-1.5 space-y-1">
-                  {DOC_TAB_WORDS.map(([key, word]) => {
-                    const n = r.docs.filter((d) => d.category === key).length;
-                    if (n === 0) return null;
-                    return (
-                      <p key={key} className="text-[12px] text-text-secondary tnum">
-                        {n} {word}
-                        {n === 1 ? "" : "s"}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Latest activity
-              </p>
-              <div className="mt-1.5 space-y-1.5">
-                {[...r.activity]
-                  .slice(-3)
-                  .reverse()
-                  .map((a, i) => (
-                    <p
-                      key={`${a.at}-${i}`}
-                      className="flex items-center gap-1.5 text-[12px] text-text-secondary"
-                    >
-                      <Avatar name={a.by} className="h-[16px] w-[16px] shrink-0 text-[6px]" />
-                      <span className="min-w-0 truncate">{a.what}</span>
-                    </p>
-                  ))}
+        <td
+          colSpan={8}
+          className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+        >
+          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
+            <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+              {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
+                  needs. It is the only thing on this panel written by a
+                  person; everything else is a count or a name. */}
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  What they asked for
+                </span>
+                {r.details ? (
+                  <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-primary">
+                    {r.details}
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                    No details written on the request.
+                  </p>
+                )}
+                {r.kind === "meeting" && r.meetingAt && (
+                  <p className="mt-2.5 text-[12.5px] text-text-secondary">
+                    Meeting on{" "}
+                    <b className="tnum text-text-primary">{stampedAt(r.meetingAt)}</b>
+                  </p>
+                )}
               </div>
-              <Link
-                href={`/solutioning/${r.id}`}
-                className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-              >
-                Open the full request
-                <ChevronRight size={12} strokeWidth={2.4} />
-              </Link>
+
+              {/* The quiet rail: who and what it is against, and what has been
+                  built so far. Ruled off, exactly like the deal panel's. */}
+              <div className="min-w-0 space-y-3.5 sm:border-l sm:border-border-light sm:pl-8">
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Against
+                  </span>
+                  {r.opportunityLabels.length + r.contactNames.length === 0 ? (
+                    <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                      The customer itself
+                    </p>
+                  ) : (
+                    <div className="mt-1.5 space-y-1.5">
+                      {r.opportunityLabels.map((label) => (
+                        <p
+                          key={label}
+                          className="flex items-start gap-1.5 text-[12.5px] text-text-secondary"
+                        >
+                          <Briefcase
+                            size={13}
+                            strokeWidth={2}
+                            aria-hidden="true"
+                            className="mt-0.5 shrink-0 text-text-tertiary"
+                          />
+                          <span className="min-w-0">{label}</span>
+                        </p>
+                      ))}
+                      {r.contactNames.map((name) => (
+                        <p
+                          key={name}
+                          className="flex items-center gap-1.5 text-[12.5px] text-text-secondary"
+                        >
+                          <Avatar
+                            name={name}
+                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                          />
+                          {name}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Documents
+                  </span>
+                  {r.docs.length === 0 ? (
+                    <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                      Nothing added yet
+                    </p>
+                  ) : (
+                    <div className="mt-1.5 space-y-1">
+                      {DOC_TAB_WORDS.map(([key, word]) => {
+                        const n = r.docs.filter((d) => d.category === key).length;
+                        if (n === 0) return null;
+                        return (
+                          <p
+                            key={key}
+                            className="text-[12.5px] text-text-secondary tnum"
+                          >
+                            {n} {word}
+                            {n === 1 ? "" : "s"}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* THE STORY GETS THE FULL WIDTH UNDER A DIVIDER, the same place
+                the deal panel puts its activities strip. */}
+            <div className="border-t border-border-light bg-surface/50 px-4 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Latest activity
+                  </span>
+                  <div className="mt-1.5 space-y-1.5">
+                    {r.activity.length === 0 ? (
+                      <p className="text-[12.5px] text-text-tertiary">
+                        Nothing has happened on this yet.
+                      </p>
+                    ) : (
+                      [...r.activity]
+                        .slice(-3)
+                        .reverse()
+                        .map((a, i) => (
+                          <p
+                            key={`${a.at}-${i}`}
+                            className="flex items-center gap-1.5 text-[12.5px] text-text-secondary"
+                          >
+                            <Avatar
+                              name={a.by}
+                              className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                            />
+                            <span className="min-w-0 truncate">{a.what}</span>
+                          </p>
+                        ))
+                    )}
+                  </div>
+                </div>
+                <Link
+                  href={`/solutioning/${r.id}`}
+                  className="inline-flex shrink-0 items-center gap-1 self-end rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                >
+                  Open the full request
+                  <ChevronRight size={12} strokeWidth={2.4} />
+                </Link>
+              </div>
             </div>
           </div>
         </td>

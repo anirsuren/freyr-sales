@@ -10,8 +10,10 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Check,
   Download,
   ExternalLink,
+  Link2,
   FileText,
   Info,
   FileWarning,
@@ -153,6 +155,34 @@ export function MaterialViewer({
   const [sheet, setSheet] = useState(0);
   /** The renderer gave up entirely and we are reading the deck instead. */
   const [fellBack, setFellBack] = useState(false);
+  /** Two seconds of "copied", so the click is acknowledged. */
+  const [copied, setCopied] = useState(false);
+  /**
+   * The link is THIS page with ?material=<id> on it, which the materials
+   * section reads on load and opens straight into the viewer. Built from the
+   * live location so it carries the right host — localhost while reviewing,
+   * the real domain in production — instead of a guessed origin.
+   */
+  const copyShareLink = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("material", material.id);
+    if (archiveMember) url.searchParams.set("member", archiveMember);
+    else url.searchParams.delete("member");
+    try {
+      await navigator.clipboard.writeText(url.toString());
+    } catch {
+      // Clipboard refused (no permission, insecure origin): select it instead
+      // so the keyboard still works rather than the button doing nothing.
+      const box = document.createElement("input");
+      box.value = url.toString();
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand("copy");
+      box.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
   /** It drew some slides and then failed; what is on screen is incomplete. */
   const [partial, setPartial] = useState(false);
   const [slides, setSlides] = useState<{ title: string; lines: string[] }[] | null>(null);
@@ -745,6 +775,27 @@ export function MaterialViewer({
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
             >
               <ArrowLeft size={16} strokeWidth={1.9} />
+            </button>
+          )}
+          {/* COPY THE LINK TO THIS FILE (Anir, Aug 25: "if you don't have it
+              where you can share it, you should probably add that. I should
+              just be able to copy the URL, and then that URL takes me directly
+              to open the thing"). The address bar already carries it now, but
+              nobody should have to know that — this hands it over, and says so
+              for two seconds. */}
+          {!standalone && (
+            <button
+              type="button"
+              onClick={copyShareLink}
+              title="Copy a link to this file"
+              aria-label="Copy a link to this file"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
+            >
+              {copied ? (
+                <Check size={16} strokeWidth={2.2} className="text-[color:var(--green-verified,#16a34a)]" />
+              ) : (
+                <Link2 size={16} strokeWidth={1.9} />
+              )}
             </button>
           )}
           <a
