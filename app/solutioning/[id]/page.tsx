@@ -37,7 +37,7 @@ export default async function SolutioningRequestPage({
             .filter(Boolean)
         ),
       ].sort((a, b) => a.localeCompare(b))
-    : ["Margaret Whitfield", "Walter Hensley", "Priya Raghavan", "Ethan Brooks"];
+    : ["Elena Rossi", "Omar Haddad", "Nina Kowalski", "Marcus Chen", "Grace Liu", "Daniel Foster"];
 
   /* Every OTHER request's documents, compactly, so "link a document from
      another request" (Suren: a meeting "can refer to a document that was

@@ -47,12 +47,13 @@ export default async function SolutioningPage() {
         ),
       ].sort((a, b) => a.localeCompare(b))
     : [
-        "Margaret Whitfield",
-        "Walter Hensley",
-        "Priya Raghavan",
-        "Ethan Brooks",
-        me.name,
-      ].filter((n, i, all) => all.indexOf(n) === i);
+        "Elena Rossi",
+        "Omar Haddad",
+        "Nina Kowalski",
+        "Marcus Chen",
+        "Grace Liu",
+        "Daniel Foster",
+      ];
   const memberRoles: Record<string, string> = {};
   for (const m of directory?.members ?? []) {
     if (m.active && m.accountType === "real" && m.name.trim()) {

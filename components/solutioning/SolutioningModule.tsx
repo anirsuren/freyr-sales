@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarClock,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   CircleDashed,
   ClipboardList,
@@ -29,6 +30,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { RoleTag } from "@/components/ui/RoleTag";
 import { cn } from "@/lib/utils";
+import { stampedAt } from "@/lib/performanceShared";
 import {
   solutioningPeople,
   SUBMISSION_TYPES,
@@ -83,6 +85,8 @@ export function SolutioningModule({
   const [sort, setSort] = useState<"newest" | "needed">("newest");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  /** Rows folded open. A Set, like every other expandable table here. */
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   /** The fulfiller side of the flow: Solutions picks up; managers and admins
    *  can too, so a request is never stranded when the team is out. */
@@ -345,6 +349,9 @@ export function SolutioningModule({
                   <th className="w-[10%] px-4 py-2.5">Needed by</th>
                   <th className="w-[12%] px-4 py-2.5">Owner</th>
                   <th className="w-[10%] px-4 py-2.5">Status</th>
+                  {/* The fold column. Unlabelled, like every other table whose
+                      last column is the chevron. */}
+                  <th className="w-[44px] px-2 py-2.5" aria-label="Expand" />
                 </tr>
               </thead>
               <tbody>
@@ -355,6 +362,15 @@ export function SolutioningModule({
                     live={live}
                     fulfiller={fulfiller}
                     busy={busy === r.id}
+                    open={openIds.has(r.id)}
+                    onToggle={() =>
+                      setOpenIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(r.id)) next.delete(r.id);
+                        else next.add(r.id);
+                        return next;
+                      })
+                    }
                     onPickUp={() => post({ op: "pick-up", requestId: r.id }, r.id)}
                   />
                 ))}
@@ -430,12 +446,16 @@ function RequestRow({
   live,
   fulfiller,
   busy,
+  open,
+  onToggle,
   onPickUp,
 }: {
   request: SolutionRequest;
   live: boolean;
   fulfiller: boolean;
   busy: boolean;
+  open: boolean;
+  onToggle: () => void;
   onPickUp: () => void;
 }) {
   const overdue =
@@ -456,6 +476,7 @@ function RequestRow({
           .filter(Boolean)
           .join(" · ");
   return (
+    <>
     <tr className="group border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]">
       <td className="px-4 py-3.5">
         <Link
@@ -463,7 +484,7 @@ function RequestRow({
           className="block min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
         >
           <span className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-text-tertiary tnum">
+            <span className="whitespace-nowrap text-[11px] font-bold text-text-tertiary tnum">
               {r.ref}
             </span>
             <KindChip kind={r.kind} size="sm" />
@@ -552,9 +573,137 @@ function RequestRow({
       <td className="px-4 py-3.5">
         <StatusPill status={r.status} size="sm" />
       </td>
+      <td className="px-2 py-3.5">
+        {/* THE DROPDOWN EVERY OTHER TABLE HAS (Anir, Aug 24: "you have a
+            table, it looks fine, but there should definitely be a dropdown,
+            just like all the other things you do"). The name navigates; the
+            chevron folds the breakdown open in place, same split as the
+            Opportunities and goal tables. */}
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={`Show the breakdown for ${r.ref}`}
+          onClick={onToggle}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.2}
+            className={cn("transition-transform duration-200", open && "rotate-180")}
+          />
+        </button>
+      </td>
     </tr>
+    {open && (
+      <tr className="border-b border-border-light last:border-0">
+        {/* max-w-0 on the cell so the panel can never stretch the table —
+            the same trap the claim table hit on Aug 23. */}
+        <td colSpan={8} className="max-w-0 bg-surface/40 px-4 py-4">
+          <div className="tab-panel grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                What they asked for
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
+                {r.details || "No details written on the request."}
+              </p>
+              {r.kind === "meeting" && r.meetingAt && (
+                <p className="mt-2 text-[12px] text-text-secondary">
+                  Meeting on <b className="tnum">{stampedAt(r.meetingAt)}</b>
+                </p>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Against
+              </p>
+              {r.opportunityLabels.length + r.contactNames.length === 0 ? (
+                <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                  The customer itself
+                </p>
+              ) : (
+                <div className="mt-1.5 space-y-1">
+                  {r.opportunityLabels.map((label) => (
+                    <p key={label} className="text-[12px] text-text-secondary">
+                      · {label}
+                    </p>
+                  ))}
+                  {r.contactNames.map((name) => (
+                    <p
+                      key={name}
+                      className="flex items-center gap-1.5 text-[12px] text-text-secondary"
+                    >
+                      <Avatar name={name} className="h-[16px] w-[16px] shrink-0 text-[6px]" />
+                      {name}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Documents
+              </p>
+              {r.docs.length === 0 ? (
+                <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                  Nothing added yet
+                </p>
+              ) : (
+                <div className="mt-1.5 space-y-1">
+                  {DOC_TAB_WORDS.map(([key, word]) => {
+                    const n = r.docs.filter((d) => d.category === key).length;
+                    if (n === 0) return null;
+                    return (
+                      <p key={key} className="text-[12px] text-text-secondary tnum">
+                        {n} {word}
+                        {n === 1 ? "" : "s"}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Latest activity
+              </p>
+              <div className="mt-1.5 space-y-1.5">
+                {[...r.activity]
+                  .slice(-3)
+                  .reverse()
+                  .map((a, i) => (
+                    <p
+                      key={`${a.at}-${i}`}
+                      className="flex items-center gap-1.5 text-[12px] text-text-secondary"
+                    >
+                      <Avatar name={a.by} className="h-[16px] w-[16px] shrink-0 text-[6px]" />
+                      <span className="min-w-0 truncate">{a.what}</span>
+                    </p>
+                  ))}
+              </div>
+              <Link
+                href={`/solutioning/${r.id}`}
+                className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+              >
+                Open the full request
+                <ChevronRight size={12} strokeWidth={2.4} />
+              </Link>
+            </div>
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
+
+/** The drill-down's plain words for the four tabs. */
+const DOC_TAB_WORDS: [import("@/lib/solutioning").DocCategory, string][] = [
+  ["customer", "customer document"],
+  ["working", "working document"],
+  ["final", "final deliverable"],
+  ["analysis", "analysis document"],
+];
 
 /* ------------------------------------------------------------- creation */
 
