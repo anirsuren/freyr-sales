@@ -477,10 +477,20 @@ function RequestRow({
           .join(" · ");
   return (
     <>
-    <tr className="group border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]">
+    {/* THE WHOLE ROW IS THE TOGGLE (Anir, Aug 24: "when I click on it, it
+        doesn't even work"). A 28px chevron was the only live surface on a
+        70px row — clicking anywhere else did nothing, which reads as broken.
+        Same split as the goal and team tables now: the row folds the
+        breakdown, the NAME navigates (stopPropagation), and so do the pick-up
+        button and the chevron itself. */}
+    <tr
+      onClick={onToggle}
+      className="group cursor-pointer border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]"
+    >
       <td className="px-4 py-3.5">
         <Link
           href={`/solutioning/${r.id}`}
+          onClick={(e) => e.stopPropagation()}
           className="block min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
         >
           <span className="flex items-center gap-1.5">
@@ -561,7 +571,10 @@ function RequestRow({
           <button
             type="button"
             disabled={busy}
-            onClick={onPickUp}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPickUp();
+            }}
             className="inline-flex items-center gap-1 rounded-md border border-blue-subtle bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60 disabled:opacity-50"
           >
             Pick it up
@@ -583,7 +596,10 @@ function RequestRow({
           type="button"
           aria-expanded={open}
           aria-label={`Show the breakdown for ${r.ref}`}
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
         >
           <ChevronDown

@@ -4,22 +4,27 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Building2,
   CalendarDays,
   Check,
   CircleDashed,
   ExternalLink,
   FileText,
+  History,
   Link2,
+  ListChecks,
   Plus,
   RotateCcw,
   Trash2,
+  UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
-import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
@@ -28,37 +33,46 @@ import type {
   SolutionDoc,
   SolutionRequest,
 } from "@/lib/solutioning";
-import { KindChip, StatusPill } from "./bits";
+import { KIND_META, KindChip, StatusPill } from "./bits";
 
 /**
- * ONE REQUEST, WHOLE (Suren, Aug 24): the four document tabs — "customer
- * documents, work in progress documents, final deliverables, and analysis" —
- * with versions and a person on each document, the actions each side of the
- * flow owns, and the story down the right as a rail (the layout Anir chose for
- * the verify dialog the same day: "if I'm scrolling on the timeline, that's
- * the only place I'm scrolling").
+ * ONE REQUEST, IN THE OFFERING PAGE'S OWN CLOTHES (Anir, Aug 24: "when I go
+ * to the actual page, make it resemble the offerings page — when I click on an
+ * offering, I think it looks pretty. It's a pretty similar UI").
+ *
+ * Same skeleton, deliberately: icon tile + big title with the actions on the
+ * right, a full-width chip row underneath, the tab bar with counts (zero says
+ * zero, the offering rule), and an Overview whose main column is icon-headed
+ * sections beside a 340px rail of cards. The four document categories Suren
+ * named — "customer documents, work in progress documents, final deliverables,
+ * and analysis" — are the other tabs, each a page of its own like Sales
+ * Materials is on an offering.
  */
 
-const TABS: { key: DocCategory; label: string; hint: string }[] = [
+const DOC_TABS: {
+  key: DocCategory;
+  label: string;
+  hint: string;
+}[] = [
   {
     key: "customer",
     label: "Customer documents",
-    hint: "What the customer gave us — the RFP package, their requirements",
+    hint: "What the customer gave us: the RFP package, their requirements.",
   },
   {
     key: "working",
     label: "Working documents",
-    hint: "Work in progress — drafts being built",
+    hint: "Work in progress: the drafts being built.",
   },
   {
     key: "final",
     label: "Final deliverables",
-    hint: "What was actually submitted or presented",
+    hint: "What was actually submitted or presented.",
   },
   {
     key: "analysis",
     label: "Analysis",
-    hint: "What we made of the customer documents",
+    hint: "What we made of the customer documents.",
   },
 ];
 
@@ -68,6 +82,30 @@ type Linkable = {
   title: string;
   docs: { id: string; name: string; version: number; category: DocCategory }[];
 };
+
+/** The offering page's section heading, in miniature: icon in a blue-light
+ *  square, a 16px title, a 12px description. */
+function SectionHeading({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+        <Icon size={16} strokeWidth={1.9} />
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-[16px] font-semibold text-text-primary">{title}</h2>
+        <p className="mt-0.5 text-[12px] text-text-tertiary">{description}</p>
+      </div>
+    </div>
+  );
+}
 
 export function RequestDetail({
   request: initial,
@@ -87,7 +125,7 @@ export function RequestDetail({
   const router = useRouter();
   const { toast } = useToast();
   const [r, setR] = useState(initial);
-  const [tab, setTab] = useState<DocCategory>("customer");
+  const [tab, setTab] = useState<"overview" | DocCategory>("overview");
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -97,6 +135,12 @@ export function RequestDetail({
   const iRequested =
     r.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
   const iOwn = (r.owner ?? "").trim().toLowerCase() === meName.trim().toLowerCase();
+  const kindMeta = KIND_META[r.kind];
+  const KindIcon = kindMeta.icon;
+  const overdue =
+    !!r.neededBy &&
+    r.status !== "completed" &&
+    r.neededBy < new Date().toISOString().slice(0, 10);
 
   async function post(body: Record<string, unknown>): Promise<boolean> {
     setBusy(true);
@@ -124,7 +168,8 @@ export function RequestDetail({
     }
   }
 
-  const docs = r.docs.filter((d) => d.category === tab);
+  const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
+  const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
 
   return (
     <div>
@@ -135,57 +180,18 @@ export function RequestDetail({
         <ArrowLeft size={15} strokeWidth={1.8} /> All requests
       </SmartBack>
 
-      {/* ------------------------------------------------------- header */}
-      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] font-bold text-text-tertiary tnum">
-              {r.ref}
-            </span>
-            <KindChip kind={r.kind} />
-            {r.subtype && (
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                {r.subtype}
-              </span>
-            )}
-            <StatusPill status={r.status} />
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
-            {r.title}
-          </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-text-secondary">
-            Requested by
-            <span className="inline-flex items-center gap-1 font-semibold text-text-primary">
-              <Avatar name={r.requestedBy} className="h-[18px] w-[18px] text-[6px]" />
-              {r.requestedBy}
-            </span>
-            on {stampedAt(r.requestedAt)}
-            {r.neededBy && (
-              <>
-                <span aria-hidden className="text-border">·</span>
-                needed by{" "}
-                <b
-                  className={cn(
-                    "tnum",
-                    r.status !== "completed" &&
-                      r.neededBy < new Date().toISOString().slice(0, 10)
-                      ? "text-[color:#DC2626]"
-                      : "text-text-primary"
-                  )}
-                >
-                  {r.neededBy}
-                </b>
-              </>
-            )}
-          </p>
-          {r.details && (
-            <p className="mt-2 max-w-[680px] text-[13px] leading-relaxed text-text-secondary">
-              {r.details}
-            </p>
-          )}
-        </div>
+      {/* ------------- header: identity left, primary actions right --------- */}
+      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: `${kindMeta.color}14`, color: kindMeta.color }}
+          >
+            <KindIcon size={20} strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 break-words">{r.title}</span>
+        </h1>
 
-        {/* The actions each side of the flow owns. */}
         {live && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {!r.owner && r.status !== "completed" && fulfiller && (
@@ -200,7 +206,7 @@ export function RequestDetail({
             )}
             {r.status !== "completed" && (iRequested || managerial) && (
               /* "The sales person says it is completed" — the requester's
-                 button, and the tooltip is honest about whose it is. */
+                 button, honest about whose it is. */
               <button
                 type="button"
                 disabled={busy}
@@ -230,8 +236,9 @@ export function RequestDetail({
                 type="button"
                 disabled={busy}
                 onClick={() => setConfirmDelete(true)}
+                title="Delete this request"
                 aria-label="Delete this request"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-light bg-white text-text-tertiary transition-colors hover:border-[rgba(220,38,38,0.4)] hover:text-[color:#DC2626]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-[rgba(220,38,38,0.4)] hover:text-[color:#DC2626]"
               >
                 <Trash2 size={14.5} strokeWidth={2} />
               </button>
@@ -240,228 +247,324 @@ export function RequestDetail({
         )}
       </div>
 
-      {/* ------------------------------------------------- the facts strip */}
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-            Customer
-          </p>
-          <p className="mt-1.5 flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
-            <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
-            {r.customer}
-          </p>
-          {(r.opportunityLabels.length > 0 || r.contactNames.length > 0) && (
-            <div className="mt-2.5 space-y-1">
-              {r.opportunityLabels.map((label) => (
-                <p key={label} className="text-[12px] text-text-secondary">
-                  · {label}
-                </p>
-              ))}
-              {r.contactNames.map((name) => (
-                <p
-                  key={name}
-                  className="flex items-center gap-1.5 text-[12px] text-text-secondary"
-                >
-                  <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />
-                  {name}
-                </p>
-              ))}
-            </div>
-          )}
-        </Card>
-        <Card className="p-4">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-            Owner
-          </p>
-          {r.owner ? (
-            <p className="mt-1.5 flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
-              <Avatar name={r.owner} className="h-6 w-6 text-[8px]" />
-              {r.owner}
-              {r.pickedUpAt && (
-                <span className="text-[11px] font-normal text-text-tertiary">
-                  since {stampedAt(r.pickedUpAt)}
-                </span>
-              )}
-            </p>
-          ) : (
-            <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
-              <CircleDashed size={14} strokeWidth={2} />
-              Waiting for the Solutions team to pick it up
-            </p>
-          )}
-          {r.completedAt && (
-            <p className="mt-2 text-[12px] text-text-secondary">
-              Completed by <b>{r.completedBy}</b> on {stampedAt(r.completedAt)}
-            </p>
-          )}
-        </Card>
-        <Card className="p-4">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-            {r.kind === "meeting" ? "Meeting" : "Documents"}
-          </p>
-          {r.kind === "meeting" ? (
-            <>
-              <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
-                <CalendarDays size={14} strokeWidth={2} className="text-[color:#0D9488]" />
-                {r.meetingAt ? stampedAt(r.meetingAt) : "Not scheduled yet"}
-              </p>
-              {r.attendees && r.attendees.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {r.attendees.map((a) => (
-                    <p
-                      key={a}
-                      className="flex items-center gap-1.5 text-[12px] text-text-secondary"
-                    >
-                      <Avatar name={a} className="h-[16px] w-[16px] text-[6px]" />
-                      {a}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="mt-1.5 text-[13.5px] font-semibold text-text-primary tnum">
-              {r.docs.length}
-              <span className="ml-1 font-normal text-text-secondary">
-                across the four tabs
-              </span>
-            </p>
-          )}
-        </Card>
+      {/* The tags own their own line, the offering rule (Anir, Aug 8). */}
+      <div className="rise-in mt-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-bold text-text-secondary tnum">
+          {r.ref}
+        </span>
+        <KindChip kind={r.kind} />
+        {r.subtype && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary">
+            {r.subtype}
+          </span>
+        )}
+        <StatusPill status={r.status} />
+        {r.neededBy && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold tnum",
+              overdue
+                ? "bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                : "bg-surface text-text-secondary"
+            )}
+          >
+            <CalendarDays size={12} strokeWidth={2} />
+            needed by {r.neededBy}
+            {overdue ? " · overdue" : ""}
+          </span>
+        )}
+      </div>
+      <p className="rise-in mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-tertiary">
+        Requested by
+        <span className="inline-flex items-center gap-1 font-semibold text-text-secondary">
+          <Avatar name={r.requestedBy} className="h-[16px] w-[16px] text-[6px]" />
+          {r.requestedBy}
+        </span>
+        on {stampedAt(r.requestedAt)}
+      </p>
+
+      {/* ------------------- the tab bar, offering-styled ------------------- */}
+      <div
+        role="tablist"
+        aria-label="Request sections"
+        className="rise-in mt-6 flex gap-8 overflow-x-auto border-b border-border-light"
+      >
+        {[
+          { key: "overview" as const, label: "Overview" },
+          ...DOC_TABS.map((t) => ({
+            key: t.key,
+            // The count is always visible, zero included — the offering rule.
+            label: `${t.label} (${r.docs.filter((d) => d.category === t.key).length})`,
+          })),
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => {
+              setTab(t.key as typeof tab);
+              setAdding(false);
+            }}
+            className={cn(
+              "-mb-px cursor-pointer whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+              tab === t.key
+                ? "border-blue-primary font-semibold text-blue-primary"
+                : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* --------------------------- documents left, the story down the rail */}
-      <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-0">
-        <div className="min-w-0 flex-1 lg:pr-6">
-          <Card className="p-0 overflow-hidden">
-            <div className="flex flex-wrap gap-1 border-b border-border-light bg-surface/60 px-3 pt-2.5">
-              {TABS.map((t) => {
-                const n = r.docs.filter((d) => d.category === t.key).length;
-                const active = tab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setTab(t.key)}
-                    aria-pressed={active}
-                    className={cn(
-                      "rounded-t-lg border-b-2 px-3 py-2 text-[12.5px] font-semibold transition-colors",
-                      active
-                        ? "border-blue-primary bg-white text-blue-primary"
-                        : "border-transparent text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {t.label}
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tnum",
-                        active
-                          ? "bg-blue-light text-blue-primary"
-                          : "bg-surface text-text-tertiary"
-                      )}
-                    >
-                      {n}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="border-b border-border-light bg-surface/30 px-4 py-2 text-[11.5px] text-text-tertiary">
-              {TABS.find((t) => t.key === tab)?.hint}
-            </p>
-
-            {docs.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[12.5px] text-text-tertiary">
-                Nothing in {TABS.find((t) => t.key === tab)?.label.toLowerCase()}{" "}
-                yet.
+      {tab === "overview" ? (
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          {/* ------------------------------------------------ MAIN column */}
+          <div className="tab-panel">
+            <section className="border-b border-border-light pb-7">
+              <SectionHeading
+                icon={FileText}
+                title="What they asked for"
+                description="The brief the requester wrote for the Solutions team."
+              />
+              <p className="mt-4 max-w-[680px] pl-11 text-[13.5px] leading-relaxed text-text-secondary">
+                {r.details || "No details written on the request."}
               </p>
-            ) : (
-              <ul className="divide-y divide-border-light">
-                {docs.map((d) => (
-                  <DocRow
-                    key={d.id}
-                    doc={d}
-                    live={live}
-                    members={members}
-                    canRemove={
-                      live &&
-                      (managerial ||
-                        iOwn ||
-                        d.addedBy.trim().toLowerCase() ===
-                          meName.trim().toLowerCase())
-                    }
-                    completed={r.status === "completed"}
-                    busy={busy}
-                    onAssign={(who) =>
-                      post({ op: "assign-doc", docId: d.id, assignedTo: who })
-                    }
-                    onRemove={() => post({ op: "remove-doc", docId: d.id })}
-                  />
-                ))}
-              </ul>
-            )}
+            </section>
 
-            {live && r.status !== "completed" && (
-              <div className="border-t border-border-light bg-surface/40 px-4 py-3">
-                {adding ? (
-                  <AddDocForm
-                    tabLabel={TABS.find((t) => t.key === tab)?.label ?? ""}
-                    members={members}
-                    linkables={linkables}
-                    busy={busy}
-                    onCancel={() => setAdding(false)}
-                    onAdd={async (input) => {
-                      const ok = await post({
-                        op: "add-doc",
-                        category: tab,
-                        ...input,
-                      });
-                      if (ok) setAdding(false);
-                      return ok;
-                    }}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAdding(true)}
-                    className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
-                  >
-                    <Plus size={14} strokeWidth={2.4} /> Add a document here
-                  </button>
+            <section className="border-b border-border-light py-7">
+              <SectionHeading
+                icon={Building2}
+                title="Against"
+                description="The customer, and the opportunities and contacts this is for."
+              />
+              <div className="mt-4 space-y-2.5 pl-11">
+                <p className="flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
+                  <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
+                  {r.customer}
+                </p>
+                {r.opportunityLabels.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.opportunityLabels.map((label) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary"
+                      >
+                        <ListChecks size={12} strokeWidth={2} />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {r.contactNames.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.contactNames.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
+                      >
+                        <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {r.opportunityLabels.length + r.contactNames.length === 0 && (
+                  <p className="text-[12.5px] text-text-tertiary">
+                    The customer itself, no specific opportunity or contact.
+                  </p>
                 )}
               </div>
-            )}
-          </Card>
-        </div>
+            </section>
 
-        {/* The rail: its own scroller, exactly the verify-dialog shape. */}
-        <div className="shrink-0 border-t border-border-light pt-4 lg:max-h-[560px] lg:w-[268px] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-            Timeline
-          </p>
-          <ol className="mt-3 space-y-4">
-            {[...r.activity].reverse().map((a, i) => (
-              <li key={`${a.at}-${i}`} className="flex gap-2.5">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
-                  <FileText size={12} strokeWidth={2} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
-                    {a.what}
+            {r.kind === "meeting" && (
+              <section className="border-b border-border-light py-7">
+                <SectionHeading
+                  icon={CalendarDays}
+                  title="The meeting"
+                  description="When it happens, and who is in the room."
+                />
+                <div className="mt-4 space-y-2.5 pl-11">
+                  <p className="text-[13.5px] font-semibold text-text-primary">
+                    {r.meetingAt ? stampedAt(r.meetingAt) : "Not scheduled yet"}
+                  </p>
+                  {r.attendees && r.attendees.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {r.attendees.map((a) => (
+                        <span
+                          key={a}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
+                        >
+                          <Avatar name={a} className="h-[16px] w-[16px] text-[6px]" />
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section className="py-7">
+              <SectionHeading
+                icon={FileText}
+                title="Documents"
+                description="What lives in each of the four tabs above."
+              />
+              <div className="mt-4 grid max-w-[640px] grid-cols-2 gap-4 pl-11 sm:grid-cols-4">
+                {DOC_TABS.map((t) => {
+                  const n = r.docs.filter((d) => d.category === t.key).length;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setTab(t.key)}
+                      className="cursor-pointer rounded-xl border border-border-light bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-card"
+                    >
+                      <p className="text-[20px] font-bold text-text-primary tnum">
+                        {n}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-text-secondary">
+                        {t.label}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          {/* ------------------------------------------------- SIDE rail */}
+          <div className="tab-panel space-y-4">
+            <SectionCard title="Owner" icon={UserRound}>
+              {r.owner ? (
+                <div className="flex items-center gap-2.5">
+                  <Avatar name={r.owner} className="h-9 w-9 text-[11px]" />
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-text-primary">
+                      {r.owner}
+                    </span>
+                    {r.pickedUpAt && (
+                      <span className="block text-[11.5px] text-text-tertiary">
+                        picked it up {stampedAt(r.pickedUpAt)}
+                      </span>
+                    )}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-text-tertiary">
-                    {stampedAt(a.at)}
+                </div>
+              ) : (
+                <p className="flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
+                  <CircleDashed size={14} strokeWidth={2} />
+                  Waiting for the Solutions team to pick it up
+                </p>
+              )}
+              {r.completedAt && (
+                <p className="mt-2.5 border-t border-border-light pt-2.5 text-[12px] text-text-secondary">
+                  Completed by <b>{r.completedBy}</b>
+                  <span className="block text-[11px] text-text-tertiary">
+                    {stampedAt(r.completedAt)}
                   </span>
-                  <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                    <Avatar name={a.by} className="h-[16px] w-[16px] text-[6px]" />
-                    {a.by}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
+                </p>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Timeline" icon={History}>
+              <ol className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
+                {[...r.activity].reverse().map((a, i) => (
+                  <li key={`${a.at}-${i}`} className="flex gap-2.5">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                      <FileText size={12} strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
+                        {a.what}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-text-tertiary">
+                        {stampedAt(a.at)}
+                      </span>
+                      <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+                        <Avatar name={a.by} className="h-[16px] w-[16px] text-[6px]" />
+                        {a.by}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </SectionCard>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* -------------------------- one document tab, a page of its own */
+        <div className="tab-panel mt-6">
+          <div className="flex items-start justify-between gap-4">
+            <SectionHeading
+              icon={FileText}
+              title={`${DOC_TABS.find((t) => t.key === tab)?.label} (${docs.length})`}
+              description={hint ?? ""}
+            />
+            {live && r.status !== "completed" && !adding && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <Plus size={14} strokeWidth={2.4} /> Add a document
+              </button>
+            )}
+          </div>
+
+          {live && r.status !== "completed" && adding && (
+            <div className="mt-4 rounded-xl border border-border-light bg-surface/40 p-4">
+              <AddDocForm
+                tabLabel={DOC_TABS.find((t) => t.key === tab)?.label ?? ""}
+                members={members}
+                linkables={linkables}
+                busy={busy}
+                onCancel={() => setAdding(false)}
+                onAdd={async (input) => {
+                  const ok = await post({ op: "add-doc", category: tab, ...input });
+                  if (ok) setAdding(false);
+                  return ok;
+                }}
+              />
+            </div>
+          )}
+
+          {docs.length === 0 ? (
+            <p className="mt-6 rounded-xl bg-surface/60 px-4 py-10 text-center text-[13px] text-text-tertiary">
+              Nothing in{" "}
+              {DOC_TABS.find((t) => t.key === tab)?.label.toLowerCase()} yet.
+              {live && r.status !== "completed"
+                ? " Add the first one above."
+                : ""}
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y divide-border-light rounded-xl border border-border-light bg-white">
+              {docs.map((d) => (
+                <DocRow
+                  key={d.id}
+                  doc={d}
+                  live={live}
+                  members={members}
+                  canRemove={
+                    live &&
+                    (managerial ||
+                      iOwn ||
+                      d.addedBy.trim().toLowerCase() ===
+                        meName.trim().toLowerCase())
+                  }
+                  completed={r.status === "completed"}
+                  busy={busy}
+                  onAssign={(who) =>
+                    post({ op: "assign-doc", docId: d.id, assignedTo: who })
+                  }
+                  onRemove={() => post({ op: "remove-doc", docId: d.id })}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmDelete}
@@ -617,7 +720,7 @@ function AddDocForm({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold w-fit">
+      <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
         <button
           type="button"
           onClick={() => setMode("new")}
