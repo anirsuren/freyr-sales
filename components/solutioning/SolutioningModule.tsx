@@ -486,7 +486,17 @@ function RequestRow({
         button and the chevron itself. */}
     <tr
       onClick={onToggle}
-      className="group cursor-pointer border-b border-border-light align-middle transition-colors last:border-0 hover:bg-[var(--surface)]"
+      aria-expanded={open}
+      /* THE RAIL RUNS THE WHOLE WAY (Anir, Aug 25: "the blue thing has to
+         extend all the way"). The deal table lights the OPEN row itself — same
+         tint, same 3px rail — so the row and the panel under it read as one
+         block instead of a panel floating below an untouched row. */
+      className={cn(
+        "group cursor-pointer border-b border-border-light align-middle transition-colors last:border-0",
+        open
+          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+          : "hover:bg-[var(--surface)]"
+      )}
     >
       <td className="px-4 py-3.5">
         <Link
@@ -862,10 +872,17 @@ function NewRequestDialog({
       title={kind ? `Request a ${KIND_META[kind].label.toLowerCase()}` : "What do you need?"}
       size="workflow"
     >
+      {/* ONE SIZE THE WHOLE WAY THROUGH (Anir, Aug 25: "when I click on
+          Solutioning New Request, I don't know why this is so small. Keep the
+          pop-up consistent the whole way in terms of dimensions"). Step one is
+          three tiles and step two is a full form, so the dialog used to snap
+          from a strip to a page between two clicks. The floor is the form's
+          height; the tiles sit centred in it. */}
+      <div className="flex min-h-[460px] flex-col">
       {!kind ? (
         /* THE FIRST QUESTION IS THE ONLY QUESTION ON SCREEN. Three big tiles,
            because the kind decides every field that follows. */
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="my-auto grid grid-cols-1 gap-3 sm:grid-cols-3">
           {KIND_ORDER.map((k) => {
             const meta = KIND_META[k];
             const Icon = meta.icon;
@@ -1158,6 +1175,7 @@ function NewRequestDialog({
           </div>
         </div>
       )}
+      </div>
     </Modal>
   );
 }

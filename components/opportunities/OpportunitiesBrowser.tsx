@@ -1469,10 +1469,65 @@ export function OpportunitiesBrowser({
 
   return (
     <div>
-      <PageHeader
-        title="Opportunities"
-        subtitle="Every live deal: what it is worth, who it is with, which offerings it covers, and how sure we are."
-        action={
+      {/* THE SELECTOR IS THE TITLE (Anir, Aug 25: "do it like how you do it on
+          the performance page — you have the tags at the top. You have current
+          pipeline and future, so copy that. You don't need to say
+          opportunities or what it is. Just have that at the top").
+
+          The performance rooms settled this on Aug 14: a heading naming the
+          room with a tab bar under it naming the same room again says it
+          twice and puts the control below the label it duplicates. The pills
+          move up to where the title was and carry the name themselves; the h1
+          stays for screen readers and the document outline, and the one action
+          keeps its place on the right. */}
+      <h1 className="sr-only">
+        {pipeView === "future" ? "Future pipeline" : "Current pipeline"}
+      </h1>
+      {/* Same pill idiom as the performance rooms, at the same size. NO
+          entrance animation on these — the performance lesson holds here too. */}
+      <div className="relative z-40 mb-6 mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {([
+            { key: "current" as const, label: "Current pipeline", count: currentList.length, icon: Workflow, color: "#0071E3" },
+            { key: "future" as const, label: "Future", count: futures.length, icon: CalendarClock, color: "#7C3AED" },
+          ]).map((t) => {
+            const Icon = t.icon;
+            const active = pipeView === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setPipeView(t.key)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
+                  active
+                    ? "bg-white text-text-primary shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <Icon
+                  size={16}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={active ? { color: t.color } : undefined}
+                />
+                {t.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
+                    t.key === "future"
+                      ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
+                      : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
+                  )}
+                >
+                  {t.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="shrink-0">{
           writable ? (
             <Button
               onClick={() =>
@@ -1492,44 +1547,7 @@ export function OpportunitiesBrowser({
             >
               <Plus size={14} strokeWidth={2.2} /> New opportunity
             </Button>
-          ) : undefined
-        }
-      />
-
-      {/* Same pill idiom as the performance rooms. NO entrance animation on
-          these — the performance lesson holds here too. */}
-      <div className="relative z-40 mt-4">
-        <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
-          {([
-            { key: "current" as const, label: "Current pipeline", count: currentList.length },
-            { key: "future" as const, label: "Future", count: futures.length },
-          ]).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              aria-pressed={pipeView === t.key}
-              onClick={() => setPipeView(t.key)}
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold tracking-[-0.01em] transition-all",
-                pipeView === t.key
-                  ? "bg-white text-text-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              {t.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
-                  t.key === "future"
-                    ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
-                    : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
-                )}
-              >
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
+          ) : null}</div>
       </div>
 
       {/* Same entrance the performance rooms play when the tab flips — the
