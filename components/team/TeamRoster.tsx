@@ -499,10 +499,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         (pipelineFilter.includes("without") && r.openValue <= 0)
     )
     .sort((a, b) => {
+      /* TIES BREAK ALPHABETICALLY (Anir, Aug 25: "it shouldnt show up at the
+         bottom, it should show up normal alphabetically"). The default
+         pipeline sort ties every $0 row and left them in insertion order, so
+         a freshly-invited person landed at the absolute bottom of the list
+         and read as missing. Pending rows get no special treatment — they
+         sort like anybody else, and every equal value falls back to the name. */
       if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "deals") return b.openCount - a.openCount;
-      if (sortBy === "meetings") return b.meetings - a.meetings;
-      return b.openValue - a.openValue;
+      if (sortBy === "deals")
+        return b.openCount - a.openCount || a.name.localeCompare(b.name);
+      if (sortBy === "meetings")
+        return b.meetings - a.meetings || a.name.localeCompare(b.name);
+      return b.openValue - a.openValue || a.name.localeCompare(b.name);
     });
 
   return (
@@ -645,7 +653,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           exist would be the exact fiction this replaced. */}
                       {r.lastSeenAt !== undefined ? (
                         <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
-                          <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
+                          <Avatar name={r.name} initialsOnly={!!r.pending} className="w-11 h-11 text-[14px] shrink-0" />
                           <PresenceDot
                             lastSeenAt={r.lastSeenAt}
                             className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
@@ -653,7 +661,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         </Tooltip>
                       ) : (
                         <span className="relative shrink-0">
-                          <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
+                          <Avatar name={r.name} initialsOnly={!!r.pending} className="w-11 h-11 text-[14px] shrink-0" />
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
@@ -858,7 +866,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <span className="flex items-center gap-3">
                           {r.lastSeenAt !== undefined ? (
                             <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
-                              <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
+                              <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
                               <PresenceDot
                                 lastSeenAt={r.lastSeenAt}
                                 className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
@@ -866,7 +874,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             </Tooltip>
                           ) : (
                             <span className="relative shrink-0">
-                              <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
+                              <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
                             </span>
                           )}
                           <span className="min-w-0">

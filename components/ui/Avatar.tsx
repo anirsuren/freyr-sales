@@ -134,11 +134,26 @@ export function Avatar({
   className,
   tooltip,
   src,
+  initialsOnly = false,
 }: {
   name: string;
   className?: string;
   /** An explicit image (e.g. the signed-in user's upload) beats the name map. */
   src?: string | null;
+  /**
+   * NO PHOTO LOOKUP AT ALL — initials, always (Anir, Aug 25, on a pending
+   * invitee named after himself wearing his real photo: "you're conflating my
+   * profile picture on another email. Huge issue. Each row should be a
+   * different account and connected to a pfp").
+   *
+   * Every photo source here is keyed by NAME, so two accounts sharing a name
+   * share a face. That is right for the one real person appearing in many
+   * places, and exactly wrong for a DIFFERENT account that happens to carry
+   * the same name — a pending invitee above all, who has never signed in and
+   * owns no photo. Callers rendering an account that is not (yet) a person in
+   * the workspace pass this.
+   */
+  initialsOnly?: boolean;
   // When set, hovering the avatar explains who it is (e.g. "Owner: Anir Suren").
   // Pass `true` to use the name itself; pass a string for a custom label.
   tooltip?: string | boolean;
@@ -165,8 +180,9 @@ export function Avatar({
   // Static portraits in PHOTOS are generated demo assets — mock only; Real
   // mode never presents a synthetic face as a colleague. REAL_PHOTOS are the
   // colleagues' own verified LinkedIn photographs and render in BOTH modes.
-  const photo =
-    src ||
+  const photo = initialsOnly
+    ? null
+    : src ||
     (isMe ? myPhoto : null) ||
     // A teammate's own uploaded picture — visible to EVERYONE signed in, not
     // just its owner (Anir, Aug 8, browsing as Suren: "Why does my profile
