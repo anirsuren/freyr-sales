@@ -380,16 +380,44 @@ export function MaterialViewer({
              * and useless. Whatever it managed to draw is kept, and only when it
              * drew nothing at all do we fall back to reading the deck.
              */
+            /**
+             * A DECK THAT DREW NOTHING READABLE IS A FAILED RENDER, even when
+             * the renderer did not throw (Anir, Aug 25: "she uploaded this PPT
+             * which I was able to download but I wasn't able to view. It's just
+             * fully black").
+             *
+             * Reproduced on Freya.Label's Label Change deck: pptx-preview
+             * returned cleanly, painted 38 black slide backgrounds and no text,
+             * so the old guard — which only fell back when it THREW and had
+             * drawn zero elements — sat there showing a black rectangle. The
+             * honest test is the OUTPUT: a deck with almost no rendered text is
+             * not a deck anybody can read, whatever the renderer claims. Fall
+             * back to the server's slide outline, which is text and works.
+             */
+            let renderFailed = false;
             try {
               await previewer.preview(buffer);
             } catch {
               const drawn = container.querySelectorAll(".pptx-preview-wrapper > div").length;
-              if (drawn === 0) {
-                if (live) setFellBack(true);
-                await loadServerPreview();
-                return;
+              if (drawn === 0) renderFailed = true;
+              else if (live) setPartial(true);
+            }
+            if (!renderFailed) {
+              const drawn = container.querySelectorAll(
+                ".pptx-preview-wrapper > div"
+              ).length;
+              // ~8 characters per drawn slide is a very low bar: a title-only
+              // slide clears it. Nothing at all does not.
+              const rendered = (container.innerText || "").replace(/\s+/g, "");
+              if (drawn === 0 || rendered.length < Math.max(24, drawn * 8)) {
+                renderFailed = true;
               }
-              if (live) setPartial(true);
+            }
+            if (renderFailed) {
+              container.innerHTML = "";
+              if (live) setFellBack(true);
+              await loadServerPreview();
+              return;
             }
           }
           if (live) setStatus("ready");

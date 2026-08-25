@@ -360,28 +360,62 @@ export async function GET(
               const cell = worksheet[address] as
                 | { s?: Record<string, unknown> }
                 | undefined;
+              /**
+               * TWO SHAPES, ONE READER. SheetJS's community build (0.20.x)
+               * puts the fill FLAT on `s` — `{ patternType, fgColor, bgColor }`
+               * — while other readers nest it as `s.fill.fgColor`. My first
+               * pass only understood the nested shape, so a Freyr sheet whose
+               * header band is solid #0D1233 came back with zero styles and
+               * the viewer stayed flat. Read both.
+               */
               const style = cell?.s as
                 | {
+                    patternType?: string;
+                    fgColor?: unknown;
                     fill?: { fgColor?: unknown; patternType?: string };
-                    font?: { color?: unknown; bold?: boolean; italic?: boolean };
+                    font?: {
+                      color?: unknown;
+                      bold?: boolean;
+                      italic?: boolean;
+                      sz?: number;
+                    };
+                    color?: unknown;
+                    bold?: boolean;
+                    italic?: boolean;
                     alignment?: { horizontal?: string };
+                    horizontal?: string;
                   }
                 | undefined;
               if (!style) continue;
               const entry: Record<string, unknown> = {};
+              const pattern = style.fill?.patternType ?? style.patternType;
               // "none" is Excel's way of saying no fill at all.
-              if (style.fill && style.fill.patternType !== "none") {
-                const bg = rgb(style.fill.fgColor);
+              if (pattern && pattern !== "none") {
+                const bg = rgb(style.fill?.fgColor ?? style.fgColor);
                 // White on white is the default, not a decision worth sending.
                 if (bg && bg !== "#FFFFFF") entry.bg = bg;
               }
-              const color = rgb(style.font?.color);
+              const color = rgb(style.font?.color ?? style.color);
               if (color && color !== "#000000") entry.color = color;
-              if (style.font?.bold) entry.bold = true;
-              if (style.font?.italic) entry.italic = true;
-              const align = style.alignment?.horizontal;
+              if (style.font?.bold ?? style.bold) entry.bold = true;
+              if (style.font?.italic ?? style.italic) entry.italic = true;
+              const align = style.alignment?.horizontal ?? style.horizontal;
               if (align === "center" || align === "right" || align === "left")
                 entry.align = align;
+              /* A DARK BAND NEEDS LIGHT TEXT. Excel stores the header row's
+                 white font in the theme, which this build does not resolve, so
+                 a #0D1233 fill would have rendered black-on-navy. When the fill
+                 is dark and no explicit colour survived, pick white — the same
+                 call Excel itself makes. */
+              if (entry.bg && !entry.color) {
+                const hex = String(entry.bg).slice(1);
+                const luminance =
+                  (0.299 * parseInt(hex.slice(0, 2), 16) +
+                    0.587 * parseInt(hex.slice(2, 4), 16) +
+                    0.114 * parseInt(hex.slice(4, 6), 16)) /
+                  255;
+                if (luminance < 0.5) entry.color = "#FFFFFF";
+              }
               if (Object.keys(entry).length > 0) styles[`${r}:${c}`] = entry;
             }
           }
