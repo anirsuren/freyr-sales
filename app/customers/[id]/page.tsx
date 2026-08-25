@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
-import { FileText, SearchX, ArrowLeft } from "lucide-react";
+import { ClipboardList,
+  FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
@@ -200,6 +201,16 @@ export default async function CustomerDetailPage({
                 : ""
             }`}
           />
+          {/* THE SALES-SIDE DOOR INTO SOLUTIONING (Suren, Aug 24: "from the
+              customer module itself they can request against an opportunity").
+              Lands on the module with this account already picked. */}
+          <Link
+            href={`/solutioning?new=1&customer=${customer.id}`}
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+          >
+            <ClipboardList size={15} strokeWidth={1.7} />
+            Request solutioning
+          </Link>
           <Link
             href={`/customers/${customer.id}/report`}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"

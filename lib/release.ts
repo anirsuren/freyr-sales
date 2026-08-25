@@ -91,6 +91,10 @@ const RELEASED_MODULE_PREFIXES = [
   // wiring it up actually today anyway"). Every page labels itself as a
   // sample-data preview until the real feeds land.
   "/market-intel",
+  // SOLUTIONING ships with the request flow (Suren, Aug 24: presentations,
+  // submissions and meetings, requested by sales, fulfilled by the new
+  // Solutions role). Real mode starts empty and honest; mock is seeded.
+  "/solutioning",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

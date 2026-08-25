@@ -1,4 +1,4 @@
-import { ShieldCheck, UserRound, UsersRound, type LucideIcon } from "lucide-react";
+import { PencilRuler, ShieldCheck, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
  * what you may do.
  */
 
-export type WorkspaceRoleKey = "admin" | "manager" | "rep";
+export type WorkspaceRoleKey = "admin" | "manager" | "rep" | "solutions";
 
 export const ROLE_META: Record<
   WorkspaceRoleKey,
@@ -48,6 +48,16 @@ export const ROLE_META: Record<
     icon: UserRound,
     what: "Browses offerings, opens materials and asks the assistant",
   },
+  /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"). The solution team
+     picks up presentation, submission and meeting requests and builds the
+     deliverables. Pink is identity, not status, and none of the other three
+     wear it. */
+  solutions: {
+    label: "Solutions",
+    color: "#DB2777",
+    icon: PencilRuler,
+    what: "Picks up solutioning requests and builds the deliverables",
+  },
 };
 
 /** Anything stored (or typed) that is not one of the three reads as Rep — the
@@ -56,6 +66,7 @@ export function roleKey(role: string | null | undefined): WorkspaceRoleKey {
   const r = (role || "").toLowerCase();
   if (r === "admin") return "admin";
   if (r === "editor" || r === "manager") return "manager";
+  if (r === "solutions" || r === "solution") return "solutions";
   return "rep";
 }
 

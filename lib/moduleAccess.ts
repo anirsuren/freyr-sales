@@ -44,6 +44,9 @@ export const REP_MODULES = [
   "/team",
   "/performance",
   "/opportunities",
+  // Requesting a presentation, submission or meeting IS a rep's job — the
+  // whole solutioning flow starts with them (Suren, Aug 24).
+  "/solutioning",
   /**
    * MARKET INTEL OPENED TO REPS (Anir, Aug 20: "they're not allowed to see
    * market intel. No, I think they should be able to see market intel").
@@ -69,6 +72,21 @@ export function isManagerOrAdmin(role: UserIdentityRole): boolean {
   return role === "admin" || role === "manager";
 }
 
+/**
+ * WHAT THE SOLUTIONS ROLE OPENS (Suren, Aug 24: "the solutioning guy will not
+ * come to the customer module, he'll come to the solutioning module").
+ *
+ * Their room, plus the three every role gets: the assistant, the offerings
+ * catalogue their decks are built from, and the team directory. Nothing
+ * manager-only, no customers, no pipeline — a solutions person is not sales.
+ */
+export const SOLUTIONS_MODULES = [
+  "/solutioning",
+  "/agent",
+  "/offerings",
+  "/team",
+] as const;
+
 /** Does this path belong to a manager-and-admin-only module? */
 export function isManagerOnlyPath(path: string): boolean {
   return MANAGER_ONLY_MODULES.some(
@@ -90,6 +108,8 @@ export function canAccessModule(
   // A rep gets exactly the modules on that list, and nothing gets added to it
   // by being built later.
   if (role === "rep") return REP_MODULES.some((m) => isUnder(path, m));
+  if (role === "solutions")
+    return SOLUTIONS_MODULES.some((m) => isUnder(path, m));
   if (!isManagerOnlyPath(path)) return true;
   return isManagerOrAdmin(role);
 }

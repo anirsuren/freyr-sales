@@ -10,7 +10,11 @@ export const ACCESS_COOKIE = "freyr_access_v2";
 // through /api/auth/resolve.
 export const ACCESS_TTL_SECONDS = 15 * 60;
 
-export type WorkspaceRole = "rep" | "manager" | "admin";
+/** SOLUTIONS ADDED Aug 24 on Suren's word, verbatim: "It is a new role." The
+ * solution team fulfils presentation/submission/meeting requests; they are not
+ * sales, so everywhere legacy code asks "manager or admin?" they answer no and
+ * fall to least privilege, exactly like a rep. */
+export type WorkspaceRole = "rep" | "manager" | "admin" | "solutions";
 
 /** The stored names used to be "sales"/"editor". Rows, snapshots and cookies
  * minted before the Aug 13 rename still carry them; every ingress maps them
@@ -19,6 +23,7 @@ export function normalizeWorkspaceRole(raw: unknown): WorkspaceRole | null {
   if (raw === "admin") return "admin";
   if (raw === "manager" || raw === "editor") return "manager";
   if (raw === "rep" || raw === "sales") return "rep";
+  if (raw === "solutions" || raw === "solution") return "solutions";
   return null;
 }
 export type AccessGrant = {

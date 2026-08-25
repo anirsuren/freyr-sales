@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, UserRound, UsersRound, PencilRuler } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -27,12 +27,15 @@ import { useToast } from "@/components/ui/Toast";
 const ROLE_OPTIONS: ColorOption[] = [
   { value: "rep", label: "Rep", color: "#0071E3", icon: UserRound },
   { value: "manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"): fulfils solutioning
+     requests, sees the Solutioning module, and nothing manager-only. */
+  { value: "solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
 /** Least power to most, so the dialog can say "promoting" or "reducing"
  *  instead of the useless "changing". */
-const RANK: Record<string, number> = { rep: 0, manager: 1, admin: 2 };
+const RANK: Record<string, number> = { rep: 0, solutions: 0, manager: 1, admin: 2 };
 
 type Member = {
   id: string;

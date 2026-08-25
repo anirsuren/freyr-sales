@@ -60,6 +60,10 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/pipeline", label: "Pipeline", icon: Columns3 },
   { href: "/forecast", label: "Forecast", icon: Target },
   { href: "/opportunities", label: "Opportunities", icon: Briefcase },
+  // Requests for presentations, submissions and meetings — sales asks, the
+  // Solutions role fulfils (Suren, Aug 24). Sits by Opportunities because
+  // that is what most requests are against.
+  { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
   { href: "/customers", label: "Customers", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/team", label: "Team", icon: UsersRound },

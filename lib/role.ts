@@ -5,10 +5,12 @@ import { ACCESS_COOKIE, isApprovalGateEnabled, normalizeWorkspaceRole, verifyAcc
 // Workspace roles come from the signed access grant in every protected
 // deployment. The browser-only role switch remains available solely in the
 // unauthenticated local demo harness.
-export type Role = "admin" | "manager" | "rep";
+export type Role = "admin" | "manager" | "rep" | "solutions";
 
 // Higher number = more privilege. Used so "view as" can only ever DOWNGRADE.
-const ROLE_RANK: Record<Role, number> = { admin: 3, manager: 2, rep: 1 };
+// Solutions sits beside rep, not above it: fulfilling requests grants nothing
+// extra anywhere else in the app.
+const ROLE_RANK: Record<Role, number> = { admin: 3, manager: 2, rep: 1, solutions: 1 };
 
 /**
  * "Viewing as" preview. An admin checking what the sales team sees is a real
@@ -57,7 +59,7 @@ async function roleForLocalPersona(email: string): Promise<Role | null> {
     );
     const rows = (await res.json()) as { app_role?: string }[];
     const raw = rows?.[0]?.app_role;
-    return raw === "admin" ? "admin" : raw === "manager" ? "manager" : raw === "rep" ? "rep" : null;
+    return raw === "admin" ? "admin" : raw === "manager" ? "manager" : raw === "rep" ? "rep" : raw === "solutions" ? "solutions" : null;
   } catch {
     return null;
   }

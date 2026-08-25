@@ -15,7 +15,8 @@ import {
   detectTimeZone,
   formatAbsolute,
 } from "@/lib/timeZone";
-import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
+import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, PencilRuler,
+  UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PasskeySetup } from "@/components/settings/PasskeySetup";
 import { SsoCard } from "@/components/settings/SsoCard";
@@ -49,6 +50,7 @@ import { MemberPresence } from "@/components/presence/PresenceDot";
 const INVITE_ROLE_OPTIONS: ColorOption[] = [
   { value: "Rep", label: "Rep", color: "#0071E3", icon: UserRound },
   { value: "Manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "Solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
   { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
@@ -57,6 +59,7 @@ const INVITE_ROLE_OPTIONS: ColorOption[] = [
 const ROLE_CHANGE_OPTIONS: ColorOption[] = [
   { value: "rep", label: "Rep", color: "#0071E3", icon: UserRound },
   { value: "manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
@@ -181,7 +184,7 @@ function lastSeenLabel(iso: string | null | undefined): string {
   if (days < 7) return `${days} days ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-type AccessRole = "admin" | "manager" | "rep";
+type AccessRole = "admin" | "manager" | "rep" | "solutions";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null; joinedAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
@@ -918,7 +921,7 @@ export function SettingsTabs({
       toast("Enter the full name, first and last, plus the email", "error");
       return;
     }
-    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "manager" : "rep";
+    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "manager" : invite.role === "Solutions" ? "solutions" : "rep";
     setAccessBusy("invite");
     try {
       if (authConfig.approvalEnabled) {
