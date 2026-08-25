@@ -71,7 +71,9 @@ export function PerformanceExport({
         verified,
         waiting,
         // Verdict columns judge verified money, same as the page (tick 6).
-        g.target > 0 ? Math.round(pctMet(verified, g.target) * 10) / 10 : "",
+        g.target > 0
+          ? Math.min(100, Math.round(pctMet(verified, g.target) * 10) / 10)
+          : "",
         Math.round(yearElapsed(g.year) * 1000) / 10,
         // Same schedule the page judges against — the CSV must never call a
         // goal "unscheduled" while the screen calls it lagging.

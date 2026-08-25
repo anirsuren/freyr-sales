@@ -787,9 +787,17 @@ export function OrgPerformanceTab({
                        borrows the column heading a reader already knows — the
                        row underneath says the same word and the same number —
                        so the two facts stop looking like one broken one. */
+                    /* AND IT STOPS AT 100, LIKE EVERY OTHER SURFACE (Anir,
+                       Aug 25: "if it's above 100% just cap it at 100%").
+                       A goal at 4,567 against a target of 450 printed
+                       "1015% met" over a bar the chart had already capped, and
+                       the % Met column in the table directly underneath — the
+                       same fact, same basis — read 100%. The caption under the
+                       bar still says "4,567 of 450", so the overshoot is right
+                       there; it just no longer contradicts the row below it. */
                     valueLabel:
                       g.target > 0
-                        ? `${Math.round(pctMet(verified, g.target))}% met`
+                        ? `${Math.min(100, Math.round(pctMet(verified, g.target)))}% met`
                         : undefined,
                     pending:
                       g.target > 0 && awaiting > 0

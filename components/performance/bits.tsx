@@ -688,7 +688,7 @@ export function GoalBar({
         </span>
         {target > 0 && (
           <span className="tnum font-semibold" style={{ color }}>
-            {Math.round(pctMet(actual, target))}%
+            {Math.min(100, Math.round(pctMet(actual, target)))}%
           </span>
         )}
       </p>

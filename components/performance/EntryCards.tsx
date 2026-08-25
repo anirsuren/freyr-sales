@@ -2205,7 +2205,7 @@ export function ClaimReviewDialog({
                       {goal.name}
                     </b>
                     <span className="text-[11.5px] text-text-secondary tnum">
-                      {Math.round(pctMet(verifiedTotal, goal.target))}% there,
+                      {Math.min(100, Math.round(pctMet(verifiedTotal, goal.target)))}% there,
                       counting what is signed off
                     </span>
                   </div>

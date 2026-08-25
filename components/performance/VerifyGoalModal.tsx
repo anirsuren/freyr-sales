@@ -180,7 +180,7 @@ export function VerifyGoalModal({
                   "40% there" — counting the rejected money, in the one dialog
                   whose whole job is deciding what counts. */}
               Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
-              {Math.round(pctMet(verified, goal.target))}% there
+              {Math.min(100, Math.round(pctMet(verified, goal.target)))}% there
             </span>
           )}
         </div>
