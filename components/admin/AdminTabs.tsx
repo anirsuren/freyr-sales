@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ListChecks, ShieldCheck, UsersRound } from "lucide-react";
+import { ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { MemberRoles } from "./MemberRoles";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
 import { ActivityMasterCard } from "@/components/performance/ActivityMasterCard";
+import { EmailComposer } from "./EmailComposer";
 
 /**
  * ADMIN, ONE SCREEN AT A TIME.
@@ -50,9 +51,20 @@ const TABS: (PageTab & { subtitle: string })[] = [
     subtitle:
       "When someone logs an activity. A pilot, a contract. These rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
   },
+  // Sending mail out of the workspace is an admin job, so it lives with the
+  // other admin controls (Anir, Aug 25: "build the email stuff out for
+  // admins").
+  {
+    key: "email",
+    label: "Email",
+    icon: Mail,
+    color: "#B45309",
+    subtitle:
+      "Write and send an email from the app. Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
+  },
 ];
 
-const KEYS = ["members", "groups", "activity"] as const;
+const KEYS = ["members", "groups", "activity", "email"] as const;
 
 export function AdminTabs({
   memberNames,
@@ -109,6 +121,8 @@ export function AdminTabs({
           <MemberRoles canEdit />
         ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />
+        ) : current.key === "email" ? (
+          <EmailComposer />
         ) : (
           <>
             <p className="max-w-[70ch] text-[13px] leading-relaxed text-text-secondary">

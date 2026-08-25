@@ -16,6 +16,18 @@ export type EmailAttachment = {
 
 async function sendWithConfiguredProvider(input: {
   to: string;
+  /**
+   * COPIED IN, INCLUDING PEOPLE WHO DO NOT USE THE APP (Anir, Aug 25: "if we
+   * want to send that email to somebody who's a user of the app and then CC a
+   * non-app user also in that email, that's possible, I hope").
+   *
+   * Nothing here has ever checked whether a recipient has an account — Resend
+   * takes any address — but the helper only ever passed a single `to`, so
+   * copying somebody was impossible however you asked for it.
+   */
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string;
   subject: string;
   body: string;
   attachments?: EmailAttachment[];
@@ -40,6 +52,9 @@ async function sendWithConfiguredProvider(input: {
       body: JSON.stringify({
         from: process.env.EMAIL_FROM || "Freyr <sales@freyrsolutions.com>",
         to: [input.to],
+        ...(input.cc?.length ? { cc: input.cc } : {}),
+        ...(input.bcc?.length ? { bcc: input.bcc } : {}),
+        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         subject: input.subject,
         text: input.body,
         ...(input.attachments?.length
@@ -86,9 +101,17 @@ export async function sendEmail(input: {
  */
 export async function sendTransactionalEmail(input: {
   to: string;
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string;
   subject: string;
   body: string;
   attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
   return sendWithConfiguredProvider(input);
+}
+
+/** The from-address every app email carries, for the composer to show. */
+export function emailFromAddress(): string {
+  return process.env.EMAIL_FROM || "Freyr <sales@freyrsolutions.com>";
 }
