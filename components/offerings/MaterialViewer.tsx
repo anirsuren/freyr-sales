@@ -13,6 +13,7 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Info,
   FileWarning,
   Maximize2,
   Minus,
@@ -787,10 +788,24 @@ export function MaterialViewer({
         }
       >
         {(fellBack || partial) && (
-          <p className="mb-2 shrink-0 rounded-lg bg-[color:#C2410C]/10 px-3 py-2 text-[12px] font-medium text-[color:#C2410C]">
-            {fellBack
-              ? "This deck uses shapes the in-app renderer cannot draw, so it is shown as text, slide by slide. Download the original for the designed version."
-              : "Part of this deck uses shapes the renderer cannot draw, so it stops early. Download the original for the whole deck."}
+          /* A NOTE, NOT AN ERROR. This line was burnt orange across the top of
+             a deck that had just been read successfully, and the first thing
+             anyone took from it was that something had broken. Nothing has:
+             the deck opened, every slide is there, it is simply text instead
+             of the designed layout. It wears the app's info blue now, which is
+             what blue means everywhere else here. */
+          <p className="mb-2 flex shrink-0 items-start gap-2 rounded-lg bg-blue-light px-3 py-2 text-[12px] font-medium text-text-secondary">
+            <Info
+              size={14}
+              strokeWidth={2.2}
+              aria-hidden="true"
+              className="mt-px shrink-0 text-blue-primary"
+            />
+            <span>
+              {fellBack
+                ? "Every slide is here as text. This deck uses shapes the in-app viewer cannot draw, so download the original for the designed version."
+                : "The rest of this deck uses shapes the in-app viewer cannot draw. Download the original for the whole thing."}
+            </span>
           </p>
         )}
         <div className="relative min-h-0 flex-1">
