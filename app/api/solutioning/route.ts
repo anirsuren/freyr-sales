@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
+import { canAccessModule } from "@/lib/moduleAccess";
 import { getDb } from "@/lib/db";
 import {
   addDocument,
@@ -37,11 +38,27 @@ export const dynamic = "force-dynamic";
  *   delete request   requester while still initiated, or an admin
  */
 
+
+/**
+ * THE MODULE'S OWN DOOR, ON THE API (Anir, Aug 25: "you have to hide this for
+ * reps"). The page guard sends a rep to /offerings, but the endpoint answered
+ * anybody signed in — so the requests were one fetch away from someone who is
+ * not allowed to see them.
+ */
+async function moduleClosed(): Promise<NextResponse | null> {
+  const me = await getCurrentUser();
+  return canAccessModule("/solutioning", me.role)
+    ? null
+    : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
+}
+
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
+  const shut = await moduleClosed();
+  if (shut) return shut;
   // The create dialog's contact picker: contacts belong to a customer, so
   // they load per customer, on demand, from the same door as everything else.
   const contactsFor = req.nextUrl.searchParams.get("contactsFor");
@@ -65,6 +82,8 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
+  const shut = await moduleClosed();
+  if (shut) return shut;
   if (getDataMode() !== "live") {
     return NextResponse.json(
       { error: "Mock mode shows sample requests only. Switch to Real to work them." },

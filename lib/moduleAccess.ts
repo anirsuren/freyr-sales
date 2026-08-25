@@ -44,10 +44,25 @@ export const REP_MODULES = [
   "/team",
   "/performance",
   "/opportunities",
-  // Requesting a presentation, submission or meeting IS a rep's job — the
-  // whole solutioning flow starts with them (Suren, Aug 24).
-  "/solutioning",
 ] as const;
+
+/**
+ * SOLUTIONING IS ADMIN-ONLY UNTIL ANIR SAYS OTHERWISE (Anir, Aug 25, on
+ * seeing it in a rep's sidebar: "you can't have a Solutioning module, bro. You
+ * have to hide this for reps... when I ask you to add a new module, you have
+ * to hide it for reps, only usable by admin").
+ *
+ * Suren's Aug 24 transcript describes reps raising the requests, and the
+ * module is built for exactly that. Anir owns what ships to whom, and a NEW
+ * module now starts closed: admins, plus the Solutions role, whose entire job
+ * is this room and which nobody holds until an admin assigns it. Opening it to
+ * reps and managers later is putting "/solutioning" back in REP_MODULES and
+ * deleting this gate.
+ *
+ * Same shape as TEAM_ADMIN_ONLY below: a module is admin-only while it is new,
+ * not because of what it does.
+ */
+export const SOLUTIONING_ADMIN_ONLY = true;
 
 /**
  * MARKET INTEL IS CLOSED TO REPS AGAIN (Anir, Aug 25: "can we hide the Market
@@ -105,6 +120,11 @@ export function canAccessModule(
   // Running the workspace is an ADMIN job — not a manager one.
   if (path === "/admin" || path.startsWith("/admin/")) return role === "admin";
   if (TEAM_ADMIN_ONLY && isUnder(path, "/team")) return role === "admin";
+  // Ahead of every other rule, including the rep whitelist and the manager
+  // default, so no role picks it up by being none of the above.
+  if (SOLUTIONING_ADMIN_ONLY && isUnder(path, "/solutioning")) {
+    return role === "admin" || role === "solutions";
+  }
   // Signing in, your own settings, the notification list, the tour: these are
   // not modules and locking a rep out of them would lock them out of the app.
   if (isAlwaysOpen(path)) return true;
