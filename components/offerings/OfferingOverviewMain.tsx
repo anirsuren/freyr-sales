@@ -18,6 +18,7 @@ import {
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { MaterialsSection } from "@/components/offerings/MaterialsSection";
+import { RelatedOfferingNote } from "@/components/offerings/RelatedOfferingNote";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -784,6 +785,19 @@ export function OfferingOverviewMain({
                   )}
                   <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
                 </span>
+                {/* HOW THE TWO ACTUALLY RELATE, WRITTEN BY SOMEONE WHO KNOWS
+                    (Anir, Aug 25, from a survey response: "if a sales rep can
+                    also see how Freya.Artwork is related to the offering I'm
+                    seeing right now... whoever has editing access can just add
+                    a description"). Sharing a category is not a reason to sell
+                    them together; this line is. */}
+                <RelatedOfferingNote
+                  offeringId={o.id}
+                  relatedId={relatedOffering.id}
+                  relatedName={relatedOffering.offering_name}
+                  notes={o.related_notes ?? {}}
+                  canEdit={admin}
+                />
               </Link>
             ))}
           </div>

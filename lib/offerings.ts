@@ -181,6 +181,18 @@ export interface Offering {
    *  recorded, and inventing one would put a real person's name against work
    *  they may not have done. Those rows show their date alone. */
   created_by?: string;
+  /**
+   * HOW THIS OFFERING RELATES TO ITS NEIGHBOURS (Anir, Aug 25, from the survey
+   * feedback): "if a sales rep can also see how Freya.Artwork is related to the
+   * offering I'm seeing right now... whoever has editing access can just add a
+   * description of how these two offerings are related to each other."
+   *
+   * Keyed by the OTHER offering's id, written only by someone who can edit this
+   * offering, and read by everybody. Deliberately one-directional: the note on
+   * Freya.Label about Freya.Artwork is Label's sentence, in Label's voice, and
+   * the Artwork page may want to say something different about the same pair.
+   */
+  related_notes?: Record<string, string>;
 }
 
 /** One person to talk to about an offering. Freyr-internal: the SME or service
