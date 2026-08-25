@@ -1,5 +1,7 @@
 import "server-only";
 
+import { SES_FROM, sendViaSes } from "./ses";
+
 /**
  * SENDING MAIL FROM THE APP ITSELF.
  *
@@ -30,10 +32,17 @@ export type MailResult = { ok: true; id: string } | { ok: false; error: string }
  * freyrsolutions.com finishes verifying — that is a task-definition change,
  * not a code change.
  */
-const FROM = () =>
-  process.env.MAIL_FROM ||
-  process.env.EMAIL_FROM ||
-  "Freyr Sales <noreply@anirsuren.com>";
+/**
+ * ONE SENDER, AND IT IS FREYR'S (Anir, Aug 25: "get rid of this anirsuren.com
+ * email. This should be completely off. Everywhere it's included, remove it.
+ * This is not the email you ever use").
+ *
+ * The last resort used to be a personal domain, which is what every product
+ * email actually went out from — it was the only thing verified anywhere. It
+ * is gone, and the fallback is now the SES identity Freyr IT verified on their
+ * own domain, so there is nothing left for the app to quietly send as.
+ */
+const FROM = () => SES_FROM;
 
 /** What the app would actually put in the From line, for the health payload —
  *  a sender nobody has configured is invisible until a person asks why the
@@ -53,9 +62,25 @@ export async function sendMail(message: {
   html: string;
   text: string;
 }): Promise<MailResult> {
+  if (message.to.length === 0) return { ok: false, error: "No recipients." };
+
+  /* SES first, on the identity Freyr IT verified. Resend has no verified
+     domain left and refuses everything with a 403; it stays only for a host
+     with no AWS session at all. Same reasoning as lib/email.ts. */
+  const viaSes = await sendViaSes({
+    to: message.to,
+    ...(message.cc?.length ? { cc: message.cc } : {}),
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+  });
+  if (viaSes.ok) return { ok: true, id: viaSes.messageId ?? "ses" };
+  if (!viaSes.unavailable) {
+    return { ok: false, error: viaSes.error ?? "SES refused the message." };
+  }
+
   const key = process.env.RESEND_API_KEY;
   if (!key) return { ok: false, error: "RESEND_API_KEY is not set." };
-  if (message.to.length === 0) return { ok: false, error: "No recipients." };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

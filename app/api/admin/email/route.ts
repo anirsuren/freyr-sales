@@ -4,6 +4,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { emailFromAddress, sendTransactionalEmail } from "@/lib/email";
 import {
+  htmlToPlainText,
   parseAddresses,
   readAdminEmails,
   recordAdminEmail,
@@ -58,7 +59,15 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) ?? {};
   const subject = String(body.subject ?? "").trim();
-  const text = String(body.body ?? "").trim();
+  /**
+   * THE COMPOSER SENDS FORMATTED HTML (Saras, Aug 25). The plain-text part is
+   * derived from it, so every mail carries both and a client that refuses HTML
+   * still shows the words. A caller that sends only `body` still works.
+   */
+  const html = String(body.html ?? "").trim();
+  const text = html
+    ? htmlToPlainText(html)
+    : String(body.body ?? "").trim();
   const to = parseAddresses(String(body.to ?? ""));
   const cc = parseAddresses(String(body.cc ?? ""));
   const bcc = parseAddresses(String(body.bcc ?? ""));
@@ -96,6 +105,7 @@ export async function POST(req: NextRequest) {
       ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),
       subject,
       body: text,
+      ...(html ? { html } : {}),
       sentBy: me.name,
       ...(me.email ? { sentByEmail: me.email } : {}),
       status: "simulated",
@@ -118,6 +128,7 @@ export async function POST(req: NextRequest) {
     ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),
     subject,
     body: text,
+    ...(html ? { html } : {}),
   });
 
   const record = await recordAdminEmail({
@@ -127,6 +138,7 @@ export async function POST(req: NextRequest) {
     ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),
     subject,
     body: text,
+    ...(html ? { html } : {}),
     sentBy: me.name,
     ...(me.email ? { sentByEmail: me.email } : {}),
     status: result.ok ? "sent" : "failed",

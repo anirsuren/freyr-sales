@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn, formatDate } from "@/lib/utils";
 import type { AdminEmailRecord } from "@/lib/adminEmail";
+import { RichTextBox } from "./RichTextBox";
 
 /**
  * WRITING AND SENDING AN EMAIL FROM THE APP (Anir, Aug 25: "have you added
@@ -89,7 +90,10 @@ export function EmailComposer() {
   const count = (raw: string) =>
     raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).length;
   const recipients = count(to) + count(cc) + count(bcc);
-  const ready = !!to.trim() && !!subject.trim() && !!body.trim();
+  /* An empty contenteditable still holds "<br>" or "<p></p>", so a message is
+     "written" only when it carries actual words. */
+  const wordsInBody = body.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+  const ready = !!to.trim() && !!subject.trim() && !!wordsInBody;
 
   async function send() {
     setSending(true);
@@ -97,7 +101,7 @@ export function EmailComposer() {
       const res = await fetch("/api/admin/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, cc, bcc, replyTo, subject, body }),
+        body: JSON.stringify({ to, cc, bcc, replyTo, subject, html: body }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -243,17 +247,20 @@ export function EmailComposer() {
             />
           </label>
 
-          <label className="block">
-            <Label>Message</Label>
-            <textarea
-              rows={10}
+          <div>
+            {/* THE FORMAT BAR SARAS ASKED FOR (Aug 25: "a format bar for the
+                message to be added though — Bold, Italics, Underline, Font,
+                Font Size, Font Colour, Highlights, bullets, indentation"). */}
+            <Label hint="Bold, italics, underline, font and size, colour, highlight, bullets and indentation. The formatting carries into the email; a plain-text copy goes with it for clients that refuse HTML.">
+              Message
+            </Label>
+            <RichTextBox
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              aria-label="Message"
-              placeholder="Write it the way you would in your mail client. It sends as plain text."
-              className={cn(FIELD, "resize-y leading-relaxed")}
+              onChange={setBody}
+              ariaLabel="Message"
+              placeholder="Write it the way you would in your mail client."
             />
-          </label>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-light pt-4">
@@ -305,7 +312,7 @@ export function EmailComposer() {
             {[
               !to.trim() && "who it goes to",
               !subject.trim() && "a subject",
-              !body.trim() && "a message",
+              !wordsInBody && "a message",
             ]
               .filter(Boolean)
               .join(", ")}
@@ -409,9 +416,20 @@ export function EmailComposer() {
                             </span>
                           ))}
                       </dl>
-                      <p className="whitespace-pre-wrap rounded-lg border border-border-light bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary">
-                        {e.body}
-                      </p>
+                      {/* Shown as it was sent. The HTML came out of our own
+                          editor and is stored on our own row — not third-party
+                          input — and the log is the record of what left the
+                          building, so it must look like what left. */}
+                      {e.html ? (
+                        <div
+                          className="freyr-richtext rounded-lg border border-border-light bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+                          dangerouslySetInnerHTML={{ __html: e.html }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap rounded-lg border border-border-light bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary">
+                          {e.body}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

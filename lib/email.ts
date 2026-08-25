@@ -1,9 +1,10 @@
 import { hasEmail } from "./env";
 import { getDataMode } from "./dataMode";
+import { SES_FROM, sendViaSes } from "./ses";
 
 export interface EmailResult {
   ok: boolean;
-  channel: "resend" | "smtp" | "mock";
+  channel: "ses" | "resend" | "smtp" | "mock";
   skipped?: boolean;
   error?: string;
 }
@@ -30,8 +31,41 @@ async function sendWithConfiguredProvider(input: {
   replyTo?: string;
   subject: string;
   body: string;
+  /**
+   * THE FORMATTED VERSION (Saras, Aug 25: "a format bar for the message to be
+   * added though — Bold, Italics, Underline, Font, Font Size, Font Colour,
+   * Highlights, bullets, indentation"). When present it is sent as the mail's
+   * HTML part, with `body` riding along as the plain-text alternative for
+   * clients that refuse HTML. Absent, nothing changes.
+   */
+  html?: string;
   attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
+  /**
+   * SES FIRST, ON FREYR'S OWN VERIFIED DOMAIN (Anir, Aug 25: "get rid of this
+   * anirsuren.com email... this is not the email you ever use").
+   *
+   * Resend has no verified domain left — `notifications.freyrsolutions.com`
+   * never verified there because Freyr IT set the domain up in SES instead —
+   * so every send through it now 403s. SES is verified, out of the sandbox,
+   * and the ECS task role is granted send on that one identity. Resend stays
+   * behind it only as a fallback for a host with no AWS session at all.
+   */
+  const viaSes = await sendViaSes({
+    to: [input.to],
+    ...(input.cc?.length ? { cc: input.cc } : {}),
+    ...(input.bcc?.length ? { bcc: input.bcc } : {}),
+    ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+    subject: input.subject,
+    text: input.body,
+    ...(input.html ? { html: input.html } : {}),
+  });
+  if (viaSes.ok) return { ok: true, channel: "ses" };
+  // A real refusal from SES is the answer; only "no credentials here" falls on.
+  if (!viaSes.unavailable) {
+    return { ok: false, channel: "ses", error: viaSes.error };
+  }
+
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     return {
@@ -50,13 +84,14 @@ async function sendWithConfiguredProvider(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || "Freyr <sales@freyrsolutions.com>",
+        from: SES_FROM,
         to: [input.to],
         ...(input.cc?.length ? { cc: input.cc } : {}),
         ...(input.bcc?.length ? { bcc: input.bcc } : {}),
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         subject: input.subject,
         text: input.body,
+        ...(input.html ? { html: input.html } : {}),
         ...(input.attachments?.length
           ? { attachments: input.attachments }
           : {}),
@@ -106,6 +141,7 @@ export async function sendTransactionalEmail(input: {
   replyTo?: string;
   subject: string;
   body: string;
+  html?: string;
   attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
   return sendWithConfiguredProvider(input);
@@ -113,5 +149,5 @@ export async function sendTransactionalEmail(input: {
 
 /** The from-address every app email carries, for the composer to show. */
 export function emailFromAddress(): string {
-  return process.env.EMAIL_FROM || "Freyr <sales@freyrsolutions.com>";
+  return SES_FROM;
 }

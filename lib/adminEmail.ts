@@ -31,6 +31,8 @@ export type AdminEmailRecord = {
   replyTo?: string;
   subject: string;
   body: string;
+  /** The formatted body as it was sent, when the writer used the format bar. */
+  html?: string;
   sentBy: string;
   sentByEmail?: string;
   sentAt: string;
@@ -86,6 +88,7 @@ function normalize(raw: unknown): AdminEmailState {
           ...(r.replyTo ? { replyTo: String(r.replyTo) } : {}),
           subject: String(r.subject ?? ""),
           body: String(r.body ?? ""),
+          ...(r.html ? { html: String(r.html) } : {}),
           sentBy: String(r.sentBy ?? "Somebody"),
           ...(r.sentByEmail ? { sentByEmail: String(r.sentByEmail) } : {}),
           sentAt: String(r.sentAt ?? new Date().toISOString()),
@@ -172,6 +175,28 @@ export async function recordAdminEmail(
  * Returns the valid ones and names the rest, because silently dropping a
  * malformed address is how a mail goes to four people when you meant five.
  */
+/**
+ * THE WORDS OUT OF THE FORMATTED BODY. Every mail carries a plain-text part as
+ * well as the HTML one — a client that refuses HTML must still show the
+ * message rather than an empty frame — and the log lists this, because a
+ * subject line beside a wall of markup tells a reader nothing.
+ */
+export function htmlToPlainText(html: string): string {
+  return String(html ?? "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "· ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function parseAddresses(raw: string): {
   valid: string[];
   invalid: string[];
