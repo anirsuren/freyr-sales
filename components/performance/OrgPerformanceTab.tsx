@@ -2050,11 +2050,25 @@ function GoalRows({
                         a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
                       const open = openPerson === a.person;
                       return (
+                        /* AN OPEN PERSON GETS A RAIL, like an open goal does
+                           (Anir, Aug 26: "you see this green thing that goes
+                           from up to bottom signifying that's where the entire
+                           goal is — do that for the people too, maybe a
+                           different colour, so it's easier on the eyes").
+
+                           A different hue on purpose: the goal's rail is the
+                           goal accent, so a person wearing the same one would
+                           read as another goal. Indigo says "a person inside
+                           this goal", and it runs the full height of the card
+                           so the header and everything it opened are visibly
+                           one block. */
                         <div
                           key={a.person}
                           className={cn(
                             "overflow-hidden rounded-xl border bg-white transition-colors",
-                            open ? "border-blue-subtle" : "border-border-light"
+                            open
+                              ? "border-blue-subtle [box-shadow:inset_3px_0_0_0_#4338CA]"
+                              : "border-border-light"
                           )}
                         >
                           <div

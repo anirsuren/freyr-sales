@@ -1463,7 +1463,16 @@ export function PersonGoalPanel({
           <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
             Month by month
           </p>
-          <div className="mt-1.5">
+          {/* THE PLOT USES THE ROOM IT IS GIVEN (Anir, Aug 26: "why is it in
+              the center? You can imagine if it's 100%, it's gonna be so small.
+              You have so much room below… that bar chart should go almost till
+              the bottom, and it can go a little higher too. Look at what you
+              did in 'How far along each goal is'").
+
+              Same treatment as that card: a real height instead of 140, and
+              fillCard bleeding the columns to the panel's left and right edges
+              with -mx so the plot owns the width rather than sitting inset. */}
+          <div className="-mx-4 -mb-1 mt-1.5 min-h-[210px] flex-1">
             {/* `unit` here is the WORD printed after each value ("12 calls"),
                 not the goal's kind — passing goal.unit put the literal word
                 "count" after every bar, so a month read "80K count" while the
@@ -1474,7 +1483,8 @@ export function PersonGoalPanel({
             <BarChart
               hideLabelDots
               data={months}
-              height={140}
+              height={210}
+              fillCard={16}
               format={goal.unit === "currency" ? "money" : "number"}
             />
           </div>

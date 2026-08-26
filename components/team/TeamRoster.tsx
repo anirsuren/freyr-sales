@@ -848,12 +848,26 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     onClick={() =>
                       setOpenRep(openRep === r.identityKey ? null : r.identityKey)
                     }
+                    aria-expanded={openRep === r.identityKey}
+                    /* THE RAIL STARTS AT THE NAME, NOT UNDER IT (Anir, Aug 26:
+                       "it's almost a start where the person's name is… it's
+                       supposed to take up the entire spot. You do better on
+                       the goals page, so just copy whatever you did there").
 
-                    className={
-                      r.you
-                        ? "bg-blue-light/35 hover:bg-blue-light/50 transition-colors"
-                        : "hover:bg-surface transition-colors"
-                    }
+                       The header row and the panel it opens are two <tr>s, and
+                       only the second carried the rail — so the line began
+                       halfway down the thing it was supposed to bracket. Both
+                       rows carry it now, and the open header takes the same
+                       surface tint the pipeline's open row uses, so the pair
+                       reads as one block. */
+                    className={cn(
+                      "cursor-pointer transition-colors",
+                      openRep === r.identityKey
+                        ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        : r.you
+                          ? "bg-blue-light/35 hover:bg-blue-light/50"
+                          : "hover:bg-surface"
+                    )}
                   >
                     <td className="px-4 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
