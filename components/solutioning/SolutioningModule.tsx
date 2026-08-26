@@ -982,9 +982,15 @@ function NewRequestDialog({
         /* THE FIRST QUESTION IS THE ONLY QUESTION ON SCREEN. Three big tiles,
            because the kind decides every field that follows. */
         <div className="flex flex-1 flex-col">
-        <p className="mb-3 text-[12.5px] text-text-secondary">
-          Pick what you are asking the Solutions team for. It decides everything
-          you fill in next.
+        {/* SAY THAT A CHOICE IS REQUIRED (Anir, Aug 26: "here it's kind of not
+            clear, but the user needs to select one"). Three cards with a quiet
+            hover read as decoration; nothing said one of them had to be
+            picked before anything else happened. */}
+        <p className="mb-3 text-[13px] font-semibold text-text-primary">
+          Choose one to continue.
+          <span className="ml-1.5 font-normal text-text-secondary">
+            What you pick decides every field you fill in next.
+          </span>
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {KIND_ORDER.map((k) => {
@@ -995,13 +1001,25 @@ function NewRequestDialog({
                 key={k}
                 type="button"
                 onClick={() => setKind(k)}
-                className="group flex flex-col items-start gap-2.5 rounded-xl border border-border-light bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-card"
+                className="group flex cursor-pointer flex-col items-start gap-2.5 rounded-xl border-2 border-border-light bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-primary hover:shadow-card focus-visible:border-blue-primary focus-visible:outline-none"
               >
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-lg"
-                  style={{ background: `${meta.color}14`, color: meta.color }}
-                >
-                  <Icon size={19} strokeWidth={1.9} />
+                <span className="flex w-full items-start justify-between gap-2">
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-lg"
+                    style={{ background: `${meta.color}14`, color: meta.color }}
+                  >
+                    <Icon size={19} strokeWidth={1.9} />
+                  </span>
+                  {/* A RADIO, because "pick exactly one of these" is what a
+                      radio has always meant. Empty until you hover it, filled
+                      the moment you do, so the card says out loud that it is a
+                      choice rather than a panel. */}
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-border-light transition-colors group-hover:border-blue-primary"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-blue-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                  </span>
                 </span>
                 <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
                   {meta.label}
@@ -1012,6 +1030,11 @@ function NewRequestDialog({
                     : k === "presentation"
                       ? "A deck to build and deliver, like an RFP defense"
                       : "An external meeting with the customer to arrange"}
+                </span>
+                {/* And the outcome of clicking, spelled out. */}
+                <span className="mt-auto flex items-center gap-1 pt-1.5 text-[11.5px] font-semibold text-text-tertiary transition-colors group-hover:text-blue-primary">
+                  Choose this
+                  <ChevronRight size={12} strokeWidth={2.4} />
                 </span>
               </button>
             );
