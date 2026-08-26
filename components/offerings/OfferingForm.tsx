@@ -13,6 +13,12 @@ import {
   Italic,
   Underline,
   Strikethrough,
+  ArrowDown,
+  ArrowUp,
+  Bot,
+  Boxes,
+  Briefcase,
+  PlusCircle,
   Heading2,
   Heading3,
   Link2,
@@ -56,6 +62,17 @@ import {
   blankRoadmapDetails,
 } from "@/components/offerings/OfferingReleasesTab";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  COMPONENT_GROUPS,
+  isComponentGroup,
+  type ComponentGroup,
+} from "@/lib/componentGroups";
+import {
+  canMoveCard,
+  groupOf,
+  moveCardToGroup,
+  shuffleCard,
+} from "@/lib/briefRows";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import {
@@ -322,6 +339,52 @@ function composeDescription(intro: string, rows: CapRow[]): string {
   }
   flush();
   return blocks.join("\n\n");
+}
+
+/**
+ * The picker's options: the four fixed groups, colour-coded and iconed like
+ * every other category chip in the app, plus whatever heading this row
+ * already has if it is not one of them.
+ *
+ * Deliberately not red, green or amber — those mean something everywhere else
+ * in the product and are not free to use as identity colours.
+ */
+const GROUP_MARK: Record<ComponentGroup, { color: string; icon: LucideIcon }> = {
+  Modules: { color: "#1683EA", icon: Boxes },
+  "Module Agents": { color: "#7C3AED", icon: Bot },
+  "Add-on Agents": { color: "#0E7490", icon: PlusCircle },
+  Services: { color: "#4338CA", icon: Briefcase },
+};
+
+/* Built from the shared list, in the order the editor is meant to offer them,
+   so adding a fifth group is one edit in lib/componentGroups.ts. */
+const GROUP_OPTIONS: ColorOption[] = COMPONENT_GROUPS.map((group) => ({
+  value: group,
+  label: group,
+  ...GROUP_MARK[group],
+}));
+
+const NO_GROUP_OPTION: ColorOption = {
+  value: "",
+  label: "No group",
+  color: "#6B7280",
+  icon: Layers,
+};
+
+function groupOptions(current: string): ColorOption[] {
+  const options = [NO_GROUP_OPTION, ...GROUP_OPTIONS];
+  const heading = current.trim();
+  /* A heading from before the four were fixed stays pickable so opening the
+     editor cannot silently rewrite it. */
+  if (heading && !isComponentGroup(heading))
+    options.push({
+      value: heading,
+      label: heading,
+      color: "#334155",
+      icon: Layers,
+      description: "Existing heading on this offering",
+    });
+  return options;
 }
 
 function serviceCardFields(text: string): { heading: string; description: string } {
@@ -953,7 +1016,7 @@ export function OfferingForm({
   const [capDescriptionDraft, setCapDescriptionDraft] = useState("");
   // Formatting is the primary authoring experience. The structured service
   // card editor remains available for owners who prefer one row at a time.
-  // A structured brief renders as service cards on Overview, so open the same
+  // A structured brief renders as component cards on Overview, so open the same
   // card-shaped editor by default. Plain prose still opens as a document.
   const [pasteMode, setPasteMode] = useState(seeded.rows.length === 0);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -971,6 +1034,13 @@ export function OfferingForm({
   )
     serviceCardStyles.pop();
   const capCount = capRows.filter((r) => r.kind === "item" && r.text.trim()).length;
+  /* Which card each row is, counting only cards. The row index counts group
+     headings too, so it called the first card "card 2" whenever a brief
+     opened with a heading, and "card 1" was a prefix of "card 10". */
+  const cardNumber = new Map<number, number>();
+  capRows.forEach((row, index) => {
+    if (row.kind === "item") cardNumber.set(index, cardNumber.size + 1);
+  });
   const appearanceCard =
     appearanceRow === null ? undefined : capRows[appearanceRow];
   const appearanceFields = serviceCardFields(appearanceCard?.text ?? "");
@@ -1358,8 +1428,8 @@ export function OfferingForm({
       {/* ------------------------------------------------- what's included */}
       <FormSection
         icon={ListChecks}
-        title="Offering brief & service cards"
-        hint="Edit the opening overview and the same service cards sellers see on the offering page."
+        title="Offering brief & component cards"
+        hint="Edit the opening overview and the same component cards sellers see on the offering page."
         action={
           <div className="flex items-center gap-1 rounded-lg bg-surface p-1">
             <button
@@ -1374,7 +1444,7 @@ export function OfferingForm({
               onClick={openList}
               className={modeButton(!pasteMode)}
             >
-              <List size={12} strokeWidth={2.2} /> Service cards
+              <List size={12} strokeWidth={2.2} /> Component cards
             </button>
           </div>
         }
@@ -1404,7 +1474,7 @@ export function OfferingForm({
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
               Formatting is saved safely. Each bulleted service becomes a card
-              on Overview; use <span className="font-medium">Service cards</span>
+              on Overview; use <span className="font-medium">Component cards</span>
               to edit those cards directly.
             </p>
           </div>
@@ -1414,14 +1484,15 @@ export function OfferingForm({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-[14px] font-semibold text-text-primary">
-                    Included services
+                    Included components
                   </h3>
                   <span className="tnum inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-light px-2 text-[11px] font-semibold text-blue-primary">
                     {capCount}
                   </span>
                 </div>
                 <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">
-                  These cards appear under What&apos;s included on the seller view.
+                  These cards appear under What&apos;s included on the seller view,
+                grouped and ordered the way a reader sees them.
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1434,7 +1505,7 @@ export function OfferingForm({
                   }}
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#CFDAE6] bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:text-text-primary"
                 >
-                  <Layers size={14} strokeWidth={2} /> Add heading
+                  <Layers size={14} strokeWidth={2} /> Add group
                 </button>
                 <button
                   type="button"
@@ -1445,19 +1516,20 @@ export function OfferingForm({
                   }}
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-hover"
                 >
-                  <Plus size={14} strokeWidth={2.2} /> Add service
+                  <Plus size={14} strokeWidth={2.2} /> Add component
                 </button>
               </div>
             </div>
             {capRows.length === 0 && (
               <p className="rounded-lg border border-dashed border-border-light px-3 py-4 text-center text-[12.5px] text-text-secondary">
-                Nothing listed yet. Add the services that make up this offering,
-                one per row.
+                Nothing listed yet. Add the components that make up this
+                offering, one per row.
               </p>
             )}
             {capRows.map((row, i) => {
               const isSection = row.kind === "section";
               const fields = serviceCardFields(row.text);
+              const cardNo = cardNumber.get(i) ?? 1;
               const mark = serviceCardMark(
                 stripBriefFormatting(row.text) || offeringName || "offering",
                 row.style
@@ -1492,19 +1564,24 @@ export function OfferingForm({
                         <RowIcon size={16} strokeWidth={2} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <label className={LABEL}>Group heading</label>
-                        <input
-                          className={cn(FIELD, "font-semibold")}
+                        <label className={LABEL}>Group</label>
+                        {/* The four groups are fixed (Saras, Aug 26), so this
+                            is a picker rather than a text box. A heading an
+                            earlier author typed that is not one of the four
+                            stays selectable, because four offerings in the
+                            catalogue carry real headings of their own and
+                            silently rewriting them would delete their work. */}
+                        <ColorSelect
                           value={row.text}
-                          onChange={(event) =>
+                          options={groupOptions(row.text)}
+                          onChange={(value) =>
                             setCapRows((list) =>
                               list.map((item, index) =>
-                                index === i ? { ...item, text: event.target.value } : item
+                                index === i ? { ...item, text: value } : item
                               )
                             )
                           }
-                          placeholder="e.g. Product & Portfolio Strategy"
-                          aria-label="Group heading"
+                          ariaLabel="Group"
                         />
                       </div>
                       <button
@@ -1522,7 +1599,7 @@ export function OfferingForm({
                         <button
                           type="button"
                           onClick={() => setAppearanceRow(i)}
-                          aria-label={`Change ${fields.heading || "service"} card icon and color`}
+                          aria-label={`Change ${fields.heading || `component ${cardNo}`} card icon and color`}
                           className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-blue-primary/30"
                           style={{
                             backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
@@ -1537,25 +1614,83 @@ export function OfferingForm({
                           <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                             Seller view preview
                           </p>
+                          {/* Plenty of briefs are plain bullets with no bold
+                              label, and the preview used to print "Untitled
+                              service:" in front of every one of them: a phrase
+                              nobody wrote, on the line that is meant to show
+                              the seller exactly what they will see. A card
+                              with no heading is just its sentence. */}
                           <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
-                            <span className="font-semibold">
-                              {fields.heading || "Untitled service"}
-                              {fields.description ? ": " : ""}
-                            </span>
-                            {fields.description || "Add a description to show what this service includes."}
+                            {fields.heading && (
+                              <span className="font-semibold">
+                                {fields.heading}
+                                {fields.description ? ": " : ""}
+                              </span>
+                            )}
+                            {fields.description ||
+                              (fields.heading
+                                ? "Add a description to show what this component includes."
+                                : "Add a heading or a description for this card.")}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                          aria-label="Remove service"
-                          className="shrink-0 rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white hover:text-error"
-                        >
-                          <Trash2 size={15} strokeWidth={1.7} />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          {/* Shuffling a card inside its group, and removing
+                              it. Moving it to a DIFFERENT group is the picker
+                              on the row below, because that is a different
+                              decision. */}
+                          <button
+                            type="button"
+                            disabled={!canMoveCard(capRows, i, -1)}
+                            onClick={() => setCapRows((l) => shuffleCard(l, i, -1))}
+                            /* Plenty of briefs are plain bullets with no card
+                               heading, and "Move this component up" on every
+                               row is the same name sixteen times over. The
+                               position always disambiguates. */
+                            aria-label={`Move ${fields.heading || `component ${cardNo}`} up`}
+                            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
+                          >
+                            <ArrowUp size={15} strokeWidth={2} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canMoveCard(capRows, i, 1)}
+                            onClick={() => setCapRows((l) => shuffleCard(l, i, 1))}
+                            aria-label={`Move ${fields.heading || `component ${cardNo}`} down`}
+                            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
+                          >
+                            <ArrowDown size={15} strokeWidth={2} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
+                            aria-label="Remove component"
+                            className="rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white hover:text-error"
+                          >
+                            <Trash2 size={15} strokeWidth={1.7} />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.4fr)]">
+                        <div className="min-w-0">
+                          <label className={LABEL}>Group</label>
+                          {/* Shifting a card from one group to another
+                              (Saras, Aug 26). Picking a group the brief does
+                              not have yet creates it. */}
+                          <ColorSelect
+                            value={groupOf(capRows, i)}
+                            options={groupOptions(groupOf(capRows, i))}
+                            onChange={(value) =>
+                              setCapRows((l) =>
+                                moveCardToGroup(l, i, value, (text) => ({
+                                  kind: "section",
+                                  text,
+                                }))
+                              )
+                            }
+                            ariaLabel={`Group for card ${cardNo}`}
+                          />
+                        </div>
                         <div className="min-w-0">
                           <label className={LABEL}>Card heading</label>
                           <input
@@ -1565,7 +1700,7 @@ export function OfferingForm({
                               updateCard(event.target.value, fields.description)
                             }
                             placeholder="e.g. Products"
-                            aria-label={`Card ${i + 1} heading`}
+                            aria-label={`Card ${cardNo} heading`}
                           />
                         </div>
                         <div className="min-w-0">
@@ -1576,8 +1711,8 @@ export function OfferingForm({
                             onChange={(event) =>
                               updateCard(fields.heading, event.target.value)
                             }
-                            placeholder="Explain what this service does for the seller."
-                            aria-label={`Card ${i + 1} description`}
+                            placeholder="Explain what this component does for the seller."
+                            aria-label={`Card ${cardNo} description`}
                           />
                         </div>
                       </div>
@@ -1612,7 +1747,9 @@ export function OfferingForm({
                       Preview
                     </p>
                     <p className="truncate text-[14px] font-semibold text-text-primary">
-                      {appearanceFields.heading || "Untitled service"}
+                      {appearanceFields.heading ||
+                        appearanceFields.description ||
+                        "This card"}
                     </p>
                   </div>
                 </div>
@@ -1756,25 +1893,23 @@ export function OfferingForm({
               open={addingCap !== null}
               onClose={() => setAddingCap(null)}
               title={
-                addingCap === "section" ? "Add a group heading" : "Add a service"
+                addingCap === "section" ? "Add a group" : "Add a component"
               }
             >
               <div className="space-y-4">
                 <p className="text-[12.5px] leading-relaxed text-text-secondary">
                   {addingCap === "section"
-                    ? "A heading groups the services under it on the offering page. Use it when the list is long enough to need sections."
+                    ? "A group holds the component cards under it on the offering page. There are four, and a reader always sees them in the same order: Services, Modules, Module Agents, Add-on Agents."
                     : "One thing Freyr actually does inside this offering. Each one becomes its own card on the offering page, so a rep can point at it in a conversation."}
                 </p>
                 {addingCap === "section" ? (
                   <div>
-                    <label className={LABEL}>Group heading</label>
-                    <input
-                      autoFocus
-                      className={FIELD}
+                    <label className={LABEL}>Group</label>
+                    <ColorSelect
                       value={capDraft}
-                      onChange={(event) => setCapDraft(event.target.value)}
-                      placeholder="e.g. Product & Portfolio Strategy"
-                      aria-label="Group heading"
+                      options={groupOptions(capDraft).filter((o) => o.value)}
+                      onChange={setCapDraft}
+                      ariaLabel="Group"
                     />
                   </div>
                 ) : (
@@ -1787,7 +1922,7 @@ export function OfferingForm({
                         value={capDraft}
                         onChange={(event) => setCapDraft(event.target.value)}
                         placeholder="e.g. Products"
-                        aria-label="New service card heading"
+                        aria-label="New component card heading"
                       />
                     </div>
                     <div>
@@ -1799,7 +1934,7 @@ export function OfferingForm({
                           setCapDescriptionDraft(event.target.value)
                         }
                         placeholder="Explain what this service does for the seller."
-                        aria-label="New service card description"
+                        aria-label="New component card description"
                       />
                     </div>
                   </div>
@@ -1827,7 +1962,7 @@ export function OfferingForm({
                       setAddingCap(null);
                     }}
                   >
-                    {addingCap === "section" ? "Add heading" : "Add service"}
+                    {addingCap === "section" ? "Add group" : "Add component"}
                   </Button>
                 </div>
               </div>

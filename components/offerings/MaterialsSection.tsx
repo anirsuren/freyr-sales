@@ -1074,8 +1074,16 @@ export function MaterialsSection({
                   <span
                     className={cn(
                       "mt-0.5 block text-[11.5px]",
+                      /* A LIGHTER GREEN (Anir, Aug 26: "you made this green
+                         font — can you make the font slightly lighter green?
+                         Whichever folder has a number of files, just make that
+                         slightly lighter"). #1A7A35 is the deep verified green
+                         this app uses for a signed-off number, and a file
+                         count is not that; #16A34A is the same hue a step up
+                         in lightness, so it still reads as "there is something
+                         here" without carrying the weight of a verdict. */
                       count > 0
-                        ? "font-semibold text-[color:#1A7A35]"
+                        ? "font-semibold text-[color:#16A34A]"
                         : "text-text-secondary"
                     )}
                   >
@@ -1174,7 +1182,11 @@ export function MaterialsSection({
                     pulled back the same day — a table of tags and names reads
                     as a ragged cloud when nothing shares an edge. Only ACTIONS
                     centres, because it is a fixed row of icons. */}
-                <th className="px-4 py-3 align-middle">File name</th>
+                {/* WIDER, with the icon gone (Anir, Aug 26: "make only this
+                    column a bit wider so that it's not so clustered within
+                    less space — just the file name column"). Titles were
+                    wrapping to four lines beside a 32px tile. */}
+                <th className="w-[26%] px-4 py-3 align-middle">File name</th>
                 <th className="px-3 py-3 align-middle">File format</th>
                 {/* FOLDER IS A COLUMN NOW (Anir, Aug 25: "in the file view,
                     when we're just looking at the list of files, can you add a
@@ -1260,7 +1272,12 @@ export function MaterialsSection({
                         onClick={() => uploaded ? openViewer(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
                         className="flex min-w-0 items-center gap-2.5 text-left"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                        {/* NO FILE-TYPE TILE AT THE ROW HEAD (Anir, Aug 26:
+                            "can you remove these icons from the very left?").
+                            The File format column two along already names the
+                            type in words, so the tile repeated it as a glyph
+                            and ate the width the file name needed. */}
+                        <span className="hidden">
                           <Icon size={15} strokeWidth={1.9} />
                         </span>
                         <span className="min-w-0">

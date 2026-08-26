@@ -78,7 +78,19 @@ type Sheets = {
       color?: string;
       bold?: boolean;
       italic?: boolean;
+      underline?: boolean;
+      /** Points, straight from the workbook. */
+      size?: number;
       align?: "left" | "center" | "right";
+      valign?: "top" | "middle" | "bottom";
+      wrap?: boolean;
+      strike?: boolean;
+      border?: {
+        top?: string;
+        right?: string;
+        bottom?: string;
+        left?: string;
+      };
     }
   >;
   widths?: (number | null)[];
@@ -1107,12 +1119,37 @@ export function MaterialViewer({
                 const styleFor = (r: number, c: number) => {
                   const st = currentSheet.styles?.[`${r}:${c}`];
                   if (!st) return undefined;
+                  /* Everything the workbook actually says about this cell.
+                     Inline styles beat the stylesheet's own text-align, so a
+                     centred header lands centred. */
                   return {
                     background: st.bg,
                     color: st.color,
                     fontWeight: st.bold ? 700 : undefined,
                     fontStyle: st.italic ? "italic" : undefined,
+                    textDecoration:
+                      st.underline && st.strike
+                        ? "underline line-through"
+                        : st.underline
+                          ? "underline"
+                          : st.strike
+                            ? "line-through"
+                            : undefined,
+                    /* Excel points are ~1.33px, and the grid's own 12.5px is
+                       the baseline for an 11pt default — scale from that so a
+                       14pt title looks bigger and a 9pt note looks smaller
+                       without either running away. */
+                    fontSize: st.size ? `${(st.size / 11) * 12.5}px` : undefined,
                     textAlign: st.align,
+                    verticalAlign: st.valign,
+                    whiteSpace: st.wrap === false ? "nowrap" : undefined,
+                    /* A ruled cell draws its own edges over the grid's
+                       hairlines, so a header band or a totals underline
+                       reads the way it does in Excel. */
+                    borderTop: st.border?.top,
+                    borderRight: st.border?.right,
+                    borderBottom: st.border?.bottom,
+                    borderLeft: st.border?.left,
                   } as React.CSSProperties;
                 };
                 return (

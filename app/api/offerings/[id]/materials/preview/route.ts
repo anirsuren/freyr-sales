@@ -71,7 +71,12 @@ type Preview =
             color?: string;
             bold?: boolean;
             italic?: boolean;
+            underline?: boolean;
+            /** Points, straight from the workbook. */
+            size?: number;
             align?: "left" | "center" | "right";
+            valign?: "top" | "middle" | "bottom";
+            wrap?: boolean;
           }
         >;
         /** Column widths in Excel's character units, so a Title column stays
@@ -263,215 +268,12 @@ export async function GET(
     }
 
     if (ext === "xlsx" || ext === "xls") {
-      const XLSX = await import("xlsx");
-      /* cellStyles asks SheetJS to keep each cell's `s` (style) record — it is
-         dropped by default, which is why the preview had nothing to show. */
-      const book = XLSX.read(buffer, { type: "buffer", cellStyles: true });
+      /* The workbook reader lives in lib/sheetPreview so the same code that
+         serves this route can be run cell-by-cell against a spread of
+         deliberately awkward workbooks in tests/sheet-fidelity.test.mjs. */
+      const { readWorkbook } = await import("@/lib/sheetPreview");
+      const sheets = await readWorkbook(buffer);
 
-      /** Excel colours arrive as ARGB ("FF1F3864"), a theme index, or an
-       *  indexed palette entry. Only a real RGB is trusted; anything else is
-       *  left alone rather than guessed at, because a wrong colour is worse
-       *  than none. */
-      const rgb = (value: unknown): string | undefined => {
-        const raw = (value as { rgb?: string } | undefined)?.rgb;
-        if (typeof raw !== "string") return undefined;
-        const hex = raw.length === 8 ? raw.slice(2) : raw;
-        return /^[0-9a-fA-F]{6}$/.test(hex) ? `#${hex.toUpperCase()}` : undefined;
-      };
-      // Send cell values, not SheetJS's unstyled HTML. The client builds a
-      // proper workbook surface with row/column headers, sticky coordinates,
-      // grid lines and two-directional scrolling. The old HTML output was a
-      // loose wall of text that did not look or behave like a spreadsheet.
-      const MAX_ROWS = 500;
-      const MAX_COLUMNS = 80;
-      const sheets = book.SheetNames.slice(0, 12).map((name) => {
-        const worksheet = book.Sheets[name];
-        const decoded = worksheet["!ref"]
-          ? XLSX.utils.decode_range(worksheet["!ref"])
-          : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
-        const totalRows = Math.max(1, decoded.e.r - decoded.s.r + 1);
-        const totalColumns = Math.max(1, decoded.e.c - decoded.s.c + 1);
-        const rawRows = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
-          raw: false,
-          defval: "",
-          blankrows: true,
-          range: {
-            s: decoded.s,
-            e: {
-              r: Math.min(decoded.e.r, decoded.s.r + MAX_ROWS - 1),
-              c: Math.min(decoded.e.c, decoded.s.c + MAX_COLUMNS - 1),
-            },
-          },
-        }) as unknown[][];
-        const rows = rawRows.map((row) =>
-          row.slice(0, MAX_COLUMNS).map((cell) => {
-            if (cell == null) return null;
-            if (
-              typeof cell === "string" ||
-              typeof cell === "number" ||
-              typeof cell === "boolean"
-            )
-              return cell;
-            return String(cell);
-          })
-        );
-        /**
-         * TRIM TO WHAT IS ACTUALLY THERE. Excel keeps a stale "!ref" range —
-         * cells once touched or merely formatted — so a 6×5 sheet arrived
-         * declaring columns out to Z and a thousand rows, and the preview
-         * dutifully drew the emptiness (Anir, Aug 8: "if the source file does
-         * not have that many columns, that's a problem... if there's nothing,
-         * why are you filling the space?"). Only TRAILING emptiness goes: a
-         * gap between B and Z with content on both sides is kept, because
-         * dropping interior columns would misalign every row.
-         */
-        const emptyCell = (cell: unknown) =>
-          cell == null || (typeof cell === "string" && cell.trim() === "");
-        let lastRow = -1;
-        let lastColumn = -1;
-        rows.forEach((row, r) => {
-          row.forEach((cell, c) => {
-            if (emptyCell(cell)) return;
-            if (r > lastRow) lastRow = r;
-            if (c > lastColumn) lastColumn = c;
-          });
-        });
-        const usedRows =
-          lastRow >= 0
-            ? rows.slice(0, lastRow + 1).map((row) => {
-                const trimmed = row.slice(0, lastColumn + 1);
-                // Pad short rows so every row has the same column count.
-                while (trimmed.length < lastColumn + 1) trimmed.push(null);
-                return trimmed;
-              })
-            : [[null]];
-        /* Styles for the cells that survived the trim, addressed in the
-           TRIMMED grid's coordinates so the client never has to know where the
-           sheet's used range began. */
-        const styles: Record<string, Record<string, unknown>> = {};
-        if (lastRow >= 0) {
-          for (let r = 0; r <= lastRow; r++) {
-            for (let c = 0; c <= lastColumn; c++) {
-              const address = XLSX.utils.encode_cell({
-                r: decoded.s.r + r,
-                c: decoded.s.c + c,
-              });
-              const cell = worksheet[address] as
-                | { s?: Record<string, unknown> }
-                | undefined;
-              /**
-               * TWO SHAPES, ONE READER. SheetJS's community build (0.20.x)
-               * puts the fill FLAT on `s` — `{ patternType, fgColor, bgColor }`
-               * — while other readers nest it as `s.fill.fgColor`. My first
-               * pass only understood the nested shape, so a Freyr sheet whose
-               * header band is solid #0D1233 came back with zero styles and
-               * the viewer stayed flat. Read both.
-               */
-              const style = cell?.s as
-                | {
-                    patternType?: string;
-                    fgColor?: unknown;
-                    fill?: { fgColor?: unknown; patternType?: string };
-                    font?: {
-                      color?: unknown;
-                      bold?: boolean;
-                      italic?: boolean;
-                      sz?: number;
-                    };
-                    color?: unknown;
-                    bold?: boolean;
-                    italic?: boolean;
-                    alignment?: { horizontal?: string };
-                    horizontal?: string;
-                  }
-                | undefined;
-              if (!style) continue;
-              const entry: Record<string, unknown> = {};
-              const pattern = style.fill?.patternType ?? style.patternType;
-              // "none" is Excel's way of saying no fill at all.
-              if (pattern && pattern !== "none") {
-                const bg = rgb(style.fill?.fgColor ?? style.fgColor);
-                // White on white is the default, not a decision worth sending.
-                if (bg && bg !== "#FFFFFF") entry.bg = bg;
-              }
-              const color = rgb(style.font?.color ?? style.color);
-              if (color && color !== "#000000") entry.color = color;
-              if (style.font?.bold ?? style.bold) entry.bold = true;
-              if (style.font?.italic ?? style.italic) entry.italic = true;
-              const align = style.alignment?.horizontal ?? style.horizontal;
-              if (align === "center" || align === "right" || align === "left")
-                entry.align = align;
-              /* A DARK BAND NEEDS LIGHT TEXT. Excel stores the header row's
-                 white font in the theme, which this build does not resolve, so
-                 a #0D1233 fill would have rendered black-on-navy. When the fill
-                 is dark and no explicit colour survived, pick white — the same
-                 call Excel itself makes. */
-              if (entry.bg && !entry.color) {
-                const hex = String(entry.bg).slice(1);
-                const luminance =
-                  (0.299 * parseInt(hex.slice(0, 2), 16) +
-                    0.587 * parseInt(hex.slice(2, 4), 16) +
-                    0.114 * parseInt(hex.slice(4, 6), 16)) /
-                  255;
-                if (luminance < 0.5) entry.color = "#FFFFFF";
-              }
-              if (Object.keys(entry).length > 0) styles[`${r}:${c}`] = entry;
-            }
-          }
-        }
-
-        /* Column widths, in Excel's character units. `wch` is what the file
-           stores; `wpx` appears when a reader has already converted. */
-        const cols = (worksheet["!cols"] ?? []) as {
-          wch?: number;
-          wpx?: number;
-          hidden?: boolean;
-        }[];
-        const widths =
-          lastColumn >= 0
-            ? Array.from({ length: lastColumn + 1 }, (_, c) => {
-                const col = cols[decoded.s.c + c];
-                if (!col || col.hidden) return null;
-                if (typeof col.wch === "number") return col.wch;
-                if (typeof col.wpx === "number") return col.wpx / 7;
-                return null;
-              })
-            : [];
-
-        /* Merged ranges, clipped to the trimmed grid and rebased onto it. A
-           merged title spanning A1:E1 must render as one wide cell, not five. */
-        const merges: [number, number, number, number][] = [];
-        for (const m of (worksheet["!merges"] ?? []) as {
-          s: { r: number; c: number };
-          e: { r: number; c: number };
-        }[]) {
-          const sr = m.s.r - decoded.s.r;
-          const sc = m.s.c - decoded.s.c;
-          const er = m.e.r - decoded.s.r;
-          const ec = m.e.c - decoded.s.c;
-          if (sr < 0 || sc < 0 || sr > lastRow || sc > lastColumn) continue;
-          merges.push([
-            sr,
-            sc,
-            Math.min(er, lastRow),
-            Math.min(ec, lastColumn),
-          ]);
-        }
-
-        return {
-          name,
-          rows: usedRows,
-          styles: Object.keys(styles).length ? (styles as never) : undefined,
-          widths: widths.some((w) => w != null) ? widths : undefined,
-          merges: merges.length ? merges : undefined,
-          totalRows: lastRow >= 0 ? lastRow + 1 : 1,
-          totalColumns: lastRow >= 0 ? lastColumn + 1 : 1,
-          // Truncated only when CONTENT hits the window edge — a stale declared
-          // range reaching Z is not a reason to claim the preview is limited.
-          truncated: lastRow + 1 >= MAX_ROWS || lastColumn + 1 >= MAX_COLUMNS,
-        };
-      });
       return NextResponse.json({
         preview: { kind: "sheets", sheets } satisfies Preview,
         label: material.label,

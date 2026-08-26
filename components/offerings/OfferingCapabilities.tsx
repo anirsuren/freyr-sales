@@ -9,6 +9,7 @@ import {
 } from "@/components/offerings/BriefText";
 import { offeringMark, serviceCardMark } from "@/components/ui/OfferingIcon";
 import type { ServiceCardStyle } from "@/lib/serviceCardStyle";
+import { componentGroupRank, componentNoun } from "@/lib/componentGroups";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -152,11 +153,9 @@ export function splitCapability(source: string): Capability {
 // paragraph in the same position is the offering's lead-in and stays prose.
 const HEADING_MAX = 90;
 // What the pieces of an offering are CALLED, by offering type.
-function includedNoun(offeringType: string | undefined, count: number): string {
-  const fusion = /freya\s*fusion/i.test(offeringType || "");
-  if (fusion) return count === 1 ? "module" : "modules";
-  return count === 1 ? "service" : "services";
-}
+/* One word for what an offering is made of, wherever the offering came from.
+   It was "modules" for Freya Fusion and "services" for everything else until
+   the vocabulary settled on components. See lib/componentGroups.ts. */
 
 const GENERIC_LEAD_IN = /^(services|offerings|capabilities|these)?\s*(include|includes|are)$/i;
 
@@ -176,7 +175,7 @@ function asHeading(line: string): string | null {
  * "Products: …", "Applications: …", and so on. That is real structure, but
  * it predates the formatted editor and therefore carries no list markers. Turn
  * that specific legacy shape into safe Markdown before parsing so it renders
- * as the same polished service cards the owner now creates in the editor.
+ * as the same polished component cards the owner now creates in the editor.
  * Nothing is written back to the database until the owner explicitly saves.
  */
 function structureLabelledParagraphs(source: string): string {
@@ -363,14 +362,11 @@ const PREVIEW = 6;
 export function OfferingCapabilities({
   text,
   offeringName,
-  offeringType,
   styles = [],
   className,
 }: {
   text: string;
   offeringName: string;
-  /** Freya Fusion offerings ship MODULES; everything else sells services. */
-  offeringType?: string;
   styles?: ServiceCardStyle[];
   className?: string;
 }) {
@@ -390,8 +386,22 @@ export function OfferingCapabilities({
     ...group,
     items: group.items.map((item) => ({ item, style: styles[styleIndex++] })),
   }));
+  /* THE READER'S ORDER, NOT THE AUTHOR'S. Services, then Modules, then
+     Module Agents, then Add-on Agents, whatever order the brief was typed in
+     (Saras, Aug 26). Anything that is not one of the four keeps its authored
+     position, after the four. Sorted before the preview limit is applied, so
+     "show 3 of 9" shows the first three a reader would read. */
+  const ordered = styledGroups
+    .map((group, index) => ({ group, index }))
+    .sort(
+      (a, b) =>
+        componentGroupRank(a.group.title) - componentGroupRank(b.group.title) ||
+        a.index - b.index
+    )
+    .map(({ group }) => group);
+
   let seen = 0;
-  const visibleGroups = styledGroups.map((group) => {
+  const visibleGroups = ordered.map((group) => {
     const items = group.items.filter(() => seen++ < limit);
     return { title: group.title, items };
   });
@@ -418,11 +428,7 @@ export function OfferingCapabilities({
           className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
           style={{ background: `${accent}14`, color: accent }}
         >
-          {/* Freyr's own vocabulary: a Freya Fusion offering is made of
-              MODULES, everything else is made of services (Anir, Aug 7: "for
-              all the offerings that come under Freya Fusion, they will have
-              to say modules instead of services"). */}
-          {parsed.count} {includedNoun(offeringType, parsed.count)}
+          {parsed.count} {componentNoun(parsed.count)}
         </span>
       </div>
 
@@ -445,8 +451,18 @@ export function OfferingCapabilities({
               )}
               {/* `items-stretch` is the grid default, but it is the thing that
                   makes `h-full` on the card mean "as tall as my neighbour",
-                  spelled out so a later refactor can't quietly drop it. */}
-              <ul className="grid grid-cols-1 items-stretch gap-2.5 md:grid-cols-2">
+                  spelled out so a later refactor can't quietly drop it.
+
+                  A group holding ONE card gets the whole row rather than half
+                  of it (Saras, Aug 26: "If there's only 1 single component
+                  card within a group, the card should automatically extend &
+                  utilize the whole whitespace in view mode"). */}
+              <ul
+                className={cn(
+                  "grid grid-cols-1 items-stretch gap-2.5",
+                  group.items.length > 1 && "md:grid-cols-2"
+                )}
+              >
                 {group.items.map(({ item, style }, ii) => (
                   <CapabilityCard
                     key={`${ii}-${item.title}`}

@@ -45,7 +45,7 @@ import {
 } from "@/lib/offeringMaterials";
 import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export type MaterialRow = {
   material: OfferingMaterial;
@@ -144,9 +144,18 @@ export function AllMaterialsBrowser({
      automatically grouped").
 
      Every column stays exactly as it is; the grouping only inserts a header
-     row per offering. Shut groups live in a Set so the default is OPEN, and
-     collapsing one is the deliberate act. */
-  const [shutOfferings, setShutOfferings] = useState<Set<string>>(new Set());
+     row per offering.
+
+     ARRIVING SHOWS THE INDEX, NOT THE CONTENTS (Anir, Aug 26, watching a rep
+     open this page: "when I try to access the sales material through the
+     sidebar, this is how it opens — it's already expanded. Can we make it so
+     the default view is basically collapsed for all of them?").
+
+     So the Set now tracks what is OPEN rather than what is shut: nothing is
+     open on arrival, and expanding is the deliberate act. Thirty-one files
+     under six offerings meant a rep landed in the middle of a list instead of
+     on a menu of it. */
+  const [openOfferings, setOpenOfferings] = useState<Set<string>>(new Set());
 
   const ordered = useMemo(() => {
     const arr = [...visible];
@@ -162,6 +171,7 @@ export function AllMaterialsBrowser({
           ) || a.material.label.localeCompare(b.material.label)
       );
     else if (sort === "recent") arr.sort((a, b) => at(b) - at(a));
+    else if (sort === "oldest") arr.sort((a, b) => at(a) - at(b));
     else
       /* "By offering" is the default: this page exists so a rep can see
          several offerings at once, and grouping by the one they are thinking
@@ -177,11 +187,22 @@ export function AllMaterialsBrowser({
   /** The rows, in the order above, cut into one block per offering. Sorting
    *  still decides the order INSIDE each block and which block comes first. */
   const offeringGroups = useMemo(() => {
-    const out: { id: string; name: string; rows: typeof ordered }[] = [];
+    const out: {
+      id: string;
+      name: string;
+      category?: string;
+      rows: typeof ordered;
+    }[] = [];
     for (const row of ordered) {
       const last = out[out.length - 1];
       if (last && last.id === row.offeringId) last.rows.push(row);
-      else out.push({ id: row.offeringId, name: row.offeringName, rows: [row] });
+      else
+        out.push({
+          id: row.offeringId,
+          name: row.offeringName,
+          category: row.offeringCategory,
+          rows: [row],
+        });
     }
     return out;
   }, [ordered]);
@@ -377,6 +398,13 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
+                  <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] tnum text-text-secondary">
+                    {row.material.addedAt ? (
+                      formatDate(row.material.addedAt)
+                    ) : (
+                      <span className="text-text-tertiary">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 align-top">
                     <div className="flex items-center gap-1">
                       <Tooltip
@@ -447,16 +475,26 @@ export function AllMaterialsBrowser({
                   headers. Do you see this?"). Header and body are written in
                   one order now, and the browser check counts them and reads
                   the first row cell by cell so it can never drift again. */}
-              <th className="w-[20%] px-4 py-2.5">Material</th>
+              <th className="w-[19%] px-4 py-2.5">Material</th>
               <th className="w-[7%] px-4 py-2.5">File format</th>
               <th className="w-[11%] px-4 py-2.5">Offering</th>
               <th className="w-[12%] px-4 py-2.5">Folder</th>
               <th className="w-[9%] px-4 py-2.5">Access level</th>
-              <th className="w-[11%] px-4 py-2.5">Stage</th>
-              <th className="w-[10%] px-4 py-2.5">Division</th>
+              {/* "Buyer's journey stage", not "Stage" (Anir, Aug 26: "this is
+                  just titled as Stage — if you can update this to say Buyers
+                  Journey Stage"). A bare "Stage" reads as a deal stage, which
+                  is a different thing entirely on the Opportunities page. */}
+              <th className="w-[11%] px-4 py-2.5">Buyer&rsquo;s journey stage</th>
+              <th className="w-[9%] px-4 py-2.5">Division</th>
               {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
                   of two letters ("Inay / at / Paw / ar"). */}
-              <th className="w-[13%] px-4 py-2.5">Uploaded by</th>
+              <th className="w-[12%] px-4 py-2.5">Uploaded by</th>
+              {/* WHEN, NOT ONLY WHO (Anir, Aug 26: "can you add a new column
+                  which says Upload Date so that folks know when each of the
+                  files was uploaded? Here only, specifically when we are
+                  trying to access the sales material through the sidebar").
+                  The offering's own tab is deliberately untouched. */}
+              <th className="w-[9%] px-4 py-2.5">Upload date</th>
               {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
                   actions, and it has to be aligned left"). "Open" named one of
                   the two buttons under it and centred them, so the header sat
@@ -561,6 +599,35 @@ export function AllMaterialsBrowser({
           <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
             Sort
           </span>
+          {/* ONE BUTTON THAT KNOWS WHICH WAY IT GOES (Anir, Aug 19, on the
+              pipeline: "it should just be one button, it'll know if I close
+              all or open all" — and Aug 26, asking for the same control here).
+              Any group open means the next press closes everything; all shut
+              means it opens everything. Only shown while grouping by offering,
+              because the flat sorts have no groups to fold. */}
+          {sort === "offering" && offeringGroups.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setOpenOfferings(
+                  openOfferings.size > 0
+                    ? new Set()
+                    : new Set(offeringGroups.map((g) => g.id))
+                )
+              }
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+            >
+              <ChevronDown
+                size={13}
+                strokeWidth={2.3}
+                className={cn(
+                  "transition-transform",
+                  openOfferings.size === 0 && "-rotate-90"
+                )}
+              />
+              {openOfferings.size > 0 ? "Close all" : "Open all"}
+            </button>
+          )}
           <ColorSelect
             value={sort}
             onChange={setSort}
@@ -574,6 +641,12 @@ export function AllMaterialsBrowser({
               { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
               { value: "recent", label: "Newest first", color: "#C2410C", icon: Clock3 },
+              /* Sorting by the column that was just added (Anir, Aug 26: "when
+                 that is done, you can also add a sorting by that, so sort by
+                 upload date"). Oldest-first is the useful half of the pair:
+                 newest already exists above, and the question this page gets
+                 asked is which material has gone stale. */
+              { value: "oldest", label: "Oldest upload", color: "#B45309", icon: Clock3 },
             ]}
           />
         </div>
@@ -597,7 +670,7 @@ export function AllMaterialsBrowser({
            page itself. */
         <div className="mt-4 space-y-6">
           {offeringGroups.map((group) => {
-            const shut = shutOfferings.has(group.id);
+            const shut = !openOfferings.has(group.id);
             return (
               <div
                 key={group.id}
@@ -606,7 +679,7 @@ export function AllMaterialsBrowser({
                 <button
                   type="button"
                   onClick={() =>
-                    setShutOfferings((current) => {
+                    setOpenOfferings((current) => {
                       const next = new Set(current);
                       if (next.has(group.id)) next.delete(group.id);
                       else next.add(group.id);
@@ -627,8 +700,21 @@ export function AllMaterialsBrowser({
                       shut && "-rotate-90"
                     )}
                   />
-                  <OfferingIcon name={group.name} className="h-6 w-6 shrink-0" />
+                  {/* No offering mark on the group header (Anir, Aug 26:
+                      "remove these icons"). The name is the label and the
+                      chevron is the control; a third glyph between them was
+                      decoration. */}
                   <b className="text-[13px] text-text-primary">{group.name}</b>
+                  {/* THE CATEGORY, QUIETLY (Anir, Aug 26: "beside the main name
+                      of the offering, add the offering category in small font,
+                      between the offering name and the number of materials.
+                      These three small things don't need to be very
+                      highlighted"). */}
+                  {group.category && (
+                    <span className="truncate text-[11px] text-text-tertiary">
+                      {group.category}
+                    </span>
+                  )}
                   <span className="text-[11px] font-semibold text-text-tertiary tnum">
                     {group.rows.length}{" "}
                     {group.rows.length === 1 ? "material" : "materials"}

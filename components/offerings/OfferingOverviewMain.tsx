@@ -281,7 +281,6 @@ export function OfferingOverviewMain({
           <OfferingCapabilities
             text={description}
             offeringName={o.offering_name}
-            offeringType={o.offering_type}
             styles={o.service_card_styles}
           />
           )}
