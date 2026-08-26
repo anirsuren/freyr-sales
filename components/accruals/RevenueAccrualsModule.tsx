@@ -6,8 +6,11 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CalendarRange,
+  Building2,
   ChevronDown,
   Coins,
+  Download,
+  Package,
   Lock,
   Pencil,
   Plus,
@@ -29,6 +32,8 @@ import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
+import { downloadCSV, toCSV } from "@/lib/csv";
+import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import {
   buildDeviation,
   judgePlan,
@@ -106,6 +111,12 @@ export function RevenueAccrualsModule({
   const [confirmUnfreeze, setConfirmUnfreeze] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AccrualPlan | null>(null);
   const [openDeal, setOpenDeal] = useState<string | null>(null);
+  /** Same two controls every other list page carries. */
+  const [sort, setSort] = useState<"biggest" | "risk" | "soonest" | "customer">("biggest");
+  /* "Revenue accruals can also be looked at from an offering point of view"
+     (Suren, Aug 25) — so grouping is not decoration here, it is one of the
+     three angles he asked the module to answer. */
+  const [groupBy, setGroupBy] = useState<"none" | "customer" | "offering">("none");
   /** The opportunity whose plan just landed — opened and lit for a moment. */
   const [justSaved, setJustSaved] = useState<string | null>(null);
 
@@ -170,12 +181,81 @@ export function RevenueAccrualsModule({
           .toLowerCase()
           .includes(q);
       })
-      .sort(
-        (a, b) =>
-          Number(b.verdict.invalid) - Number(a.verdict.invalid) ||
-          planTotal(b.plan) - planTotal(a.plan)
-      );
-  }, [judged, query, only]);
+      .sort((a, b) => {
+        if (sort === "customer") {
+          return (
+            a.plan.customer.localeCompare(b.plan.customer) ||
+            planTotal(b.plan) - planTotal(a.plan)
+          );
+        }
+        if (sort === "soonest") {
+          const first = (x: typeof a) => x.plan.lines[0]?.month ?? "9999-99";
+          return first(a).localeCompare(first(b));
+        }
+        if (sort === "risk") {
+          /* Most at risk: flagged first, then by how much money is stranded —
+             a flagged $2M plan is not the same finding as a flagged $20K one. */
+          return (
+            Number(b.verdict.invalid) - Number(a.verdict.invalid) ||
+            b.verdict.strandedAmount - a.verdict.strandedAmount ||
+            planTotal(b.plan) - planTotal(a.plan)
+          );
+        }
+        return planTotal(b.plan) - planTotal(a.plan);
+      });
+  }, [judged, query, only, sort]);
+
+  /** Grouped exactly the way Opportunities groups: a header per bucket with
+   *  its own total, biggest bucket first. */
+  const groups = useMemo(() => {
+    if (groupBy === "none") return null;
+    const by = new Map<string, typeof shown>();
+    for (const row of shown) {
+      const key =
+        groupBy === "customer"
+          ? row.plan.customer || "No customer"
+          : row.plan.offeringLabel || "No offering";
+      by.set(key, [...(by.get(key) ?? []), row]);
+    }
+    return [...by.entries()]
+      .map(([key, rows]) => ({
+        key,
+        rows,
+        total: rows.reduce((s, r) => s + planTotal(r.plan), 0),
+        flagged: rows.filter((r) => r.verdict.invalid).length,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [shown, groupBy]);
+
+  /**
+   * EXPORT, BECAUSE THIS MODULE REPLACES A SPREADSHEET. Suren's whole reason
+   * for it was "I don't want you guys to maintain an Excel sheet" — the way to
+   * win that argument is for the app to hand over the sheet on demand, not to
+   * make the sheet unreachable. One row per month per deal, which is the shape
+   * anybody would pivot.
+   */
+  function exportCsv() {
+    const rows: (string | number)[][] = [];
+    for (const { plan, verdict } of shown) {
+      for (const line of plan.lines) {
+        rows.push([
+          plan.opportunityName, plan.customer, plan.offeringLabel ?? "",
+          plan.contractValue, monthLabel(line.month), line.month, line.amount,
+          verdict.invalid ? "FLAGGED" : "On plan", verdict.headline,
+          plan.updatedBy, plan.updatedAt.slice(0, 10),
+        ]);
+      }
+    }
+    downloadCSV(
+      `freyr-revenue-accruals-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(
+        ["Opportunity", "Customer", "Offering", "Contract value", "Month",
+         "Month key", "Amount", "Flag", "Why", "Updated by", "Updated"],
+        rows
+      )
+    );
+    toast(`${rows.length} monthly ${rows.length === 1 ? "row" : "rows"} exported.`);
+  }
 
   async function post(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -399,6 +479,10 @@ export function RevenueAccrualsModule({
             onQuery={setQuery}
             placeholder="Search by deal, customer or offering"
             searchAriaLabel="Search accrual plans"
+            onClearAll={() => {
+              setOnly("all");
+              setGroupBy("none");
+            }}
             filtersBefore={
               <ColorSelect
                 value={only}
@@ -421,6 +505,52 @@ export function RevenueAccrualsModule({
                   },
                 ]}
               />
+            }
+            filtersAfter={
+              /* His third angle. The other two — by deal and by month — are
+                 the list and the gap tab; this is the offering one. */
+              <ColorSelect
+                value={groupBy}
+                onChange={(v) => setGroupBy(v as typeof groupBy)}
+                ariaLabel="Group rows"
+                minWidth={180}
+                dense
+                collapsible={false}
+                options={[
+                  { value: "none", label: "No grouping", color: "#8E98A8" },
+                  { value: "customer", label: "Group by customer", color: "#0071E3", icon: Building2 },
+                  { value: "offering", label: "Group by offering", color: "#B4318F", icon: Package },
+                ]}
+              />
+            }
+            sort={
+              <ColorSelect
+                value={sort}
+                onChange={(v) => setSort(v as typeof sort)}
+                ariaLabel="Sort plans"
+                minWidth={175}
+                dense
+                collapsible={false}
+                options={[
+                  { value: "biggest", label: "Biggest first", color: "#0071E3" },
+                  { value: "risk", label: "Most at risk", color: AMBER },
+                  { value: "soonest", label: "Soonest month", color: "#0F766E" },
+                  { value: "customer", label: "Customer A–Z", color: "#8E98A8" },
+                ]}
+              />
+            }
+            display={
+              <PriorityTooltip label="Export CSV">
+                <button
+                  type="button"
+                  onClick={exportCsv}
+                  aria-label="Export CSV"
+                  className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+                >
+                  <Download size={16} strokeWidth={1.5} />
+                  <PriorityLabel>Export CSV</PriorityLabel>
+                </button>
+              </PriorityTooltip>
             }
           />
 
@@ -493,7 +623,45 @@ export function RevenueAccrualsModule({
             />
           ) : (
             <div className="mt-4 space-y-2.5">
-              {shown.map(({ plan, deal, verdict }) => {
+              {(groups
+                ? groups.flatMap((g) => [
+                    /* A GROUP HEADER, then its plans — the same shape the
+                       pipeline uses when you group it by customer. The total
+                       is on the header because a bucket you cannot value is
+                       just a fold. */
+                    <div
+                      key={`h-${g.key}`}
+                      data-accrual-group={g.key}
+                      className="flex items-center gap-2.5 px-1 pb-0.5 pt-2"
+                    >
+                      {groupBy === "customer" ? (
+                        <CompanyLogo name={g.key} className="h-6 w-6 shrink-0" />
+                      ) : (
+                        <Package size={14} strokeWidth={2.2} className="shrink-0 text-[color:#B4318F]" />
+                      )}
+                      <span className="text-[13px] font-bold text-text-primary">
+                        {g.key}
+                      </span>
+                      <span className="text-[12px] text-text-secondary tnum">
+                        {g.rows.length} {g.rows.length === 1 ? "plan" : "plans"} ·{" "}
+                        {formatMoney(g.total)}
+                      </span>
+                      {g.flagged > 0 && (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                          style={{ background: "rgba(180,83,9,0.10)", color: AMBER }}
+                        >
+                          {g.flagged} flagged
+                        </span>
+                      )}
+                      <span className="h-px flex-1 bg-border-light" />
+                    </div>,
+                    ...g.rows,
+                  ])
+                : shown
+              ).map((entry) => {
+                if (!("plan" in entry)) return entry;
+                const { plan, deal, verdict } = entry;
                 const fresh = justSaved === plan.opportunityId;
                 const isOpen = openDeal === plan.id || fresh;
                 return (

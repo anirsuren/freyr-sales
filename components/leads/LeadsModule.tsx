@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Pencil,
   Clock3,
   Plus,
+  Download,
   Trash2,
   UserPlus,
   Users,
@@ -24,7 +27,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+import { downloadCSV, toCSV } from "@/lib/csv";
+import { PinnableTable } from "@/components/ui/PinnableTable";
+import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import {
   LEAD_SOURCES,
   LEAD_STATUSES,
@@ -97,6 +103,8 @@ export function LeadsModule({
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
+  /** Which lead is folded open. Same mechanic as every other list here. */
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   const leads = state.leads;
   const open = leads.filter(isOpenLead);
@@ -126,6 +134,24 @@ export function LeadsModule({
       return sort === "oldest" ? at - bt : bt - at;
     });
   }, [leads, query, statuses, sources, owners, sort]);
+
+  /** The list as it is filtered and sorted right now, not the whole store —
+   *  exporting something other than what is on screen is a lie. */
+  function exportCsv() {
+    downloadCSV(
+      `freyr-leads-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(
+        ["Ref", "Name", "Title", "Company", "Source", "Status", "Owner",
+         "Email", "Phone", "Country", "Asked about", "Came in", "Last moved"],
+        shown.map((l) => [
+          l.ref, l.name, l.title ?? "", l.company, l.source, l.status,
+          l.owner ?? "", l.email ?? "", l.phone ?? "", l.country ?? "",
+          l.interest ?? "", l.createdAt.slice(0, 10), l.updatedAt.slice(0, 10),
+        ])
+      )
+    );
+    toast(`${shown.length} ${shown.length === 1 ? "lead" : "leads"} exported.`);
+  }
 
   async function post(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -282,6 +308,22 @@ export function LeadsModule({
             ],
           },
         ]}
+        display={
+          /* EXPORT, LIKE CUSTOMERS AND CONTACTS ALREADY HAVE. A list people
+             work from is a list they take into a meeting; every other roster
+             in this app lets you take it with you. */
+          <PriorityTooltip label="Export CSV">
+            <button
+              type="button"
+              onClick={exportCsv}
+              aria-label="Export CSV"
+              className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              <Download size={16} strokeWidth={1.5} />
+              <PriorityLabel>Export CSV</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+        }
         sort={
           <ColorSelect
             value={sort}
@@ -312,7 +354,11 @@ export function LeadsModule({
           }
         />
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border-light bg-white shadow-card">
+        <div className="mt-4 overflow-hidden rounded-xl border border-border-light bg-white shadow-card">
+          {/* The header row stays put while you scroll, the same as Team and
+              Solutioning (Anir, Aug 9: "there should be an option to pin the
+              row headers and the column headers if I want"). */}
+          <PinnableTable id="leads-table">
           <table className="w-full min-w-[1080px] text-left">
             <thead>
               <tr className="border-b border-border-light bg-surface/40 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2.5">
@@ -323,117 +369,238 @@ export function LeadsModule({
                 <th className="w-[12%]">Status</th>
                 <th className="w-[14%]">Owner</th>
                 <th className="w-[10%]">Last moved</th>
-                <th className="w-[7%]">Actions</th>
+                <th className="w-[9%] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
               {shown.map((lead) => {
                 const age = leadAgeDays(lead);
                 const isStale = isOpenLead(lead) && age >= 21;
+                const open = openRow === lead.id;
                 return (
-                  <tr
-                    key={lead.id}
-                    data-lead-row={lead.id}
-                    className="group transition-colors hover:bg-blue-light/25"
-                  >
-                    <td className="px-4 py-2.5 text-[12px] font-semibold tnum text-text-tertiary">
-                      {lead.ref}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => openEditor(lead)}
-                        className="flex items-center gap-2 text-left"
-                      >
-                        <Avatar
-                          name={lead.name || lead.company}
-                          initialsOnly
-                          className="h-7 w-7 shrink-0 text-[9px]"
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold text-text-primary group-hover:text-blue-primary">
-                            {lead.name || "—"}
-                          </span>
-                          {lead.title && (
-                            <span className="block truncate text-[11.5px] text-text-secondary">
-                              {lead.title}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
-                        <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
-                        <span className="truncate">{lead.company || "—"}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
-                        style={{
-                          background: `${leadSourceColor(lead.source)}18`,
-                          color: leadSourceColor(lead.source),
-                        }}
-                      >
-                        {lead.source}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
-                        style={{
-                          background: `${leadStatusColor(lead.status)}18`,
-                          color: leadStatusColor(lead.status),
-                        }}
-                      >
-                        {lead.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {lead.owner ? (
-                        <span className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
-                          <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[8px]" />
-                          <span className="truncate">{lead.owner}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[12px] text-text-tertiary">Unassigned</span>
+                  <Fragment key={lead.id}>
+                    {/* THE ROW FOLDS OPEN, like every other list in this app
+                        (Anir, Aug 25: "should be a dropdown bro — didn't I
+                        specifically say it has to be consistent with every
+                        other thing and every other page"). The first cut
+                        opened a modal and put a bare arrow in Actions that
+                        jumped to Solutioning, so clicking a lead took you to
+                        a different module entirely. Clicking a lead now opens
+                        the lead; the handoff is a named button inside. */}
+                    <tr
+                      data-lead-row={lead.id}
+                      onClick={() => setOpenRow(open ? null : lead.id)}
+                      aria-expanded={open}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        open
+                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          : "hover:bg-surface"
                       )}
-                    </td>
-                    <td className="px-4 py-2.5 text-[12px] tnum">
-                      <span className={cn(isStale && "font-semibold text-[color:#B45309]")}>
-                        {age === 0 ? "Today" : age === 1 ? "Yesterday" : `${age}d ago`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-1">
-                        {/* A lead is qualified with a meeting or a
-                            presentation, never a submission (his rule). This
-                            hands the lead straight to Solutioning. */}
-                        <Link
-                          href={`/solutioning?new=1&lead=${encodeURIComponent(lead.ref)}&company=${encodeURIComponent(lead.company)}`}
-                          title="Request a meeting or a presentation for this lead"
-                          className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <td className="px-4 py-2.5 text-[12px] font-semibold tnum text-text-tertiary">
+                        {lead.ref}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="flex items-center gap-2">
+                          <Avatar
+                            name={lead.name || lead.company}
+                            initialsOnly
+                            className="h-7 w-7 shrink-0 text-[9px]"
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate text-[13px] font-semibold text-text-primary">
+                              {lead.name || "—"}
+                            </span>
+                            {lead.title && (
+                              <span className="block truncate text-[11.5px] text-text-secondary">
+                                {lead.title}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+                          <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
+                          <span className="truncate">{lead.company || "—"}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                          style={{
+                            background: `${leadSourceColor(lead.source)}18`,
+                            color: leadSourceColor(lead.source),
+                          }}
                         >
-                          <ArrowRight size={14} strokeWidth={2.2} />
-                        </Link>
-                        {live && canWrite && (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDelete(lead)}
-                            title="Delete this lead"
-                            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
-                          >
-                            <Trash2 size={14} strokeWidth={2.2} />
-                          </button>
+                          {lead.source}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                          style={{
+                            background: `${leadStatusColor(lead.status)}18`,
+                            color: leadStatusColor(lead.status),
+                          }}
+                        >
+                          {lead.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {lead.owner ? (
+                          <span className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
+                            <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[8px]" />
+                            <span className="truncate">{lead.owner}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-text-tertiary">Unassigned</span>
                         )}
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] tnum">
+                        <span className={cn(isStale && "font-semibold text-[color:#B45309]")}>
+                          {age === 0 ? "Today" : age === 1 ? "Yesterday" : `${age}d ago`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {/* Same cluster the pipeline row uses: the tools, then
+                            the chevron that says the row opens. */}
+                        <span className="flex items-center justify-end gap-1">
+                          {live && canWrite && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditor(lead);
+                                }}
+                                title="Edit this lead"
+                                className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <Pencil size={13} strokeWidth={2.2} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDelete(lead);
+                                }}
+                                title="Delete this lead"
+                                className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                              >
+                                <Trash2 size={13} strokeWidth={2.2} />
+                              </button>
+                            </>
+                          )}
+                          <ChevronDown
+                            size={15}
+                            strokeWidth={2.2}
+                            aria-hidden="true"
+                            className={cn(
+                              "text-text-tertiary transition-transform",
+                              open && "rotate-180 text-blue-primary"
+                            )}
+                          />
+                        </span>
+                      </td>
+                    </tr>
+
+                    {open && (
+                      <tr className="!border-t-0 bg-surface">
+                        <td
+                          colSpan={8}
+                          className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        >
+                          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white p-4">
+                            {lead.interest && (
+                              <p className="text-[13px] text-text-primary">
+                                {lead.interest}
+                              </p>
+                            )}
+                            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4">
+                              {[
+                                ["Email", lead.email],
+                                ["Phone", lead.phone],
+                                ["Country", lead.country],
+                                ["Came in", formatDate(lead.createdAt)],
+                              ].map(([label, value]) => (
+                                <span key={label as string}>
+                                  <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                    {label}
+                                  </span>
+                                  {label === "Email" && value ? (
+                                    <a
+                                      href={`mailto:${value}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[12.5px] font-semibold text-blue-primary hover:underline"
+                                    >
+                                      {value}
+                                    </a>
+                                  ) : (
+                                    <span className="text-[12.5px] font-semibold text-text-primary">
+                                      {value || "—"}
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+
+                            {lead.status === "Disqualified" && lead.disqualifiedReason && (
+                              <p className="mt-3 rounded-lg bg-[rgba(180,83,9,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:#B45309]">
+                                Dropped: {lead.disqualifiedReason}
+                              </p>
+                            )}
+
+                            {lead.status === "Converted" && (
+                              <p className="mt-3 rounded-lg bg-[rgba(22,163,74,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:#16A34A]">
+                                This lead became an opportunity. The deal is the
+                                record from here.
+                              </p>
+                            )}
+
+                            {/* A LEAD IS QUALIFIED WITH A MEETING OR A
+                                PRESENTATION, NEVER A SUBMISSION (Suren, Aug 25:
+                                "at the lead level I do a meeting and
+                                presentation, not at the contact level"). Named
+                                buttons, so nothing jumps you to another module
+                                without saying so first. */}
+                            <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border-light pt-3.5">
+                              <Link
+                                href={`/solutioning?new=1&lead=${encodeURIComponent(lead.ref)}&company=${encodeURIComponent(lead.company)}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                              >
+                                <ClipboardList size={13} strokeWidth={2.2} />
+                                Request a meeting or a presentation
+                              </Link>
+                              {live && canWrite && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditor(lead);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                                >
+                                  <Pencil size={13} strokeWidth={2.2} /> Edit this lead
+                                </button>
+                              )}
+                              <span className="ml-auto text-[11.5px] text-text-tertiary">
+                                Last moved by {lead.updatedBy} ·{" "}
+                                {formatDate(lead.updatedAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
+          </PinnableTable>
         </div>
       )}
 

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Coins,
+  Download,
 
   FileSignature,
   Inbox,
@@ -30,6 +31,8 @@ import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
+import { downloadCSV, toCSV } from "@/lib/csv";
+import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import { monthKey, monthLabel, spreadEvenly } from "@/lib/revenueAccrualsShared";
 import {
   CONTRACT_STATUSES,
@@ -112,6 +115,8 @@ export function ContractsModule({
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
+  const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
+  const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
 
   const contracts = state.contracts;
   const signed = contracts.filter((c) => c.status === "Signed");
@@ -141,11 +146,55 @@ export function ContractsModule({
           .toLowerCase()
           .includes(q);
       })
-      .sort(
-        (a, b) =>
-          a.customer.localeCompare(b.customer) || b.value - a.value
-      );
-  }, [contracts, statuses, query]);
+      .sort((a, b) => {
+        if (sort === "customer") {
+          return a.customer.localeCompare(b.customer) || b.value - a.value;
+        }
+        if (sort === "starting") {
+          return (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999");
+        }
+        if (sort === "status") {
+          const rank = (c: Contract) => CONTRACT_STATUSES.indexOf(c.status);
+          return rank(a) - rank(b) || b.value - a.value;
+        }
+        return b.value - a.value;
+      });
+  }, [contracts, statuses, query, sort]);
+
+  /** Same grouping shape the pipeline and the accruals list use. */
+  const groups = useMemo(() => {
+    if (groupBy === "none") return null;
+    const by = new Map<string, Contract[]>();
+    for (const c of shown) {
+      const key = groupBy === "customer" ? c.customer || "No customer" : c.status;
+      by.set(key, [...(by.get(key) ?? []), c]);
+    }
+    return [...by.entries()]
+      .map(([key, rows]) => ({
+        key,
+        rows,
+        total: rows.reduce((s, c) => s + c.value, 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [shown, groupBy]);
+
+  /** The baseline the delivery side reads, as a sheet. */
+  function exportCsv() {
+    downloadCSV(
+      `freyr-contracts-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(
+        ["Reference", "Contract", "Customer", "Offering", "Value", "Status",
+         "Starts", "Ends", "Signed", "Owner", "Scheduled", "Months", "Deal"],
+        shown.map((c) => [
+          c.reference, c.name, c.customer, c.offeringLabel ?? "", c.value,
+          c.status, c.startDate ?? "", c.endDate ?? "", c.signedOn ?? "",
+          c.owner ?? "", scheduleTotal(c), c.schedule.length,
+          c.opportunityName ?? "",
+        ])
+      )
+    );
+    toast(`${shown.length} ${shown.length === 1 ? "contract" : "contracts"} exported.`);
+  }
 
   async function post(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -368,7 +417,10 @@ export function ContractsModule({
         onQuery={setQuery}
         placeholder="Search by reference, contract, customer or offering"
         searchAriaLabel="Search contracts"
-        onClearAll={() => setStatuses([])}
+        onClearAll={() => {
+          setStatuses([]);
+          setGroupBy("none");
+        }}
         groups={[
           {
             key: "status",
@@ -382,6 +434,50 @@ export function ContractsModule({
             })),
           },
         ]}
+        filtersAfter={
+          <ColorSelect
+            value={groupBy}
+            onChange={(v) => setGroupBy(v as typeof groupBy)}
+            ariaLabel="Group rows"
+            minWidth={180}
+            dense
+            collapsible={false}
+            options={[
+              { value: "none", label: "No grouping", color: "#8E98A8" },
+              { value: "customer", label: "Group by customer", color: "#0071E3" },
+              { value: "status", label: "Group by status", color: "#4338CA" },
+            ]}
+          />
+        }
+        sort={
+          <ColorSelect
+            value={sort}
+            onChange={(v) => setSort(v as typeof sort)}
+            ariaLabel="Sort contracts"
+            minWidth={175}
+            dense
+            collapsible={false}
+            options={[
+              { value: "value", label: "Biggest first", color: "#0071E3" },
+              { value: "customer", label: "Customer A–Z", color: "#8E98A8" },
+              { value: "starting", label: "Starting soonest", color: "#0F766E" },
+              { value: "status", label: "By status", color: "#4338CA" },
+            ]}
+          />
+        }
+        display={
+          <PriorityTooltip label="Export CSV">
+            <button
+              type="button"
+              onClick={exportCsv}
+              aria-label="Export CSV"
+              className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              <Download size={16} strokeWidth={1.5} />
+              <PriorityLabel>Export CSV</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+        }
       />
 
       {shown.length === 0 ? (
@@ -398,7 +494,36 @@ export function ContractsModule({
         />
       ) : (
         <div className="mt-4 space-y-2.5">
-          {shown.map((c) => {
+          {(groups
+            ? groups.flatMap((g) => [
+                /* Group header with its own total — same shape as the pipeline
+                   and the accruals list. */
+                <div
+                  key={`h-${g.key}`}
+                  data-contract-group={g.key}
+                  className="flex items-center gap-2.5 px-1 pb-0.5 pt-2"
+                >
+                  {groupBy === "customer" ? (
+                    <CompanyLogo name={g.key} className="h-6 w-6 shrink-0" />
+                  ) : (
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: contractStatusColor(g.key as ContractStatus) }}
+                    />
+                  )}
+                  <span className="text-[13px] font-bold text-text-primary">{g.key}</span>
+                  <span className="text-[12px] text-text-secondary tnum">
+                    {g.rows.length} {g.rows.length === 1 ? "contract" : "contracts"} ·{" "}
+                    {formatMoney(g.total)}
+                  </span>
+                  <span className="h-px flex-1 bg-border-light" />
+                </div>,
+                ...g.rows,
+              ])
+            : shown
+          ).map((entry) => {
+            if (!("reference" in entry)) return entry;
+            const c = entry;
             const isOpen = openId === c.id;
             const gaps = readinessGaps(c);
             return (
