@@ -577,13 +577,13 @@ function RequestRow({
               </span>
             )}
           </span>
-          <span className="mt-1 flex items-center gap-1 text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-            <span className="min-w-0 break-words">{r.title}</span>
-            <ChevronRight
-              size={13}
-              strokeWidth={2.2}
-              className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
-            />
+          {/* NO HOVER ARROW BESIDE THE TITLE (Anir, Aug 26: "there's an arrow
+              here that feels like a screenshot, I don't want that, it looks
+              weird"). It floated mid-sentence next to a wrapped title and read
+              as a stray glyph. The whole row is already a link and the title
+              already turns blue, which is the affordance. */}
+          <span className="mt-1 block break-words text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+            {r.title}
           </span>
         </Link>
       </td>
@@ -964,13 +964,29 @@ function NewRequestDialog({
           Solutioning New Request, I don't know why this is so small. Keep the
           pop-up consistent the whole way in terms of dimensions"). Step one is
           three tiles and step two is a full form, so the dialog used to snap
-          from a strip to a page between two clicks. The floor is the form's
-          height; the tiles sit centred in it. */}
-      <div className="flex min-h-[460px] flex-col">
+          from a strip to a page between two clicks.
+
+          THE FIX FOR THAT WAS WORSE THAN THE PROBLEM (Anir, Aug 26: "this is
+          ugly, I think it should be at the top or something"). Holding a 460px
+          floor and centring three tiles in it bought a consistent height by
+          floating the cards in a field of white.
+
+          So the floor came down to a guard against a thin strip, the tiles sit
+          at the top, and step one gained the thing a first-time requester
+          actually needs: what happens to the request after they send it. Step
+          one is now ~410px against step two's ~520 — the dialog grows a little
+          as you go deeper, which is what a dialog is supposed to do, and it no
+          longer snaps from a strip to a page. */}
+      <div className="flex min-h-[380px] flex-col">
       {!kind ? (
         /* THE FIRST QUESTION IS THE ONLY QUESTION ON SCREEN. Three big tiles,
            because the kind decides every field that follows. */
-        <div className="my-auto grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex flex-1 flex-col">
+        <p className="mb-3 text-[12.5px] text-text-secondary">
+          Pick what you are asking the Solutions team for. It decides everything
+          you fill in next.
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {KIND_ORDER.map((k) => {
             const meta = KIND_META[k];
             const Icon = meta.icon;
@@ -1000,6 +1016,40 @@ function NewRequestDialog({
               </button>
             );
           })}
+        </div>
+
+        {/* AND THE REST OF THE BOX EARNS ITS KEEP. Holding a 460px floor so the
+            dialog does not snap between steps left three cards sitting above a
+            field of white (Anir, Aug 26: "this is ugly"). Rather than choose
+            between a snapping dialog and a half-empty one, the space explains
+            the flow the request is about to enter — which is the one thing
+            somebody opening this for the first time does not know. */}
+        <div className="mt-6 rounded-xl border border-border-light bg-surface/50 p-4">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            What happens after you send it
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutions team's queue straight away."],
+              ["2", "Solutions picks it up", "Whoever takes it owns it, and builds the documents against your request."],
+              ["3", "You close it", "The requester decides when it is done, not the person who built it."],
+            ].map(([n, head, body]) => (
+              <div key={n} className="flex gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-light text-[11px] font-bold text-blue-primary">
+                  {n}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-semibold text-text-primary">
+                    {head}
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">
+                    {body}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
         </div>
       ) : (
         <div className="space-y-4">

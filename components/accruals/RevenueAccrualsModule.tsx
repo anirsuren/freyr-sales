@@ -31,6 +31,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/pipeline";
+import { BarChart } from "@/components/charts/Charts";
 import { cn, formatDate } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -226,6 +227,48 @@ export function RevenueAccrualsModule({
       }))
       .sort((a, b) => b.total - a.total);
   }, [shown, groupBy]);
+
+  /**
+   * THE SHAPE OF THE YEAR, NOT A LIST OF NUMBERS (Anir, Aug 26: "the revenue
+   * accruals page is not visual at all").
+   *
+   * Every visible plan summed by month. The SOLID part of a bar is money on a
+   * plan nobody has to revisit; the HATCHED part is money sitting on a flagged
+   * plan. That is the colour law this app already runs on — solid counts,
+   * striped is somebody's word until they go and fix it.
+   */
+  const monthChart = useMemo(() => {
+    const byMonth = new Map<string, { total: number; flagged: number }>();
+    for (const { plan, verdict } of shown) {
+      for (const line of plan.lines) {
+        const cur = byMonth.get(line.month) ?? { total: 0, flagged: 0 };
+        cur.total += line.amount;
+        if (verdict.invalid) cur.flagged += line.amount;
+        byMonth.set(line.month, cur);
+      }
+    }
+    const thisMonth = monthKey(new Date());
+    return [...byMonth.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(0, 18)
+      .map(([month, v]) => ({
+        label: monthLabel(month).replace(" 20", " '"),
+        value: v.total,
+        pending: v.flagged || undefined,
+        /* A month already behind us wears amber whatever else is true: that
+           money was supposed to have landed by now. */
+        color: month < thisMonth ? AMBER : "#0071E3",
+        tip: [
+          { name: "On plan", value: formatMoney(v.total - v.flagged) },
+          ...(v.flagged
+            ? [{ name: "On a flagged plan", value: formatMoney(v.flagged) }]
+            : []),
+          ...(month < thisMonth
+            ? [{ name: "Month has passed", sub: "needs re-planning" }]
+            : []),
+        ],
+      }));
+  }, [shown]);
 
   /**
    * EXPORT, BECAUSE THIS MODULE REPLACES A SPREADSHEET. Suren's whole reason
@@ -622,6 +665,47 @@ export function RevenueAccrualsModule({
               }
             />
           ) : (
+            <>
+            {/* WHEN THE MONEY IS PLANNED TO LAND, drawn. A column per month
+                across everything on screen, so the filters and the grouping
+                change the picture rather than only the list. */}
+            {monthChart.length > 0 && (
+              <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
+                <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                  <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
+                  When this money is planned to land
+                  <InfoHint text="Every plan on screen, summed by month. A solid column is money on a plan nobody needs to revisit. The hatched part is money sitting on a flagged plan, and an amber column is a month that has already gone by." />
+                </h2>
+                <p className="mt-0.5 text-[12.5px] text-text-secondary">
+                  {formatMoney(monthChart.reduce((s, m) => s + m.value, 0))} across{" "}
+                  {monthChart.length} {monthChart.length === 1 ? "month" : "months"}
+                  {flagged.length > 0 && (
+                    <>
+                      {" · "}
+                      <b style={{ color: AMBER }}>
+                        {formatMoney(
+                          monthChart.reduce((s, m) => s + (m.pending ?? 0), 0)
+                        )}{" "}
+                        needs re-planning
+                      </b>
+                    </>
+                  )}
+                </p>
+                <div className="mt-3">
+                  {/* No fillCard here: it puts h-full on the chart, which
+                      needs a parent with a definite height and collapses every
+                      bar to a hairline without one. Same call shape the goal
+                      charts use. */}
+                  <BarChart
+                    hideLabelDots
+                    data={monthChart}
+                    height={180}
+                    format="money"
+                  />
+                </div>
+              </section>
+            )}
+
             <div className="mt-4 space-y-2.5">
               {(groups
                 ? groups.flatMap((g) => [
@@ -738,32 +822,91 @@ export function RevenueAccrualsModule({
                             )}
                           </p>
                         )}
-                        <div className="flex flex-wrap gap-1.5">
-                          {plan.lines.map((line) => {
-                            const past = line.month < monthKey(new Date());
-                            return (
-                              <span
-                                key={line.month}
-                                className={cn(
-                                  "rounded-lg border px-2.5 py-1.5 text-[12px]",
-                                  past
-                                    ? "border-[rgba(180,83,9,0.3)] bg-[rgba(180,83,9,0.06)]"
-                                    : "border-border-light bg-surface/60"
-                                )}
-                              >
-                                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                                  {monthLabel(line.month)}
+                        {/* THE PLAN AS A SHAPE, NOT A ROW OF NUMBERS (Anir,
+                            Aug 26: "you just have numbers and you're not
+                            showing anything"). A column per month, amber for a
+                            month that has already gone by, plus the running
+                            total underneath so you can see the money arriving
+                            rather than read twelve figures and add them up. */}
+                        {(() => {
+                          const now = monthKey(new Date());
+                          let running = 0;
+                          const bars = plan.lines.map((line) => {
+                            running += line.amount;
+                            const past = line.month < now;
+                            return {
+                              label: monthLabel(line.month).replace(" 20", " '"),
+                              value: line.amount,
+                              color: past ? AMBER : "#0071E3",
+                              tip: [
+                                { name: "Planned", value: formatMoney(line.amount) },
+                                { name: "Cumulative by then", value: formatMoney(running) },
+                                ...(past
+                                  ? [{ name: "This month has passed", sub: "re-plan it or close the deal" }]
+                                  : []),
+                              ],
+                            };
+                          });
+                          const total = planTotal(plan);
+                          let acc = 0;
+                          return (
+                            <div className="rounded-xl border border-border-light bg-surface/40 p-3.5">
+                              <BarChart
+                                hideLabelDots
+                                data={bars}
+                                height={140}
+                                format="money"
+                              />
+                              {/* The same money again as a filling bar, which
+                                  answers "how much has landed by month N"
+                                  without a second chart. */}
+                              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-border-light">
+                                {plan.lines.map((line) => {
+                                  acc += line.amount;
+                                  const past = line.month < now;
+                                  return (
+                                    <span
+                                      key={line.month}
+                                      title={`${monthLabel(line.month)} · ${formatMoney(line.amount)} · ${Math.round((acc / (total || 1)) * 100)}% cumulative`}
+                                      className="h-full border-r-2 border-white last:border-r-0"
+                                      style={{
+                                        width: `${(line.amount / (total || 1)) * 100}%`,
+                                        background: past ? AMBER : "#0071E3",
+                                        opacity: past ? 1 : 0.55 + 0.45 * (acc / (total || 1)),
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
+                                <span>
+                                  First month{" "}
+                                  <b className="text-text-primary">
+                                    {monthLabel(plan.lines[0]?.month ?? "")}
+                                  </b>
                                 </span>
-                                <span
-                                  className="block font-bold tnum"
-                                  style={past ? { color: AMBER } : undefined}
-                                >
-                                  {formatMoney(line.amount)}
+                                <span>
+                                  Last month{" "}
+                                  <b className="text-text-primary">
+                                    {monthLabel(plan.lines[plan.lines.length - 1]?.month ?? "")}
+                                  </b>
                                 </span>
-                              </span>
-                            );
-                          })}
-                        </div>
+                                <span>
+                                  Average a month{" "}
+                                  <b className="text-text-primary">
+                                    {formatMoney(Math.round(total / (plan.lines.length || 1)))}
+                                  </b>
+                                </span>
+                                <span>
+                                  Biggest month{" "}
+                                  <b className="text-text-primary">
+                                    {formatMoney(Math.max(...plan.lines.map((l) => l.amount), 0))}
+                                  </b>
+                                </span>
+                              </p>
+                            </div>
+                          );
+                        })()}
                         <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-text-secondary">
                           <span>
                             Contract value{" "}
@@ -815,6 +958,7 @@ export function RevenueAccrualsModule({
                 );
               })}
             </div>
+            </>
           )}
         </div>
       ) : (

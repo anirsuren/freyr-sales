@@ -96,6 +96,8 @@ function normalizeContract(v: unknown): Contract | null {
     endDate: str(r.endDate, 20) || undefined,
     signedOn: str(r.signedOn, 20) || undefined,
     owner: str(r.owner, 80) || undefined,
+    documentUrl: str(r.documentUrl, 2000) || undefined,
+    signedBy: str(r.signedBy, 120) || undefined,
     schedule: [...byMonth.entries()]
       .map(([month, amount]) => ({ month, amount }))
       .sort((a, b) => a.month.localeCompare(b.month)),
@@ -184,6 +186,13 @@ function sampleContracts(): ContractsState {
     status,
     startDate: `${startMonth}-01`,
     signedOn: status === "Signed" ? `${startMonth}-04` : undefined,
+    signedBy: status === "Signed" ? "Dr. Lena Vogt, VP Regulatory" : undefined,
+    /* Sample only. A real contract's link points at wherever legal keeps the
+       executed PDF; nothing is stored in this app. */
+    documentUrl:
+      status === "Signed" || status === "Ready for delivery"
+        ? `https://example.invalid/contracts/FR-C-${String(n).padStart(4, "0")}.pdf`
+        : undefined,
     owner: "Elena Rossi",
     schedule: spreadEvenly(value, startMonth, months),
     createdBy: "Elena Rossi",
@@ -223,6 +232,8 @@ export type ContractInput = {
   endDate?: string;
   signedOn?: string;
   owner?: string;
+  documentUrl?: string;
+  signedBy?: string;
   schedule?: { month: string; amount: number }[];
   note?: string;
 };

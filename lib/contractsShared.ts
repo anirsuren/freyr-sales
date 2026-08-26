@@ -70,6 +70,16 @@ export type Contract = {
   endDate?: string;
   signedOn?: string;
   owner?: string;
+  /**
+   * THE ACTUAL CONTRACT (Anir, Aug 26: "how do I open the contract?"). A
+   * baseline with no way to reach the document it describes is a row about a
+   * thing you cannot read. A link, because the executed PDF lives in whatever
+   * the legal team already uses, and duplicating it here would create a second
+   * source of truth for the one document that must not have one.
+   */
+  documentUrl?: string;
+  /** Who signed on the customer side. Part of "is this verified". */
+  signedBy?: string;
   /** "Schedule revenue" — the month-by-month plan, decided after the contract
    *  starts, that supersedes the opportunity's accrual plan. */
   schedule: ScheduleLine[];
@@ -133,4 +143,71 @@ export function readinessGaps(c: Contract): string[] {
     gaps.push("a schedule that adds up to the contract value");
   }
   return gaps;
+}
+
+/**
+ * "ARE THESE CONTRACTS VERIFIED?" (Anir, Aug 26). It was a fair question,
+ * because nothing on the row answered it — a status word is not evidence.
+ *
+ * This is the checklist behind the word: each fact a contract either has or
+ * does not, so the row can show what is actually confirmed rather than assert
+ * that it is fine. Nothing here is a judgement; every line is a field being
+ * present or absent, which is the only honest kind of verification the app can
+ * do on its own.
+ */
+export type ContractCheck = {
+  label: string;
+  ok: boolean;
+  detail: string;
+};
+
+export function contractChecks(c: Contract): ContractCheck[] {
+  const total = scheduleTotal(c);
+  const balances = c.value > 0 && Math.abs(total - c.value) <= 1;
+  return [
+    {
+      label: "Customer named",
+      ok: !!c.customer.trim(),
+      detail: c.customer || "No customer on the record",
+    },
+    {
+      label: "Value set",
+      ok: c.value > 0,
+      detail: c.value > 0 ? "" : "No contract value",
+    },
+    {
+      label: "Schedule balances",
+      ok: balances,
+      detail: balances
+        ? "The months add up to the contract value"
+        : c.schedule.length
+          ? "The months do not add up to the value"
+          : "No revenue schedule yet",
+    },
+    {
+      label: "Dates set",
+      ok: !!c.startDate,
+      detail: c.startDate ? "" : "No start date",
+    },
+    {
+      label: "Signed",
+      ok: !!c.signedOn,
+      detail: c.signedOn
+        ? c.signedBy
+          ? `Signed by ${c.signedBy}`
+          : "Signed, no signatory recorded"
+        : "Not signed yet",
+    },
+    {
+      label: "Document attached",
+      ok: !!c.documentUrl,
+      detail: c.documentUrl ? "" : "No link to the executed contract",
+    },
+  ];
+}
+
+/** How many of the checks pass. The row prints this as "4 of 6 confirmed". */
+export function contractConfidence(c: Contract): { ok: number; total: number } {
+  const checks = contractChecks(c);
+  return { ok: checks.filter((x) => x.ok).length, total: checks.length };
 }

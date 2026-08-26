@@ -7,8 +7,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
+  Circle,
   Coins,
   Download,
+  FileText,
+  ShieldCheck,
 
   FileSignature,
   Inbox,
@@ -34,8 +37,10 @@ import { cn, formatDate } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import { monthKey, monthLabel, spreadEvenly } from "@/lib/revenueAccrualsShared";
+import { BarChart } from "@/components/charts/Charts";
 import {
   CONTRACT_STATUSES,
+  contractChecks,
   contractStatusColor,
   readinessGaps,
   scheduleTotal,
@@ -86,6 +91,8 @@ const BLANK = {
   endDate: "",
   signedOn: "",
   owner: "",
+  documentUrl: "",
+  signedBy: "",
   note: "",
   scheduleMonths: "12",
   schedule: [] as { month: string; amount: string }[],
@@ -239,6 +246,8 @@ export function ContractsModule({
         endDate: contract.endDate ?? "",
         signedOn: contract.signedOn ?? "",
         owner: contract.owner ?? "",
+        documentUrl: contract.documentUrl ?? "",
+        signedBy: contract.signedBy ?? "",
         note: contract.note ?? "",
         scheduleMonths: String(contract.schedule.length || 12),
         schedule: contract.schedule.map((l) => ({
@@ -306,6 +315,8 @@ export function ContractsModule({
           endDate: editing.endDate || undefined,
           signedOn: editing.signedOn || undefined,
           owner: editing.owner || undefined,
+          documentUrl: editing.documentUrl || undefined,
+          signedBy: editing.signedBy || undefined,
           note: editing.note || undefined,
           schedule: editing.schedule
             .map((l) => ({
@@ -594,6 +605,77 @@ export function ContractsModule({
                         {gaps.join(", ")}.
                       </p>
                     )}
+
+                    {/* "ARE THESE CONTRACTS VERIFIED?" (Anir, Aug 26). Nothing
+                        on the row answered that, because a status word is an
+                        assertion, not evidence. This is the checklist behind
+                        it: six facts a contract either has or does not. Every
+                        line is a field being present, never a judgement. */}
+                    {(() => {
+                      const checks = contractChecks(c);
+                      const ok = checks.filter((x) => x.ok).length;
+                      const all = ok === checks.length;
+                      return (
+                        <div className="mb-3.5 rounded-xl border border-border-light bg-surface/40 p-3.5">
+                          <p className="flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                            <ShieldCheck
+                              size={13}
+                              strokeWidth={2.2}
+                              style={{ color: all ? "#16A34A" : "#B45309" }}
+                            />
+                            What is confirmed
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[11.5px] font-bold tnum"
+                              style={{
+                                background: all
+                                  ? "rgba(22,163,74,0.10)"
+                                  : "rgba(180,83,9,0.10)",
+                                color: all ? "#16A34A" : "#B45309",
+                              }}
+                            >
+                              {ok} of {checks.length}
+                            </span>
+                          </p>
+                          <div className="mt-2.5 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                            {checks.map((chk) => (
+                              <span
+                                key={chk.label}
+                                className="flex items-start gap-1.5 text-[12px]"
+                              >
+                                {chk.ok ? (
+                                  <CheckCircle2
+                                    size={13}
+                                    strokeWidth={2.2}
+                                    className="mt-[1px] shrink-0 text-[color:#16A34A]"
+                                  />
+                                ) : (
+                                  <Circle
+                                    size={13}
+                                    strokeWidth={2.2}
+                                    className="mt-[1px] shrink-0 text-text-tertiary"
+                                  />
+                                )}
+                                <span className="min-w-0">
+                                  <span
+                                    className={cn(
+                                      "block font-semibold",
+                                      chk.ok ? "text-text-primary" : "text-text-tertiary"
+                                    )}
+                                  >
+                                    {chk.label}
+                                  </span>
+                                  {chk.detail && (
+                                    <span className="block truncate text-[11.5px] text-text-secondary">
+                                      {chk.detail}
+                                    </span>
+                                  )}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
                       {[
                         ["Reference", c.reference],
@@ -612,34 +694,89 @@ export function ContractsModule({
                       ))}
                     </div>
 
-                    {c.schedule.length > 0 && (
-                      <>
-                        <p className="mt-3 flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                          <Coins size={13} strokeWidth={2.2} className="text-blue-primary" />
-                          Schedule revenue
-                          <InfoHint text="Suren, Aug 25: 'once it is executed you don't need the accrual revenue in this sense — from sales I am going to give you schedule revenue, and schedule revenue is more reliable because that is decided after the contract started.' Once this contract is Ready for delivery or Signed, this schedule supersedes the deal's accrual plan." />
-                          <span className="ml-1 font-normal text-text-secondary tnum">
-                            {formatMoney(scheduleTotal(c))} across{" "}
-                            {c.schedule.length} months
-                          </span>
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {c.schedule.map((line) => (
-                            <span
-                              key={line.month}
-                              className="rounded-lg border border-border-light bg-surface/60 px-2.5 py-1.5 text-[12px]"
-                            >
-                              <span className="block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                                {monthLabel(line.month)}
-                              </span>
-                              <span className="block font-bold tnum">
-                                {formatMoney(line.amount)}
-                              </span>
+                    {c.schedule.length > 0 && (() => {
+                      /* SCHEDULE REVENUE, DRAWN (Anir, Aug 26: "the schedule
+                         revenue part, where you just have numbers and you're
+                         not showing anything"). A column per month, plus how
+                         much of the contract has been recognised by each one,
+                         because "when do we get to half" is the question a
+                         revenue schedule exists to answer. */
+                      const total = scheduleTotal(c);
+                      const now = monthKey(new Date());
+                      let running = 0;
+                      const bars = c.schedule.map((line) => {
+                        running += line.amount;
+                        const past = line.month < now;
+                        return {
+                          label: monthLabel(line.month).replace(" 20", " '"),
+                          value: line.amount,
+                          color: past ? "#16A34A" : "#4338CA",
+                          tip: [
+                            { name: "Scheduled", value: formatMoney(line.amount) },
+                            { name: "Recognised by then", value: formatMoney(running) },
+                            {
+                              name: "Share of the contract",
+                              value: `${Math.round((running / (total || 1)) * 100)}%`,
+                            },
+                            ...(past
+                              ? [{ name: "Already recognised", sub: "this month has passed" }]
+                              : []),
+                          ],
+                        };
+                      });
+                      const recognised = c.schedule
+                        .filter((l) => l.month < now)
+                        .reduce((s, l) => s + l.amount, 0);
+                      const pct = Math.round((recognised / (total || 1)) * 100);
+                      return (
+                        <>
+                          <p className="mt-3.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                            <Coins size={13} strokeWidth={2.2} className="text-blue-primary" />
+                            Schedule revenue
+                            <InfoHint text="Suren, Aug 25: 'once it is executed you don't need the accrual revenue in this sense — from sales I am going to give you schedule revenue, and schedule revenue is more reliable because that is decided after the contract started.' Once this contract is Ready for delivery or Signed, this schedule supersedes the deal's accrual plan." />
+                            <span className="ml-1 font-normal text-text-secondary tnum">
+                              {formatMoney(total)} across {c.schedule.length}{" "}
+                              {c.schedule.length === 1 ? "month" : "months"}
                             </span>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                          </p>
+                          <div className="mt-2 rounded-xl border border-border-light bg-surface/40 p-3.5">
+                            <BarChart
+                              hideLabelDots
+                              data={bars}
+                              height={140}
+                              format="money"
+                            />
+                            {/* How far through the contract we are, as one
+                                bar. Green is recognised, indigo is still to
+                                come — the same two colours the columns use. */}
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-border-light">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${pct}%`, background: "#16A34A" }}
+                              />
+                            </div>
+                            <p className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
+                              <span>
+                                <b style={{ color: "#16A34A" }}>{formatMoney(recognised)}</b>{" "}
+                                recognised ({pct}%)
+                              </span>
+                              <span>
+                                <b className="text-text-primary">
+                                  {formatMoney(total - recognised)}
+                                </b>{" "}
+                                still to come
+                              </span>
+                              <span>
+                                Runs {monthLabel(c.schedule[0]?.month ?? "")} to{" "}
+                                <b className="text-text-primary">
+                                  {monthLabel(c.schedule[c.schedule.length - 1]?.month ?? "")}
+                                </b>
+                              </span>
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     {c.note && (
                       <p className="mt-3 text-[12.5px] text-text-secondary">{c.note}</p>
@@ -655,6 +792,21 @@ export function ContractsModule({
                       <span>
                         Updated by <b>{c.updatedBy}</b> {formatDate(c.updatedAt)}
                       </span>
+                      {/* "HOW DO I OPEN THE CONTRACT?" (Anir, Aug 26). Here. */}
+                      {c.documentUrl ? (
+                        <a
+                          href={c.documentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                        >
+                          <FileText size={12} strokeWidth={2.2} /> Open the contract
+                        </a>
+                      ) : (
+                        <span className="text-[12px] text-text-tertiary">
+                          No document attached yet
+                        </span>
+                      )}
                       {c.opportunityId && (
                         <Link
                           href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
@@ -801,6 +953,24 @@ export function ContractsModule({
                 }
               />
             </Field>
+            <Field label="Signed by (customer side)">
+              <Input
+                value={editing.signedBy}
+                onChange={(e) => setEditing({ ...editing, signedBy: e.target.value })}
+                placeholder="Who signed for the customer"
+              />
+            </Field>
+            <div className="col-span-2">
+              <Field label="Link to the executed contract">
+                <Input
+                  value={editing.documentUrl}
+                  onChange={(e) =>
+                    setEditing({ ...editing, documentUrl: e.target.value })
+                  }
+                  placeholder="https://… wherever the signed PDF lives"
+                />
+              </Field>
+            </div>
             <Field label="Owner">
               <ColorSelect
                 value={editing.owner}
