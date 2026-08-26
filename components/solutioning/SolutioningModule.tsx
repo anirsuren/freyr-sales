@@ -99,7 +99,11 @@ export function SolutioningModule({
   /* The customer page's "Request solutioning" button lands here with the
      account already chosen — the dialog opens itself, prefilled. */
   useEffect(() => {
-    if (search.get("new") === "1") setCreating(true);
+    /* Only in Real mode: every create is refused in Mock, so opening the
+       dialog from a deep link there hands somebody a form that cannot be
+       submitted (Anir, Aug 26, arriving from a lead in Mock: "this button
+       doesn't work"). */
+    if (search.get("new") === "1" && live) setCreating(true);
     // Reading once on mount is the point; the dialog owns the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
