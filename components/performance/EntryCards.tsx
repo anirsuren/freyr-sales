@@ -1788,14 +1788,36 @@ export function VerifyQueueCard({
             </button>
           </span>
         ) : (
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-text-tertiary">
-          Only you can lock claims from
-          {heads.map((g, i) => (
-            <span key={g.id} className="flex items-center gap-1.5">
-              {i > 0 && <span>{i === heads.length - 1 ? "and" : ","}</span>}
-              <GroupPill name={g.name} size="sm" />
+        /* A LIST THAT CANNOT GROW OFF THE ROW (Anir, Aug 26: "if there's a
+           100 groups, how is this gonna work on this people performance page?
+           It's just not gonna work"). Naming every group inline was fine at
+           three and unreadable at thirty. Two names and a count carries the
+           same fact; the full list is on hover. */
+        <span
+          className="ml-auto shrink-0 text-[11px] text-text-tertiary"
+          title={
+            heads.length > 2
+              ? `You can lock claims from: ${heads.map((g) => g.name).join(", ")}`
+              : undefined
+          }
+        >
+          {heads.length === 0 ? null : heads.length <= 2 ? (
+            <span className="flex items-center gap-1.5">
+              You lock claims from
+              {heads.map((g, i) => (
+                <span key={g.id} className="flex items-center gap-1.5">
+                  {i > 0 && <span>and</span>}
+                  <GroupPill name={g.name} size="sm" />
+                </span>
+              ))}
             </span>
-          ))}
+          ) : (
+            <span className="flex items-center gap-1.5">
+              You lock claims from
+              <GroupPill name={heads[0].name} size="sm" />
+              <span>and {heads.length - 1} other groups</span>
+            </span>
+          )}
         </span>
         )}
       </div>

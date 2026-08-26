@@ -452,8 +452,13 @@ export function SolutioningModule({
               honest. Requester + owner + document workers all count, exactly
               as Suren counts them, so one delivered deck can appear under
               several people on purpose. */}
+          {/* SAY WHAT THE NUMBERS ARE (Anir, Aug 26: "change this phrasing,
+              I don't know why you're using that weird phrasing — what does
+              that even mean? Who is doing the work?"). The heading asked a
+              question the three bare numbers underneath did not answer, and
+              "0 worked" named nothing at all. */}
           <p className="text-[13px] font-semibold text-text-primary">
-            Who is doing the work
+            People on these requests
           </p>
           <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
             {people.map((p) => (
@@ -470,8 +475,10 @@ export function SolutioningModule({
                     <RoleTag role={memberRoles[p.person]} size="sm" />
                   </span>
                   <span className="mt-0.5 block text-[11px] text-text-secondary tnum">
-                    {p.requested} requested · {p.owned} picked up · {p.workedDocs}{" "}
-                    worked
+                    Raised {p.requested} · owns {p.owned} ·{" "}
+                    {p.workedDocs === 1
+                      ? "1 document"
+                      : `${p.workedDocs} documents`}
                   </span>
                 </span>
               </div>

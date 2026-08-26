@@ -1188,7 +1188,11 @@ export function MaterialsSection({
                 <th className="px-3 py-3 align-middle">Buyer&apos;s journey stage(s)</th>
                 <th className="px-3 py-3 align-middle">Division</th>
                 <th className="px-3 py-3 align-middle">Uploaded by</th>
-                <th className="px-4 py-3 text-center align-middle">Actions</th>
+                {/* LEFT, like every other column and like the same table on the
+                    Sales Materials page (Anir, Aug 26: "align this column
+                    properly on the sales materials part of the offerings, it
+                    should be left-aligned"). */}
+                <th className="px-4 py-3 align-middle">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1413,7 +1417,7 @@ export function MaterialsSection({
                       </div>
                     </td>
                     <td className="px-4 py-3 align-middle">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center gap-1">
                         <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
                           <button
                             type="button"

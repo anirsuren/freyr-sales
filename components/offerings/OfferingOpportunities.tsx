@@ -134,18 +134,23 @@ export function OfferingOpportunities({
       </div>
 
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[860px] text-left">
+        <table className="w-full min-w-[980px] text-left">
           <thead>
             <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-              <th className="w-[24%] py-2 pr-4">Opportunity</th>
-              <th className="w-[18%] py-2 pr-4">Customer</th>
-              <th className="w-[14%] py-2 pr-4">Revenue type</th>
-              <th className="w-[14%] py-2 pr-4">Status</th>
-              <th className="w-[12%] py-2 pr-4 text-right">Value</th>
-              <th className="w-[9%] py-2 pr-4 text-right">Confidence</th>
-              <th className="w-[13%] py-2 pr-4">Est. sign</th>
+              {/* EVERY COLUMN LEFT (Anir, Aug 26: "just make sure the columns
+                  are left-aligned, and the date should be on one line"). Value
+                  and Confidence were right-aligned, so the row read as three
+                  separate blocks. The table has a min-width and scrolls, which
+                  he was explicit is fine: "it's okay if I have to scroll". */}
+              <th className="w-[22%] py-2 pr-4">Opportunity</th>
+              <th className="w-[16%] py-2 pr-4">Customer</th>
+              <th className="w-[13%] py-2 pr-4">Revenue type</th>
+              <th className="w-[12%] py-2 pr-4">Status</th>
+              <th className="w-[10%] py-2 pr-4">Value</th>
+              <th className="w-[9%] py-2 pr-4">Confidence</th>
+              <th className="w-[14%] py-2 pr-4">Est. sign</th>
               <th className="w-[12%] py-2 pr-4">Owner</th>
-              <th className="w-[3%] py-2" />
+              <th className="w-[2%] py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
@@ -205,13 +210,15 @@ export function OfferingOpportunities({
                     <span className="text-[12px] text-text-tertiary">Not set</span>
                   )}
                 </td>
-                <td className="py-2.5 pr-4 text-right text-[13px] font-semibold tnum text-text-primary">
+                <td className="py-2.5 pr-4 text-[13px] font-semibold tnum text-text-primary">
                   {row.value ? formatMoney(row.value) : "—"}
                 </td>
-                <td className="py-2.5 pr-4 text-right text-[12.5px] tnum text-text-secondary">
+                <td className="py-2.5 pr-4 text-[12.5px] tnum text-text-secondary">
                   {row.confidence === undefined ? "—" : `${row.confidence}%`}
                 </td>
-                <td className="py-2.5 pr-4 text-[12.5px] tnum text-text-secondary">
+                {/* whitespace-nowrap: "Aug 18, 2026" was breaking after the
+                    comma and making the row two lines tall for no reason. */}
+                <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] tnum text-text-secondary">
                   {row.estSignDate ? formatDate(row.estSignDate) : "—"}
                 </td>
                 <td className="py-2.5 pr-4">
