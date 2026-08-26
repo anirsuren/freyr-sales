@@ -368,33 +368,35 @@ export function SolutioningModule({
         <b className="text-text-primary tnum">{state.requests.length}</b> requests
       </p>
 
+      {/* NO BOX AROUND AN EMPTY STATE (Anir, Aug 26: "for Solutioning you have
+          this box, but then for Leads and Revenue Accruals you don't have the
+          box… remove the box for Solutioning"). Every other list in this app
+          draws the empty state bare; only this one framed it, so the same
+          "nothing here yet" looked like two different things depending on
+          which page you were on. */}
       {state.requests.length === 0 ? (
-        <Card className="p-0">
-          <EmptyState
-            icon={ClipboardList}
-            title="No requests yet."
-            description="Ask for a presentation, a submission or a meeting. The Solutions team picks it up from here, and you close it when it's delivered."
-            action={
-              live ? (
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
-                >
-                  <Plus size={14} strokeWidth={2.4} /> New request
-                </button>
-              ) : undefined
-            }
-          />
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="No requests yet."
+          description="Ask for a presentation, a submission or a meeting. The Solutions team picks it up from here, and you close it when it's delivered."
+          action={
+            live ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <Plus size={14} strokeWidth={2.4} /> New request
+              </button>
+            ) : undefined
+          }
+        />
       ) : shown.length === 0 ? (
-        <Card className="p-0">
-          <EmptyState
-            icon={ClipboardList}
-            title="No requests match these filters."
-            description="Try a different type, status or search term."
-          />
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="No requests match these filters."
+          description="Try a different type, status or search term."
+        />
       ) : (
         <Card className="p-0 overflow-hidden">
           <PinnableTable id="solutioning-requests">

@@ -865,13 +865,18 @@ export function RevenueAccrualsModule({
                               <BarChart
                                 hideLabelDots
                                 data={bars}
-                                height={140}
+                                height={210}
                                 format="money"
                               />
-                              {/* The same money again as a filling bar, which
-                                  answers "how much has landed by month N"
-                                  without a second chart. */}
-                              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-border-light">
+                              {/* Labelled, and separated from the chart by a
+                                  rule — an unlabelled grey strip under a
+                                  scrolling chart reads as a scrollbar (Anir,
+                                  Aug 26). */}
+                              <div className="mt-3 border-t border-border-light pt-3">
+                              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                How the money arrives, month by month
+                              </p>
+                              <div className="flex h-2.5 overflow-hidden rounded-full bg-[color:var(--surface)] ring-1 ring-inset ring-border-light">
                                 {plan.lines.map((line) => {
                                   acc += line.amount;
                                   const past = line.month < now;
@@ -889,7 +894,7 @@ export function RevenueAccrualsModule({
                                   );
                                 })}
                               </div>
-                              <p className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
+                              <p className="mt-2 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
                                 <span>
                                   First month{" "}
                                   <b className="text-text-primary">
@@ -915,6 +920,7 @@ export function RevenueAccrualsModule({
                                   </b>
                                 </span>
                               </p>
+                              </div>
                             </div>
                           );
                         })()}

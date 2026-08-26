@@ -670,8 +670,19 @@ export function ContractsModule({
                                     {chk.label}
                                   </span>
                                   {chk.detail && (
-                                    <span className="block truncate text-[11.5px] text-text-secondary">
-                                      {chk.detail}
+                                    /* The company wears its own mark wherever
+                                       it is named (Anir, Aug 26: "when you see
+                                       the company, I need the profile picture
+                                       next to the part where you say the
+                                       customer name"). */
+                                    <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                                      {chk.label === "Customer named" && chk.ok && (
+                                        <CompanyLogo
+                                          name={c.customer}
+                                          className="h-4 w-4 shrink-0 text-[7px]"
+                                        />
+                                      )}
+                                      <span className="truncate">{chk.detail}</span>
                                     </span>
                                   )}
                                 </span>
@@ -745,39 +756,70 @@ export function ContractsModule({
                             </span>
                           </p>
                           <div className="mt-2 rounded-xl border border-border-light bg-surface/40 p-3.5">
+                            {/* TALLER BARS (Anir, Aug 26: "those bars can
+                                genuinely be a lot bigger height-wise without
+                                changing how the entire rectangle looks"). 140
+                                was leaving air at the top of the card. */}
                             <BarChart
                               hideLabelDots
                               data={bars}
-                              height={140}
+                              height={210}
                               format="money"
                             />
-                            {/* How far through the contract we are, as one
-                                bar. Green is recognised, indigo is still to
-                                come — the same two colours the columns use. */}
-                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-border-light">
-                              <div
-                                className="h-full rounded-full"
-                                style={{ width: `${pct}%`, background: "#16A34A" }}
-                              />
+                            {/* THE PROGRESS METER IS NOT A SECOND SCROLLBAR
+                                (Anir, Aug 26: "there's a weird gray scroll bar
+                                at the bottom that's like an additional scroll
+                                bar, I don't know what that gray thing is").
+
+                                A bare grey track sitting directly under a
+                                horizontally-scrolling chart reads as chrome,
+                                especially at 0% where there is no green at all
+                                to say otherwise. It gets a label on its left
+                                now, so it is obviously a meter, and it is
+                                separated from the chart by a rule instead of
+                                floating under it. */}
+                            <div className="mt-3 border-t border-border-light pt-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Recognised
+                                </span>
+                                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-[color:var(--surface)] ring-1 ring-inset ring-border-light">
+                                  <span
+                                    className="block h-full rounded-full transition-[width]"
+                                    style={{
+                                      width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`,
+                                      background: "#16A34A",
+                                    }}
+                                  />
+                                </span>
+                                <span
+                                  className="shrink-0 text-[12px] font-bold tnum"
+                                  style={{ color: pct > 0 ? "#16A34A" : "var(--text-tertiary)" }}
+                                >
+                                  {pct}%
+                                </span>
+                              </div>
+                              <p className="mt-2 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
+                                <span>
+                                  <b style={{ color: pct > 0 ? "#16A34A" : "var(--text-primary)" }}>
+                                    {formatMoney(recognised)}
+                                  </b>{" "}
+                                  recognised so far
+                                </span>
+                                <span>
+                                  <b className="text-text-primary">
+                                    {formatMoney(total - recognised)}
+                                  </b>{" "}
+                                  still to come
+                                </span>
+                                <span>
+                                  Runs {monthLabel(c.schedule[0]?.month ?? "")} to{" "}
+                                  <b className="text-text-primary">
+                                    {monthLabel(c.schedule[c.schedule.length - 1]?.month ?? "")}
+                                  </b>
+                                </span>
+                              </p>
                             </div>
-                            <p className="mt-1.5 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
-                              <span>
-                                <b style={{ color: "#16A34A" }}>{formatMoney(recognised)}</b>{" "}
-                                recognised ({pct}%)
-                              </span>
-                              <span>
-                                <b className="text-text-primary">
-                                  {formatMoney(total - recognised)}
-                                </b>{" "}
-                                still to come
-                              </span>
-                              <span>
-                                Runs {monthLabel(c.schedule[0]?.month ?? "")} to{" "}
-                                <b className="text-text-primary">
-                                  {monthLabel(c.schedule[c.schedule.length - 1]?.month ?? "")}
-                                </b>
-                              </span>
-                            </p>
                           </div>
                         </>
                       );
