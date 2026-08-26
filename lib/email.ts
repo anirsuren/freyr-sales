@@ -40,6 +40,8 @@ async function sendWithConfiguredProvider(input: {
    */
   html?: string;
   attachments?: EmailAttachment[];
+  /** Mark it important, the way Outlook's own flag does. */
+  important?: boolean;
 }): Promise<EmailResult> {
   /**
    * SES FIRST, ON FREYR'S OWN VERIFIED DOMAIN (Anir, Aug 25: "get rid of this
@@ -53,6 +55,15 @@ async function sendWithConfiguredProvider(input: {
    */
   const viaSes = await sendViaSes({
     to: [input.to],
+    ...(input.important
+      ? {
+          headers: {
+            Importance: "high",
+            "X-Priority": "1",
+            "X-MSMail-Priority": "High",
+          },
+        }
+      : {}),
     ...(input.cc?.length ? { cc: input.cc } : {}),
     ...(input.bcc?.length ? { bcc: input.bcc } : {}),
     ...(input.replyTo ? { replyTo: input.replyTo } : {}),
@@ -143,6 +154,7 @@ export async function sendTransactionalEmail(input: {
   body: string;
   html?: string;
   attachments?: EmailAttachment[];
+  important?: boolean;
 }): Promise<EmailResult> {
   return sendWithConfiguredProvider(input);
 }

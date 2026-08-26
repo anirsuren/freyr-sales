@@ -1820,13 +1820,28 @@ export function OfferingsBrowser({
                             wrapped mid-name — "Bio / Pharmaceutical" split
                             across two rows — so the column read as a
                             paragraph instead of a list. */}
+                        {/* TWO, THEN A COUNT (Anir, Aug 26: "it says 'gives
+                            names of all these five customer types'. Let's make
+                            it so only two are visible, and then for the rest,
+                            it just says '+3'... If somebody hovers over the
+                            '+3' option, they just see the names of the other
+                            three"). Five stacked names made this the tallest
+                            cell in the row and set the height of every row
+                            beside it. */}
                         {famList.length ? (
                           <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
-                            {famList.map((f) => (
+                            {famList.slice(0, 2).map((f) => (
                               <span key={f} className="break-words">
                                 {f}
                               </span>
                             ))}
+                            {famList.length > 2 && (
+                              <PriorityTooltip label={famList.slice(2).join(", ")}>
+                                <span className="mt-0.5 inline-flex w-fit cursor-default items-center rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary">
+                                  +{famList.length - 2}
+                                </span>
+                              </PriorityTooltip>
+                            )}
                           </span>
                         ) : (
                           <span className="text-text-secondary">-</span>

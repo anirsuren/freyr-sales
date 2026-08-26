@@ -22,6 +22,12 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
+import {
+  countryOptions,
+  dialOptions,
+  joinPhone,
+  splitPhone,
+} from "@/lib/countries";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -75,6 +81,14 @@ const BLANK = {
   note: "",
   customerId: "",
   disqualifiedReason: "",
+  /* The person chose "Not on the list. Type it", so keep the text box open
+     even while the name is still empty. Never saved. */
+  companyOther: false,
+  /* The dialling code lives beside the number rather than inside it, so
+     choosing a country can set the code before any digits are typed. A phone
+     with no number is still no phone: `phone` stays empty until there are
+     digits, and this only drives the picker. */
+  dialCode: "",
 };
 
 type Draft = typeof BLANK;
@@ -646,17 +660,68 @@ export function LeadsModule({
               />
             </Field>
             <Field label="Company">
-              <Input
-                value={editing.company}
-                onChange={(e) => setEditing({ ...editing, company: e.target.value })}
-                placeholder="Their organisation"
-                list="freyr-lead-companies"
-              />
-              <datalist id="freyr-lead-companies">
-                {customers.map((c) => (
-                  <option key={c.id} value={c.name} />
-                ))}
-              </datalist>
+              {/* THE ACCOUNT, WITH ITS OWN LOGO (Anir, Aug 26: "Company:
+                  you're not doing that either" — on the picker showing no
+                  logos). This was an <input list> wearing a datalist, which
+                  renders as the browser's grey autocomplete and looks nothing
+                  like the rest of the app. Same control and same escape hatch
+                  as the opportunity form: pick one of ours, or say it is not
+                  on the list and type it. */}
+              {(() => {
+                const known = customers.find((c) => c.name === editing.company);
+                const typing = editing.companyOther || (!!editing.company && !known);
+                if (typing)
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={editing.company}
+                        onChange={(e) =>
+                          setEditing({ ...editing, company: e.target.value, companyOther: true })
+                        }
+                        placeholder="Their organisation"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditing({ ...editing, company: "", companyOther: false })
+                        }
+                        className="shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 py-2 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        Pick from list
+                      </button>
+                    </div>
+                  );
+                return (
+                  <ColorSelect
+                    value={editing.company}
+                    ariaLabel="Company"
+                    className="w-full"
+                    collapsible={false}
+                    fill
+                    onChange={(v) => {
+                      if (v === "__other") {
+                        setEditing({ ...editing, company: "", companyOther: true });
+                        return;
+                      }
+                      setEditing({ ...editing, company: v, companyOther: false });
+                    }}
+                    options={[
+                      { value: "", label: "Their organisation", color: "#C7CDD6" },
+                      {
+                        value: "__other",
+                        label: "Not on the list. Type it",
+                        color: "#8E98A8",
+                      },
+                      ...customers.map((c) => ({
+                        value: c.name,
+                        label: c.name,
+                        logoName: c.name,
+                      })),
+                    ]}
+                  />
+                );
+              })()}
             </Field>
             <Field label="Job title">
               <Input
@@ -665,9 +730,32 @@ export function LeadsModule({
               />
             </Field>
             <Field label="Country">
-              <Input
+              {/* "Countries should just be like a flag" (Anir, Aug 26). The
+                  flag rides in the option label, so the trigger shows it too. */}
+              <ColorSelect
                 value={editing.country}
-                onChange={(e) => setEditing({ ...editing, country: e.target.value })}
+                ariaLabel="Country"
+                className="w-full"
+                collapsible={false}
+                fill
+                onChange={(v) => {
+                  const hit = dialOptions().find((d) => d.label.endsWith(v));
+                  const parsed = splitPhone(editing.phone);
+                  const dial = editing.dialCode || parsed.dial;
+                  /* Choosing a country fills the dialling code, unless one is
+                     already set. */
+                  const nextDial = dial || hit?.value || "";
+                  setEditing({
+                    ...editing,
+                    country: v,
+                    dialCode: nextDial,
+                    phone: joinPhone(nextDial, parsed.number),
+                  });
+                }}
+                options={[
+                  { value: "", label: "Not set", color: "#C7CDD6" },
+                  ...countryOptions(),
+                ]}
               />
             </Field>
             <Field label="Email">
@@ -678,10 +766,45 @@ export function LeadsModule({
               />
             </Field>
             <Field label="Phone">
-              <Input
-                value={editing.phone}
-                onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
-              />
+              {/* A dialling code beside the number, not one free-text box
+                  (Anir, Aug 26: "For phone, it's obviously gonna be different,
+                  like countries and stuff"). Stored as one string, so nothing
+                  downstream has to know it was entered in two parts. */}
+              {(() => {
+                const parsed = splitPhone(editing.phone);
+                const dial = editing.dialCode || parsed.dial;
+                const number = parsed.number;
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <ColorSelect
+                      value={dial}
+                      ariaLabel="Country dialling code"
+                      collapsible={false}
+                      minWidth={104}
+                      triggerLabel={dial || "Code"}
+                      onChange={(v) =>
+                        setEditing({ ...editing, dialCode: v, phone: joinPhone(v, number) })
+                      }
+                      options={[
+                        { value: "", label: "No code", color: "#C7CDD6" },
+                        ...dialOptions(),
+                      ]}
+                    />
+                    <Input
+                      value={number}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          dialCode: dial,
+                          phone: joinPhone(dial, e.target.value),
+                        })
+                      }
+                      placeholder="20 7946 0000"
+                      aria-label="Phone number"
+                    />
+                  </div>
+                );
+              })()}
             </Field>
             <Field label="Source">
               <ColorSelect
@@ -721,9 +844,13 @@ export function LeadsModule({
                 collapsible={false}
                 dense
                 onChange={(v) => setEditing({ ...editing, owner: v })}
+                fill
                 options={[
                   { value: "", label: "Unassigned", color: "#8E98A8" },
-                  ...members.map((m) => ({ value: m, label: m, color: "#0071E3" })),
+                  /* The person's own face, not a blue dot for everybody
+                     (Anir, Aug 26: "Owner: you're not even showing the
+                     profile pictures"). */
+                  ...members.map((m) => ({ value: m, label: m, avatarName: m })),
                 ]}
               />
             </Field>

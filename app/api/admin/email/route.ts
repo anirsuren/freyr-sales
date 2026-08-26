@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
    * still shows the words. A caller that sends only `body` still works.
    */
   const html = String(body.html ?? "").trim();
+  /* Outlook's importance flag, off unless the sender asked for it. */
+  const important = body.important === true;
   const text = html
     ? htmlToPlainText(html)
     : String(body.body ?? "").trim();
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest) {
   // One send carrying every recipient, so the thread they see is one thread.
   const result = await sendTransactionalEmail({
     to: to.valid[0],
+    ...(important ? { important: true } : {}),
     cc: [...to.valid.slice(1), ...cc.valid],
     bcc: bcc.valid,
     ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),

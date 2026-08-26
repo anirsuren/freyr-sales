@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BookOpen } from "lucide-react";
+import { Route, ShieldCheck } from "lucide-react";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -25,6 +25,14 @@ import {
  * sits directly above the control it explains, and it is out of the way of
  * anybody who already knows.
  *
+ * IT READS AS A GLOSSARY BAR, not a question (Saras, Aug 26: "can you replace
+ * this 'What do these filters mean?' button with the same Glossary bar as the
+ * main offerings page? So the new version will look like: GLOSSARY | Buyer's
+ * Journey Stages (3) | Access Levels (3)"). Same shape as
+ * OfferingsGlossaryBar, one difference that matters: those entries are links
+ * to master lists someone maintains, and these two are definitions with no
+ * page to go to, so each opens its own short panel instead of navigating.
+ *
  * It lists only the access levels the reader can actually see. "Freyr AI Only"
  * is not a rep's business, and defining a level they can never select would
  * raise the question the glossary exists to answer.
@@ -45,21 +53,27 @@ const ACCESS_COPY: Record<AccessLevel, string> = {
     "Never shown to a customer or a rep. It exists to train Freyr AI, and only its offering owner and app admins can open it.",
 };
 
+type GlossaryGroup = "stages" | "access";
+
 export function MaterialTagGlossary({
   /** Owners and admins also see the AI-only level, so it is defined for them. */
   includeAgentOnly = false,
 }: {
   includeAgentOnly?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  /** Which of the two definitions is showing, if either. */
+  const [open, setOpen] = useState<GlossaryGroup | null>(null);
+  const buttonRefs = useRef<Record<GlossaryGroup, HTMLButtonElement | null>>({
+    stages: null,
+    access: null,
+  });
   const panelRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ top: number; right: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const place = () => {
-      const node = buttonRef.current;
+      const node = buttonRefs.current[open];
       if (!node) return;
       const r = node.getBoundingClientRect();
       setBox({ top: r.bottom + 6, right: window.innerWidth - r.right });
@@ -78,11 +92,12 @@ export function MaterialTagGlossary({
     const onDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (panelRef.current?.contains(target)) return;
-      if (buttonRef.current?.contains(target)) return;
-      setOpen(false);
+      if (Object.values(buttonRefs.current).some((n) => n?.contains(target)))
+        return;
+      setOpen(null);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") setOpen(null);
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -96,18 +111,85 @@ export function MaterialTagGlossary({
     (level) => includeAgentOnly || level !== "agent_only"
   );
 
+  const groups = [
+    {
+      key: "stages" as const,
+      label: "Buyer's journey stages",
+      icon: Route,
+      color: "#7C3AED",
+      count: JOURNEY_STAGES.length,
+    },
+    {
+      key: "access" as const,
+      label: "Access levels",
+      icon: ShieldCheck,
+      color: "#0891B2",
+      count: levels.length,
+    },
+  ];
+
+  const rows =
+    open === "stages"
+      ? JOURNEY_STAGES.map((stage) => ({
+          key: stage,
+          meta: JOURNEY_STAGE_META[stage],
+          copy: STAGE_COPY[stage],
+        }))
+      : open === "access"
+        ? levels.map((level) => ({
+            key: level,
+            meta: ACCESS_LEVEL_META[level],
+            copy: ACCESS_COPY[level],
+          }))
+        : [];
+
+  const heading =
+    open === "stages"
+      ? {
+          title: "Buyer's journey stage",
+          hint: "Where the customer is in making up their mind. A file can carry more than one.",
+        }
+      : {
+          title: "Who can view this file",
+          hint: "Freyr AI reads every uploaded file. This says who among people may open it.",
+        };
+
   return (
-    <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-      >
-        <BookOpen size={13} strokeWidth={2.1} />
-        What do these filters mean?
-      </button>
+    <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1">
+      <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+        Glossary
+      </span>
+      {groups.map((group) => {
+        const Icon = group.icon;
+        const isOpen = open === group.key;
+        return (
+          <button
+            key={group.key}
+            ref={(node) => {
+              buttonRefs.current[group.key] = node;
+            }}
+            type="button"
+            onClick={() => setOpen(isOpen ? null : group.key)}
+            aria-expanded={isOpen}
+            className={`group inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12.5px] transition-colors hover:bg-surface hover:text-text-primary ${
+              isOpen ? "bg-surface text-text-primary" : "text-text-secondary"
+            }`}
+          >
+            {/* The icon carries the colour, the same way the offerings bar
+                keeps one identity per list without tinting the whole row. */}
+            <Icon
+              size={13}
+              strokeWidth={2.2}
+              aria-hidden="true"
+              style={{ color: group.color }}
+            />
+            {group.label}
+            <b className="tnum font-semibold text-text-primary group-hover:text-blue-primary">
+              {group.count}
+            </b>
+          </button>
+        );
+      })}
 
       {open &&
         box &&
@@ -115,75 +197,37 @@ export function MaterialTagGlossary({
           <div
             ref={panelRef}
             role="dialog"
-            aria-label="What the material tags mean"
+            aria-label={heading.title}
             style={{ top: box.top, right: box.right, width: 340 }}
             className="menu-in fixed z-[130] max-h-[70vh] overflow-y-auto rounded-xl border border-border-light bg-white p-3.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
             <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-              Buyer&apos;s journey stage
+              {heading.title}
             </p>
             <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
-              Where the customer is in making up their mind. A file can carry
-              more than one.
+              {heading.hint}
             </p>
             <ul className="mt-2 space-y-2.5">
-              {JOURNEY_STAGES.map((stage) => {
-                const meta = JOURNEY_STAGE_META[stage];
-                const Icon = meta.icon;
+              {rows.map((row) => {
+                const Icon = row.meta.icon;
                 return (
-                  <li key={stage} className="flex gap-2">
+                  <li key={row.key} className="flex gap-2">
                     <span
                       aria-hidden="true"
                       className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full"
-                      style={{ background: `${meta.color}1F`, color: meta.color }}
+                      style={{ background: `${row.meta.color}1F`, color: row.meta.color }}
                     >
                       <Icon size={10.5} strokeWidth={2.5} />
                     </span>
                     <span className="min-w-0">
                       <span
                         className="block text-[12.5px] font-semibold"
-                        style={{ color: meta.color }}
+                        style={{ color: row.meta.color }}
                       >
-                        {meta.label}
+                        {row.meta.label}
                       </span>
                       <span className="block text-[12px] leading-snug text-text-secondary">
-                        {STAGE_COPY[stage]}
-                      </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <p className="mt-4 border-t border-border-light pt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-              Who can view this file
-            </p>
-            <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
-              Freyr AI reads every uploaded file. This says who among people
-              may open it.
-            </p>
-            <ul className="mt-2 space-y-2.5">
-              {levels.map((level) => {
-                const meta = ACCESS_LEVEL_META[level];
-                const Icon = meta.icon;
-                return (
-                  <li key={level} className="flex gap-2">
-                    <span
-                      aria-hidden="true"
-                      className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full"
-                      style={{ background: `${meta.color}1F`, color: meta.color }}
-                    >
-                      <Icon size={10.5} strokeWidth={2.5} />
-                    </span>
-                    <span className="min-w-0">
-                      <span
-                        className="block text-[12.5px] font-semibold"
-                        style={{ color: meta.color }}
-                      >
-                        {meta.label}
-                      </span>
-                      <span className="block text-[12px] leading-snug text-text-secondary">
-                        {ACCESS_COPY[level]}
+                        {row.copy}
                       </span>
                     </span>
                   </li>
@@ -193,6 +237,6 @@ export function MaterialTagGlossary({
           </div>,
           document.body
         )}
-    </>
+    </div>
   );
 }

@@ -55,20 +55,42 @@ export function mailerConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+/**
+ * THE HEADERS THAT MAKE OUTLOOK DRAW ITS RED EXCLAMATION MARK.
+ *
+ * Anir, Aug 26: "Is it possible to mark emails as important? You know how that
+ * option's there in Outlook? That red exclamation mark comes in if you mark an
+ * email as important."
+ *
+ * There is no single standard for it. Outlook reads `Importance`, older
+ * clients read `X-Priority`, and Outlook's own web client historically wanted
+ * `X-MSMail-Priority`, so all three go out together. Anything that understands
+ * none of them simply shows an ordinary email.
+ */
+const HIGH_IMPORTANCE_HEADERS = {
+  Importance: "high",
+  "X-Priority": "1",
+  "X-MSMail-Priority": "High",
+} as const;
+
 export async function sendMail(message: {
   to: string[];
   cc?: string[];
   subject: string;
   html: string;
   text: string;
+  /** Mark it important, the way the Outlook flag does. */
+  important?: boolean;
 }): Promise<MailResult> {
   if (message.to.length === 0) return { ok: false, error: "No recipients." };
 
   /* SES first, on the identity Freyr IT verified. Resend has no verified
      domain left and refuses everything with a 403; it stays only for a host
      with no AWS session at all. Same reasoning as lib/email.ts. */
+  const headers = message.important ? { ...HIGH_IMPORTANCE_HEADERS } : undefined;
   const viaSes = await sendViaSes({
     to: message.to,
+    ...(headers ? { headers } : {}),
     ...(message.cc?.length ? { cc: message.cc } : {}),
     subject: message.subject,
     text: message.text,
@@ -98,6 +120,7 @@ export async function sendMail(message: {
         subject: message.subject,
         html: message.html,
         text: message.text,
+        ...(headers ? { headers } : {}),
       }),
     });
     const body = (await res.json().catch(() => ({}))) as {

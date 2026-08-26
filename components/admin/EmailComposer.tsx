@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
+  CalendarClock,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -52,6 +54,47 @@ function Label({
   );
 }
 
+/**
+ * THE THREE EMAILS THE APP SENDS ON ITS OWN.
+ *
+ * Each entry describes a real route: /api/cron/announce, /api/cron/monthly and
+ * /api/cron/roadmap-digest. If one is added, retired or re-timed, it belongs
+ * here too — a box that quietly goes stale is worse than no box.
+ */
+const AUTOMATED_EMAILS: {
+  name: string;
+  when: string;
+  what: string;
+  who: string;
+  color: string;
+  icon: typeof Mail;
+}[] = [
+  {
+    name: "Release announcement",
+    when: "On a major release",
+    what: "Tells everyone what changed when a release is marked major.",
+    who: "every active member",
+    color: "#0071E3",
+    icon: Send,
+  },
+  {
+    name: "Monthly digest",
+    when: "Monthly",
+    what: "The month's numbers, plus a nudge to whoever owns something that has gone quiet.",
+    who: "offering owners and members",
+    color: "#7C3AED",
+    icon: CalendarClock,
+  },
+  {
+    name: "Roadmap digest",
+    when: "On roadmap changes",
+    what: "Every roadmap change since the last send, gathered into one mail.",
+    who: "people subscribed to the roadmap",
+    color: "#0891B2",
+    icon: Clock3,
+  },
+];
+
 export function EmailComposer() {
   const { toast } = useToast();
   const [from, setFrom] = useState("");
@@ -67,6 +110,8 @@ export function EmailComposer() {
   const [body, setBody] = useState("");
   const [showCopies, setShowCopies] = useState(false);
   const [sending, setSending] = useState(false);
+  /** Outlook's red exclamation mark, off by default. */
+  const [important, setImportant] = useState(false);
   /** Send is a two-press action: nobody mails a customer by mis-clicking. */
   const [confirming, setConfirming] = useState(false);
   const [openRecord, setOpenRecord] = useState<string | null>(null);
@@ -102,7 +147,7 @@ export function EmailComposer() {
       const res = await fetch("/api/admin/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, cc, bcc, replyTo, subject, html: body }),
+        body: JSON.stringify({ to, cc, bcc, replyTo, subject, html: body, important }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -278,10 +323,31 @@ export function EmailComposer() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-light pt-4">
-          <span className="text-[12.5px] text-text-secondary tnum">
-            {recipients === 0
-              ? "No recipients yet"
-              : `${recipients} ${recipients === 1 ? "recipient" : "recipients"}`}
+          <span className="flex flex-wrap items-center gap-3">
+            <span className="text-[12.5px] text-text-secondary tnum">
+              {recipients === 0
+                ? "No recipients yet"
+                : `${recipients} ${recipients === 1 ? "recipient" : "recipients"}`}
+            </span>
+            {/* MARK IT IMPORTANT (Anir, Aug 26: "Is it possible to mark emails
+                as important? You know how that option's there in Outlook? That
+                red exclamation mark"). It sets the three headers mail clients
+                actually read — Importance, X-Priority and X-MSMail-Priority —
+                so Outlook draws its "!" and anything that understands none of
+                them shows an ordinary email. */}
+            <button
+              type="button"
+              onClick={() => setImportant((v) => !v)}
+              aria-pressed={important}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                important
+                  ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                  : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+              }`}
+            >
+              <AlertCircle size={13} strokeWidth={2.3} />
+              {important ? "Marked important" : "Mark as important"}
+            </button>
           </span>
           {/* TWO PRESSES. The first names who it is about to reach; the second
               sends it. An outbound mail to a customer is not undoable. */}
@@ -333,6 +399,53 @@ export function EmailComposer() {
             .
           </p>
         )}
+      </Card>
+
+      {/* WHAT GOES OUT WITHOUT ANYBODY WRITING IT.
+          Anir, Aug 26: "will the automated emails also show up here... you can
+          just have another box here that would just say 'Automated emails
+          scheduled'". They do not appear in the log below, which only holds
+          emails an admin composed here, so the box says what fires each one
+          and who receives it rather than implying a history it does not have. */}
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+          <CalendarClock size={15} strokeWidth={2} className="text-blue-primary" />
+          Automated emails scheduled
+          <InfoHint text="Emails the app sends on its own. These are not composed here and do not appear in the log below." />
+        </h2>
+        <div className="mt-3 space-y-2">
+          {AUTOMATED_EMAILS.map((mail) => (
+            <div
+              key={mail.name}
+              className="rounded-xl border border-border-light bg-white p-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+                  style={{ background: `${mail.color}1F`, color: mail.color }}
+                >
+                  <mail.icon size={13} strokeWidth={2.1} />
+                </span>
+                <span className="text-[13.5px] font-semibold text-text-primary">
+                  {mail.name}
+                </span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: `${mail.color}14`, color: mail.color }}
+                >
+                  {mail.when}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-text-secondary">
+                {mail.what} Goes to {mail.who}.
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-text-tertiary">
+          These are sent by the app, not written here, so they are not in the
+          list below.
+        </p>
       </Card>
 
       {/* WHAT HAS ALREADY GONE OUT. */}

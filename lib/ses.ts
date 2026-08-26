@@ -84,6 +84,8 @@ export async function sendViaSes(message: {
   subject: string;
   text: string;
   html?: string;
+  /** Extra MIME headers, e.g. the three that make Outlook draw its red "!". */
+  headers?: Record<string, string>;
 }): Promise<SesResult> {
   if (!sesConfigured()) {
     return { ok: false, unavailable: true, error: "SES is disabled here." };
@@ -114,6 +116,16 @@ export async function sendViaSes(message: {
                 ? { Html: { Data: message.html, Charset: "UTF-8" } }
                 : {}),
             },
+            /* Custom headers on Simple content, supported since SESv2 gained
+               Message.Headers — no need to hand-build a raw MIME message just
+               to mark one mail important. */
+            ...(message.headers && Object.keys(message.headers).length
+              ? {
+                  Headers: Object.entries(message.headers).map(
+                    ([Name, Value]) => ({ Name, Value })
+                  ),
+                }
+              : {}),
           },
         },
       })

@@ -247,22 +247,37 @@ export function RequestDetail({
         )}
       </div>
 
-      {/* The tags own their own line, the offering rule (Anir, Aug 8). */}
-      <div className="rise-in mt-3 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-bold text-text-secondary tnum">
+      {/* The tags own their own line, the offering rule (Anir, Aug 8).
+          GROUPED, NOT FIVE PILLS IN A ROW (Anir, Aug 26: "this doesn't look
+          good at the top. Those five stats are just back-to-back"). Three
+          things are being said and they are not the same kind of thing: which
+          request this is, what it is, and where it stands. A hairline between
+          each group gives the row a rhythm, and the date — the only one that
+          is about time — sits on the far right where a due date belongs. */}
+      <div className="rise-in mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+        <span className="tnum inline-flex items-center rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-bold text-text-secondary">
           {r.ref}
         </span>
-        <KindChip kind={r.kind} />
-        {r.subtype && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary">
-            {r.subtype}
-          </span>
-        )}
+
+        <span aria-hidden="true" className="h-4 w-px bg-border-light" />
+
+        <span className="flex flex-wrap items-center gap-1.5">
+          <KindChip kind={r.kind} />
+          {r.subtype && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary">
+              {r.subtype}
+            </span>
+          )}
+        </span>
+
+        <span aria-hidden="true" className="h-4 w-px bg-border-light" />
+
         <StatusPill status={r.status} />
+
         {r.neededBy && (
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold tnum",
+              "tnum ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold",
               overdue
                 ? "bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
                 : "bg-surface text-text-secondary"
