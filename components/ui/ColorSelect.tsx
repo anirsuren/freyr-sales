@@ -150,6 +150,7 @@ export function ColorSelect({
   onChange,
   className,
   minWidth = 170,
+  fill = false,
   ariaLabel,
   collapsible = true,
   compactTrigger = false,
@@ -163,6 +164,18 @@ export function ColorSelect({
   onChange: (v: string) => void;
   className?: string;
   minWidth?: number;
+  /**
+   * Take exactly the width of the cell you are placed in — no fitting to the
+   * current label, in either direction.
+   *
+   * The default sizing exists so a lone control never cuts its own name off.
+   * Inside a grid of equal columns it does the opposite: "Proposals · Product
+   * Demos" pushed the trigger 12px past its column and into the next one,
+   * while a short label left a 99px hole (Anir, Aug 26: "the folder name here
+   * is getting intersected" and "I have some gap here... between the third and
+   * the fourth one"). A row of pickers should read as one aligned band.
+   */
+  fill?: boolean;
   ariaLabel?: string;
   /** Opt out of the search-priority compression (default: follow the toolbar). */
   collapsible?: boolean;
@@ -482,8 +495,8 @@ export function ColorSelect({
       ref={ref}
       className={cn("relative transition-[min-width]", SP_MOTION, className)}
       style={{
-        width: compact ? SP_COMPACT_SIZE : undefined,
-        minWidth: fitWidth,
+        width: fill ? "100%" : compact ? SP_COMPACT_SIZE : undefined,
+        minWidth: fill ? 0 : fitWidth,
       }}
     >
       <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>

@@ -64,6 +64,7 @@ import {
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
   COMPONENT_GROUPS,
+  componentGroupRank,
   isComponentGroup,
   type ComponentGroup,
 } from "@/lib/componentGroups";
@@ -1012,6 +1013,14 @@ export function OfferingForm({
    * one dialog serves both buttons.
    */
   const [addingCap, setAddingCap] = useState<null | CapRow["kind"]>(null);
+  /* WHAT IS OPEN. Anir, Aug 26: "these need to be in their own dropdowns too.
+     it's just way too complicated." Sixteen cards, each showing three fields
+     and a group picker, is a wall. A group is a dropdown, a card is one line
+     inside it, and only the card being edited is open. */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [openCard, setOpenCard] = useState<number | null>(null);
+  /* Same discipline for the materials list: one line each, one open. */
+  const [openMaterial, setOpenMaterial] = useState<number | null>(null);
   const [capDraft, setCapDraft] = useState("");
   const [capDescriptionDraft, setCapDescriptionDraft] = useState("");
   // Formatting is the primary authoring experience. The structured service
@@ -1041,6 +1050,40 @@ export function OfferingForm({
   capRows.forEach((row, index) => {
     if (row.kind === "item") cardNumber.set(index, cardNumber.size + 1);
   });
+
+  /* The flat row list read as groups, in the order a READER sees them, so the
+     editor and the offering page agree about what comes first. Row indices are
+     carried through untouched: every move still operates on the real list. */
+  const capGroups = useMemo(() => {
+    const out: { title: string; sectionIndex: number | null; cards: number[] }[] = [];
+    let current: (typeof out)[number] | null = null;
+    capRows.forEach((row, index) => {
+      if (row.kind === "section") {
+        current = { title: row.text, sectionIndex: index, cards: [] };
+        out.push(current);
+        return;
+      }
+      if (!current) {
+        current = { title: "", sectionIndex: null, cards: [] };
+        out.push(current);
+      }
+      current.cards.push(index);
+    });
+    return out
+      .map((group, order) => ({ group, order }))
+      .sort(
+        (a, b) =>
+          componentGroupRank(a.group.title) - componentGroupRank(b.group.title) ||
+          a.order - b.order
+      )
+      .map(({ group }) => group);
+  }, [capRows]);
+
+  const groupKey = (title: string, sectionIndex: number | null) =>
+    sectionIndex === null ? "\u0000ungrouped" : title || `\u0000section-${sectionIndex}`;
+  const allGroupsOpen =
+    capGroups.length > 0 &&
+    capGroups.every((g) => openGroups.has(groupKey(g.title, g.sectionIndex)));
   const appearanceCard =
     appearanceRow === null ? undefined : capRows[appearanceRow];
   const appearanceFields = serviceCardFields(appearanceCard?.text ?? "");
@@ -1067,14 +1110,12 @@ export function OfferingForm({
     );
   }
 
-  // The opening overview is often several sentences. Keep the whole value in
-  // view instead of forcing the owner to scroll inside a two-line field.
-  useEffect(() => {
-    const field = introRef.current;
-    if (!field || pasteMode) return;
-    field.style.height = "auto";
-    field.style.height = `${field.scrollHeight}px`;
-  }, [intro, pasteMode]);
+  /* NO SCRIPTED HEIGHT ON THE OPENING LINE. The auto-grow effect measured
+     the field while its section was still collapsed, froze it two lines tall
+     with the overflow hidden, and then fought anybody who tried to change it
+     (Anir, Aug 26: "I can't even scroll inside the opening line" and "I want
+     to make it bigger. I can't — that opening line thing or any text box").
+     It is a plain textarea now: it scrolls, and the resize handle works. */
 
   function openPaste() {
     setPasted(composeDescription(intro, capRows));
@@ -1234,12 +1275,17 @@ export function OfferingForm({
 
   // Group the customer-type chips by family for scannable selection.
   const CT_FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical", "Medical Devices", "Consumer Products"];
+  /* The catalogue says "Pharmaceuticals"; this list said "Pharmaceutical".
+     An exact compare dropped both pharma families out of their boxes and
+     rendered them as a loose row of chips under the section (Anir, Aug 26:
+     "this part sucks too"). Compare with the plural folded away. */
+  const famKey = (name: string) => name.trim().toLowerCase().replace(/s$/, "");
   const ctGroups = CT_FAMILY_ORDER.map((fam) => ({
     fam,
-    types: customerTypes.filter((c) => c.family === fam),
+    types: customerTypes.filter((c) => famKey(c.family) === famKey(fam)),
   })).filter((g) => g.types.length > 0);
   const ctOther = customerTypes.filter(
-    (c) => !CT_FAMILY_ORDER.includes(c.family)
+    (c) => !CT_FAMILY_ORDER.some((fam) => famKey(fam) === famKey(c.family))
   );
 
   const categoryAccent = (() => {
@@ -1363,6 +1409,17 @@ export function OfferingForm({
         icon={Package}
         title="The basics"
         hint="What this offering is called, where it sits in the catalog, and who owns it."
+        action={
+          isEdit ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+            >
+              <Trash2 size={14} strokeWidth={1.8} /> Delete offering
+            </button>
+          ) : undefined
+        }
         defaultOpen
       >
         {/* All three basics on one row. Two 2-up grids left the category
@@ -1454,7 +1511,7 @@ export function OfferingForm({
             <label className={LABEL}>Opening line (optional)</label>
             <textarea
               ref={introRef}
-              className={`${FIELD} h-auto min-h-[112px] resize-none overflow-hidden py-2.5 leading-relaxed`}
+              className={`${FIELD} h-auto min-h-[140px] resize-y overflow-y-auto py-2.5 leading-relaxed`}
               value={intro}
               onChange={(e) => setIntro(e.target.value)}
               placeholder="One or two sentences of context before the list."
@@ -1496,6 +1553,28 @@ export function OfferingForm({
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* One control, same as the sales materials list. */}
+                {capGroups.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenCard(null);
+                      setOpenGroups(
+                        allGroupsOpen
+                          ? new Set()
+                          : new Set(capGroups.map((g) => groupKey(g.title, g.sectionIndex)))
+                      );
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#CFDAE6] bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:text-text-primary"
+                  >
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={2}
+                      className={cn("transition-transform duration-200", !allGroupsOpen && "-rotate-90")}
+                    />
+                    {allGroupsOpen ? "Close all" : "Open all"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -1526,202 +1605,341 @@ export function OfferingForm({
                 offering, one per row.
               </p>
             )}
-            {capRows.map((row, i) => {
-              const isSection = row.kind === "section";
-              const fields = serviceCardFields(row.text);
-              const cardNo = cardNumber.get(i) ?? 1;
-              const mark = serviceCardMark(
-                stripBriefFormatting(row.text) || offeringName || "offering",
-                row.style
-              );
-              const accent = isSection ? "#0071E3" : mark.color;
-              const RowIcon = isSection ? Layers : mark.icon;
-              const updateCard = (heading: string, cardDescription: string) =>
-                setCapRows((list) =>
-                  list.map((item, index) =>
-                    index === i
-                      ? {
-                          ...item,
-                          text: serviceCardText(heading, cardDescription),
-                        }
-                      : item
-                  )
-                );
+            {capGroups.map((group) => {
+              const key = groupKey(group.title, group.sectionIndex);
+              const open = openGroups.has(key);
+              const mark = GROUP_MARK[group.title as ComponentGroup];
+              const accent = mark?.color ?? (group.sectionIndex === null ? "#6B7280" : "#334155");
+              const GroupIcon = mark?.icon ?? Layers;
+              const name =
+                group.sectionIndex === null ? "No group" : group.title || "Untitled group";
               return (
                 <div
-                  key={i}
+                  key={key}
                   className={cn(
-                    "rounded-xl border border-border-light bg-white p-3.5",
-                    isSection && "items-center bg-surface/40"
+                    "overflow-hidden rounded-xl border border-border-light bg-white transition-opacity",
+                    /* The open thing is the subject; everything else steps
+                       back (same move as the goals page rows). */
+                    ((openGroups.size > 0 && !open) ||
+                      (openCard !== null && !group.cards.includes(openCard))) &&
+                      "opacity-45 hover:opacity-100"
                   )}
+                  /* The goals-page rail: an open section carries its accent
+                     down its WHOLE left edge, not just the header (Anir:
+                     "that strip that goes from top to bottom on the
+                     section — that's what you have to do here"). */
+                  style={
+                    open ? { boxShadow: `inset 3px 0 0 0 ${accent}` } : undefined
+                  }
                 >
-                  {isSection ? (
-                    <div className="flex items-end gap-3">
+                  {/* THE GROUP IS THE DROPDOWN. Which group a card is in is
+                      the section it sits under, so the picker that used to
+                      repeat on all sixteen cards is gone from this layer.
+
+                      The WHOLE row toggles — "I have to click on the exact
+                      text, which is a problem" — with the real controls
+                      stopping the click from bubbling into the toggle. */}
+                  <div
+                    role="button"
+                    tabIndex={-1}
+                    data-group-row={name}
+                    onClick={() =>
+                      setOpenGroups((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(key)) next.delete(key);
+                        else next.add(key);
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors",
+                      open ? "bg-surface/60" : "hover:bg-surface/40"
+                    )}
+                  >
+                    {/* The row above already toggles; this keeps the state
+                        in the accessibility tree without double-firing it. */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(key)) next.delete(key);
+                          else next.add(key);
+                          return next;
+                        });
+                      }}
+                      aria-expanded={open}
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left outline-none"
+                    >
                       <span
-                        className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                         style={{ background: `${accent}1F`, color: accent }}
                       >
-                        <RowIcon size={16} strokeWidth={2} />
+                        <GroupIcon size={14} strokeWidth={2.1} />
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <label className={LABEL}>Group</label>
-                        {/* The four groups are fixed (Saras, Aug 26), so this
-                            is a picker rather than a text box. A heading an
-                            earlier author typed that is not one of the four
-                            stays selectable, because four offerings in the
-                            catalogue carry real headings of their own and
-                            silently rewriting them would delete their work. */}
-                        <ColorSelect
-                          value={row.text}
-                          options={groupOptions(row.text)}
-                          onChange={(value) =>
-                            setCapRows((list) =>
-                              list.map((item, index) =>
-                                index === i ? { ...item, text: value } : item
-                              )
+                      <span
+                        className="truncate text-[13px] font-semibold uppercase tracking-[0.05em]"
+                        style={{ color: accent }}
+                      >
+                        {name}
+                      </span>
+                      <span className="tnum shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+                        {group.cards.length}
+                      </span>
+                      <ChevronDown
+                        size={15}
+                        strokeWidth={2}
+                        className={cn(
+                          "ml-auto shrink-0 text-text-tertiary transition-transform duration-200",
+                          !open && "-rotate-90"
+                        )}
+                      />
+                    </button>
+                    {group.sectionIndex !== null && open && (
+                      <span onClick={(e) => e.stopPropagation()}>
+                      <ColorSelect
+                        value={group.title}
+                        options={groupOptions(group.title).filter((o) => o.value)}
+                        onChange={(value) =>
+                          setCapRows((l) =>
+                            l.map((item, index) =>
+                              index === group.sectionIndex
+                                ? { ...item, text: value }
+                                : item
                             )
-                          }
-                          ariaLabel="Group"
-                        />
-                      </div>
+                          )
+                        }
+                        ariaLabel={`Group name for ${name}`}
+                        dense
+                      />
+                      </span>
+                    )}
+                    {group.sectionIndex !== null && (
                       <button
                         type="button"
-                        onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                        aria-label="Remove group heading"
-                        className="mb-1 shrink-0 rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-blue-light hover:text-error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const at = group.sectionIndex as number;
+                          setOpenCard(null);
+                          setCapRows((l) => l.filter((_, j) => j !== at));
+                        }}
+                        aria-label={`Remove the ${name} group`}
+                        title="Remove this group. Its cards stay."
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                       >
-                        <Trash2 size={15} strokeWidth={1.7} />
+                        <Trash2 size={14} strokeWidth={1.9} />
                       </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 rounded-xl border border-border-light bg-surface/55 p-3">
-                        <button
-                          type="button"
-                          onClick={() => setAppearanceRow(i)}
-                          aria-label={`Change ${fields.heading || `component ${cardNo}`} card icon and color`}
-                          className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-blue-primary/30"
-                          style={{
-                            backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
-                          }}
-                        >
-                          <RowIcon size={20} strokeWidth={2} />
-                          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-primary text-white shadow-sm">
-                            <PencilLine size={9} strokeWidth={2.4} />
-                          </span>
-                        </button>
-                        <div className="min-w-0 flex-1 pt-0.5">
-                          <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                            Seller view preview
-                          </p>
-                          {/* Plenty of briefs are plain bullets with no bold
-                              label, and the preview used to print "Untitled
-                              service:" in front of every one of them: a phrase
-                              nobody wrote, on the line that is meant to show
-                              the seller exactly what they will see. A card
-                              with no heading is just its sentence. */}
-                          <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
-                            {fields.heading && (
-                              <span className="font-semibold">
-                                {fields.heading}
-                                {fields.description ? ": " : ""}
-                              </span>
+                    )}
+                  </div>
+
+                  {open && (
+                    <div className="space-y-1.5 border-t border-border-light px-3 py-3">
+                      {group.cards.length === 0 && (
+                        <p className="rounded-lg border border-dashed border-border-light px-3 py-3 text-center text-[12px] text-text-secondary">
+                          No components in this group yet.
+                        </p>
+                      )}
+
+                      {group.cards.map((i, position) => {
+                        const row = capRows[i];
+                        const fields = serviceCardFields(row.text);
+                        const cardNo = cardNumber.get(i) ?? 1;
+                        const cardMark = serviceCardMark(
+                          stripBriefFormatting(row.text) || offeringName || "offering",
+                          row.style
+                        );
+                        const CardIcon = cardMark.icon;
+                        const expanded = openCard === i;
+                        const label =
+                          fields.heading || fields.description || `Component ${cardNo}`;
+                        const updateCard = (heading: string, cardDescription: string) =>
+                          setCapRows((list) =>
+                            list.map((item, index) =>
+                              index === i
+                                ? { ...item, text: serviceCardText(heading, cardDescription) }
+                                : item
+                            )
+                          );
+                        const move = (step: -1 | 1) => {
+                          setCapRows((l) => shuffleCard(l, i, step));
+                          setOpenCard((current) => (current === i ? i + step : current));
+                        };
+                        return (
+                          <div
+                            key={`${i}-${position}`}
+                            className={cn(
+                              "overflow-hidden rounded-lg border transition-[opacity,border-color]",
+                              expanded
+                                ? "border-blue-subtle bg-surface/40"
+                                : "border-border-light bg-white hover:border-blue-subtle",
+                              openCard !== null &&
+                                !expanded &&
+                                "opacity-45 hover:opacity-100"
                             )}
-                            {fields.description ||
-                              (fields.heading
-                                ? "Add a description to show what this component includes."
-                                : "Add a heading or a description for this card.")}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-0.5">
-                          {/* Shuffling a card inside its group, and removing
-                              it. Moving it to a DIFFERENT group is the picker
-                              on the row below, because that is a different
-                              decision. */}
-                          <button
-                            type="button"
-                            disabled={!canMoveCard(capRows, i, -1)}
-                            onClick={() => setCapRows((l) => shuffleCard(l, i, -1))}
-                            /* Plenty of briefs are plain bullets with no card
-                               heading, and "Move this component up" on every
-                               row is the same name sixteen times over. The
-                               position always disambiguates. */
-                            aria-label={`Move ${fields.heading || `component ${cardNo}`} up`}
-                            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
+                            style={
+                              expanded
+                                ? { boxShadow: `inset 3px 0 0 0 ${cardMark.color}` }
+                                : undefined
+                            }
                           >
-                            <ArrowUp size={15} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!canMoveCard(capRows, i, 1)}
-                            onClick={() => setCapRows((l) => shuffleCard(l, i, 1))}
-                            aria-label={`Move ${fields.heading || `component ${cardNo}`} down`}
-                            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
-                          >
-                            <ArrowDown size={15} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                            aria-label="Remove component"
-                            className="rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white hover:text-error"
-                          >
-                            <Trash2 size={15} strokeWidth={1.7} />
-                          </button>
-                        </div>
-                      </div>
+                            {/* ONE LINE PER CARD until you open it, and the
+                                whole line is the handle. */}
+                            <div
+                              role="button"
+                              tabIndex={-1}
+                              data-component-row={cardNo}
+                              onClick={() => setOpenCard(expanded ? null : i)}
+                              className="flex cursor-pointer items-center gap-2 px-2.5 py-2"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAppearanceRow(i);
+                                }}
+                                aria-label={`Change the icon and colour for ${label}`}
+                                className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm outline-none transition-transform hover:scale-[1.06]"
+                                style={{
+                                  backgroundImage: `linear-gradient(135deg, ${cardMark.color}, ${cardMark.light})`,
+                                }}
+                              >
+                                <CardIcon size={14} strokeWidth={2.1} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenCard(expanded ? null : i);
+                                }}
+                                aria-expanded={expanded}
+                                className="min-w-0 flex-1 cursor-pointer truncate text-left text-[13px] text-text-primary outline-none"
+                              >
+                                {fields.heading ? (
+                                  <>
+                                    <span className="font-semibold">{fields.heading}</span>
+                                    {fields.description ? (
+                                      <span className="text-text-secondary">
+                                        {": "}
+                                        {fields.description}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <span className="text-text-secondary">{label}</span>
+                                )}
+                              </button>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  disabled={!canMoveCard(capRows, i, -1)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    move(-1);
+                                  }}
+                                  aria-label={`Move ${fields.heading || `component ${cardNo}`} up`}
+                                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
+                                >
+                                  <ArrowUp size={14} strokeWidth={2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!canMoveCard(capRows, i, 1)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    move(1);
+                                  }}
+                                  aria-label={`Move ${fields.heading || `component ${cardNo}`} down`}
+                                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
+                                >
+                                  <ArrowDown size={14} strokeWidth={2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenCard(null);
+                                    setCapRows((l) => l.filter((_, j) => j !== i));
+                                  }}
+                                  aria-label={`Remove ${fields.heading || `component ${cardNo}`}`}
+                                  className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                                >
+                                  <Trash2 size={14} strokeWidth={1.9} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenCard(expanded ? null : i);
+                                  }}
+                                  aria-label={`${expanded ? "Close" : "Edit"} ${label}`}
+                                  aria-expanded={expanded}
+                                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
+                                >
+                                  <ChevronDown
+                                    size={15}
+                                    strokeWidth={2}
+                                    className={cn(
+                                      "transition-transform duration-200",
+                                      !expanded && "-rotate-90"
+                                    )}
+                                  />
+                                </button>
+                              </div>
+                            </div>
 
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.4fr)]">
-                        <div className="min-w-0">
-                          <label className={LABEL}>Group</label>
-                          {/* Shifting a card from one group to another
-                              (Saras, Aug 26). Picking a group the brief does
-                              not have yet creates it. */}
-                          <ColorSelect
-                            value={groupOf(capRows, i)}
-                            options={groupOptions(groupOf(capRows, i))}
-                            onChange={(value) =>
-                              setCapRows((l) =>
-                                moveCardToGroup(l, i, value, (text) => ({
-                                  kind: "section",
-                                  text,
-                                }))
-                              )
-                            }
-                            ariaLabel={`Group for card ${cardNo}`}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <label className={LABEL}>Card heading</label>
-                          <input
-                            className={cn(FIELD, "font-semibold")}
-                            value={fields.heading}
-                            onChange={(event) =>
-                              updateCard(event.target.value, fields.description)
-                            }
-                            placeholder="e.g. Products"
-                            aria-label={`Card ${cardNo} heading`}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <label className={LABEL}>Card description</label>
-                          <textarea
-                            className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
-                            value={fields.description}
-                            onChange={(event) =>
-                              updateCard(fields.heading, event.target.value)
-                            }
-                            placeholder="Explain what this component does for the seller."
-                            aria-label={`Card ${cardNo} description`}
-                          />
-                        </div>
-                      </div>
+                            {expanded && (
+                              <div className="space-y-3 border-t border-border-light px-2.5 py-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.6fr)]">
+                                  <div className="min-w-0">
+                                    <label className={LABEL}>Group</label>
+                                    <ColorSelect
+                                      value={groupOf(capRows, i)}
+                                      options={groupOptions(groupOf(capRows, i))}
+                                      onChange={(value) => {
+                                        setOpenCard(null);
+                                        setCapRows((l) =>
+                                          moveCardToGroup(l, i, value, (text) => ({
+                                            kind: "section",
+                                            text,
+                                          }))
+                                        );
+                                      }}
+                                      ariaLabel={`Group for card ${cardNo}`}
+                                      fill
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <label className={LABEL}>Card heading</label>
+                                    <input
+                                      className={cn(FIELD, "font-semibold")}
+                                      value={fields.heading}
+                                      onChange={(event) =>
+                                        updateCard(event.target.value, fields.description)
+                                      }
+                                      placeholder="e.g. Products"
+                                      aria-label={`Card ${cardNo} heading`}
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <label className={LABEL}>Card description</label>
+                                    <textarea
+                                      className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
+                                      value={fields.description}
+                                      onChange={(event) =>
+                                        updateCard(fields.heading, event.target.value)
+                                      }
+                                      placeholder="Explain what this component does for the seller."
+                                      aria-label={`Card ${cardNo} description`}
+                                    />
+                                  </div>
+                                </div>
 
-                      {/* NO separate "Card appearance" row. The preview icon
-                          above carries a pencil badge and opens this same
-                          picker, so a second control was the same job twice
-                          (Anir, Aug 6: "you can just click on the icon in the
-                          top left, and it'll automatically let you choose"). */}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1959,6 +2177,21 @@ export function OfferingForm({
                                 ),
                         },
                       ]);
+                      /* Show what you just added rather than leaving it
+                         behind a closed group. */
+                      setOpenGroups((prev) => {
+                        const next = new Set(prev);
+                        if (addingCap === "section") next.add(capDraft.trim());
+                        else {
+                          const last = capRows[capRows.length - 1];
+                          next.add(
+                            last && last.kind === "section"
+                              ? last.text
+                              : "\u0000ungrouped"
+                          );
+                        }
+                        return next;
+                      });
                       setAddingCap(null);
                     }}
                   >
@@ -1978,6 +2211,7 @@ export function OfferingForm({
         hint="The customer types this offering applies to: by family and company size."
       >
         {ctGroups.map(({ fam, types }) => {
+          const famLabel = types[0]?.family ?? fam;
           const ids = types.map((t) => t.id);
           const allOn = ids.every((id) => ctIds.includes(id));
           const famColor = customerFamilyColor(fam);
@@ -1992,7 +2226,7 @@ export function OfferingForm({
                   className="text-[11px] font-semibold uppercase tracking-[0.05em]"
                   style={{ color: famColor }}
                 >
-                  {fam}
+                  {famLabel}
                 </p>
                 <button
                   type="button"
@@ -2230,113 +2464,206 @@ export function OfferingForm({
               "material-scroll max-h-[460px] rounded-xl border border-border-light bg-surface p-3"
           )}
         >
-        <div className="space-y-3.5">
+        <div className="space-y-1.5">
         {materials.map((m, i) => {
           const MaterialIcon = MATERIAL_ICON[m.kind] || Package;
           const linkedMaterial = /^https?:\/\//i.test(m.url);
+          const expanded = openMaterial === i;
+          const kindOption = kindOptionsFor(m.kind).find((o) => o.value === m.kind);
+          const stages = m.journeyStages ?? [m.journeyStage ?? "awareness"];
+          const access = ACCESS_OPTIONS.find(
+            (o) => o.value === (m.accessLevel ?? "client_facing")
+          );
+          /* ONE LINE PER MATERIAL until you open it (Anir, Aug 26: "each
+             material should be a dropdown... it's not this complicated").
+             The chips carry what you would otherwise scan five dropdowns
+             for; the fields appear for the one you are editing, and the
+             rest step back. */
           return (
-            <div key={i} className="entry-card p-3.5">
-              <div className="entry-card__head -mx-3.5 mb-3.5 flex items-center gap-2.5 px-3.5 pb-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
-                  <MaterialIcon size={16} strokeWidth={1.9} />
+            <div
+              key={i}
+              className={cn(
+                "overflow-hidden rounded-xl border transition-[opacity,border-color]",
+                expanded
+                  ? "border-blue-subtle bg-surface/40 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                  : "border-border-light bg-white hover:border-blue-subtle",
+                openMaterial !== null && !expanded && "opacity-45 hover:opacity-100"
+              )}
+            >
+              <div
+                role="button"
+                tabIndex={-1}
+                data-material-row={i}
+                onClick={() => setOpenMaterial(expanded ? null : i)}
+                className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                  <MaterialIcon size={15} strokeWidth={1.9} />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-semibold text-text-primary">
-                    {m.label || `Material ${i + 1}`}
-                  </p>
-                  <p className="text-[11px] text-text-tertiary">
-                    {linkedMaterial ? "Linked material" : "Uploaded file"}
-                  </p>
-                </div>
                 <button
                   type="button"
-                  onClick={() => setMaterials((l) => l.filter((_, j) => j !== i))}
-                  aria-label={`Remove ${m.label || "material"}`}
-                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMaterial(expanded ? null : i);
+                  }}
+                  aria-expanded={expanded}
+                  className="min-w-0 flex-1 cursor-pointer text-left outline-none"
                 >
-                  <Trash2 size={15} strokeWidth={1.8} />
+                  <p className="truncate text-[13px] font-semibold text-text-primary">
+                    {m.label || `Material ${i + 1}`}
+                  </p>
                 </button>
+                <div className="hidden shrink-0 items-center gap-1.5 md:flex">
+                  {kindOption && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                      style={{
+                        background: `${kindOption.color}14`,
+                        color: kindOption.color,
+                      }}
+                    >
+                      {kindOption.label}
+                    </span>
+                  )}
+                  <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary">
+                    <Folder size={10} strokeWidth={2.2} className="shrink-0" />
+                    <span className="truncate">
+                      {materialFolderLabel(m.folder || "Others")}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[color:#7C3AED] [background:#7C3AED14]">
+                    <Route size={10} strokeWidth={2.2} />
+                    {stages.length === 1
+                      ? STAGE_OPTIONS.find((o) => o.value === stages[0])?.label ?? stages[0]
+                      : `${stages.length} stages`}
+                  </span>
+                  {access && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                      style={{ background: `${access.color}14`, color: access.color }}
+                    >
+                      {access.label}
+                    </span>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMaterial((current) =>
+                        current === i ? null : current === null ? null : current > i ? current - 1 : current
+                      );
+                      setMaterials((l) => l.filter((_, j) => j !== i));
+                    }}
+                    aria-label={`Remove ${m.label || "material"}`}
+                    className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                  >
+                    <Trash2 size={14} strokeWidth={1.8} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMaterial(expanded ? null : i);
+                    }}
+                    aria-label={`${expanded ? "Close" : "Edit"} ${m.label || `material ${i + 1}`}`}
+                    aria-expanded={expanded}
+                    className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
+                  >
+                    <ChevronDown
+                      size={15}
+                      strokeWidth={2}
+                      className={cn(
+                        "transition-transform duration-200",
+                        !expanded && "-rotate-90"
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-                <div className="xl:col-span-2">
-                  <label className={LABEL}>Name</label>
-                  <input
-                    value={m.label}
-                    onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                    placeholder="Material name"
-                    className={FIELD}
-                  />
-                </div>
-                <div>
-                  <label className={LABEL}>Format</label>
-                  <ColorSelect
-                    value={m.kind}
-                    options={kindOptionsFor(m.kind)}
-                    onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, kind: v as MaterialKind } : x))}
-                    ariaLabel="File format"
-                    minWidth={0}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className={LABEL}>Folder</label>
-                  <ColorSelect
-                    value={m.folder || "Others"}
-                    options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
-                    onChange={(folder) => setMaterials((list) => list.map((item, index) => index === i ? { ...item, folder } : item))}
-                    ariaLabel="Material folder"
-                    minWidth={0}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className={LABEL}>Buyer stage</label>
-                  <MultiColorSelect
-                    values={m.journeyStages ?? [m.journeyStage ?? "awareness"]}
-                    options={STAGE_OPTIONS}
-                    onChange={(values) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, journeyStage: values[0] as JourneyStage, journeyStages: values as JourneyStage[] } : x))}
-                    allLabel="Journey stages"
-                    allIcon={Route}
-                    allColor="#7C3AED"
-                    ariaLabel="Buyer's journey stage"
-                    minWidth={0}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className={LABEL}>Viewing access</label>
-                  <ColorSelect
-                    value={m.accessLevel ?? "client_facing"}
-                    options={ACCESS_OPTIONS}
-                    onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, accessLevel: v as AccessLevel } : x))}
-                    ariaLabel="Who can view this file?"
-                    minWidth={0}
-                    compactTrigger
-                    className="w-full"
-                  />
-                </div>
-                {linkedMaterial && (
-                  <div className="md:col-span-2 xl:col-span-4">
-                    <label className={LABEL}>Source link</label>
-                    <input
-                      value={m.url}
-                      onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
-                      placeholder="https://…"
-                      className={FIELD}
-                    />
+              {expanded && (
+                <div className="border-t border-border-light px-3 py-3">
+                  {/* Name gets a full row; the four pickers share the next.
+                      The old layout put all six on one xl row and the folder
+                      dropdown ran into Buyer stage. */}
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="md:col-span-2 xl:col-span-4">
+                      <label className={LABEL}>Name</label>
+                      <input
+                        value={m.label}
+                        onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                        placeholder="Material name"
+                        className={FIELD}
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Format</label>
+                      <ColorSelect
+                        value={m.kind}
+                        options={kindOptionsFor(m.kind)}
+                        onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, kind: v as MaterialKind } : x))}
+                        ariaLabel="File format"
+                        fill
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Folder</label>
+                      <ColorSelect
+                        value={m.folder || "Others"}
+                        options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+                        onChange={(folder) => setMaterials((list) => list.map((item, index) => index === i ? { ...item, folder } : item))}
+                        ariaLabel="Material folder"
+                        fill
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Buyer stage</label>
+                      <MultiColorSelect
+                        values={stages}
+                        options={STAGE_OPTIONS}
+                        onChange={(values) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, journeyStage: values[0] as JourneyStage, journeyStages: values as JourneyStage[] } : x))}
+                        allLabel="Journey stages"
+                        allIcon={Route}
+                        allColor="#7C3AED"
+                        ariaLabel="Buyer's journey stage"
+                        fluid
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Viewing access</label>
+                      <ColorSelect
+                        value={m.accessLevel ?? "client_facing"}
+                        options={ACCESS_OPTIONS}
+                        onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, accessLevel: v as AccessLevel } : x))}
+                        ariaLabel="Who can view this file?"
+                        fill
+                      />
+                    </div>
+                    {linkedMaterial && (
+                      <div className="md:col-span-2 xl:col-span-4">
+                        <label className={LABEL}>Source link</label>
+                        <input
+                          value={m.url}
+                          onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
+                          placeholder="https://…"
+                          className={FIELD}
+                        />
+                      </div>
+                    )}
+                    <div className="md:col-span-2 xl:col-span-4">
+                      <label className={LABEL}>Description <span className="font-normal normal-case tracking-normal">(optional)</span></label>
+                      <input
+                        value={m.description ?? ""}
+                        onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                        placeholder="What this material is for"
+                        className={FIELD}
+                      />
+                    </div>
                   </div>
-                )}
-                <div className={linkedMaterial ? "md:col-span-2 xl:col-span-2" : "md:col-span-2 xl:col-span-6"}>
-                  <label className={LABEL}>Description <span className="font-normal normal-case tracking-normal">(optional)</span></label>
-                  <input
-                    value={m.description ?? ""}
-                    onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
-                    placeholder="What this material is for"
-                    className={FIELD}
-                  />
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
@@ -2528,35 +2855,19 @@ export function OfferingForm({
         </div>
       </div>
 
-      {isEdit && (
-        <div className="mt-2 border-t border-border-light pt-4">
-          {!confirmDelete ? (
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="text-[color:#DC2626] inline-flex items-center gap-1.5 text-[13px] font-semibold text-error hover:underline"
-            >
-              <Trash2 size={14} strokeWidth={1.8} /> Delete offering
-            </button>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-[13px] text-text-secondary">
-                Delete this offering? This can&apos;t be undone.
-              </span>
-              <Button variant="destructive" onClick={remove} loading={deleting}>
-                Delete
-              </Button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="text-[13px] font-semibold text-text-secondary hover:text-text-primary"
-              >
-                Keep
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Deleting lives at the TOP of the page now, and confirms in a proper
+          dialog like every other destructive act in the app — not an inline
+          strip under the save bar (Anir, Aug 26: "this should be a pop-up...
+          put it at the top, somewhere in the top right"). */}
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={remove}
+        title="Delete this offering?"
+        body={`${offeringName || "This offering"} and its catalog entry are removed for everyone. This can't be undone.`}
+        confirmLabel="Delete offering"
+        busy={deleting}
+      />
     </div>
   );
 }
