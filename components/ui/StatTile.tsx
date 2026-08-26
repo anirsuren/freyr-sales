@@ -31,7 +31,10 @@ export function StatTile({
        tallest, and the value sits at the bottom of whatever height that is —
        so the big numbers line up across the row even when one caption wraps.
        Symmetry is a standing rule here, not a preference. */
-    <Card className="flex h-full flex-col p-4">
+    /* data-stat-tile marks the row for the symmetry check that enforces the
+       rule above — at most four tiles, every label on the same number of
+       lines, every tile the same height. */
+    <Card className="flex h-full flex-col p-4" data-stat-tile={label}>
       <div className="flex items-center gap-2.5 mb-3">
         <span
           className={cn(
@@ -42,7 +45,10 @@ export function StatTile({
         >
           <Icon size={15} strokeWidth={1.9} />
         </span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary leading-tight">
+        <span
+          data-stat-label
+          className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary leading-tight"
+        >
           {label}
         </span>
       </div>

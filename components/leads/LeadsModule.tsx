@@ -262,7 +262,12 @@ export function LeadsModule({
         />
       </div>
 
+      {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
+          bar is touching the cards"). Every other list page spaces this row;
+          these three called PageToolbar bare and it sat flush against the
+          tiles above it. */}
       <PageToolbar
+        className="mt-4"
         query={query}
         onQuery={setQuery}
         placeholder="Search leads by name, company or what they asked about"
@@ -609,9 +614,15 @@ export function LeadsModule({
           open
           onClose={() => setEditing(null)}
           title={editing.id ? `Edit ${editing.name || editing.company}` : "New lead"}
-          size="wide"
+          /* ONE SIZE FOR EVERY FORM DIALOG (Anir, Aug 26: "all the pop-ups,
+             let's just make it a set size"). These were "wide" (640px), which
+             is too narrow for a two-column form — the fields stacked and the
+             dialog came out tall and thin. "workflow" is 980px, the width the
+             Solutioning request dialog already uses, and the floor below stops
+             a short form collapsing into a strip. */
+          size="workflow"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
             <Field label="Person">
               <Input
                 value={editing.name}

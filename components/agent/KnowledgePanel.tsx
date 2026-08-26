@@ -122,7 +122,7 @@ export function KnowledgePanel({
       key: "customerTypes",
       label: "Customer types",
       icon: Users,
-      blurb: "The segments in Suren's master list.",
+      blurb: "The segments in the master list.",
     },
     { key: "markets", label: "Markets", icon: Globe, blurb: "Where we sell." },
   ];

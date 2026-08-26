@@ -48,7 +48,7 @@ types the URL is sent back to Offerings.
     Market Intel.
   - Admins only: Admin, Solutioning, Leads, Revenue Accruals and Contracts.
     Managers cannot open those either — every module that shipped on Aug 24-25
-    starts closed until Anir opens it.
+    starts closed until an admin opens it.
 So "a rep cannot see Customers" is correct behaviour, not a fault. Editing
 inside a module is gated further, and each page says so below.
 
@@ -98,9 +98,9 @@ confidence %, next steps, and Freyr's own opportunity id.
 
 REVENUE TYPE IS NOT PICKED. Since Aug 25 it is read off the confidence bar:
 under 95% is Pipeline, 95 to 98 is High confidence, 99 and above is Go get.
-Suren's reason: "people are not understanding that difference between go get
-and high confidence and the confidence level percentage — so to avoid that
-confusion can we club these two." The bar snaps to fives up to 95 and then to
+The reason: the two used to be picked separately, and a deal could read "High
+confidence" while its own bar said 25%. One number cannot contradict itself.
+The bar snaps to fives up to 95 and then to
 99 and 100, so every verdict is reachable by dragging; typing an exact figure
 still accepts anything, 72 or 97 included.
 
@@ -142,11 +142,10 @@ refuses writes.`,
       "website enquiry", "nurturing",
     ],
     title: "Leads",
-    body: `Leads is everything that came in before it is a deal. Suren's reason
-for keeping it separate from Opportunities: "there will be thousands of leads,
-but out of those only hundreds can be your opportunities — that is why you want
-to keep something as a lead, so that you don't discuss those 3000 items, you
-discuss only the opportunity."
+    body: `Leads is everything that came in before it is a deal. It is kept
+separate from Opportunities because the volumes are different by an order of
+magnitude: thousands of leads against hundreds of opportunities. The pipeline
+review discusses opportunities, not the inbound pile.
 
 A lead is an inbound nobody has qualified yet: a demo request from the website,
 a card from a conference, a referral. It carries who, which company, a source,
@@ -174,9 +173,9 @@ ADMIN ONLY for now, like every module that shipped on Aug 25.`,
     ],
     title: "Revenue Accruals",
     body: `Revenue Accruals is when the money on each deal is planned to land,
-month by month, and what moved since last month. Its own module rather than a
-tab on the deal, in Suren's words, "because you can see one report across it —
-you cannot go from opportunity to opportunity."
+month by month, and what moved since last month. It is its own module rather
+than a tab on the deal so that one report runs across every deal at once; going
+opportunity by opportunity cannot answer a question about the whole year.
 
 A plan spreads a contract value across months. "Spread evenly" is the simple
 formula he asked for; the rounding remainder lands on the last month so the
@@ -184,8 +183,8 @@ rows always add back to the contract value exactly.
 
 THREE RULES THAT ARE NOT NEGOTIABLE:
   1. Nothing auto-pushes. A missed month is never moved forward by the app.
-     Manoj: "if you keep pushing it, then I am off the hook — you will never
-     catch hold of me."
+     If the system quietly rolled a slip into the next month, nobody would ever
+     be accountable for the slip.
   2. A missed month is FLAGGED, not deleted: "it is not removing, you can
      invalidate — but there has to be a flag which says it is not validating,
      and you go and fix it." The flag is worked out fresh on every render, so
@@ -214,13 +213,12 @@ month. ADMIN ONLY for now.`,
 contract" and the contract is drafted here.
 
 WHAT IT HOLDS, deliberately only this: contract id, contract name, the
-customer, the value, the dates, the owner, and schedule revenue. Suren: "from
-here I need the baseline of the contract — what is a contract, who is a
-customer, what is a value."
+customer, the value, the dates, the owner, and schedule revenue. That is the
+baseline of the contract and nothing more.
 
 WHAT IT DOES NOT HOLD: projects, invoicing and resourcing. Those live on the
-delivery platform Anish is building. "Here you cannot see the project details,
-or how invoicing is done, or who are the resources working on it."
+delivery platform. Project details, invoicing and who is staffed on the work
+are deliberately not visible here.
 
 THE HANDSHAKE: every contract carries a reference like FR-C-0001, minted once
 and never rewritten, because "that ID will act as a link between this system

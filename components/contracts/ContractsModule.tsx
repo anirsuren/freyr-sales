@@ -390,7 +390,7 @@ export function ContractsModule({
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <AlertTriangle size={15} strokeWidth={2} style={{ color: "#B45309" }} />
             Deals sitting at “Create contract”
-            <InfoHint text="Suren, Aug 25: 'submitted to client, and after that, create contract — so there you close the thing.' These deals reached that status and nobody has drafted the contract yet." />
+            <InfoHint text="These deals have reached the “Create contract” status and nobody has drafted the contract yet. That status is where sales hands over to delivery, so anything sitting here is a handover that has not happened." />
           </h2>
           <div className="mt-2 divide-y divide-border-light">
             {awaiting.map((d) => (
@@ -423,7 +423,12 @@ export function ContractsModule({
         </section>
       )}
 
+      {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
+          bar is touching the cards"). Every other list page spaces this row;
+          these three called PageToolbar bare and it sat flush against the
+          tiles above it. */}
       <PageToolbar
+        className="mt-4"
         query={query}
         onQuery={setQuery}
         placeholder="Search by reference, contract, customer or offering"
@@ -733,7 +738,7 @@ export function ContractsModule({
                           <p className="mt-3.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                             <Coins size={13} strokeWidth={2.2} className="text-blue-primary" />
                             Schedule revenue
-                            <InfoHint text="Suren, Aug 25: 'once it is executed you don't need the accrual revenue in this sense — from sales I am going to give you schedule revenue, and schedule revenue is more reliable because that is decided after the contract started.' Once this contract is Ready for delivery or Signed, this schedule supersedes the deal's accrual plan." />
+                            <InfoHint text="What delivery will recognise, month by month. Once a contract is Ready for delivery or Signed this schedule supersedes the deal's accrual plan, because it is decided after the contract starts and is therefore the firmer number." />
                             <span className="ml-1 font-normal text-text-secondary tnum">
                               {formatMoney(total)} across {c.schedule.length}{" "}
                               {c.schedule.length === 1 ? "month" : "months"}
@@ -848,9 +853,15 @@ export function ContractsModule({
           open
           onClose={() => setEditing(null)}
           title={editing.id ? `Edit ${editing.name}` : "New contract"}
-          size="wide"
+          /* ONE SIZE FOR EVERY FORM DIALOG (Anir, Aug 26: "all the pop-ups,
+             let's just make it a set size"). These were "wide" (640px), which
+             is too narrow for a two-column form — the fields stacked and the
+             dialog came out tall and thin. "workflow" is 980px, the width the
+             Solutioning request dialog already uses, and the floor below stops
+             a short form collapsing into a strip. */
+          size="workflow"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
             <div className="col-span-2">
               <Field label="Contract name">
                 <Input

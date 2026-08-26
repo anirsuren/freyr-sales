@@ -271,7 +271,16 @@ export function CustomersBrowser({
     const params = new URLSearchParams(window.location.search);
     const nextHealth = params.get("health") || "all";
     const nextSort = params.get("sort") || "recent";
-    const nextView = params.get("view") || "grid";
+    /* A MISSING URL PARAM IS NOT A CHOICE (Anir, Aug 26: "when I switch the
+       mode from tile to list and then go to another page, reload, and go back
+       to customers, it doesn't retain that").
+
+       This defaulted to "grid" when ?view= was absent and then called setView,
+       which is the PERSISTING setter — so simply landing on /customers with a
+       clean URL wrote "grid" over whatever you had chosen. The saved
+       preference was destroyed by the act of arriving. Only an explicit param
+       overrides storage now. */
+    const nextView = params.get("view");
     setQuery(params.get("q") || "");
     setHealthFilter(
       ["all", "healthy", "watch", "at_risk"].includes(nextHealth)
@@ -283,7 +292,7 @@ export function CustomersBrowser({
         ? nextSort
         : "recent"
     );
-    setView(nextView === "table" ? "table" : "grid");
+    if (nextView === "table" || nextView === "grid") setView(nextView);
     setPage(1);
     setSelectMode(false);
     setSelected(new Set());

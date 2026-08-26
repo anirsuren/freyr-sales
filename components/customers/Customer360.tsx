@@ -124,63 +124,39 @@ export function Customer360({
 
       {/* The counts first, so the whole picture reads in one glance before any
           list does. */}
-      {/* ONE ROW, WHATEVER THE COUNT. A customer has seven bands and a person
-          has nine; a fixed grid-cols-7 left the person's row as 7 + 2 orphans,
-          and auto-fit made it 8 + 1. Symmetry is a standing rule here, not a
-          preference, so the column count IS the band count on desktop and the
-          row is always full. Narrow screens fall back to four, then two — both
-          of which divide every count we produce. */}
-      <div
-        className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:[grid-template-columns:repeat(var(--c360-cols),minmax(0,1fr))]"
-        style={{ ["--c360-cols" as string]: String(bands.length) }}
-      >
-        {bands.map((b) => {
+      {/* NOT A WALL OF STAT TILES (Anir, Aug 26: "just fucking stats on stats…
+          there's a lot of numbers right below"). Seven tiles for seven bands
+          meant five of them were a big zero in a box, and it broke the
+          four-tile ceiling every other page in this app keeps.
+
+          A count is not worth a card when it is nought. What has something
+          gets a chip you can click; what has nothing gets named once, quietly,
+          at the end. */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {live.map((b) => {
           const Icon = BAND_ICON_MAP[b.icon] ?? Target;
-          const on = b.count > 0;
-          const tile = (
+          const chip = (
             <span
-              className={cn(
-                "flex h-full flex-col justify-between rounded-lg border px-3 py-2.5 transition-colors",
-                on
-                  ? "border-border-light bg-surface/50 hover:border-blue-subtle hover:bg-blue-light/40"
-                  : "border-dashed border-border-light"
-              )}
+              className="flex items-center gap-1.5 rounded-lg border border-border-light bg-surface/60 px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-blue-subtle hover:bg-blue-light/50"
+              style={{ borderLeft: `3px solid ${b.color}` }}
             >
-              {/* WRAP, DON'T TRUNCATE. At nine columns "PRESENTATIONS" and
-                  "SUBMISSIONS" both ellipsed, and a label you cannot read is
-                  worse than one on two lines. The tiles stretch to a common
-                  height in the grid row, so a wrapped label costs nothing. */}
-              <span className="flex items-start gap-1.5">
-                <Icon
-                  size={12}
-                  strokeWidth={2.3}
-                  className="mt-[1px] shrink-0"
-                  style={{ color: on ? b.color : "var(--text-tertiary)" }}
-                />
-                <span className="text-[10.5px] font-semibold uppercase leading-[1.25] tracking-[0.03em] text-text-tertiary">
-                  {b.label}
-                </span>
-              </span>
-              <span
-                className="mt-1 block text-[20px] font-bold tnum"
-                style={{ color: on ? "var(--text-primary)" : "var(--text-tertiary)" }}
-              >
-                {b.count}
-              </span>
-              {b.total !== undefined && b.count > 0 && (
-                <span className="block text-[11.5px] font-semibold tnum text-text-secondary">
-                  {formatMoney(b.total)}
+              <Icon size={13} strokeWidth={2.2} style={{ color: b.color }} />
+              <span className="font-semibold text-text-primary">{b.label}</span>
+              <span className="font-bold tnum text-text-primary">{b.count}</span>
+              {b.total !== undefined && b.total > 0 && (
+                <span className="tnum text-text-secondary">
+                  · {formatMoney(b.total)}
                 </span>
               )}
             </span>
           );
-          return b.href && on ? (
+          return b.href ? (
             <Link key={b.key} href={b.href} className="block">
-              {tile}
+              {chip}
             </Link>
           ) : (
             <span key={b.key} className="block">
-              {tile}
+              {chip}
             </span>
           );
         })}

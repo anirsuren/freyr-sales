@@ -108,6 +108,10 @@ export function RevenueAccrualsModule({
   const [tab, setTab] = useState<"plans" | "deviation">("plans");
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The deal picker "Plan a deal" opens. A button that says it plans a
+   *  deal has to ask which deal, not quietly change a filter behind you. */
+  const [picking, setPicking] = useState(false);
+  const [pickQuery, setPickQuery] = useState("");
   const [confirmFreeze, setConfirmFreeze] = useState(false);
   const [confirmUnfreeze, setConfirmUnfreeze] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AccrualPlan | null>(null);
@@ -435,7 +439,7 @@ export function RevenueAccrualsModule({
               )}
               <button
                 type="button"
-                onClick={() => setOnly("missing")}
+                onClick={() => setPicking(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
               >
                 <Plus size={15} strokeWidth={2.4} /> Plan a deal
@@ -517,7 +521,12 @@ export function RevenueAccrualsModule({
 
       {tab === "plans" ? (
         <div key="plans" className="tab-panel">
+          {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
+              bar is touching the cards"). Every other list page spaces this row;
+              these three called PageToolbar bare and it sat flush against the
+              tiles above it. */}
           <PageToolbar
+            className="mt-4"
             query={query}
             onQuery={setQuery}
             placeholder="Search by deal, customer or offering"
@@ -543,7 +552,7 @@ export function RevenueAccrualsModule({
                   },
                   {
                     value: "missing",
-                    label: `No numbers yet (${missing.length})`,
+                    label: `Need a plan (${missing.length})`,
                     color: AMBER,
                   },
                 ]}
@@ -608,13 +617,15 @@ export function RevenueAccrualsModule({
               <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                   <AlertTriangle size={15} strokeWidth={2} style={{ color: AMBER }} />
-                  Open deals with no accrual numbers
-                  <InfoHint text="Suren, Aug 25: 'at the report level there are so many projects where there is no accrual numbers — so then they have to go and fill that.' These are the deals carrying money that nobody has spread across months yet." />
+                  Deals with money but no plan
+                  <InfoHint text="Open deals carrying money that nobody has spread across months yet. Until a deal has an accrual plan its revenue cannot appear in any month, so it is missing from every forecast this page produces." />
                 </h2>
                 <p className="mt-0.5 text-[12.5px] text-text-secondary">
-                  {missing.length} {missing.length === 1 ? "deal" : "deals"} worth{" "}
-                  {formatMoney(missing.reduce((s, d) => s + d.value, 0))} with
-                  nothing planned.
+                  These {missing.length} open{" "}
+                  {missing.length === 1 ? "deal carries" : "deals carry"}{" "}
+                  {formatMoney(missing.reduce((s, d) => s + d.value, 0))}, and
+                  nobody has said which months that money is expected in. Until
+                  they do, none of it appears in any month on this page.
                 </p>
                 <div className="mt-3 divide-y divide-border-light">
                   {missing.map((d) => (
@@ -660,7 +671,7 @@ export function RevenueAccrualsModule({
               }
               description={
                 state.plans.length === 0
-                  ? "An accrual plan says when a deal's money is expected to land, month by month. Use “No numbers yet” to see which open deals still need one."
+                  ? "An accrual plan says when a deal's money is expected to land, month by month. Press “Plan a deal” to pick one and set its months."
                   : "Clear the search or the filter."
               }
             />
@@ -967,7 +978,7 @@ export function RevenueAccrualsModule({
             <EmptyState
               icon={Lock}
               title="No frozen sheet to compare against yet"
-              description="Freeze this month once and every later change is measured against it: which months moved, and which deals moved them. Suren's words: “by July end we are freezing; on August 1st we are developing another sheet, then comparing these two.”"
+              description="Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
             />
           ) : (
             <>
@@ -1115,7 +1126,13 @@ export function RevenueAccrualsModule({
           open
           onClose={() => setEditing(null)}
           title={`Accrual plan · ${dealById.get(editing.opportunityId)?.name ?? "deal"}`}
-          size="wide"
+          /* ONE SIZE FOR EVERY FORM DIALOG (Anir, Aug 26: "all the pop-ups,
+             let's just make it a set size"). These were "wide" (640px), which
+             is too narrow for a two-column form — the fields stacked and the
+             dialog came out tall and thin. "workflow" is 980px, the width the
+             Solutioning request dialog already uses, and the floor below stops
+             a short form collapsing into a strip. */
+          size="workflow"
         >
           <p className="text-[12.5px] text-text-secondary">
             Spread the contract value across the months you expect it to land.
@@ -1257,6 +1274,90 @@ export function RevenueAccrualsModule({
         body="The frozen sheet is removed and stops being the baseline for the month-on-month gap. Every accrual plan is left exactly as it is — this removes the photograph, not the thing photographed."
         confirmLabel="Unfreeze the month"
       />
+
+      {/* PICK THE DEAL, THEN PLAN IT (Anir, Aug 26: "when I press Plan a Deal
+          I'm expecting a pop-up… why is it giving me this thing?"). It used to
+          flip the list to a filtered view, which reads as the page changing
+          under you rather than as an answer to the button you pressed. */}
+      {picking && (
+        <Modal
+          open
+          onClose={() => {
+            setPicking(false);
+            setPickQuery("");
+          }}
+          title="Which deal are you planning?"
+          size="workflow"
+        >
+          <div className="flex min-h-[420px] flex-col">
+            <p className="text-[12.5px] text-text-secondary">
+              Pick an open deal and say which months you expect its money in.
+              Only deals carrying a value can be planned.
+            </p>
+            <input
+              value={pickQuery}
+              onChange={(e) => setPickQuery(e.target.value)}
+              placeholder="Search deals by name or customer"
+              aria-label="Search deals to plan"
+              className="mt-3 h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-colors focus:border-blue-subtle"
+            />
+            {(() => {
+              const q = pickQuery.trim().toLowerCase();
+              const rows = missing.filter(
+                (d) =>
+                  !q ||
+                  `${d.name} ${d.customer}`.toLowerCase().includes(q)
+              );
+              if (missing.length === 0) {
+                return (
+                  <p className="mt-6 text-center text-[13px] text-text-secondary">
+                    Every open deal already has a plan. Nothing left to do here.
+                  </p>
+                );
+              }
+              if (rows.length === 0) {
+                return (
+                  <p className="mt-6 text-center text-[13px] text-text-secondary">
+                    No open deal without a plan matches “{pickQuery.trim()}”.
+                  </p>
+                );
+              }
+              return (
+                <div className="mt-3 flex-1 overflow-y-auto rounded-xl border border-border-light">
+                  {rows.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      data-pick-deal={d.id}
+                      onClick={() => {
+                        setPicking(false);
+                        setPickQuery("");
+                        startPlan(d.id);
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-3 border-b border-border-light px-3.5 py-2.5 text-left transition-colors last:border-0 hover:bg-blue-light/40"
+                    >
+                      <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                          {d.name}
+                        </span>
+                        <span className="block truncate text-[12px] text-text-secondary">
+                          {d.customer}
+                          {d.offeringLabel && ` · ${d.offeringLabel}`}
+                          {d.estSignDate && ` · est. ${formatDate(d.estSignDate)}`}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
+                        {formatMoney(d.value)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={confirmFreeze}

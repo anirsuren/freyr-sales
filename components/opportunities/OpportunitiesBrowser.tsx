@@ -2145,7 +2145,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Opportunity id"
-                hint="Created by the system the moment the deal is saved (Suren, Aug 18: 'it should be system generated'). Numbers imported from Freyr's CRM stay exactly as they came in."
+                hint="Created by the system the moment the deal is saved, so it is never typed by hand. Deals imported from Freyr's CRM keep the reference they arrived with."
               >
                 {/* Nobody types this anymore — it is assigned, not entered. */}
                 {editing.externalId ? (

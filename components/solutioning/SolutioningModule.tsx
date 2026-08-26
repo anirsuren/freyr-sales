@@ -236,10 +236,22 @@ export function SolutioningModule({
         }
       />
 
-      {/* Six tiles, in rows that always fill: three at lg, six at xl. Symmetry
-          is a standing rule here — a 4-column grid holding six would have left
-          two orphans on their own line. */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      {/* FOUR TILES, MAXIMUM, AND EVERY LABEL ON ONE LINE (Anir, Aug 26: "you
+          can have six things at the top, and they all have to be perfectly
+          aligned with the same number of lines… you have to have a maximum of
+          four").
+
+          Six tiles squeezed each one to ~200px, which wrapped "Waiting to be
+          picked up" and "Average turnaround" onto two lines while the other
+          four stayed on one — so the row lost its baseline. At four the tiles
+          are twice as wide and every label fits on a single line.
+
+          In progress and Completed came out rather than the turnaround pair:
+          both are one click away on the Status filter, while "how long is this
+          taking" and "what has been sitting longest" are the two questions
+          Suren actually asked this module for and are not derivable from the
+          list at a glance. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           icon={ClipboardList}
           label="Open requests"
@@ -257,20 +269,6 @@ export function SolutioningModule({
               ? "nobody owns these yet"
               : "everything has an owner"
           }
-        />
-        <StatTile
-          icon={Hammer}
-          label="In progress"
-          value={String(inProgress.length)}
-          color="#6D28D9"
-          sub="picked up and being built"
-        />
-        <StatTile
-          icon={ShieldCheck}
-          label="Completed"
-          value={String(completed.length)}
-          color="#1A7A35"
-          sub="closed by the requester"
         />
         <StatTile
           icon={Timer}
