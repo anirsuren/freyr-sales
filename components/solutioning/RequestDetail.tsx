@@ -50,7 +50,8 @@ import type { OfferingMaterial } from "@/lib/offeringMaterials";
  * Matching on words rather than a stored kind because the log predates this
  * timeline — history already in the database gets the right mark too.
  */
-function timelineMark(what: string): { icon: LucideIcon; color: string } {
+/** Shared with the module's row-fold, so the two timelines cannot disagree. */
+export function timelineMark(what: string): { icon: LucideIcon; color: string } {
   const w = what.toLowerCase();
   if (w.startsWith("requested")) return { icon: ClipboardList, color: "#0071E3" };
   if (w.startsWith("picked it up")) return { icon: Hand, color: "#4338CA" };

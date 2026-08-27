@@ -27,12 +27,13 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
+import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { RoleTag } from "@/components/ui/RoleTag";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import {
   solutioningPeople,
@@ -932,29 +933,68 @@ function RequestRow({
                   <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     Latest activity
                   </span>
-                  <div className="mt-1.5 space-y-1.5">
+                  {/* A TIMELINE, WITH ITS CLOCK (Anir, Aug 27: "I need
+                      times and date and also I need latest activity like a
+                      timeline"). Three bare avatar lines said what happened
+                      but not when, and nothing connected them. Same marks
+                      and spine as the request page's own timeline —
+                      timelineMark is shared, not copied — with the date AND
+                      the time on every entry. */}
+                  <ul className="mt-2">
                     {r.activity.length === 0 ? (
-                      <p className="text-[12.5px] text-text-tertiary">
+                      <li className="text-[12.5px] text-text-tertiary">
                         Nothing has happened on this yet.
-                      </p>
+                      </li>
                     ) : (
                       [...r.activity]
                         .slice(-3)
                         .reverse()
-                        .map((a, i) => (
-                          <p
-                            key={`${a.at}-${i}`}
-                            className="flex items-center gap-1.5 text-[12.5px] text-text-secondary"
-                          >
-                            <Avatar
-                              name={a.by}
-                              className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                            />
-                            <span className="min-w-0 truncate">{a.what}</span>
-                          </p>
-                        ))
+                        .map((a, i, arr) => {
+                          const mark = timelineMark(a.what);
+                          const MarkIcon = mark.icon;
+                          return (
+                            <li
+                              key={`${a.at}-${i}`}
+                              className={cn(
+                                "relative pl-8",
+                                i < arr.length - 1 && "pb-3"
+                              )}
+                            >
+                              {i < arr.length - 1 && (
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute bottom-0 left-[10px] top-[24px] w-[2px] bg-border-light"
+                                />
+                              )}
+                              <span
+                                aria-hidden="true"
+                                className="absolute left-0 top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full"
+                                style={{ background: `${mark.color}1A`, color: mark.color }}
+                              >
+                                <MarkIcon size={11} strokeWidth={2.4} />
+                              </span>
+                              <p className="text-[12.5px] leading-[22px] text-text-primary">
+                                {a.what}
+                              </p>
+                              <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                                <Avatar
+                                  name={a.by}
+                                  className="h-[14px] w-[14px] shrink-0 text-[6px]"
+                                />
+                                <span className="min-w-0 truncate">{a.by}</span>
+                                <span className="whitespace-nowrap tnum">
+                                  · {formatDate(a.at)} ·{" "}
+                                  {new Date(a.at).toLocaleTimeString([], {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </p>
+                            </li>
+                          );
+                        })
                     )}
-                  </div>
+                  </ul>
                 </div>
                 <Link
                   href={`/solutioning/${r.id}`}

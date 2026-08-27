@@ -45,7 +45,6 @@ import {
   judgePlan,
   monthKey,
   monthLabel,
-  monthsFrom,
   planTotal,
   spreadEvenly,
   type AccrualPlan,
@@ -1025,7 +1024,6 @@ export function RevenueAccrualsModule({
                               ],
                             };
                           });
-                          const total = planTotal(plan);
                           return (
                             <div className="rounded-xl border border-border-light bg-surface/40 p-3.5">
                               <div className="grid gap-x-5 gap-y-3 lg:grid-cols-[minmax(0,1fr)_236px]">
@@ -1090,64 +1088,13 @@ export function RevenueAccrualsModule({
                                   </ul>
                                 </div>
                               </div>
-                              {/* NO SECOND CHART OF THE SAME DATA (Anir,
-                                  Aug 27: "I don't understand what it's
-                                  supposed to show. It's just a big line going
-                                  from left to right that's colored").
-
-                                  He was right, and the reason is worse than
-                                  the drawing: the BarChart directly above
-                                  already plots these exact months with their
-                                  amounts and labels. Under it sat a
-                                  proportional strip re-drawing the same
-                                  numbers as widths — and on an even spread,
-                                  which is what "Spread evenly" makes, every
-                                  segment came out identical, so the strip
-                                  reduced to a gradient. A summary line says
-                                  the things the chart cannot say at a glance,
-                                  and nothing is drawn twice. */}
-                              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-light pt-3 text-[11.5px] text-text-secondary tnum">
-                                <span>
-                                  <b className="text-text-primary">
-                                    {plan.lines.length}
-                                  </b>{" "}
-                                  {plan.lines.length === 1 ? "month" : "months"},{" "}
-                                  <b className="text-text-primary">
-                                    {monthLabel(plan.lines[0]?.month ?? "")}
-                                  </b>{" "}
-                                  to{" "}
-                                  <b className="text-text-primary">
-                                    {monthLabel(plan.lines[plan.lines.length - 1]?.month ?? "")}
-                                  </b>
-                                </span>
-                                {/* On an even spread, "Average $125K · Biggest
-                                    $125K" is the same number wearing two hats
-                                    — say the one true thing instead. */}
-                                {new Set(plan.lines.map((l) => l.amount)).size === 1 ? (
-                                  <span>
-                                    Spread evenly,{" "}
-                                    <b className="text-text-primary">
-                                      {formatMoney(plan.lines[0]?.amount ?? 0)}
-                                    </b>{" "}
-                                    a month
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span>
-                                      Average a month{" "}
-                                      <b className="text-text-primary">
-                                        {formatMoney(Math.round(total / (plan.lines.length || 1)))}
-                                      </b>
-                                    </span>
-                                    <span>
-                                      Biggest month{" "}
-                                      <b className="text-text-primary">
-                                        {formatMoney(Math.max(...plan.lines.map((l) => l.amount), 0))}
-                                      </b>
-                                    </span>
-                                  </>
-                                )}
-                              </p>
+                              {/* No facts line either (Anir, Aug 27: "and
+                                  what's the point of this"). It said the
+                                  month count, the range and the per-month
+                                  figure — all three now visible twice over:
+                                  on the chart's own axis and in the
+                                  Month-by-month column beside it. A line
+                                  restating two neighbours is noise. */}
                             </div>
                           );
                         })()}
@@ -1435,7 +1382,13 @@ export function RevenueAccrualsModule({
           </Field>
 
           {!editing.opportunityId ? (
-            <p className="mt-4 rounded-xl border border-dashed border-border-light bg-surface/40 px-4 py-6 text-center text-[12.5px] text-text-secondary">
+            /* THE DIALOG OPENS AT ITS WORKING SIZE (Anir, Aug 27: "why is
+               the pop-up so small? It looks bad, but once I pick a deal, it
+               looks good. Keep the size" — the third screenshot, the filled
+               form, is the size he kept). The placeholder holds the height
+               the form will occupy, so picking a deal fills the space
+               instead of doubling the dialog under your cursor. */
+            <p className="mt-4 flex min-h-[420px] items-center justify-center rounded-xl border border-dashed border-border-light bg-surface/40 px-4 py-6 text-center text-[12.5px] text-text-secondary">
               {missing.length === 0
                 ? "Every open deal already has a plan. Nothing left to do here."
                 : "Pick a deal above and its months appear here."}

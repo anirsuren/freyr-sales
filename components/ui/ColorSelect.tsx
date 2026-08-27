@@ -316,7 +316,12 @@ export function ColorSelect({
     }
     const rect = ref.current?.getBoundingClientRect();
     if (rect) {
-      const desiredWidth = detailed ? 304 : Math.max(rect.width, 240);
+      /* A detailed menu keeps its 304px floor but never ignores a WIDE
+         trigger: under the plan-a-deal field the 304px panel dangled off a
+         1200px control (Anir, Aug 27: "why is the drop-down so small?...
+         it looks bad"). The list is the field's own — it wears the field's
+         width. */
+      const desiredWidth = Math.max(rect.width, detailed ? 304 : 240);
       setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
     }
     setMenuQuery("");
