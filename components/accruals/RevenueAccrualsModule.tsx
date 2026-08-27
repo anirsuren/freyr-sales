@@ -30,13 +30,13 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import {
   AccrualChart,
   AccrualChartPicker,
-  useAccrualChartKind,
+  useAccrualChartKinds,
 } from "@/components/accruals/AccrualChart";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/pipeline";
-import { BarChart } from "@/components/charts/Charts";
+import { Sparkline } from "@/components/charts/Charts";
 import { cn, formatDate } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -94,6 +94,29 @@ type Draft = {
 
 const AMBER = "#B45309";
 
+/**
+ * EACH COMPANY WEARS ITS OWN COLOUR (Anir, Aug 27: "I meant for each
+ * company"). Every card on this page was the same blue, so two flat $500K
+ * plans were literally the same picture twice. A stable accent per customer
+ * colours the card's rail, its sparkline, its chart and its line on the page
+ * summary — identity hues only, never amber/red/green, which this page
+ * reserves for months that have already gone by.
+ */
+const ACCENTS = [
+  "#0071E3", // blue
+  "#7C3AED", // violet
+  "#0891B2", // cyan
+  "#B4318F", // magenta
+  "#4F46E5", // indigo
+  "#0F766E", // deep teal
+  "#C2410C", // burnt orange
+];
+function accentFor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return ACCENTS[h % ACCENTS.length];
+}
+
 export function RevenueAccrualsModule({
   state: initial,
   deals,
@@ -109,7 +132,7 @@ export function RevenueAccrualsModule({
   const [query, setQuery] = useState("");
   const [only, setOnly] = useState<"all" | "flagged" | "missing">("all");
   const [tab, setTab] = useState<"plans" | "deviation">("plans");
-  const [chartKind, setChartKind] = useAccrualChartKind();
+  const [kindFor, setKindFor] = useAccrualChartKinds();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   /** The deal picker "Plan a deal" opens. A button that says it plans a
@@ -274,6 +297,48 @@ export function RevenueAccrualsModule({
             : []),
         ],
       }));
+  }, [shown]);
+
+  /**
+   * ONE LINE PER COMPANY when the page chart is flipped to Line (Anir,
+   * Aug 27: "I meant for each company"). Bars answer "how much lands in
+   * March"; the lines answer "whose money is that" — the biggest five
+   * customers each get a line in their card's accent, everything smaller
+   * shares a grey one so the chart never becomes spaghetti.
+   */
+  const companyLines = useMemo(() => {
+    const months = [
+      ...new Set(shown.flatMap(({ plan }) => plan.lines.map((l) => l.month))),
+    ]
+      .sort()
+      .slice(0, 18);
+    const byCustomer = new Map<string, Map<string, number>>();
+    for (const { plan } of shown) {
+      const mine = byCustomer.get(plan.customer) ?? new Map<string, number>();
+      for (const line of plan.lines)
+        mine.set(line.month, (mine.get(line.month) ?? 0) + line.amount);
+      byCustomer.set(plan.customer, mine);
+    }
+    const ranked = [...byCustomer.entries()].sort(
+      (a, b) =>
+        [...b[1].values()].reduce((x, y) => x + y, 0) -
+        [...a[1].values()].reduce((x, y) => x + y, 0)
+    );
+    const top = ranked.slice(0, 5).map(([customer, mine]) => ({
+      label: customer,
+      color: accentFor(customer),
+      points: months.map((m) => mine.get(m) ?? 0),
+    }));
+    const rest = ranked.slice(5);
+    if (rest.length > 0)
+      top.push({
+        label: rest.length === 1 ? rest[0][0] : `${rest.length} more`,
+        color: "#8E98A8",
+        points: months.map((m) =>
+          rest.reduce((sum, [, mine]) => sum + (mine.get(m) ?? 0), 0)
+        ),
+      });
+    return top;
   }, [shown]);
 
   /**
@@ -720,9 +785,13 @@ export function RevenueAccrualsModule({
                     When this money is planned to land
                     <InfoHint text="Every plan on screen, summed by month. A solid column is money on a plan nobody needs to revisit. The hatched part is money sitting on a flagged plan, and an amber column is a month that has already gone by." />
                   </h2>
-                  {/* Bars, line or area — remembered, and applied to every
-                      plan card below as well (Anir, Aug 27). */}
-                  <AccrualChartPicker value={chartKind} onChange={setChartKind} />
+                  {/* Bars, line or area — the page summary's own remembered
+                      choice; every card below carries its own (Anir, Aug 27:
+                      "I meant for each company"). */}
+                  <AccrualChartPicker
+                    value={kindFor("page")}
+                    onChange={(k) => setKindFor("page", k)}
+                  />
                 </div>
                 <p className="mt-0.5 text-[12.5px] text-text-secondary">
                   {formatMoney(monthChart.reduce((s, m) => s + m.value, 0))} across{" "}
@@ -745,11 +814,27 @@ export function RevenueAccrualsModule({
                       bar to a hairline without one. Same call shape the goal
                       charts use. */}
                   <AccrualChart
-                    kind={chartKind}
-                    months={monthChart.map((m) => m.label)}
-                    amounts={monthChart.map((m) => m.value)}
+                    kind={kindFor("page")}
+                    data={monthChart}
+                    series={companyLines.length > 0 ? companyLines : undefined}
                     height={180}
                   />
+                  {kindFor("page") === "line" && companyLines.length > 1 && (
+                    /* The key for the lines — each name in its line's colour,
+                       the same colour that company's card wears below. */
+                    <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-text-secondary">
+                      {companyLines.map((l) => (
+                        <span key={l.label} className="inline-flex items-center gap-1.5">
+                          <span
+                            aria-hidden="true"
+                            className="h-[3px] w-4 rounded-full"
+                            style={{ background: l.color }}
+                          />
+                          {l.label}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                 </div>
               </section>
             )}
@@ -796,6 +881,7 @@ export function RevenueAccrualsModule({
                 const { plan, deal, verdict } = entry;
                 const fresh = justSaved === plan.opportunityId;
                 const isOpen = openDeal === plan.id || fresh;
+                const accent = accentFor(plan.customer);
                 return (
                   <section
                     key={plan.id}
@@ -816,10 +902,14 @@ export function RevenueAccrualsModule({
                          needs re-planning, because that is what the rest of
                          the card is already saying. */
                       isOpen &&
-                        (verdict.invalid
-                          ? "[box-shadow:inset_3px_0_0_0_#B45309]"
-                          : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]")
+                        verdict.invalid &&
+                        "[box-shadow:inset_3px_0_0_0_#B45309]"
                     )}
+                    style={
+                      isOpen && !verdict.invalid
+                        ? { boxShadow: `inset 3px 0 0 0 ${accent}` }
+                        : undefined
+                    }
                   >
                     <button
                       type="button"
@@ -843,6 +933,22 @@ export function RevenueAccrualsModule({
                           style={{ background: "rgba(180,83,9,0.10)", color: AMBER }}
                         >
                           Needs re-planning
+                        </span>
+                      )}
+                      {/* THE SHAPE WITHOUT OPENING ANYTHING (Anir, Aug 27:
+                          "I need it completely revamped"). A closed row used
+                          to say only a total; the sparkline shows whether the
+                          money is flat, front-loaded or ramping before you
+                          commit to a click. Decorative here — the real chart
+                          is one click away — so it takes no hover of its own. */}
+                      {plan.lines.length > 1 && (
+                        <span aria-hidden="true" className="hidden shrink-0 md:block">
+                          <Sparkline
+                            points={plan.lines.map((l) => l.amount)}
+                            color={accent}
+                            height={26}
+                            interactive={false}
+                          />
                         </span>
                       )}
                       <span className="shrink-0 text-right">
@@ -909,7 +1015,7 @@ export function RevenueAccrualsModule({
                             return {
                               label: monthLabel(line.month).replace(" 20", " '"),
                               value: line.amount,
-                              color: past ? AMBER : "#0071E3",
+                              color: past ? AMBER : accent,
                               tip: [
                                 { name: "Planned", value: formatMoney(line.amount) },
                                 { name: "Cumulative by then", value: formatMoney(running) },
@@ -922,15 +1028,68 @@ export function RevenueAccrualsModule({
                           const total = planTotal(plan);
                           return (
                             <div className="rounded-xl border border-border-light bg-surface/40 p-3.5">
-                              {/* The same choice as the page chart, and
-                                  shorter: a plan's own months do not need the
-                                  full-height treatment the summary gets. */}
-                              <AccrualChart
-                                kind={chartKind}
-                                months={bars.map((b) => b.label)}
-                                amounts={bars.map((b) => b.value)}
-                                height={150}
-                              />
+                              <div className="grid gap-x-5 gap-y-3 lg:grid-cols-[minmax(0,1fr)_236px]">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                      How the money lands
+                                    </span>
+                                    {/* THIS card's own choice (Anir, Aug 27:
+                                        "I meant for each company") — flipping
+                                        Haleon to a line redraws Haleon, and
+                                        nothing else. */}
+                                    <AccrualChartPicker
+                                      value={kindFor(plan.id)}
+                                      onChange={(k) => setKindFor(plan.id, k)}
+                                    />
+                                  </div>
+                                  <div className="mt-2">
+                                    <AccrualChart
+                                      kind={kindFor(plan.id)}
+                                      data={bars}
+                                      color={accent}
+                                      height={150}
+                                    />
+                                  </div>
+                                </div>
+                                {/* MONTH BY MONTH, READABLE AS NUMBERS. The
+                                    chart gives the shape; this column gives
+                                    the exact figure per month with a track
+                                    showing its share of the biggest month —
+                                    a breakdown beside the drawing, not a
+                                    restatement of it. */}
+                                <div className="min-w-0 lg:border-l lg:border-border-light lg:pl-5">
+                                  <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                    Month by month
+                                  </span>
+                                  <ul className="mt-2 max-h-[176px] space-y-2 overflow-y-auto pr-1">
+                                    {bars.map((b, i) => {
+                                      const biggest = Math.max(...bars.map((x) => x.value), 1);
+                                      const past = b.color === AMBER;
+                                      return (
+                                        <li key={`${b.label}-${i}`} className="text-[11.5px] tnum">
+                                          <span className="flex items-baseline justify-between gap-2">
+                                            <span className={cn(past ? "font-semibold" : "text-text-secondary")} style={past ? { color: AMBER } : undefined}>
+                                              {b.label}
+                                              {past && " · passed"}
+                                            </span>
+                                            <b className="text-text-primary">{formatMoney(b.value)}</b>
+                                          </span>
+                                          <span className="mt-1 block h-1 overflow-hidden rounded-full bg-border-light">
+                                            <span
+                                              className="block h-full rounded-full"
+                                              style={{
+                                                width: `${Math.round((b.value / biggest) * 100)}%`,
+                                                background: past ? AMBER : accent,
+                                              }}
+                                            />
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              </div>
                               {/* NO SECOND CHART OF THE SAME DATA (Anir,
                                   Aug 27: "I don't understand what it's
                                   supposed to show. It's just a big line going
@@ -961,18 +1120,33 @@ export function RevenueAccrualsModule({
                                     {monthLabel(plan.lines[plan.lines.length - 1]?.month ?? "")}
                                   </b>
                                 </span>
-                                <span>
-                                  Average a month{" "}
-                                  <b className="text-text-primary">
-                                    {formatMoney(Math.round(total / (plan.lines.length || 1)))}
-                                  </b>
-                                </span>
-                                <span>
-                                  Biggest month{" "}
-                                  <b className="text-text-primary">
-                                    {formatMoney(Math.max(...plan.lines.map((l) => l.amount), 0))}
-                                  </b>
-                                </span>
+                                {/* On an even spread, "Average $125K · Biggest
+                                    $125K" is the same number wearing two hats
+                                    — say the one true thing instead. */}
+                                {new Set(plan.lines.map((l) => l.amount)).size === 1 ? (
+                                  <span>
+                                    Spread evenly,{" "}
+                                    <b className="text-text-primary">
+                                      {formatMoney(plan.lines[0]?.amount ?? 0)}
+                                    </b>{" "}
+                                    a month
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span>
+                                      Average a month{" "}
+                                      <b className="text-text-primary">
+                                        {formatMoney(Math.round(total / (plan.lines.length || 1)))}
+                                      </b>
+                                    </span>
+                                    <span>
+                                      Biggest month{" "}
+                                      <b className="text-text-primary">
+                                        {formatMoney(Math.max(...plan.lines.map((l) => l.amount), 0))}
+                                      </b>
+                                    </span>
+                                  </>
+                                )}
                               </p>
                             </div>
                           );
