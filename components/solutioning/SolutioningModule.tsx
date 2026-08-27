@@ -829,7 +829,7 @@ function RequestRow({
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
-            <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
               {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
                   needs. It is the only thing on this panel written by a
                   person; everything else is a count or a name. */}
@@ -852,11 +852,8 @@ function RequestRow({
                     <b className="tnum text-text-primary">{stampedAt(r.meetingAt)}</b>
                   </p>
                 )}
-              </div>
 
-              {/* The quiet rail: who and what it is against, and what has been
-                  built so far. Ruled off, exactly like the deal panel's. */}
-              <div className="min-w-0 space-y-3.5 sm:border-l sm:border-border-light sm:pl-8">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     Against
@@ -922,17 +919,31 @@ function RequestRow({
                     </div>
                   )}
                 </div>
+                </div>
+                <p className="mt-4">
+                  <Link
+                    href={`/solutioning/${r.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                  >
+                    Open the full request
+                    <ChevronRight size={12} strokeWidth={2.4} />
+                  </Link>
+                </p>
               </div>
-            </div>
 
-            {/* THE STORY GETS THE FULL WIDTH UNDER A DIVIDER, the same place
-                the deal panel puts its activities strip. */}
-            <div className="border-t border-border-light bg-surface/50 px-4 py-3">
-              <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-                <div className="min-w-0">
-                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Latest activity
-                  </span>
+              {/* THE FACTS STACK ON THE LEFT, THE STORY OWNS THE RIGHT
+                  (Anir, Aug 27: "if there's like a million steps, how is this
+                  gonna look good?... activities should take up the entire
+                  right side, where you see that vertical line. Move the
+                  against and the documents to the left"). Against and
+                  Documents sit under the request's own words; the activity
+                  timeline gets the ruled-off rail full-height, scrolling on
+                  its own when the story gets long. */}
+              <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
+                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  Latest activity
+                </span>
+                <div className="mt-2 max-h-[320px] overflow-y-auto pr-1">
                   {/* A TIMELINE, WITH ITS CLOCK (Anir, Aug 27: "I need
                       times and date and also I need latest activity like a
                       timeline"). Three bare avatar lines said what happened
@@ -946,8 +957,9 @@ function RequestRow({
                         Nothing has happened on this yet.
                       </li>
                     ) : (
+                      /* Every step, newest first — the rail scrolls, so a
+                         million-step story stays a rail, not a wall. */
                       [...r.activity]
-                        .slice(-3)
                         .reverse()
                         .map((a, i, arr) => {
                           const mark = timelineMark(a.what);
@@ -996,13 +1008,6 @@ function RequestRow({
                     )}
                   </ul>
                 </div>
-                <Link
-                  href={`/solutioning/${r.id}`}
-                  className="inline-flex shrink-0 items-center gap-1 self-end rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                >
-                  Open the full request
-                  <ChevronRight size={12} strokeWidth={2.4} />
-                </Link>
               </div>
             </div>
           </div>

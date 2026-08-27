@@ -325,7 +325,29 @@ export function OfferingActivities({
            they will consume it… activity has to be a table, columns have to
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
-        <div className="overflow-x-auto">
+        <div className="relative">
+          {/* THE + IS THE APP'S BLUE SQUARE, TOP RIGHT (Anir, Aug 27: "I
+              don't want the add activity going here. It should be like a blue
+              square with a white plus, and it should just be in the top
+              right"). The dashed full-width row under the table was a second
+              row-shaped thing that was not a row; on this page a plus always
+              means add and always looks the same. */}
+          {/* The anchor is the SPAN, not the button — Tooltip's own wrapper
+              is position:relative, so an absolute button pinned itself to
+              the tooltip span and sat at the left edge. */}
+          <span className="absolute -top-1 right-0 z-10">
+            <Tooltip label="Add activity">
+              <button
+                type="button"
+                aria-label="Add activity"
+                onClick={() => openEditor()}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white shadow-sm transition-opacity hover:opacity-90"
+              >
+                <Plus size={16} strokeWidth={2.6} />
+              </button>
+            </Tooltip>
+          </span>
+        <div className="overflow-x-auto pt-1">
           {/* The min-width only has to be wide enough that no chip wraps; past that
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the
@@ -344,7 +366,10 @@ export function OfferingActivities({
                     there should be an actions column"). The pencil and the bin
                     sit under a header that says what they are; adding moved to
                     the footer row below, where a table normally puts it. */}
-                <th className="w-[88px] py-2 pr-1 text-right font-bold">Actions</th>
+                {/* The header keeps clear of the + square parked over this
+                    corner — without the padding the button trimmed the word
+                    to "ACT". */}
+                <th className="w-[124px] py-2 pr-11 text-right font-bold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -468,20 +493,8 @@ export function OfferingActivities({
             </tbody>
             {/* Where a table adds a row: the last line of the table itself,
                 full width, reading as an action rather than as data. */}
-            <tfoot>
-              <tr>
-                <td colSpan={7} className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => openEditor()}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-light py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
-                  >
-                    <Plus size={14} strokeWidth={2.4} /> Add activity
-                  </button>
-                </td>
-              </tr>
-            </tfoot>
           </table>
+        </div>
         </div>
       )}
 

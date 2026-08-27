@@ -166,7 +166,13 @@ function FoldHeading({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={(event) => {
+        /* The whole header band toggles as well (Anir, Aug 27: "I should be
+           able to click at the end of the entire thing") — without this the
+           click bubbles to the band and toggles twice, which is a no-op. */
+        event.stopPropagation();
+        onToggle();
+      }}
       aria-expanded={open}
       className="-my-1.5 -ml-2 flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-2 pr-3 text-[15px] font-semibold text-text-primary transition-colors hover:bg-blue-light/40 hover:text-blue-primary"
     >
@@ -899,11 +905,14 @@ export function FdlComponentDetail({
      demarcates exactly where it starts and where it ends — every single
      dropdown throughout the entire app"). The 3px is reserved in both
      states so folding never nudges the content. */
+  /* FOLDED CARDS ARE SLIM (Anir, Aug 27: "why are they so thick? I should
+     be able to click anywhere on that") — a shut section is one header line,
+     so it wears one header line's padding; the p-5 comes back when there is
+     content under it. The click-anywhere half lives on the <section>s. */
   const FOLD_CARD = (open: boolean) =>
     cn(
-      CARD,
-      "border-l-[3px]",
-      open ? "border-l-blue-primary" : "border-l-border-light"
+      "rise-in rounded-xl border border-border-light bg-white shadow-card border-l-[3px]",
+      open ? "p-5 border-l-blue-primary" : "px-5 py-2.5 border-l-border-light cursor-pointer"
     );
 
   /* THE THREE LONG SECTIONS FOLD (Anir, Aug 25: "the features section, the
@@ -2183,10 +2192,15 @@ export function FdlComponentDetail({
                labels and read as part of the chart rather than as its own
                thing to press. */
             <details className="group mb-4 mt-5">
-              <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary [&::-webkit-details-marker]:hidden">
+              {/* OPEN LOOKS OPEN (Anir, Aug 27: "it's hard to see when I
+                  have the roadmap history on or off"). Closed: a plain white
+                  control. Open: filled blue, like every active toggle in the
+                  app — the chevron alone was the only difference, and nobody
+                  reads a chevron's direction at a glance. */}
+              <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary group-open:border-blue-primary group-open:bg-blue-light group-open:text-blue-primary [&::-webkit-details-marker]:hidden">
                 <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
                 Roadmap version history
-                <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
+                <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary group-open:bg-white group-open:text-blue-primary">
                   {component.roadmap_versions?.length
                     ? `v${component.roadmap_versions[0].version}`
                     : "No changes yet"}
@@ -2220,8 +2234,23 @@ export function FdlComponentDetail({
       </section>
 
       {/* ------------------------------------------------------- features */}
-      <section className={FOLD_CARD(featuresOpen)}>
-        <div className="flex items-center justify-between gap-4">
+      <section
+        className={FOLD_CARD(featuresOpen)}
+        onClick={featuresOpen ? undefined : toggleFeatures}
+      >
+        {/* THE WHOLE BAND IS THE TOGGLE, AND IT HOLDS STILL (Anir, Aug 27:
+            "I should be able to click at the end of the entire thing. Also,
+            if I click on Features, it's moving. It should just stay still").
+            min-h reserves the height the version picker needs, so mounting
+            it cannot grow the row; the hint sits BEFORE the picker so it
+            never hops; the picker and the add button eat their own clicks. */}
+        <div
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleFeatures();
+          }}
+          className="flex min-h-[38px] cursor-pointer select-none items-center justify-between gap-4"
+        >
           {/* NAME, PICKER, THEN THE HINT (Anir, Aug 13: "you can probably just
               say 'Features' and then show the dropdown, and then make sure the
               text is aligned and stuff, and then the question mark can go
@@ -2238,21 +2267,26 @@ export function FdlComponentDetail({
               open={featuresOpen}
               onToggle={toggleFeatures}
             />
-            {featuresOpen && releases.length > 0 && (
-              <MultiColorSelect
-                values={shownVersionIds}
-                onChange={setShownVersionIds}
-                options={versionOptions}
-                allLabel="Every version"
-                allIcon={ListChecks}
-                ariaLabel="Which versions to show"
-                collapsible={false}
-                minWidth={200}
-              />
-            )}
             <InfoHint text="What is in one version. Pick the version beside the heading. To compare two versions side by side, use the Compare versions card lower down." />
+            {featuresOpen && releases.length > 0 && (
+              <span className="contents" onClick={(event) => event.stopPropagation()}>
+                <MultiColorSelect
+                  values={shownVersionIds}
+                  onChange={setShownVersionIds}
+                  options={versionOptions}
+                  allLabel="Every version"
+                  allIcon={ListChecks}
+                  ariaLabel="Which versions to show"
+                  collapsible={false}
+                  minWidth={200}
+                />
+              </span>
+            )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div
+            className="flex shrink-0 items-center gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
             {featuresOpen && canEdit && (
               /* Same square as Add customer: on this page a plus always means
                  add, and it always looks the same (Anir, Aug 9). Gone while the
@@ -2642,8 +2676,19 @@ export function FdlComponentDetail({
       </section>
 
       {/* ------------------------------------------------------ customers */}
-      <section className={FOLD_CARD(customersOpen)}>
-        <div className="flex items-center justify-between gap-4">
+      <section
+        className={FOLD_CARD(customersOpen)}
+        onClick={customersOpen ? undefined : toggleCustomers}
+      >
+        {/* Same band grammar as Features: the whole line toggles and holds
+            still, controls eat their own clicks. */}
+        <div
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleCustomers();
+          }}
+          className="flex min-h-[38px] cursor-pointer select-none items-center justify-between gap-4"
+        >
           <div className="flex min-w-0 items-center gap-2">
             <FoldHeading
               icon={Building2}
@@ -2658,7 +2703,10 @@ export function FdlComponentDetail({
               (Anir, Aug 9: "the tile or row thing should be in line with the
               add customer button and the add customer button can just be a
               white + with a blue square"). */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div
+            className="flex shrink-0 items-center gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
             {customersOpen && connected.length > 0 && releases.length > 1 && (
               <MultiColorSelect
                 values={customerVersions}
@@ -2916,8 +2964,17 @@ export function FdlComponentDetail({
 
       {/* -------------------------------------------------------- compare */}
       {releases.length >= 2 && component.features.length > 0 && (
-        <section className={FOLD_CARD(compareOpen)}>
-          <div className="flex items-start justify-between gap-4">
+        <section
+          className={FOLD_CARD(compareOpen)}
+          onClick={compareOpen ? undefined : toggleCompare}
+        >
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleCompare();
+            }}
+            className="flex min-h-[38px] cursor-pointer select-none items-start justify-between gap-4"
+          >
             <div>
               <div className="flex min-w-0 items-center gap-2">
                 <FoldHeading
@@ -2944,7 +3001,10 @@ export function FdlComponentDetail({
                 think the dropdown and the 'comparing these two versions' text
                 is positioned correctly"). Same rule he set for the customers
                 header: how you look at it, then what you do with it. */}
-            <div className={cn("flex shrink-0 items-center gap-2", !compareOpen && "hidden")}>
+            <div
+              onClick={(event) => event.stopPropagation()}
+              className={cn("flex shrink-0 items-center gap-2", !compareOpen && "hidden")}
+            >
               <MultiColorSelect
                 values={compareIds}
                 onChange={setCompareIds}
@@ -3057,9 +3117,15 @@ export function FdlComponentDetail({
       {/* WHICH FEATURE DOES THIS FILE BELONG TO. Storage keys attachments to
           features, so this is the one question the panel cannot answer on your
           behalf without risking filing a spec under the wrong thing. */}
+      {/* A REGULAR POPUP, NOT A TOWER (Anir, Aug 27: "this looks ugly. too
+          skinny and tall — just make a regular popup size"). Ten features in
+          one 440px column made a dialog taller than the screen; at workflow
+          width the features sit two abreast and the whole thing reads as a
+          normal popup. */}
       <Modal
         open={filesForRelease !== null}
         onClose={() => setFilesForRelease(null)}
+        size="workflow"
         title={`Add a file to ${
           releases.find((r) => r.id === filesForRelease)?.version ?? "this version"
         }`}
@@ -3075,9 +3141,9 @@ export function FdlComponentDetail({
                 A file is pinned to a feature, so it travels with every version
                 that carries that feature. Pick the one this belongs to.
               </p>
-              <ul className="space-y-1.5">
+              <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {choices.map((feature) => (
-                  <li key={feature.id}>
+                  <li key={feature.id} className="min-w-0">
                     <label
                       className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors ${
                         uploading
