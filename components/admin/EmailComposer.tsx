@@ -363,6 +363,16 @@ export function EmailComposer() {
   const [live, setLive] = useState(true);
   const [sent, setSent] = useState<AdminEmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  /**
+   * EACH SECTION FOLDS (Anir, Aug 27: "all these sections, I think, should
+   * be collapsible dropdowns — Write an email... Automated emails... Sent
+   * from this workspace"). All three start open; the fold is the same
+   * animated reveal the accrual cards use, so it feels like a dropdown
+   * rather than content blinking in and out.
+   */
+  const [shut, setShut] = useState<Record<string, boolean>>({});
+  const foldToggle = (key: string) =>
+    setShut((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
@@ -470,10 +480,25 @@ export function EmailComposer() {
     <div className="space-y-6">
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+          {/* The title is the toggle; the draft picker beside it stays its
+              own control, so reaching for a draft never folds the form. */}
+          <button
+            type="button"
+            onClick={() => foldToggle("write")}
+            aria-expanded={!shut.write}
+            className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+          >
+            <ChevronDown
+              size={15}
+              strokeWidth={2.2}
+              className={cn(
+                "shrink-0 text-text-tertiary transition-transform",
+                shut.write && "-rotate-90"
+              )}
+            />
             <Mail size={15} strokeWidth={2} className="text-blue-primary" />
             Write an email
-          </h2>
+          </button>
           <span className="flex flex-wrap items-center gap-3">
             {/* START FROM A DRAFT (Saras, Aug 25: "can you make an automated
                 email draft for offering owners?"). On the title line rather
@@ -499,6 +524,8 @@ export function EmailComposer() {
           </span>
         </div>
 
+        <div className="freyr-fold" data-open={shut.write ? "false" : "true"}>
+          <div>
         {/* NO BANNER ABOVE THE TO FIELD (Anir, Aug 26: "this is ugly, do we
             really need those popups at the top? I just want the To field at
             the top like normal"). The one thing it said — that a recipient
@@ -664,6 +691,8 @@ export function EmailComposer() {
         {/* No "still needed" narration (Anir, Aug 27: "you don't have to
             say this"). The disabled Send button already carries the answer,
             and an admin does not need the form recited back at them. */}
+          </div>
+        </div>
       </Card>
 
       {/* WHAT GOES OUT WITHOUT ANYBODY WRITING IT.
@@ -673,11 +702,30 @@ export function EmailComposer() {
           emails an admin composed here, so the box says what fires each one
           and who receives it rather than implying a history it does not have. */}
       <Card className="p-5">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+        <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => foldToggle("auto")}
+          aria-expanded={!shut.auto}
+          className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.2}
+            className={cn(
+              "shrink-0 text-text-tertiary transition-transform",
+              shut.auto && "-rotate-90"
+            )}
+          />
           <CalendarClock size={15} strokeWidth={2} className="text-blue-primary" />
           Automated emails scheduled
-          <InfoHint text="Emails the app sends on its own. These are not composed here and do not appear in the log below." />
-        </h2>
+        </button>
+        {/* Beside the toggle, not inside it — a hint is its own button and
+            buttons do not nest. */}
+        <InfoHint text="Emails the app sends on its own. These are not composed here and do not appear in the log below." />
+        </div>
+        <div className="freyr-fold" data-open={shut.auto ? "false" : "true"}>
+          <div>
         <div className="mt-3 space-y-2">
           {AUTOMATED_EMAILS.map((mail) => (
             <div
@@ -711,15 +759,34 @@ export function EmailComposer() {
           These are sent by the app, not written here, so they are not in the
           list below.
         </p>
+          </div>
+        </div>
       </Card>
 
       {/* WHAT HAS ALREADY GONE OUT. */}
       <Card className="p-5">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+        <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => foldToggle("log")}
+          aria-expanded={!shut.log}
+          className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.2}
+            className={cn(
+              "shrink-0 text-text-tertiary transition-transform",
+              shut.log && "-rotate-90"
+            )}
+          />
           <Clock3 size={15} strokeWidth={2} className="text-blue-primary" />
           Sent from this workspace
-          <InfoHint text="Every email an admin sent from here, newest first, including the ones the provider refused. Click one to read it exactly as it went out." />
-        </h2>
+        </button>
+        <InfoHint text="Every email an admin sent from here, newest first, including the ones the provider refused. Click one to read it exactly as it went out." />
+        </div>
+        <div className="freyr-fold" data-open={shut.log ? "false" : "true"}>
+          <div>
         {loading ? (
           <p className="mt-3 text-[13px] text-text-tertiary">Loading…</p>
         ) : sent.length === 0 ? (
@@ -750,21 +817,55 @@ export function EmailComposer() {
                         !open && "-rotate-90"
                       )}
                     />
+                    {/* EVERY FACT WEARS ITS NAME (Anir, Aug 27: "I need it
+                        clearly labeled with: which email was sent from, the
+                        picture, the name, the time, the date"). The address
+                        under the subject was the RECIPIENT, unlabeled — he
+                        read it as the sender. "To" now says which it is, and
+                        the right side is labelled columns: the sending
+                        address, who pressed send with their face, and when —
+                        date AND time, because three test emails on the same
+                        day are otherwise the same row three times. */}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold text-text-primary">
                         {e.subject}
                       </span>
                       <span className="block truncate text-[12px] text-text-secondary">
+                        <b className="font-semibold text-text-tertiary">To</b>{" "}
                         {e.to}
                         {e.cc.length > 0 && ` · cc ${e.cc.join(", ")}`}
                       </span>
                     </span>
-                    <span className="hidden shrink-0 items-center gap-1.5 text-[12px] text-text-secondary sm:flex">
-                      <Avatar name={e.sentBy} className="h-5 w-5 text-[7px]" />
-                      {e.sentBy}
+                    {from && (
+                      <span className="hidden shrink-0 lg:block">
+                        <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          From
+                        </span>
+                        <span className="mt-0.5 block max-w-[210px] truncate text-[12px] text-text-secondary">
+                          {from}
+                        </span>
+                      </span>
+                    )}
+                    <span className="hidden shrink-0 sm:block">
+                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        Sent by
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-text-secondary">
+                        <Avatar name={e.sentBy} className="h-5 w-5 text-[7px]" />
+                        {e.sentBy}
+                      </span>
                     </span>
-                    <span className="shrink-0 whitespace-nowrap text-[11.5px] text-text-tertiary tnum">
-                      {formatDate(e.sentAt)}
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        When
+                      </span>
+                      <span className="mt-0.5 block whitespace-nowrap text-[12px] text-text-secondary tnum">
+                        {formatDate(e.sentAt)} ·{" "}
+                        {new Date(e.sentAt).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </span>
                     {e.status === "sent" ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(22,163,74,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#16a34a]">
@@ -829,6 +930,8 @@ export function EmailComposer() {
             })}
           </div>
         )}
+          </div>
+        </div>
       </Card>
     </div>
   );
