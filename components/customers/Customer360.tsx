@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
+  ChevronDown,
   CalendarClock,
   Contact as ContactIcon,
   FileSignature,
@@ -17,7 +18,13 @@ import {
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { TypeChip, TypeIconTile, typeMeta } from "@/components/performance/bits";
+import {
+  PersonGoalPanel,
+  TypeChip,
+  TypeIconTile,
+  typeMeta,
+} from "@/components/performance/bits";
+import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -64,6 +71,15 @@ export type Customer360Item = {
   goalType?: string;
   /** A goal's own columns — target, actual, % met — already formatted. */
   goalFacts?: { target?: string; actual?: string; pct: number | null };
+  /** Everything the goals page's own PersonGoalPanel needs to run in the
+      row's fold — the goal, and a state trimmed to this person's entries. */
+  goalDrill?: {
+    goal: PrimaryGoal;
+    person: string;
+    target: number;
+    done: number;
+    state: PerformanceState;
+  };
 };
 
 export type Customer360Band = {
@@ -147,6 +163,9 @@ export function Customer360({
    * row's facts sitting BESIDE its words.
    */
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  /** Which goal row is folded open — same row-click grammar as the goals
+      page: the name is the link, every other pixel toggles the fold. */
+  const [openGoal, setOpenGoal] = useState<string | null>(null);
   const active =
     live.find((b) => b.key === activeKey) ?? (live.length ? live[0] : null);
 
@@ -223,15 +242,51 @@ export function Customer360({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
-                    {active.items.slice(0, 8).map((item) => (
-                      <tr key={item.id}>
+                    {active.items.slice(0, 8).map((item) => {
+                      const goalOpen = openGoal === item.id;
+                      const accent = item.goalType
+                        ? typeMeta(item.goalType).color
+                        : active.color;
+                      return (
+                      <Fragment key={item.id}>
+                      {/* ROWS FOLD OPEN, like the goals page's (Anir, Aug 27:
+                          "I want the drop down too. But there doesn't have
+                          to be so much detail as goals"). Row click toggles;
+                          the name stays the link — the standing grammar. */}
+                      <tr
+                        onClick={() => setOpenGoal(goalOpen ? null : item.id)}
+                        aria-expanded={goalOpen}
+                        className={cn(
+                          "cursor-pointer transition-all hover:bg-surface",
+                          goalOpen && "bg-surface",
+                          /* THE DIMMING (Anir, Aug 27: "it should have all
+                             the same functionality, like the dimming") — the
+                             org goals table fades every row that is not the
+                             open one, and so does this. */
+                          openGoal !== null && !goalOpen && "opacity-45 hover:opacity-100"
+                        )}
+                        style={
+                          goalOpen
+                            ? { boxShadow: `inset 3px 0 0 0 ${accent}` }
+                            : undefined
+                        }
+                      >
                         <td className="py-2.5 pr-4">
                           <span className="flex items-center gap-3">
+                            <ChevronDown
+                              size={13}
+                              strokeWidth={2.4}
+                              className={cn(
+                                "shrink-0 text-text-tertiary transition-transform",
+                                !goalOpen && "-rotate-90"
+                              )}
+                            />
                             {item.goalType && <TypeIconTile type={item.goalType} />}
                             <span className="flex min-w-0 flex-col gap-1">
                               {item.href ? (
                                 <Link
                                   href={item.href}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="self-start text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                                 >
                                   {item.title}
@@ -281,7 +336,52 @@ export function Customer360({
                           )}
                         </td>
                       </tr>
-                    ))}
+                      {goalOpen && (
+                        <tr className="!border-t-0">
+                          <td
+                            colSpan={4}
+                            className="pb-3 pl-[26px] pr-2 pt-0.5"
+                            style={{ boxShadow: `inset 3px 0 0 0 ${accent}` }}
+                          >
+                            {/* THE GOALS PAGE'S OWN PERSON PANEL, not a
+                                lookalike (Anir, Aug 27: "it should look the
+                                exact same as the goals page... literally
+                                just copy this — I honestly think you just
+                                need the person"). Same component the org
+                                table opens per person; the three-box
+                                organization → group → person drill stays on
+                                the goal's own page. */}
+                            {item.goalDrill ? (
+                              <div className="overflow-hidden rounded-lg border border-border-light">
+                                <PersonGoalPanel
+                                  goal={item.goalDrill.goal}
+                                  person={item.goalDrill.person}
+                                  target={item.goalDrill.target}
+                                  done={item.goalDrill.done}
+                                  state={item.goalDrill.state}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-[12px] text-text-secondary">
+                                Nothing logged on this goal yet.
+                              </p>
+                            )}
+                            {item.href && (
+                              <p className="mt-1.5 text-right">
+                                <Link
+                                  href={item.href}
+                                  className="text-[12px] font-semibold text-blue-primary hover:underline"
+                                >
+                                  Open this goal &rsaquo;
+                                </Link>
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

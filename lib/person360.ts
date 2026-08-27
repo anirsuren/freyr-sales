@@ -11,7 +11,7 @@ import {
   initializeLiveOfferings,
 } from "./offerings";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
-import { actualValue, pctMet, fmtAmount } from "./performanceShared";
+import { actualValue, fmtAmount, pctMet } from "./performanceShared";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
@@ -265,6 +265,19 @@ export async function buildPerson360(
           person: personName,
           rates: perf.rates,
         });
+        /* THE FOLD IS THE GOALS PAGE'S OWN PERSON PANEL (Anir, Aug 27:
+           "when I click on it, it should look the exact same as the goals
+           page... literally just copy this, but I don't think you need the
+           organization group person. I honestly think you just need the
+           person"). So the row carries what PersonGoalPanel — the exact
+           component the goals page opens per person — needs to run: the
+           goal itself and a state trimmed to THIS person's entries on THIS
+           goal's family, so six rows do not ship six copies of everyone's
+           numbers. */
+        const family = new Set([g.id, ...(g.componentGoalIds ?? [])]);
+        const myEntries = (perf.actuals ?? []).filter(
+          (a) => family.has(a.goalId) && same(a.person, personName)
+        );
         return {
           id: g.id,
           title: g.name,
@@ -275,6 +288,19 @@ export async function buildPerson360(
             /* Rounded: pctMet hands back the raw ratio, and a bar labelled
                "1014.8888888888889% met" is a calculator, not a sentence. */
             pct: target ? Math.round(pctMet(actual, target)) : null,
+          },
+          goalDrill: {
+            goal: g,
+            person: personName,
+            target,
+            done: actual,
+            state: {
+              types: [],
+              goals: [g],
+              groups: [],
+              actuals: myEntries,
+              ...(perf.rates ? { rates: perf.rates } : {}),
+            },
           },
           href: `/performance/goal/${encodeURIComponent(g.id)}`,
         };
