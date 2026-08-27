@@ -37,20 +37,55 @@ import {
  * is not a rep's business, and defining a level they can never select would
  * raise the question the glossary exists to answer.
  */
-const STAGE_COPY: Record<string, string> = {
-  awareness:
-    "The buyer is working out whether they have a problem. Overviews, thought leadership, anything that frames the need without pitching.",
-  evaluation:
-    "The buyer is comparing options, ours included. Demos, battle cards, product detail, proof it does what we say.",
-  decision:
-    "The buyer is choosing and needs to justify it. Proposals, pricing, case studies, references.",
+/**
+ * THE DEFINITIONS ARE SARAS'S, WORD FOR WORD (Aug 26: "can you replace the
+ * Sales Materials Glossary definitions with this content").
+ *
+ * They are not paraphrased and they are not tightened. Every one of these
+ * words is a rule about what a rep may send to a customer, and she owns that
+ * rule — an edit here that reads better is an edit to Freyr's policy made by
+ * somebody who does not set it.
+ *
+ * Examples are hers too, and they are what makes a definition usable: "the
+ * client is comparing Freyr against other options" tells a rep nothing about
+ * whether their battle card belongs there. Freyr AI Only carries none because
+ * she gave none, so the field is optional rather than invented.
+ */
+type Definition = { definition: string; examples?: string };
+
+const STAGE_COPY: Record<string, Definition> = {
+  awareness: {
+    definition:
+      "The client is learning about their problem, and may not even know that any suitable solutions exist. Sales materials labeled with this stage explain the challenge & broad solution.",
+    examples: "Thought Leadership, Introductory Emails, Short Sales Decks etc.",
+  },
+  evaluation: {
+    definition:
+      "The client knows what they need, and is comparing Freyr against other options. Sales materials labeled with this stage show how our solution works and why it's a strong fit.",
+    examples: "Battle Cards, Client Demos, Client Testimonials etc.",
+  },
+  decision: {
+    definition:
+      "The client has shortlisted Freyr, and needs to finalise and justify the purchase internally. Sales materials labeled with this stage support approval, budgeting, and contracting.",
+    examples: "Proposals, Success Stories/Case Studies etc.",
+  },
 };
 
-const ACCESS_COPY: Record<AccessLevel, string> = {
-  client_facing: "Safe to send to a customer as it is. No internal pricing, no internal names.",
-  internal_only: "For Freyr people only. Useful in preparing for a customer, never sent to one.",
-  agent_only:
-    "Never shown to a customer or a rep. It exists to train Freyr AI, and only its offering owner and app admins can open it.",
+const ACCESS_COPY: Record<AccessLevel, Definition> = {
+  client_facing: {
+    definition:
+      "Sales material can be shared with a client as it is/ after some client-based customization. Contains no confidential content.",
+    examples: "Marketing Videos, Thought Leadership, Sales Decks, Intro Emails etc.",
+  },
+  internal_only: {
+    definition:
+      "Sales material for Freyr employees only - Useful to prepare for a client interaction, but must never be sent to a client. Contains confidential content.",
+    examples: "battle cards, internal pricing, deal notes, competitor analysis.",
+  },
+  agent_only: {
+    definition:
+      "Sales material not visible to anybody except the offering owner uploading it & app admins. Uploaded solely so Freyr AI chatbot can use it when answering questions.",
+  },
 };
 
 type GlossaryGroup = "stages" | "access";
@@ -114,14 +149,14 @@ export function MaterialTagGlossary({
   const groups = [
     {
       key: "stages" as const,
-      label: "Buyer's journey stages",
+      label: "Buyer's Journey Stages",
       icon: Route,
       color: "#7C3AED",
       count: JOURNEY_STAGES.length,
     },
     {
       key: "access" as const,
-      label: "Access levels",
+      label: "Access Levels",
       icon: ShieldCheck,
       color: "#0891B2",
       count: levels.length,
@@ -132,7 +167,10 @@ export function MaterialTagGlossary({
     open === "stages"
       ? JOURNEY_STAGES.map((stage) => ({
           key: stage,
-          meta: JOURNEY_STAGE_META[stage],
+          /* `short` is "Awareness", `label` is "Awareness Stage" — and under a
+             panel already headed "Buyer's Journey Stage(s)" the long one says
+             Stage twice. Short is also exactly what Saras called them. */
+          meta: { ...JOURNEY_STAGE_META[stage], label: JOURNEY_STAGE_META[stage].short },
           copy: STAGE_COPY[stage],
         }))
       : open === "access"
@@ -143,15 +181,19 @@ export function MaterialTagGlossary({
           }))
         : [];
 
+  /* Her group definitions, also verbatim. The "three stages" / "three
+     options" lines in her note are list headers, not body copy, so they are
+     not rendered — the rows below ARE the list, and printing a count that
+     could disagree with what a given reader sees would be worse than useless. */
   const heading =
     open === "stages"
       ? {
-          title: "Buyer's journey stage",
-          hint: "Where the customer is in making up their mind. A file can carry more than one.",
+          title: "Buyer's Journey Stage(s)",
+          hint: "The stage(s) of a client's buying decision journey that the sales material is meant to support. A sales material can support multiple stages.",
         }
       : {
-          title: "Who can view this file",
-          hint: "Freyr AI reads every uploaded file. This says who among people may open it.",
+          title: "Access Level",
+          hint: "Identifies who is allowed to access the sales material, and whether it can be shared outside Freyr. Note: Freyr AI accesses every sales material regardless of this setting.",
         };
 
   return (
@@ -198,7 +240,7 @@ export function MaterialTagGlossary({
             ref={panelRef}
             role="dialog"
             aria-label={heading.title}
-            style={{ top: box.top, right: box.right, width: 340 }}
+            style={{ top: box.top, right: box.right, width: 380 }}
             className="menu-in fixed z-[130] max-h-[70vh] overflow-y-auto rounded-xl border border-border-light bg-white p-3.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
             <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
@@ -227,8 +269,17 @@ export function MaterialTagGlossary({
                         {row.meta.label}
                       </span>
                       <span className="block text-[12px] leading-snug text-text-secondary">
-                        {row.copy}
+                        {row.copy.definition}
                       </span>
+                      {row.copy.examples && (
+                        /* Set apart from the definition, because a rep
+                           skimming for "is my battle card an Evaluation
+                           file?" is looking for the examples, not the rule. */
+                        <span className="mt-1 block text-[11.5px] leading-snug text-text-tertiary">
+                          <b className="font-semibold">Examples:</b>{" "}
+                          {row.copy.examples}
+                        </span>
+                      )}
                     </span>
                   </li>
                 );
