@@ -13,10 +13,8 @@ import {
   CircleDashed,
   ClipboardList,
   FileText,
-  Hammer,
   Inbox,
   Plus,
-  ShieldCheck,
   Sparkles,
   Timer,
 } from "lucide-react";
@@ -32,11 +30,9 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { RoleTag } from "@/components/ui/RoleTag";
 import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import {
-  solutioningPeople,
   SUBMISSION_TYPES,
   type SolutioningKind,
   type SolutioningState,
@@ -106,7 +102,6 @@ export function SolutioningModule({
   room = "requests",
   meRole,
   members,
-  memberRoles,
   customers,
   opportunities,
 }: {
@@ -119,7 +114,6 @@ export function SolutioningModule({
   room?: "requests" | "submissions" | "presentations";
   meRole: string;
   members: string[];
-  memberRoles: Record<string, string>;
   customers: CustomerOption[];
   opportunities: OpportunityOption[];
 }) {
@@ -218,7 +212,6 @@ export function SolutioningModule({
   const unclaimed = state.requests.filter(
     (r) => r.status === "initiated" && !r.owner
   );
-  const inProgress = state.requests.filter((r) => r.status === "in_progress");
   const completed = state.requests.filter((r) => r.status === "completed");
 
   /**
@@ -254,7 +247,6 @@ export function SolutioningModule({
     .filter((x): x is { r: SolutionRequest; days: number } => x.days !== null)
     .sort((a, b) => b.days - a.days);
   const oldestOpen = openAges[0] ?? null;
-  const people = solutioningPeople(state).slice(0, 8);
 
   async function post(body: Record<string, unknown>, doing: string) {
     setBusy(doing);

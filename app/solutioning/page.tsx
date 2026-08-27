@@ -61,20 +61,12 @@ export default async function SolutioningPage({
         "Grace Liu",
         "Daniel Foster",
       ];
-  const memberRoles: Record<string, string> = {};
-  for (const m of directory?.members ?? []) {
-    if (m.active && m.accountType === "real" && m.name.trim()) {
-      memberRoles[m.name.trim()] = m.role;
-    }
-  }
-
   return (
     <SolutioningModule
       state={state}
       room={tab === "submissions" || tab === "presentations" ? tab : "requests"}
       meRole={me.role}
       members={members}
-      memberRoles={memberRoles}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))
         .sort((a, b) => a.name.localeCompare(b.name))}
