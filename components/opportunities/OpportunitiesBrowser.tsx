@@ -1839,8 +1839,14 @@ export function OpportunitiesBrowser({
                   }
                   aria-expanded={!shut}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
-                    !shut && "border-b border-border-light"
+                    /* THE RAIL ONLY WHILE OPEN (Anir, Aug 27: "were these lines
+                       there before?" -- since Aug 19, on shut groups too, which
+                       contradicts the rule set since: a rail demarcates an OPEN
+                       block. The blue band keeps doing the separating; the rail
+                       now says what every other rail in the app says). */
+                    "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left transition-colors hover:bg-blue-light/75",
+                    !shut &&
+                      "border-b border-border-light shadow-[inset_3px_0_0_0_var(--blue-primary)]"
                   )}
                 >
                   <ChevronDown
