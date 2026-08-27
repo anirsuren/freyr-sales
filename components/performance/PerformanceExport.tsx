@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useEscapeToClose } from "@/components/ui/useDismissable";
 import { createPortal } from "react-dom";
 import { Download, FileSpreadsheet, ListChecks, Printer } from "lucide-react";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -47,6 +48,7 @@ export function PerformanceExport({
   live: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  useEscapeToClose(open, () => setOpen(false));
   /** The header slot only exists after the module has mounted. */
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useEscapeToClose } from "@/components/ui/useDismissable";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -99,6 +100,7 @@ export function PeopleTab({
 
   const [picked, setPicked] = useState<string | null>(validInitial);
   const [pickOpen, setPickOpen] = useState(false);
+  useEscapeToClose(pickOpen, () => setPickOpen(false));
   /** The goal whose PERSONAL share is being set — see scope.onSetTarget. */
   const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
   const [shareBusy, setShareBusy] = useState(false);

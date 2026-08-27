@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useEscapeToClose } from "@/components/ui/useDismissable";
 import { MoreHorizontal } from "lucide-react";
 
 export function DashboardMoreActions({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  useEscapeToClose(open, () => setOpen(false));
   return (
     <div className="relative">
       <button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useEscapeToClose } from "@/components/ui/useDismissable";
 import { SlidersHorizontal, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -25,6 +26,7 @@ export function KpiCustomize({
   const kpiStorageKey = userScopedStorageKey(KPI_STORE, currentUser.id);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
+  useEscapeToClose(open, () => setOpen(false));
 
   useEffect(() => {
     setHidden(new Set());
