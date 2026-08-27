@@ -1993,3 +1993,40 @@ input {
   .ai-button:hover::after { animation: none; }
   .ai-button:hover { transform: none; }
 }
+
+
+/* A DROPDOWN THAT ACTUALLY DROPS (Anir, Aug 27: "when I click on the
+   dropdown, it doesn't even feel like a dropdown because you have to animate
+   it that way so it feels like a dropdown").
+
+   Mounting the panel is instant: it is there or it is not, and the row below
+   jumps down by however tall it happens to be. The grid-rows trick animates
+   to the panel's OWN height without anybody measuring it — 0fr to 1fr with
+   the child at min-height:0 — so the content is revealed rather than dealt,
+   and the rows beneath slide instead of teleport. The slight upward offset
+   and fade make it read as coming down out of the row it belongs to. */
+.freyr-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.freyr-fold > * {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 200ms ease-out 60ms, transform 240ms cubic-bezier(0.22, 1, 0.36, 1) 40ms;
+}
+.freyr-fold[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.freyr-fold[data-open="true"] > * {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .freyr-fold,
+  .freyr-fold > * {
+    transition: none;
+  }
+}

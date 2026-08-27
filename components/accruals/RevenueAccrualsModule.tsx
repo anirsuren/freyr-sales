@@ -27,6 +27,11 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
+import {
+  AccrualChart,
+  AccrualChartPicker,
+  useAccrualChartKind,
+} from "@/components/accruals/AccrualChart";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
@@ -104,6 +109,7 @@ export function RevenueAccrualsModule({
   const [query, setQuery] = useState("");
   const [only, setOnly] = useState<"all" | "flagged" | "missing">("all");
   const [tab, setTab] = useState<"plans" | "deviation">("plans");
+  const [chartKind, setChartKind] = useAccrualChartKind();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   /** The deal picker "Plan a deal" opens. A button that says it plans a
@@ -708,11 +714,16 @@ export function RevenueAccrualsModule({
                 change the picture rather than only the list. */}
             {monthChart.length > 0 && (
               <section className="mt-4 rounded-xl border border-border-light bg-white p-5 pb-2.5 shadow-card">
-                <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                  <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
-                  When this money is planned to land
-                  <InfoHint text="Every plan on screen, summed by month. A solid column is money on a plan nobody needs to revisit. The hatched part is money sitting on a flagged plan, and an amber column is a month that has already gone by." />
-                </h2>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
+                    When this money is planned to land
+                    <InfoHint text="Every plan on screen, summed by month. A solid column is money on a plan nobody needs to revisit. The hatched part is money sitting on a flagged plan, and an amber column is a month that has already gone by." />
+                  </h2>
+                  {/* Bars, line or area — remembered, and applied to every
+                      plan card below as well (Anir, Aug 27). */}
+                  <AccrualChartPicker value={chartKind} onChange={setChartKind} />
+                </div>
                 <p className="mt-0.5 text-[12.5px] text-text-secondary">
                   {formatMoney(monthChart.reduce((s, m) => s + m.value, 0))} across{" "}
                   {monthChart.length} {monthChart.length === 1 ? "month" : "months"}
@@ -733,11 +744,11 @@ export function RevenueAccrualsModule({
                       needs a parent with a definite height and collapses every
                       bar to a hairline without one. Same call shape the goal
                       charts use. */}
-                  <BarChart
-                    hideLabelDots
-                    data={monthChart}
+                  <AccrualChart
+                    kind={chartKind}
+                    months={monthChart.map((m) => m.label)}
+                    amounts={monthChart.map((m) => m.value)}
                     height={180}
-                    format="money"
                   />
                 </div>
               </section>
@@ -853,6 +864,11 @@ export function RevenueAccrualsModule({
                       />
                     </button>
 
+                    {/* The panel is always mounted while a plan is open so the
+                        fold can animate to its own height; .freyr-fold does
+                        the reveal. */}
+                    <div className="freyr-fold" data-open={isOpen ? "true" : "false"}>
+                      <div>
                     {isOpen && (
                       /* THE DIVIDER STOPS SHORT OF THE RAIL (Anir, Aug 26: "I
                          don't want this gap, you see where it cuts off"). A
@@ -906,11 +922,14 @@ export function RevenueAccrualsModule({
                           const total = planTotal(plan);
                           return (
                             <div className="rounded-xl border border-border-light bg-surface/40 p-3.5">
-                              <BarChart
-                                hideLabelDots
-                                data={bars}
-                                height={210}
-                                format="money"
+                              {/* The same choice as the page chart, and
+                                  shorter: a plan's own months do not need the
+                                  full-height treatment the summary gets. */}
+                              <AccrualChart
+                                kind={chartKind}
+                                months={bars.map((b) => b.label)}
+                                amounts={bars.map((b) => b.value)}
+                                height={150}
                               />
                               {/* NO SECOND CHART OF THE SAME DATA (Anir,
                                   Aug 27: "I don't understand what it's
@@ -1013,7 +1032,7 @@ export function RevenueAccrualsModule({
                               <button
                                 type="button"
                                 onClick={() => setConfirmDelete(plan)}
-                                className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                                className="rounded-lg p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                                 title="Delete this plan"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
@@ -1023,6 +1042,8 @@ export function RevenueAccrualsModule({
                         </div>
                       </div>
                     )}
+                      </div>
+                    </div>
                   </section>
                 );
               })}

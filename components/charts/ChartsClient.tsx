@@ -1863,7 +1863,16 @@ export function BarChart({
   fillCard,
   hideLabelDots = false,
   onBarClick,
+  /**
+   * How fat a single bar may get (Anir, Aug 27, on the accrual charts: "what
+   * is this showing me? What's the point of this?"). A four-month plan spread
+   * across a 1200px card hit the 88px cap on every column and drew four
+   * billboards — the width carried no meaning, it was just leftover space.
+   * Callers plotting a handful of points pass something tighter.
+   */
+  maxBarWidth = 88,
 }: {
+  maxBarWidth?: number;
   /**
    * NO KEY BESIDE THE AXIS LABEL (Anir, Aug 25: "why is there a red dot next
    * to August?"). A dot beside a label is a SERIES key; on a chart plotting
@@ -2342,8 +2351,8 @@ export function BarChart({
                 style={{ top: labelRoom }}
               >
                 <span
-                  className="h-full w-[72%] min-w-[14px] max-w-[88px] rounded-t-md"
-                  style={{ background: d.color || VIZ.blue, opacity: 0.07 }}
+                  className="h-full w-[72%] min-w-[14px] rounded-t-md"
+                  style={{ maxWidth: maxBarWidth, background: d.color || VIZ.blue, opacity: 0.07 }}
                 />
               </span>
               {/* Label + bar are ONE object: the label is a child of the bar,
@@ -2351,7 +2360,7 @@ export function BarChart({
                   with it, exactly as far, at exactly the same speed (Suren:
                   "the number does not go up when the bar chart goes up"). */}
               <div
-                className="group/bar relative flex w-[72%] min-w-[14px] max-w-[88px] justify-center transition-transform duration-150 motion-reduce:transition-none"
+                className="group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none"
                 onMouseEnter={(e) => {
                   showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
                   if (syncId) donutSyncBroadcast(syncId, i);
@@ -2364,6 +2373,7 @@ export function BarChart({
                   if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
+                  maxWidth: maxBarWidth,
                   height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,
                   // Every bar keeps its FULL colour at all times. Fading the
