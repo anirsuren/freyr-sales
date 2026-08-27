@@ -8,6 +8,10 @@ import {
   Building2,
   CalendarDays,
   Check,
+  CheckCircle2,
+  ClipboardList,
+  FilePlus2,
+  Hand,
   CircleDashed,
   ExternalLink,
   FileText,
@@ -40,6 +44,28 @@ import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
+
+/**
+ * Which mark a timeline event wears, read off the sentence the store wrote.
+ * Matching on words rather than a stored kind because the log predates this
+ * timeline — history already in the database gets the right mark too.
+ */
+function timelineMark(what: string): { icon: LucideIcon; color: string } {
+  const w = what.toLowerCase();
+  if (w.startsWith("requested")) return { icon: ClipboardList, color: "#0071E3" };
+  if (w.startsWith("picked it up")) return { icon: Hand, color: "#4338CA" };
+  if (w.startsWith("handed it back") || w.startsWith("took it off"))
+    return { icon: Undo2, color: "#B45309" };
+  if (w.includes("completed")) return { icon: CheckCircle2, color: "#16A34A" };
+  if (w.startsWith("reopened")) return { icon: RotateCcw, color: "#7C3AED" };
+  if (w.startsWith("added")) return { icon: FilePlus2, color: "#0891B2" };
+  if (w.startsWith("linked")) return { icon: Link2, color: "#0891B2" };
+  if (w.startsWith("removed") || w.includes("deleted"))
+    return { icon: Trash2, color: "#DC2626" };
+  if (w.startsWith("assigned")) return { icon: UserRound, color: "#7C3AED" };
+  return { icon: FileText, color: "#64748B" };
+}
+
 
 /**
  * ONE REQUEST, IN THE OFFERING PAGE'S OWN CLOTHES (Anir, Aug 24: "when I go
@@ -596,26 +622,45 @@ export function RequestDetail({
             </SectionCard>
 
             <SectionCard title="Timeline" icon={History}>
-              <ol className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
-                {[...r.activity].reverse().map((a, i) => (
-                  <li key={`${a.at}-${i}`} className="flex gap-2.5">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
-                      <FileText size={12} strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
-                        {a.what}
+              {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
+                  fucking timeline"). It was six identical blue documents in a
+                  list. A timeline has a spine, and each event wears its own
+                  mark: what KIND of thing happened is visible before a single
+                  word is read. Green only for completion and red only for
+                  removals — the reserved meanings. */}
+              <ol className="max-h-[420px] overflow-y-auto pr-1">
+                {[...r.activity].reverse().map((a, i, all) => {
+                  const mark = timelineMark(a.what);
+                  const MarkIcon = mark.icon;
+                  return (
+                    <li key={`${a.at}-${i}`} className="relative pl-9 pb-4 last:pb-0">
+                      {i < all.length - 1 && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-[12px] top-[26px] bottom-0 w-[2px] rounded bg-border-light"
+                        />
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-0 top-0 grid h-[26px] w-[26px] place-items-center rounded-full"
+                        style={{ background: `${mark.color}1A`, color: mark.color }}
+                      >
+                        <MarkIcon size={13} strokeWidth={2.3} />
                       </span>
-                      <span className="mt-0.5 block text-[11px] text-text-tertiary">
-                        {stampedAt(a.at)}
+                      <span className="block min-w-0">
+                        <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
+                          {a.what}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
+                          <Avatar name={a.by} className="h-[15px] w-[15px] text-[6px]" />
+                          <span className="font-medium text-text-secondary">{a.by}</span>
+                          <span aria-hidden="true">·</span>
+                          {stampedAt(a.at)}
+                        </span>
                       </span>
-                      <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                        <Avatar name={a.by} className="h-[16px] w-[16px] text-[6px]" />
-                        {a.by}
-                      </span>
-                    </span>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ol>
             </SectionCard>
           </div>
