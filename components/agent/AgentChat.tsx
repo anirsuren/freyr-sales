@@ -31,6 +31,7 @@ import {
   type Entity,
 } from "@/components/agent/EntityPills";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { AGENT_NAME } from "@/lib/agentIdentity";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import {
@@ -1308,7 +1309,7 @@ export function AgentChat({
                         </span>
                         <div className="min-w-0 max-w-[82%]">
                           <p className="text-[12px] font-semibold text-text-tertiary mb-1">
-                            Agent
+                            {AGENT_NAME}
                             <span className="ml-2 font-normal tabular-nums">
                               {clockTime(msg.ts)}
                             </span>

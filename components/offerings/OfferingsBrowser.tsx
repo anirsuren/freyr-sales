@@ -2191,9 +2191,23 @@ function OfferingRowDetail({
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-            Markets
-          </p>
+          {/* NO ROW OF ITS OWN (Anir, Aug 27: "I don't think you need a
+              separate line like this just for the open button"). A divider
+              and a full-width row to carry one link is a lot of card for one
+              word — it sits on the Markets heading line instead, top-right,
+              where the eye already ends up. */}
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Markets
+            </span>
+            <Link
+              href={`/offerings/${o.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-semibold text-blue-primary hover:underline"
+            >
+              Open <ChevronRight size={13} strokeWidth={2.4} />
+            </Link>
+          </span>
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {o.markets.length ? (
               o.markets.map((m) => (
@@ -2213,15 +2227,7 @@ function OfferingRowDetail({
         </div>
       </div>
 
-      <div className="mt-3 flex justify-end border-t border-border-light pt-2.5">
-        <Link
-          href={`/offerings/${o.id}`}
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline"
-        >
-          Open the full offering <ChevronRight size={14} strokeWidth={2.2} />
-        </Link>
-      </div>
+
     </div>
   );
 }

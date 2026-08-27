@@ -21,7 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
 import { StatTile } from "@/components/ui/StatTile";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -287,9 +287,14 @@ export function SolutioningModule({
 
   return (
     <div>
-      <PageHeader
-        title={ROOM_META[room].title}
-        subtitle={ROOM_META[room].subtitle}
+      {/* THE THREE ROOMS AS A SELECTOR (Anir, Aug 27: "we need the ability to
+          switch between requests, submissions and presentations... look at
+          what you did for the goals page. It should be the exact same
+          thing"). Same PageTabs the Performance and Market Intel pages use;
+          the room's title and subtitle now come from the strip, so the old
+          PageHeader would say the page name twice. */}
+      <SolutioningTabs
+        active={room}
         action={
           /* MOCK IS FULLY WORKABLE (Anir, Aug 26: "I should be able to add and
              edit — it's mock mode, so I want to see all functionality"). Mock
@@ -306,7 +311,7 @@ export function SolutioningModule({
             </button>
           )
         }
-      />
+      >
 
       {/* FOUR TILES, MAXIMUM, AND EVERY LABEL ON ONE LINE (Anir, Aug 26: "you
           can have six things at the top, and they all have to be perfectly
@@ -565,6 +570,7 @@ export function SolutioningModule({
           </div>
         </Card>
       )}
+      </SolutioningTabs>
 
       {creating && (
         <NewRequestDialog

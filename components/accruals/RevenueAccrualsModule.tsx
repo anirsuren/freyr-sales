@@ -904,7 +904,6 @@ export function RevenueAccrualsModule({
                             };
                           });
                           const total = planTotal(plan);
-                          let acc = 0;
                           return (
                             <div className="rounded-xl border border-border-light bg-surface/40 p-3.5">
                               <BarChart
@@ -913,41 +912,32 @@ export function RevenueAccrualsModule({
                                 height={210}
                                 format="money"
                               />
-                              {/* Labelled, and separated from the chart by a
-                                  rule — an unlabelled grey strip under a
-                                  scrolling chart reads as a scrollbar (Anir,
-                                  Aug 26). */}
-                              <div className="mt-3 border-t border-border-light pt-3">
-                              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                How the money arrives, month by month
-                              </p>
-                              <div className="flex h-2.5 overflow-hidden rounded-full bg-[color:var(--surface)] ring-1 ring-inset ring-border-light">
-                                {plan.lines.map((line) => {
-                                  acc += line.amount;
-                                  const past = line.month < now;
-                                  return (
-                                    <span
-                                      key={line.month}
-                                      title={`${monthLabel(line.month)} · ${formatMoney(line.amount)} · ${Math.round((acc / (total || 1)) * 100)}% cumulative`}
-                                      className="h-full border-r-2 border-white last:border-r-0"
-                                      style={{
-                                        width: `${(line.amount / (total || 1)) * 100}%`,
-                                        background: past ? AMBER : "#0071E3",
-                                        opacity: past ? 1 : 0.55 + 0.45 * (acc / (total || 1)),
-                                      }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                              <p className="mt-2 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
+                              {/* NO SECOND CHART OF THE SAME DATA (Anir,
+                                  Aug 27: "I don't understand what it's
+                                  supposed to show. It's just a big line going
+                                  from left to right that's colored").
+
+                                  He was right, and the reason is worse than
+                                  the drawing: the BarChart directly above
+                                  already plots these exact months with their
+                                  amounts and labels. Under it sat a
+                                  proportional strip re-drawing the same
+                                  numbers as widths — and on an even spread,
+                                  which is what "Spread evenly" makes, every
+                                  segment came out identical, so the strip
+                                  reduced to a gradient. A summary line says
+                                  the things the chart cannot say at a glance,
+                                  and nothing is drawn twice. */}
+                              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-light pt-3 text-[11.5px] text-text-secondary tnum">
                                 <span>
-                                  First month{" "}
+                                  <b className="text-text-primary">
+                                    {plan.lines.length}
+                                  </b>{" "}
+                                  {plan.lines.length === 1 ? "month" : "months"},{" "}
                                   <b className="text-text-primary">
                                     {monthLabel(plan.lines[0]?.month ?? "")}
-                                  </b>
-                                </span>
-                                <span>
-                                  Last month{" "}
+                                  </b>{" "}
+                                  to{" "}
                                   <b className="text-text-primary">
                                     {monthLabel(plan.lines[plan.lines.length - 1]?.month ?? "")}
                                   </b>
@@ -965,37 +955,54 @@ export function RevenueAccrualsModule({
                                   </b>
                                 </span>
                               </p>
-                              </div>
                             </div>
                           );
                         })()}
-                        <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-text-secondary">
-                          <span>
-                            Contract value{" "}
-                            <b className="tnum text-text-primary">
-                              {formatMoney(plan.contractValue)}
-                            </b>
-                          </span>
-                          {deal?.estSignDate && (
-                            <span>
-                              Est. close{" "}
-                              <b className="tnum text-text-primary">
-                                {formatDate(deal.estSignDate)}
+                        {/* FACTS IN COLUMNS, NOT A SENTENCE (Anir, Aug 27:
+                            "I don't like this part"). It ran four different
+                            things together on one line — a money figure, a
+                            date, an audit stamp and a link — so nothing had a
+                            label of its own and the eye had no column to
+                            follow. Each fact now sits under its own heading,
+                            the audit stamp steps back into the tertiary tone
+                            it deserves, and the actions keep the right edge. */}
+                        <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-t border-border-light pt-3">
+                          <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+                            <span className="block">
+                              <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                Contract value
+                              </span>
+                              <b className="mt-0.5 block text-[13.5px] tnum text-text-primary">
+                                {formatMoney(plan.contractValue)}
                               </b>
                             </span>
-                          )}
-                          <span>
-                            Updated by <b>{plan.updatedBy}</b>{" "}
-                            {formatDate(plan.updatedAt)}
-                          </span>
-                          <Link
-                            href={`/opportunities?deal=${encodeURIComponent(plan.opportunityId)}`}
-                            className="font-semibold text-blue-primary hover:underline"
-                          >
-                            Open the deal
-                          </Link>
+                            {deal?.estSignDate && (
+                              <span className="block">
+                                <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Est. close
+                                </span>
+                                <b className="mt-0.5 block text-[13.5px] tnum text-text-primary">
+                                  {formatDate(deal.estSignDate)}
+                                </b>
+                              </span>
+                            )}
+                            <span className="block">
+                              <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                Last updated
+                              </span>
+                              <span className="mt-0.5 block text-[12.5px] text-text-secondary">
+                                {plan.updatedBy} · {formatDate(plan.updatedAt)}
+                              </span>
+                            </span>
+                            <Link
+                              href={`/opportunities?deal=${encodeURIComponent(plan.opportunityId)}`}
+                              className="self-center text-[12.5px] font-semibold text-blue-primary hover:underline"
+                            >
+                              Open the deal
+                            </Link>
+                          </div>
                           {canWrite && (
-                            <span className="ml-auto flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => startPlan(plan.opportunityId, plan)}
