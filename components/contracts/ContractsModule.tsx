@@ -961,7 +961,7 @@ export function ContractsModule({
                             type="button"
                             onClick={() => setConfirmDelete(c)}
                             title="Delete this contract"
-                            className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                            className="rounded-lg p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                           >
                             <Trash2 size={13} strokeWidth={2.2} />
                           </button>

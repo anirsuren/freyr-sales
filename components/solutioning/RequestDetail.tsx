@@ -30,6 +30,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -319,8 +320,21 @@ export function RequestDetail({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {/* Business words, his own (Suren, Aug 27: "What's 'pick it
-                    up'?... can you guys take this up?"). */}
-                <Check size={14} strokeWidth={2.4} /> Take this up
+                    up'?... can you guys take this up?"). The HAND, not a
+                    check (Anir, Aug 27: "it looked like I had it taken up
+                    already based on the button") — a tick on a blue pill
+                    reads as a state achieved, and this is an action. */}
+                <Hand size={14} strokeWidth={2.4} /> Take this up
+              </button>
+            )}
+            {r.owner && r.status !== "completed" && iOwn && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => post({ op: "release" })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-[rgba(180,83,9,0.45)] hover:bg-[rgba(180,83,9,0.07)] hover:text-[color:#B45309] disabled:opacity-50"
+              >
+                <Undo2 size={14} strokeWidth={2.2} /> Hand it back
               </button>
             )}
             {r.status !== "completed" && (iRequested || managerial) && (
@@ -357,7 +371,7 @@ export function RequestDetail({
                 onClick={() => setConfirmDelete(true)}
                 title="Delete this request"
                 aria-label="Delete this request"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-[rgba(220,38,38,0.4)] hover:text-[color:#DC2626]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-[color:#DC2626] transition-colors hover:border-[rgba(220,38,38,0.4)] hover:bg-[rgba(220,38,38,0.06)]"
               >
                 <Trash2 size={14.5} strokeWidth={2} />
               </button>
@@ -707,8 +721,16 @@ export function RequestDetail({
             )}
           </div>
 
+          {/* A POPUP, like every other add flow in the app (Anir, Aug 27:
+              "what the fuck is this ui — this should be a popup"). The form
+              used to unfold inline and shove the list down under it. */}
           {r.status !== "completed" && adding && (
-            <div className="mt-4 rounded-xl border border-border-light bg-surface/40 p-4">
+            <Modal
+              open
+              onClose={() => setAdding(false)}
+              size="wide"
+              title={`Add to ${(DOC_TABS.find((t) => t.key === tab)?.label ?? "documents").toLowerCase()}`}
+            >
               <AddDocForm
                 tabLabel={DOC_TABS.find((t) => t.key === tab)?.label ?? ""}
                 requestId={r.id}
@@ -722,7 +744,7 @@ export function RequestDetail({
                   return ok;
                 }}
               />
-            </div>
+            </Modal>
           )}
 
           {docs.length === 0 ? (

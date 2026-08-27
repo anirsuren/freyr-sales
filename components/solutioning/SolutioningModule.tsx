@@ -530,47 +530,9 @@ export function SolutioningModule({
         </Card>
       )}
 
-      {people.length > 0 && (
-        <Card className="mt-4 p-5">
-          {/* "When I click on Ravi... how many presentations has he done, how
-              many submissions, how many meetings" — the boss view, small and
-              honest. Requester + owner + document workers all count, exactly
-              as Suren counts them, so one delivered deck can appear under
-              several people on purpose. */}
-          {/* SAY WHAT THE NUMBERS ARE (Anir, Aug 26: "change this phrasing,
-              I don't know why you're using that weird phrasing — what does
-              that even mean? Who is doing the work?"). The heading asked a
-              question the three bare numbers underneath did not answer, and
-              "0 worked" named nothing at all. */}
-          <p className="text-[13px] font-semibold text-text-primary">
-            People on these requests
-          </p>
-          <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
-            {people.map((p) => (
-              <div
-                key={p.person}
-                className="flex items-center gap-2.5 rounded-xl border border-border-light bg-white p-3"
-              >
-                <Avatar name={p.person} className="h-9 w-9 shrink-0 text-[11px]" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate text-[12.5px] font-semibold text-text-primary">
-                      {p.person}
-                    </span>
-                    <RoleTag role={memberRoles[p.person]} size="sm" />
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-text-secondary tnum">
-                    Raised {p.requested} · owns {p.owned} ·{" "}
-                    {p.workedDocs === 1
-                      ? "1 document"
-                      : `${p.workedDocs} documents`}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* The "People on these requests" roster card lived here until Anir
+          removed it (Aug 27: "remove this... remove this too") — the person
+          rollups still exist on each person's own profile page. */}
       </SolutioningTabs>
 
       {creating && (
@@ -1029,7 +991,10 @@ const DOC_TAB_WORDS: [import("@/lib/solutioning").DocCategory, string][] = [
 
 /* ------------------------------------------------------------- creation */
 
-function NewRequestDialog({
+/** Exported so the Leads page can raise a request IN PLACE (Anir, Aug 27:
+ *  "it takes me to another place... just leave me there and just give me
+ *  the pop-up"). */
+export function NewRequestDialog({
   onClose,
   onCreate,
   customers,

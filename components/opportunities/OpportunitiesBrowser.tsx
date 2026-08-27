@@ -2357,7 +2357,7 @@ export function OpportunitiesBrowser({
                           goalRows: editing.goalRows.filter((x) => x.key !== r.key),
                         })
                       }
-                      className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                      className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
                     >
                       <Trash2 size={14} strokeWidth={2} />
                     </button>
@@ -2482,7 +2482,7 @@ export function OpportunitiesBrowser({
                           activities: editing.activities.filter((x) => x.key !== a.key),
                         })
                       }
-                      className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                      className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
                     >
                       <Trash2 size={14} strokeWidth={2} />
                     </button>

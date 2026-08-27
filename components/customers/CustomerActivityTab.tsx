@@ -264,7 +264,7 @@ export function CustomerActivityTab({
                               setConfirmRemove(u.offering_id);
                             }
                           }}
-                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                         >
                           <Trash2 size={14} strokeWidth={2.1} />
                         </span>

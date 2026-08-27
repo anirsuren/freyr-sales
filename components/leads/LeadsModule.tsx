@@ -2,7 +2,6 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   CheckCircle2,
   ChevronDown,
@@ -64,6 +63,8 @@ import {
  * which hands off to Solutioning with the lead already named.
  */
 
+import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
+
 type CustomerOption = { id: string; name: string };
 
 const BLANK = {
@@ -109,6 +110,10 @@ export function LeadsModule({
   const router = useRouter();
   const { toast } = useToast();
   const [state, setState] = useState(initial);
+  /** The lead a solutioning request is being raised for — the dialog opens
+   *  HERE (Anir, Aug 27: "it takes me to another place, which is super
+   *  annoying... just leave me there and just give me the pop-up"). */
+  const [requestingFor, setRequestingFor] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
@@ -510,7 +515,7 @@ export function LeadsModule({
                                   setConfirmDelete(lead);
                                 }}
                                 title="Delete this lead"
-                                className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.08)] hover:text-[color:#DC2626]"
+                                className="rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
                               </button>
@@ -599,26 +604,19 @@ export function LeadsModule({
                                   guard outlived its reason and was just a
                                   missing feature in the mode built for trying
                                   features out. */}
-                              <Link
-                                href={`/solutioning?new=1&lead=${encodeURIComponent(lead.ref)}&company=${encodeURIComponent(lead.company)}`}
-                                onClick={(e) => e.stopPropagation()}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRequestingFor(lead);
+                                }}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
                               >
                                 <ClipboardList size={13} strokeWidth={2.2} />
                                 Request a meeting or a presentation
-                              </Link>
-                              {canWrite && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEditor(lead);
-                                  }}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                                >
-                                  <Pencil size={13} strokeWidth={2.2} /> Edit this lead
-                                </button>
-                              )}
+                              </button>
+                              {/* No second edit button — the pencil already
+                                  lives in the Actions column (Anir, Aug 27). */}
                               <span className="ml-auto text-[11.5px] text-text-tertiary">
                                 Last moved by {lead.updatedBy} ·{" "}
                                 {formatDate(lead.updatedAt)}
@@ -635,6 +633,43 @@ export function LeadsModule({
           </table>
           </PinnableTable>
         </div>
+      )}
+
+      {requestingFor && (
+        <NewRequestDialog
+          room="requests"
+          customers={customers}
+          opportunities={[]}
+          members={members}
+          prefillCustomerId={null}
+          prefillOpportunityId={null}
+          prefillCompany={requestingFor.company || null}
+          prefillLead={requestingFor.ref || null}
+          onClose={() => setRequestingFor(null)}
+          onCreate={async (input) => {
+            try {
+              const res = await fetch("/api/solutioning", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ op: "create", type: "request", ...input }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.request) {
+                toast(data.error || "That did not save.", "error");
+                return false;
+              }
+              /* Raised from HERE, and you STAY here (Anir, Aug 27: "just
+                 leave me there and just give me the pop-up"). The toast
+                 carries the ref so the request is findable when wanted. */
+              toast(`${data.request.ref} raised for ${requestingFor.company}.`);
+              setRequestingFor(null);
+              return true;
+            } catch {
+              toast("That did not save.", "error");
+              return false;
+            }
+          }}
+        />
       )}
 
       {editing && (

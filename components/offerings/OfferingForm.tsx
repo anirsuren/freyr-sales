@@ -2932,7 +2932,7 @@ export function OfferingForm({
                           setConfirmRow({ kind: "related", id: x.id, label: x.name })
                         }
                         aria-label={`Remove ${x.name} from related offerings`}
-                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
                       >
                         <Trash2 size={14} strokeWidth={2} />
                       </button>
