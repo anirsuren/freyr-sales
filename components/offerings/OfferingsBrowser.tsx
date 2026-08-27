@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -8,6 +10,7 @@ import {
   DollarSign,
   FileText,
   KeyRound,
+  ChevronDown,
   ChevronRight,
   Sparkles,
   X,
@@ -45,6 +48,9 @@ import {
   PriorityTooltip,
 } from "@/components/ui/SearchPriority";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { cn } from "@/lib/utils";
+import { componentNoun } from "@/lib/componentGroups";
+import { parseCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -365,6 +371,11 @@ export function OfferingsBrowser({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   // Tile (cards) vs Grid (compact table). Suren's live-meeting ask.
   const [view, setView] = useState<"tile" | "grid">(initView);
+  /* WHICH ROWS ARE FOLDED OPEN (Anir, Aug 27: "let's add a dropdown here too.
+     I feel like just the main information, not everything"). The list already
+     carries the facts you sort by; the fold carries the ones you decide with —
+     what the offering IS, where it sells, what it is made of. */
+  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
 
   // Keep filters in sync when the URL changes via in-app navigation (chips, the
@@ -1656,6 +1667,9 @@ export function OfferingsBrowser({
                       descLabel="Fewest first"
                     />
                   </th>
+                  {/* The fold column. Unlabelled, like every other
+                      table whose last column is the chevron. */}
+                  <th className="w-[40px] px-2 py-2.5" aria-label="Expand" />
                 </tr>
               </thead>
               <tbody>
@@ -1688,9 +1702,23 @@ export function OfferingsBrowser({
                     (owner) => owner.status === "owner"
                   );
                   return (
+                    <React.Fragment key={o.id}>
                     <tr
-                      key={o.id}
-                      className="border-b border-border-light last:border-0 align-middle hover:bg-[var(--surface)] transition-colors"
+                      onClick={() =>
+                        setOpenRows((cur) => {
+                          const next = new Set(cur);
+                          if (next.has(o.id)) next.delete(o.id);
+                          else next.add(o.id);
+                          return next;
+                        })
+                      }
+                      aria-expanded={openRows.has(o.id)}
+                      className={cn(
+                        "group cursor-pointer align-middle transition-colors",
+                        openRows.has(o.id)
+                          ? "bg-surface"
+                          : "border-b border-border-light last:border-0 hover:bg-[var(--surface)]"
+                      )}
                     >
                       <td
                         className="px-4 py-3.5"
@@ -1709,9 +1737,13 @@ export function OfferingsBrowser({
                             them (Saras, Aug 21: "same thing — if we can, just
                             remove all the icons"). */}
                         <span className="flex min-w-0 items-start gap-1.5">
+                          {/* The NAME opens the offering; every other pixel of
+                              the row folds it (Anir, Aug 27). inline-block so
+                              the link is its own words, not the whole cell. */}
                           <Link
                             href={`/offerings/${o.id}`}
-                            className="group/name -m-1.5 block min-w-0 rounded-xl p-1.5 text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors hover:bg-blue-light/60 group-hover/name:text-blue-primary"
+                            onClick={(e) => e.stopPropagation()}
+                            className="group/name -m-1.5 inline-block w-fit max-w-full min-w-0 rounded-xl p-1.5 text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors hover:bg-blue-light/60 group-hover/name:text-blue-primary"
                           >
                             {o.offering_name}
                           </Link>
@@ -1910,7 +1942,26 @@ export function OfferingsBrowser({
                           <span className="text-text-tertiary">-</span>
                         )}
                       </td>
+                      <td className="px-2 py-3 text-right align-middle">
+                        <ChevronDown
+                          size={15}
+                          strokeWidth={2.2}
+                          aria-hidden="true"
+                          className={cn(
+                            "ml-auto shrink-0 text-text-tertiary transition-transform duration-200",
+                            !openRows.has(o.id) && "-rotate-90"
+                          )}
+                        />
+                      </td>
                     </tr>
+                    {openRows.has(o.id) && (
+                      <tr className="border-b border-border-light last:border-0">
+                        <td colSpan={8} className="bg-surface px-0 pb-4 pt-0">
+                          <OfferingRowDetail offering={o} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -2015,6 +2066,91 @@ export function OfferingsBrowser({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * THE FOLD UNDER A LIST ROW — the main information, not everything.
+ *
+ * Anir, Aug 27: "let's add a dropdown here too. I feel like just the main
+ * information, not everything (obviously, it is a lot of information)."
+ *
+ * So this is deliberately short. The columns above already carry what you
+ * SORT by — owner, category, type, availability, segments, material count.
+ * What they cannot carry is what the offering actually IS, and those are the
+ * three questions a rep opens an offering to answer: what does it do, where
+ * may I sell it, what is it made of. Anything past that is the offering's
+ * own page, and the link at the bottom right goes there.
+ */
+function OfferingRowDetail({
+  offering: o,
+}: {
+  offering: HydratedOffering;
+}) {
+  const parsed = parseCapabilities(o.offering_description || "");
+  const blurb =
+    parsed.kind === "prose" ? parsed.text : parsed.intro || "";
+  const componentCount = parsed.kind === "capabilities" ? parsed.count : 0;
+
+  return (
+    <div className="tab-panel ml-4 rounded-xl border border-border-light bg-white px-4 py-3.5">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            What it is
+          </p>
+          {blurb ? (
+            /* Three lines, then stop. The full brief is one click away and a
+               wall of text inside a table row helps nobody. */
+            <p className="mt-1 line-clamp-3 text-[12.5px] leading-relaxed text-text-secondary">
+              {blurb}
+            </p>
+          ) : (
+            <p className="mt-1 text-[12.5px] text-text-tertiary">
+              No brief written for this offering yet.
+            </p>
+          )}
+          {componentCount > 0 && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary">
+              <Layers size={11} strokeWidth={2.4} />
+              {componentCount} {componentNoun(componentCount)}
+            </p>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            Markets
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {o.markets.length ? (
+              o.markets.map((m) => (
+                <span
+                  key={m.id}
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary"
+                >
+                  {flagForGeography(m.name)} {m.name}
+                </span>
+              ))
+            ) : (
+              <span className="text-[12px] text-text-tertiary">
+                No markets recorded.
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex justify-end border-t border-border-light pt-2.5">
+        <Link
+          href={`/offerings/${o.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline"
+        >
+          Open the full offering <ChevronRight size={14} strokeWidth={2.2} />
+        </Link>
+      </div>
     </div>
   );
 }
