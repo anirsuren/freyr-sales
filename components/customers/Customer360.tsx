@@ -4,7 +4,6 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
-  ChevronDown,
   CalendarClock,
   Contact as ContactIcon,
   FileSignature,
@@ -247,51 +246,49 @@ export function Customer360({
                           "I want the drop down too. But there doesn't have
                           to be so much detail as goals"). Row click toggles;
                           the name stays the link — the standing grammar. */}
+                      {/* THE ROW IS THE ORG GOALS TABLE'S ROW (Anir, Aug 27:
+                          "the fucking table is still not the same... there's
+                          some weird thing with this weird arrow there"). The
+                          goals table has NO chevron — the row itself toggles
+                          and the name is the link — so neither does this.
+                          Same open treatment: tint plus a rail in the type's
+                          own colour, via the same CSS variable. */}
                       <tr
                         onClick={() => setOpenGoal(goalOpen ? null : item.id)}
                         aria-expanded={goalOpen}
                         className={cn(
                           "cursor-pointer transition-all hover:bg-surface",
-                          goalOpen && "bg-surface",
-                          /* THE DIMMING (Anir, Aug 27: "it should have all
-                             the same functionality, like the dimming") — the
-                             org goals table fades every row that is not the
-                             open one, and so does this. */
+                          goalOpen &&
+                            "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]",
                           openGoal !== null && !goalOpen && "opacity-45 hover:opacity-100"
                         )}
-                        style={
-                          goalOpen
-                            ? { boxShadow: `inset 3px 0 0 0 ${accent}` }
-                            : undefined
-                        }
+                        style={{ ["--goal-accent" as string]: accent }}
                       >
-                        <td className="py-2.5 pr-4">
+                        <td className="py-3 pr-4">
                           <span className="flex items-center gap-3">
-                            <ChevronDown
-                              size={13}
-                              strokeWidth={2.4}
-                              className={cn(
-                                "shrink-0 text-text-tertiary transition-transform",
-                                !goalOpen && "-rotate-90"
-                              )}
-                            />
                             {item.goalType && <TypeIconTile type={item.goalType} />}
-                            <span className="flex min-w-0 flex-col gap-1">
+                            <span className="flex min-w-0 flex-col gap-1.5">
                               {item.href ? (
                                 <Link
                                   href={item.href}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="self-start text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                                  className="self-start text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                                 >
                                   {item.title}
                                 </Link>
                               ) : (
-                                <span className="text-[13px] font-semibold text-text-primary">
+                                <span className="self-start text-[13.5px] font-semibold text-text-primary">
                                   {item.title}
                                 </span>
                               )}
+                              {/* In a flex ROW, so the pill hugs its words —
+                                  as a bare flex-column child it stretched to
+                                  the widest line and read as a banner (Anir,
+                                  Aug 27: "look how big the pill is"). */}
                               {item.goalType && (
-                                <TypeChip type={item.goalType} size="sm" />
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <TypeChip type={item.goalType} size="sm" />
+                                </span>
                               )}
                             </span>
                           </span>
@@ -332,11 +329,18 @@ export function Customer360({
                       </tr>
                       {goalOpen && (
                         <tr className="!border-t-0">
+                          {/* The goals page's own drawer: rail carried down
+                              on the same CSS variable, top padding gone so
+                              row and drill read as one block, and the
+                              tab-panel entrance — the SAME animation the
+                              goals table plays (Anir, Aug 27: "the animation
+                              isn't the same"). */}
                           <td
                             colSpan={4}
-                            className="pb-3 pl-[26px] pr-2 pt-0.5"
-                            style={{ boxShadow: `inset 3px 0 0 0 ${accent}` }}
+                            className="px-2 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                            style={{ ["--goal-accent" as string]: accent }}
                           >
+                          <div className="tab-panel space-y-3 pb-2 pl-3.5 pt-1">
                             {/* THE GOALS PAGE ITSELF, not a lookalike
                                 (Anir, Aug 27: "it should look the exact
                                 same as the goals page... literally just
@@ -361,16 +365,7 @@ export function Customer360({
                                 Nothing logged on this goal yet.
                               </p>
                             )}
-                            {item.href && (
-                              <p className="mt-1.5 text-right">
-                                <Link
-                                  href={item.href}
-                                  className="text-[12px] font-semibold text-blue-primary hover:underline"
-                                >
-                                  Open this goal &rsaquo;
-                                </Link>
-                              </p>
-                            )}
+                          </div>
                           </td>
                         </tr>
                       )}
