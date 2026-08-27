@@ -39,6 +39,7 @@ import {
   fmtAmount,
   goalFamilyActuals,
   parseAmountInput,
+  paceVerdict,
   pctMet,
   yearElapsed,
   type GoalUnit,
@@ -1695,5 +1696,73 @@ export function SetShareModal({
       </div>
     </div>,
     document.body
+  );
+}
+
+
+/**
+ * THE GOALS TABLE'S "% MET" BAR, shared. Lived inside OrgPerformanceTab
+ * until the person-profile goals tab needed the exact same cell (Anir,
+ * Aug 27: "it's literally getting damn near cut off... make it to scale" —
+ * his own stretched-to-the-cell copy clipped its label; this one is a
+ * fixed-width track with the percentage beside it, capped at 100, verified
+ * green with the unverified overlay). One component, two tables, no drift.
+ */
+export function MiniBar({
+  actual,
+  claimed,
+  sentBack = 0,
+  target,
+  lit = false,
+}: {
+  /** Signed off — the number the percentage is about. */
+  actual: number;
+  /** Everything logged, verified or not. Defaults to `actual`. */
+  claimed?: number;
+  sentBack?: number;
+  target: number;
+  pace?: ReturnType<typeof paceVerdict>;
+  /** This row's bar in the chart above is under the cursor. */
+  lit?: boolean;
+}) {
+  const all = claimed ?? actual;
+  const pct = Math.min(100, pctMet(actual, target));
+  const claimedPct = Math.min(100, pctMet(all, target));
+  const unverifiedColor =
+    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported;
+  return (
+    <span className="flex items-center gap-2">
+      <span
+        className={cn(
+          "flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
+          lit && "h-2 w-28"
+        )}
+      >
+        <span
+          className={cn("block h-full", lit && "bar-lit")}
+          style={{
+            width: `${target > 0 ? pct : 0}%`,
+            background: ENTRY_COLOR.verified,
+            ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
+          }}
+        />
+        <span
+          className={cn("unverified-fill block h-full", lit && "bar-lit")}
+          style={{
+            width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
+            ["--fill" as string]: unverifiedColor,
+            ["--bar-glow" as string]: unverifiedColor,
+          }}
+        />
+      </span>
+      <span
+        className="text-[12px] font-semibold tnum"
+        style={{
+          color: target > 0 && pct > 0 ? ENTRY_COLOR.verified : "var(--text-tertiary)",
+        }}
+      >
+        {target > 0 ? `${Math.round(pct)}%` : "·"}
+      </span>
+    </span>
   );
 }

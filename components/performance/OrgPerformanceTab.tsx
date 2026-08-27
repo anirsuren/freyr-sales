@@ -74,7 +74,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { VerifyGoalModal, type VerifyScope } from "./VerifyGoalModal";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
-import { GroupPill, MetPill, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
+import { GroupPill, MetPill, MiniBar, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -1384,65 +1384,6 @@ export function OrgPerformanceTab({
  * anywhere"). Solid green to what counts, striped for the rest, and the
  * percentage is the one you could defend in a review.
  */
-function MiniBar({
-  actual,
-  claimed,
-  sentBack = 0,
-  target,
-  lit = false,
-}: {
-  /** Signed off — the number the percentage is about. */
-  actual: number;
-  /** Everything logged, verified or not. Defaults to `actual`. */
-  claimed?: number;
-  sentBack?: number;
-  target: number;
-  pace?: ReturnType<typeof paceVerdict>;
-  /** This row's bar in the chart above is under the cursor. */
-  lit?: boolean;
-}) {
-  const all = claimed ?? actual;
-  const pct = Math.min(100, pctMet(actual, target));
-  const claimedPct = Math.min(100, pctMet(all, target));
-  const unverifiedColor =
-    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported;
-  return (
-    <span className="flex items-center gap-2">
-      <span
-        className={cn(
-          "flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
-          lit && "h-2 w-28"
-        )}
-      >
-        <span
-          className={cn("block h-full", lit && "bar-lit")}
-          style={{
-            width: `${target > 0 ? pct : 0}%`,
-            background: ENTRY_COLOR.verified,
-            ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-          }}
-        />
-        <span
-          className={cn("unverified-fill block h-full", lit && "bar-lit")}
-          style={{
-            width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
-            ["--fill" as string]: unverifiedColor,
-            ["--bar-glow" as string]: unverifiedColor,
-          }}
-        />
-      </span>
-      <span
-        className="text-[12px] font-semibold tnum"
-        style={{
-          color: target > 0 && pct > 0 ? ENTRY_COLOR.verified : "var(--text-tertiary)",
-        }}
-      >
-        {target > 0 ? `${Math.round(pct)}%` : "·"}
-      </span>
-    </span>
-  );
-}
-
 function GoalRows({
   onGoToMaster,
   goal,

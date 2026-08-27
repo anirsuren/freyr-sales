@@ -11,7 +11,6 @@ import {
   initializeLiveOfferings,
 } from "./offerings";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
-import { actualValue, fmtAmount, pctMet } from "./performanceShared";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
@@ -253,18 +252,6 @@ export async function buildPerson360(
         const target = (g.assignments ?? [])
           .filter((a) => same(a.person, personName))
           .reduce((s, a) => s + (a.target || 0), 0);
-        /* The goals page's own row parts (Anir, Aug 27: "like the goals, I
-           want it to look like how it does on the goals page", and on the
-           first cut: "what the fuck is this ui"): THIS PERSON's actual and
-           target as separate facts, the same actualValue/pctMet math the
-           goal pages run, so the two screens cannot disagree. The panel
-           draws them as the goals table draws them — every row the same
-           shape, a target-less cell saying "·", never a row collapsing to a
-           bare title. */
-        const actual = actualValue(perf.actuals ?? [], g, {
-          person: personName,
-          rates: perf.rates,
-        });
         /* THE FOLD IS THE GOALS PAGE'S OWN PERSON PANEL (Anir, Aug 27:
            "when I click on it, it should look the exact same as the goals
            page... literally just copy this, but I don't think you need the
@@ -282,13 +269,6 @@ export async function buildPerson360(
           id: g.id,
           title: g.name,
           goalType: g.type || undefined,
-          goalFacts: {
-            target: target ? fmtAmount(g.unit, target, g.currency) : undefined,
-            actual: fmtAmount(g.unit, actual, g.currency),
-            /* Rounded: pctMet hands back the raw ratio, and a bar labelled
-               "1014.8888888888889% met" is a calculator, not a sentence. */
-            pct: target ? Math.round(pctMet(actual, target)) : null,
-          },
           goalDrill: {
             goalId: g.id,
             person: personName,

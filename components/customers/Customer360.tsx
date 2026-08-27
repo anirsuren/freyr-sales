@@ -17,9 +17,25 @@ import {
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { TypeChip, TypeIconTile, typeMeta } from "@/components/performance/bits";
+import {
+  MetPill,
+  MiniBar,
+  PacePill,
+  TypeChip,
+  TypeIconTile,
+  VerifiedPill,
+  typeMeta,
+} from "@/components/performance/bits";
 import { GoalZoom } from "@/components/performance/GoalZoom";
-import type { PerformanceState } from "@/lib/performanceShared";
+import {
+  actualValue,
+  entryStatus,
+  fmtAmount,
+  goalFamilyActuals,
+  milestoneByNow,
+  paceVerdict,
+  type PerformanceState,
+} from "@/lib/performanceShared";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -64,8 +80,6 @@ export type Customer360Item = {
   logo?: string;
   code?: string;
   goalType?: string;
-  /** A goal's own columns — target, actual, % met — already formatted. */
-  goalFacts?: { target?: string; actual?: string; pct: number | null };
   /** Everything the goals page's own GoalZoom needs to run in the row's
       fold — a state trimmed to this person's entries on this goal. */
   goalDrill?: {
@@ -212,168 +226,209 @@ export function Customer360({
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
-            {active.items.some((i) => i.goalFacts) ? (
-              /* GOALS ARE A TABLE, BECAUSE THE GOALS PAGE IS ONE (Anir,
-                 Aug 27, on the loose-list first cut: "what the fuck is this
-                 ui"). Rows with no target were collapsing to a bare title
-                 while their neighbours stacked three lines — ragged. The
-                 goals page keeps every row the same shape and prints "·"
-                 where a number is not set, so this does exactly that: tile,
-                 name and chip, then Target / Actual / Progress columns. */
+            {active.items.some((i) => i.goalDrill) ? (
+              /* THE PEOPLE-PERFORMANCE TABLE, ON THE PERSON'S OWN PAGE
+                 (Anir, Aug 27: "show me all the columns, bro: the target,
+                 the actual, the met, the percent met, all that stuff. If I
+                 go to people performance, shouldn't I see all this data too
+                 on that person?"). Same families, same six columns, same
+                 cells — the pills, the pace, and the goals table's own
+                 fixed-width MiniBar, which is what "make it to scale" means:
+                 the bar caps at 100% and the number sits beside it instead
+                 of stretching to the cell edge and clipping. Every figure is
+                 THIS person's: their entries, their target. */
               <div className="overflow-x-auto">
-                <table className="mt-1 w-full min-w-[560px] text-left">
-                  <thead>
-                    <tr className="border-b border-border-light">
-                      {["Goal", "Target", "Actual", "Progress"].map((h) => (
-                        <th
-                          key={h}
-                          className="py-2 pr-4 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-light">
-                    {active.items.slice(0, 8).map((item) => {
-                      const goalOpen = openGoal === item.id;
-                      const accent = item.goalType
-                        ? typeMeta(item.goalType).color
-                        : active.color;
-                      return (
-                      <Fragment key={item.id}>
-                      {/* ROWS FOLD OPEN, like the goals page's (Anir, Aug 27:
-                          "I want the drop down too. But there doesn't have
-                          to be so much detail as goals"). Row click toggles;
-                          the name stays the link — the standing grammar. */}
-                      {/* THE ROW IS THE ORG GOALS TABLE'S ROW (Anir, Aug 27:
-                          "the fucking table is still not the same... there's
-                          some weird thing with this weird arrow there"). The
-                          goals table has NO chevron — the row itself toggles
-                          and the name is the link — so neither does this.
-                          Same open treatment: tint plus a rail in the type's
-                          own colour, via the same CSS variable. */}
-                      <tr
-                        onClick={() => setOpenGoal(goalOpen ? null : item.id)}
-                        aria-expanded={goalOpen}
-                        className={cn(
-                          "cursor-pointer transition-all hover:bg-surface",
-                          goalOpen &&
-                            "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]",
-                          openGoal !== null && !goalOpen && "opacity-45 hover:opacity-100"
-                        )}
-                        style={{ ["--goal-accent" as string]: accent }}
-                      >
-                        <td className="py-3 pr-4">
-                          <span className="flex items-center gap-3">
-                            {item.goalType && <TypeIconTile type={item.goalType} />}
-                            <span className="flex min-w-0 flex-col gap-1.5">
-                              {item.href ? (
-                                <Link
-                                  href={item.href}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="self-start text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                {(() => {
+                  const rows = active.items.filter((i) => i.goalDrill);
+                  const families = new Map<string, typeof rows>();
+                  for (const r of rows) {
+                    const key = r.goalType || "Other";
+                    families.set(key, [...(families.get(key) ?? []), r]);
+                  }
+                  return [...families.entries()].map(([family, kin]) => (
+                    <div key={family} className="mt-3 first:mt-1">
+                      <div className="flex items-center gap-2 px-1 pb-1">
+                        <TypeChip type={family} size="sm" />
+                        <span className="text-[11.5px] text-text-secondary tnum">
+                          {kin.length} {kin.length === 1 ? "goal" : "goals"}
+                        </span>
+                      </div>
+                      {/* ONE GRID FOR EVERY FAMILY (Anir, Aug 27: "make
+                          sure that all the columns are aligned with each
+                          other. There shouldn't be different columns...
+                          maybe spread it out more. It's okay if I have to
+                          scroll"). table-fixed plus an identical colgroup
+                          means Target under Target and Met under Met across
+                          every family table, whatever the words inside; the
+                          shared widths are generous and the page may
+                          scroll. */}
+                      <table className="w-full min-w-[880px] table-fixed text-left">
+                        <colgroup>
+                          <col />
+                          <col style={{ width: 120 }} />
+                          <col style={{ width: 120 }} />
+                          <col style={{ width: 104 }} />
+                          <col style={{ width: 208 }} />
+                          <col style={{ width: 156 }} />
+                        </colgroup>
+                        <thead>
+                          <tr className="border-b border-border-light">
+                            {["Goal", "Target", "Actual", "Met", "% met", "Verified"].map(
+                              (h) => (
+                                <th
+                                  key={h}
+                                  className="py-2 pr-4 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
                                 >
-                                  {item.title}
-                                </Link>
-                              ) : (
-                                <span className="self-start text-[13.5px] font-semibold text-text-primary">
-                                  {item.title}
-                                </span>
-                              )}
-                              {/* In a flex ROW, so the pill hugs its words —
-                                  as a bare flex-column child it stretched to
-                                  the widest line and read as a banner (Anir,
-                                  Aug 27: "look how big the pill is"). */}
-                              {item.goalType && (
-                                <span className="flex flex-wrap items-center gap-2">
-                                  <TypeChip type={item.goalType} size="sm" />
-                                </span>
-                              )}
-                            </span>
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] font-semibold tnum text-text-primary">
-                          {item.goalFacts?.target ?? (
-                            <span className="font-normal text-text-tertiary">·</span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] font-semibold tnum text-text-primary">
-                          {item.goalFacts?.actual ?? (
-                            <span className="font-normal text-text-tertiary">·</span>
-                          )}
-                        </td>
-                        <td className="w-[30%] min-w-[170px] py-2.5">
-                          {item.goalFacts?.pct !== null &&
-                          item.goalFacts?.pct !== undefined ? (
-                            <span className="flex items-center gap-2">
-                              <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-border-light">
-                                <span
-                                  className="block h-full rounded-full"
-                                  style={{
-                                    width: `${Math.max(2, Math.min(100, item.goalFacts.pct))}%`,
-                                    background: item.goalType
-                                      ? typeMeta(item.goalType).color
-                                      : active.color,
-                                  }}
-                                />
-                              </span>
-                              <span className="shrink-0 text-[11.5px] font-semibold tnum text-text-secondary">
-                                {item.goalFacts.pct}%
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-[12px] text-text-tertiary">·</span>
-                          )}
-                        </td>
-                      </tr>
-                      {goalOpen && (
-                        <tr className="!border-t-0">
-                          {/* The goals page's own drawer: rail carried down
-                              on the same CSS variable, top padding gone so
-                              row and drill read as one block, and the
-                              tab-panel entrance — the SAME animation the
-                              goals table plays (Anir, Aug 27: "the animation
-                              isn't the same"). */}
-                          <td
-                            colSpan={4}
-                            className="px-2 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
-                            style={{ ["--goal-accent" as string]: accent }}
-                          >
-                          <div className="tab-panel space-y-3 pb-2 pl-3.5 pt-1">
-                            {/* THE GOALS PAGE ITSELF, not a lookalike
-                                (Anir, Aug 27: "it should look the exact
-                                same as the goals page... literally just
-                                copy this — I honestly think you just need
-                                the person"). This IS GoalZoom — the exact
-                                component a goals-page row unfolds into —
-                                in its solo-person mode: the period rail,
-                                the granularity picker, the period folds,
-                                minus boxes 2 and 3. Every number is this
-                                person's, because the state it gets holds
-                                only their entries and their target. */}
-                            {item.goalDrill ? (
-                              <GoalZoom
-                                embedded
-                                soloPerson={item.goalDrill.person}
-                                state={item.goalDrill.state}
-                                goalId={item.goalDrill.goalId}
-                                meName={item.goalDrill.person}
-                              />
-                            ) : (
-                              <p className="text-[12px] text-text-secondary">
-                                Nothing logged on this goal yet.
-                              </p>
+                                  {h}
+                                </th>
+                              )
                             )}
-                          </div>
-                          </td>
-                        </tr>
-                      )}
-                      </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-light">
+                          {kin.map((item) => {
+                            const drill = item.goalDrill!;
+                            const goal = drill.state.goals.find(
+                              (g) => g.id === drill.goalId
+                            );
+                            if (!goal) return null;
+                            const acts = drill.state.actuals;
+                            const rates = drill.state.rates;
+                            const actual = actualValue(acts, goal, { rates });
+                            const verifiedActual = actualValue(
+                              acts.filter((a) => entryStatus(a) === "verified"),
+                              goal,
+                              { rates }
+                            );
+                            const kinActs = goalFamilyActuals({ actuals: acts }, goal);
+                            const pace = paceVerdict(
+                              actual,
+                              goal.target,
+                              goal.year,
+                              goal.measure,
+                              new Date(),
+                              milestoneByNow(goal)
+                            );
+                            const goalOpen = openGoal === item.id;
+                            const accent = typeMeta(goal.type).color;
+                            return (
+                              <Fragment key={item.id}>
+                              <tr
+                                onClick={() =>
+                                  setOpenGoal(goalOpen ? null : item.id)
+                                }
+                                aria-expanded={goalOpen}
+                                className={cn(
+                                  "cursor-pointer transition-all hover:bg-surface",
+                                  goalOpen &&
+                                    "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]",
+                                  openGoal !== null &&
+                                    !goalOpen &&
+                                    "opacity-45 hover:opacity-100"
+                                )}
+                                style={{ ["--goal-accent" as string]: accent }}
+                              >
+                                <td className="py-3 pr-4">
+                                  <span className="flex items-center gap-3">
+                                    <TypeIconTile type={goal.type} />
+                                    <span className="flex min-w-0 flex-col gap-1">
+                                      {item.href ? (
+                                        <Link
+                                          href={item.href}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="self-start text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                                        >
+                                          {item.title}
+                                        </Link>
+                                      ) : (
+                                        <span className="self-start text-[13.5px] font-semibold text-text-primary">
+                                          {item.title}
+                                        </span>
+                                      )}
+                                      {/* The family is named once, above the
+                                          table — the row keeps the year, as
+                                          the grouped goals table does. */}
+                                      <span className="text-[10.5px] text-text-tertiary tnum">
+                                        {goal.year}
+                                      </span>
+                                    </span>
+                                  </span>
+                                </td>
+                                <td className="whitespace-nowrap py-3 pr-4">
+                                  {goal.target > 0 ? (
+                                    <span className="text-[13px] font-semibold text-text-primary tnum">
+                                      {fmtAmount(goal.unit, goal.target, goal.currency)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[13px] text-text-tertiary">·</span>
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap py-3 pr-4">
+                                  <span className="text-[13px] font-semibold text-text-primary tnum">
+                                    {fmtAmount(goal.unit, actual, goal.currency)}
+                                  </span>
+                                </td>
+                                <td className="whitespace-nowrap py-3 pr-4">
+                                  {goal.target > 0 ? (
+                                    <MetPill
+                                      met={verifiedActual >= goal.target}
+                                      size="sm"
+                                    />
+                                  ) : (
+                                    <span className="text-[12px] text-text-tertiary">·</span>
+                                  )}
+                                </td>
+                                <td className="py-3 pr-4">
+                                  <span className="mb-1 block">
+                                    <PacePill pace={pace} size="sm" />
+                                  </span>
+                                  <MiniBar
+                                    actual={verifiedActual}
+                                    claimed={actual}
+                                    target={goal.target}
+                                  />
+                                </td>
+                                <td className="py-3">
+                                  <VerifiedPill
+                                    verified={
+                                      Boolean(goal.verified) ||
+                                      (kinActs.length > 0 &&
+                                        kinActs.every(
+                                          (a) => entryStatus(a) === "verified"
+                                        ))
+                                    }
+                                    nothingToVerify={kinActs.length === 0}
+                                    size="sm"
+                                  />
+                                </td>
+                              </tr>
+                              {goalOpen && (
+                                <tr className="!border-t-0">
+                                  <td
+                                    colSpan={6}
+                                    className="px-2 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                                    style={{ ["--goal-accent" as string]: accent }}
+                                  >
+                                    <div className="tab-panel space-y-3 pb-2 pl-3.5 pt-1">
+                                      <GoalZoom
+                                        embedded
+                                        soloPerson={drill.person}
+                                        state={drill.state}
+                                        goalId={drill.goalId}
+                                        meName={drill.person}
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ));
+                })()}
               </div>
             ) : (
             <ul className="mt-1 divide-y divide-border-light">
