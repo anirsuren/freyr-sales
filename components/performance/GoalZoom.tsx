@@ -261,6 +261,7 @@ export function GoalZoom({
   meName,
   run,
   embedded = false,
+  soloPerson,
   headerAction,
   lit = false,
   fill = false,
@@ -295,6 +296,16 @@ export function GoalZoom({
    * standalone page stays reachable from a link at the bottom.
    */
   embedded?: boolean;
+  /**
+   * ONE PERSON'S VIEW OF THE GOAL (Anir, Aug 27, on the rep profile: "it
+   * should look the exact same as the goals page... literally just copy
+   * this, but I don't think you need the organization group person. I
+   * honestly think you just need the person"). Same component, boxes 2 and
+   * 3 folded away: the period rail carries the whole width and every number
+   * is already this person's, because the caller hands in a state trimmed
+   * to their entries. The three-box drill stays on the goal's own page.
+   */
+  soloPerson?: string;
   /** Rendered on the drill-down's own header line, so a caller's button never
    *  costs a line of its own (Anir, Aug 15: "that's not a good place, I can't
    *  take up its own line"). */
@@ -998,7 +1009,9 @@ export function GoalZoom({
       >
         <div className="flex items-center gap-3">
           <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
-            Organization → group → person
+            {soloPerson
+              ? `${soloPerson.split(" ")[0]}, period by period`
+              : "Organization → group → person"}
           </b>
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
               three numbered column headings below already say what this is. */}
@@ -1287,7 +1300,8 @@ export function GoalZoom({
             <div className={cn("relative mt-3", fill && "flex min-h-0 flex-1 flex-col")}>
             <div
               className={cn(
-                "grid grid-cols-1 gap-3 xl:grid-cols-3",
+                "grid grid-cols-1 gap-3",
+                !soloPerson && "xl:grid-cols-3",
                 fill && "min-h-0 flex-1"
               )}
               // One height, three boxes. In a full-screen modal the viewport
@@ -1297,7 +1311,9 @@ export function GoalZoom({
               {/* -------- Box 1: the organization, period by period */}
               <div className={boxCls}>
                 <div className={boxHead}>
-                  <b className="text-[12px] text-text-primary">1 · Organization</b>
+                  <b className="text-[12px] text-text-primary">
+                    {soloPerson ? soloPerson.split(" ")[0] : "1 · Organization"}
+                  </b>
                   <span className="ml-auto text-[10.5px] text-text-tertiary">
                     pick a period
                   </span>
@@ -1446,6 +1462,8 @@ export function GoalZoom({
                 </div>
               </div>
 
+              {!soloPerson && (
+              <>
               {/* -------- Box 2: every group inside the picked period */}
               <div className={boxCls}>
                 <div className={boxHead}>
@@ -2108,6 +2126,8 @@ export function GoalZoom({
                   )}
                 </div>
               </div>
+              </>
+              )}
             </div>
 
             {!fill && (

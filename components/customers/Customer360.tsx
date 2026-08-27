@@ -18,13 +18,9 @@ import {
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import {
-  PersonGoalPanel,
-  TypeChip,
-  TypeIconTile,
-  typeMeta,
-} from "@/components/performance/bits";
-import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
+import { TypeChip, TypeIconTile, typeMeta } from "@/components/performance/bits";
+import { GoalZoom } from "@/components/performance/GoalZoom";
+import type { PerformanceState } from "@/lib/performanceShared";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -71,13 +67,11 @@ export type Customer360Item = {
   goalType?: string;
   /** A goal's own columns — target, actual, % met — already formatted. */
   goalFacts?: { target?: string; actual?: string; pct: number | null };
-  /** Everything the goals page's own PersonGoalPanel needs to run in the
-      row's fold — the goal, and a state trimmed to this person's entries. */
+  /** Everything the goals page's own GoalZoom needs to run in the row's
+      fold — a state trimmed to this person's entries on this goal. */
   goalDrill?: {
-    goal: PrimaryGoal;
+    goalId: string;
     person: string;
-    target: number;
-    done: number;
     state: PerformanceState;
   };
 };
@@ -343,24 +337,25 @@ export function Customer360({
                             className="pb-3 pl-[26px] pr-2 pt-0.5"
                             style={{ boxShadow: `inset 3px 0 0 0 ${accent}` }}
                           >
-                            {/* THE GOALS PAGE'S OWN PERSON PANEL, not a
-                                lookalike (Anir, Aug 27: "it should look the
-                                exact same as the goals page... literally
-                                just copy this — I honestly think you just
-                                need the person"). Same component the org
-                                table opens per person; the three-box
-                                organization → group → person drill stays on
-                                the goal's own page. */}
+                            {/* THE GOALS PAGE ITSELF, not a lookalike
+                                (Anir, Aug 27: "it should look the exact
+                                same as the goals page... literally just
+                                copy this — I honestly think you just need
+                                the person"). This IS GoalZoom — the exact
+                                component a goals-page row unfolds into —
+                                in its solo-person mode: the period rail,
+                                the granularity picker, the period folds,
+                                minus boxes 2 and 3. Every number is this
+                                person's, because the state it gets holds
+                                only their entries and their target. */}
                             {item.goalDrill ? (
-                              <div className="overflow-hidden rounded-lg border border-border-light">
-                                <PersonGoalPanel
-                                  goal={item.goalDrill.goal}
-                                  person={item.goalDrill.person}
-                                  target={item.goalDrill.target}
-                                  done={item.goalDrill.done}
-                                  state={item.goalDrill.state}
-                                />
-                              </div>
+                              <GoalZoom
+                                embedded
+                                soloPerson={item.goalDrill.person}
+                                state={item.goalDrill.state}
+                                goalId={item.goalDrill.goalId}
+                                meName={item.goalDrill.person}
+                              />
                             ) : (
                               <p className="text-[12px] text-text-secondary">
                                 Nothing logged on this goal yet.

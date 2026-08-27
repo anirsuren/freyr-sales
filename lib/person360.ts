@@ -290,13 +290,23 @@ export async function buildPerson360(
             pct: target ? Math.round(pctMet(actual, target)) : null,
           },
           goalDrill: {
-            goal: g,
+            goalId: g.id,
             person: personName,
-            target,
-            done: actual,
+            /* GoalZoom itself renders the fold (Anir, Aug 27: "it should
+               look the exact same as the goals page"), fed a state trimmed
+               to this person: their entries only, and the goal's target
+               swapped for THEIR assignment target so every bar and pace
+               verdict measures them against their own number — the same
+               scale the org table's per-person rows use. Component goals
+               ride along so a composite still draws its cards. */
             state: {
-              types: [],
-              goals: [g],
+              types: perf.types ?? [],
+              goals: [
+                { ...g, target },
+                ...(g.componentGoalIds ?? [])
+                  .map((id) => (perf.goals ?? []).find((x) => x.id === id))
+                  .filter((x): x is NonNullable<typeof x> => Boolean(x)),
+              ],
               groups: [],
               actuals: myEntries,
               ...(perf.rates ? { rates: perf.rates } : {}),
