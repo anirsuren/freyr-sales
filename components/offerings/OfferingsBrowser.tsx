@@ -1861,27 +1861,54 @@ export function OfferingsBrowser({
                             three"). Five stacked names made this the tallest
                             cell in the row and set the height of every row
                             beside it. */}
+                        {/* THE CELL ITSELF OPENS (Anir, Aug 27: "when I hover
+                            over the 'Who it's for' column for each cell, it
+                            should show me all five... it should be like that
+                            cell is popping out and taking up a bit more space
+                            — and it shouldn't say Biologics twice").
+
+                            The black pill floated ABOVE the row and listed
+                            only the hidden three, so the two already on
+                            screen read once in the cell and again beside it,
+                            and you had to find the +3 to get any of it. This
+                            grows the cell in place instead: hovering anywhere
+                            in it lifts a white card over the same spot, wide
+                            enough for the full list, showing every segment
+                            once. His own rule — hover popovers scale UP on
+                            the card, never below it. */}
                         {famList.length ? (
-                          <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
-                            {famList.slice(0, 2).map((f) => (
-                              <span key={f} className="break-words">
-                                {f}
-                              </span>
-                            ))}
-                            {/* Plain Tooltip, not PriorityTooltip (Anir,
-                                Aug 27: "when I hover over the +3, it doesn't
-                                show me anything"). PriorityTooltip only
-                                mounts while the toolbar is compressed by the
-                                search bar — it explains COLLAPSED CONTROLS.
-                                This chip is table data; that gate meant the
-                                names it hides were only revealed while
-                                someone happened to be typing a search. */}
-                            {famList.length > 2 && (
-                              <Tooltip label={famList.slice(2).join(", ")}>
-                                <span className="mt-0.5 inline-flex w-fit cursor-default items-center rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary">
+                          /* group/fams sits on a block that FILLS the cell,
+                             so hovering the cell's padding counts — he asked
+                             to hover "the column for each cell", not a chip
+                             inside it. */
+                          <span className="group/fams relative -m-3 block p-3">
+                            <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
+                              {famList.slice(0, 2).map((f) => (
+                                <span key={f} className="break-words">
+                                  {f}
+                                </span>
+                              ))}
+                              {famList.length > 2 && (
+                                <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary">
                                   +{famList.length - 2}
                                 </span>
-                              </Tooltip>
+                              )}
+                            </span>
+                            {famList.length > 2 && (
+                              /* Anchored to the cell's own top-left so it
+                                 grows out of the cell rather than hovering
+                                 somewhere near it. pointer-events-none: it is
+                                 a reveal, not a target — the row underneath
+                                 stays clickable through it. */
+                              <span className="pointer-events-none absolute -left-2 -top-2 z-30 hidden w-[max(100%+1rem,220px)] rounded-xl border border-border-light bg-white p-2 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.28)] group-hover/fams:block">
+                                <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
+                                  {famList.map((f) => (
+                                    <span key={f} className="break-words">
+                                      {f}
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
                             )}
                           </span>
                         ) : (

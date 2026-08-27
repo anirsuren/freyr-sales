@@ -108,8 +108,6 @@ export function RevenueAccrualsModule({
   const [busy, setBusy] = useState(false);
   /** The deal picker "Plan a deal" opens. A button that says it plans a
    *  deal has to ask which deal, not quietly change a filter behind you. */
-  const [picking, setPicking] = useState(false);
-  const [pickQuery, setPickQuery] = useState("");
   const [confirmFreeze, setConfirmFreeze] = useState(false);
   const [confirmUnfreeze, setConfirmUnfreeze] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AccrualPlan | null>(null);
@@ -327,8 +325,27 @@ export function RevenueAccrualsModule({
     }
   }
 
+  /* ONE POP-UP, NOT TWO (Anir, Aug 27: "why do you have to have two
+     different screens? Maybe you choose the deal, and then the other stuff
+     shows up. It shouldn't be like two separate pop-ups").
+
+     Called with "" it opens the plan dialog with nothing chosen: a deal
+     dropdown at the top and the rest of the form waiting underneath. Called
+     with a deal id — from the dropdown, or from a row's Edit — it fills the
+     form in. Same function, same dialog, no second screen. */
   function startPlan(dealId: string, existing?: AccrualPlan) {
     const deal = dealById.get(dealId);
+    if (!dealId) {
+      setEditing({
+        opportunityId: "",
+        contractValue: "",
+        startMonth: monthKey(new Date()),
+        months: "6",
+        lines: [],
+        note: "",
+      });
+      return;
+    }
     const startMonth =
       existing?.lines[0]?.month ??
       (deal?.estSignDate ? monthKey(deal.estSignDate) : monthKey(new Date()));
@@ -448,7 +465,7 @@ export function RevenueAccrualsModule({
               )}
               <button
                 type="button"
-                onClick={() => setPicking(true)}
+                onClick={() => startPlan("")}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
               >
                 <Plus size={15} strokeWidth={2.4} /> Plan a deal
@@ -1159,7 +1176,11 @@ export function RevenueAccrualsModule({
         <Modal
           open
           onClose={() => setEditing(null)}
-          title={`Accrual plan · ${dealById.get(editing.opportunityId)?.name ?? "deal"}`}
+          title={
+            editing.opportunityId
+              ? `Accrual plan · ${dealById.get(editing.opportunityId)?.name ?? "deal"}`
+              : "Plan a deal"
+          }
           /* ONE SIZE FOR EVERY FORM DIALOG (Anir, Aug 26: "all the pop-ups,
              let's just make it a set size"). These were "wide" (640px), which
              is too narrow for a two-column form — the fields stacked and the
@@ -1168,7 +1189,58 @@ export function RevenueAccrualsModule({
              a short form collapsing into a strip. */
           size="workflow"
         >
-          <p className="text-[12.5px] text-text-secondary">
+          {/* THE DEAL IS A DROPDOWN, IN THIS SAME DIALOG (Anir, Aug 27:
+              "maybe just make it a dropdown... you choose the deal, and then
+              the other stuff shows up. It should be one pop-up").
+
+              It used to be a separate full-height dialog listing all
+              seventy-one open deals as 59px rows — a screen you had to get
+              through before the screen you wanted. The picker is searchable,
+              so a long list costs nothing, and the plan fields below wait
+              until there is something to plan. */}
+          <Field label="Which deal">
+            <ColorSelect
+              value={editing.opportunityId}
+              ariaLabel="Which deal are you planning"
+              collapsible={false}
+              searchable
+              className="w-full"
+              minWidth={0}
+              onChange={(v) => {
+                if (v) startPlan(v);
+              }}
+              options={[
+                { value: "", label: "Pick a deal…", color: "#8E98A8" },
+                ...missing.map((d) => ({
+                  value: d.id,
+                  label: d.name,
+                  description: `${d.customer}${d.offeringLabel ? ` · ${d.offeringLabel}` : ""} · ${formatMoney(d.value)}`,
+                })),
+                /* The deal being edited stays selectable even though it is no
+                   longer "missing a plan" — otherwise reopening an existing
+                   plan shows an empty picker. */
+                ...(editing.opportunityId && !missing.some((d) => d.id === editing.opportunityId)
+                  ? [
+                      {
+                        value: editing.opportunityId,
+                        label: dealById.get(editing.opportunityId)?.name ?? "This deal",
+                        description: dealById.get(editing.opportunityId)?.customer,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </Field>
+
+          {!editing.opportunityId ? (
+            <p className="mt-4 rounded-xl border border-dashed border-border-light bg-surface/40 px-4 py-6 text-center text-[12.5px] text-text-secondary">
+              {missing.length === 0
+                ? "Every open deal already has a plan. Nothing left to do here."
+                : "Pick a deal above and its months appear here."}
+            </p>
+          ) : (
+          <>
+          <p className="mt-4 text-[12.5px] text-text-secondary">
             Spread the contract value across the months you expect it to land.
             Nothing here reschedules itself later: if the close date passes, the
             plan is flagged and you come back and change it.
@@ -1267,6 +1339,8 @@ export function RevenueAccrualsModule({
               </span>
             )}
           </p>
+          </>
+          )}
 
           <div className="mt-4 flex items-center justify-end gap-2">
             <button
@@ -1278,7 +1352,7 @@ export function RevenueAccrualsModule({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !editing.opportunityId}
               onClick={savePlan}
               className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
@@ -1309,91 +1383,6 @@ export function RevenueAccrualsModule({
         body="The frozen sheet is removed and stops being the baseline for the month-on-month gap. Every accrual plan is left exactly as it is — this removes the photograph, not the thing photographed."
         confirmLabel="Unfreeze the month"
       />
-
-      {/* PICK THE DEAL, THEN PLAN IT (Anir, Aug 26: "when I press Plan a Deal
-          I'm expecting a pop-up… why is it giving me this thing?"). It used to
-          flip the list to a filtered view, which reads as the page changing
-          under you rather than as an answer to the button you pressed. */}
-      {picking && (
-        <Modal
-          open
-          onClose={() => {
-            setPicking(false);
-            setPickQuery("");
-          }}
-          title="Which deal are you planning?"
-          size="workflow"
-        >
-          <div className="flex min-h-[420px] flex-col">
-            <p className="text-[12.5px] text-text-secondary">
-              Pick an open deal and say which months you expect its money in.
-              Only deals carrying a value can be planned.
-            </p>
-            <input
-              value={pickQuery}
-              onChange={(e) => setPickQuery(e.target.value)}
-              placeholder="Search deals by name or customer"
-              aria-label="Search deals to plan"
-              className="mt-3 h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-colors focus:border-blue-subtle"
-            />
-            {(() => {
-              const q = pickQuery.trim().toLowerCase();
-              const rows = missing.filter(
-                (d) =>
-                  !q ||
-                  `${d.name} ${d.customer}`.toLowerCase().includes(q)
-              );
-              if (missing.length === 0) {
-                return (
-                  <p className="mt-6 text-center text-[13px] text-text-secondary">
-                    Every open deal already has a plan. Nothing left to do here.
-                  </p>
-                );
-              }
-              if (rows.length === 0) {
-                return (
-                  <p className="mt-6 text-center text-[13px] text-text-secondary">
-                    No open deal without a plan matches “{pickQuery.trim()}”.
-                  </p>
-                );
-              }
-              return (
-                <div className="mt-3 flex-1 overflow-y-auto rounded-xl border border-border-light">
-                  {rows.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      data-pick-deal={d.id}
-                      onClick={() => {
-                        setPicking(false);
-                        setPickQuery("");
-                        startPlan(d.id);
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-3 border-b border-border-light px-3.5 py-2.5 text-left transition-colors last:border-0 hover:bg-blue-light/40"
-                    >
-                      <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-semibold text-text-primary">
-                          {d.name}
-                        </span>
-                        <span className="block truncate text-[12px] text-text-secondary">
-                          {d.customer}
-                          {d.offeringLabel && ` · ${d.offeringLabel}`}
-                          {d.estSignDate && ` · est. ${formatDate(d.estSignDate)}`}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
-                        {formatMoney(d.value)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        </Modal>
-      )}
-
       <ConfirmDialog
         open={confirmFreeze}
         onClose={() => setConfirmFreeze(false)}

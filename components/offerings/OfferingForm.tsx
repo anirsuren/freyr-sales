@@ -1743,19 +1743,33 @@ export function OfferingForm({
               return (
                 <div
                   key={key}
-                  /* NO FADE (Anir, Aug 27: "I just opened the module agents,
-                     and for some reason it's faded... Why is it faded if I
-                     selected it"). Dimming "everything else" turned on a
-                     stale open-card index and greyed the very group he had
-                     just opened. The rail already says which one is open. */
-                  className="overflow-hidden rounded-xl border border-border-light bg-white"
-                  /* The goals-page rail: an open section carries its accent
-                     down its WHOLE left edge, not just the header (Anir:
-                     "that strip that goes from top to bottom on the
-                     section — that's what you have to do here"). */
-                  style={
-                    open ? { boxShadow: `inset 3px 0 0 0 ${accent}` } : undefined
-                  }
+                  /* FADE WHAT YOU ARE NOT LOOKING AT (Anir, Aug 27: "when I
+                     click on one, the other should fade... if I click on
+                     modules and then products, everything else in modules
+                     should fade out because I'm looking at products").
+
+                     The earlier version faded the group he had just opened,
+                     which is why it came out. The rule is the other way
+                     round and it is only about the CARD: once a card is
+                     open, the group that holds it stays lit and every other
+                     group steps back. Opening a group alone dims nothing —
+                     you are still choosing. */
+                  className={cn(
+                    "overflow-hidden rounded-xl border border-border-light bg-white transition-opacity duration-200",
+                    openCard !== null && !group.cards.includes(openCard) && "opacity-45"
+                  )}
+                  /* A REAL BORDER, NOT AN INSET SHADOW (Anir, Aug 27: "do you
+                     see the color mismatch for the blue?"). The shadow sat
+                     UNDER the card's own 1px border, so the rail showed
+                     through it as a washed-out tint of the accent while the
+                     section rail beside it was the solid colour — two blues
+                     that never matched. A border-left IS the edge, so it
+                     renders the accent exactly. Reserved at 3px in both
+                     states so opening never nudges the card. */
+                  style={{
+                    borderLeftWidth: 3,
+                    borderLeftColor: open ? accent : "var(--border-light)",
+                  }}
                 >
                   {/* THE GROUP IS THE DROPDOWN. Which group a card is in is
                       the section it sits under, so the picker that used to
@@ -1904,18 +1918,29 @@ export function OfferingForm({
                           <div
                             key={`${i}-${position}`}
                             className={cn(
-                              "overflow-hidden rounded-lg border transition-[border-color]",
+                              "overflow-hidden rounded-lg border transition-[border-color,opacity] duration-200",
                               expanded
                                 ? "border-blue-subtle bg-surface/40"
                                 : "border-border-light bg-white hover:border-blue-subtle",
+                              /* The other cards step back while one is open
+                                 (Anir, Aug 27) — the one you opened never
+                                 does, which was the bug in the old version. */
+                              openCard !== null && !expanded && "opacity-45 hover:opacity-100",
                               dragRow === i && "opacity-40",
                               dropAt === i && dragRow !== null && "border-t-2 border-t-blue-primary"
                             )}
-                            style={
-                              expanded
-                                ? { boxShadow: `inset 3px 0 0 0 ${cardMark.color}` }
-                                : undefined
-                            }
+                            /* Border, not inset shadow (Anir, Aug 27: "do you
+                               see the gap in the products column when I expand
+                               it?"). An inset shadow on a rounded box is
+                               clipped by the corner radius, so the purple rail
+                               stopped short at the top and bottom and left two
+                               notches. The border follows the radius. */
+                            style={{
+                              borderLeftWidth: 3,
+                              borderLeftColor: expanded
+                                ? cardMark.color
+                                : "var(--border-light)",
+                            }}
                           >
                             {/* ONE LINE PER CARD until you open it, and the
                                 whole line is the handle. */}

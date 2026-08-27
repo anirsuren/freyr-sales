@@ -1944,3 +1944,52 @@ input {
   background-repeat: no-repeat;
   background-position: bottom left;
 }
+
+
+/* THE ONE BUTTON THAT IS THE AI (Anir, Aug 27: "I don't like this button.
+   It's just a regular button. It should look a little bit better").
+
+   Every other control on that header row is an outlined white rectangle, and the
+   entry point to Freyr AI was one of them — nothing about it said this is the
+   thing that thinks. It gets the product's own blue-to-violet gradient, a
+   soft glow that deepens on hover, and a sheen that travels across it once
+   when the pointer arrives. No red, no green: this is identity, not status. */
+.ai-button {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background-image: linear-gradient(120deg, #0071e3 0%, #4f46e5 52%, #7c3aed 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 6px 18px -8px rgba(79, 70, 229, 0.55);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.ai-button:hover {
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.14), 0 12px 28px -8px rgba(79, 70, 229, 0.75);
+  transform: translateY(-1px);
+}
+.ai-button:active { transform: translateY(0); }
+/* The sheen is a pseudo-element so it never affects layout or the label. */
+.ai-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.42) 46%,
+    transparent 72%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+.ai-button:hover::after {
+  animation: ai-sheen 900ms ease-out;
+}
+@keyframes ai-sheen {
+  to { transform: translateX(120%); }
+}
+/* Somebody who asked for less motion gets the gradient and the glow, and no
+   travelling sheen. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-button:hover::after { animation: none; }
+  .ai-button:hover { transform: none; }
+}
