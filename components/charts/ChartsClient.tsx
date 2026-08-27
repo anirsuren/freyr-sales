@@ -2093,9 +2093,22 @@ export function BarChart({
   // label block grew to match it, which is where a chunk of the card's dead
   // height was coming from. 28 = two lines at 11px/1.2, and the label itself
   // is clamped so it can never spill past the block it is given.
-  const labelTextHeight = 28;
+  /* ONE LINE NEEDS ONE LINE'S WORTH (Anir, Aug 26: "move the bottom of those
+     bar charts down by a considerable amount... I don't know if you're
+     starting 20% above the bottom edge").
+
+     28 is two lines at 11px/1.2, reserved so the tallest wrap still fits. A
+     month axis is "Nov '26" — it can never wrap — so every month chart was
+     holding back half a line of empty space under every column, and the bars
+     stopped that much short of the bottom. Reserve two lines only when a label
+     is long enough to need them. */
+  const labelTextHeight = wideLabels || longestLabel > 10 ? 28 : 16;
   const labelBlockHeight = labelTextHeight + (hasLogos ? 24 : 0);
-  const baselineOffset = labelBlockHeight + 8; // + the label block's mt-2
+  /* + the label block's own top margin. 4px, not 8: the axis label belongs to
+     the column it names, and the extra gap only pushed the baseline up away
+     from the bottom of the card (Anir, Aug 26: "the bottom of the bar is so
+     far from the bottom edge"). */
+  const baselineOffset = labelBlockHeight + 4;
   const gridMinWidth =
     data.length * minColumn + Math.max(0, data.length - 1) * COL_GAP;
 
@@ -2443,7 +2456,7 @@ export function BarChart({
                 max-width, no "…", the column is wide enough, and the plot
                 scrolls if the columns outgrow the card. */}
             <span
-              className="mt-2 flex w-full shrink-0 flex-col items-center justify-start gap-1 px-0.5 text-center"
+              className="mt-1 flex w-full shrink-0 flex-col items-center justify-start gap-1 px-0.5 text-center"
               style={{ height: labelBlockHeight }}
             >
               {d.logo && (

@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
       ok: true,
       to: hit.ownerEmail ?? "",
       subject: message.subject,
+      /* Already a body fragment, which is what a rich-text box can hold. The
+         send shell goes on at send time, in the composer's route. */
       html: message.html,
       digest: hit,
     });

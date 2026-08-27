@@ -1,5 +1,7 @@
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
+import { readRevenueAccruals } from "@/lib/revenueAccruals";
+import { judgePlan } from "@/lib/revenueAccrualsShared";
 import { listOfferings } from "@/lib/offerings";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
@@ -24,8 +26,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function OpportunitiesPage() {
   await requireModuleAccess("/opportunities");
-  const [{ opportunities }, offerings, perf, me, master] = await Promise.all([
+  const [{ opportunities }, accruals, offerings, perf, me, master] =
+    await Promise.all([
     readOpportunities(),
+    readRevenueAccruals(),
     listOfferings(),
     readPerformance(),
     getCurrentUser(),
@@ -37,6 +41,27 @@ export default async function OpportunitiesPage() {
   return (
     <OpportunitiesBrowser
       opportunities={opportunities}
+      /* WHETHER THIS DEAL'S MONEY HAS BEEN PLANNED, AND WHETHER THAT PLAN
+         STILL HOLDS (Suren, Aug 26: "the moment you plan a deal, you put an
+         icon which says that the plan for the accrual is already done, and
+         then have another icon if that plan is invalid... the system makes
+         these things invalid"). Judged here, on the server, from the same
+         function the accruals page uses, so the two can never disagree. */
+      accrualPlans={Object.fromEntries(
+        accruals.plans.map((plan) => {
+          const deal = opportunities.find((o) => o.id === plan.opportunityId);
+          const verdict = judgePlan(plan, deal);
+          return [
+            plan.opportunityId,
+            {
+              planned: true,
+              problems: verdict.problems,
+              headline: verdict.headline,
+              owner: deal?.owner ?? plan.updatedBy,
+            },
+          ];
+        })
+      )}
       // The type rides along so an offering wears the SAME colour here as on
       // its own card (Anir, Aug 16: "the offering has to have the color, the
       // icon, etc., to make sure it's completely accurate").

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { getDataMode } from "@/lib/dataMode";
 import { canAccessModule } from "@/lib/moduleAccess";
 import {
   markLeadConverted,
@@ -39,12 +38,9 @@ export async function POST(req: NextRequest) {
   if (!scope) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   const shut = await closed();
   if (shut) return shut;
-  if (getDataMode() !== "live") {
-    return NextResponse.json(
-      { error: "Mock mode shows sample leads only. Switch to Real to work them." },
-      { status: 400 }
-    );
-  }
+  /* Mock writes go to the mock row and can never reach real data, so there is
+     nothing to refuse (Anir, Aug 26: "all the same functionality should be on
+     mock mode, but it shouldn't affect real data"). See readLeads. */
   const me = await getCurrentUser();
   const body = (await req.json().catch(() => ({}))) ?? {};
   const op = String(body.op ?? "");

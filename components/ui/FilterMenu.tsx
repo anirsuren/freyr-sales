@@ -206,7 +206,14 @@ export function FilterMenu({
                 the keyboard, and nothing is ever more than one move away. */}
             <div className="flex" style={{ height: PANEL_H }}>
               <div
-                className="shrink-0 overflow-y-auto border-r border-border-light py-1"
+                /* A REAL EDGE BETWEEN THE PANES, and a rule between each
+                   group (Anir, Aug 26: "I'm not able to really tell the
+                   separations in the section... especially really complex
+                   dropdowns, it's just impossible to tell which section is
+                   which"). One hairline against white was doing all of the
+                   work; the pane now carries its own tint as well, so the two
+                   halves read as two halves. */
+                className="shrink-0 divide-y divide-border-light overflow-y-auto border-r-2 border-border-light bg-surface/40"
                 style={{ width: LEFT_W }}
                 onMouseLeave={() => undefined}
               >
@@ -221,10 +228,13 @@ export function FilterMenu({
                       onClick={() => setLayer(group.key)}
                       aria-expanded={on}
                       className={cn(
-                        "flex w-full cursor-pointer items-center gap-2 px-2.5 py-2 text-left text-[12.5px] transition-colors",
+                        "flex w-full cursor-pointer items-center gap-2 px-2.5 py-2.5 text-left text-[12.5px] transition-colors",
                         on
-                          ? "bg-blue-light font-semibold text-blue-primary"
-                          : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                          /* The open group is white, like the pane it opens,
+                             with a rail down its left: the two panes read as
+                             one shape rather than a highlight beside a list. */
+                          ? "bg-white font-semibold text-blue-primary [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
                       )}
                     >
                       <span className="min-w-0 flex-1 break-words">{group.label}</span>
@@ -256,7 +266,7 @@ export function FilterMenu({
               <div className="flex min-w-0 flex-1 flex-col">
                 {current ? (
                   <>
-                    <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
+                    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b-2 border-border-light bg-white px-2.5 py-2">
                       <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                         {current.label}
                       </span>

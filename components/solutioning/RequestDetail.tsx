@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
   Plus,
   RotateCcw,
   Trash2,
+  Undo2,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +36,10 @@ import type {
   SolutionRequest,
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, StatusPill } from "./bits";
+import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { formatFromFilename } from "@/lib/offeringMaterials";
+import type { OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
  * ONE REQUEST, IN THE OFFERING PAGE'S OWN CLOTHES (Anir, Aug 24: "when I go
@@ -109,14 +115,15 @@ function SectionHeading({
 
 export function RequestDetail({
   request: initial,
-  live,
+  parent = null,
   meName,
   meRole,
   members,
   linkables,
 }: {
   request: SolutionRequest;
-  live: boolean;
+  /** The request this work came out of, when it came out of one. */
+  parent?: { id: string; ref: string; title: string } | null;
   meName: string;
   meRole: string;
   members: string[];
@@ -127,6 +134,8 @@ export function RequestDetail({
   const [r, setR] = useState(initial);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
   const [adding, setAdding] = useState(false);
+  /** The document open in the in-app viewer, if any. */
+  const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -168,6 +177,33 @@ export function RequestDetail({
     }
   }
 
+  /** Create a NEW item (a submission or a presentation), rather than acting on
+   *  this one — so it must not carry this request's id as the target. */
+  async function create(
+    body: Record<string, unknown>
+  ): Promise<SolutionRequest | null> {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/solutioning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "create", ...body }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        toast(data?.error || "That didn't save.", "error");
+        return null;
+      }
+      toast(`${data.request.ref} created.`);
+      return data.request as SolutionRequest;
+    } catch {
+      toast("That didn't save.", "error");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
   const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
 
@@ -192,8 +228,46 @@ export function RequestDetail({
           <span className="min-w-0 break-words">{r.title}</span>
         </h1>
 
-        {live && (
+        {/* Workable in Mock too: the store keeps the two apart. */}
+        {(
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* BUILD THE THING THIS ASKED FOR (Suren, Aug 26: "if the request
+                is created, you look at the request and then say, from there you
+                create a submission. It's a submission request: create a
+                submission. If it's a presentation request, create a
+                presentation"). Only on a REQUEST, only for what it asked for,
+                and a meeting asks for no artefact so it gets no button. The new
+                item arrives already linked back here, and finishing it closes
+                this. */}
+            {r.type === "request" &&
+              r.status !== "completed" &&
+              (r.kind === "submission" || r.kind === "presentation") && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    const made = await create({
+                      type: r.kind === "submission" ? "submission" : "presentation",
+                      kind: r.kind,
+                      requestId: r.id,
+                      title: r.title,
+                      customer: r.customer,
+                      ...(r.customerId ? { customerId: r.customerId } : {}),
+                      ...(r.subtype ? { subtype: r.subtype } : {}),
+                      ...(r.neededBy ? { neededBy: r.neededBy } : {}),
+                      opportunityIds: r.opportunityIds,
+                      opportunityLabels: r.opportunityLabels,
+                      contactIds: r.contactIds,
+                      contactNames: r.contactNames,
+                    });
+                    if (made) router.push(`/solutioning/${made.id}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  <Plus size={14} strokeWidth={2.4} />
+                  Create {r.kind === "submission" ? "submission" : "presentation"}
+                </button>
+              )}
             {!r.owner && r.status !== "completed" && fulfiller && (
               <button
                 type="button"
@@ -273,6 +347,21 @@ export function RequestDetail({
         <span aria-hidden="true" className="h-4 w-px bg-border-light" />
 
         <StatusPill status={r.status} />
+
+        {/* WHERE THIS CAME FROM (Suren, Aug 26: "you can say the submission is
+            related to a request, but even without a request, a submission can
+            be created"). Only drawn when there IS one — absence is normal, not
+            a gap to apologise for. */}
+        {parent && (
+          <Link
+            href={`/solutioning/${parent.id}`}
+            title={parent.title}
+            className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <Link2 size={12} strokeWidth={2} />
+            from {parent.ref}
+          </Link>
+        )}
 
         {r.neededBy && (
           <span
@@ -473,6 +562,28 @@ export function RequestDetail({
                   Waiting for the Solutions team to pick it up
                 </p>
               )}
+              {/* THE WAY BACK OUT (Anir, Aug 26: "I just picked this up, and I
+                  don't know how to leave, because I don't want to pick it up.
+                  If that's not a feature, then that's a problem"). It sits on
+                  the owner card because that is the thing it undoes, and it is
+                  quiet rather than a top-bar button: putting work down is a
+                  correction, not one of the actions the page is FOR. */}
+              {r.owner && r.status !== "completed" && (iOwn || managerial) && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => post({ op: "release" })}
+                  title={
+                    iOwn
+                      ? "Put it back so somebody else can pick it up"
+                      : `Take it off ${r.owner}`
+                  }
+                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-[rgba(180,83,9,0.45)] hover:bg-[rgba(180,83,9,0.07)] hover:text-[color:#B45309] disabled:opacity-50"
+                >
+                  <Undo2 size={13.5} strokeWidth={2.2} />
+                  {iOwn ? "Hand it back" : `Take it off ${r.owner.split(" ")[0]}`}
+                </button>
+              )}
               {r.completedAt && (
                 <p className="mt-2.5 border-t border-border-light pt-2.5 text-[12px] text-text-secondary">
                   Completed by <b>{r.completedBy}</b>
@@ -517,7 +628,7 @@ export function RequestDetail({
               title={`${DOC_TABS.find((t) => t.key === tab)?.label} (${docs.length})`}
               description={hint ?? ""}
             />
-            {live && r.status !== "completed" && !adding && (
+            {r.status !== "completed" && !adding && (
               <button
                 type="button"
                 onClick={() => setAdding(true)}
@@ -528,10 +639,11 @@ export function RequestDetail({
             )}
           </div>
 
-          {live && r.status !== "completed" && adding && (
+          {r.status !== "completed" && adding && (
             <div className="mt-4 rounded-xl border border-border-light bg-surface/40 p-4">
               <AddDocForm
                 tabLabel={DOC_TABS.find((t) => t.key === tab)?.label ?? ""}
+                requestId={r.id}
                 members={members}
                 linkables={linkables}
                 busy={busy}
@@ -549,7 +661,7 @@ export function RequestDetail({
             <p className="mt-6 rounded-xl bg-surface/60 px-4 py-10 text-center text-[13px] text-text-tertiary">
               Nothing in{" "}
               {DOC_TABS.find((t) => t.key === tab)?.label.toLowerCase()} yet.
-              {live && r.status !== "completed"
+              {r.status !== "completed"
                 ? " Add the first one above."
                 : ""}
             </p>
@@ -559,10 +671,10 @@ export function RequestDetail({
                 <DocRow
                   key={d.id}
                   doc={d}
-                  live={live}
+                  requestId={r.id}
+                  onOpen={() => setViewing(d)}
                   members={members}
                   canRemove={
-                    live &&
                     (managerial ||
                       iOwn ||
                       d.addedBy.trim().toLowerCase() ===
@@ -579,6 +691,24 @@ export function RequestDetail({
             </ul>
           )}
         </div>
+      )}
+
+      {viewing?.docsPath && (
+        /* THE SAME VIEWER THE SALES MATERIALS USE. Word, Excel, PowerPoint,
+           PDF and video all render the way they do there, because it is the
+           same component reading through the same renderer — only the endpoint
+           differs. */
+        <MaterialViewer
+          offeringId=""
+          offeringName={r.customer || "This request"}
+          material={asMaterial(viewing)}
+          path={viewing.docsPath}
+          label={viewing.name}
+          downloadUrl={solutioningDownloadUrl(r.id, viewing.id)}
+          openInNewTabUrl={solutioningDownloadUrl(r.id, viewing.id)}
+          previewUrl={solutioningPreviewUrl(r.id, viewing.id)}
+          onClose={() => setViewing(null)}
+        />
       )}
 
       <ConfirmDialog
@@ -600,25 +730,64 @@ export function RequestDetail({
   );
 }
 
+/**
+ * A SOLUTIONING DOCUMENT, WEARING A SALES MATERIAL'S CLOTHES.
+ *
+ * The viewer and the hover peek are the ones the sales-materials page uses, so
+ * a document opens exactly the way a material does (Anir, Aug 26: "copy all
+ * that shit. Every single part of it, like the preview, the hover"). They take
+ * an OfferingMaterial; this is the same file described in that shape. No
+ * folders — a request's four tabs already are the arrangement.
+ */
+function asMaterial(doc: SolutionDoc): OfferingMaterial {
+  return {
+    id: doc.id,
+    kind: formatFromFilename(doc.fileName || doc.name),
+    label: doc.name,
+    url: doc.url ?? "",
+    ...(doc.docsPath ? { docsPath: doc.docsPath } : {}),
+  };
+}
+
+/** Where this request's files are read from — never an offering's route. */
+const solutioningPreviewUrl =
+  (requestId: string, docId: string) =>
+  (_path: string, member: string | null) =>
+    `/api/solutioning/preview?requestId=${encodeURIComponent(
+      requestId
+    )}&docId=${encodeURIComponent(docId)}${
+      member ? `&member=${encodeURIComponent(member)}` : ""
+    }`;
+
+const solutioningDownloadUrl = (requestId: string, docId: string) =>
+  `/api/solutioning/download?requestId=${encodeURIComponent(
+    requestId
+  )}&docId=${encodeURIComponent(docId)}`;
+
 function DocRow({
   doc: d,
-  live,
   members,
   canRemove,
   completed,
   busy,
+  requestId,
+  onOpen,
   onAssign,
   onRemove,
 }: {
   doc: SolutionDoc;
-  live: boolean;
   members: string[];
   canRemove: boolean;
   completed: boolean;
   busy: boolean;
+  requestId: string;
+  onOpen: () => void;
   onAssign: (who: string | null) => void;
   onRemove: () => void;
 }) {
+  /* A doc that IS a file opens in the app; one that is only a link can never
+     do more than open somewhere else. */
+  const isFile = !!d.docsPath;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
       <span className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -638,9 +807,28 @@ function DocRow({
         </span>
         <span className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
-            <span className="min-w-0 break-words text-[13px] font-semibold text-text-primary">
-              {d.name}
-            </span>
+            {isFile ? (
+              /* HOVER TO SEE IT, CLICK TO OPEN IT — the sales-materials
+                 behaviour, from the same two components. */
+              <MaterialPeek
+                material={asMaterial(d)}
+                previewUrl={`/api/solutioning/preview?requestId=${encodeURIComponent(
+                  requestId
+                )}&docId=${encodeURIComponent(d.id)}`}
+              >
+                <button
+                  type="button"
+                  onClick={onOpen}
+                  className="min-w-0 cursor-pointer break-words text-left text-[13px] font-semibold text-text-primary underline-offset-2 transition-colors hover:text-blue-primary hover:underline"
+                >
+                  {d.name}
+                </button>
+              </MaterialPeek>
+            ) : (
+              <span className="min-w-0 break-words text-[13px] font-semibold text-text-primary">
+                {d.name}
+              </span>
+            )}
             {!d.ref && (
               <span className="shrink-0 rounded-md bg-surface px-1.5 py-[1px] text-[10px] font-bold text-text-secondary tnum">
                 v{d.version}
@@ -662,7 +850,7 @@ function DocRow({
       {/* Who is working this document — what puts them "on the submission
           side" of the people counts. */}
       <span className="flex shrink-0 items-center gap-2">
-        {live && !completed ? (
+        {!completed ? (
           <ColorSelect
             value={d.assignedTo ?? ""}
             onChange={(v) => onAssign(v || null)}
@@ -712,6 +900,7 @@ function AddDocForm({
   members,
   linkables,
   busy,
+  requestId,
   onCancel,
   onAdd,
 }: {
@@ -719,6 +908,7 @@ function AddDocForm({
   members: string[];
   linkables: Linkable[];
   busy: boolean;
+  requestId: string;
   onCancel: () => void;
   onAdd: (input: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -729,6 +919,35 @@ function AddDocForm({
   const [note, setNote] = useState("");
   const [refRequestId, setRefRequestId] = useState("");
   const [refDocId, setRefDocId] = useState("");
+  /* THE FILE ITSELF, not a link to it somewhere else. */
+  const [file, setFile] = useState<{ docsPath: string; fileName: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const pickFile = async (chosen: File) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.append("file", chosen);
+      const res = await fetch(
+        `/api/solutioning/upload?requestId=${encodeURIComponent(requestId)}`,
+        { method: "POST", body: form }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.docsPath) {
+        setUploadError(data.error || "That file did not upload.");
+        return;
+      }
+      setFile({ docsPath: data.docsPath, fileName: data.fileName });
+      /* Name the document after the file unless somebody already typed one. */
+      setName((current) => current || data.fileName.replace(/\.[^.]+$/, ""));
+    } catch {
+      setUploadError("That file did not upload.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const home = linkables.find((l) => l.id === refRequestId) ?? null;
   const refDoc = home?.docs.find((d) => d.id === refDocId) ?? null;
@@ -773,12 +992,56 @@ function AddDocForm({
             placeholder="Document name — same name again becomes v2"
             className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
           />
+          {/* UPLOAD THE FILE, or paste a link to one that lives elsewhere.
+              An uploaded file previews in the app exactly the way a sales
+              material does; a link can only ever open in a new tab. */}
+          {file ? (
+            <span className="flex h-9 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12.5px]">
+              <FileText size={13.5} strokeWidth={2} className="shrink-0 text-blue-primary" />
+              <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
+                {file.fileName}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-text-tertiary hover:text-[color:#DC2626]"
+              >
+                Remove
+              </button>
+            </span>
+          ) : (
+            <label
+              className={cn(
+                "flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-light bg-white px-3 text-[12.5px] text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary",
+                uploading && "opacity-60"
+              )}
+            >
+              <Plus size={13.5} strokeWidth={2.2} className="shrink-0" />
+              {uploading ? "Uploading…" : "Upload a file"}
+              <input
+                type="file"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const chosen = e.target.files?.[0];
+                  if (chosen) void pickFile(chosen);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Link to the file (SharePoint, Drive…) — optional"
-            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            placeholder={file ? "Link — not needed, the file is attached" : "Or paste a link (SharePoint, Drive…) — optional"}
+            disabled={!!file}
+            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:bg-surface/60 disabled:text-text-tertiary"
           />
+          {uploadError && (
+            <p className="sm:col-span-2 text-[11.5px] font-medium text-[color:#DC2626]">
+              {uploadError}
+            </p>
+          )}
           <ColorSelect
             value={assignedTo}
             onChange={setAssignedTo}
@@ -862,6 +1125,7 @@ function AddDocForm({
           type="button"
           disabled={
             busy ||
+            uploading ||
             (mode === "new" ? !name.trim() : !refRequestId || !refDocId)
           }
           onClick={() =>
@@ -869,7 +1133,9 @@ function AddDocForm({
               mode === "new"
                 ? {
                     name: name.trim(),
-                    url: url.trim() || undefined,
+                    url: file ? undefined : url.trim() || undefined,
+                    docsPath: file?.docsPath,
+                    fileName: file?.fileName,
                     assignedTo: assignedTo || undefined,
                     note: note.trim() || undefined,
                   }

@@ -59,9 +59,50 @@ type OpportunityOption = {
 
 const KIND_ORDER: SolutioningKind[] = ["submission", "presentation", "meeting"];
 
+/** What each room is, in the words that belong on its own page. */
+const ROOM_META: Record<
+  "requests" | "submissions" | "presentations",
+  {
+    title: string;
+    subtitle: string;
+    empty: string;
+    newLabel: string;
+    /** What one row is called, for the "showing x of y" line. */
+    noun: string;
+    /** The same word as a column heading. */
+    rowNoun: string;
+  }
+> = {
+  requests: {
+    title: "Requests",
+    subtitle:
+      "What sales has asked the Solutions team for: a submission, a presentation or a meeting.",
+    empty: "No requests yet.",
+    newLabel: "New request",
+    noun: "requests",
+    rowNoun: "Request",
+  },
+  submissions: {
+    title: "Submissions",
+    subtitle: "RFI, RFP and proposal submissions being put together.",
+    empty: "No submissions yet.",
+    newLabel: "New submission",
+    noun: "submissions",
+    rowNoun: "Submission",
+  },
+  presentations: {
+    title: "Presentations",
+    subtitle: "Decks and RFP defences being built for a customer.",
+    empty: "No presentations yet.",
+    newLabel: "New presentation",
+    noun: "presentations",
+    rowNoun: "Presentation",
+  },
+};
+
 export function SolutioningModule({
   state: initial,
-  live,
+  room = "requests",
   meRole,
   members,
   memberRoles,
@@ -69,7 +110,12 @@ export function SolutioningModule({
   opportunities,
 }: {
   state: SolutioningState;
-  live: boolean;
+  /**
+   * WHICH ROOM (Anir, Aug 26: "under solutioning the three things, like
+   * goals"). Requests is everything people asked for; the other two narrow to
+   * the work of that kind.
+   */
+  room?: "requests" | "submissions" | "presentations";
   meRole: string;
   members: string[];
   memberRoles: Record<string, string>;
@@ -103,14 +149,35 @@ export function SolutioningModule({
        dialog from a deep link there hands somebody a form that cannot be
        submitted (Anir, Aug 26, arriving from a lead in Mock: "this button
        doesn't work"). */
-    if (search.get("new") === "1" && live) setCreating(true);
+    if (search.get("new") === "1") setCreating(true);
     // Reading once on mount is the point; the dialog owns the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* Everything this room holds, before any search or filter — the denominator
+     of "showing x of y". */
+  const inRoom = useMemo(
+    () =>
+      state.requests.filter((r) => {
+        const itemType = r.type ?? "request";
+        if (room === "requests") return itemType === "request";
+        if (room === "submissions") return itemType === "submission";
+        return itemType === "presentation";
+      }),
+    [state.requests, room]
+  );
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = state.requests.filter((r) => {
+      /* THE ROOM IS THE OBJECT, not a filter on one (Suren, Aug 26: "request
+         is a separate object, and submissions is another object"). Requests
+         are what sales asked for; the other two rooms hold the work itself,
+         whether or not a request prompted it. */
+      const itemType = r.type ?? "request";
+      if (room === "requests" && itemType !== "request") return false;
+      if (room === "submissions" && itemType !== "submission") return false;
+      if (room === "presentations" && itemType !== "presentation") return false;
       if (kinds.length && !kinds.includes(r.kind)) return false;
       if (statuses.length && !statuses.includes(r.status)) return false;
       if (owners.length) {
@@ -144,7 +211,7 @@ export function SolutioningModule({
       }
       return a.requestedAt < b.requestedAt ? 1 : -1;
     });
-  }, [state.requests, query, kinds, statuses, owners, customerPick, sort]);
+  }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room]);
 
   const open = state.requests.filter((r) => r.status !== "completed");
   const unclaimed = state.requests.filter(
@@ -221,21 +288,22 @@ export function SolutioningModule({
   return (
     <div>
       <PageHeader
-        title="Solutioning"
-        subtitle="Presentations, submissions and meetings. Sales asks, the Solutions team builds, and whoever asked closes it."
+        title={ROOM_META[room].title}
+        subtitle={ROOM_META[room].subtitle}
         action={
-          live ? (
+          /* MOCK IS FULLY WORKABLE (Anir, Aug 26: "I should be able to add and
+             edit — it's mock mode, so I want to see all functionality"). Mock
+             and Real are separate rows in the store, so nothing written here
+             can reach the live workspace, and the banner across the top
+             already says which mode you are in. */
+          (
             <button
               type="button"
               onClick={() => setCreating(true)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
             >
-              <Plus size={15} strokeWidth={2.4} /> New request
+              <Plus size={15} strokeWidth={2.4} /> {ROOM_META[room].newLabel}
             </button>
-          ) : (
-            <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              Sample requests. Switch to Real mode to work the live list
-            </span>
           )
         }
       />
@@ -367,9 +435,13 @@ export function SolutioningModule({
         />
       </div>
 
+      {/* COUNT THE ROOM YOU ARE IN, not the whole store. Submissions read
+          "Showing 2 of 9 requests" — the 9 was every item in Solutioning, and
+          the word was wrong twice over. */}
       <p className="mb-3 text-[13px] text-text-secondary">
         Showing <b className="text-text-primary tnum">{shown.length}</b> of{" "}
-        <b className="text-text-primary tnum">{state.requests.length}</b> requests
+        <b className="text-text-primary tnum">{inRoom.length}</b>{" "}
+        {ROOM_META[room].noun}
       </p>
 
       {/* NO BOX AROUND AN EMPTY STATE (Anir, Aug 26: "for Solutioning you have
@@ -381,24 +453,24 @@ export function SolutioningModule({
       {state.requests.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="No requests yet."
+          title={ROOM_META[room].empty}
           description="Ask for a presentation, a submission or a meeting. The Solutions team picks it up from here, and you close it when it's delivered."
           action={
-            live ? (
+            (
               <button
                 type="button"
                 onClick={() => setCreating(true)}
                 className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
               >
-                <Plus size={14} strokeWidth={2.4} /> New request
+                <Plus size={14} strokeWidth={2.4} /> {ROOM_META[room].newLabel}
               </button>
-            ) : undefined
+            )
           }
         />
       ) : shown.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="No requests match these filters."
+          title={`Nothing in ${ROOM_META[room].title.toLowerCase()} matches these filters.`}
           description="Try a different type, status or search term."
         />
       ) : (
@@ -407,10 +479,18 @@ export function SolutioningModule({
             <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
-                  <th className="w-[24%] px-4 py-2.5">Request</th>
+                  {/* THE ROOM'S OWN WORD (Suren, Aug 26: "I don't need to see
+                      the request in submissions. Submissions are submission
+                      presentations"). The column said "Request" in every room,
+                      so a list of submissions read as a list of requests. */}
+                  <th className="w-[24%] px-4 py-2.5">
+                    {ROOM_META[room].rowNoun}
+                  </th>
                   <th className="w-[14%] px-4 py-2.5">Customer</th>
                   <th className="w-[16%] px-4 py-2.5">Against</th>
-                  <th className="w-[14%] px-4 py-2.5">Requested by</th>
+                  <th className="w-[14%] px-4 py-2.5">
+                    {room === "requests" ? "Requested by" : "Raised by"}
+                  </th>
                   <th className="w-[10%] px-4 py-2.5">Needed by</th>
                   <th className="w-[12%] px-4 py-2.5">Owner</th>
                   <th className="w-[10%] px-4 py-2.5">Status</th>
@@ -424,7 +504,6 @@ export function SolutioningModule({
                   <RequestRow
                     key={r.id}
                     request={r}
-                    live={live}
                     fulfiller={fulfiller}
                     busy={busy === r.id}
                     open={openIds.has(r.id)}
@@ -501,7 +580,21 @@ export function SolutioningModule({
           prefillCompany={search.get("company")}
           prefillLead={search.get("lead")}
           onCreate={async (input) => {
-            const data = await post({ op: "create", ...input }, "create");
+            /* The room decides WHAT gets made: a request in Requests, the work
+               itself in the other two. */
+            const data = await post(
+              {
+                op: "create",
+                type:
+                  room === "submissions"
+                    ? "submission"
+                    : room === "presentations"
+                      ? "presentation"
+                      : "request",
+                ...input,
+              },
+              "create"
+            );
             if (data?.request) {
               toast(`${data.request.ref} created.`);
               setCreating(false);
@@ -517,7 +610,6 @@ export function SolutioningModule({
 
 function RequestRow({
   request: r,
-  live,
   fulfiller,
   busy,
   open,
@@ -525,7 +617,6 @@ function RequestRow({
   onPickUp,
 }: {
   request: SolutionRequest;
-  live: boolean;
   fulfiller: boolean;
   busy: boolean;
   open: boolean;
@@ -565,10 +656,16 @@ function RequestRow({
          tint, same 3px rail — so the row and the panel under it read as one
          block instead of a panel floating below an untouched row. */
       className={cn(
-        "group cursor-pointer border-b border-border-light align-middle transition-colors last:border-0",
+        "group cursor-pointer align-middle transition-colors",
+        /* NO RULE ACROSS AN OPEN ROW (Anir, Aug 26: "there's a line... on the
+           left side, there's a line separation for that blue line I was
+           talking about"). The row's own border-b painted a 1px line straight
+           through the 3px rail, so the rail arrived at the panel in two
+           pieces. While the row is open the panel below IS the rest of the
+           block, and its card already separates it from the next row. */
         open
           ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-          : "hover:bg-[var(--surface)]"
+          : "border-b border-border-light last:border-0 hover:bg-[var(--surface)]"
       )}
     >
       <td className="px-4 py-3.5">
@@ -651,7 +748,7 @@ function RequestRow({
               {r.owner}
             </span>
           </span>
-        ) : live && fulfiller && r.status !== "completed" ? (
+        ) : fulfiller && r.status !== "completed" ? (
           <button
             type="button"
             disabled={busy}
@@ -1145,8 +1242,14 @@ function NewRequestDialog({
                 <span className="text-[12px] font-semibold text-text-primary">
                   When is the meeting?
                 </span>
+                {/* A DATE, NOT A TIMESTAMP (Anir, Aug 26: "remove this, I
+                    don't know why you added this time here"). datetime-local
+                    made the browser draw an hour, minute and AM/PM column
+                    beside the calendar, and nothing downstream needed a time:
+                    the request is raised days ahead and the hour gets settled
+                    in the invite, not here. */}
                 <input
-                  type="datetime-local"
+                  type="date"
                   value={meetingAt}
                   onChange={(e) => setMeetingAt(e.target.value)}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"

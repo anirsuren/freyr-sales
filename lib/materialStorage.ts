@@ -1,3 +1,4 @@
+import { formatFromFilename } from "./offeringMaterials";
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
@@ -131,14 +132,12 @@ export async function hasMaterialStorage(): Promise<boolean> {
 
 /** What kind of material a filename is, by its extension. Keeps the four-tile
  *  format language: video / presentation / document / other. */
-export function formatFromFilename(name: string): MaterialFormat {
-  const ext = (name.split(".").pop() || "").toLowerCase();
-  if (["mp4", "mov", "webm", "m4v", "avi", "mkv"].includes(ext)) return "video";
-  if (["ppt", "pptx", "key", "odp"].includes(ext)) return "presentation";
-  if (["doc", "docx", "pdf", "txt", "rtf", "md", "odt"].includes(ext))
-    return "document";
-  return "other";
-}
+/* Moved to lib/offeringMaterials so a CLIENT component can call it: it is a
+   pure filename check with no server dependency, and this file is server-only,
+   so importing it from the browser pulled the whole storage layer along.
+   Re-exported here because plenty of server callers already import it from
+   this module. */
+export { formatFromFilename };
 
 let bucketReady: Promise<void> | null = null;
 async function ensureBucket(): Promise<void> {

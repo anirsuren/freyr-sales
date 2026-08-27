@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText, FolderOpen, Loader2 } from "lucide-react";
+import { emailTemplates } from "@/lib/emailTemplates";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
@@ -33,6 +34,8 @@ type OwnerRow = {
   stalestDays: number | null;
 };
 
+const TEMPLATES = emailTemplates();
+
 export function OwnerDigestPicker({
   onLoad,
 }: {
@@ -40,8 +43,40 @@ export function OwnerDigestPicker({
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  /** The owner list is a second step, reached from the one template that needs
+   *  a person. Everything else loads straight away. */
+  const [picking, setPicking] = useState(false);
   const [rows, setRows] = useState<OwnerRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  /* CLICK AWAY SHUTS IT (Anir, Aug 26: "when I click outside these dropdowns
+     it's supposed to toggle off, but it's not doing that"). Every other menu
+     in the app closes itself from a native document listener; this one was
+     built without it and stayed open until its own button was pressed again.
+     mousedown, not click, so it matches the rest and beats any handler that
+     stops click from bubbling. */
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: MouseEvent) => {
+      if (boxRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+      setPicking(false);
+    };
+    const esc = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      setOpen(false);
+      setPicking(false);
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
 
   const load = useCallback(async () => {
     try {
@@ -88,30 +123,101 @@ export function OwnerDigestPicker({
   }
 
   return (
-    <div className="mt-3">
+    /* TUCKED AWAY (Anir, Aug 26: "you can keep start from a draft but I need it
+       hidden, tucked up away somewhere"). One small button on the title line
+       rather than a labelled block above the To field, and the list drops as a
+       popover so it never pushes the form down the page. */
+    <div ref={boxRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setPicking(false);
+        }}
         aria-expanded={open}
-        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+        aria-label="Start from a template"
+        title="Start from a template"
+        className={cn(
+          "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2 text-[12px] font-semibold transition-colors",
+          open
+            ? "border-blue-subtle bg-blue-light text-blue-primary"
+            : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
+        )}
       >
         <FileText size={13} strokeWidth={2.2} />
-        Start from a draft: remind an offering owner
+        Templates
         <ChevronDown
-          size={13}
+          size={12}
           strokeWidth={2.3}
-          className={cn("transition-transform", !open && "-rotate-90")}
+          className={cn("transition-transform duration-200", !open && "-rotate-90")}
         />
       </button>
 
       {open && (
-        <div className="tab-panel mt-2 overflow-hidden rounded-xl border border-border-light">
+        <div className="tab-panel absolute right-0 z-40 mt-1.5 w-[420px] max-w-[86vw] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]">
           <p className="border-b border-border-light bg-surface/60 px-3.5 py-2 text-[12px] text-text-secondary">
-            Each draft carries the date they became owner, every folder on that
-            offering&apos;s shelf with when it was last added to, and a reminder
-            to refresh what has aged.
+            {picking
+              ? "Pick the owner. The message is built from their offering's shelf: every folder, when it was last added to, and what has aged."
+              : "Pick one and it loads the subject and the message. Everything stays editable, and nothing sends until you press Send."}
           </p>
-          {rows === null ? (
+
+          {!picking && (
+            <ul className="max-h-[340px] overflow-y-auto py-1">
+              {TEMPLATES.map((tpl) => {
+                const Icon = tpl.icon;
+                return (
+                  <li key={tpl.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tpl.perOwner) {
+                          setPicking(true);
+                          return;
+                        }
+                        onLoad({ to: "", subject: tpl.subject, html: tpl.body });
+                        setOpen(false);
+                      }}
+                      className="flex w-full cursor-pointer items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-surface"
+                    >
+                      <span
+                        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: `${tpl.color}1F`, color: tpl.color }}
+                      >
+                        <Icon size={14} strokeWidth={2.1} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-semibold text-text-primary">
+                          {tpl.name}
+                        </span>
+                        <span className="block text-[11.5px] leading-snug text-text-tertiary">
+                          {tpl.hint}
+                        </span>
+                      </span>
+                      {tpl.perOwner && (
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={2.2}
+                          className="mt-1.5 shrink-0 -rotate-90 text-text-tertiary"
+                        />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {picking && (
+            <button
+              type="button"
+              onClick={() => setPicking(false)}
+              className="flex w-full cursor-pointer items-center gap-1.5 border-b border-border-light px-3.5 py-2 text-left text-[12px] font-semibold text-blue-primary transition-colors hover:bg-surface"
+            >
+              <ChevronDown size={12} strokeWidth={2.4} className="rotate-90" />
+              All templates
+            </button>
+          )}
+          {!picking ? null : rows === null ? (
             <p className="flex items-center gap-2 px-3.5 py-3 text-[13px] text-text-tertiary">
               <Loader2 size={13} className="animate-spin" /> Reading the shelves…
             </p>

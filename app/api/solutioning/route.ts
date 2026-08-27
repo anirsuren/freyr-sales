@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { getDataMode } from "@/lib/dataMode";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { getDb } from "@/lib/db";
 import {
@@ -12,6 +11,7 @@ import {
   deleteRequest,
   pickUpRequest,
   readSolutioning,
+  releaseRequest,
   removeDocument,
   reopenRequest,
   updateRequest,
@@ -29,6 +29,8 @@ export const dynamic = "force-dynamic";
  *
  *   create           anyone signed in ("anybody can create that request")
  *   pick-up          the fulfiller side: solutions, manager, admin
+ *   release          whoever holds it hands it back; a manager/admin can take
+ *                    it off them. Picking up must not be a one-way door.
  *   complete         the REQUESTER — "the sales person says it is completed" —
  *                    or a manager/admin on their behalf
  *   reopen           same people who may complete
@@ -84,12 +86,9 @@ export async function POST(req: NextRequest) {
   }
   const shut = await moduleClosed();
   if (shut) return shut;
-  if (getDataMode() !== "live") {
-    return NextResponse.json(
-      { error: "Mock mode shows sample requests only. Switch to Real to work them." },
-      { status: 400 }
-    );
-  }
+  /* Mock writes go to the mock row and can never reach real data, so there is
+     nothing to refuse (Anir, Aug 26: "all the same functionality (add, edit
+     etc.) should be on mock mode, but it shouldn't affect real data"). */
   const me = await getCurrentUser();
   const managerial = me.role === "admin" || me.role === "manager";
   const fulfiller = managerial || me.role === "solutions";
@@ -105,7 +104,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      /* A request, or the work itself. Anything else is a request, which is
+         what this endpoint only ever made. */
+      const rawType = String(body.type ?? "request");
+      const type =
+        rawType === "submission" || rawType === "presentation"
+          ? rawType
+          : ("request" as const);
       const request = await createRequest({
+        type,
+        requestId: body.requestId,
         kind,
         subtype: body.subtype,
         title: String(body.title ?? ""),
@@ -146,6 +154,16 @@ export async function POST(req: NextRequest) {
         );
       }
       await pickUpRequest({ requestId, by: me.name });
+    } else if (op === "release") {
+      /* The way back out of a pick-up. The owner may always put it down; a
+         manager or admin may take it off somebody who has gone quiet. */
+      if (!(iOwn || managerial)) {
+        return NextResponse.json(
+          { error: `${target.owner || "Somebody else"} picked this up, so only they can hand it back.` },
+          { status: 403 }
+        );
+      }
+      await releaseRequest({ requestId, by: me.name, managerial });
     } else if (op === "complete") {
       await completeRequest({
         requestId,
@@ -170,6 +188,8 @@ export async function POST(req: NextRequest) {
         category,
         name: String(body.name ?? ""),
         url: body.url,
+        docsPath: body.docsPath,
+        fileName: body.fileName,
         assignedTo: body.assignedTo,
         note: body.note,
         by: me.name,

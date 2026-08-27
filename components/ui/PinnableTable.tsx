@@ -421,7 +421,12 @@ export function PinnableTable({
   }, [rail]);
 
   return (
-    <div className={cn("relative", className)}>
+    /* THE PIN SITS OVER THE LAST HEADING, so the last heading has to end
+       before the pin starts (Anir, Aug 26, on the pin printed on top of the
+       word ACTIONS: "align to the left... you keep making this mistake").
+       Scoped to this table's own header row, so no page has to remember to
+       pad its own Actions column. */
+    <div className={cn("freyr-pinned-table relative", className)}>
       <PinCorner id={id} />
       <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
         {children}

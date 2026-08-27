@@ -92,12 +92,10 @@ const AMBER = "#B45309";
 export function RevenueAccrualsModule({
   state: initial,
   deals,
-  live,
   canWrite,
 }: {
   state: RevenueAccrualsState;
   deals: DealOption[];
-  live: boolean;
   canWrite: boolean;
 }) {
   const router = useRouter();
@@ -334,15 +332,23 @@ export function RevenueAccrualsModule({
     const startMonth =
       existing?.lines[0]?.month ??
       (deal?.estSignDate ? monthKey(deal.estSignDate) : monthKey(new Date()));
+    const months = existing?.lines.length || 6;
+    const contractValue = existing?.contractValue ?? deal?.value ?? 0;
     setEditing({
       opportunityId: dealId,
-      contractValue: String(existing?.contractValue ?? deal?.value ?? 0),
+      contractValue: String(contractValue),
       startMonth,
-      months: String(existing?.lines.length || 6),
-      lines: (existing?.lines ?? []).map((l) => ({
-        month: l.month,
-        amount: String(l.amount),
-      })),
+      months: String(months),
+      /* A NEW PLAN OPENS ALREADY SPREAD.
+         It used to open with a contract value, a start month and six months
+         but NO month lines, so Save refused with "add at least one month, or
+         press Spread evenly" — while the banner directly above it said "the
+         months add up to $0... saving is allowed". Two messages, opposite
+         instructions, and the button did nothing either way. The defaults are
+         right there, so apply them and let the person adjust. */
+      lines: (existing?.lines ?? spreadEvenly(contractValue, startMonth, months)).map(
+        (l) => ({ month: l.month, amount: String(l.amount) })
+      ),
       note: existing?.note ?? "",
     });
   }
@@ -387,6 +393,9 @@ export function RevenueAccrualsModule({
           offeringId: deal.offeringId,
           offeringLabel: deal.offeringLabel,
           contractValue: Math.round(Number(editing.contractValue) || 0),
+          /* The date these months were chosen against. If somebody moves it
+             later, the plan is flagged rather than quietly going wrong. */
+          ...(deal.estSignDate ? { signDateAtPlan: deal.estSignDate } : {}),
           lines,
           note: editing.note,
         },
@@ -418,7 +427,7 @@ export function RevenueAccrualsModule({
         title="Revenue Accruals"
         subtitle="When the money on each deal is planned to land, month by month, and what moved since last month. Nothing here reschedules itself."
         action={
-          live && canWrite ? (
+          canWrite ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -647,7 +656,7 @@ export function RevenueAccrualsModule({
                       <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
                         {formatMoney(d.value)}
                       </span>
-                      {live && canWrite && (
+                      {canWrite && (
                         <button
                           type="button"
                           onClick={() => startPlan(d.id)}
@@ -681,7 +690,7 @@ export function RevenueAccrualsModule({
                 across everything on screen, so the filters and the grouping
                 change the picture rather than only the list. */}
             {monthChart.length > 0 && (
-              <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
+              <section className="mt-4 rounded-xl border border-border-light bg-white p-5 pb-2.5 shadow-card">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                   <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
                   When this money is planned to land
@@ -769,7 +778,19 @@ export function RevenueAccrualsModule({
                         ? "border-blue-primary ring-2 ring-[rgba(0,113,227,0.18)]"
                         : verdict.invalid
                           ? "border-[rgba(180,83,9,0.35)]"
-                          : "border-border-light"
+                          : "border-border-light",
+                      /* THE RAIL, ON THE WHOLE OPEN BLOCK (Anir, Aug 26:
+                         "you're not doing the separator thing here, like the
+                         line on the left"). It goes on the SECTION rather than
+                         on the header and the panel separately, so it is one
+                         line by construction and cannot arrive in two pieces
+                         the way the solutioning one did. Amber when the plan
+                         needs re-planning, because that is what the rest of
+                         the card is already saying. */
+                      isOpen &&
+                        (verdict.invalid
+                          ? "[box-shadow:inset_3px_0_0_0_#B45309]"
+                          : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]")
                     )}
                   >
                     <button
@@ -816,7 +837,14 @@ export function RevenueAccrualsModule({
                     </button>
 
                     {isOpen && (
-                      <div className="border-t border-border-light px-4 py-3.5">
+                      /* THE DIVIDER STOPS SHORT OF THE RAIL (Anir, Aug 26: "I
+                         don't want this gap, you see where it cuts off"). A
+                         full-width border-t paints its 1px straight across the
+                         3px rail, so the rail arrives at the panel in two
+                         pieces. Drawn as an inset shadow that starts 3px in,
+                         it separates the header from the panel without
+                         crossing the line down the side. */
+                      <div className="freyr-rule-inset px-4 py-3.5">
                         {verdict.invalid && (
                           <p
                             className="mb-3 rounded-lg px-3 py-2 text-[12.5px] font-semibold"
@@ -949,7 +977,7 @@ export function RevenueAccrualsModule({
                           >
                             Open the deal
                           </Link>
-                          {live && canWrite && (
+                          {canWrite && (
                             <span className="ml-auto flex items-center gap-1.5">
                               <button
                                 type="button"

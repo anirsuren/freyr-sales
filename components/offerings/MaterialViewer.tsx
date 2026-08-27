@@ -128,6 +128,7 @@ export function MaterialViewer({
   standalone = false,
   embed = false,
   initialMember = null,
+  previewUrl,
 }: {
   offeringId: string;
   offeringName: string;
@@ -151,6 +152,15 @@ export function MaterialViewer({
   /** Open straight onto this file inside the archive — how "Open in a new
    *  tab" keeps showing the MEMBER you were reading, not the ZIP manifest. */
   initialMember?: string | null;
+  /**
+   * WHERE THE BYTES COME FROM, when they are not an offering's.
+   *
+   * Solutioning documents are stored the same way and must render the same
+   * way, so the renderer takes the endpoint instead of assuming the offering
+   * one. Given a path and an optional archive member, return the URL that
+   * serves that file. Defaults to the offering route.
+   */
+  previewUrl?: (path: string, member: string | null) => string;
 }) {
   /** The ZIP remains the material of record. Opening a row swaps only the
    * bytes rendered in this dialog; Back returns to the archive manifest. */
@@ -360,7 +370,9 @@ export function MaterialViewer({
     // defeats the renderer.
     const loadServerPreview = async () => {
       const res = await fetch(
-        `/api/offerings/${offeringId}/materials/preview?path=${encodeURIComponent(path)}${archiveMember ? `&member=${encodeURIComponent(archiveMember)}` : ""}`,
+        previewUrl
+          ? previewUrl(path, archiveMember)
+          : `/api/offerings/${offeringId}/materials/preview?path=${encodeURIComponent(path)}${archiveMember ? `&member=${encodeURIComponent(archiveMember)}` : ""}`,
         { cache: "no-store" }
       );
       const body = await res.json();

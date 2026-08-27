@@ -674,7 +674,21 @@ export function AllMaterialsBrowser({
             return (
               <div
                 key={group.id}
-                className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+                className={cn(
+                  "overflow-hidden rounded-xl border border-border-light bg-white shadow-card",
+                  /* THE RAIL RUNS THE WHOLE OPEN GROUP, not just its header
+                     (Anir, Aug 26: "if you're missing that anywhere else
+                     please fix"). It sat on the header alone, so it stopped
+                     dead where the materials began.
+
+                     A real LEFT BORDER, not an inset shadow: this block holds
+                     a table, and the rows' own white backgrounds paint over
+                     anything drawn inside the section's box, which chopped the
+                     rail into one segment per row. The 3px is reserved in both
+                     states so opening a group never nudges its contents. */
+                  "border-l-[3px]",
+                  !shut ? "border-l-blue-primary" : "border-l-border-light"
+                )}
               >
                 <button
                   type="button"
@@ -689,7 +703,9 @@ export function AllMaterialsBrowser({
                   aria-expanded={!shut}
                   className={cn(
                     "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
-                    !shut && "border-b border-border-light"
+                    /* Not border-b: a full-width rule paints across the rail
+                       and breaks it. freyr-rule-inset starts 3px in. */
+                    !shut && "freyr-rule-bottom-inset"
                   )}
                 >
                   <ChevronDown

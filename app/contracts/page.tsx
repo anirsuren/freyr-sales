@@ -50,7 +50,6 @@ export default async function ContractsPage() {
   return (
     <ContractsModule
       state={state}
-      live={live}
       canWrite={me.role === "admin"}
       members={members}
       deals={opportunities.map((o) => {

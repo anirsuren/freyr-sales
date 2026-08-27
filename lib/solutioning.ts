@@ -39,6 +39,27 @@ const ROW_ID = "solutioning";
 export type SolutioningKind = "submission" | "presentation" | "meeting";
 
 /**
+ * REQUEST, SUBMISSION AND PRESENTATION ARE THREE THINGS, NOT ONE.
+ *
+ * Suren, Aug 26 (via Anir): "request is a separate object, and submissions is
+ * another object. They are two separate objects. You have merged request and
+ * submission together... that request is created by the sales guy. Submission
+ * is created normally by the sales guy or solutioning guy... You can say the
+ * submission is related to a request, but even without a request, a submission
+ * can be created."
+ *
+ * So a REQUEST is the ask — sales wants a submission, a meeting or a proposal,
+ * and its `kind` says which. A SUBMISSION and a PRESENTATION are the work
+ * itself, and each MAY point back at the request that prompted it through
+ * `requestId`, or stand on its own with none.
+ *
+ * One array with a discriminator rather than three stores: they share every
+ * field that matters — customer, owner, status, documents, activity — and
+ * three copies of the document handling is three places for it to drift.
+ */
+export type SolutionItemType = "request" | "submission" | "presentation";
+
+/**
  * THREE SUBMISSION TYPES, AND ONLY THREE (Suren, Aug 25, narrowing what he
  * said on Aug 24): "one is an RFI submission, one is an RFP submission, one is
  * a regular proposal — these are only three submission types I'm looking at.
@@ -73,9 +94,21 @@ export type SolutionDoc = {
   /** "Document 1 version 1... add the same document and version 2." Version is
    *  per (category, name) family, assigned at add time and never rewritten. */
   version: number;
-  /** Where the file lives — a link for now. Uploads ride the same field when
-   *  they land, as a docs-storage URL. */
+  /** Where the file lives when it is a LINK somebody pasted. */
   url?: string;
+  /**
+   * AN UPLOADED FILE, not a link (Anir, Aug 26: "if the customer documents
+   * are the sales material... copy all that shit. Every single part of it,
+   * like the preview, the hover").
+   *
+   * The storage path in Freya.Docs, exactly as a sales material carries one,
+   * which is what lets the same viewer render it. A doc has a `docsPath` or a
+   * `url` or neither (a name somebody is still chasing), never both meaning
+   * different things: docsPath wins when it is set.
+   */
+  docsPath?: string;
+  /** The original filename, for the icon and the download name. */
+  fileName?: string;
   /** The person working this document ("a person can say that I am working on
    *  it"). This is what puts somebody "on the submission side" of the people
    *  rollup. */
@@ -101,6 +134,12 @@ export type RequestActivity = {
 
 export type SolutionRequest = {
   id: string;
+  /** Which of the three this is. Absent on rows written before the split, and
+   *  those are all requests — the module only ever made requests. */
+  type: SolutionItemType;
+  /** The request that prompted this submission or presentation, when there
+   *  was one. Empty is not a gap: work often starts without a request. */
+  requestId?: string;
   /** The human reference he asked for ("a submission id is created"):
    *  SUB-0001 / PRE-0001 / MTG-0001, per kind, never reused. */
   ref: string;
@@ -222,6 +261,8 @@ function normalizeDoc(v: unknown): SolutionDoc | null {
     name,
     version,
     url: str(r.url, 2000) || undefined,
+    docsPath: str(r.docsPath, 400) || undefined,
+    fileName: str(r.fileName, 200) || undefined,
     assignedTo: str(r.assignedTo, 80) || undefined,
     addedBy: str(r.addedBy, 80) || "Unknown",
     addedAt: str(r.addedAt, 40) || new Date().toISOString(),
@@ -249,8 +290,15 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
   const k = kind(r.kind);
   const title = str(r.title, 200);
   if (!id || !k || !title) return null;
+  /* A row written before the split has no type, and every one of those is a
+     request: the module only ever created requests. */
+  const rawType = str((r as { type?: string }).type, 20);
+  const type: SolutionItemType =
+    rawType === "submission" || rawType === "presentation" ? rawType : "request";
   return {
     id,
+    type,
+    requestId: str(r.requestId, 60) || undefined,
     ref: str(r.ref, 20) || id,
     kind: k,
     subtype: str(r.subtype, 60) || undefined,
@@ -307,6 +355,18 @@ async function readRow(): Promise<SolutioningState> {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return normalize(data?.catalog);
+}
+
+/** The stored row exactly as it is, or null when it has never been written. */
+async function readRowRaw(): Promise<unknown | null> {
+  if (!hasDatabase()) return null;
+  const { data, error } = await client()
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", activeRowId())
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.catalog ?? null;
 }
 
 async function writeRow(state: SolutioningState): Promise<void> {
@@ -382,6 +442,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-1",
       ref: "SUB-0001",
+      type: "request",
       kind: "submission",
       subtype: "RFP",
       title: "RFP response for global labeling operations",
@@ -414,6 +475,8 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-2",
       ref: "SUB-0002",
+      requestId: "sr-sample-1",
+      type: "submission",
       kind: "submission",
       subtype: "Proposal",
       title: "Commercial proposal for artwork management",
@@ -432,6 +495,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-3",
       ref: "SUB-0003",
+      type: "submission",
       kind: "submission",
       subtype: "RFI",
       title: "RFI answers on regulatory intelligence coverage",
@@ -461,6 +525,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-4",
       ref: "PRE-0001",
+      type: "request",
       kind: "presentation",
       subtype: "RFP defense",
       title: "RFP defense deck for regulatory intelligence",
@@ -489,6 +554,8 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-5",
       ref: "PRE-0002",
+      requestId: "sr-sample-4",
+      type: "presentation",
       kind: "presentation",
       subtype: "Capabilities overview",
       title: "Capabilities overview for the oncology portfolio",
@@ -515,6 +582,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-6",
       ref: "PRE-0003",
+      type: "presentation",
       kind: "presentation",
       subtype: "Executive readout",
       title: "Executive readout on the vaccines programme",
@@ -535,6 +603,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-7",
       ref: "MTG-0001",
+      type: "request",
       kind: "meeting",
       title: "Technical deep-dive with the Aether RA team",
       customer: "Aether Medical Devices",
@@ -565,6 +634,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-8",
       ref: "MTG-0002",
+      type: "request",
       kind: "meeting",
       title: "RFP defense session with Meridian",
       customer: "Meridian Pharmaceuticals",
@@ -589,6 +659,7 @@ function sampleSolutioning(): SolutioningState {
     {
       id: "sr-sample-9",
       ref: "MTG-0003",
+      type: "request",
       kind: "meeting",
       title: "Kickoff debrief with Solvance regulatory leads",
       customer: "Solvance Pharma",
@@ -621,17 +692,65 @@ function sampleSolutioning(): SolutioningState {
 
 /* ------------------------------------------------------------------ reads */
 
+/**
+ * MOCK IS A REAL STORE, NOT A PICTURE OF ONE (Anir, Aug 26: "all the same
+ * functionality (add, edit etc.) should be on mock mode, but it shouldn't
+ * affect real data"). `activeRowId()` has always pointed mock at its OWN row,
+ * so a mock write could never reach real; what made it read-only was answering
+ * with a fresh sample every time, so an edit had nowhere to land. The samples
+ * now SEED that row once and everything after is an ordinary read. Emptying it
+ * deliberately stays empty: the seed fires only when the row never existed.
+ */
 export async function readSolutioning(): Promise<SolutioningState> {
-  if (getDataMode() !== "live") return sampleSolutioning();
-  return readRow().catch(() => structuredClone(EMPTY_SOLUTIONING));
+  if (getDataMode() !== "mock")
+    return readRow().catch(() => structuredClone(EMPTY_SOLUTIONING));
+  const existing = await readRowRaw();
+  if (existing && !isPreSplitSeed(existing)) return normalize(existing);
+  const seeded = sampleSolutioning();
+  await writeRow(seeded).catch(() => undefined);
+  return seeded;
+}
+
+/**
+ * A MOCK ROW SEEDED BEFORE REQUESTS AND SUBMISSIONS BECAME SEPARATE OBJECTS.
+ *
+ * The samples now include standalone submissions and presentations, and a
+ * store seeded from the older set would show all nine as requests forever —
+ * demonstrating exactly the merge Suren asked us to undo. Sample data is
+ * disposable by definition, so a pre-split seed is replaced with the current
+ * one. Only ever fires in mock, and only when NOT ONE row carries a type,
+ * which no store written after the split can look like.
+ */
+function isPreSplitSeed(raw: unknown): boolean {
+  const rows = (raw as { requests?: unknown[] } | null)?.requests;
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  return rows.every(
+    (row) => !(row && typeof row === "object" && "type" in (row as object))
+  );
 }
 
 /* -------------------------------------------------------------------- ops */
 
-/** SUB-0007 style refs: per kind, one past the highest ever minted — never a
- *  count, so deleting a request can never reissue its reference. */
-function nextRef(state: SolutioningState, k: SolutioningKind): string {
-  const prefix = k === "submission" ? "SUB" : k === "presentation" ? "PRE" : "MTG";
+/**
+ * SUB-0007 style refs: one past the highest ever minted for that prefix, never
+ * a count, so deleting something can never reissue its reference.
+ *
+ * A REQUEST now mints REQ-; the work it asks for mints SUB- or PRE-. Rows from
+ * before the split keep the ref they were given — a reference that has been
+ * quoted to somebody is not ours to rewrite.
+ */
+function nextRef(
+  state: SolutioningState,
+  type: SolutionItemType,
+  k: SolutioningKind
+): string {
+  const prefix =
+    type === "submission"
+      ? "SUB"
+      : type === "presentation"
+        ? "PRE"
+        : "REQ";
+  void k;
   let highest = 0;
   for (const r of state.requests) {
     if (!r.ref.startsWith(prefix + "-")) continue;
@@ -648,7 +767,14 @@ const KIND_WORD: Record<SolutioningKind, string> = {
 };
 
 export async function createRequest(input: {
+  /** A request, or the work itself. Defaults to a request, which is what the
+   *  module made before submissions and presentations became their own. */
+  type?: SolutionItemType;
+  /** For a request, what is being asked for. For a submission or a
+   *  presentation it is that thing. */
   kind: SolutioningKind;
+  /** The request that prompted this, if any. Work can start without one. */
+  requestId?: string;
   subtype?: string;
   title: string;
   details?: string;
@@ -669,9 +795,12 @@ export async function createRequest(input: {
     const customer = str(input.customer, 120);
     if (!customer) throw new Error("Pick the customer this is for.");
     const state = await readRow();
+    const type: SolutionItemType = input.type ?? "request";
     const record: SolutionRequest = {
       id: uid("sr"),
-      ref: nextRef(state, input.kind),
+      type,
+      requestId: str(input.requestId, 60) || undefined,
+      ref: nextRef(state, type, input.kind),
       kind: input.kind,
       subtype: str(input.subtype, 60) || undefined,
       title,
@@ -739,6 +868,51 @@ export async function pickUpRequest(input: {
 }
 
 /**
+ * PUTTING IT BACK DOWN.
+ *
+ * Anir, Aug 26: "I just picked this up, and I don't know how to leave, because
+ * I don't want to pick it up. If that's not a feature, then that's a problem."
+ *
+ * Picking up was one-way: the only way out was to finish it or delete it, so
+ * one wrong click on somebody else's request left your name on it permanently.
+ * Whoever holds it can hand it back, and a manager or admin can take it off
+ * them — the same shape as completing.
+ *
+ * It returns to "initiated" only if nothing has happened since. A request whose
+ * documents are half-built is still in progress, whoever owns it, and quietly
+ * rewinding that would lie about the state of the work.
+ */
+export async function releaseRequest(input: {
+  requestId: string;
+  by: string;
+  /** A manager or admin may take it off somebody else. */
+  managerial: boolean;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    if (!r.owner) return;
+    if (r.status === "completed")
+      throw new Error("This is completed. Reopen it before handing it back.");
+    if (r.owner !== input.by && !input.managerial)
+      throw new Error(`${r.owner} picked this up, so only they can hand it back.`);
+    const wasOwner = r.owner;
+    r.owner = undefined;
+    r.pickedUpAt = undefined;
+    if (r.status === "in_progress" && r.docs.length === 0) r.status = "initiated";
+    r.activity.push({
+      at: new Date().toISOString(),
+      by: input.by,
+      what:
+        wasOwner === input.by
+          ? "Handed it back"
+          : `Took it off ${wasOwner}`,
+    });
+    await writeRow(state);
+  });
+}
+
+/**
  * "THE SALES PERSON SAYS IT IS COMPLETED" (Suren, Aug 24, answering exactly
  * this question). The requester closes it; a manager or admin can close it on
  * their behalf. The fulfiller cannot mark their own work done — the caller
@@ -765,6 +939,39 @@ export async function completeRequest(input: {
       by: input.by,
       what: "Marked it completed",
     });
+
+    /**
+     * FINISHING THE WORK FINISHES THE ASK (Suren, Aug 26: "once the submission
+     * gets completed, the request gets completed automatically. Same thing in
+     * the presentation also").
+     *
+     * A request can have more than one thing built against it, so it closes
+     * when NOTHING is outstanding, not when the first one lands. Anir left
+     * that call to me: a request whose second submission is still being
+     * written is not finished, and closing it there would hide live work.
+     */
+    if (r.type !== "request" && r.requestId) {
+      const home = state.requests.find((x) => x.id === r.requestId);
+      if (home && home.status !== "completed") {
+        const outstanding = state.requests.filter(
+          (x) =>
+            x.requestId === home.id &&
+            x.type !== "request" &&
+            x.status !== "completed"
+        );
+        if (outstanding.length === 0) {
+          home.status = "completed";
+          home.completedBy = input.by;
+          home.completedAt = new Date().toISOString();
+          home.activity.push({
+            at: new Date().toISOString(),
+            by: input.by,
+            what: `Completed automatically: ${r.ref} was delivered`,
+          });
+        }
+      }
+    }
+
     await writeRow(state);
   });
 }
@@ -794,6 +1001,10 @@ export async function addDocument(input: {
   category: DocCategory;
   name: string;
   url?: string;
+  /** An uploaded file's storage path, when this document IS a file rather
+   *  than a link somebody pasted. */
+  docsPath?: string;
+  fileName?: string;
   assignedTo?: string;
   note?: string;
   by: string;
@@ -832,6 +1043,8 @@ export async function addDocument(input: {
       name,
       version,
       url: str(input.url, 2000) || undefined,
+      docsPath: str(input.docsPath, 400) || undefined,
+      fileName: str(input.fileName, 200) || undefined,
       assignedTo: str(input.assignedTo, 80) || undefined,
       addedBy: input.by,
       addedAt: new Date().toISOString(),

@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
+  Briefcase,
+  CircleDashed,
   ChevronDown,
   Circle,
   Coins,
@@ -104,13 +106,11 @@ export function ContractsModule({
   state: initial,
   deals,
   members,
-  live,
   canWrite,
 }: {
   state: ContractsState;
   deals: DealOption[];
   members: string[];
-  live: boolean;
   canWrite: boolean;
 }) {
   const router = useRouter();
@@ -337,7 +337,7 @@ export function ContractsModule({
         title="Contracts"
         subtitle="Where sales closes. The baseline of every contract and its revenue schedule, with the reference the delivery platform reads it by."
         action={
-          live && canWrite ? (
+          canWrite ? (
             <button
               type="button"
               onClick={() => openEditor()}
@@ -408,7 +408,7 @@ export function ContractsModule({
                 <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
                   {formatMoney(d.value)}
                 </span>
-                {live && canWrite && (
+                {canWrite && (
                   <button
                     type="button"
                     onClick={() => openEditor(undefined, d)}
@@ -546,7 +546,14 @@ export function ContractsModule({
               <section
                 key={c.id}
                 data-contract={c.reference}
-                className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+                className={cn(
+                  "overflow-hidden rounded-xl border border-border-light bg-white shadow-card",
+                  /* THE RAIL DOWN THE OPEN BLOCK, the same idiom as every other
+                     list in the app (Anir, Aug 26: "if you're missing that
+                     anywhere else please fix"). On the SECTION, so the header
+                     and the panel under it are one line rather than two. */
+                  isOpen && "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                )}
               >
                 <button
                   type="button"
@@ -618,80 +625,69 @@ export function ContractsModule({
                         line is a field being present, never a judgement. */}
                     {(() => {
                       const checks = contractChecks(c);
-                      const ok = checks.filter((x) => x.ok).length;
-                      const all = ok === checks.length;
+                      const missing = checks.filter((x) => !x.ok);
+                      const done = checks.length - missing.length;
+                      const all = missing.length === 0;
                       return (
-                        <div className="mb-3.5 rounded-xl border border-border-light bg-surface/40 p-3.5">
-                          <p className="flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                            <ShieldCheck
-                              size={13}
-                              strokeWidth={2.2}
-                              style={{ color: all ? "#16A34A" : "#B45309" }}
-                            />
-                            What is confirmed
+                        /* WHAT IS STILL MISSING, not a wall of ticks (Anir,
+                           Aug 26: "I don't like the whole section under What is
+                           confirmed... completely revamp that").
+
+                           Six rows of green ticks said "everything is fine" in
+                           the most expensive way a card can say it. The part
+                           worth reading is the part that is NOT done, so that
+                           leads, as a colour-and-icon chip like every other
+                           chip in the app, and the rest collapses to a count
+                           you can hover. No grey panel around it. */
+                        <div className="mb-3.5 flex flex-wrap items-center gap-2">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold"
+                            style={{
+                              background: all
+                                ? "rgba(22,163,74,0.10)"
+                                : "rgba(180,83,9,0.10)",
+                              color: all ? "#16A34A" : "#B45309",
+                            }}
+                          >
+                            <ShieldCheck size={13} strokeWidth={2.3} />
+                            {all
+                              ? "Everything confirmed"
+                              : `${done} of ${checks.length} confirmed`}
+                          </span>
+
+                          {missing.map((chk) => (
                             <span
-                              className="rounded-full px-2 py-0.5 text-[11.5px] font-bold tnum"
+                              key={chk.label}
+                              title={chk.detail ?? chk.label}
+                              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold"
                               style={{
-                                background: all
-                                  ? "rgba(22,163,74,0.10)"
-                                  : "rgba(180,83,9,0.10)",
-                                color: all ? "#16A34A" : "#B45309",
+                                borderColor: "rgba(180,83,9,0.30)",
+                                background: "rgba(180,83,9,0.06)",
+                                color: "#B45309",
                               }}
                             >
-                              {ok} of {checks.length}
+                              <CircleDashed size={12} strokeWidth={2.4} />
+                              {chk.label}
                             </span>
-                          </p>
-                          <div className="mt-2.5 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                            {checks.map((chk) => (
-                              <span
-                                key={chk.label}
-                                className="flex items-start gap-1.5 text-[12px]"
-                              >
-                                {chk.ok ? (
-                                  <CheckCircle2
-                                    size={13}
-                                    strokeWidth={2.2}
-                                    className="mt-[1px] shrink-0 text-[color:#16A34A]"
-                                  />
-                                ) : (
-                                  <Circle
-                                    size={13}
-                                    strokeWidth={2.2}
-                                    className="mt-[1px] shrink-0 text-text-tertiary"
-                                  />
-                                )}
-                                <span className="min-w-0">
-                                  <span
-                                    className={cn(
-                                      "block font-semibold",
-                                      chk.ok ? "text-text-primary" : "text-text-tertiary"
-                                    )}
-                                  >
-                                    {chk.label}
-                                  </span>
-                                  {chk.detail && (
-                                    /* The company wears its own mark wherever
-                                       it is named (Anir, Aug 26: "when you see
-                                       the company, I need the profile picture
-                                       next to the part where you say the
-                                       customer name"). */
-                                    <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
-                                      {chk.label === "Customer named" && chk.ok && (
-                                        <CompanyLogo
-                                          name={c.customer}
-                                          className="h-4 w-4 shrink-0 text-[7px]"
-                                        />
-                                      )}
-                                      <span className="truncate">{chk.detail}</span>
-                                    </span>
-                                  )}
-                                </span>
-                              </span>
-                            ))}
-                          </div>
+                          ))}
+
+                          {!all && (
+                            <span
+                              title={checks.filter((x) => x.ok).map((x) => x.label).join(", ")}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary"
+                            >
+                              <CheckCircle2
+                                size={12}
+                                strokeWidth={2.4}
+                                className="text-[color:#16A34A]"
+                              />
+                              {done} done
+                            </span>
+                          )}
                         </div>
                       );
                     })()}
+
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
                       {[
                         ["Reference", c.reference],
@@ -778,47 +774,70 @@ export function ContractsModule({
                                 now, so it is obviously a meter, and it is
                                 separated from the chart by a rule instead of
                                 floating under it. */}
-                            <div className="mt-3 border-t border-border-light pt-3">
-                              <div className="flex items-center gap-2.5">
-                                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                  Recognised
-                                </span>
-                                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-[color:var(--surface)] ring-1 ring-inset ring-border-light">
-                                  <span
-                                    className="block h-full rounded-full transition-[width]"
-                                    style={{
-                                      width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`,
-                                      background: "#16A34A",
-                                    }}
-                                  />
+                            {/* A METER THAT LOOKS LIKE ONE (Anir, Aug 26: "the
+                                recognised part, I don't even know what that is.
+                                I see there's a progress bar. I didn't even know
+                                that was a progress bar. I thought it was a
+                                separator").
+
+                                It was a 2.5px hairline in a row of hairlines,
+                                directly under a chart, so it read as chrome. It
+                                is a real track now: tall enough to be a bar,
+                                the number that matters written large beside it,
+                                and the two amounts labelled underneath rather
+                                than strung along one line. */}
+                            <div className="mt-4 rounded-xl border border-border-light bg-surface/40 p-3.5">
+                              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                                <span className="text-[12.5px] font-semibold text-text-primary">
+                                  Recognised so far
                                 </span>
                                 <span
-                                  className="shrink-0 text-[12px] font-bold tnum"
+                                  className="tnum text-[20px] font-bold leading-none"
                                   style={{ color: pct > 0 ? "#16A34A" : "var(--text-tertiary)" }}
                                 >
                                   {pct}%
                                 </span>
                               </div>
-                              <p className="mt-2 flex flex-wrap items-center gap-x-4 text-[11.5px] text-text-secondary tnum">
-                                <span>
-                                  <b style={{ color: pct > 0 ? "#16A34A" : "var(--text-primary)" }}>
-                                    {formatMoney(recognised)}
-                                  </b>{" "}
-                                  recognised so far
-                                </span>
-                                <span>
-                                  <b className="text-text-primary">
-                                    {formatMoney(total - recognised)}
-                                  </b>{" "}
-                                  still to come
-                                </span>
-                                <span>
-                                  Runs {monthLabel(c.schedule[0]?.month ?? "")} to{" "}
-                                  <b className="text-text-primary">
-                                    {monthLabel(c.schedule[c.schedule.length - 1]?.month ?? "")}
-                                  </b>
-                                </span>
-                              </p>
+                              <span className="mt-2 block h-3 overflow-hidden rounded-full bg-white ring-1 ring-inset ring-border-light">
+                                <span
+                                  className="block h-full rounded-full transition-[width] duration-300"
+                                  style={{
+                                    width: `${Math.max(pct, pct > 0 ? 3 : 0)}%`,
+                                    background: "#16A34A",
+                                  }}
+                                />
+                              </span>
+                              <div className="mt-2.5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                {[
+                                  {
+                                    label: "Recognised",
+                                    value: formatMoney(recognised),
+                                    color: pct > 0 ? "#16A34A" : undefined,
+                                  },
+                                  {
+                                    label: "Still to come",
+                                    value: formatMoney(total - recognised),
+                                  },
+                                  {
+                                    label: "Runs",
+                                    value: `${monthLabel(c.schedule[0]?.month ?? "")} to ${monthLabel(
+                                      c.schedule[c.schedule.length - 1]?.month ?? ""
+                                    )}`,
+                                  },
+                                ].map((cell) => (
+                                  <span key={cell.label} className="min-w-0">
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                      {cell.label}
+                                    </span>
+                                    <span
+                                      className="tnum block truncate text-[13.5px] font-semibold"
+                                      style={{ color: cell.color ?? "var(--text-primary)" }}
+                                    >
+                                      {cell.value}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </>
@@ -829,40 +848,66 @@ export function ContractsModule({
                       <p className="mt-3 text-[12.5px] text-text-secondary">{c.note}</p>
                     )}
 
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-text-secondary">
-                      {c.owner && (
-                        <span className="flex items-center gap-1.5">
-                          <Avatar name={c.owner} className="h-5 w-5 text-[8px]" />
-                          {c.owner}
-                        </span>
-                      )}
-                      <span>
-                        Updated by <b>{c.updatedBy}</b> {formatDate(c.updatedAt)}
+                    {/* THE FOOTER, IN THE APP'S OWN IDIOM (Anir, Aug 26:
+                        "where you say the name, then the updated by, and then
+                        the open the contract, that entire part is bad too.
+                        You're not following the design guidelines").
+
+                        It was five unrelated things strung along one line in
+                        one grey weight: a face, a sentence, a button, a link
+                        and the actions. Now the PEOPLE fact reads as one quiet
+                        line, the two ways OUT are buttons that look like
+                        buttons, and a hairline separates the whole footer from
+                        the meter above it. */}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-light pt-3">
+                      <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary">
+                        {c.owner ? (
+                          <>
+                            <Avatar name={c.owner} className="h-6 w-6 shrink-0 text-[8px]" />
+                            <span className="min-w-0">
+                              <span className="block truncate font-semibold text-text-primary">
+                                {c.owner}
+                              </span>
+                              <span className="block text-[11px] text-text-tertiary">
+                                {c.updatedBy === c.owner ? "Updated" : `Updated by ${c.updatedBy}`}{" "}
+                                {formatDate(c.updatedAt)}
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-[11.5px] text-text-tertiary">
+                            Updated by <b className="text-text-secondary">{c.updatedBy}</b>{" "}
+                            {formatDate(c.updatedAt)}
+                          </span>
+                        )}
                       </span>
-                      {/* "HOW DO I OPEN THE CONTRACT?" (Anir, Aug 26). Here. */}
-                      {c.documentUrl ? (
-                        <a
-                          href={c.documentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                        >
-                          <FileText size={12} strokeWidth={2.2} /> Open the contract
-                        </a>
-                      ) : (
-                        <span className="text-[12px] text-text-tertiary">
-                          No document attached yet
-                        </span>
-                      )}
-                      {c.opportunityId && (
-                        <Link
-                          href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
-                          className="font-semibold text-blue-primary hover:underline"
-                        >
-                          Open the deal
-                        </Link>
-                      )}
-                      {live && canWrite && (
+
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {/* "HOW DO I OPEN THE CONTRACT?" (Anir, Aug 26). Here. */}
+                        {c.documentUrl ? (
+                          <a
+                            href={c.documentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                          >
+                            <FileText size={12} strokeWidth={2.2} /> Open the contract
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 text-[11.5px] font-medium text-text-tertiary">
+                            <FileText size={12} strokeWidth={2.2} /> No document yet
+                          </span>
+                        )}
+                        {c.opportunityId && (
+                          <Link
+                            href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                          >
+                            <Briefcase size={12} strokeWidth={2.2} /> Open the deal
+                          </Link>
+                        )}
+                      </span>
+                      {canWrite && (
                         <span className="ml-auto flex items-center gap-1.5">
                           <button
                             type="button"
@@ -914,8 +959,11 @@ export function ContractsModule({
               </Field>
             </div>
             <Field label="Customer">
+              {/* Every empty box says what goes in it (Anir, Aug 26: "I need
+                  placeholders on all of em"). */}
               <Input
                 value={editing.customer}
+                placeholder="Helix Therapeutics"
                 onChange={(e) =>
                   setEditing({ ...editing, customer: e.target.value })
                 }
@@ -955,6 +1003,7 @@ export function ContractsModule({
             <Field label="Contract value (USD)">
               <Input
                 value={editing.value}
+                placeholder="250000"
                 inputMode="numeric"
                 onChange={(e) =>
                   setEditing({

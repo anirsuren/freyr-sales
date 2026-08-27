@@ -224,7 +224,7 @@ export function LeadsModule({
         title="Leads"
         subtitle="Everything that came in before it is a deal. Qualify with a meeting or a presentation; when it turns real, it becomes an opportunity."
         action={
-          live && canWrite ? (
+          canWrite ? (
             <button
               type="button"
               onClick={() => openEditor()}
@@ -381,9 +381,9 @@ export function LeadsModule({
           <table className="w-full min-w-[1080px] text-left">
             <thead>
               <tr className="border-b border-border-light bg-surface/40 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2.5">
-                <th className="w-[9%]">Ref</th>
-                <th className="w-[19%]">Who</th>
-                <th className="w-[17%]">Company</th>
+                <th className="w-[11%] whitespace-nowrap">Ref</th>
+                <th className="w-[18%]">Who</th>
+                <th className="w-[16%]">Company</th>
                 <th className="w-[12%]">Source</th>
                 <th className="w-[12%]">Status</th>
                 <th className="w-[14%]">Owner</th>
@@ -417,7 +417,11 @@ export function LeadsModule({
                           : "hover:bg-surface"
                       )}
                     >
-                      <td className="px-4 py-2.5 text-[12px] font-semibold tnum text-text-tertiary">
+                      {/* LEAD-0006 IS ONE WORD (Anir, Aug 26: "the ref has to
+                          be on one line"). At 9% the column was narrow enough
+                          to break the reference across two lines, which made
+                          every row in the table taller than it needed to be. */}
+                      <td className="whitespace-nowrap px-4 py-2.5 text-[12px] font-semibold tnum text-text-tertiary">
                         {lead.ref}
                       </td>
                       <td className="px-4 py-2.5">
@@ -486,7 +490,7 @@ export function LeadsModule({
                         {/* Same cluster the pipeline row uses: the tools, then
                             the chevron that says the row opens. */}
                         <span className="flex items-center justify-end gap-1">
-                          {live && canWrite && (
+                          {canWrite && (
                             <>
                               <button
                                 type="button"
@@ -608,7 +612,7 @@ export function LeadsModule({
                                   presentation for this lead
                                 </span>
                               )}
-                              {live && canWrite && (
+                              {canWrite && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -724,9 +728,13 @@ export function LeadsModule({
               })()}
             </Field>
             <Field label="Job title">
+              {/* EVERY EMPTY BOX SAYS WHAT GOES IN IT (Anir, Aug 26: "I need
+                  placeholders on all of em tbh"). A blank field with only a
+                  label above it makes you guess the format. */}
               <Input
                 value={editing.title}
                 onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                placeholder="Head of Regulatory Affairs"
               />
             </Field>
             <Field label="Country">
@@ -753,7 +761,7 @@ export function LeadsModule({
                   });
                 }}
                 options={[
-                  { value: "", label: "Not set", color: "#C7CDD6" },
+                  { value: "", label: "Pick a country", color: "#C7CDD6" },
                   ...countryOptions(),
                 ]}
               />
@@ -763,6 +771,7 @@ export function LeadsModule({
                 type="email"
                 value={editing.email}
                 onChange={(e) => setEditing({ ...editing, email: e.target.value })}
+                placeholder="name@company.com"
               />
             </Field>
             <Field label="Phone">
@@ -786,7 +795,7 @@ export function LeadsModule({
                         setEditing({ ...editing, dialCode: v, phone: joinPhone(v, number) })
                       }
                       options={[
-                        { value: "", label: "No code", color: "#C7CDD6" },
+                        { value: "", label: "Code", color: "#C7CDD6" },
                         ...dialOptions(),
                       ]}
                     />

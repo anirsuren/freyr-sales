@@ -37,7 +37,6 @@ export default async function RevenueAccrualsPage() {
   return (
     <RevenueAccrualsModule
       state={state}
-      live={getDataMode() === "live"}
       canWrite={me.role === "admin"}
       deals={opportunities.map((o) => {
         const line = (o.lines ?? [])[0];

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  X,
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
@@ -95,6 +96,266 @@ const AUTOMATED_EMAILS: {
   },
 ];
 
+type WorkspacePerson = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  active?: boolean;
+};
+
+/** The addresses in a comma / semicolon / newline separated field. */
+function splitAddresses(raw: string): string[] {
+  return raw
+    .split(/[,;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** The bare address out of "Name <a@b.com>", or the text itself. */
+function addressOf(entry: string): string {
+  const angled = entry.match(/<([^>]+)>/);
+  return (angled ? angled[1] : entry).trim();
+}
+
+/** Add an address to a comma/newline separated field without duplicating it. */
+function addAddress(current: string, email: string): string {
+  const wanted = addressOf(email).toLowerCase();
+  const already = splitAddresses(current).map((a) => addressOf(a).toLowerCase());
+  if (already.includes(wanted)) return current;
+  const kept = splitAddresses(current);
+  return [...kept, email.trim()].join(", ");
+}
+
+/**
+ * A RECIPIENT FIELD THAT BEHAVES LIKE A MAIL CLIENT'S.
+ *
+ * Anir, Aug 26: "I don't want a separate button. When I click on it, it should
+ * instantly show me a dropdown, but if I start typing it should just search,
+ * and if it doesn't exist I can press Enter and just save that as the email.
+ * Basically the same as Gmail."
+ *
+ * So: focus opens the list, typing filters it, Enter takes the highlighted
+ * person — or, when nothing matches, takes what you typed as an address.
+ * Comma, semicolon and Tab commit too, backspace on an empty box takes back
+ * the last one, and each recipient is a chip you can remove.
+ *
+ * The value stays a comma-separated STRING, because that is what the send
+ * route parses and what a pasted "a@x.com, b@y.com" already is.
+ */
+function RecipientField({
+  label,
+  hint,
+  value,
+  onChange,
+  people,
+  ariaLabel,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (next: string) => void;
+  people: WorkspacePerson[];
+  ariaLabel: string;
+}) {
+  const [draft, setDraft] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const chosen = splitAddresses(value);
+  const taken = new Set(chosen.map((a) => addressOf(a).toLowerCase()));
+  const q = draft.trim().toLowerCase();
+  const matches = people
+    .filter((person) => !taken.has(person.email.toLowerCase()))
+    .filter(
+      (person) =>
+        !q ||
+        person.name.toLowerCase().includes(q) ||
+        person.email.toLowerCase().includes(q)
+    )
+    .slice(0, 50);
+
+  useEffect(() => setActive(0), [draft]);
+
+  /* Clicking anywhere else closes the list and keeps whatever was half-typed
+     as a recipient, the way leaving a mail client's To field does. */
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: MouseEvent) => {
+      if (boxRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+      setDraft((current) => {
+        const trimmed = current.trim();
+        if (trimmed) onChange(addAddress(value, trimmed));
+        return "";
+      });
+    };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open, value, onChange]);
+
+  const commit = (address: string) => {
+    const trimmed = address.trim();
+    if (!trimmed) return;
+    onChange(addAddress(value, trimmed));
+    setDraft("");
+    setActive(0);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (!matches.length) return;
+      event.preventDefault();
+      setOpen(true);
+      setActive((i) =>
+        event.key === "ArrowDown"
+          ? (i + 1) % matches.length
+          : (i - 1 + matches.length) % matches.length
+      );
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab" || event.key === "," || event.key === ";") {
+      /* Enter on a highlighted person takes them; Enter on text that matches
+         nobody takes the text. Tab only commits when there is something to
+         commit, so it still moves focus on an empty field. */
+      const hasDraft = draft.trim().length > 0;
+      if (!hasDraft && event.key !== "Enter") return;
+      if (event.key === "Enter" && !hasDraft && !matches.length) return;
+      event.preventDefault();
+      if (hasDraft && matches.length && event.key !== ",") commit(matches[active].email);
+      else if (hasDraft) commit(draft);
+      else if (matches.length) commit(matches[active].email);
+      return;
+    }
+    if (event.key === "Backspace" && !draft && chosen.length) {
+      event.preventDefault();
+      onChange(chosen.slice(0, -1).join(", "));
+      return;
+    }
+    if (event.key === "Escape") setOpen(false);
+  };
+
+  return (
+    <div ref={boxRef} className="relative">
+      <Label hint={hint}>{label}</Label>
+      <div
+        onClick={() => {
+          setOpen(true);
+          inputRef.current?.focus();
+        }}
+        className="flex min-h-[42px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-lg border border-border-light bg-white px-2 py-1.5 transition-colors focus-within:border-blue-primary"
+      >
+        {chosen.map((address) => {
+          const person = people.find(
+            (candidate) =>
+              candidate.email.toLowerCase() === addressOf(address).toLowerCase()
+          );
+          return (
+            <span
+              key={address}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface py-0.5 pl-0.5 pr-1.5 text-[12.5px]"
+            >
+              {person ? (
+                <Avatar name={person.name} className="h-5 w-5 shrink-0 text-[7px]" />
+              ) : (
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-blue-light text-blue-primary">
+                  <Mail size={10} strokeWidth={2.4} />
+                </span>
+              )}
+              <span className="truncate font-medium text-text-primary">
+                {person ? person.name : address}
+              </span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onChange(chosen.filter((a) => a !== address).join(", "));
+                }}
+                aria-label={`Remove ${person ? person.name : address}`}
+                className="shrink-0 cursor-pointer rounded-full p-0.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
+              >
+                <X size={11} strokeWidth={2.6} />
+              </button>
+            </span>
+          );
+        })}
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          onPaste={(event) => {
+            /* A pasted block of addresses becomes chips immediately. */
+            const text = event.clipboardData.getData("text");
+            if (!/[,;\n]/.test(text)) return;
+            event.preventDefault();
+            let next = value;
+            for (const piece of splitAddresses(text)) next = addAddress(next, piece);
+            onChange(next);
+          }}
+          placeholder={chosen.length ? "" : "Type a name, or an address"}
+          aria-label={ariaLabel}
+          className="min-w-[180px] flex-1 bg-transparent px-1 py-1 text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
+        />
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]">
+          {matches.length === 0 ? (
+            <p className="px-3 py-2.5 text-[12px] text-text-secondary">
+              {draft.trim() ? (
+                <>
+                  Nobody by that name. Press{" "}
+                  <b className="text-text-primary">Enter</b> to use{" "}
+                  <b className="text-text-primary">{draft.trim()}</b> as the
+                  address.
+                </>
+              ) : (
+                "Everyone is already on this email."
+              )}
+            </p>
+          ) : (
+            <ul className="max-h-[260px] overflow-y-auto py-1">
+              {matches.map((person, index) => (
+                <li key={person.email}>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => {
+                      commit(person.email);
+                      inputRef.current?.focus();
+                    }}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left transition-colors",
+                      index === active ? "bg-blue-light/60" : "hover:bg-surface"
+                    )}
+                  >
+                    <Avatar name={person.name} className="h-6 w-6 shrink-0 text-[8px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                        {person.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-text-tertiary">
+                        {person.email}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EmailComposer() {
   const { toast } = useToast();
   const [from, setFrom] = useState("");
@@ -110,6 +371,11 @@ export function EmailComposer() {
   const [body, setBody] = useState("");
   const [showCopies, setShowCopies] = useState(false);
   const [sending, setSending] = useState(false);
+  /** Everyone in the workspace, so a recipient can be PICKED (Anir, Aug 26:
+   *  "where is the emails so I don't have to enter emails, I can just choose
+   *  someone"). Free text stays: plenty of recipients are customers who will
+   *  never have an account here. */
+  const [people, setPeople] = useState<WorkspacePerson[]>([]);
   /** Outlook's red exclamation mark, off by default. */
   const [important, setImportant] = useState(false);
   /** Send is a two-press action: nobody mails a customer by mis-clicking. */
@@ -118,6 +384,26 @@ export function EmailComposer() {
 
   const load = useCallback(async () => {
     try {
+      void fetch("/api/settings/access", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d) return;
+          const rows: WorkspacePerson[] = [
+            ...((d.members ?? []) as WorkspacePerson[]),
+            /* Someone invited but not yet signed in still has an address. */
+            ...((d.invitations ?? []) as WorkspacePerson[]),
+          ].filter((m) => m.email && m.name);
+          const seen = new Set<string>();
+          setPeople(
+            rows.filter((m) => {
+              const key = m.email.toLowerCase();
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            })
+          );
+        })
+        .catch(() => undefined);
       const res = await fetch("/api/admin/email", { cache: "no-store" });
       const data = await res.json();
       if (data?.ok) {
@@ -183,29 +469,36 @@ export function EmailComposer() {
             <Mail size={15} strokeWidth={2} className="text-blue-primary" />
             Write an email
           </h2>
-          {from && (
-            <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
-              Sends from
-              <b className="font-semibold text-text-primary">{from}</b>
-              <InfoHint text="Every email the app sends carries this address. Replies come back to it unless you set a reply-to below." />
-            </span>
-          )}
+          <span className="flex flex-wrap items-center gap-3">
+            {/* START FROM A DRAFT (Saras, Aug 25: "can you make an automated
+                email draft for offering owners?"). On the title line rather
+                than in a block of its own: it is a shortcut, not a step, and
+                it was pushing the To field down the page. */}
+            <OwnerDigestPicker
+              onLoad={(draft) => {
+                setTo(draft.to);
+                setSubject(draft.subject);
+                setBody(draft.html);
+                setConfirming(false);
+              }}
+            />
+            {from && (
+              /* THE SENDING ADDRESS LIVES IN THE HINT (Anir, Aug 26: "tuck
+                 that into the question mark"). It never changes and nobody
+                 sets it here, so spelling out a 45-character address on the
+                 title line was a permanent banner for a one-off question. */
+              <InfoHint
+                text={`Every email the app sends comes from ${from}. Replies come back to it unless you set a reply-to below.`}
+              />
+            )}
+          </span>
         </div>
 
-        {/* THE QUESTION HE ASKED, ANSWERED WHERE IT COMES UP. */}
-        <p className="mt-2 flex items-start gap-2 rounded-lg bg-blue-light px-3 py-2 text-[12.5px] leading-relaxed text-text-secondary">
-          <Users
-            size={14}
-            strokeWidth={2}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-blue-primary"
-          />
-          <span>
-            Anyone can be a recipient. They do not need an account here, so a
-            customer or a colleague who never signs in receives it the same way
-            — including on CC.
-          </span>
-        </p>
+        {/* NO BANNER ABOVE THE TO FIELD (Anir, Aug 26: "this is ugly, do we
+            really need those popups at the top? I just want the To field at
+            the top like normal"). The one thing it said — that a recipient
+            needs no account — is on the To field's own hint, which is where
+            somebody actually wonders it. */}
 
         {!live && (
           <p className="mt-2 flex items-start gap-2 rounded-lg bg-[rgba(124,58,237,0.10)] px-3 py-2 text-[12.5px] font-medium text-[color:#7C3AED]">
@@ -215,33 +508,15 @@ export function EmailComposer() {
           </p>
         )}
 
-        {/* START FROM A DRAFT (Saras, Aug 25: "can you make an automated email
-            draft for offering owners?"). It fills To, Subject and the message;
-            everything stays editable, and nothing sends until Send is pressed
-            twice like any other mail. */}
-        <OwnerDigestPicker
-          onLoad={(draft) => {
-            setTo(draft.to);
-            setSubject(draft.subject);
-            setBody(draft.html);
-            setConfirming(false);
-          }}
-        />
-
         <div className="mt-4 space-y-3.5">
-          <label className="block">
-            <Label hint="One address per line, or separated by commas. 'Name <address>' pasted from a mail client works too.">
-              To
-            </Label>
-            <textarea
-              rows={2}
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="someone@company.com, another@customer.com"
-              aria-label="To"
-              className={cn(FIELD, "resize-y")}
-            />
-          </label>
+          <RecipientField
+            label="To"
+            hint="Start typing a name to pick somebody, or type any address and press Enter. Anyone can be a recipient; they do not need an account here."
+            value={to}
+            onChange={setTo}
+            people={people}
+            ariaLabel="To"
+          />
 
           <button
             type="button"
@@ -259,28 +534,22 @@ export function EmailComposer() {
 
           {showCopies && (
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <label className="block">
-                <Label hint="They see each other and the To line. Use this for people who need to be in the loop.">
-                  CC
-                </Label>
-                <textarea
-                  rows={2}
-                  value={cc}
-                  onChange={(e) => setCc(e.target.value)}
-                  aria-label="CC"
-                  className={cn(FIELD, "resize-y")}
-                />
-              </label>
-              <label className="block">
-                <Label hint="Hidden from everyone else on the mail.">BCC</Label>
-                <textarea
-                  rows={2}
-                  value={bcc}
-                  onChange={(e) => setBcc(e.target.value)}
-                  aria-label="BCC"
-                  className={cn(FIELD, "resize-y")}
-                />
-              </label>
+              <RecipientField
+                label="CC"
+                hint="They see each other and the To line. Use this for people who need to be in the loop."
+                value={cc}
+                onChange={setCc}
+                people={people}
+                ariaLabel="CC"
+              />
+              <RecipientField
+                label="BCC"
+                hint="Hidden from everyone else on the mail."
+                value={bcc}
+                onChange={setBcc}
+                people={people}
+                ariaLabel="BCC"
+              />
               <label className="block sm:col-span-2">
                 <Label hint="Where replies go. Leave blank and they come back to the sending address above.">
                   Reply to

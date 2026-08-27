@@ -384,15 +384,22 @@ export function CommandPalette({
   const box = (
     <div
       className={cn(
-        "bg-white overflow-hidden",
+        "cmdk-in overflow-hidden bg-white",
         anchored
-          ? "absolute left-0 top-0 z-50 w-full min-w-[420px] rounded-2xl border border-border-light shadow-[0_16px_48px_rgba(0,0,0,0.16)]"
-          : "w-full max-w-[560px] mx-4 rounded-xl border border-border-light shadow-card"
+          ? "absolute left-0 top-0 z-50 w-full min-w-[420px] rounded-2xl border border-border-light shadow-[0_24px_64px_-12px_rgba(15,23,42,0.28)]"
+          : "mx-4 w-full max-w-[560px] rounded-2xl border border-border-light shadow-[0_28px_72px_-16px_rgba(15,23,42,0.34)]"
       )}
       onClick={(e) => e.stopPropagation()}
     >
-        <div className="flex items-center gap-2 px-4 border-b border-border-light">
-          <Search size={18} strokeWidth={1.5} className="text-text-tertiary" />
+        <div className="flex items-center gap-2.5 border-b border-border-light bg-surface/40 px-4">
+          <Search
+            size={18}
+            strokeWidth={1.8}
+            className={cn(
+              "shrink-0 transition-colors duration-200",
+              q ? "text-blue-primary" : "text-text-tertiary"
+            )}
+          />
           <input
             autoFocus
             value={q}
@@ -415,7 +422,7 @@ export function CommandPalette({
             return (
               <div key={it.key}>
                 {header && (
-                  <p className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <p className="mt-1 border-t border-border-light px-4 pb-1.5 pt-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary first:mt-0 first:border-t-0 first:pt-1.5">
                     {it.section}
                   </p>
                 )}
@@ -427,9 +434,10 @@ export function CommandPalette({
                     // items-start, not items-center: a long name now wraps to
                     // a second line, and the icon must stay level with the
                     // FIRST line rather than float to the middle of the row.
-                    "w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors disabled:opacity-50",
+                    "cmdk-row flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors disabled:opacity-50",
                     selected ? "bg-surface" : "hover:bg-surface"
                   )}
+                  data-selected={selected}
                 >
                   {it.recordType === "Customer" ? (
                     <CompanyLogo
@@ -518,7 +526,7 @@ export function CommandPalette({
     </>
   ) : (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/20"
+      className="cmdk-veil fixed inset-0 z-[90] flex items-start justify-center bg-black/25 pt-[12vh] backdrop-blur-[2px]"
       onClick={onClose}
     >
       {box}

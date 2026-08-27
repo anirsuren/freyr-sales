@@ -39,7 +39,22 @@ export type PreparedEmail = {
   to: string[];
   cc?: string[];
   subject: string;
+  /** The whole document, shell included — what actually gets sent. */
   html: string;
+  /**
+   * JUST THE BODY, with no <html> around it.
+   *
+   * The admin composer loads a draft into a rich-text box, and a rich-text box
+   * cannot hold a document: the browser drops the doctype and the <body> and
+   * leaves the shell's own header card and table rules sitting in the editor
+   * as content (Anir, Aug 26: "make sure the emails actually work and are
+   * formatted properly, I see tables and stuff"). The composer takes this and
+   * puts the shell back on at send time.
+   *
+   * Only the builders whose output is offered as a DRAFT need it; the ones
+   * that only ever send can leave it out.
+   */
+  bodyHtml?: string;
   text: string;
   /** For the dry run: who this is for and why it exists. */
   reason: string;
@@ -157,9 +172,7 @@ export async function buildOwnerRefreshEmails(
         return { name: r.offering, when, files: r.files };
       });
 
-    const html = emailShell(
-      "Time to refresh your offerings",
-      `<p>Hi ${who.name.split(" ")[0]},</p>
+    const bodyHtml = `<p>Hi ${who.name.split(" ")[0]},</p>
        <p>These offerings you own have not had a new file in a while. A quick look
        is usually all it takes — replace anything out of date, and add whatever
        you have been sending customers by hand.</p>
@@ -173,8 +186,8 @@ export async function buildOwnerRefreshEmails(
            )
            .join("")}
        </table>
-       <p><a href="${appUrl("/offerings")}" style="color:#0071e3;font-weight:600;">Open your offerings</a></p>`
-    );
+       <p><a href="${appUrl("/offerings")}" style="color:#0071e3;font-weight:600;">Open your offerings</a></p>`;
+    const html = emailShell("Time to refresh your offerings", bodyHtml);
     const text = [
       `Hi ${who.name.split(" ")[0]},`,
       "",
@@ -188,6 +201,7 @@ export async function buildOwnerRefreshEmails(
       to: [who.email],
       subject: `Your offerings need a refresh (${rows.length})`,
       html,
+      bodyHtml,
       text,
       reason: `${who.name}: ${rows.length} offering(s) with no file in ${staleDays}+ days`,
     });

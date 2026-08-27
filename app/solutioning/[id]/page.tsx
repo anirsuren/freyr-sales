@@ -61,7 +61,14 @@ export default async function SolutioningRequestPage({
   return (
     <RequestDetail
       request={request}
-      live={live}
+      /* The request that prompted this submission or presentation, when one
+         did. Passed as a name and an id so the detail page can link back
+         without loading the whole store again. */
+      parent={(() => {
+        if (!request.requestId) return null;
+        const home = state.requests.find((r) => r.id === request.requestId);
+        return home ? { id: home.id, ref: home.ref, title: home.title } : null;
+      })()}
       meName={me.name}
       meRole={me.role}
       members={members}

@@ -110,18 +110,23 @@ export function countryFlag(name: string | undefined | null): string {
  * new field on the shared option type — the trigger and the menu both draw the
  * label, so one string gets the flag into both places.
  */
-export function countryOptions(): { value: string; label: string; color: string }[] {
+export function countryOptions(): { value: string; label: string; noMark: true }[] {
+  /* NO DOT BESIDE THE FLAG (Anir, Aug 26: "remove the circles for the country,
+     I only need the flag obviously"). The flag already is the mark; a coloured
+     dot next to it is a second mark saying nothing, and the same teal dot on
+     all fifty-five said less than nothing. Omitting `color` is what stops the
+     dot being drawn. */
   return COUNTRIES.map((c) => ({
     value: c.name,
     label: `${flagOf(c.iso2)}  ${c.name}`,
-    color: "#0891B2",
+    noMark: true,
   }));
 }
 
 /** Options for the dialling-code picker beside a phone number. */
-export function dialOptions(): { value: string; label: string; color: string }[] {
+export function dialOptions(): { value: string; label: string; noMark: true }[] {
   const seen = new Set<string>();
-  const out: { value: string; label: string; color: string }[] = [];
+  const out: { value: string; label: string; noMark: true }[] = [];
   for (const c of COUNTRIES) {
     const key = `${c.iso2}-${c.dial}`;
     if (seen.has(key)) continue;
@@ -129,7 +134,7 @@ export function dialOptions(): { value: string; label: string; color: string }[]
     out.push({
       value: `+${c.dial}`,
       label: `${flagOf(c.iso2)}  +${c.dial}  ${c.name}`,
-      color: "#0891B2",
+      noMark: true,
     });
   }
   return out;

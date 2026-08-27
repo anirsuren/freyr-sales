@@ -52,6 +52,16 @@ export type ColorOption = {
    * parenthesis, so your own name is findable at a glance.
    */
   tag?: string;
+  /**
+   * DRAW NO MARK AT ALL.
+   *
+   * Anir, Aug 26, on the country picker: "remove the circles for the country,
+   * I only need the flag obviously." An option whose label already carries its
+   * own glyph — a flag emoji, say — does not want a dot beside it, and the
+   * fall-through below draws one unconditionally, grey when no colour is
+   * given. Grey dots are also banned everywhere else in this app.
+   */
+  noMark?: boolean;
 };
 
 /** Shared motion for the compress/expand — see components/ui/SearchPriority. */
@@ -439,6 +449,7 @@ export function ColorSelect({
           <Icon size={prominent ? 16 : 12} strokeWidth={2.1} />
         </span>
       );
+    if (o.noMark) return null;
     return (
       <span
         className={cn(

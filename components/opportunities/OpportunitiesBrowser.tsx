@@ -36,7 +36,10 @@ import {
   Repeat,
   Zap,
   type LucideIcon,
+  AlertTriangle,
+  CalendarCheck,
 } from "lucide-react";
+import { PriorityTooltip } from "@/components/ui/SearchPriority";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -411,8 +414,55 @@ function toDraft(
 /** The deal's creation stamp, with its clock — see stampedAt. */
 const createdOn = stampedAt;
 
+/**
+ * IS THIS DEAL'S MONEY PLANNED, AND DOES THE PLAN STILL HOLD?
+ *
+ * Suren, Aug 26: "the moment you plan a deal, you put an icon which says that
+ * the plan for the accrual is already done, and then have another icon if that
+ * plan is invalid... somebody puts a symbol on this so that they will look at
+ * all the things that are invalid, and then they come and fix it. Who fixes
+ * it? The account owner."
+ *
+ * Amber, never red: a plan that needs re-doing is a nudge, and red in this app
+ * means somebody rejected something. Nothing at all when there is no plan —
+ * most deals do not have one and a row of grey "no plan" marks would drown the
+ * two that matter.
+ */
+function AccrualMark({ badge }: { badge?: AccrualBadge }) {
+  if (!badge?.planned) return null;
+  const broken = badge.problems.length > 0;
+  const Icon = broken ? AlertTriangle : CalendarCheck;
+  return (
+    <PriorityTooltip
+      label={
+        broken
+          ? `${badge.headline} ${badge.owner || "The account owner"} needs to re-plan it.`
+          : "The accrual months for this deal are planned."
+      }
+    >
+      <span
+        aria-label={
+          broken ? "Accrual plan needs re-doing" : "Accrual months planned"
+        }
+        className="inline-flex h-4 w-4 shrink-0 cursor-default items-center justify-center"
+        style={{ color: broken ? "#B45309" : "#16A34A" }}
+      >
+        <Icon size={13} strokeWidth={2.3} />
+      </span>
+    </PriorityTooltip>
+  );
+}
+
+export type AccrualBadge = {
+  planned: boolean;
+  problems: string[];
+  headline: string;
+  owner: string;
+};
+
 export function OpportunitiesBrowser({
   opportunities,
+  accrualPlans = {},
   offerings,
   offeringTypes = [],
   customers,
@@ -426,6 +476,14 @@ export function OpportunitiesBrowser({
   live,
 }: {
   opportunities: Opportunity[];
+  /**
+   * PER DEAL: is its money planned, and does that plan still hold?
+   *
+   * Suren, Aug 26: "the moment you plan a deal, you put an icon which says
+   * that the plan for the accrual is already done, and then have another icon
+   * if that plan is invalid... the system makes these things invalid."
+   */
+  accrualPlans?: Record<string, AccrualBadge>;
   offerings: { id: string; name: string; type?: string }[];
   /** Ordered, so an offering's colour matches its card on the Offerings page. */
   offeringTypes?: { name: string }[];
@@ -1015,8 +1073,11 @@ export function OpportunitiesBrowser({
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="block min-w-0">
-                            <span className="block truncate text-[13.5px] font-semibold text-text-primary">
-                              {o.name}
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="min-w-0 truncate text-[13.5px] font-semibold text-text-primary">
+                                {o.name}
+                              </span>
+                              <AccrualMark badge={accrualPlans[o.id]} />
                             </span>
                             <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
                               <span

@@ -18,7 +18,14 @@ export const dynamic = "force-dynamic";
  * team's front door — "the solutioning guy will not come to the customer
  * module, he'll come to the solutioning module and see all the requests."
  */
-export default async function SolutioningPage() {
+export default async function SolutioningPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  /* Which room the sidebar sent us to. See the Solutioning entries in
+     components/layout/Sidebar. */
+  const { tab } = await searchParams;
   await requireModuleAccess("/solutioning");
   await requireServerMemberScope();
   const live = getDataMode() === "live";
@@ -64,7 +71,7 @@ export default async function SolutioningPage() {
   return (
     <SolutioningModule
       state={state}
-      live={live}
+      room={tab === "submissions" || tab === "presentations" ? tab : "requests"}
       meRole={me.role}
       members={members}
       memberRoles={memberRoles}

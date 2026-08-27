@@ -52,6 +52,19 @@ export type AccrualPlan = {
   offeringLabel?: string;
   /** What the whole plan is spreading. Usually the deal's value. */
   contractValue: number;
+  /**
+   * THE DEAL'S ESTIMATED SIGN DATE AT THE MOMENT THIS PLAN WAS SAVED.
+   *
+   * Suren, Aug 26: "you have to bring the date called contract sign date...
+   * that estimated contract sign date is there in the deal opportunity... if
+   * somebody comes in and changes the contract sign date, then his whole plan
+   * is wrong. You have to say that the plan has to be redone."
+   *
+   * A plan is a set of months chosen for a sign date. Without recording which
+   * date it was built against, a later change to that date is invisible and
+   * the months quietly become fiction.
+   */
+  signDateAtPlan?: string;
   lines: AccrualLine[];
   note?: string;
   updatedBy: string;
@@ -155,7 +168,10 @@ export type PlanProblem =
   /** The lines do not add up to the contract value they claim to spread. */
   | "does_not_add_up"
   /** Money planned into months that have already gone by, on an open deal. */
-  | "past_months_unbooked";
+  | "past_months_unbooked"
+  /** The deal's estimated sign date has moved since this plan was built, so
+   *  the months were chosen against a date that no longer applies. */
+  | "sign_date_changed";
 
 export type PlanVerdict = {
   problems: PlanProblem[];
@@ -191,6 +207,15 @@ export function judgePlan(
       problems.push("close_date_passed");
     }
   }
+  /* THE DATE MOVED UNDER THE PLAN. Compared by MONTH: a plan spreads months,
+     so a sign date sliding from the 3rd to the 20th of the same month changes
+     nothing about it, and flagging that would train people to ignore the
+     flag. */
+  if (!closed && plan.signDateAtPlan && deal?.estSignDate) {
+    const then = monthKey(plan.signDateAtPlan);
+    const now_ = monthKey(deal.estSignDate);
+    if (then && now_ && then !== now_) problems.push("sign_date_changed");
+  }
   if (!closed && stranded > 0) problems.push("past_months_unbooked");
   if (
     plan.contractValue > 0 &&
@@ -199,7 +224,9 @@ export function judgePlan(
     problems.push("does_not_add_up");
   }
 
-  const headline = problems.includes("close_date_passed")
+  const headline = problems.includes("sign_date_changed")
+    ? "The deal's estimated sign date has moved since this plan was made — the months need re-planning."
+    : problems.includes("close_date_passed")
     ? "The estimated close month has passed and this deal is still open — these numbers need re-planning."
     : problems.includes("past_months_unbooked")
       ? "Money is planned into months that have already gone by."

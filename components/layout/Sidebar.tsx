@@ -36,6 +36,9 @@ import {
   ClipboardList,
   Swords,
   Globe2,
+  Inbox,
+  FileCheck2,
+  MonitorPlay,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -361,6 +364,21 @@ export function Sidebar({
                       { href: "/performance/goal-master", label: "Goal Master", icon: ClipboardList },
                     ]
                 ).map(subNavLink)}
+
+              {/* THE THREE ROOMS UNDER SOLUTIONING (Anir, Aug 26: "you're
+                  supposed to have the thing where it says under solutioning
+                  the three things, like goals"). Suren's shape: what people
+                  ASKED for, what is being submitted, and what is being
+                  presented. Same idiom as Performance and Market Intel — only
+                  while you are inside the module. */}
+              {item.href === "/solutioning" &&
+                !collapsed &&
+                isActive(pathname, "/solutioning") &&
+                [
+                  { href: "/solutioning", label: "Requests", icon: Inbox },
+                  { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileCheck2 },
+                  { href: "/solutioning?tab=presentations", label: "Presentations", icon: MonitorPlay },
+                ].map(subNavLink)}
 
               {item.href === "/market-intel" &&
                 !collapsed &&

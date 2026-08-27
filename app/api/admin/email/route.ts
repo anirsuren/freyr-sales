@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { emailFromAddress, sendTransactionalEmail } from "@/lib/email";
+import { emailShell } from "@/lib/mailer";
 import {
   htmlToPlainText,
   parseAddresses,
@@ -70,6 +71,20 @@ export async function POST(req: NextRequest) {
   const text = html
     ? htmlToPlainText(html)
     : String(body.body ?? "").trim();
+  /**
+   * A COMPOSED EMAIL GETS THE SAME SHELL AS EVERY OTHER ONE.
+   *
+   * The composer produces a fragment — what somebody typed into a rich-text
+   * box — and it was going out exactly like that: no doctype, no font stack,
+   * no width, so a mail client fell back to its own defaults and the message
+   * arrived looking nothing like the app's other mail (Anir, Aug 26: "make
+   * sure the emails actually work and are formatted properly").
+   *
+   * Wrapped only when it is not already a document, so a caller that hands us
+   * a full one is left alone.
+   */
+  const looksLikeDocument = /^\s*(<!doctype|<html)/i.test(html);
+  const sendHtml = html && !looksLikeDocument ? emailShell(subject, html) : html;
   const to = parseAddresses(String(body.to ?? ""));
   const cc = parseAddresses(String(body.cc ?? ""));
   const bcc = parseAddresses(String(body.bcc ?? ""));
@@ -107,7 +122,7 @@ export async function POST(req: NextRequest) {
       ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),
       subject,
       body: text,
-      ...(html ? { html } : {}),
+      ...(sendHtml ? { html: sendHtml } : {}),
       sentBy: me.name,
       ...(me.email ? { sentByEmail: me.email } : {}),
       status: "simulated",
@@ -131,7 +146,7 @@ export async function POST(req: NextRequest) {
     ...(replyToParsed.valid[0] ? { replyTo: replyToParsed.valid[0] } : {}),
     subject,
     body: text,
-    ...(html ? { html } : {}),
+    ...(sendHtml ? { html: sendHtml } : {}),
   });
 
   const record = await recordAdminEmail({

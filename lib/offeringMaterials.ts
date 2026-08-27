@@ -100,6 +100,21 @@ export type LegacyMaterialKind =
 
 export type MaterialKind = MaterialFormat | LegacyMaterialKind;
 
+/**
+ * What KIND of thing a file is, from its name alone. Pure, and deliberately
+ * here rather than in the storage layer: the solutioning document rows are a
+ * client component and need the same answer, and lib/materialStorage is
+ * server-only.
+ */
+export function formatFromFilename(name: string): MaterialFormat {
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  if (["mp4", "mov", "webm", "m4v", "avi", "mkv"].includes(ext)) return "video";
+  if (["ppt", "pptx", "key", "odp"].includes(ext)) return "presentation";
+  if (["doc", "docx", "pdf", "txt", "rtf", "md", "odt"].includes(ext))
+    return "document";
+  return "other";
+}
+
 // Where in the buyer's journey a material is meant to be used (CR-3).
 export type JourneyStage = "awareness" | "evaluation" | "decision";
 /**

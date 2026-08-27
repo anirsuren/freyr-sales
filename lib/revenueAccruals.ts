@@ -97,6 +97,7 @@ function normalizePlan(v: unknown): AccrualPlan | null {
     offeringId: str(r.offeringId, 60) || undefined,
     offeringLabel: str(r.offeringLabel, 160) || undefined,
     contractValue: num(r.contractValue),
+    signDateAtPlan: str(r.signDateAtPlan, 40) || undefined,
     lines: [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month)),
     note: str(r.note, 500) || undefined,
     updatedBy: str(r.updatedBy, 80) || "Unknown",
@@ -161,6 +162,18 @@ async function readRow(): Promise<RevenueAccrualsState> {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return normalize(data?.catalog);
+}
+
+/** The stored row exactly as it is, or null when it has never been written. */
+async function readRowRaw(): Promise<unknown | null> {
+  if (!hasDatabase()) return null;
+  const { data, error } = await client()
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", activeRowId())
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.catalog ?? null;
 }
 
 async function writeRow(state: RevenueAccrualsState): Promise<void> {
@@ -253,9 +266,22 @@ function sampleAccruals(): RevenueAccrualsState {
 
 /* ------------------------------------------------------------------- api */
 
+/**
+ * MOCK IS A REAL STORE, NOT A PICTURE OF ONE (Anir, Aug 26: "all the same
+ * functionality (add, edit etc.) should be on mock mode, but it shouldn't
+ * affect real data"). `activeRowId()` has always pointed mock at its OWN row,
+ * so a mock write could never reach real; what made it read-only was answering
+ * with a fresh sample every time, so an edit had nowhere to land. The samples
+ * now SEED that row once and everything after is an ordinary read. Emptying it
+ * deliberately stays empty: the seed fires only when the row never existed.
+ */
 export async function readRevenueAccruals(): Promise<RevenueAccrualsState> {
-  if (getDataMode() === "mock") return sampleAccruals();
-  return readRow();
+  if (getDataMode() !== "mock") return readRow();
+  const existing = await readRowRaw();
+  if (existing) return normalize(existing);
+  const seeded = sampleAccruals();
+  await writeRow(seeded).catch(() => undefined);
+  return seeded;
 }
 
 export type AccrualPlanInput = {
@@ -268,6 +294,9 @@ export type AccrualPlanInput = {
   contractValue: number;
   lines: { month: string; amount: number }[];
   note?: string;
+  /** The deal's estimated sign date as it stood when this was saved, so a
+   *  later change to it can be spotted. See AccrualPlan.signDateAtPlan. */
+  signDateAtPlan?: string;
 };
 
 /**
