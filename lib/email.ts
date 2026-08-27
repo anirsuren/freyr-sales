@@ -103,6 +103,19 @@ async function sendWithConfiguredProvider(input: {
         subject: input.subject,
         text: input.body,
         ...(input.html ? { html: input.html } : {}),
+        /* The importance flag must survive the fallback. SES carries it as
+           message headers; Resend accepts the same headers object — without
+           this, a host with no AWS session sent the mail fine and silently
+           dropped the one thing the sender clicked. */
+        ...(input.important
+          ? {
+              headers: {
+                Importance: "high",
+                "X-Priority": "1",
+                "X-MSMail-Priority": "High",
+              },
+            }
+          : {}),
         ...(input.attachments?.length
           ? { attachments: input.attachments }
           : {}),

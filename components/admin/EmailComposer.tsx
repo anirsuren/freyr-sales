@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
@@ -437,6 +438,9 @@ export function EmailComposer() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
+        /* Close the dialog BEFORE the toast: a failure message behind a
+           modal overlay is a failure message nobody reads. */
+        setConfirming(false);
         toast(data?.error || "That did not send.", "error");
         await load();
         return;
@@ -455,6 +459,7 @@ export function EmailComposer() {
       setConfirming(false);
       await load();
     } catch {
+      setConfirming(false);
       toast("That did not send.", "error");
     } finally {
       setSending(false);
@@ -619,42 +624,42 @@ export function EmailComposer() {
               {important ? "Marked important" : "Mark as important"}
             </button>
           </span>
-          {/* TWO PRESSES. The first names who it is about to reach; the second
-              sends it. An outbound mail to a customer is not undoable. */}
-          {confirming ? (
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-[12.5px] font-semibold text-text-primary">
-                Send to {recipients}{" "}
-                {recipients === 1 ? "person" : "people"}?
-              </span>
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                className="cursor-pointer rounded-lg px-3 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={sending}
-                onClick={send}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                <Send size={14} strokeWidth={2.2} />
-                {sending ? "Sending…" : live ? "Yes, send it" : "Yes, simulate it"}
-              </button>
-            </span>
-          ) : (
-            <button
-              type="button"
-              disabled={!ready}
-              onClick={() => setConfirming(true)}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Send size={14} strokeWidth={2.2} />
-              Send
-            </button>
-          )}
+          {/* STILL TWO PRESSES, NOW AS A POP-UP (Anir, Aug 27: "make the
+              send button, like the confirmation thing, a pop-up instead of
+              whatever you have right now"). The inline swap made the whole
+              footer rearrange itself under the cursor; a dialog holds the
+              question still. Blue, not red — nothing is destroyed by
+              sending, and red is reserved. */}
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => setConfirming(true)}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Send size={14} strokeWidth={2.2} />
+            Send
+          </button>
+          <ConfirmDialog
+            open={confirming}
+            onClose={() => setConfirming(false)}
+            onConfirm={send}
+            busy={sending}
+            tone="primary"
+            title={live ? "Send this email?" : "Simulate this send?"}
+            body={
+              <>
+                It goes to <b>{recipients}</b>{" "}
+                {recipients === 1 ? "person" : "people"}
+                {important ? ", marked important" : ""}.
+              </>
+            }
+            detail={
+              live
+                ? "An outbound email cannot be unsent."
+                : "Sample mode: nothing is actually delivered."
+            }
+            confirmLabel={live ? "Yes, send it" : "Yes, simulate it"}
+          />
         </div>
         {/* No "still needed" narration (Anir, Aug 27: "you don't have to
             say this"). The disabled Send button already carries the answer,
