@@ -1725,7 +1725,17 @@ export function OfferingsBrowser({
                         style={
                           rowAccent
                             ? {
-                                backgroundImage: `linear-gradient(to bottom, transparent 0 8px, ${rowAccent} 8px calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
+                                /* AN OPEN ROW'S RAIL DOES NOT BREAK (Anir,
+                                   Aug 27: "that blue line should go all the
+                                   way down and on the left side"). Closed, it
+                                   insets 8px top and bottom so consecutive
+                                   rows read as separate rows. Open, the row
+                                   and the panel under it are ONE block, so
+                                   the inset would cut the line exactly where
+                                   it has to continue. */
+                                backgroundImage: openRows.has(o.id)
+                                  ? `linear-gradient(to bottom, ${rowAccent} 0 100%)`
+                                  : `linear-gradient(to bottom, transparent 0 8px, ${rowAccent} 8px calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
                                 backgroundSize: "3px 100%",
                                 backgroundRepeat: "no-repeat",
                                 backgroundPosition: "left center",
@@ -1983,7 +1993,24 @@ export function OfferingsBrowser({
                     </tr>
                     {openRows.has(o.id) && (
                       <tr className="border-b border-border-light last:border-0">
-                        <td colSpan={8} className="bg-surface px-0 pb-4 pt-0">
+                        {/* The rail continues through the panel and stops at
+                            the bottom of the block, so one unbroken line runs
+                            from the top of the row to the end of what it
+                            opened. */}
+                        <td
+                          colSpan={8}
+                          className="bg-surface px-0 pb-4 pt-0"
+                          style={
+                            rowAccent
+                              ? {
+                                  backgroundImage: `linear-gradient(to bottom, ${rowAccent} 0 calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
+                                  backgroundSize: "3px 100%",
+                                  backgroundRepeat: "no-repeat",
+                                  backgroundPosition: "left top",
+                                }
+                              : undefined
+                          }
+                        >
                           <OfferingRowDetail offering={o} />
                         </td>
                       </tr>
