@@ -5,6 +5,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
+  Eye,
+  EyeOff,
   Loader2,
   LockKeyhole,
   Mail,
@@ -334,6 +336,17 @@ export function SupabaseLoginForm({
     }
   }
 
+  /**
+   * THE EYE CHROME NEVER GAVE US (Saras via Anir, Aug 27: "the sign-in window
+   * doesn't show the 'Show Password' option with the eye icon. It's there in
+   * Microsoft Edge though"). Edge draws its own reveal control on password
+   * boxes; Chrome, Safari and Firefox draw nothing, so half the team could
+   * check their typing and half could not. One app-drawn eye on every
+   * password box makes the form identical in every browser — and Edge's own
+   * duplicate is switched off in CSS, or its users would see two eyes.
+   */
+  const [showPassword, setShowPassword] = useState(false);
+
   const inputClass =
     "mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary";
 
@@ -399,15 +412,31 @@ export function SupabaseLoginForm({
           </label>
           <label className="block text-[12px] font-semibold text-text-secondary">
             Choose a password
-            <input
-              required
-              minLength={8}
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className={inputClass}
-            />
+            <span className="relative block">
+              <input
+                required
+                minLength={8}
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className={`${inputClass} pr-11 [&::-ms-reveal]:hidden`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 top-1.5 flex w-11 cursor-pointer items-center justify-center text-text-tertiary transition-colors hover:text-text-primary"
+              >
+                {showPassword ? (
+                  <EyeOff size={16} strokeWidth={2} />
+                ) : (
+                  <Eye size={16} strokeWidth={2} />
+                )}
+              </button>
+            </span>
           </label>
           <p className="-mt-2 text-[11px] text-text-tertiary">
             At least 8 characters. We&apos;ll email you a confirmation link before your
@@ -452,17 +481,33 @@ export function SupabaseLoginForm({
               {resetBusy ? "Sending reset email…" : "Forgot password?"}
             </button>
           </div>
-          <input
-            id="login-password"
-            required
-            autoFocus
-            minLength={8}
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className={inputClass}
-          />
+          <span className="relative block">
+            <input
+              id="login-password"
+              required
+              autoFocus
+              minLength={8}
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={`${inputClass} pr-11 [&::-ms-reveal]:hidden`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              tabIndex={-1}
+              className="absolute inset-y-0 right-0 top-1.5 flex w-11 cursor-pointer items-center justify-center text-text-tertiary transition-colors hover:text-text-primary"
+            >
+              {showPassword ? (
+                <EyeOff size={16} strokeWidth={2} />
+              ) : (
+                <Eye size={16} strokeWidth={2} />
+              )}
+            </button>
+          </span>
         </div>
       )}
 

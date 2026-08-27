@@ -150,26 +150,26 @@ function FoldHeading({
 }: {
   icon: LucideIcon;
   title: string;
-  /** How much is inside. Shown only while shut, so an open section is unchanged. */
+  /** How much is inside. Always visible — hiding it on open made the chevron
+   *  jump sideways the moment you clicked. */
   count?: number;
   open: boolean;
   onToggle: () => void;
 }) {
+  /* THE PERFORMANCE SHAPE (Anir, Aug 27: "why would they click the arrow
+     exactly? They should be able to click in the general vicinity... like the
+     performance page"). Chevron LEADS, rotating in place; the count chip
+     stays in both states; nothing appears, disappears, or changes width on
+     toggle, so the header cannot shift ("it shifts a little bit. I don't want
+     that"). The generous padding is the "general vicinity". No title attr —
+     it fed a hover pill that could outstay the hover. */
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      title={open ? `Hide ${title}` : `Show ${title}`}
-      className="-m-1 flex cursor-pointer items-center gap-2 rounded-lg p-1 text-[15px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+      className="-my-1.5 -ml-2 flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-2 pr-3 text-[15px] font-semibold text-text-primary transition-colors hover:bg-blue-light/40 hover:text-blue-primary"
     >
-      <Icon size={15} strokeWidth={2} className="text-blue-primary" />
-      {title}
-      {!open && typeof count === "number" && (
-        <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
-          {count}
-        </span>
-      )}
       <ChevronDown
         size={15}
         strokeWidth={2.2}
@@ -179,6 +179,13 @@ function FoldHeading({
           !open && "-rotate-90"
         )}
       />
+      <Icon size={15} strokeWidth={2} className="text-blue-primary" />
+      {title}
+      {typeof count === "number" && (
+        <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary tnum">
+          {count}
+        </span>
+      )}
     </button>
   );
 }

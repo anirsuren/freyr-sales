@@ -132,15 +132,28 @@ export function Tooltip({
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!triggerRef.current?.contains(event.target as Node)) close();
     };
+    /* THE STUCK-PILL GUARD (Anir, Aug 27: "I hovered over materials and
+       literally this thing won't disappear"). mouseleave only fires when the
+       POINTER moves out — when the ELEMENT moves out from under a stationary
+       pointer (a compressed control expanding back, a row reflowing), no
+       event fires and the hint floats forever. So while a hint is up, every
+       pointer move re-asks the browser whether the trigger is still truly
+       hovered, and the first "no" closes it. */
+    const closeIfNotHovered = () => {
+      const el = triggerRef.current;
+      if (!el || !el.isConnected || !el.matches(":hover")) close();
+    };
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", close, true);
     window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("pointerdown", closeOnPointerDown, true);
+    window.addEventListener("mousemove", closeIfNotHovered, true);
     return () => {
       window.removeEventListener("resize", reposition);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("pointerdown", closeOnPointerDown, true);
+      window.removeEventListener("mousemove", closeIfNotHovered, true);
     };
     // captureAnchor and hide deliberately read the latest refs/state.
     // eslint-disable-next-line react-hooks/exhaustive-deps

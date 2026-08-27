@@ -44,6 +44,7 @@ import {
   PrioritySearchInput,
   PriorityTooltip,
 } from "@/components/ui/SearchPriority";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -777,14 +778,14 @@ export function OfferingsBrowser({
                       crown"). Purple is the colour ownership already wears in
                       this app, so it is the crown, not a new invention. */}
                   {ownedByMe(o) && (
-                    <PriorityTooltip label="You own this offering">
+                    <Tooltip label="You own this offering">
                       <Crown
                         size={13}
                         strokeWidth={2.5}
                         aria-label="You own this offering"
                         className="mt-[3px] shrink-0 text-[color:#7C3AED]"
                       />
-                    </PriorityTooltip>
+                    </Tooltip>
                   )}
                 </h3>
               </div>
@@ -1582,7 +1583,7 @@ export function OfferingsBrowser({
                       ]}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[19%]">
+                  <th className="px-4 py-2.5 w-[18%]">
                     <ColumnHeaderMenu
                       label="Category"
                       sortKey="category"
@@ -1632,7 +1633,7 @@ export function OfferingsBrowser({
                       ]}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[16%]">
+                  <th className="px-4 py-2.5 w-[15%]">
                     <ColumnHeaderMenu
                       label="Who it's for"
                       values={ctIds}
@@ -1644,7 +1645,7 @@ export function OfferingsBrowser({
                       }))}
                     />
                   </th>
-                  <th className="px-4 py-2.5 w-[10%]">
+                  <th className="px-4 py-2.5 w-[12%]">
                     <ColumnHeaderMenu
                       label="Materials"
                       sortKey="materials"
@@ -1715,14 +1716,14 @@ export function OfferingsBrowser({
                             {o.offering_name}
                           </Link>
                           {ownedByMe(o) && (
-                            <PriorityTooltip label="You own this offering">
+                            <Tooltip label="You own this offering">
                               <Crown
                                 size={13}
                                 strokeWidth={2.5}
                                 aria-label="You own this offering"
                                 className="mt-[3px] shrink-0 text-[color:#7C3AED]"
                               />
-                            </PriorityTooltip>
+                            </Tooltip>
                           )}
                         </span>
                       </td>
@@ -1835,12 +1836,20 @@ export function OfferingsBrowser({
                                 {f}
                               </span>
                             ))}
+                            {/* Plain Tooltip, not PriorityTooltip (Anir,
+                                Aug 27: "when I hover over the +3, it doesn't
+                                show me anything"). PriorityTooltip only
+                                mounts while the toolbar is compressed by the
+                                search bar — it explains COLLAPSED CONTROLS.
+                                This chip is table data; that gate meant the
+                                names it hides were only revealed while
+                                someone happened to be typing a search. */}
                             {famList.length > 2 && (
-                              <PriorityTooltip label={famList.slice(2).join(", ")}>
+                              <Tooltip label={famList.slice(2).join(", ")}>
                                 <span className="mt-0.5 inline-flex w-fit cursor-default items-center rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary">
                                   +{famList.length - 2}
                                 </span>
-                              </PriorityTooltip>
+                              </Tooltip>
                             )}
                           </span>
                         ) : (
