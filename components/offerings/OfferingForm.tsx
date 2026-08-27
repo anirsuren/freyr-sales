@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   GripVertical,
   Pin,
+  Search,
   Plus,
   Trash2,
   Package,
@@ -1052,6 +1053,14 @@ export function OfferingForm({
   const [confirmLeave, setConfirmLeave] = useState(false);
   /** Which material row the trash was pressed on, awaiting the yes. */
   const [confirmRemoveMaterial, setConfirmRemoveMaterial] = useState<number | null>(null);
+  /** One dialog for the brief editor's three removals: a group heading, a
+   *  component card, a related offering. All staged; the dialog says so. */
+  const [confirmRow, setConfirmRow] = useState<
+    | { kind: "group"; at: number; label: string }
+    | { kind: "card"; at: number; label: string }
+    | { kind: "related"; id: string; label: string }
+    | null
+  >(null);
   const [pasted, setPasted] = useState(
     composeDescription(seeded.intro, seeded.rows)
   );
@@ -1232,6 +1241,7 @@ export function OfferingForm({
   const [relatedAdd, setRelatedAdd] = useState<string[]>(initial?.related_add ?? []);
   const [relatedHide, setRelatedHide] = useState<string[]>(initial?.related_hide ?? []);
   const [addingRelated, setAddingRelated] = useState(false);
+  const [relatedQuery, setRelatedQuery] = useState("");
 
   const currentEditSnapshot: Record<string, unknown> = {
     offeringType,
@@ -1470,6 +1480,47 @@ export function OfferingForm({
           </>
         }
         detail="Nothing is deleted until you press Save changes. Cancel out of the page and it stays exactly as it was."
+        confirmLabel="Remove it"
+      />
+      <ConfirmDialog
+        open={confirmRow !== null}
+        onClose={() => setConfirmRow(null)}
+        onConfirm={() => {
+          const target = confirmRow;
+          setConfirmRow(null);
+          if (!target) return;
+          if (target.kind === "group") {
+            setOpenCard(null);
+            setCapRows((l) => l.filter((_, j) => j !== target.at));
+          } else if (target.kind === "card") {
+            setOpenCard(null);
+            setCapRows((l) => l.filter((_, j) => j !== target.at));
+          } else if (relatedAdd.includes(target.id)) {
+            setRelatedAdd((cur) => cur.filter((i) => i !== target.id));
+          } else {
+            setRelatedHide((cur) =>
+              cur.includes(target.id) ? cur : [...cur, target.id]
+            );
+          }
+        }}
+        title={
+          confirmRow?.kind === "group"
+            ? "Remove this group?"
+            : confirmRow?.kind === "card"
+              ? "Remove this component?"
+              : "Remove this related offering?"
+        }
+        body={
+          <>
+            <b>{confirmRow?.label}</b>
+            {confirmRow?.kind === "group"
+              ? " goes away as a heading. Its cards stay, joining the group above."
+              : confirmRow?.kind === "card"
+                ? " comes off the offering brief."
+                : " comes off this page's Related offerings list."}
+          </>
+        }
+        detail="Nothing is saved until you press Save changes."
         confirmLabel="Remove it"
       />
 
@@ -1806,9 +1857,11 @@ export function OfferingForm({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const at = group.sectionIndex as number;
-                          setOpenCard(null);
-                          setCapRows((l) => l.filter((_, j) => j !== at));
+                          setConfirmRow({
+                            kind: "group",
+                            at: group.sectionIndex as number,
+                            label: name,
+                          });
                         }}
                         aria-label={`Remove the ${name} group`}
                         title="Remove this group. Its cards stay."
@@ -1945,8 +1998,11 @@ export function OfferingForm({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setOpenCard(null);
-                                    setCapRows((l) => l.filter((_, j) => j !== i));
+                                    setConfirmRow({
+                                      kind: "card",
+                                      at: i,
+                                      label: fields.heading || `component ${cardNo}`,
+                                    });
                                   }}
                                   aria-label={`Remove ${fields.heading || `component ${cardNo}`}`}
                                   className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
@@ -2847,15 +2903,9 @@ export function OfferingForm({
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (relatedAdd.includes(x.id)) {
-                            setRelatedAdd((cur) => cur.filter((i) => i !== x.id));
-                          } else {
-                            setRelatedHide((cur) =>
-                              cur.includes(x.id) ? cur : [...cur, x.id]
-                            );
-                          }
-                        }}
+                        onClick={() =>
+                          setConfirmRow({ kind: "related", id: x.id, label: x.name })
+                        }
                         aria-label={`Remove ${x.name} from related offerings`}
                         className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
                       >
@@ -2901,11 +2951,19 @@ export function OfferingForm({
         })()}
       </FormSection>
 
-      {/* Add a related offering: the same dialog grammar as Add material. */}
+      {/* Add a related offering: a real PICKER, not a dropdown in a box
+          (Anir, Aug 27: "this is ugly. Why is it so small"). Wide dialog,
+          search on top, and the offerings themselves as rows — icon, name,
+          category — one click to add. The same browsing grammar as the rest
+          of the app, sized like a decision rather than an afterthought. */}
       <Modal
         open={addingRelated}
-        onClose={() => setAddingRelated(false)}
+        onClose={() => {
+          setAddingRelated(false);
+          setRelatedQuery("");
+        }}
         title="Add a related offering"
+        size="wide"
       >
         {(() => {
           const visibleIds = new Set(
@@ -2918,47 +2976,86 @@ export function OfferingForm({
               )
               .map((x) => x.id)
           );
-          const addable = relatedPool.filter((x) => !visibleIds.has(x.id));
-          if (!addable.length)
-            return (
-              <p className="text-[13px] text-text-secondary">
-                Every other offering in the catalogue is already on this list.
-              </p>
+          const q = relatedQuery.trim().toLowerCase();
+          const addable = relatedPool
+            .filter((x) => !visibleIds.has(x.id))
+            .filter(
+              (x) =>
+                !q ||
+                x.name.toLowerCase().includes(q) ||
+                (x.category ?? "").toLowerCase().includes(q)
+            )
+            /* This offering's own category floats up: the likeliest adds are
+               the siblings somebody removed and thought better of. */
+            .sort(
+              (a, b) =>
+                Number(b.category === offeringCategory) -
+                  Number(a.category === offeringCategory) ||
+                a.name.localeCompare(b.name)
             );
+          const pick = (x: { id: string; name: string; category?: string }) => {
+            setRelatedHide((cur) => cur.filter((i) => i !== x.id));
+            if (x.category !== offeringCategory) {
+              setRelatedAdd((cur) =>
+                cur.includes(x.id) ? cur : [...cur, x.id]
+              );
+            }
+            setAddingRelated(false);
+            setRelatedQuery("");
+          };
           return (
             <div className="space-y-3">
-              <p className="text-[12.5px] leading-relaxed text-text-secondary">
-                It appears in this offering&rsquo;s Related offerings section
-                once you save. Category shown beside each, so a cross-category
-                pick is a choice, not an accident.
-              </p>
-              <ColorSelect
-                value=""
-                ariaLabel="Pick an offering to add"
-                collapsible={false}
-                searchable
-                className="w-full"
-                minWidth={0}
-                onChange={(v) => {
-                  if (!v) return;
-                  setRelatedHide((cur) => cur.filter((i) => i !== v));
-                  const pick = relatedPool.find((x) => x.id === v);
-                  if (pick && pick.category !== offeringCategory) {
-                    setRelatedAdd((cur) =>
-                      cur.includes(v) ? cur : [...cur, v]
-                    );
-                  }
-                  setAddingRelated(false);
-                }}
-                options={[
-                  { value: "", label: "Pick an offering…", color: "#8E98A8" },
-                  ...addable.map((x) => ({
-                    value: x.id,
-                    label: x.name,
-                    description: x.category || undefined,
-                  })),
-                ]}
-              />
+              <div className="relative">
+                <Search
+                  size={15}
+                  strokeWidth={2}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                />
+                <input
+                  autoFocus
+                  value={relatedQuery}
+                  onChange={(e) => setRelatedQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && addable[0]) pick(addable[0]);
+                  }}
+                  placeholder="Search the catalogue…"
+                  aria-label="Search offerings to add"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+                />
+              </div>
+              <div className="max-h-[46vh] space-y-1.5 overflow-y-auto pr-1">
+                {addable.map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    onClick={() => pick(x)}
+                    className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
+                  >
+                    <OfferingIcon name={x.name} className="h-9 w-9 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                        {x.name}
+                      </span>
+                      <span className="block truncate text-[11.5px] text-text-tertiary">
+                        {x.category || "No category"}
+                        {x.category === offeringCategory
+                          ? " · this offering's category"
+                          : ""}
+                      </span>
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12px] font-semibold text-white opacity-0 transition-opacity group-hover/row:opacity-100">
+                      <Plus size={12.5} strokeWidth={2.4} /> Add
+                    </span>
+                  </button>
+                ))}
+                {addable.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-border-light px-4 py-8 text-center text-[13px] text-text-secondary">
+                    {q
+                      ? `Nothing in the catalogue matches "${relatedQuery.trim()}".`
+                      : "Every other offering is already on this list."}
+                  </p>
+                )}
+              </div>
             </div>
           );
         })()}

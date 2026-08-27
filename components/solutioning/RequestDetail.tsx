@@ -137,6 +137,7 @@ export function RequestDetail({
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRemoveDoc, setConfirmRemoveDoc] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const managerial = meRole === "admin" || meRole === "manager";
@@ -685,7 +686,7 @@ export function RequestDetail({
                   onAssign={(who) =>
                     post({ op: "assign-doc", docId: d.id, assignedTo: who })
                   }
-                  onRemove={() => post({ op: "remove-doc", docId: d.id })}
+                  onRemove={() => setConfirmRemoveDoc({ id: d.id, name: d.name })}
                 />
               ))}
             </ul>
@@ -711,6 +712,17 @@ export function RequestDetail({
         />
       )}
 
+      <ConfirmDialog
+        open={confirmRemoveDoc !== null}
+        onClose={() => setConfirmRemoveDoc(null)}
+        onConfirm={() => {
+          if (confirmRemoveDoc) void post({ op: "remove-doc", docId: confirmRemoveDoc.id });
+          setConfirmRemoveDoc(null);
+        }}
+        title="Remove this document?"
+        body={<><b>{confirmRemoveDoc?.name}</b> comes off this request for everyone working it.</>}
+        confirmLabel="Remove it"
+      />
       <ConfirmDialog
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
@@ -885,7 +897,7 @@ function DocRow({
             disabled={busy}
             onClick={onRemove}
             aria-label={`Remove ${d.name}`}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626] disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)] disabled:opacity-50"
           >
             <Trash2 size={13.5} strokeWidth={2} />
           </button>

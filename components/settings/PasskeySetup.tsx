@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Fingerprint, RotateCw, Trash2 } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +24,7 @@ type Passkey = { id: string; label: string | null; createdAt: string; lastUsedAt
  */
 export function PasskeySetup() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+  const [confirmOff, setConfirmOff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [supported, setSupported] = useState(true);
@@ -155,7 +157,7 @@ export function PasskeySetup() {
             {/* Every delete reads red (Anir, Aug 16: "all delete buttons
                 have to be red"). */}
             <Button
-              onClick={() => void removeAll()}
+              onClick={() => setConfirmOff(true)}
               disabled={busy}
               variant="destructive"
               title="Turn Touch ID off for this account"
@@ -191,6 +193,17 @@ export function PasskeySetup() {
           {note.text}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmOff}
+        onClose={() => setConfirmOff(false)}
+        onConfirm={() => {
+          setConfirmOff(false);
+          void removeAll();
+        }}
+        title="Turn Touch ID off?"
+        body="Signing in on this device goes back to your password."
+        confirmLabel="Turn it off"
+      />
     </div>
   );
 }

@@ -33,6 +33,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -451,6 +452,7 @@ export function SequencesView({
     }
   }
 
+  const [confirmEnrollment, setConfirmEnrollment] = useState<{ id: string; company: string } | null>(null);
   async function removeEnrollment(enrollmentId: string) {
     setBusy(enrollmentId);
     try {
@@ -722,7 +724,7 @@ export function SequencesView({
                               <>
                                 <button onClick={() => advance({ enrollmentId: enrollment.enrollmentId }, enrollment.enrollmentId!, `${enrollment.company} advanced`)} disabled={busy !== null || active.status === "paused"} className="text-[color:#DC2626] inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-blue-primary hover:bg-blue-light disabled:opacity-40"><Play size={11} /> Advance</button>
                                 <Tooltip label="Remove from sequence" align="right">
-                                  <button onClick={() => removeEnrollment(enrollment.enrollmentId!)} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
+                                  <button onClick={() => setConfirmEnrollment({ id: enrollment.enrollmentId!, company: enrollment.company })} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-[color:#DC2626] hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
                                 </Tooltip>
                               </>
                             ) : (
@@ -802,6 +804,17 @@ export function SequencesView({
         )}
       </div>
 
+      <ConfirmDialog
+        open={confirmEnrollment !== null}
+        onClose={() => setConfirmEnrollment(null)}
+        onConfirm={() => {
+          if (confirmEnrollment) void removeEnrollment(confirmEnrollment.id);
+          setConfirmEnrollment(null);
+        }}
+        title="Remove from the sequence?"
+        body={<><b>{confirmEnrollment?.company}</b> stops getting this sequence&rsquo;s touches.</>}
+        confirmLabel="Remove it"
+      />
       <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={editingId ? "Edit sequence" : "New sequence"} size="workflow">
         <div ref={editorContentRef}>
           <div className="sticky top-0 z-20 mb-5 bg-white pb-2">
@@ -944,7 +957,7 @@ export function SequencesView({
                           <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-[color:#DC2626]">3. Describe the action</span><input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
                         </div>
                       </div>
-                      <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-text-tertiary hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
+                      <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-[color:#DC2626] hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
                     </div>
                   );
                 })}

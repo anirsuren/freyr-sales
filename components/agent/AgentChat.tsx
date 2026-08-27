@@ -31,6 +31,7 @@ import {
   type Entity,
 } from "@/components/agent/EntityPills";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import {
   ExpandedChartModal,
@@ -1043,6 +1044,9 @@ export function AgentChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, initialAsk, initialOffering, loadedStorageKey, storageKey]);
 
+  /* Every delete asks (Anir, Aug 27: "every delete button... a pop-up in
+     the entire app"). A chat is real work; one hover-click erased it. */
+  const [confirmChat, setConfirmChat] = useState<{ id: string; title: string } | null>(null);
   function remove(id: string) {
     setConvos((prev) => {
       const next = prev.filter((c) => c.id !== id);
@@ -1054,6 +1058,18 @@ export function AgentChat({
 
   return (
     <div data-tour="agent-workspace" className="flex h-full min-h-0">
+      <ConfirmDialog
+        open={confirmChat !== null}
+        onClose={() => setConfirmChat(null)}
+        onConfirm={() => {
+          if (confirmChat) remove(confirmChat.id);
+          setConfirmChat(null);
+        }}
+        title="Delete this chat?"
+        body={<><b>{confirmChat?.title}</b> and everything in it goes away.</>}
+        detail="There is no undo for a deleted conversation."
+        confirmLabel="Delete it"
+      />
       {/* Conversation list */}
       <aside className="w-[260px] shrink-0 border-r border-border-light flex flex-col bg-surface/40">
         <div className="p-3">
@@ -1106,7 +1122,7 @@ export function AgentChat({
                         </span>
                       ) : null}
                       <button
-                        onClick={() => remove(c.id)}
+                        onClick={() => setConfirmChat({ id: c.id, title: c.title || "this chat" })}
                         aria-label={`Delete ${c.title || "chat"}`}
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded bg-inherit text-[color:#DC2626] opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
                       >

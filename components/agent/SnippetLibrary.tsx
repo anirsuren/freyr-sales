@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Library, Trash2, Check, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { DraftSnippet } from "@/lib/types";
 
 // Snippet management (V9 #41/#42) — view, rename, and prune the reusable outreach
@@ -76,6 +77,7 @@ export function SnippetLibrary() {
       });
   }, []);
 
+  const [confirmSnippet, setConfirmSnippet] = useState<{ id: string; title: string } | null>(null);
   async function remove(id: string) {
     setBusy(id);
     try {
@@ -193,7 +195,7 @@ export function SnippetLibrary() {
                   <Pencil size={14} strokeWidth={1.8} />
                 </button>
                 <button
-                  onClick={() => remove(s.id)}
+                  onClick={() => setConfirmSnippet({ id: s.id, title: s.title })}
                   disabled={busy === s.id}
                   aria-label={`Delete snippet ${s.title}`}
                   className="text-[color:#DC2626] hover:text-error transition-colors shrink-0 disabled:opacity-50"
@@ -205,6 +207,17 @@ export function SnippetLibrary() {
           </ul>
         </Card>
       )}
+      <ConfirmDialog
+        open={confirmSnippet !== null}
+        onClose={() => setConfirmSnippet(null)}
+        onConfirm={() => {
+          if (confirmSnippet) void remove(confirmSnippet.id);
+          setConfirmSnippet(null);
+        }}
+        title="Delete this snippet?"
+        body={<><b>{confirmSnippet?.title}</b> comes out of the library for everyone.</>}
+        confirmLabel="Delete it"
+      />
     </div>
   );
 }

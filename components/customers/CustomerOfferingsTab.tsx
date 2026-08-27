@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, type LucideIcon } from "lucide-react";
@@ -178,6 +179,7 @@ function RevenueSection({
   lines: OfferingRevenueLine[];
   onSave: (lines: OfferingRevenueLine[]) => void;
 }) {
+  const [confirmLine, setConfirmLine] = useState<{ id: string; label: string } | null>(null);
   const [adding, setAdding] = useState(false);
   const [rType, setRType] = useState<RevenueType>("annual");
   const [amount, setAmount] = useState("");
@@ -382,7 +384,7 @@ function RevenueSection({
                 )}
               </span>
               <button
-                onClick={() => onSave(lines.filter((x) => x.id !== l.id))}
+                onClick={() => setConfirmLine({ id: l.id, label: l.description || "this line" })}
                 aria-label="Remove revenue line"
                 className="shrink-0 text-[color:#DC2626] hover:text-error transition-colors mt-0.5"
               >
@@ -393,6 +395,17 @@ function RevenueSection({
           })}
         </ul>
       )}
+      <ConfirmDialog
+        open={confirmLine !== null}
+        onClose={() => setConfirmLine(null)}
+        onConfirm={() => {
+          if (confirmLine) onSave(lines.filter((x) => x.id !== confirmLine.id));
+          setConfirmLine(null);
+        }}
+        title="Remove this revenue line?"
+        body={<><b>{confirmLine?.label}</b> comes off this customer&rsquo;s offering.</>}
+        confirmLabel="Remove it"
+      />
 
       {/* Add revenue opens a dialog, not an inline form that shoves the card's
           own content down the page (Anir, Jul 26: "when I press Add Revenue,

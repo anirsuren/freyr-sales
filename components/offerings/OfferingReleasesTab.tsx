@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { RoadmapVersionHistory } from "./RoadmapVersionHistory";
 import type { RoadmapVersion } from "@/lib/roadmapVersions";
@@ -1166,6 +1167,7 @@ export function OfferingReleasesTab({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const [confirmVersion, setConfirmVersion] = useState<{ id: string; version: string } | null>(null);
   const [adding, setAdding] = useState(false);
   // SIX STACKED SECTIONS, EACH FOLDABLE. Once Eswar's roadmap content landed,
   // the tab became a very long scroll with no way to skip a part you were not
@@ -1551,12 +1553,7 @@ export function OfferingReleasesTab({
                   {canEdit && (
                     <button
                       type="button"
-                      onClick={() =>
-                        void save(
-                          releases.filter((r) => r.id !== rel.id),
-                          `${rel.version} removed`
-                        )
-                      }
+                      onClick={() => setConfirmVersion({ id: rel.id, version: rel.version })}
                       aria-label={`Remove ${rel.version}`}
                       className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
                     >
@@ -1681,6 +1678,22 @@ export function OfferingReleasesTab({
       </Modal>
 
       {/* Adding is a popup — his standing rule. */}
+      <ConfirmDialog
+        open={confirmVersion !== null}
+        onClose={() => setConfirmVersion(null)}
+        onConfirm={() => {
+          if (confirmVersion)
+            void save(
+              releases.filter((r) => r.id !== confirmVersion.id),
+              `${confirmVersion.version} removed`
+            );
+          setConfirmVersion(null);
+        }}
+        title="Remove this version?"
+        body={<><b>{confirmVersion?.version}</b> and its feature list come off the roadmap.</>}
+        detail="This saves immediately."
+        confirmLabel="Remove it"
+      />
       <Modal open={adding} onClose={closeAddModal} title="Add a roadmap version" size="wide">
         <form
           className="space-y-6"

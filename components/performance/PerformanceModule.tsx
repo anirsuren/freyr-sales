@@ -3224,6 +3224,7 @@ function GoalEditorFields({
    * about pacing rather than straight-lining the target and calling the goal
    * lagging against a number nobody agreed.
    */
+  const [confirmMilestone, setConfirmMilestone] = useState<number | null>(null);
   const [milestones, setMilestones] = useState<{ date: string; amount: string }[]>(
     (editing?.milestones ?? []).map((m) => ({
       date: m.date,
@@ -3641,14 +3642,26 @@ function GoalEditorFields({
                           type="button"
                           title="Remove this milestone"
                           aria-label={`Remove milestone ${idx + 1}`}
-                          onClick={() =>
-                            setMilestones((prev) => prev.filter((_, i) => i !== idx))
-                          }
-                          className="mb-[5px] ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                          onClick={() => setConfirmMilestone(idx)}
+                          className="mb-[5px] ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                         >
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
                       </div>
+                      <ConfirmDialog
+                        open={confirmMilestone !== null}
+                        onClose={() => setConfirmMilestone(null)}
+                        onConfirm={() => {
+                          const at = confirmMilestone;
+                          setConfirmMilestone(null);
+                          if (at !== null)
+                            setMilestones((prev) => prev.filter((_, i) => i !== at));
+                        }}
+                        title="Remove this milestone?"
+                        body="It comes off the goal's schedule."
+                        detail="Nothing changes until you save the schedule."
+                        confirmLabel="Remove it"
+                      />
                       {faulted && (
                         <p className="mt-2 text-[11.5px] font-medium text-[color:#C2410C]">
                           {milestoneFault.message}
