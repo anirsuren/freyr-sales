@@ -465,7 +465,12 @@ export function TopBar({
                                   setNotifOpen(false);
                                   markRead(n.id);
                                 }}
-                                className="block px-4 py-3 hover:bg-surface transition-colors"
+                                /* select-none: a click that wobbles a few
+                                   pixels turns into a text-drag, and the
+                                   browser cancels the navigation — which
+                                   reads as "only the title is clickable"
+                                   (Anir, Aug 27). Menu rows do not select. */
+                                className="block cursor-pointer select-none px-4 py-3 hover:bg-surface transition-colors"
                               >
                                 <NotificationRow
                                   notification={n}

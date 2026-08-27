@@ -265,7 +265,9 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
                           }}
                           onClick={() => markOne(n.id)}
                           className={cn(
-                            "block px-4 py-3.5 transition-colors hover:bg-surface",
+                            /* Same drag-proofing as the bell panel: a
+                               wobbly click must still be a click. */
+                            "block cursor-pointer select-none px-4 py-3.5 transition-colors hover:bg-surface",
                             // Unread carries a coloured left rule, so a full
                             // list still shows you where to start.
                             !isRead && "border-l-[3px] border-l-blue-primary"

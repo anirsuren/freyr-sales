@@ -165,7 +165,25 @@ export function describeRoadmapChange(
   const d0 = before.roadmap_details;
   const d1 = after.roadmap_details;
   if (stable(d0) !== stable(d1)) {
-    if (!d0 && d1) changes.push("Roadmap detail added");
+    if (!d0 && d1) {
+      /* SAY WHAT ARRIVED (Anir, Aug 27, reading a notification that said
+         only "Roadmap detail added": "what the fuck does that even mean? I
+         don't even know what the person changed"). The first detail on a
+         roadmap used to be the one change this differ described with zero
+         content — every later edit names its field, so the from-nothing
+         case now names its facts. */
+      const facts: string[] = [];
+      if (d1.currentVersion) facts.push(`current version ${d1.currentVersion}`);
+      if (d1.nextExpectedLive)
+        facts.push(`next expected live ${d1.nextExpectedLive}`);
+      const modules = (d1.currentModules ?? []).length;
+      if (modules) facts.push(`${modules} module${modules === 1 ? "" : "s"}`);
+      changes.push(
+        facts.length
+          ? `Roadmap detail added: ${facts.join(", ")}`
+          : "Roadmap detail added"
+      );
+    }
     else if (d0 && !d1) changes.push("Roadmap detail removed");
     else if (d0 && d1) {
       if (d0.currentVersion !== d1.currentVersion)
