@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Search,
   AlertCircle,
   X,
   AlertTriangle,
@@ -106,6 +107,26 @@ type WorkspacePerson = {
 };
 
 /** The addresses in a comma / semicolon / newline separated field. */
+/**
+ * The inbox stamp (Anir, Aug 27: "just copy this, like how a normal inbox
+ * looks"): the time alone for today's mail, "Aug 26" inside the year, the
+ * full date beyond it — exactly the amount of "when" an inbox prints.
+ */
+function inboxStamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (d.getFullYear() === now.getFullYear())
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** The gray snippet after the subject, from the plain-text body. */
+function snippetOf(body: string): string {
+  return body.replace(/\s+/g, " ").trim().slice(0, 160);
+}
+
 function splitAddresses(raw: string): string[] {
   return raw
     .split(/[,;\n]+/)
@@ -392,6 +413,8 @@ export function EmailComposer() {
   /** Send is a two-press action: nobody mails a customer by mis-clicking. */
   const [confirming, setConfirming] = useState(false);
   const [openRecord, setOpenRecord] = useState<string | null>(null);
+  /** Search over the sent log (Anir, Aug 27: "search bars for the emails"). */
+  const [logQuery, setLogQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -795,19 +818,63 @@ export function EmailComposer() {
             appears here with everyone it reached.
           </p>
         ) : (
+          <>
+          <div className="relative mt-3">
+            <Search
+              size={14}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+            <input
+              value={logQuery}
+              onChange={(event) => setLogQuery(event.target.value)}
+              placeholder="Search sent emails by subject, address or sender"
+              aria-label="Search sent emails"
+              className="w-full rounded-lg border border-border-light bg-white py-2 pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+            />
+          </div>
           <div className="mt-3 space-y-2">
-            {sent.map((e) => {
+            {(() => {
+              const q = logQuery.trim().toLowerCase();
+              const rows = q
+                ? sent.filter((e) =>
+                    [e.subject, e.to, e.cc.join(" "), e.bcc.join(" "), e.sentBy]
+                      .join(" ")
+                      .toLowerCase()
+                      .includes(q)
+                  )
+                : sent;
+              if (rows.length === 0)
+                return (
+                  <p className="py-2 text-[13px] text-text-secondary">
+                    Nothing sent matches &ldquo;{logQuery.trim()}&rdquo;.
+                  </p>
+                );
+              return rows.map((e) => {
               const open = openRecord === e.id;
               return (
                 <div
                   key={e.id}
-                  className="overflow-hidden rounded-xl border border-border-light"
+                  className={cn(
+                    "overflow-hidden rounded-xl border transition-colors",
+                    /* THE OPEN EMAIL LOOKS OPEN (Anir, Aug 27: "I need to do
+                       a better job of highlighting the selected email").
+                       Blue border, blue rail, tinted header — the same
+                       open-block grammar as every other fold in the app,
+                       not a row you have to re-find by its chevron. */
+                    open
+                      ? "border-blue-primary [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                      : "border-border-light"
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => setOpenRecord(open ? null : e.id)}
                     aria-expanded={open}
-                    className="flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-surface"
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left transition-colors",
+                      open ? "bg-blue-light/40 hover:bg-blue-light/50" : "hover:bg-surface"
+                    )}
                   >
                     <ChevronDown
                       size={14}
@@ -817,55 +884,27 @@ export function EmailComposer() {
                         !open && "-rotate-90"
                       )}
                     />
-                    {/* EVERY FACT WEARS ITS NAME (Anir, Aug 27: "I need it
-                        clearly labeled with: which email was sent from, the
-                        picture, the name, the time, the date"). The address
-                        under the subject was the RECIPIENT, unlabeled — he
-                        read it as the sender. "To" now says which it is, and
-                        the right side is labelled columns: the sending
-                        address, who pressed send with their face, and when —
-                        date AND time, because three test emails on the same
-                        day are otherwise the same row three times. */}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-semibold text-text-primary">
-                        {e.subject}
-                      </span>
-                      <span className="block truncate text-[12px] text-text-secondary">
-                        <b className="font-semibold text-text-tertiary">To</b>{" "}
-                        {e.to}
-                        {e.cc.length > 0 && ` · cc ${e.cc.join(", ")}`}
-                      </span>
-                    </span>
-                    {from && (
-                      <span className="hidden shrink-0 lg:block">
-                        <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          From
-                        </span>
-                        <span className="mt-0.5 block max-w-[210px] truncate text-[12px] text-text-secondary">
-                          {from}
-                        </span>
-                      </span>
-                    )}
-                    <span className="hidden shrink-0 sm:block">
-                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        Sent by
-                      </span>
-                      <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-text-secondary">
-                        <Avatar name={e.sentBy} className="h-5 w-5 text-[7px]" />
+                    {/* SHAPED LIKE AN INBOX (Anir, Aug 27: "just copy this,
+                        like how a normal inbox looks. It should kind of mimic
+                        this"): the sender in their own column with their
+                        face, then ONE line of subject — gray snippet, then
+                        the stamp an inbox prints (time today, "Aug 26"
+                        after). The sending address he already knows is the
+                        workspace's — it lives in the opened detail, Gmail's
+                        from:/to:/date: block, not on every row. */}
+                    <span className="hidden w-[168px] shrink-0 items-center gap-2 sm:flex">
+                      <Avatar name={e.sentBy} className="h-6 w-6 shrink-0 text-[8px]" />
+                      <span className="truncate text-[13px] font-semibold text-text-primary">
                         {e.sentBy}
                       </span>
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        When
-                      </span>
-                      <span className="mt-0.5 block whitespace-nowrap text-[12px] text-text-secondary tnum">
-                        {formatDate(e.sentAt)} ·{" "}
-                        {new Date(e.sentAt).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                      <b className="font-semibold text-text-primary">{e.subject}</b>
+                      {snippetOf(e.body) && (
+                        <span className="text-text-tertiary">
+                          {" "}&ndash; {snippetOf(e.body)}
+                        </span>
+                      )}
                     </span>
                     {e.status === "sent" ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(22,163,74,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#16a34a]">
@@ -880,6 +919,9 @@ export function EmailComposer() {
                         <FlaskConical size={11} strokeWidth={2.4} /> Sample
                       </span>
                     )}
+                    <span className="w-[72px] shrink-0 whitespace-nowrap text-right text-[12px] font-medium text-text-secondary tnum">
+                      {inboxStamp(e.sentAt)}
+                    </span>
                   </button>
                   {open && (
                     <div className="border-t border-border-light bg-surface/50 px-3.5 py-3">
@@ -891,10 +933,17 @@ export function EmailComposer() {
                       <dl className="mb-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] sm:grid-cols-2">
                         {(
                           [
+                            /* `from` already reads "Freyr Sales <noreply@…>"
+                               — wrapping it again nested the brackets. */
+                            ["From", from || e.sentBy],
                             ["To", e.to],
                             ["CC", e.cc.join(", ")],
                             ["BCC", e.bcc.join(", ")],
                             ["Reply to", e.replyTo ?? ""],
+                            [
+                              "Date",
+                              `${formatDate(e.sentAt)}, ${new Date(e.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+                            ],
                           ] as const
                         )
                           .filter(([, v]) => !!v)
@@ -927,8 +976,10 @@ export function EmailComposer() {
                   )}
                 </div>
               );
-            })}
+              });
+            })()}
           </div>
+          </>
         )}
           </div>
         </div>
