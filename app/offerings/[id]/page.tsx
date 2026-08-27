@@ -309,14 +309,26 @@ export default async function OfferingDetailPage({
    * looked arbitrary because, as a suggestion for the same account, it was.
    * The category is what actually says "these solve neighbouring problems".
    */
-  const related = raw.offering_category
-    ? listOfferings()
-        .filter(
-          (x) => x.id !== raw.id && x.offering_category === raw.offering_category
-        )
-        .map((x) => redactUnverifiedOfferingPeople(x, people))
-        .map((x) => redactAgentOnlyMaterials(x, me.memberId, me.role === "admin"))
+  /* Category is the default; the editor's deltas adjust it (Saras, Aug 27:
+     the related section is editable). Pins may come from any category. */
+  const relatedHide = new Set(raw.related_hide ?? []);
+  const relatedPins = raw.related_add ?? [];
+  const everyOffering = listOfferings();
+  const relatedBase = raw.offering_category
+    ? everyOffering.filter(
+        (x) =>
+          x.id !== raw.id &&
+          x.offering_category === raw.offering_category &&
+          !relatedHide.has(x.id)
+      )
     : [];
+  const pinned = relatedPins
+    .map((pinId) => everyOffering.find((x) => x.id === pinId))
+    .filter((x): x is NonNullable<typeof x> => Boolean(x && x.id !== raw.id))
+    .filter((x) => !relatedBase.some((b) => b.id === x.id));
+  const related = [...relatedBase, ...pinned]
+    .map((x) => redactUnverifiedOfferingPeople(x, people))
+    .map((x) => redactAgentOnlyMaterials(x, me.memberId, me.role === "admin"));
 
   const isMapped =
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
@@ -677,6 +689,15 @@ export default async function OfferingDetailPage({
             offering={o}
             report={report}
             related={related}
+            relatedAdd={relatedPins}
+            relatedHide={raw.related_hide ?? []}
+            allOfferings={everyOffering
+              .filter((x) => x.id !== raw.id)
+              .map((x) => ({
+                id: x.id,
+                name: x.offering_name,
+                category: x.offering_category,
+              }))}
             admin={admin}
             canSeeNextVersion={canSeeNextCustomerVersion}
             realMode={dataMode === "live"}

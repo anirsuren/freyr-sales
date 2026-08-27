@@ -193,6 +193,16 @@ export interface Offering {
    * the Artwork page may want to say something different about the same pair.
    */
   related_notes?: Record<string, string>;
+  /**
+   * CURATION ON TOP OF THE CATEGORY DEFAULT (Saras via Anir, Aug 27: "making
+   * the related offering section editable"). The computed same-category list
+   * stays the base; these two small lists adjust it — offerings pinned in
+   * from anywhere, and category neighbours taken out. Kept as deltas rather
+   * than a replacement list so a new offering joining the category still
+   * appears on its siblings' pages without anyone re-editing them.
+   */
+  related_add?: string[];
+  related_hide?: string[];
 }
 
 /** One person to talk to about an offering. Freyr-internal: the SME or service

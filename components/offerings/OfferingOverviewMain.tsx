@@ -1,4 +1,5 @@
 import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
+import { RelatedOfferingsSection } from "@/components/offerings/RelatedOfferingsSection";
 import Link from "next/link";
 import {
   BarChart3,
@@ -18,8 +19,6 @@ import {
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { MaterialsSection } from "@/components/offerings/MaterialsSection";
-import { RelatedOfferingNote } from "@/components/offerings/RelatedOfferingNote";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -92,6 +91,9 @@ export function OfferingOverviewMain({
   offering: o,
   report,
   related,
+  relatedAdd = [],
+  relatedHide = [],
+  allOfferings = [],
   admin,
   canSeeNextVersion = false,
   realMode = false,
@@ -100,6 +102,11 @@ export function OfferingOverviewMain({
   offering: ReturnType<typeof hydrateOffering>;
   report: OfferingReport;
   related: Offering[];
+  /** The curation deltas behind the related list, for the editor. */
+  relatedAdd?: string[];
+  relatedHide?: string[];
+  /** Every other offering, so the editor can pin one in from any category. */
+  allOfferings?: { id: string; name: string; category?: string }[];
   admin: boolean;
   /** True on the live workspace, where none of the commercial rollups have
    *  real numbers behind them yet. */
@@ -723,85 +730,31 @@ export function OfferingOverviewMain({
           live in the right rail. */}
       {beforeRelated}
 
-      {related.length > 0 && (
-        <section className="pt-7 border-t-2 border-border-light">
+      {/* The related list, and — for an editor — the controls that curate
+          it. A client island because manage-mode is state; the heading stays
+          rendered here so SectionHeading keeps one home. */}
+      <RelatedOfferingsSection
+        offeringId={o.id}
+        category={o.offering_category || ""}
+        related={related.map((r) => ({
+          id: r.id,
+          name: r.offering_name,
+          type: r.offering_type,
+          availability: r.current_availability,
+        }))}
+        relatedAdd={relatedAdd}
+        relatedHide={relatedHide}
+        allOfferings={allOfferings}
+        notes={o.related_notes ?? {}}
+        canEdit={admin}
+        heading={
           <SectionHeading
             icon={Layers}
             title="Related offerings"
             description={`The rest of ${o.offering_category}. The offerings that solve neighbouring problems for this account.`}
           />
-          {/* Floating pill cards, not hairline rows (Anir, Jul 28: "make it
-              look better, like pill-like floating pills"). Each related
-              offering is its own rounded card that lifts on hover, the same
-              tile language as the offerings browser, so the section reads as
-              things you can pick up rather than a table. */}
-          <div className="mt-5 ml-11 grid grid-cols-1 gap-3 xl:grid-cols-2">
-            {related.map((relatedOffering) => (
-              <Link
-                key={relatedOffering.id}
-                href={`/offerings/${relatedOffering.id}`}
-                // Every pill is the SAME height, whatever its name does. The
-                // chip row below is always one line (see below), so the only
-                // variable left is how many lines the name takes, and the icon
-                // beside it is already 36px tall — a two-line name costs the
-                // card nothing. min-h pins the rest so a row of pills can never
-                // come out ragged.
-                className="group flex min-h-[92px] flex-col justify-center gap-2 rounded-2xl border border-border-light bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
-              >
-                <span className="flex items-center gap-3">
-                  <OfferingIcon name={relatedOffering.offering_name} className="h-9 w-9 shrink-0" />
-                  {/* The full name, always. No truncate, no break-words: the
-                      default wrap only breaks at spaces, so
-                      "Freya.GRR-PAC (Global Regulatory Requirements for Post
-                      Approval Changes)" runs onto a second line intact instead
-                      of splitting the product code down the middle. */}
-                  <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
-                    {relatedOffering.offering_name}
-                  </span>
-                  <ChevronRight size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary" />
-                </span>
-                {/* The facts sit on their own full-width row UNDER the header,
-                    not in the narrow column beside the icon. That extra ~75px
-                    is what keeps the longest pair ("Submissions and Document
-                    Operations" + "Available Oct-26") on a single line, which is
-                    what keeps every pill the same height. The category used to
-                    print as flat gray text, the one thing a category is never
-                    allowed to be: it now wears the same blue + Layers mark as
-                    the category chip in this page's own header, so the same
-                    fact reads the same on both. */}
-                <span className="flex flex-wrap items-center gap-1">
-                  {relatedOffering.offering_type && (
-                    /* THE TYPE, NOT THE CATEGORY. Every card in this list now
-                       shares the category named in the heading above, so
-                       stamping it on all of them said nothing and repeated the
-                       heading eight times. How each one is packaged — Module,
-                       Module + Agents, Service — is the fact that actually
-                       differs, and it is what a rep is choosing between. */
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-semibold text-blue-primary">
-                      <Package size={10} strokeWidth={2.3} aria-hidden="true" />
-                      {relatedOffering.offering_type}
-                    </span>
-                  )}
-                  <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
-                </span>
-                {/* HOW THE TWO ACTUALLY RELATE, WRITTEN BY SOMEONE WHO KNOWS
-                    (Anir, Aug 25, from a survey response: "if a sales rep can
-                    also see how Freya.Artwork is related to the offering I'm
-                    seeing right now... whoever has editing access can just add
-                    a description"). Sharing a category is not a reason to sell
-                    them together; this line is. */}
-                <RelatedOfferingNote
-                  offeringId={o.id}
-                  relatedId={relatedOffering.id}
-                  relatedName={relatedOffering.offering_name}
-                  notes={o.related_notes ?? {}}
-                  canEdit={admin}
-                />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        }
+      />
     </div>
   );
 }
