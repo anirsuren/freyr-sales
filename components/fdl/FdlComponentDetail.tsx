@@ -895,6 +895,16 @@ export function FdlComponentDetail({
 
   const CARD =
   "rise-in rounded-xl border border-border-light bg-white p-5 shadow-card";
+  /* A foldable card wears the rail while open (Anir, Aug 27: "that line
+     demarcates exactly where it starts and where it ends — every single
+     dropdown throughout the entire app"). The 3px is reserved in both
+     states so folding never nudges the content. */
+  const FOLD_CARD = (open: boolean) =>
+    cn(
+      CARD,
+      "border-l-[3px]",
+      open ? "border-l-blue-primary" : "border-l-border-light"
+    );
 
   /* THE THREE LONG SECTIONS FOLD (Anir, Aug 25: "the features section, the
      customers running this section, and the compare versions section should be
@@ -2210,7 +2220,7 @@ export function FdlComponentDetail({
       </section>
 
       {/* ------------------------------------------------------- features */}
-      <section className={CARD}>
+      <section className={FOLD_CARD(featuresOpen)}>
         <div className="flex items-center justify-between gap-4">
           {/* NAME, PICKER, THEN THE HINT (Anir, Aug 13: "you can probably just
               say 'Features' and then show the dropdown, and then make sure the
@@ -2632,7 +2642,7 @@ export function FdlComponentDetail({
       </section>
 
       {/* ------------------------------------------------------ customers */}
-      <section className={CARD}>
+      <section className={FOLD_CARD(customersOpen)}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-2">
             <FoldHeading
@@ -2906,7 +2916,7 @@ export function FdlComponentDetail({
 
       {/* -------------------------------------------------------- compare */}
       {releases.length >= 2 && component.features.length > 0 && (
-        <section className={CARD}>
+        <section className={FOLD_CARD(compareOpen)}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex min-w-0 items-center gap-2">

@@ -91,9 +91,6 @@ export function OfferingOverviewMain({
   offering: o,
   report,
   related,
-  relatedAdd = [],
-  relatedHide = [],
-  allOfferings = [],
   admin,
   canSeeNextVersion = false,
   realMode = false,
@@ -102,11 +99,6 @@ export function OfferingOverviewMain({
   offering: ReturnType<typeof hydrateOffering>;
   report: OfferingReport;
   related: Offering[];
-  /** The curation deltas behind the related list, for the editor. */
-  relatedAdd?: string[];
-  relatedHide?: string[];
-  /** Every other offering, so the editor can pin one in from any category. */
-  allOfferings?: { id: string; name: string; category?: string }[];
   admin: boolean;
   /** True on the live workspace, where none of the commercial rollups have
    *  real numbers behind them yet. */
@@ -735,16 +727,12 @@ export function OfferingOverviewMain({
           rendered here so SectionHeading keeps one home. */}
       <RelatedOfferingsSection
         offeringId={o.id}
-        category={o.offering_category || ""}
         related={related.map((r) => ({
           id: r.id,
           name: r.offering_name,
           type: r.offering_type,
           availability: r.current_availability,
         }))}
-        relatedAdd={relatedAdd}
-        relatedHide={relatedHide}
-        allOfferings={allOfferings}
         notes={o.related_notes ?? {}}
         canEdit={admin}
         heading={

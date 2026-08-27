@@ -111,7 +111,16 @@ export default async function EditOfferingPage({
             // Dropping IDs made a brief-only save look like 25 brand-new files.
             materials: o.materials.map((material) => ({ ...material })),
             materialFolders: o.materialFolders ?? [],
+            related_add: o.related_add ?? [],
+            related_hide: o.related_hide ?? [],
           }}
+          relatedPool={listOfferings()
+            .filter((x) => x.id !== o.id)
+            .map((x) => ({
+              id: x.id,
+              name: x.offering_name,
+              category: x.offering_category,
+            }))}
           customerTypes={listCustomerTypes()}
           markets={listMarkets()}
           existingTypes={Array.from(

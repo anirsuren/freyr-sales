@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Pin,
   Plus,
   Trash2,
   Package,
@@ -77,6 +78,7 @@ import {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import {
+  OfferingIcon,
   offeringMark,
   serviceCardMark,
   SERVICE_CARD_ICON_COMPONENTS,
@@ -736,10 +738,16 @@ function FormSection({
     <section
       id={sectionSlug}
       className={cn(
-        "scroll-mt-24 rounded-2xl border bg-white shadow-[0_3px_14px_rgba(15,23,42,0.055)] transition-[border-color,box-shadow] duration-200",
+        /* THE RAIL RUNS THE WHOLE OPEN SECTION (Anir, Aug 27: "that line,
+           whatever you did on the goals page, demarcates exactly where it
+           starts and where it ends — every single dropdown throughout the
+           entire app"). It was a 3px sliver on the header only, so an open
+           section's body had no left edge saying it still belonged. A real
+           border, reserved in both states, so toggling never nudges. */
+        "scroll-mt-24 rounded-2xl border border-l-[3px] bg-white shadow-[0_3px_14px_rgba(15,23,42,0.055)] transition-[border-color,box-shadow] duration-200",
         open
-          ? "border-blue-primary/25 shadow-[0_5px_20px_rgba(15,23,42,0.075)] ring-1 ring-blue-primary/5"
-          : "border-[#D9E2EC]"
+          ? "border-blue-primary/25 border-l-blue-primary shadow-[0_5px_20px_rgba(15,23,42,0.075)] ring-1 ring-blue-primary/5"
+          : "border-[#D9E2EC] border-l-[#D9E2EC]"
       )}
     >
       <header
@@ -750,13 +758,6 @@ function FormSection({
             : "rounded-[15px] bg-[#FAFBFC] hover:bg-blue-light/15"
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "absolute inset-y-4 left-0 w-[3px] rounded-r-full transition-colors",
-            open ? "bg-blue-primary" : "bg-transparent"
-          )}
-        />
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -887,6 +888,7 @@ const BARE_INPUT =
   "h-full min-w-0 flex-1 bg-transparent text-[13.5px] text-text-primary placeholder:text-text-tertiary outline-none focus:shadow-none";
 
 export function OfferingForm({
+  relatedPool = [],
   customerTypes,
   markets,
   existingTypes = [],
@@ -908,6 +910,8 @@ export function OfferingForm({
   roadmapDetails?: OfferingRoadmapDetails;
   /** False in Mock: the sample roadmap overlay must never be saved as real. */
   roadmapEditable?: boolean;
+  /** Every other offering, for the Related offerings section's picker. */
+  relatedPool?: { id: string; name: string; category?: string }[];
   initial?: {
     offering_type?: string;
     offering_category?: string;
@@ -921,6 +925,8 @@ export function OfferingForm({
     market_ids?: string[];
     materials?: MaterialRow[];
     materialFolders?: string[];
+    related_add?: string[];
+    related_hide?: string[];
   };
 }) {
   const router = useRouter();
@@ -1200,6 +1206,15 @@ export function OfferingForm({
   // These snapshots deliberately mirror every owner-editable value sent by
   // submit(). A field missing here can hide Save and lose that edit, so the
   // regression test changes every key individually.
+  /* RELATED OFFERINGS, EDITED HERE (Anir, Aug 27: "when they press Edit at
+     the top, that's where it should be... a separate section under Sales
+     Materials"). Same delta model the overview reads: the category siblings
+     are the base, related_hide removes, related_add pins. Stages into the
+     draft and saves with the page's one Save button, like everything else on
+     this form. */
+  const [relatedAdd, setRelatedAdd] = useState<string[]>(initial?.related_add ?? []);
+  const [relatedHide, setRelatedHide] = useState<string[]>(initial?.related_hide ?? []);
+
   const currentEditSnapshot: Record<string, unknown> = {
     offeringType,
     offeringCategory,
@@ -1212,9 +1227,13 @@ export function OfferingForm({
     ctIds,
     mktIds,
     materials,
+    relatedAdd,
+    relatedHide,
     ...(isEdit && roadmapEditable ? { roadmapDraft } : {}),
   };
   const initialEditSnapshot: Record<string, unknown> = {
+    relatedAdd: initial?.related_add ?? [],
+    relatedHide: initial?.related_hide ?? [],
     offeringType: initial?.offering_type ?? "",
     offeringCategory: initial?.offering_category ?? "",
     offeringName: initial?.offering_name ?? "",
@@ -1338,6 +1357,9 @@ export function OfferingForm({
             poc,
             customer_type_ids: ctIds,
             market_ids: mktIds,
+            ...(isEdit
+              ? { related_add: relatedAdd, related_hide: relatedHide }
+              : {}),
             // The roadmap edits ride the same save as everything else on
             // this page. Never sent from Mock: the sample overlay must not
             // overwrite the real roadmap.
@@ -2669,6 +2691,160 @@ export function OfferingForm({
         })}
         </div>
         </ScrollHint>
+      </FormSection>
+
+      {/* RELATED OFFERINGS (Anir, Aug 27: "when they press Edit at the top,
+          that's where it should be, and then it's a separate section. Under
+          Sales Materials"). The category siblings are the automatic base;
+          rows here remove them or pin extras in, and it all saves with the
+          one Save button like every other section of this form. */}
+      <FormSection
+        icon={Layers}
+        title="Related offerings"
+        hint="What shows in the Related offerings section of this offering's page. Its category-mates appear automatically; remove any, or add offerings from anywhere in the catalogue."
+        count={
+          relatedPool.filter(
+            (x) =>
+              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
+              relatedAdd.includes(x.id)
+          ).length
+        }
+      >
+        {(() => {
+          const visible = relatedPool.filter(
+            (x) =>
+              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
+              relatedAdd.includes(x.id)
+          );
+          const hidden = relatedPool.filter(
+            (x) => x.category === offeringCategory && relatedHide.includes(x.id)
+          );
+          const addable = relatedPool.filter(
+            (x) => !visible.some((v) => v.id === x.id)
+          );
+          return (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {visible.map((x) => {
+                  const pinned =
+                    relatedAdd.includes(x.id) && x.category !== offeringCategory;
+                  return (
+                    <div
+                      key={x.id}
+                      className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
+                    >
+                      <OfferingIcon name={x.name} className="h-8 w-8 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                          {x.name}
+                        </span>
+                        <span className="block text-[11.5px] text-text-tertiary">
+                          {x.category || "No category"}
+                        </span>
+                      </span>
+                      {/* WHY it is on the list, so removing is informed: a
+                          sibling comes back if the category ever matches
+                          again; a pinned one is this page's own choice. */}
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
+                          pinned
+                            ? "bg-blue-light text-blue-primary"
+                            : "bg-surface text-text-tertiary"
+                        )}
+                      >
+                        {pinned ? (
+                          <>
+                            <Pin size={10} strokeWidth={2.4} /> Added here
+                          </>
+                        ) : (
+                          "Same category"
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (relatedAdd.includes(x.id)) {
+                            setRelatedAdd((cur) => cur.filter((i) => i !== x.id));
+                          } else {
+                            setRelatedHide((cur) =>
+                              cur.includes(x.id) ? cur : [...cur, x.id]
+                            );
+                          }
+                        }}
+                        aria-label={`Remove ${x.name} from related offerings`}
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#DC2626]/10 hover:text-[color:#DC2626]"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {visible.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-border-light bg-surface/40 px-3.5 py-4 text-center text-[12.5px] text-text-tertiary">
+                    Nothing on the list yet. Add the offerings that sell
+                    alongside this one.
+                  </p>
+                )}
+              </div>
+
+              <div className="max-w-[420px]">
+                <label className={LABEL}>Add an offering</label>
+                <ColorSelect
+                  value=""
+                  ariaLabel="Add a related offering"
+                  collapsible={false}
+                  searchable
+                  className="w-full"
+                  minWidth={0}
+                  onChange={(v) => {
+                    if (!v) return;
+                    setRelatedHide((cur) => cur.filter((i) => i !== v));
+                    const pick = relatedPool.find((x) => x.id === v);
+                    if (pick && pick.category !== offeringCategory) {
+                      setRelatedAdd((cur) =>
+                        cur.includes(v) ? cur : [...cur, v]
+                      );
+                    }
+                  }}
+                  options={[
+                    { value: "", label: "Pick an offering…", color: "#8E98A8" },
+                    ...addable.map((x) => ({
+                      value: x.id,
+                      label: x.name,
+                      description: x.category || undefined,
+                    })),
+                  ]}
+                />
+              </div>
+
+              {hidden.length > 0 && (
+                /* The removed siblings stay findable — a hide is a choice
+                   someone should be able to see and undo, not a hole. */
+                <div className="rounded-xl bg-surface/50 px-3.5 py-3">
+                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Removed from this list
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {hidden.map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() =>
+                          setRelatedHide((cur) => cur.filter((i) => i !== x.id))
+                        }
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        <Plus size={12} strokeWidth={2.4} />
+                        {x.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </FormSection>
 
       {/* Add material: a real dialog with one field per line, instead of a

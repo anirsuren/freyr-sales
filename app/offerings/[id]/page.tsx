@@ -689,15 +689,6 @@ export default async function OfferingDetailPage({
             offering={o}
             report={report}
             related={related}
-            relatedAdd={relatedPins}
-            relatedHide={raw.related_hide ?? []}
-            allOfferings={everyOffering
-              .filter((x) => x.id !== raw.id)
-              .map((x) => ({
-                id: x.id,
-                name: x.offering_name,
-                category: x.offering_category,
-              }))}
             admin={admin}
             canSeeNextVersion={canSeeNextCustomerVersion}
             realMode={dataMode === "live"}
