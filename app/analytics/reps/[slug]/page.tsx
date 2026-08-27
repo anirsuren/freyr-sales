@@ -253,6 +253,11 @@ export default async function RepPage({
                 Every current deal with {member.name.split(" ")[0]}&rsquo;s name on it.
               </p>
             </div>
+            {/* THE MONEY RIDES THE NAME (Anir, Aug 27: "I hate when you
+                have something on the left and then I have to look like a
+                hundred thousand pixels to the right just to see it"). Value
+                on the title line, weighted beside the customer — nothing
+                flushed across the card. */}
             <ul className="divide-y divide-border-light">
               {myOpen.map((deal) => (
                 <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
@@ -261,19 +266,19 @@ export default async function RepPage({
                     className="h-8 w-8 shrink-0 text-[9px]"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-text-primary">
-                      {deal.name}
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="truncate text-[13px] font-semibold text-text-primary">
+                        {deal.name}
+                      </span>
+                      <b className="text-[13px] font-bold text-text-primary tnum">
+                        {formatMoney(opportunityValue(deal))}
+                      </b>
                     </span>
-                    <span className="block truncate text-[12px] text-text-secondary">
-                      {deal.customer}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-[13px] font-bold text-text-primary tnum">
-                      {formatMoney(opportunityValue(deal))}
-                    </span>
-                    <span className="block text-[11.5px] font-semibold text-blue-primary tnum">
-                      {formatMoney(Math.round(weightedValue(deal)))} weighted
+                    <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px]">
+                      <span className="truncate text-text-secondary">{deal.customer}</span>
+                      <span className="font-semibold text-blue-primary tnum">
+                        {formatMoney(Math.round(weightedValue(deal)))} weighted
+                      </span>
                     </span>
                   </span>
                 </li>

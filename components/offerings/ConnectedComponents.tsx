@@ -436,7 +436,10 @@ export function ConnectedComponents({
               </span>
             </p>
             )}
-            <div className="grid gap-3 md:grid-cols-2 stagger">
+            {/* Three to a row (Saras, Aug 27: "can you make 3 FDL Component
+                tiles fit in 1 row... instead of the current 2"). Two tiles
+                left a third of the width empty on every odd count. */}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 stagger">
           {group.items.map((component) => {
             const current = fdlCurrentVersion(component);
             return (

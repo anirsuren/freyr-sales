@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -109,12 +112,27 @@ export function Customer360({
   emptyLine?: string;
 }) {
   const live = bands.filter((b) => b.count > 0);
+  /**
+   * ONE TAB PER AREA (Anir, Aug 27, on the rep profile: "maybe have four
+   * different tabs, just like you do on offerings, for each of these four
+   * things" — after "I hate when you have something on the left and then I
+   * have to look like a hundred thousand pixels to the right just to see
+   * it"). The 2x2 card grid put four half-filled boxes side by side, flushed
+   * every amount to the far edge, and left a void under any short list. The
+   * strip keeps every count in one glance — the one-shot Suren asked for —
+   * and the panel below gives the active area the full width, with each
+   * row's facts sitting BESIDE its words.
+   */
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const active =
+    live.find((b) => b.key === activeKey) ?? (live.length ? live[0] : null);
+
   return (
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
       <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
         <Briefcase size={15} strokeWidth={2} className="text-blue-primary" />
         {heading ?? `Everything on ${company}`}
-        <InfoHint text="Every module that has something on this account, counted in one place: deals, submissions, presentations, meetings, contacts, leads and contracts. Each band opens the module that owns it." />
+        <InfoHint text="Every module that has something on this account, counted in one place: deals, submissions, presentations, meetings, contacts, leads and contracts. Each tab shows that area; Open jumps to the module that owns it." />
       </h2>
       <p className="mt-0.5 text-[12.5px] text-text-secondary">
         {live.length === 0
@@ -122,117 +140,100 @@ export function Customer360({
           : `${live.length} of ${bands.length} areas have something here.`}
       </p>
 
-      {/* The counts first, so the whole picture reads in one glance before any
-          list does. */}
-      {/* NOT A WALL OF STAT TILES (Anir, Aug 26: "just fucking stats on stats…
-          there's a lot of numbers right below"). Seven tiles for seven bands
-          meant five of them were a big zero in a box, and it broke the
-          four-tile ceiling every other page in this app keeps.
-
-          A count is not worth a card when it is nought. What has something
-          gets a chip you can click; what has nothing gets named once, quietly,
-          at the end. */}
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {live.map((b) => {
-          const Icon = BAND_ICON_MAP[b.icon] ?? Target;
-          const chip = (
-            <span
-              className="flex items-center gap-1.5 rounded-lg border border-border-light bg-surface/60 px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-blue-subtle hover:bg-blue-light/50"
-              style={{ borderLeft: `3px solid ${b.color}` }}
-            >
-              <Icon size={13} strokeWidth={2.2} style={{ color: b.color }} />
-              <span className="font-semibold text-text-primary">{b.label}</span>
-              <span className="font-bold tnum text-text-primary">{b.count}</span>
-              {b.total !== undefined && b.total > 0 && (
-                <span className="tnum text-text-secondary">
-                  · {formatMoney(b.total)}
-                </span>
-              )}
-            </span>
-          );
-          return b.href ? (
-            <Link key={b.key} href={b.href} className="block">
-              {chip}
-            </Link>
-          ) : (
-            <span key={b.key} className="block">
-              {chip}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Then the substance: what those numbers actually are. */}
-      {live.length > 0 && (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {live.map((b) => {
-            const Icon = BAND_ICON_MAP[b.icon] ?? Target;
-            return (
-              <div
-                key={b.key}
-                data-c360-band={b.key}
-                className="rounded-lg border border-border-light p-3.5"
-              >
-                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
-                  <Icon size={13} strokeWidth={2.2} style={{ color: b.color }} />
-                  {b.label}
-                  <span className="font-normal text-text-secondary tnum">
-                    ({b.count}
-                    {b.total !== undefined ? ` · ${formatMoney(b.total)}` : ""})
-                  </span>
-                  {b.href && (
-                    <Link
-                      href={b.href}
-                      className="ml-auto text-[11.5px] font-semibold text-blue-primary hover:underline"
-                    >
-                      {b.hrefLabel ?? "Open"}
-                    </Link>
+      {live.length > 0 && active && (
+        <>
+          {/* The same strip the offering page uses — counts stay readable in
+              one pass even while only one area's rows are showing. */}
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-border-light">
+            {live.map((b) => {
+              const Icon = BAND_ICON_MAP[b.icon] ?? Target;
+              const isActive = b.key === active.key;
+              return (
+                <button
+                  key={b.key}
+                  type="button"
+                  onClick={() => setActiveKey(b.key)}
+                  aria-selected={isActive}
+                  className={cn(
+                    "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-2.5 text-[13.5px] transition-colors",
+                    isActive
+                      ? "border-blue-primary font-medium text-text-primary"
+                      : "border-transparent text-text-secondary hover:text-text-primary"
                   )}
-                </p>
-                <ul className="mt-2 divide-y divide-border-light">
-                  {b.items.slice(0, 3).map((item) => (
-                    <li key={item.id} className="flex items-center gap-2 py-1.5">
-                      <span className="min-w-0 flex-1">
-                        {item.href ? (
-                          <Link
-                            href={item.href}
-                            className="block truncate text-[12.5px] font-semibold text-text-primary hover:text-blue-primary"
-                          >
-                            {item.title}
-                          </Link>
-                        ) : (
-                          <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                            {item.title}
-                          </span>
-                        )}
-                        {item.sub && (
-                          <span className="block truncate text-[11.5px] text-text-secondary">
-                            {item.sub}
-                          </span>
-                        )}
+                >
+                  <Icon size={13.5} strokeWidth={2.2} style={{ color: b.color }} />
+                  {b.label}
+                  <b className="tnum font-semibold">{b.count}</b>
+                  {b.total !== undefined && b.total > 0 && (
+                    <span className="tnum text-[12px] text-text-secondary">
+                      · {formatMoney(b.total)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Keyed so switching areas animates the panel, never the strip. */}
+          <div key={active.key} className="tab-panel" data-c360-band={active.key}>
+            <ul className="mt-1 divide-y divide-border-light">
+              {active.items.slice(0, 8).map((item) => (
+                <li key={item.id} className="py-2.5">
+                  {/* THE FACTS SIT BESIDE THE WORDS — the amount rides the
+                      title line and the date rides the sub line, so nothing
+                      asks the eye to cross the card for one number. */}
+                  <p className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                    {item.href ? (
+                      <Link
+                        href={item.href}
+                        className="inline-block max-w-full truncate font-semibold text-text-primary hover:text-blue-primary"
+                      >
+                        {item.title}
+                      </Link>
+                    ) : (
+                      <span className="inline-block max-w-full truncate font-semibold text-text-primary">
+                        {item.title}
                       </span>
-                      {item.amount !== undefined && item.amount > 0 && (
-                        <span className="shrink-0 text-[12px] font-semibold tnum text-text-primary">
-                          {formatMoney(item.amount)}
-                        </span>
-                      )}
+                    )}
+                    {item.amount !== undefined && item.amount > 0 && (
+                      <b
+                        className="tnum text-[12.5px] font-semibold"
+                        style={{ color: active.color }}
+                      >
+                        {formatMoney(item.amount)}
+                      </b>
+                    )}
+                  </p>
+                  {(item.sub || item.when) && (
+                    <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px] text-text-secondary">
+                      {item.sub && <span className="min-w-0">{item.sub}</span>}
                       {item.when && (
-                        <span className="shrink-0 text-[11.5px] tnum text-text-tertiary">
+                        <span className="tnum text-text-tertiary">
                           {formatDate(item.when)}
                         </span>
                       )}
-                    </li>
-                  ))}
-                </ul>
-                {b.count > 3 && (
-                  <p className="mt-1 text-[11.5px] text-text-tertiary">
-                    and {b.count - 3} more
-                  </p>
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {(active.count > 8 || active.href) && (
+              <p className="mt-2 flex items-baseline justify-between gap-3 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
+                <span>
+                  {active.count > 8 ? `and ${active.count - 8} more` : "\u00A0"}
+                </span>
+                {active.href && (
+                  <Link
+                    href={active.href}
+                    className="font-semibold text-blue-primary hover:underline"
+                  >
+                    {active.hrefLabel ?? "Open"} &rsaquo;
+                  </Link>
                 )}
-              </div>
-            );
-          })}
-        </div>
+              </p>
+            )}
+          </div>
+        </>
       )}
 
       {/* Empty bands, named rather than silent — the gap is the useful part. */}

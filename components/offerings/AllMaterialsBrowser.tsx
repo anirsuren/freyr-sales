@@ -792,9 +792,12 @@ const TABLE_CLASS =
                       {group.category}
                     </span>
                   )}
+                  {/* In brackets (Saras, Aug 27: "please put the 'X material'
+                      part inside brackets... Eg: (25 materials)") — set off
+                      from the offering name the way an aside reads. */}
                   <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                    {group.rows.length}{" "}
-                    {group.rows.length === 1 ? "material" : "materials"}
+                    ({group.rows.length}{" "}
+                    {group.rows.length === 1 ? "material" : "materials"})
                   </span>
                 </button>
                 {!shut && (
