@@ -79,6 +79,23 @@ statement that Anir said yes to **this** push, in the message before it. Never
 export it into the shell, never set it "so it stops nagging", and never reach
 for `--no-verify`. If the hook fires, the answer is to go and ask him.
 
+## 3b. Production is a SECOND gate, with its own explicit words
+
+Since Aug 27 there are two environments. A push to `main` deploys **dev**
+(`freyrsales.dev.freyrapps.com`, account 602367507820) and needs its yes as
+above. **Production** (`freyrsales.freyrapps.com`, account 966427768186) is
+promoted separately, and (Anir, Aug 27, the day it went live): "We should
+never push it into the production environment without my explicit
+permission... only when I say 'push it to production.' If I say 'push it,'
+you have to ask me which."
+
+- A bare "deploy" / "push it" / "ship it" means **dev**. If there is any
+  prod context in the conversation, ask "dev or production?" first.
+- Prod rolls only through `deploy/promote-to-prod.sh`, which refuses without
+  `FREYR_PROD_DEPLOY_APPROVED=yes` on that invocation. Never export the
+  variable, never work around the script with raw `aws ecs`/`ecr` calls.
+- One yes covers one prod deploy. It never carries forward.
+
 ## 4. Report first, act second, when the work is investigative
 
 For anything framed as an audit, review, question or check:
