@@ -8,12 +8,16 @@ import {
   Contact as ContactIcon,
   FileSignature,
   FileText,
+  Goal,
+  Package,
   Presentation,
   Target,
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { TypeChip, typeMeta } from "@/components/performance/bits";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -47,6 +51,18 @@ export type Customer360Item = {
   amount?: number;
   href?: string;
   tone?: string;
+  /**
+   * EACH TAB WEARS ITS MODULE'S OWN CLOTHES (Anir, Aug 27: "can you retain
+   * the UI? Like the goals, I want it to look like how it does on the goals
+   * page and then the submissions, the offerings, etc."). These are the
+   * module rows' own parts, passed as data: the company's logo, the record's
+   * reference code, the goal's type chip and its progress bar — the same
+   * marks those pages draw, not a lookalike.
+   */
+  logo?: string;
+  code?: string;
+  goalType?: string;
+  bar?: { pct: number; label: string };
 };
 
 export type Customer360Band = {
@@ -72,6 +88,10 @@ export type Customer360Band = {
 
 const BAND_ICON_MAP = {
   opportunities: Target,
+  /* Goals wore the meetings calendar and offerings wore the contracts pen —
+     each area gets its own glyph. */
+  goals: Goal,
+  offerings: Package,
   submissions: FileText,
   presentations: Presentation,
   meetings: CalendarClock,
@@ -85,6 +105,8 @@ export type BandIconKey = keyof typeof BAND_ICON_MAP;
 /** The names a server page may use. Values are the keys, not the components. */
 export const BAND_ICONS = {
   opportunities: "opportunities",
+  goals: "goals",
+  offerings: "offerings",
   submissions: "submissions",
   presentations: "presentations",
   meetings: "meetings",
@@ -144,7 +166,7 @@ export function Customer360({
         <>
           {/* The same strip the offering page uses — counts stay readable in
               one pass even while only one area's rows are showing. */}
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-border-light">
+          <div role="tablist" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-border-light">
             {live.map((b) => {
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
               const isActive = b.key === active.key;
@@ -152,6 +174,7 @@ export function Customer360({
                 <button
                   key={b.key}
                   type="button"
+                  role="tab"
                   onClick={() => setActiveKey(b.key)}
                   aria-selected={isActive}
                   className={cn(
@@ -178,42 +201,93 @@ export function Customer360({
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
             <ul className="mt-1 divide-y divide-border-light">
               {active.items.slice(0, 8).map((item) => (
-                <li key={item.id} className="py-2.5">
-                  {/* THE FACTS SIT BESIDE THE WORDS — the amount rides the
-                      title line and the date rides the sub line, so nothing
-                      asks the eye to cross the card for one number. */}
-                  <p className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className="inline-block max-w-full truncate font-semibold text-text-primary hover:text-blue-primary"
-                      >
-                        {item.title}
-                      </Link>
-                    ) : (
-                      <span className="inline-block max-w-full truncate font-semibold text-text-primary">
-                        {item.title}
-                      </span>
-                    )}
-                    {item.amount !== undefined && item.amount > 0 && (
-                      <b
-                        className="tnum text-[12.5px] font-semibold"
-                        style={{ color: active.color }}
-                      >
-                        {formatMoney(item.amount)}
-                      </b>
-                    )}
-                  </p>
-                  {(item.sub || item.when) && (
-                    <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px] text-text-secondary">
-                      {item.sub && <span className="min-w-0">{item.sub}</span>}
-                      {item.when && (
-                        <span className="tnum text-text-tertiary">
-                          {formatDate(item.when)}
+                <li key={item.id} className="flex items-start gap-3 py-2.5">
+                  {/* The module's own left mark: a company brings its logo,
+                      an offering its category-coloured tile. */}
+                  {item.logo ? (
+                    <CompanyLogo
+                      name={item.logo}
+                      className="mt-0.5 h-7 w-7 shrink-0 text-[8px]"
+                    />
+                  ) : item.tone ? (
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: `${item.tone}1A`, color: item.tone }}
+                    >
+                      <Package size={14} strokeWidth={2.2} />
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 flex-1">
+                    {/* THE FACTS SIT BESIDE THE WORDS — code, amount and the
+                        goal-type chip ride the title line; nothing asks the
+                        eye to cross the card for one number. */}
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
+                      {item.code && (
+                        <span
+                          className="rounded-md px-1.5 py-0.5 text-[10.5px] font-bold tnum"
+                          style={{
+                            background: `${item.tone ?? active.color}14`,
+                            color: item.tone ?? active.color,
+                          }}
+                        >
+                          {item.code}
                         </span>
                       )}
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          className="inline-block max-w-full truncate font-semibold text-text-primary hover:text-blue-primary"
+                        >
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <span className="inline-block max-w-full truncate font-semibold text-text-primary">
+                          {item.title}
+                        </span>
+                      )}
+                      {item.amount !== undefined && item.amount > 0 && (
+                        <b
+                          className="tnum text-[12.5px] font-semibold"
+                          style={{ color: active.color }}
+                        >
+                          {formatMoney(item.amount)}
+                        </b>
+                      )}
+                      {/* The goals page's own type chip, not a lookalike. */}
+                      {item.goalType && <TypeChip type={item.goalType} size="sm" />}
                     </p>
-                  )}
+                    {(item.sub || item.when) && (
+                      <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px] text-text-secondary">
+                        {item.sub && <span className="min-w-0">{item.sub}</span>}
+                        {item.when && (
+                          <span className="tnum text-text-tertiary">
+                            {formatDate(item.when)}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {/* The goal's progress, in its type's colour — how the
+                        goals page says it. */}
+                    {item.bar && (
+                      <span className="mt-1.5 flex max-w-[340px] items-center gap-2">
+                        <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-border-light">
+                          <span
+                            className="block h-full rounded-full"
+                            style={{
+                              width: `${Math.max(2, Math.min(100, item.bar.pct))}%`,
+                              background: item.goalType
+                                ? typeMeta(item.goalType).color
+                                : active.color,
+                            }}
+                          />
+                        </span>
+                        <span className="shrink-0 text-[11px] font-semibold tnum text-text-secondary">
+                          {item.bar.label}
+                        </span>
+                      </span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

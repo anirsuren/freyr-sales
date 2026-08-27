@@ -9,11 +9,11 @@ import {
   CalendarClock,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clock3,
   FlaskConical,
   Mail,
   Send,
-  Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -427,15 +427,28 @@ export function EmailComposer() {
             /* Someone invited but not yet signed in still has an address. */
             ...((d.invitations ?? []) as WorkspacePerson[]),
           ].filter((m) => m.email && m.name);
-          const seen = new Set<string>();
-          setPeople(
-            rows.filter((m) => {
-              const key = m.email.toLowerCase();
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            })
-          );
+          /* One person per address, and the FULLER record wins. The
+             workspace really does hold two members on anir.s@ — "Anir S"
+             and "Anir Suren" — and first-in kept the stub, so the sent log
+             showed initials where his photo exists and the To field
+             suggested the stub. More words, then more letters, is the
+             fuller display name. */
+          const best = new Map<string, WorkspacePerson>();
+          for (const m of rows) {
+            const key = m.email.toLowerCase();
+            const cur = best.get(key);
+            if (!cur) {
+              best.set(key, m);
+              continue;
+            }
+            const words = (x: WorkspacePerson) => x.name.trim().split(/\s+/).length;
+            if (
+              words(m) > words(cur) ||
+              (words(m) === words(cur) && m.name.length > cur.name.length)
+            )
+              best.set(key, m);
+          }
+          setPeople([...best.values()]);
         })
         .catch(() => undefined);
       const res = await fetch("/api/admin/email", { cache: "no-store" });
@@ -884,20 +897,53 @@ export function EmailComposer() {
                         !open && "-rotate-90"
                       )}
                     />
-                    {/* SHAPED LIKE AN INBOX (Anir, Aug 27: "just copy this,
-                        like how a normal inbox looks. It should kind of mimic
-                        this"): the sender in their own column with their
-                        face, then ONE line of subject — gray snippet, then
-                        the stamp an inbox prints (time today, "Aug 26"
-                        after). The sending address he already knows is the
-                        workspace's — it lives in the opened detail, Gmail's
-                        from:/to:/date: block, not on every row. */}
-                    <span className="hidden w-[168px] shrink-0 items-center gap-2 sm:flex">
-                      <Avatar name={e.sentBy} className="h-6 w-6 shrink-0 text-[8px]" />
-                      <span className="truncate text-[13px] font-semibold text-text-primary">
-                        {e.sentBy}
-                      </span>
-                    </span>
+                    {/* SENDER AND RECIPIENT, BOTH WITH THEIR FACE (Anir,
+                        Aug 27, on the sender-only cut: "I need to see who it
+                        was, too... I need both. You're not even putting the
+                        profile picture next to the person"). This is a SENT
+                        log, so the person it went TO is the identity that
+                        matters — the recipient gets the name and the room,
+                        the sender rides ahead of the arrow. Addresses that
+                        belong to workspace members resolve to their name and
+                        photo; outside addresses show as themselves. Then the
+                        subject — gray snippet fills the middle the way an
+                        inbox's does, and the stamp keeps the right edge. */}
+                    {(() => {
+                      const addrs = splitAddresses(e.to).map(addressOf);
+                      const who = addrs[0]
+                        ? people.find(
+                            (person) =>
+                              person.email.toLowerCase() === addrs[0].toLowerCase()
+                          )
+                        : undefined;
+                      const toName = who?.name ?? addrs[0] ?? e.to;
+                      return (
+                        <span className="hidden w-[236px] shrink-0 items-center gap-1.5 sm:flex">
+                          <Avatar
+                            name={e.sentBy}
+                            className="h-6 w-6 shrink-0 text-[8px]"
+                          />
+                          <ChevronRight
+                            size={12}
+                            strokeWidth={2.4}
+                            className="shrink-0 text-text-tertiary"
+                            aria-label="sent to"
+                          />
+                          <Avatar
+                            name={toName}
+                            className="h-6 w-6 shrink-0 text-[8px]"
+                          />
+                          <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary">
+                            {toName}
+                          </span>
+                          {addrs.length > 1 && (
+                            <span className="shrink-0 text-[11.5px] font-semibold text-text-tertiary tnum">
+                              +{addrs.length - 1}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
                     <span className="min-w-0 flex-1 truncate text-[13px]">
                       <b className="font-semibold text-text-primary">{e.subject}</b>
                       {snippetOf(e.body) && (

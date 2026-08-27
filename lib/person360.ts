@@ -5,7 +5,13 @@ import { readSolutioning } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
 import { readPerformance } from "./performance";
-import { listOfferings, initializeLiveOfferings } from "./offerings";
+import {
+  listOfferings,
+  listOfferingCategories,
+  initializeLiveOfferings,
+} from "./offerings";
+import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
+import { actualValue, pctMet, fmtAmount } from "./performanceShared";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
 import { formatMoney } from "./pipeline";
@@ -102,6 +108,7 @@ export async function buildPerson360(
           title: o.name,
           sub: [o.customer, o.level, o.status].filter(Boolean).join(" · "),
           amount: o.value,
+          logo: o.customer,
           href: `/opportunities?deal=${encodeURIComponent(o.id)}`,
         })),
     });
@@ -113,10 +120,17 @@ export async function buildPerson360(
     const mine = listOfferings().filter((o) =>
       (o.owners ?? []).some((x) => x.status === "owner" && same(x.name, personName))
     );
+    /* Category → colour, keyed the SAME way the catalog keys it (palette by
+       position), so an offering wears the same hue here as on its own page
+       (Anir, Aug 27: "retain the UI... the offerings, etc."). */
+    const catColor: Record<string, string> = {};
+    listOfferingCategories().forEach((c, i) => {
+      catColor[c.name] = FILTER_PALETTE[i % FILTER_PALETTE.length];
+    });
     bands.push({
       key: "offerings",
       label: "Offerings",
-      icon: "contracts",
+      icon: "offerings",
       color: "#7C3AED",
       count: mine.length,
       href: "/offerings",
@@ -125,7 +139,8 @@ export async function buildPerson360(
       items: mine.map((o) => ({
         id: o.id,
         title: o.offering_name,
-        sub: o.offering_type || undefined,
+        sub: [o.offering_type, o.offering_category].filter(Boolean).join(" · ") || undefined,
+        tone: o.offering_category ? catColor[o.offering_category] || "#2563EB" : undefined,
         href: `/offerings/${o.id}`,
       })),
     });
@@ -158,8 +173,9 @@ export async function buildPerson360(
           .map((r) => ({
             id: r.id,
             title: r.title,
+            code: r.ref || undefined,
+            logo: r.customer || undefined,
             sub: [
-              r.ref,
               r.customer,
               same(r.owner, personName) ? "owner" : "requested it",
             ]
@@ -186,7 +202,9 @@ export async function buildPerson360(
       items: mine.map((l) => ({
         id: l.id,
         title: l.name || l.company,
-        sub: [l.ref, l.company, l.status].filter(Boolean).join(" · "),
+        code: l.ref || undefined,
+        logo: l.company || undefined,
+        sub: [l.company, l.status].filter(Boolean).join(" · "),
         when: l.createdAt,
         href: "/leads",
       })),
@@ -208,7 +226,9 @@ export async function buildPerson360(
       items: mine.map((c) => ({
         id: c.id,
         title: c.name,
-        sub: [c.reference, c.customer, c.status].join(" · "),
+        code: c.reference || undefined,
+        logo: c.customer || undefined,
+        sub: [c.customer, c.status].filter(Boolean).join(" · "),
         amount: c.value,
         href: "/contracts",
       })),
@@ -224,7 +244,7 @@ export async function buildPerson360(
     bands.push({
       key: "goals",
       label: "Goals",
-      icon: "meetings",
+      icon: "goals",
       color: "#0F766E",
       count: mine.length,
       href: `/performance/people?person=${encodeURIComponent(personName)}`,
@@ -234,19 +254,35 @@ export async function buildPerson360(
         const target = (g.assignments ?? [])
           .filter((a) => same(a.person, personName))
           .reduce((s, a) => s + (a.target || 0), 0);
+        /* The goals page's own row parts (Anir, Aug 27: "like the goals, I
+           want it to look like how it does on the goals page"): the type as
+           its coloured chip, and THIS PERSON's progress against THEIR
+           target — the same actualValue/pctMet math the goal pages run, so
+           the two screens cannot disagree. */
+        const actual = target
+          ? actualValue(perf.actuals ?? [], g, {
+              person: personName,
+              rates: perf.rates,
+            })
+          : 0;
+        /* Rounded: pctMet hands back the raw ratio, and a bar labelled
+           "1014.8888888888889% met" is a calculator, not a sentence. */
+        const pct = target ? Math.round(pctMet(actual, target)) : 0;
         return {
           id: g.id,
           title: g.name,
-          sub: [
-            g.type,
-            target
-              ? g.unit === "currency"
-                ? `target ${formatMoney(target)}`
-                : `target ${target}`
-              : undefined,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          goalType: g.type || undefined,
+          sub: target
+            ? g.unit === "currency"
+              ? `target ${formatMoney(target)}`
+              : `target ${target}`
+            : undefined,
+          bar: target
+            ? {
+                pct,
+                label: `${pct}% met · ${fmtAmount(g.unit, actual, g.currency)} of ${fmtAmount(g.unit, target, g.currency)}`,
+              }
+            : undefined,
           href: `/performance/goal/${encodeURIComponent(g.id)}`,
         };
       }),
