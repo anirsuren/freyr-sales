@@ -16,6 +16,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Card } from "@/components/ui/Card";
+import { ChevronDown } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import {
   MetPill,
@@ -173,6 +175,8 @@ export function Customer360({
   /** Which goal row is folded open — same row-click grammar as the goals
       page: the name is the link, every other pixel toggles the fold. */
   const [openGoal, setOpenGoal] = useState<string | null>(null);
+  /** Folded goal families — the goals page's own header fold. */
+  const [shutFamilies, setShutFamilies] = useState<string[]>([]);
   const active =
     live.find((b) => b.key === activeKey) ?? (live.length ? live[0] : null);
 
@@ -237,7 +241,7 @@ export function Customer360({
                  the bar caps at 100% and the number sits beside it instead
                  of stretching to the cell edge and clipping. Every figure is
                  THIS person's: their entries, their target. */
-              <div className="overflow-x-auto">
+              <div className="mt-3 space-y-3">
                 {(() => {
                   const rows = active.items.filter((i) => i.goalDrill);
                   const families = new Map<string, typeof rows>();
@@ -245,14 +249,43 @@ export function Customer360({
                     const key = r.goalType || "Other";
                     families.set(key, [...(families.get(key) ?? []), r]);
                   }
-                  return [...families.entries()].map(([family, kin]) => (
-                    <div key={family} className="mt-3 first:mt-1">
-                      <div className="flex items-center gap-2 px-1 pb-1">
-                        <TypeChip type={family} size="sm" />
-                        <span className="text-[11.5px] text-text-secondary tnum">
+                  return [...families.entries()].map(([family, kin]) => {
+                    const shut = shutFamilies.includes(family);
+                    return (
+                    /* THE FAMILY HEADER IS THE GOALS PAGE'S OWN — a foldable
+                       band on its own card, not a chip floating above a table
+                       (Anir, Aug 27: "awkward place to put it", and "I want
+                       the exact same animation when I click"). Identical
+                       markup to the org table's family fold: surface band,
+                       chevron turning, chip and count, tab-panel body. */
+                    <Card key={family} className="overflow-hidden p-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShutFamilies((current) =>
+                            current.includes(family)
+                              ? current.filter((t) => t !== family)
+                              : [...current, family]
+                          )
+                        }
+                        aria-expanded={!shut}
+                        className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"
+                      >
+                        <ChevronDown
+                          size={15}
+                          strokeWidth={2.2}
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform duration-200",
+                            shut && "-rotate-90"
+                          )}
+                        />
+                        <TypeChip type={family} />
+                        <span className="text-[11px] font-semibold text-text-tertiary tnum">
                           {kin.length} {kin.length === 1 ? "goal" : "goals"}
                         </span>
-                      </div>
+                      </button>
+                      {!shut && (
+                      <div className="tab-panel overflow-x-auto border-t border-border-light">
                       {/* ONE GRID FOR EVERY FAMILY (Anir, Aug 27: "make
                           sure that all the columns are aligned with each
                           other. There shouldn't be different columns...
@@ -426,8 +459,11 @@ export function Customer360({
                           })}
                         </tbody>
                       </table>
-                    </div>
-                  ));
+                      </div>
+                      )}
+                    </Card>
+                    );
+                  });
                 })()}
               </div>
             ) : (
