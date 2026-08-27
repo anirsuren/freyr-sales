@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  GripVertical,
   Pin,
   Plus,
   Trash2,
@@ -14,8 +15,6 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  ArrowDown,
-  ArrowUp,
   Bot,
   Boxes,
   Briefcase,
@@ -70,10 +69,8 @@ import {
   type ComponentGroup,
 } from "@/lib/componentGroups";
 import {
-  canMoveCard,
   groupOf,
   moveCardToGroup,
-  shuffleCard,
 } from "@/lib/briefRows";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
@@ -1025,6 +1022,24 @@ export function OfferingForm({
      inside it, and only the card being edited is open. */
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [openCard, setOpenCard] = useState<number | null>(null);
+  /* DRAG TO REORDER (Anir, Aug 27: "I don't want those arrows. I just want
+     to be able to drag them — that thing where it shows you grabbing it").
+     dragRow is the capRows index in hand; dropAt is where it would land.
+     Dropping above a different heading re-files the card there, because a
+     card's group IS its position — no second mechanism needed. */
+  const [dragRow, setDragRow] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  function dropRow(from: number, to: number) {
+    setCapRows((l) => {
+      if (from === to || from + 1 === to) return l;
+      const row = l[from];
+      const rest = l.filter((_, j) => j !== from);
+      rest.splice(to > from ? to - 1 : to, 0, row);
+      return rest;
+    });
+    setDragRow(null);
+    setDropAt(null);
+  }
   /* Same discipline for the materials list: one line each, one open. */
   const [openMaterial, setOpenMaterial] = useState<number | null>(null);
   const [capDraft, setCapDraft] = useState("");
@@ -1035,6 +1050,8 @@ export function OfferingForm({
   // card-shaped editor by default. Plain prose still opens as a document.
   const [pasteMode, setPasteMode] = useState(seeded.rows.length === 0);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  /** Which material row the trash was pressed on, awaiting the yes. */
+  const [confirmRemoveMaterial, setConfirmRemoveMaterial] = useState<number | null>(null);
   const [pasted, setPasted] = useState(
     composeDescription(seeded.intro, seeded.rows)
   );
@@ -1214,6 +1231,7 @@ export function OfferingForm({
      this form. */
   const [relatedAdd, setRelatedAdd] = useState<string[]>(initial?.related_add ?? []);
   const [relatedHide, setRelatedHide] = useState<string[]>(initial?.related_hide ?? []);
+  const [addingRelated, setAddingRelated] = useState(false);
 
   const currentEditSnapshot: Record<string, unknown> = {
     offeringType,
@@ -1232,8 +1250,6 @@ export function OfferingForm({
     ...(isEdit && roadmapEditable ? { roadmapDraft } : {}),
   };
   const initialEditSnapshot: Record<string, unknown> = {
-    relatedAdd: initial?.related_add ?? [],
-    relatedHide: initial?.related_hide ?? [],
     offeringType: initial?.offering_type ?? "",
     offeringCategory: initial?.offering_category ?? "",
     offeringName: initial?.offering_name ?? "",
@@ -1249,6 +1265,8 @@ export function OfferingForm({
     ctIds: initial?.customer_type_ids ?? [],
     mktIds: initial?.market_ids ?? [],
     materials: initialMaterials,
+    relatedAdd: initial?.related_add ?? [],
+    relatedHide: initial?.related_hide ?? [],
     ...(isEdit && roadmapEditable
       ? { roadmapDraft: roadmapDetails ?? blankRoadmapDetails() }
       : {}),
@@ -1276,7 +1294,14 @@ export function OfferingForm({
   // Aug 8: "it should be like a center-screen pop-up… it shouldn't do this
   // ever").
   function discardAndLeave() {
+    /* The dialog closes and the toast lands BEFORE the navigation (Anir,
+       Aug 27: "I can't press discard changes"). The click always worked; in
+       dev the destination can take seconds to compile, and a button that
+       does nothing visible for seconds reads as a button that does nothing.
+       Now the press answers immediately, whatever the navigation costs. */
+    setConfirmLeave(false);
     unsavedRef.current = false;
+    toast("Changes discarded. Nothing was saved.");
     router.push(isEdit ? `/offerings/${offeringId}` : "/offerings");
   }
 
@@ -1425,6 +1450,28 @@ export function OfferingForm({
         detail="Everything you typed since the last save goes away. There is no undo."
         confirmLabel="Discard changes"
       />
+      <ConfirmDialog
+        open={confirmRemoveMaterial !== null}
+        onClose={() => setConfirmRemoveMaterial(null)}
+        onConfirm={() => {
+          const i = confirmRemoveMaterial;
+          setConfirmRemoveMaterial(null);
+          if (i === null) return;
+          setOpenMaterial((current) =>
+            current === i ? null : current === null ? null : current > i ? current - 1 : current
+          );
+          setMaterials((l) => l.filter((_, j) => j !== i));
+        }}
+        title="Remove this material?"
+        body={
+          <>
+            <b>{materials[confirmRemoveMaterial ?? -1]?.label || "This file"}</b>{" "}
+            comes off the offering.
+          </>
+        }
+        detail="Nothing is deleted until you press Save changes. Cancel out of the page and it stays exactly as it was."
+        confirmLabel="Remove it"
+      />
 
       {/* ------------------------------------------------------ the basics */}
       <FormSection
@@ -1448,8 +1495,13 @@ export function OfferingForm({
             stranded on its own line with half the card empty beside it (Anir,
             Aug 8: "have all three of these on the same line… make it look
             symmetrical"). */}
-        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
+        {/* minmax(0,1fr) + min-w-0, or a long type name ("Freya Fusion
+            (Module + Module Agent/s + Add on Agent/s)") widens its own track
+            and the trigger runs under the next field (Anir, Aug 27: "the
+            drop-downs intersecting"). A grid track's default min-width is
+            max-content; zero it and the trigger truncates instead. */}
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
             <label className={LABEL}>Offering type</label>
             {/* A colour+icon picker like every other dropdown in the app. It
                 was a bare text input wearing a datalist, which renders as the
@@ -1460,6 +1512,7 @@ export function OfferingForm({
               options={typeOptions}
               onChange={setOfferingType}
               ariaLabel="Offering type"
+              fill
             />
             {existingTypes.length > 0 && (
               <datalist id="offering-types">
@@ -1469,7 +1522,7 @@ export function OfferingForm({
               </datalist>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <label className={LABEL}>
               Offering name <span className="text-error">*</span>
             </label>
@@ -1481,7 +1534,7 @@ export function OfferingForm({
               placeholder="e.g. Freya.Register"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className={LABEL}>Offering category</label>
             {/* The last raw <select> in this form. It rendered as the
                 browser's own grey list, no colour, no icon, nothing like the
@@ -1491,6 +1544,7 @@ export function OfferingForm({
               options={categoryOptions}
               onChange={setOfferingCategory}
               ariaLabel="Offering category"
+              fill
             />
             <p className="mt-1 text-[11.5px] text-text-tertiary">
               Manage the list under{" "}
@@ -1638,14 +1692,12 @@ export function OfferingForm({
               return (
                 <div
                   key={key}
-                  className={cn(
-                    "overflow-hidden rounded-xl border border-border-light bg-white transition-opacity",
-                    /* The open thing is the subject; everything else steps
-                       back (same move as the goals page rows). */
-                    ((openGroups.size > 0 && !open) ||
-                      (openCard !== null && !group.cards.includes(openCard))) &&
-                      "opacity-45 hover:opacity-100"
-                  )}
+                  /* NO FADE (Anir, Aug 27: "I just opened the module agents,
+                     and for some reason it's faded... Why is it faded if I
+                     selected it"). Dimming "everything else" turned on a
+                     stale open-card index and greyed the very group he had
+                     just opened. The rail already says which one is open. */
+                  className="overflow-hidden rounded-xl border border-border-light bg-white"
                   /* The goals-page rail: an open section carries its accent
                      down its WHOLE left edge, not just the header (Anir:
                      "that strip that goes from top to bottom on the
@@ -1665,6 +1717,18 @@ export function OfferingForm({
                     role="button"
                     tabIndex={-1}
                     data-group-row={name}
+                    onDragOver={(e) => {
+                      if (dragRow === null) return;
+                      e.preventDefault();
+                      setDropAt((group.sectionIndex ?? -1) + 1);
+                    }}
+                    onDrop={(e) => {
+                      /* Dropping on a heading files the card at the top of
+                         that group — position IS group membership here. */
+                      if (dragRow === null) return;
+                      e.preventDefault();
+                      dropRow(dragRow, (group.sectionIndex ?? -1) + 1);
+                    }}
                     onClick={() =>
                       setOpenGroups((prev) => {
                         const next = new Set(prev);
@@ -1783,21 +1847,16 @@ export function OfferingForm({
                                 : item
                             )
                           );
-                        const move = (step: -1 | 1) => {
-                          setCapRows((l) => shuffleCard(l, i, step));
-                          setOpenCard((current) => (current === i ? i + step : current));
-                        };
                         return (
                           <div
                             key={`${i}-${position}`}
                             className={cn(
-                              "overflow-hidden rounded-lg border transition-[opacity,border-color]",
+                              "overflow-hidden rounded-lg border transition-[border-color]",
                               expanded
                                 ? "border-blue-subtle bg-surface/40"
                                 : "border-border-light bg-white hover:border-blue-subtle",
-                              openCard !== null &&
-                                !expanded &&
-                                "opacity-45 hover:opacity-100"
+                              dragRow === i && "opacity-40",
+                              dropAt === i && dragRow !== null && "border-t-2 border-t-blue-primary"
                             )}
                             style={
                               expanded
@@ -1812,8 +1871,38 @@ export function OfferingForm({
                               tabIndex={-1}
                               data-component-row={cardNo}
                               onClick={() => setOpenCard(expanded ? null : i)}
+                              onDragOver={(e) => {
+                                if (dragRow === null) return;
+                                e.preventDefault();
+                                const r = e.currentTarget.getBoundingClientRect();
+                                setDropAt(e.clientY < r.top + r.height / 2 ? i : i + 1);
+                              }}
+                              onDrop={(e) => {
+                                if (dragRow === null) return;
+                                e.preventDefault();
+                                const r = e.currentTarget.getBoundingClientRect();
+                                dropRow(dragRow, e.clientY < r.top + r.height / 2 ? i : i + 1);
+                              }}
                               className="flex cursor-pointer items-center gap-2 px-2.5 py-2"
                             >
+                              <span
+                                draggable
+                                onDragStart={(e) => {
+                                  setOpenCard(null);
+                                  setDragRow(i);
+                                  e.dataTransfer.effectAllowed = "move";
+                                }}
+                                onDragEnd={() => {
+                                  setDragRow(null);
+                                  setDropAt(null);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Drag to reorder"
+                                aria-label={`Drag ${fields.heading || `component ${cardNo}`}`}
+                                className="shrink-0 cursor-grab rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-text-primary active:cursor-grabbing"
+                              >
+                                <GripVertical size={14} strokeWidth={2} />
+                              </span>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1854,30 +1943,6 @@ export function OfferingForm({
                               <div className="flex shrink-0 items-center gap-0.5">
                                 <button
                                   type="button"
-                                  disabled={!canMoveCard(capRows, i, -1)}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    move(-1);
-                                  }}
-                                  aria-label={`Move ${fields.heading || `component ${cardNo}`} up`}
-                                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
-                                >
-                                  <ArrowUp size={14} strokeWidth={2} />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={!canMoveCard(capRows, i, 1)}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    move(1);
-                                  }}
-                                  aria-label={`Move ${fields.heading || `component ${cardNo}`} down`}
-                                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-text-tertiary"
-                                >
-                                  <ArrowDown size={14} strokeWidth={2} />
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenCard(null);
@@ -1912,7 +1977,12 @@ export function OfferingForm({
 
                             {expanded && (
                               <div className="space-y-3 border-t border-border-light px-2.5 py-3">
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.6fr)]">
+                                {/* Group and heading share a row; the
+                                    description gets the whole next one
+                                    (Anir, Aug 27: "you don't need all three
+                                    on the same row, because if the card
+                                    description is long, it'll look weird"). */}
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   <div className="min-w-0">
                                     <label className={LABEL}>Group</label>
                                     <ColorSelect
@@ -1943,7 +2013,7 @@ export function OfferingForm({
                                       aria-label={`Card ${cardNo} heading`}
                                     />
                                   </div>
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 sm:col-span-2">
                                     <label className={LABEL}>Card description</label>
                                     <textarea
                                       className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
@@ -2572,11 +2642,13 @@ export function OfferingForm({
                   <button
                     type="button"
                     onClick={(e) => {
+                      /* ASK FIRST (Anir, Aug 27: "I just pressed the delete
+                         button, and it just deleted... you have to bring
+                         them back"). One tap silently staged a file's
+                         removal; the row vanishing read as the file being
+                         gone. A delete asks, like every delete in the app. */
                       e.stopPropagation();
-                      setOpenMaterial((current) =>
-                        current === i ? null : current === null ? null : current > i ? current - 1 : current
-                      );
-                      setMaterials((l) => l.filter((_, j) => j !== i));
+                      setConfirmRemoveMaterial(i);
                     }}
                     aria-label={`Remove ${m.label || "material"}`}
                     className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
@@ -2709,6 +2781,21 @@ export function OfferingForm({
               relatedAdd.includes(x.id)
           ).length
         }
+        action={
+          /* SOLID BLUE, WHITE TEXT (Anir, Aug 27: "it should be like a plus
+             button, kind of like how you have it on sales materials — make
+             that button that other blue color with the white text"). */
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAddingRelated(true);
+            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Plus size={14} strokeWidth={2.2} /> Add offering
+          </button>
+        }
       >
         {(() => {
           const visible = relatedPool.filter(
@@ -2718,9 +2805,6 @@ export function OfferingForm({
           );
           const hidden = relatedPool.filter(
             (x) => x.category === offeringCategory && relatedHide.includes(x.id)
-          );
-          const addable = relatedPool.filter(
-            (x) => !visible.some((v) => v.id === x.id)
           );
           return (
             <div className="space-y-4">
@@ -2788,36 +2872,6 @@ export function OfferingForm({
                 )}
               </div>
 
-              <div className="max-w-[420px]">
-                <label className={LABEL}>Add an offering</label>
-                <ColorSelect
-                  value=""
-                  ariaLabel="Add a related offering"
-                  collapsible={false}
-                  searchable
-                  className="w-full"
-                  minWidth={0}
-                  onChange={(v) => {
-                    if (!v) return;
-                    setRelatedHide((cur) => cur.filter((i) => i !== v));
-                    const pick = relatedPool.find((x) => x.id === v);
-                    if (pick && pick.category !== offeringCategory) {
-                      setRelatedAdd((cur) =>
-                        cur.includes(v) ? cur : [...cur, v]
-                      );
-                    }
-                  }}
-                  options={[
-                    { value: "", label: "Pick an offering…", color: "#8E98A8" },
-                    ...addable.map((x) => ({
-                      value: x.id,
-                      label: x.name,
-                      description: x.category || undefined,
-                    })),
-                  ]}
-                />
-              </div>
-
               {hidden.length > 0 && (
                 /* The removed siblings stay findable — a hide is a choice
                    someone should be able to see and undo, not a hole. */
@@ -2846,6 +2900,69 @@ export function OfferingForm({
           );
         })()}
       </FormSection>
+
+      {/* Add a related offering: the same dialog grammar as Add material. */}
+      <Modal
+        open={addingRelated}
+        onClose={() => setAddingRelated(false)}
+        title="Add a related offering"
+      >
+        {(() => {
+          const visibleIds = new Set(
+            relatedPool
+              .filter(
+                (x) =>
+                  (x.category === offeringCategory &&
+                    !relatedHide.includes(x.id)) ||
+                  relatedAdd.includes(x.id)
+              )
+              .map((x) => x.id)
+          );
+          const addable = relatedPool.filter((x) => !visibleIds.has(x.id));
+          if (!addable.length)
+            return (
+              <p className="text-[13px] text-text-secondary">
+                Every other offering in the catalogue is already on this list.
+              </p>
+            );
+          return (
+            <div className="space-y-3">
+              <p className="text-[12.5px] leading-relaxed text-text-secondary">
+                It appears in this offering&rsquo;s Related offerings section
+                once you save. Category shown beside each, so a cross-category
+                pick is a choice, not an accident.
+              </p>
+              <ColorSelect
+                value=""
+                ariaLabel="Pick an offering to add"
+                collapsible={false}
+                searchable
+                className="w-full"
+                minWidth={0}
+                onChange={(v) => {
+                  if (!v) return;
+                  setRelatedHide((cur) => cur.filter((i) => i !== v));
+                  const pick = relatedPool.find((x) => x.id === v);
+                  if (pick && pick.category !== offeringCategory) {
+                    setRelatedAdd((cur) =>
+                      cur.includes(v) ? cur : [...cur, v]
+                    );
+                  }
+                  setAddingRelated(false);
+                }}
+                options={[
+                  { value: "", label: "Pick an offering…", color: "#8E98A8" },
+                  ...addable.map((x) => ({
+                    value: x.id,
+                    label: x.name,
+                    description: x.category || undefined,
+                  })),
+                ]}
+              />
+            </div>
+          );
+        })()}
+      </Modal>
 
       {/* Add material: a real dialog with one field per line, instead of a
           blank row appended to the list. */}
