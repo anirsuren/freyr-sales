@@ -50,8 +50,8 @@ export function PasskeySignIn({ next }: { next?: string }) {
       // actually confuses people: no passkey is enrolled on this device yet,
       // and the browser just shows an empty security-key dialog. Say so.
       setError(
-        /NotAllowed|abort/i.test(message)
-          ? "No passkey on this device yet. Sign in with your password, then set up Touch ID in Settings."
+        /NotAllowed|abort|timed? ?out/i.test(message)
+          ? "No Touch ID for this site on this device yet. Sign in with your password once, then set it up again in Settings — a Touch ID made on the old address doesn't carry over."
           : message
       );
     } finally {

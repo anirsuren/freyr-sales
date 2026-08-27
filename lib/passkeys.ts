@@ -66,11 +66,17 @@ export async function credentialsForUser(
   return (data as StoredCredential[]) ?? [];
 }
 
-export async function credentialsForEmail(email: string): Promise<StoredCredential[]> {
-  const { data } = await db()
-    .from("webauthn_credentials")
-    .select("*")
-    .ilike("email", email.trim());
+export async function credentialsForEmail(
+  email: string,
+  /** The domain asking. A passkey minted on the dev domain can never satisfy
+   *  prod (Anir, Aug 27, first prod sign-in: "Why is the touch ID not
+   *  working?") — offering its id anyway made the browser wait forever for a
+   *  credential it could not use. Filtered here so no caller can forget. */
+  rpID?: string
+): Promise<StoredCredential[]> {
+  let query = db().from("webauthn_credentials").select("*").ilike("email", email.trim());
+  if (rpID) query = query.eq("rp_id", rpID);
+  const { data } = await query;
   return (data as StoredCredential[]) ?? [];
 }
 

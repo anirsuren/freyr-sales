@@ -20,10 +20,14 @@ export async function POST(request: NextRequest) {
     // No body is fine: fall through to a discoverable-credential prompt.
   }
 
-  const creds = email ? await credentialsForEmail(email) : [];
+  const creds = email ? await credentialsForEmail(email, rpID) : [];
   const options = await generateAuthenticationOptions({
     rpID,
     userVerification: "preferred",
+    /* Half a minute, then the browser gives up on its own and the button's
+       catch explains what to do — better than "Waiting for Touch ID…"
+       standing there until somebody closes the tab. */
+    timeout: 30_000,
     allowCredentials: creds.map((c) => ({ id: c.id })),
   });
 
