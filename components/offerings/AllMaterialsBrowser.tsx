@@ -222,7 +222,7 @@ export function AllMaterialsBrowser({
    * ONE horizontal scroller, so they move together and align by construction.
    */
 const TABLE_CLASS =
-    "w-full min-w-[1680px] table-fixed border-collapse text-[13px]";
+    "w-full min-w-[1710px] table-fixed border-collapse text-[13px]";
 
   const clearAll = () => {
     setQuery("");
@@ -554,7 +554,7 @@ const TABLE_CLASS =
                   actions, and it has to be aligned left"). "Open" named one of
                   the two buttons under it and centred them, so the header sat
                   over the gap between them. */}
-              <th className="w-[65px] px-3 py-2.5">Actions</th>
+              <th className="w-[95px] px-3 py-2.5">Actions</th>
             </tr>
           </thead>
   );
@@ -729,7 +729,7 @@ const TABLE_CLASS =
            width as a NUMBER — max-content sizing would let one long one-line
            description stretch the whole run off the screen. */
         <div className="mt-4 overflow-x-auto pb-1">
-          <div className="space-y-6 [&>div]:min-w-[1680px]">
+          <div className="space-y-6 [&>div]:min-w-[1710px]">
           {offeringGroups.map((group) => {
             const shut = !openOfferings.has(group.id);
             return (
