@@ -669,10 +669,19 @@ function RequestRow({
       )}
     >
       <td className="px-4 py-3.5">
+        {/* THE LINK IS THE WORDS, NOT THE CELL (Anir, Aug 27: "when I click
+            on the actual thing, it can open up the page. Otherwise, when I
+            just click anywhere else, it should open the dropdown").
+
+            It was `block`, which stretches a link across the whole REQUEST
+            column — so the empty space beside a short title navigated away
+            when he meant to fold the row open. inline-block w-fit gives the
+            link exactly the width of its own two lines and hands every pixel
+            beside them back to the row's toggle. */}
         <Link
           href={`/solutioning/${r.id}`}
           onClick={(e) => e.stopPropagation()}
-          className="block min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
+          className="inline-block w-fit max-w-full min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <span className="whitespace-nowrap text-[11px] font-bold text-text-tertiary tnum">
