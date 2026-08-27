@@ -207,8 +207,22 @@ export function AllMaterialsBrowser({
     return out;
   }, [ordered]);
 
-  const TABLE_CLASS =
-    "w-full min-w-[1560px] table-fixed border-collapse text-[13px]";
+  /**
+   * A SPREADSHEET, NOT A JIGSAW (Anir, Aug 27: "everything should be on one
+   * line. simply scrollable. every row. something is inherently wrong with
+   * this entire screen").
+   *
+   * What was inherently wrong: percentage columns squeezed by the viewport,
+   * so every cell WRAPPED to fit — folder paths six lines tall, chips
+   * stacking, names breaking mid-word — and each group card scrolled on its
+   * own, so columns drifted between groups.
+   *
+   * Now the columns are fixed pixels that never squeeze, every cell is one
+   * line with an ellipsis when it is genuinely longer, and ALL groups sit in
+   * ONE horizontal scroller, so they move together and align by construction.
+   */
+const TABLE_CLASS =
+    "w-full min-w-[1680px] table-fixed border-collapse text-[13px]";
 
   const clearAll = () => {
     setQuery("");
@@ -237,7 +251,7 @@ export function AllMaterialsBrowser({
                   key={`${row.offeringId}:${row.material.id}`}
                   className="border-b border-border-light align-top transition-colors last:border-0 hover:bg-[var(--surface)]"
                 >
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {/* THE NAME OPENS THE FILE (Anir, Aug 21: "when I click on
                         it, it opens. Don't take me to the fucking offering,
                         that's pointless then"). An uploaded file opens in the
@@ -268,9 +282,37 @@ export function AllMaterialsBrowser({
                             ? `Open ${row.material.label}`
                             : `Open the link behind ${row.material.label}`
                         }
-                        className="group/name inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-left text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                        className="group/name flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                       >
-                        <span className="min-w-0 break-words">{row.material.label}</span>
+                        {/* THE FORMAT ICON, BACK ON THE LEFT (Anir, Aug 27:
+                            "you remember that icon you had on the left side
+                            (video, doc, etc.) — bring it back, but I don't
+                            think it needs to take up as much space as it did
+                            before").
+
+                            Back as a 14px glyph on the name rather than the
+                            column it used to own, which is the "less space"
+                            part: it costs about twenty pixels inside a cell
+                            that already exists instead of a slice of the
+                            table. Blue, like every format icon in the app
+                            (Jul 29: "all of the icons for the video, the
+                            presentation, the document, etc. should just be
+                            blue"). Centred on the row (Anir,
+                            Aug 27: "you have to centre it, it looks weird"),
+                            not pinned to the first line. */}
+                        {(() => {
+                          const Glyph =
+                            MATERIAL_FORMAT_META[materialFormat(row.material.kind)].icon;
+                          return (
+                            <Glyph
+                              size={14}
+                              strokeWidth={2}
+                              aria-hidden="true"
+                              className="shrink-0 text-blue-primary"
+                            />
+                          );
+                        })()}
+                        <span className="min-w-0 truncate">{row.material.label}</span>
                         <ExternalLink
                           size={12}
                           strokeWidth={2.2}
@@ -279,12 +321,15 @@ export function AllMaterialsBrowser({
                       </button>
                     </MaterialPeek>
                     {row.material.description && (
-                      <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
+                      <p
+                        title={row.material.description}
+                        className="mt-0.5 truncate text-[11.5px] leading-snug text-text-secondary"
+                      >
                         {row.material.description}
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {/* Plain text, no pill, no icon, no extension — the same
                         cut the offering's own table took the same day (Anir,
                         Aug 24: "we don't need the MP4 part, knowing that it's
@@ -293,12 +338,12 @@ export function AllMaterialsBrowser({
                       {MATERIAL_FORMAT_META[materialFormat(row.material.kind)].label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     <Link
                       href={`/offerings/${row.offeringId}`}
-                      className="group/off inline-flex min-w-0 items-center gap-1 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
+                      className="group/off flex w-full min-w-0 items-center gap-1 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
                     >
-                      <span className="min-w-0 break-words">{row.offeringName}</span>
+                      <span className="min-w-0 truncate">{row.offeringName}</span>
                       <ArrowUpRight
                         size={12}
                         strokeWidth={2.2}
@@ -306,21 +351,22 @@ export function AllMaterialsBrowser({
                       />
                     </Link>
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {/* The folder is the one thing that SHOULD leave: it opens
                         that folder inside its offering, where the rest of what
                         is in it lives. */}
                     {folder ? (
                       <Link
                         href={`/offerings/${row.offeringId}?tab=materials&mf=${encodeURIComponent(folder)}`}
-                        className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
+                        title={folder.split("/").join(" · ")}
+                        className="flex w-full min-w-0 items-center gap-1.5 text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
                       >
                         <FolderOpen
                           size={12}
                           strokeWidth={2}
                           className="shrink-0 text-text-tertiary"
                         />
-                        <span className="min-w-0">
+                        <span className="min-w-0 truncate">
                           {folder.split("/").join(" · ")}
                         </span>
                       </Link>
@@ -328,7 +374,7 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {level ? (
                       /* The one place colour still earns its keep on this
                          page: who may open a file is a rule, not a label, and
@@ -348,9 +394,14 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {rowStages.length ? (
-                      <span className="text-[12px] text-text-primary">
+                      <span
+                        title={rowStages
+                          .map((stage) => JOURNEY_STAGE_META[stage as JourneyStage].label)
+                          .join(" · ")}
+                        className="block truncate text-[12px] text-text-primary"
+                      >
                         {rowStages
                           .map((stage) => JOURNEY_STAGE_META[stage as JourneyStage].label)
                           .join(" · ")}
@@ -359,10 +410,14 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {/* Division keeps its pills: it is a three-letter code, and
                         MPR / MDV / CON mean nothing at a glance without the
                         colour and icon that name them. */}
+                    {/* One line, and the column is sized so all three chips
+                        actually fit — the "orange N behind the photo" was the
+                        CON chip overflowing a too-narrow column into the
+                        neighbouring cell. */}
                     <div className="flex items-center gap-1 [&>span]:px-1.5">
                       {materialDivisions(row.material).length ? (
                         materialDivisions(row.material).map((d) => {
@@ -383,14 +438,14 @@ export function AllMaterialsBrowser({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {row.material.addedBy ? (
                       <span className="flex min-w-0 items-center gap-2">
                         <Avatar
                           name={row.material.addedBy}
                           className="h-6 w-6 shrink-0 text-[8px]"
                         />
-                        <span className="min-w-0 break-words text-[12px] text-text-primary">
+                        <span className="min-w-0 truncate text-[12px] text-text-primary">
                           {row.material.addedBy}
                         </span>
                       </span>
@@ -398,14 +453,14 @@ export function AllMaterialsBrowser({
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] tnum text-text-secondary">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle text-[12px] tnum text-text-secondary">
                     {row.material.addedAt ? (
                       formatDate(row.material.addedAt)
                     ) : (
                       <span className="text-text-tertiary">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 align-middle">
                     <div className="flex items-center gap-1">
                       <Tooltip
                         label={
@@ -475,31 +530,31 @@ export function AllMaterialsBrowser({
                   headers. Do you see this?"). Header and body are written in
                   one order now, and the browser check counts them and reads
                   the first row cell by cell so it can never drift again. */}
-              <th className="w-[19%] px-4 py-2.5">Material</th>
-              <th className="w-[7%] px-4 py-2.5">File format</th>
-              <th className="w-[11%] px-4 py-2.5">Offering</th>
-              <th className="w-[12%] px-4 py-2.5">Folder</th>
-              <th className="w-[9%] px-4 py-2.5">Access level</th>
+              <th className="w-[300px] px-3 py-2.5">Material</th>
+              <th className="w-[110px] px-3 py-2.5">File format</th>
+              <th className="w-[190px] px-3 py-2.5">Offering</th>
+              <th className="w-[210px] px-3 py-2.5">Folder</th>
+              <th className="w-[125px] px-3 py-2.5">Access level</th>
               {/* "Buyer's journey stage", not "Stage" (Anir, Aug 26: "this is
                   just titled as Stage — if you can update this to say Buyers
                   Journey Stage"). A bare "Stage" reads as a deal stage, which
                   is a different thing entirely on the Opportunities page. */}
-              <th className="w-[11%] px-4 py-2.5">Buyer&rsquo;s journey stage</th>
-              <th className="w-[9%] px-4 py-2.5">Division</th>
+              <th className="w-[250px] px-3 py-2.5">Buyer&rsquo;s journey stage</th>
+              <th className="w-[150px] px-3 py-2.5">Division</th>
               {/* 16%, not 13: "Priyanka Manchanda" was wrapping to four lines
                   of two letters ("Inay / at / Paw / ar"). */}
-              <th className="w-[12%] px-4 py-2.5">Uploaded by</th>
+              <th className="w-[175px] px-3 py-2.5">Uploaded by</th>
               {/* WHEN, NOT ONLY WHO (Anir, Aug 26: "can you add a new column
                   which says Upload Date so that folks know when each of the
                   files was uploaded? Here only, specifically when we are
                   trying to access the sales material through the sidebar").
                   The offering's own tab is deliberately untouched. */}
-              <th className="w-[9%] px-4 py-2.5">Upload date</th>
+              <th className="w-[105px] px-3 py-2.5">Upload date</th>
               {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
                   actions, and it has to be aligned left"). "Open" named one of
                   the two buttons under it and centred them, so the header sat
                   over the gap between them. */}
-              <th className="w-[7%] px-4 py-2.5">Actions</th>
+              <th className="w-[65px] px-3 py-2.5">Actions</th>
             </tr>
           </thead>
   );
@@ -668,7 +723,13 @@ export function AllMaterialsBrowser({
            every edge. Each offering is its own card with the blue folding
            header those pages wear, and what lies between the cards is the
            page itself. */
-        <div className="mt-4 space-y-6">
+        /* ONE scrollbar for every group. Each card used to scroll on its
+           own, which is how scrolling one card slid its columns out from
+           under the group above it. Cards carry the table's own minimum
+           width as a NUMBER — max-content sizing would let one long one-line
+           description stretch the whole run off the screen. */
+        <div className="mt-4 overflow-x-auto pb-1">
+          <div className="space-y-6 [&>div]:min-w-[1680px]">
           {offeringGroups.map((group) => {
             const shut = !openOfferings.has(group.id);
             return (
@@ -737,7 +798,7 @@ export function AllMaterialsBrowser({
                   </span>
                 </button>
                 {!shut && (
-                  <div className="tab-panel overflow-x-auto">
+                  <div className="tab-panel">
                     <table className={TABLE_CLASS}>
                       {columnHeads}
                       <tbody>{group.rows.map(materialRow)}</tbody>
@@ -752,6 +813,7 @@ export function AllMaterialsBrowser({
               Nothing matches those filters.
             </p>
           )}
+          </div>
         </div>
       ) : (
         /* The flat sorts stay one pinned table — sticky headers and the

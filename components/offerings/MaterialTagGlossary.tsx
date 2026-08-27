@@ -197,8 +197,14 @@ export function MaterialTagGlossary({
         };
 
   return (
+    /* EVERY PIECE ON THE SAME LINE BOX (Anir, Aug 27: "these aren't even
+       aligned"). items-center centres BOXES, and the four things on this row
+       — an 11px uppercase label, a 13px icon, 12.5px text and a bold count —
+       had four different box heights, so their centres agreed and their
+       glyphs sat about a pixel apart. Pinning each one to the icon's 13px
+       makes the boxes identical, and identical boxes centre the glyphs too. */
     <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1">
-      <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+      <span className="mr-1 text-[11px] font-semibold uppercase leading-[13px] tracking-[0.06em] text-text-tertiary">
         Glossary
       </span>
       {groups.map((group) => {
@@ -225,8 +231,8 @@ export function MaterialTagGlossary({
               aria-hidden="true"
               style={{ color: group.color }}
             />
-            {group.label}
-            <b className="tnum font-semibold text-text-primary group-hover:text-blue-primary">
+            <span className="leading-[13px]">{group.label}</span>
+            <b className="tnum font-semibold leading-[13px] text-text-primary group-hover:text-blue-primary">
               {group.count}
             </b>
           </button>
