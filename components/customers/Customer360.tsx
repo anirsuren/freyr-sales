@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { TypeChip, typeMeta } from "@/components/performance/bits";
+import { TypeChip, TypeIconTile, typeMeta } from "@/components/performance/bits";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -62,7 +62,8 @@ export type Customer360Item = {
   logo?: string;
   code?: string;
   goalType?: string;
-  bar?: { pct: number; label: string };
+  /** A goal's own columns — target, actual, % met — already formatted. */
+  goalFacts?: { target?: string; actual?: string; pct: number | null };
 };
 
 export type Customer360Band = {
@@ -199,6 +200,92 @@ export function Customer360({
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
+            {active.items.some((i) => i.goalFacts) ? (
+              /* GOALS ARE A TABLE, BECAUSE THE GOALS PAGE IS ONE (Anir,
+                 Aug 27, on the loose-list first cut: "what the fuck is this
+                 ui"). Rows with no target were collapsing to a bare title
+                 while their neighbours stacked three lines — ragged. The
+                 goals page keeps every row the same shape and prints "·"
+                 where a number is not set, so this does exactly that: tile,
+                 name and chip, then Target / Actual / Progress columns. */
+              <div className="overflow-x-auto">
+                <table className="mt-1 w-full min-w-[560px] text-left">
+                  <thead>
+                    <tr className="border-b border-border-light">
+                      {["Goal", "Target", "Actual", "Progress"].map((h) => (
+                        <th
+                          key={h}
+                          className="py-2 pr-4 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {active.items.slice(0, 8).map((item) => (
+                      <tr key={item.id}>
+                        <td className="py-2.5 pr-4">
+                          <span className="flex items-center gap-3">
+                            {item.goalType && <TypeIconTile type={item.goalType} />}
+                            <span className="flex min-w-0 flex-col gap-1">
+                              {item.href ? (
+                                <Link
+                                  href={item.href}
+                                  className="self-start text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                                >
+                                  {item.title}
+                                </Link>
+                              ) : (
+                                <span className="text-[13px] font-semibold text-text-primary">
+                                  {item.title}
+                                </span>
+                              )}
+                              {item.goalType && (
+                                <TypeChip type={item.goalType} size="sm" />
+                              )}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] font-semibold tnum text-text-primary">
+                          {item.goalFacts?.target ?? (
+                            <span className="font-normal text-text-tertiary">·</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] font-semibold tnum text-text-primary">
+                          {item.goalFacts?.actual ?? (
+                            <span className="font-normal text-text-tertiary">·</span>
+                          )}
+                        </td>
+                        <td className="w-[30%] min-w-[170px] py-2.5">
+                          {item.goalFacts?.pct !== null &&
+                          item.goalFacts?.pct !== undefined ? (
+                            <span className="flex items-center gap-2">
+                              <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-border-light">
+                                <span
+                                  className="block h-full rounded-full"
+                                  style={{
+                                    width: `${Math.max(2, Math.min(100, item.goalFacts.pct))}%`,
+                                    background: item.goalType
+                                      ? typeMeta(item.goalType).color
+                                      : active.color,
+                                  }}
+                                />
+                              </span>
+                              <span className="shrink-0 text-[11.5px] font-semibold tnum text-text-secondary">
+                                {item.goalFacts.pct}%
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-[12px] text-text-tertiary">·</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
             <ul className="mt-1 divide-y divide-border-light">
               {active.items.slice(0, 8).map((item) => (
                 <li key={item.id} className="flex items-start gap-3 py-2.5">
@@ -254,8 +341,6 @@ export function Customer360({
                           {formatMoney(item.amount)}
                         </b>
                       )}
-                      {/* The goals page's own type chip, not a lookalike. */}
-                      {item.goalType && <TypeChip type={item.goalType} size="sm" />}
                     </p>
                     {(item.sub || item.when) && (
                       <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px] text-text-secondary">
@@ -267,30 +352,11 @@ export function Customer360({
                         )}
                       </p>
                     )}
-                    {/* The goal's progress, in its type's colour — how the
-                        goals page says it. */}
-                    {item.bar && (
-                      <span className="mt-1.5 flex max-w-[340px] items-center gap-2">
-                        <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-border-light">
-                          <span
-                            className="block h-full rounded-full"
-                            style={{
-                              width: `${Math.max(2, Math.min(100, item.bar.pct))}%`,
-                              background: item.goalType
-                                ? typeMeta(item.goalType).color
-                                : active.color,
-                            }}
-                          />
-                        </span>
-                        <span className="shrink-0 text-[11px] font-semibold tnum text-text-secondary">
-                          {item.bar.label}
-                        </span>
-                      </span>
-                    )}
                   </span>
                 </li>
               ))}
             </ul>
+            )}
             {(active.count > 8 || active.href) && (
               <p className="mt-2 flex items-baseline justify-between gap-3 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
                 <span>

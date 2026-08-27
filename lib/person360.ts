@@ -14,7 +14,6 @@ import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { actualValue, pctMet, fmtAmount } from "./performanceShared";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
-import { formatMoney } from "./pipeline";
 import type { UserIdentityRole } from "./userIdentity";
 import type { Customer360Band } from "@/components/customers/Customer360";
 
@@ -255,34 +254,28 @@ export async function buildPerson360(
           .filter((a) => same(a.person, personName))
           .reduce((s, a) => s + (a.target || 0), 0);
         /* The goals page's own row parts (Anir, Aug 27: "like the goals, I
-           want it to look like how it does on the goals page"): the type as
-           its coloured chip, and THIS PERSON's progress against THEIR
-           target — the same actualValue/pctMet math the goal pages run, so
-           the two screens cannot disagree. */
-        const actual = target
-          ? actualValue(perf.actuals ?? [], g, {
-              person: personName,
-              rates: perf.rates,
-            })
-          : 0;
-        /* Rounded: pctMet hands back the raw ratio, and a bar labelled
-           "1014.8888888888889% met" is a calculator, not a sentence. */
-        const pct = target ? Math.round(pctMet(actual, target)) : 0;
+           want it to look like how it does on the goals page", and on the
+           first cut: "what the fuck is this ui"): THIS PERSON's actual and
+           target as separate facts, the same actualValue/pctMet math the
+           goal pages run, so the two screens cannot disagree. The panel
+           draws them as the goals table draws them — every row the same
+           shape, a target-less cell saying "·", never a row collapsing to a
+           bare title. */
+        const actual = actualValue(perf.actuals ?? [], g, {
+          person: personName,
+          rates: perf.rates,
+        });
         return {
           id: g.id,
           title: g.name,
           goalType: g.type || undefined,
-          sub: target
-            ? g.unit === "currency"
-              ? `target ${formatMoney(target)}`
-              : `target ${target}`
-            : undefined,
-          bar: target
-            ? {
-                pct,
-                label: `${pct}% met · ${fmtAmount(g.unit, actual, g.currency)} of ${fmtAmount(g.unit, target, g.currency)}`,
-              }
-            : undefined,
+          goalFacts: {
+            target: target ? fmtAmount(g.unit, target, g.currency) : undefined,
+            actual: fmtAmount(g.unit, actual, g.currency),
+            /* Rounded: pctMet hands back the raw ratio, and a bar labelled
+               "1014.8888888888889% met" is a calculator, not a sentence. */
+            pct: target ? Math.round(pctMet(actual, target)) : null,
+          },
           href: `/performance/goal/${encodeURIComponent(g.id)}`,
         };
       }),
