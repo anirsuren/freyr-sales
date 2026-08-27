@@ -299,6 +299,7 @@ export function CustomerAnalyzePanel({
             <input
               className={field}
               value={pRevenue}
+              placeholder="e.g. $250M"
               aria-label="Revenue"
               onChange={(e) => setPRevenue(e.target.value)}
             />

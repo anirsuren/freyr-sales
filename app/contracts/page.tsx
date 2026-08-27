@@ -1,6 +1,7 @@
 import { ContractsModule } from "@/components/contracts/ContractsModule";
 import { readContracts } from "@/lib/contracts";
 import { readOpportunities } from "@/lib/opportunities";
+import { readPerformance } from "@/lib/performance";
 import { listOfferings, initializeLiveOfferings } from "@/lib/offerings";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
@@ -24,12 +25,16 @@ export default async function ContractsPage() {
   await initializeLiveOfferings().catch(() => undefined);
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
-  const [state, me, opportunities, directory] = await Promise.all([
+  const [state, me, opportunities, perf, directory] = await Promise.all([
     readContracts(),
     getCurrentUser(),
     readOpportunities()
       .then((s) => s.opportunities)
       .catch(() => []),
+    /* The goal list the signer picks from. Suren, Aug 18: a signed contract
+       is what produces booked revenue, and Anir, Aug 26: "the person picks
+       the goal" — so the form needs the whole Goal Master to offer. */
+    readPerformance().catch(() => null),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
   ]);
   const offeringName = new Map(
@@ -52,6 +57,13 @@ export default async function ContractsPage() {
       state={state}
       canWrite={me.role === "admin"}
       members={members}
+      meName={me.name}
+      goals={(perf?.goals ?? []).map((g) => ({
+        id: g.id,
+        name: g.name,
+        year: g.year,
+        type: g.type,
+      }))}
       deals={opportunities.map((o) => {
         const line = (o.lines ?? [])[0];
         const offeringId = line?.offeringId ?? o.offeringIds[0];

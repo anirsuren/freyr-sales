@@ -1020,6 +1020,7 @@ export function PitchWorkspace({
             <input
               value={composeSubject}
               onChange={(e) => setComposeSubject(e.target.value)}
+              placeholder="What this email is about"
               className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
             />
           </div>

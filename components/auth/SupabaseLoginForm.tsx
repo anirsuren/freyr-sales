@@ -347,6 +347,7 @@ export function SupabaseLoginForm({
               required
               autoFocus
               type="email"
+              placeholder="you@freyrsolutions.com"
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -385,6 +386,7 @@ export function SupabaseLoginForm({
             <input
               required
               autoComplete="name"
+              placeholder="First name and last name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               className={inputClass}

@@ -3118,6 +3118,7 @@ export function FdlComponentDetail({
             autoFocus
             value={nameDraft}
             onChange={(event) => setNameDraft(event.target.value)}
+            placeholder="Component name"
             className={FIELD}
           />
           <div className="flex justify-end">

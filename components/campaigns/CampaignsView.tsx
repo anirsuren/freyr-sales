@@ -694,7 +694,7 @@ export function CampaignsView({
                 </div>
                 <div className="mt-4 grid grid-cols-[minmax(0,1.2fr)_280px] gap-4">
                   <div className="space-y-3">
-                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject</label><input value={subject} onChange={(event) => setSubject(event.target.value)} aria-label="Campaign subject" className="h-10 w-full rounded-md border border-border px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
+                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject</label><input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="What this campaign is about" aria-label="Campaign subject" className="h-10 w-full rounded-md border border-border px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
                     <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Message</label><textarea value={body} onChange={(event) => setBody(event.target.value)} rows={14} aria-label="Campaign body" className="w-full resize-none rounded-md border border-border px-3 py-2.5 text-[12.5px] leading-relaxed outline-none focus:border-blue-primary" /></div>
                   </div>
                   <div className="rounded-md border border-border-light bg-surface/35 p-3">

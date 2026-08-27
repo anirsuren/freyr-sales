@@ -290,6 +290,7 @@ function normalize(value: unknown): PerformanceState {
             opportunityId: ra.opportunityId
               ? str(ra.opportunityId, 80)
               : undefined,
+            contractId: ra.contractId ? str(ra.contractId, 80) : undefined,
             dealLabel: ra.dealLabel ? str(ra.dealLabel, 160) : undefined,
             evidence: Array.isArray(ra.evidence)
               ? ra.evidence
@@ -706,6 +707,8 @@ export async function logActual(input: {
   dealId?: string;
   /** The deal this number came out of, when there is one. */
   opportunityId?: string;
+  /** The signed contract this number came out of, when there is one. */
+  contractId?: string;
   activityId?: string;
   dealLabel?: string;
   evidence?: { name?: unknown; url?: unknown }[];
@@ -772,6 +775,7 @@ export async function logActual(input: {
     opportunityId: input.opportunityId
       ? str(input.opportunityId, 80)
       : undefined,
+    contractId: input.contractId ? str(input.contractId, 80) : undefined,
     activityId: input.activityId ? str(input.activityId, 60) : undefined,
     dealLabel: input.dealLabel ? str(input.dealLabel, 160) : undefined,
     evidence: evidence.length ? evidence : undefined,

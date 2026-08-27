@@ -383,7 +383,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Title <span className="text-error">*</span></label>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus" />
+            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="One line on what happened" maxLength={160} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus" />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Description <span className="text-error">*</span></label>

@@ -98,6 +98,20 @@ function normalizeContract(v: unknown): Contract | null {
     owner: str(r.owner, 80) || undefined,
     documentUrl: str(r.documentUrl, 2000) || undefined,
     signedBy: str(r.signedBy, 120) || undefined,
+    /* Which booked-revenue goal this counts towards. Normalised like every
+       other field rather than spread through, so a browser cannot invent a
+       goal link shape and a save cannot silently drop one. */
+    goalLink: (() => {
+      const raw = r.goalLink as Record<string, unknown> | undefined;
+      const goalId = str(raw?.goalId, 60);
+      if (!goalId) return undefined;
+      return {
+        goalId,
+        person: str(raw?.person, 80) || undefined,
+        actualId: str(raw?.actualId, 80) || undefined,
+        postedAt: str(raw?.postedAt, 20) || undefined,
+      };
+    })(),
     schedule: [...byMonth.entries()]
       .map(([month, amount]) => ({ month, amount }))
       .sort((a, b) => a.month.localeCompare(b.month)),

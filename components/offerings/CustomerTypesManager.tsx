@@ -555,6 +555,7 @@ export function CustomerTypesManager({
                     autoFocus
                     value={familyDraft}
                     onChange={(e) => setFamilyDraft(e.target.value)}
+                    placeholder="Family name"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") saveFamilyName();
                       if (e.key === "Escape") setEditingFamily(null);

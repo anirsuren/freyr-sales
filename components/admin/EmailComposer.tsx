@@ -570,6 +570,7 @@ export function EmailComposer() {
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              placeholder="What this email is about"
               aria-label="Subject"
               className={FIELD}
             />

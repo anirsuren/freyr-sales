@@ -50,6 +50,32 @@ export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
 export type ScheduleLine = AccrualLine;
 
+/**
+ * THE BOOKED-REVENUE GOAL A SIGNED CONTRACT COUNTS TOWARDS.
+ *
+ * Suren, Aug 18: booked revenue is what a signed contract produces, and the
+ * value belongs against somebody's goal the moment the ink is dry.
+ *
+ * Anir, Aug 26, on who decides which goal: "Yeah, the person picks the goal."
+ * So this is never inferred from the offering, the customer or the owner's
+ * group. A contract with no goal chosen simply posts nothing, which is the
+ * honest outcome: a number nobody claimed is not a result.
+ *
+ * ONE link, not a table. A deal can be expected to feed several goals while
+ * it is still a forecast, but a signed contract is one value that landed once.
+ */
+export type ContractGoalLink = {
+  /** A goal from the Goal Master. */
+  goalId: string;
+  /** Whose credit the money is. Defaults to the contract owner. */
+  person?: string;
+  /** The performance entry this contract wrote. The double-count guard, and
+   *  the handle to withdraw it while it is still unverified. */
+  actualId?: string;
+  /** ISO day the value was posted. */
+  postedAt?: string;
+};
+
 export type Contract = {
   id: string;
   /** THE HANDSHAKE KEY: "that ID will act as a link between this system and
@@ -80,6 +106,11 @@ export type Contract = {
   documentUrl?: string;
   /** Who signed on the customer side. Part of "is this verified". */
   signedBy?: string;
+  /**
+   * Which booked-revenue goal this contract's value counts towards, once it
+   * is Signed. Chosen by a person; nothing is posted without one.
+   */
+  goalLink?: ContractGoalLink;
   /** "Schedule revenue" — the month-by-month plan, decided after the contract
    *  starts, that supersedes the opportunity's accrual plan. */
   schedule: ScheduleLine[];
@@ -210,4 +241,21 @@ export function contractChecks(c: Contract): ContractCheck[] {
 export function contractConfidence(c: Contract): { ok: number; total: number } {
   const checks = contractChecks(c);
   return { ok: checks.filter((x) => x.ok).length, total: checks.length };
+}
+
+/**
+ * WHEN A CONTRACT'S VALUE SHOULD BE STANDING ON A GOAL.
+ *
+ * Signed, with a signature date, a value and a goal somebody chose. Anything
+ * short of all four posts nothing: a draft is sales still typing, a contract
+ * with no signed date has not landed yet, and a goal nobody picked is not a
+ * goal this money belongs to.
+ */
+export function contractCounts(c: Contract): boolean {
+  return (
+    c.status === "Signed" &&
+    Boolean((c.signedOn ?? "").trim()) &&
+    (c.value ?? 0) > 0 &&
+    Boolean(c.goalLink?.goalId)
+  );
 }

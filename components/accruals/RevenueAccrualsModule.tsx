@@ -1234,6 +1234,7 @@ export function RevenueAccrualsModule({
                       <td className="px-3 py-1.5">
                         <input
                           value={line.amount}
+                          placeholder="0"
                           inputMode="numeric"
                           aria-label={`Amount for ${monthLabel(line.month)}`}
                           onChange={(e) => {

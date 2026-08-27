@@ -14,7 +14,7 @@ import {
   Download,
   FileText,
   ShieldCheck,
-
+  Target,
   FileSignature,
   Inbox,
   Pencil,
@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { typeMeta } from "@/components/performance/bits";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
@@ -95,6 +96,9 @@ const BLANK = {
   owner: "",
   documentUrl: "",
   signedBy: "",
+  /** Which booked-revenue goal this counts towards, and whose credit it is. */
+  goalId: "",
+  goalPerson: "",
   note: "",
   scheduleMonths: "12",
   schedule: [] as { month: string; amount: string }[],
@@ -106,11 +110,16 @@ export function ContractsModule({
   state: initial,
   deals,
   members,
+  goals,
+  meName,
   canWrite,
 }: {
   state: ContractsState;
   deals: DealOption[];
   members: string[];
+  /** The Goal Master, so a signed contract can be put against one. */
+  goals: { id: string; name: string; year: number; type?: string }[];
+  meName: string;
   canWrite: boolean;
 }) {
   const router = useRouter();
@@ -126,6 +135,10 @@ export function ContractsModule({
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
 
   const contracts = state.contracts;
+  const goalName = useMemo(
+    () => new Map(goals.map((g) => [g.id, `${g.name} · ${g.year}`])),
+    [goals]
+  );
   const signed = contracts.filter((c) => c.status === "Signed");
   const waiting = contracts.filter((c) => c.status === "Ready for delivery");
   const drafts = contracts.filter((c) => c.status === "Draft");
@@ -248,6 +261,8 @@ export function ContractsModule({
         owner: contract.owner ?? "",
         documentUrl: contract.documentUrl ?? "",
         signedBy: contract.signedBy ?? "",
+        goalId: contract.goalLink?.goalId ?? "",
+        goalPerson: contract.goalLink?.person ?? "",
         note: contract.note ?? "",
         scheduleMonths: String(contract.schedule.length || 12),
         schedule: contract.schedule.map((l) => ({
@@ -317,6 +332,12 @@ export function ContractsModule({
           owner: editing.owner || undefined,
           documentUrl: editing.documentUrl || undefined,
           signedBy: editing.signedBy || undefined,
+          /* The handle and the posted date are the server's to write, never
+             the browser's — echoing them back is exactly how the deal flow
+             learned to double-count. It finds the standing entry itself. */
+          goalLink: editing.goalId
+            ? { goalId: editing.goalId, person: editing.goalPerson || undefined }
+            : undefined,
           note: editing.note || undefined,
           schedule: editing.schedule
             .map((l) => ({
@@ -706,6 +727,26 @@ export function ContractsModule({
                       ))}
                     </div>
 
+                    {/* WHERE THIS CONTRACT'S MONEY WENT. A row that says a
+                        contract is signed but not whose number it became is
+                        half the story, and the goal it fed is the half people
+                        argue about. Only shown once it has actually posted. */}
+                    {c.goalLink?.actualId && (
+                      <p className="mt-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-[rgba(22,163,74,0.08)] px-3 py-2 text-[12.5px] text-[color:#16A34A]">
+                        <Target size={13} strokeWidth={2.3} />
+                        <span className="font-semibold">
+                          {formatMoney(c.value)} counted towards{" "}
+                          {goalName.get(c.goalLink.goalId) ?? "a goal"}
+                        </span>
+                        <span className="font-medium opacity-80">
+                          for {c.goalLink.person || c.owner || "the owner"}
+                          {c.goalLink.postedAt
+                            ? ` · posted ${formatDate(c.goalLink.postedAt)}`
+                            : ""}
+                        </span>
+                      </p>
+                    )}
+
                     {c.schedule.length > 0 && (() => {
                       /* SCHEDULE REVENUE, DRAWN (Anir, Aug 26: "the schedule
                          revenue part, where you just have numbers and you're
@@ -1062,6 +1103,80 @@ export function ContractsModule({
                 placeholder="Who signed for the customer"
               />
             </Field>
+            {/* WHERE THE MONEY LANDS (Suren, Aug 18: a signed contract is
+                what produces booked revenue; Anir, Aug 26, on which goal:
+                "Yeah, the person picks the goal"). Nothing is inferred from
+                the offering or the owner's group. It posts the moment the
+                contract is Signed with a date and a value, backdated to the
+                signature month, and withdraws itself if the contract goes
+                back to Draft or Cancelled — unless a group owner has already
+                signed the number off, in which case it is theirs and stays. */}
+            <div className="col-span-2 rounded-xl border border-border-light bg-surface/40 p-3.5">
+              <p className="text-[12.5px] font-semibold text-text-primary">
+                Booked revenue
+              </p>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary">
+                {editing.goalId
+                  ? editing.status === "Signed"
+                    ? `${editing.value ? formatMoney(Number(String(editing.value).replace(/[^0-9.]/g, "")) || 0) : "The value"} counts towards this goal${editing.signedOn ? ` in ${formatDate(editing.signedOn)}` : " once you set the signed date"}.`
+                    : "It will count once this contract is marked Signed."
+                  : "Pick a goal and this contract's value counts towards it once it is signed. Leave it blank and nothing is posted."}
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <ColorSelect
+                  value={editing.goalId}
+                  ariaLabel="Booked revenue goal"
+                  collapsible={false}
+                  dense
+                  className="min-w-[220px] flex-1"
+                  onChange={(v) => setEditing({ ...editing, goalId: v })}
+                  options={[
+                    { value: "", label: "No goal", color: "#8E98A8" },
+                    ...goals.map((g) => ({
+                      value: g.id,
+                      label: `${g.name} · ${g.year}`,
+                      color: typeMeta(g.type ?? "").color,
+                      icon: typeMeta(g.type ?? "").icon,
+                    })),
+                  ]}
+                />
+                <ColorSelect
+                  value={editing.goalPerson}
+                  ariaLabel="Whose booked revenue this is"
+                  collapsible={false}
+                  dense
+                  minWidth={160}
+                  onChange={(v) => setEditing({ ...editing, goalPerson: v })}
+                  options={[
+                    { value: "", label: "Contract owner", color: "#8E98A8" },
+                    ...[
+                      ...new Set([
+                        ...members,
+                        ...(editing.goalPerson ? [editing.goalPerson] : []),
+                      ]),
+                    ]
+                      .sort(
+                        (a, b) =>
+                          Number(b === meName) - Number(a === meName) ||
+                          a.localeCompare(b)
+                      )
+                      .map((n) => ({
+                        value: n,
+                        label: n,
+                        tag: n === meName ? "You" : undefined,
+                        avatarName: n,
+                      })),
+                  ]}
+                />
+              </div>
+              {goals.length === 0 && (
+                <p className="mt-2 text-[11.5px] text-text-tertiary">
+                  No goals exist yet. Create one in Performance and it will
+                  show up here.
+                </p>
+              )}
+            </div>
+
             <div className="col-span-2">
               <Field label="Link to the executed contract">
                 <Input
@@ -1145,6 +1260,7 @@ export function ContractsModule({
                         <td className="px-3 py-1.5">
                           <input
                             value={line.amount}
+                            placeholder="0"
                             inputMode="numeric"
                             aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
                             onChange={(e) => {

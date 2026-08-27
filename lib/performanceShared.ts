@@ -297,6 +297,13 @@ export type PerfActual = {
    * item level simply says so rather than demanding one.
    */
   opportunityId?: string;
+  /**
+   * The signed contract this number came out of, when it came from Contracts
+   * rather than from a deal. Same job as opportunityId one line up: it is how
+   * the contract finds the entry it already wrote, so a re-save adopts that
+   * one instead of counting the money a second time.
+   */
+  contractId?: string;
   /** The master activity this number came FROM (a pilot, a contract) when it
    *  was logged through an activity prompt. Optional forever — plenty of
    *  results have no activity behind them. Feeds the future activity→goal

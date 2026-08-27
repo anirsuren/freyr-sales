@@ -1527,6 +1527,7 @@ export function MyEntriesCard({
                     <input
                       autoFocus
                       value={draft.amount}
+                      placeholder="0"
                       onChange={(e) =>
                         setDraft((d) => ({ ...d, amount: e.target.value }))
                       }
@@ -1554,6 +1555,7 @@ export function MyEntriesCard({
                   </span>
                   <input
                     value={draft.customer}
+                    placeholder="Which customer this was for"
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, customer: e.target.value }))
                     }

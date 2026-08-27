@@ -1467,6 +1467,7 @@ export function AddMaterialButton({
                         <div className="min-w-0">
                         <input
                           value={fileLabels[key] || ""}
+                          placeholder="What this file is called"
                           onChange={(event) =>
                             setFileLabels((current) => ({
                               ...current,

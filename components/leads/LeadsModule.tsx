@@ -589,29 +589,24 @@ export function LeadsModule({
                                 buttons, so nothing jumps you to another module
                                 without saying so first. */}
                             <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border-light pt-3.5">
-                              {/* THIS IS A WRITE, SO MOCK HIDES IT (Anir,
-                                  Aug 26: "this button doesn't work"). It was
-                                  shown in both modes, but Solutioning refuses
-                                  every create in Mock — so in Mock it opened a
-                                  form that could never be submitted. Every
-                                  other write control on this row is already
-                                  hidden in Mock; this one was the exception. */}
-                              {live ? (
-                                <Link
-                                  href={`/solutioning?new=1&lead=${encodeURIComponent(lead.ref)}&company=${encodeURIComponent(lead.company)}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                                >
-                                  <ClipboardList size={13} strokeWidth={2.2} />
-                                  Request a meeting or a presentation
-                                </Link>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 text-[12px] text-text-tertiary">
-                                  <ClipboardList size={13} strokeWidth={2.2} />
-                                  Switch to Real mode to request a meeting or a
-                                  presentation for this lead
-                                </span>
-                              )}
+                              {/* MOCK CAN DO THIS TOO (Anir, Aug 26: "all the
+                                  same functionality (add, edit etc.) should be
+                                  on mock mode, but it shouldn't affect real
+                                  data"). This was hidden in Mock back when
+                                  Solutioning refused every create there. It
+                                  does not any more — mock writes land on the
+                                  mock row and cannot reach real data — so the
+                                  guard outlived its reason and was just a
+                                  missing feature in the mode built for trying
+                                  features out. */}
+                              <Link
+                                href={`/solutioning?new=1&lead=${encodeURIComponent(lead.ref)}&company=${encodeURIComponent(lead.company)}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                              >
+                                <ClipboardList size={13} strokeWidth={2.2} />
+                                Request a meeting or a presentation
+                              </Link>
                               {canWrite && (
                                 <button
                                   type="button"

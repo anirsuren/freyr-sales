@@ -158,6 +158,7 @@ export function SnippetLibrary() {
                     <input
                       autoFocus
                       aria-label="Snippet title"
+                      placeholder="What this snippet is for"
                       value={draftTitle}
                       onChange={(e) => setDraftTitle(e.target.value)}
                       onKeyDown={(e) => {

@@ -18,7 +18,8 @@
     "test:rules": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/aug25-rules.test.mjs",
     "test:sheet": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/sheet-fidelity.test.mjs",
     "test:groups": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/component-groups.test.mjs",
-    "live": "curl -sS -X POST localhost:3001/api/settings/data-mode -H 'content-type: application/json' -d '{\"mode\":\"live\"}'"
+    "live": "curl -sS -X POST localhost:3001/api/settings/data-mode -H 'content-type: application/json' -d '{\"mode\":\"live\"}'",
+    "test:booked": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/booked-revenue.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

@@ -1024,6 +1024,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                       <span className="relative z-10 flex items-center gap-1">
                         <input
                           aria-label="Deal value"
+                          placeholder="0"
                           autoFocus
                           value={editVal}
                           onClick={(e) => e.stopPropagation()}
