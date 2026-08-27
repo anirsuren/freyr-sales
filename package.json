@@ -22,7 +22,8 @@
     "test:booked": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/booked-revenue.test.mjs",
     "sweep:charts": "node tests/sweeps/chart-rules.mjs",
     "sweep:defects": "node tests/sweeps/defects.mjs",
-    "sweep:menus": "node tests/sweeps/menus.mjs"
+    "sweep:menus": "node tests/sweeps/menus.mjs",
+    "sweep:dark": "node tests/sweeps/dark-mode.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
