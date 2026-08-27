@@ -44,6 +44,11 @@ RUN apt-get update && \
       fonts-liberation fonts-dejavu-core fontconfig && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# THE RUNTIME NEVER RUNS NPM. The base ships npm with its own vendored
+# node_modules (sigstore, brace-expansion, ip-address...), and Inspector
+# flags every one of them against an image whose CMD is plain `node
+# server.js`. Ship the runtime, not the package manager.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
