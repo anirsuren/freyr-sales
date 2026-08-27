@@ -54,7 +54,11 @@ import type { OfferingMaterial } from "@/lib/offeringMaterials";
 export function timelineMark(what: string): { icon: LucideIcon; color: string } {
   const w = what.toLowerCase();
   if (w.startsWith("requested")) return { icon: ClipboardList, color: "#0071E3" };
-  if (w.startsWith("picked it up")) return { icon: Hand, color: "#4338CA" };
+  if (w.startsWith("picked it up") || w.startsWith("took this up"))
+    return { icon: Hand, color: "#4338CA" };
+  if (w.startsWith("started this") || w.startsWith("created this"))
+    return { icon: Hand, color: "#4338CA" };
+  if (w.startsWith("copied ")) return { icon: ClipboardList, color: "#0891B2" };
   if (w.startsWith("handed it back") || w.startsWith("took it off"))
     return { icon: Undo2, color: "#B45309" };
   if (w.includes("completed")) return { icon: CheckCircle2, color: "#16A34A" };
@@ -232,6 +236,17 @@ export function RequestDetail({
     }
   }
 
+  /* A REQUEST CARRIES ONLY ITS INPUTS (Suren, Aug 27: "at the time of
+     requests, only customer documents are there, some analysis documents...
+     when I look at the request, I don't want to see everything. When I look
+     at a submission, I need to see working documents, final results, and
+     everything"). Working documents and final deliverables belong to the
+     submission or presentation that fulfils the request, so a request shows
+     two tabs and the work shows four. */
+  const visibleTabs =
+    r.type === "request"
+      ? DOC_TABS.filter((t) => t.key === "customer" || t.key === "analysis")
+      : DOC_TABS;
   const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
   const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
 
@@ -303,7 +318,9 @@ export function RequestDetail({
                 onClick={() => post({ op: "pick-up" })}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                <Check size={14} strokeWidth={2.4} /> Pick it up
+                {/* Business words, his own (Suren, Aug 27: "What's 'pick it
+                    up'?... can you guys take this up?"). */}
+                <Check size={14} strokeWidth={2.4} /> Take this up
               </button>
             )}
             {r.status !== "completed" && (iRequested || managerial) && (
@@ -423,7 +440,7 @@ export function RequestDetail({
       >
         {[
           { key: "overview" as const, label: "Overview" },
-          ...DOC_TABS.map((t) => ({
+          ...visibleTabs.map((t) => ({
             key: t.key,
             // The count is always visible, zero included — the offering rule.
             label: `${t.label} (${r.docs.filter((d) => d.category === t.key).length})`,
@@ -542,10 +559,14 @@ export function RequestDetail({
               <SectionHeading
                 icon={FileText}
                 title="Documents"
-                description="What lives in each of the four tabs above."
+                description={
+                  r.type === "request"
+                    ? "What the requester provided: their documents and your analysis."
+                    : "What lives in each of the four tabs above."
+                }
               />
               <div className="mt-4 grid max-w-[640px] grid-cols-2 gap-4 pl-11 sm:grid-cols-4">
-                {DOC_TABS.map((t) => {
+                {visibleTabs.map((t) => {
                   const n = r.docs.filter((d) => d.category === t.key).length;
                   return (
                     <button
@@ -587,7 +608,7 @@ export function RequestDetail({
               ) : (
                 <p className="flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
                   <CircleDashed size={14} strokeWidth={2} />
-                  Waiting for the Solutions team to pick it up
+                  Waiting for the Solutions team to take it up
                 </p>
               )}
               {/* THE WAY BACK OUT (Anir, Aug 26: "I just picked this up, and I
@@ -603,7 +624,7 @@ export function RequestDetail({
                   onClick={() => post({ op: "release" })}
                   title={
                     iOwn
-                      ? "Put it back so somebody else can pick it up"
+                      ? "Put it back so somebody else can take it up"
                       : `Take it off ${r.owner}`
                   }
                   className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-[rgba(180,83,9,0.45)] hover:bg-[rgba(180,83,9,0.07)] hover:text-[color:#B45309] disabled:opacity-50"
@@ -975,6 +996,9 @@ function AddDocForm({
   const [url, setUrl] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [note, setNote] = useState("");
+  /** Stated, not implied (Suren, Aug 27: "I need a version number also when
+   *  you add the document"). Blank keeps the same-name auto numbering. */
+  const [version, setVersion] = useState("1");
   const [refRequestId, setRefRequestId] = useState("");
   const [refDocId, setRefDocId] = useState("");
   /* THE FILE ITSELF, not a link to it somewhere else. */
@@ -1043,13 +1067,28 @@ function AddDocForm({
 
       {mode === "new" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Document name — same name again becomes v2"
-            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-          />
+          <div className="flex gap-2">
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Document name"
+              className="h-9 w-full min-w-0 flex-1 rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            />
+            {/* The version, right beside the name it versions (Suren,
+                Aug 27: "we have given the field name... I need a version
+                number also when you add the document"). */}
+            <label className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-secondary">
+              v
+              <input
+                value={version}
+                onChange={(e) => setVersion(e.target.value.replace(/[^0-9]/g, ""))}
+                inputMode="numeric"
+                aria-label="Version number"
+                className="w-10 bg-transparent text-[12.5px] font-semibold text-text-primary outline-none tnum"
+              />
+            </label>
+          </div>
           {/* UPLOAD THE FILE, or paste a link to one that lives elsewhere.
               An uploaded file previews in the app exactly the way a sales
               material does; a link can only ever open in a new tab. */}
@@ -1191,6 +1230,7 @@ function AddDocForm({
               mode === "new"
                 ? {
                     name: name.trim(),
+                    version: version.trim() ? Number(version.trim()) : undefined,
                     url: file ? undefined : url.trim() || undefined,
                     docsPath: file?.docsPath,
                     fileName: file?.fileName,

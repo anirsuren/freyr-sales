@@ -1060,7 +1060,13 @@ export function RevenueAccrualsModule({
                                   <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                                     Month by month
                                   </span>
-                                  <ul className="mt-2 max-h-[176px] space-y-2 overflow-y-auto pr-1">
+                                  {/* The scrollbar keeps off the figures
+                                      (Anir, Aug 27: "it's too much touching
+                                      the numbers. Move to the right"):
+                                      content keeps a 12px clearance and the
+                                      negative margin parks the bar out in
+                                      the panel's own padding. */}
+                                  <ul className="-mr-3 mt-2 max-h-[176px] space-y-2 overflow-y-auto pr-3">
                                     {bars.map((b, i) => {
                                       const biggest = Math.max(...bars.map((x) => x.value), 1);
                                       const past = b.color === AMBER;

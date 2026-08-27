@@ -575,6 +575,7 @@ export function SolutioningModule({
 
       {creating && (
         <NewRequestDialog
+          room={room}
           onClose={() => {
             setCreating(false);
             if (search.get("new") === "1") router.replace("/solutioning");
@@ -1038,6 +1039,7 @@ function NewRequestDialog({
   prefillOpportunityId,
   prefillCompany,
   prefillLead,
+  room,
 }: {
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
@@ -1050,8 +1052,19 @@ function NewRequestDialog({
   prefillCompany: string | null;
   /** LEAD-0001, so the request records where it came from. */
   prefillLead: string | null;
+  /** Which room opened this. In Submissions and Presentations the dialog
+   *  makes THE WORK ITSELF, in the room's own words — no kind chooser and
+   *  no "request" language (Suren, Aug 27: "I'm creating a new submission.
+   *  Why are you saying 'request a submission'?"). */
+  room: "requests" | "submissions" | "presentations";
 }) {
-  const [kind, setKind] = useState<SolutioningKind | null>(null);
+  const directKind: SolutioningKind | null =
+    room === "submissions"
+      ? "submission"
+      : room === "presentations"
+        ? "presentation"
+        : null;
+  const [kind, setKind] = useState<SolutioningKind | null>(directKind);
   const [title, setTitle] = useState("");
   const [subtype, setSubtype] = useState("RFP");
   const [presType, setPresType] = useState("");
@@ -1125,7 +1138,13 @@ function NewRequestDialog({
     <Modal
       open
       onClose={onClose}
-      title={kind ? `Request a ${KIND_META[kind].label.toLowerCase()}` : "What do you need?"}
+      title={
+        directKind
+          ? `New ${KIND_META[directKind].label.toLowerCase()}`
+          : kind
+            ? `Request a ${KIND_META[kind].label.toLowerCase()}`
+            : "What do you need?"
+      }
       size="workflow"
     >
       {/* ONE SIZE THE WHOLE WAY THROUGH (Anir, Aug 25: "when I click on
@@ -1217,14 +1236,21 @@ function NewRequestDialog({
             somebody opening this for the first time does not know. */}
         <div className="mt-6 rounded-xl border border-border-light bg-surface/50 p-4">
           <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-            What happens after you send it
+            {directKind ? "What happens after you create it" : "What happens after you send it"}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {[
-              ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutions team's queue straight away."],
-              ["2", "Solutions picks it up", "Whoever takes it owns it, and builds the documents against your request."],
-              ["3", "You close it", "The requester decides when it is done, not the person who built it."],
-            ].map(([n, head, body]) => (
+            {(directKind
+              ? [
+                  ["1", "You create it", "It starts as yours: you own the work from the first minute."],
+                  ["2", "You build it", "Customer documents, analysis, working drafts and the final deliverables all live on it."],
+                  ["3", "You complete it", "Marking it completed finishes the work, and closes its request if it came from one."],
+                ]
+              : [
+                  ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutions team's queue straight away."],
+                  ["2", "Solutions takes it up", "Whoever takes it owns it, and builds the documents against your request."],
+                  ["3", "You close it", "The requester decides when it is done, not the person who built it."],
+                ]
+            ).map(([n, head, body]) => (
               <div key={n} className="flex gap-2.5">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-light text-[11px] font-bold text-blue-primary">
                   {n}
@@ -1505,7 +1531,11 @@ function NewRequestDialog({
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus size={14} strokeWidth={2.4} />
-              {saving ? "Creating…" : "Create the request"}
+              {saving
+                ? "Creating…"
+                : directKind
+                  ? `Create the ${KIND_META[directKind].label.toLowerCase()}`
+                  : "Create the request"}
             </button>
           </div>
         </div>

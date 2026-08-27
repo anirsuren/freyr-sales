@@ -128,6 +128,12 @@ export async function POST(req: NextRequest) {
         meetingAt: body.meetingAt,
         attendees: body.attendees,
         requestedBy: me.name,
+        /* Work starts owned by whoever made it — nobody "takes up" their
+           own submission (Suren, Aug 27: "they can click on a request and
+           then say 'Create a submission', or they can go to the submission
+           and create a submission" — either way the clicker is the one
+           doing the work). */
+        ...(type !== "request" ? { owner: me.name } : {}),
       });
       return NextResponse.json({ ok: true, request, state: await readSolutioning() });
     }
@@ -192,6 +198,10 @@ export async function POST(req: NextRequest) {
         fileName: body.fileName,
         assignedTo: body.assignedTo,
         note: body.note,
+        version:
+          typeof body.version === "number" && Number.isFinite(body.version)
+            ? body.version
+            : undefined,
         by: me.name,
         ref:
           body.refRequestId && body.refDocId

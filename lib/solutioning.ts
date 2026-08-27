@@ -788,6 +788,9 @@ export async function createRequest(input: {
   meetingAt?: string;
   attendees?: string[];
   requestedBy: string;
+  /** Direct work made in the Submissions/Presentations room starts owned by
+   *  its maker — nobody "takes up" their own submission. */
+  owner?: string;
 }): Promise<SolutionRequest> {
   return withWrite(async () => {
     const title = str(input.title, 200);
@@ -822,14 +825,45 @@ export async function createRequest(input: {
           ? strList(input.attendees, 80)
           : undefined,
       docs: [],
-      activity: [
-        {
-          at: new Date().toISOString(),
-          by: input.requestedBy,
-          what: `Requested this ${KIND_WORD[input.kind]}`,
-        },
-      ],
+      activity: [],
     };
+    /* THE HAND-OFF COPIES THE INPUTS (Suren, Aug 27: "whatever documents he
+       has given as customer documents and analysis documents get copied over
+       to the submission... it's a separate record. It gives you one ID, that
+       request ID"). Customer and analysis docs only — working documents and
+       final deliverables are the submission's own to make. Fresh ids, same
+       everything else, so the request keeps its copies untouched. */
+    if (record.requestId && type !== "request") {
+      const source = state.requests.find((x) => x.id === record.requestId);
+      if (source) {
+        const inputsToCopy = source.docs.filter(
+          (d) => !d.ref && (d.category === "customer" || d.category === "analysis")
+        );
+        record.docs = inputsToCopy.map((d) => ({ ...d, id: uid("sd") }));
+        if (inputsToCopy.length) {
+          record.activity.push({
+            at: new Date().toISOString(),
+            by: input.requestedBy,
+            what: `Copied ${inputsToCopy.length} document${inputsToCopy.length === 1 ? "" : "s"} from ${source.ref}`,
+          });
+        }
+      }
+    }
+    const owner = type !== "request" ? str(input.owner, 80) || undefined : undefined;
+    if (owner) {
+      record.owner = owner;
+      record.pickedUpAt = new Date().toISOString();
+    }
+    record.activity.unshift({
+      at: new Date().toISOString(),
+      by: input.requestedBy,
+      what:
+        type === "request"
+          ? `Requested this ${KIND_WORD[input.kind]}`
+          : record.requestId
+            ? `Created this ${KIND_WORD[input.kind]} from a request`
+            : `Started this ${KIND_WORD[input.kind]}`,
+    });
     state.requests.unshift(record);
     await writeRow(state);
     return record;
@@ -861,7 +895,11 @@ export async function pickUpRequest(input: {
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: "Picked it up",
+      /* Suren, Aug 27: "What's 'pick it up'? I don't know. I don't pick it
+         up. Business." — his own phrase in the same breath was "can you guys
+         take this up?", so the record speaks it. Old rows keep their words;
+         the timeline mark matches both. */
+      what: "Took this up",
     });
     await writeRow(state);
   });
@@ -1008,6 +1046,10 @@ export async function addDocument(input: {
   assignedTo?: string;
   note?: string;
   by: string;
+  /** Stated outright on the form (Suren, Aug 27: "I need a version number
+   *  also when you add the document"). Blank keeps the same-name auto
+   *  numbering that was already here. */
+  version?: number;
   /** Reference to a document on ANOTHER request (Suren: a meeting "can refer
    *  to a document that was created as part of a presentation request"). */
   ref?: { requestId: string; docId: string };
@@ -1029,9 +1071,16 @@ export async function addDocument(input: {
     }
     // Same name in the same tab → the next version. References never mint
     // versions here; the file's home request owns its numbering.
+    const stated =
+      typeof input.version === "number" &&
+      Number.isFinite(input.version) &&
+      input.version >= 1
+        ? Math.floor(input.version)
+        : null;
     const version = ref
       ? 1
-      : r.docs.filter(
+      : stated ??
+        r.docs.filter(
           (d) =>
             !d.ref &&
             d.category === input.category &&
