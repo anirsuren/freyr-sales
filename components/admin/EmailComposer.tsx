@@ -656,19 +656,9 @@ export function EmailComposer() {
             </button>
           )}
         </div>
-        {!ready && (
-          <p className="mt-2 text-right text-[12px] text-text-tertiary">
-            Still needed:{" "}
-            {[
-              !to.trim() && "who it goes to",
-              !subject.trim() && "a subject",
-              !wordsInBody && "a message",
-            ]
-              .filter(Boolean)
-              .join(", ")}
-            .
-          </p>
-        )}
+        {/* No "still needed" narration (Anir, Aug 27: "you don't have to
+            say this"). The disabled Send button already carries the answer,
+            and an admin does not need the form recited back at them. */}
       </Card>
 
       {/* WHAT GOES OUT WITHOUT ANYBODY WRITING IT.
