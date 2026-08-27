@@ -1910,7 +1910,24 @@ export function OfferingsBrowser({
                                  somewhere near it. pointer-events-none: it is
                                  a reveal, not a target — the row underneath
                                  stays clickable through it. */
-                              <span className="pointer-events-none absolute -left-2 -top-2 z-30 hidden w-[max(100%+1rem,220px)] rounded-xl border border-border-light bg-white p-2 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.28)] group-hover/fams:block">
+                              /* IT LIFTS, IT DOES NOT SNAP (Anir, Aug 27:
+                                 "it shouldn't be instant... it can just be as
+                                 if it's coming out of the screen. A nice,
+                                 smooth animation, not so abrupt").
+
+                                 hidden→block was a switch with no middle. This
+                                 waits the app's own hint delay, then rises
+                                 and scales the last 4% into place from its own
+                                 top-left, so the two names already on screen
+                                 appear to come forward and bring the other
+                                 three with them. Leaving is immediate — the
+                                 delay is only on the way in, or the panel
+                                 trails the pointer around the table.
+
+                                 w-max, not a fixed width: the longest segment
+                                 sets it, and the empty space on the right
+                                 stays empty. */
+                              <span className="pointer-events-none invisible absolute -left-2 -top-2 z-30 w-max max-w-[280px] origin-top-left translate-y-1 scale-[0.96] rounded-xl border border-border-light bg-white p-2.5 opacity-0 shadow-[0_18px_40px_-12px_rgba(15,23,42,0.34)] transition-all duration-200 ease-out group-hover/fams:visible group-hover/fams:translate-y-0 group-hover/fams:scale-100 group-hover/fams:opacity-100 group-hover/fams:delay-[250ms]">
                                 <span className="flex flex-col gap-0.5 text-[12px] leading-snug text-text-primary">
                                   {famList.map((f) => (
                                     <span key={f} className="break-words">

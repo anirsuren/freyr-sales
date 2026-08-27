@@ -107,8 +107,14 @@ export function FolderPeek({
   const [open, setOpen] = useState(false);
   const [peekPath, setPeekPath] = useState(path);
   /** Folders, or every file under here in one flat list (Anir, Aug 15: "an
-   *  option to see folders or just all files at once in a row"). */
-  const [mode, setMode] = useState<"folders" | "files">("folders");
+   *  option to see folders or just all files at once in a row").
+   *
+   *  FILES FIRST (Anir, Aug 27: "I do want the folders, but the default
+   *  should be files"). Opening on folders answered "how is this organised"
+   *  when the question a peek asks is "what is in here" — and on an offering
+   *  whose files all sit at the top level it opened on an empty list saying
+   *  "0 files" with the documents one tap away. Both toggles stay. */
+  const [mode, setMode] = useState<"folders" | "files">("files");
   const [query, setQuery] = useState("");
   const [position, setPosition] = useState<PanelPosition | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -226,6 +232,17 @@ export function FolderPeek({
             aria-label={`Inside ${materialFolderLabel(peekPath)}`}
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
+            /* THE PANEL EATS ITS OWN CLICKS (Anir, Aug 27: "make sure I can
+               click on this stuff, because it seems like when I click on it,
+               it's like clicking in the back as well"). It is portalled to
+               <body>, so a click inside it does NOT bubble through the React
+               tree to the row underneath — but a click that lands on the
+               panel's padding, its search box or its header hits the row the
+               panel is drawn over, folding it and yanking the panel away
+               mid-click. Stopping it here keeps every press inside the peek
+               inside the peek. */
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
             style={{
               left: position.left,
               top: position.top,

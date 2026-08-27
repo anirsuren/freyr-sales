@@ -36,7 +36,13 @@ export const FILTER_PALETTE = [
   "#2563EB", // blue          · 220°
   "#DB2777", // pink          · 333°
   "#0D9488", // teal          · 175°
-  "#B45309", // bronze gold   ·  30°  (the warm slot; never mustard-on-cream)
+  // WAS #B45309, AND IT READ AS MUD (Anir, Aug 27: "this is an ugly color, I
+  // don't know why you're using that brown"). That ochre is what a dark
+  // orange becomes at low chroma. #C2410C is the app's OWN warm token — the
+  // one charts/palette.ts already uses for the caution series — so this slot
+  // now matches the rest of the product instead of inventing a browner
+  // cousin of it. Brighter, cleanly orange, and 5.18:1 on white.
+  "#C2410C", // burnt orange  ·  20°  (the warm slot; the app-wide warm token)
   "#7C3AED", // violet        · 265°
   "#4D7C0F", // olive green   ·  83°  (moss, not the emerald of "Available now")
   "#0891B2", // cyan          · 192°
