@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  SearchX,
   Plus,
   Users,
 } from "lucide-react";
@@ -213,15 +214,46 @@ export function MeetingsModule({
 
       {groups.length === 0 ? (
         <div className="mt-4">
-          <EmptyState
-            icon={CalendarClock}
-            title={room === "planned" ? "No meetings planned" : "No completed meetings"}
-            description={
-              room === "planned"
-                ? "Create a meeting and it shows up here, grouped by when it happens."
-                : "A meeting moves here once somebody marks it done."
-            }
-          />
+          {/* AN EMPTY LIST AND AN EMPTY SEARCH ARE NOT THE SAME THING.
+              Typing a name that matches nothing produced "No meetings planned
+              — create a meeting and it shows up here", on a page whose own
+              tile said PLANNED 1 two inches above it (found in the browser,
+              Aug 28). It told the reader to create a meeting when the thing to
+              do was clear the search, and it contradicted the count on the
+              same screen. */}
+          {query.trim() ? (
+            <EmptyState
+              icon={SearchX}
+              title={`Nothing matches "${query.trim()}"`}
+              description={(() => {
+                const n = (room === "planned" ? planned : completed).length;
+                return `There ${n === 1 ? "is" : "are"} ${n} ${
+                  room === "planned" ? "planned" : "completed"
+                } ${
+                  n === 1 ? "meeting" : "meetings"
+                }, none of them matching. Search covers titles, customers and the people in the room.`;
+              })()}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+                >
+                  Clear the search
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={CalendarClock}
+              title={room === "planned" ? "No meetings planned" : "No completed meetings"}
+              description={
+                room === "planned"
+                  ? "Create a meeting and it shows up here, grouped by when it happens."
+                  : "A meeting moves here once somebody marks it done."
+              }
+            />
+          )}
         </div>
       ) : (
         <div className="mt-4 space-y-5">
