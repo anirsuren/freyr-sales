@@ -28,6 +28,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import { MEETING_TYPES, type Meeting, type MeetingNoteKind } from "@/lib/meetings";
 import { Field, Input } from "@/components/ui/Input";
+import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 
 /**
  * ONE MEETING.
@@ -144,9 +145,19 @@ export function MeetingDetail({
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold tnum text-text-tertiary">{m.ref}</span>
-            <span className="rounded-full bg-blue-light/70 px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              {m.type}
-            </span>
+            {(() => {
+              const meta = meetingTypeMeta(String(m.type));
+              const TypeIcon = meta.icon;
+              return (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                  style={{ background: `${meta.color}18`, color: meta.color }}
+                >
+                  <TypeIcon size={11} strokeWidth={2.4} />
+                  {m.type}
+                </span>
+              );
+            })()}
             <span
               className={cn(
                 "rounded-full px-2.5 py-1 text-[11px] font-semibold",
@@ -484,7 +495,8 @@ export function MeetingDetail({
                       options={MEETING_TYPES.map((t) => ({
                         value: t,
                         label: t,
-                        color: "#0071E3",
+                        color: meetingTypeMeta(t).color,
+                        icon: meetingTypeMeta(t).icon,
                       }))}
                     />
                   </Field>

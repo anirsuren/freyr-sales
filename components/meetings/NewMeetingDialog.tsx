@@ -8,6 +8,7 @@ import { Field, Input } from "@/components/ui/Input";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { MEETING_TYPES } from "@/lib/meetings";
+import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 import type {
   ContactOption,
   CustomerOption,
@@ -98,10 +99,13 @@ export function NewMeetingDialog({
                 dense
                 className="w-full"
                 onChange={setType}
+                /* Colour AND icon per type, the standing chip rule (Anir,
+                   Aug 28: "why all the same"). */
                 options={MEETING_TYPES.map((t) => ({
                   value: t,
                   label: t,
-                  color: "#0071E3",
+                  color: meetingTypeMeta(t).color,
+                  icon: meetingTypeMeta(t).icon,
                 }))}
               />
             </Field>

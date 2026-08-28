@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useStoredView } from "@/lib/useStoredView";
 import { cn, formatDate } from "@/lib/utils";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
+import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
 import {
   groupMeetingsByPeriod,
@@ -244,9 +245,19 @@ export function MeetingsModule({
                             <span className="truncate text-[13.5px] font-semibold text-text-primary">
                               {m.title}
                             </span>
-                            <span className="rounded-full bg-blue-light/70 px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary">
-                              {m.type}
-                            </span>
+                            {(() => {
+                              const meta = meetingTypeMeta(String(m.type));
+                              const TypeIcon = meta.icon;
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                                  style={{ background: `${meta.color}18`, color: meta.color }}
+                                >
+                                  <TypeIcon size={10} strokeWidth={2.5} />
+                                  {m.type}
+                                </span>
+                              );
+                            })()}
                           </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-text-secondary">
                             <span>{m.customer}</span>
