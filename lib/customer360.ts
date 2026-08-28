@@ -6,8 +6,11 @@ import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
-import type { Customer360Band, Customer360Item } from "@/components/customers/Customer360";
-import { BAND_ICONS } from "@/components/customers/Customer360";
+import {
+  BAND_ICONS,
+  type Customer360Band,
+  type Customer360Item,
+} from "@/lib/customer360Shared";
 
 /**
  * ONE READ THAT ANSWERS "WHAT IS GOING ON AT THIS ACCOUNT" (Suren, Aug 25:

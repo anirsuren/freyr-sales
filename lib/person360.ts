@@ -14,7 +14,7 @@ import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
-import type { Customer360Band } from "@/components/customers/Customer360";
+import type { Customer360Band } from "@/lib/customer360Shared";
 
 /**
  * ONE PERSON, EVERYTHING THEY OWN (Suren, Aug 25).

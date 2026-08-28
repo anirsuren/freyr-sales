@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Plus, Package, Trash2, X } from "lucide-react";
+import { AlertTriangle, ChevronRight, Plus, Package, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -242,9 +242,24 @@ export function CustomerActivityTab({
                           </span>
                         )}
                       </span>
-                      <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-text-secondary tnum">
-                        {logged} {logged === 1 ? "activity" : "activities"}
-                      </span>
+                      {/* AN EMPTY OFFERING HAS TO SAY SO WHILE IT IS SHUT
+                          (Anir, Aug 28: "if this one does not have an activity
+                          put something so that even when i have it closed it
+                          shows up that i need to add it"). "0 activities" in
+                          the same quiet grey as "4 activities" is a count, not
+                          a prompt: you had to read the number to notice. A
+                          missing activity is work owed, so it wears the amber
+                          every other piece of owed work wears here. */}
+                      {logged === 0 ? (
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.1)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B45309]">
+                          <AlertTriangle size={11} strokeWidth={2.4} aria-hidden="true" />
+                          No activity yet
+                        </span>
+                      ) : (
+                        <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-text-secondary tnum">
+                          {logged} {logged === 1 ? "activity" : "activities"}
+                        </span>
+                      )}
                       {canEdit && (
                         /* Inside the header BUTTON, so it is a span with a
                            button role — nested <button>s are invalid HTML. */

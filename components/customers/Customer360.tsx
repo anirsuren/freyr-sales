@@ -15,6 +15,17 @@ import {
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import {
+  BAND_ICONS,
+  type BandIconKey,
+  type Customer360Band,
+  type Customer360Item,
+} from "@/lib/customer360Shared";
+/* Re-exported so the pages that already import these from here keep working;
+   the definitions live in lib/customer360Shared.ts because server code needs
+   BAND_ICONS as a real value, not a client reference. */
+export { BAND_ICONS };
+export type { BandIconKey, Customer360Band, Customer360Item };
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
 import { ChevronDown } from "lucide-react";
@@ -63,55 +74,6 @@ import { cn, formatDate } from "@/lib/utils";
  * data failed to load.
  */
 
-export type Customer360Item = {
-  id: string;
-  title: string;
-  sub?: string;
-  when?: string;
-  amount?: number;
-  href?: string;
-  tone?: string;
-  /**
-   * EACH TAB WEARS ITS MODULE'S OWN CLOTHES (Anir, Aug 27: "can you retain
-   * the UI? Like the goals, I want it to look like how it does on the goals
-   * page and then the submissions, the offerings, etc."). These are the
-   * module rows' own parts, passed as data: the company's logo, the record's
-   * reference code, the goal's type chip and its progress bar — the same
-   * marks those pages draw, not a lookalike.
-   */
-  logo?: string;
-  code?: string;
-  goalType?: string;
-  /** Everything the goals page's own GoalZoom needs to run in the row's
-      fold — a state trimmed to this person's entries on this goal. */
-  goalDrill?: {
-    goalId: string;
-    person: string;
-    state: PerformanceState;
-  };
-};
-
-export type Customer360Band = {
-  key: string;
-  label: string;
-  /**
-   * A KEY, NOT A COMPONENT. This crosses the server/client boundary, and a
-   * React component is a function — Next refuses to serialise one ("only plain
-   * objects can be passed to Client Components"). Same rule the charts learned:
-   * the server names the icon, the client resolves it.
-   */
-  icon: BandIconKey;
-  color: string;
-  count: number;
-  /** Money where money is the point — deals and contracts. */
-  total?: number;
-  items: Customer360Item[];
-  href?: string;
-  hrefLabel?: string;
-  /** Shown instead of the list when the band is empty. */
-  empty: string;
-};
-
 const BAND_ICON_MAP = {
   opportunities: Target,
   /* Goals wore the meetings calendar and offerings wore the contracts pen —
@@ -126,20 +88,7 @@ const BAND_ICON_MAP = {
   contracts: FileSignature,
 } satisfies Record<string, LucideIcon>;
 
-export type BandIconKey = keyof typeof BAND_ICON_MAP;
 
-/** The names a server page may use. Values are the keys, not the components. */
-export const BAND_ICONS = {
-  opportunities: "opportunities",
-  goals: "goals",
-  offerings: "offerings",
-  submissions: "submissions",
-  presentations: "presentations",
-  meetings: "meetings",
-  contacts: "contacts",
-  leads: "leads",
-  contracts: "contracts",
-} satisfies Record<BandIconKey, BandIconKey>;
 
 /**
  * The same panel answers the same question for a PERSON (Suren, Aug 25: "I
@@ -177,8 +126,19 @@ export function Customer360({
   const [openGoal, setOpenGoal] = useState<string | null>(null);
   /** Folded goal families — the goals page's own header fold. */
   const [shutFamilies, setShutFamilies] = useState<string[]>([]);
+  /**
+   * EVERY AREA IS A TAB, INCLUDING THE EMPTY ONES (Anir, Aug 28: "at the
+   * bottom 'Nothing yet on: contacts, submissions...' is ugly").
+   *
+   * The gap is the useful part — an account with no contacts is worth
+   * noticing — but it was reported as a grey run-on sentence pinned under the
+   * card, in a different place and a different shape from the counts it
+   * belonged with. The empty areas join the strip instead, dimmed and showing
+   * a zero, so the whole picture is one row of tabs and the sentence is gone.
+   */
+  const ordered = [...live, ...bands.filter((b) => b.count === 0)];
   const active =
-    live.find((b) => b.key === activeKey) ?? (live.length ? live[0] : null);
+    ordered.find((b) => b.key === activeKey) ?? (ordered.length ? ordered[0] : null);
 
   return (
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
@@ -187,18 +147,21 @@ export function Customer360({
         {heading ?? `Everything on ${company}`}
         <InfoHint text="Every module that has something on this account, counted in one place: deals, submissions, presentations, meetings, contacts, leads and contracts. Each tab shows that area; Open jumps to the module that owns it." />
       </h2>
-      <p className="mt-0.5 text-[12.5px] text-text-secondary">
-        {live.length === 0
-          ? (emptyLine ?? "Nothing is connected to this account yet.")
-          : `${live.length} of ${bands.length} areas have something here.`}
-      </p>
+      {/* The strip below counts every area, so restating "1 of 7 areas have
+          something here" underneath it was a second way of saying the same
+          thing. Only the genuinely empty account still needs a sentence. */}
+      {live.length === 0 && (
+        <p className="mt-0.5 text-[12.5px] text-text-secondary">
+          {emptyLine ?? "Nothing is connected to this account yet."}
+        </p>
+      )}
 
-      {live.length > 0 && active && (
+      {ordered.length > 0 && active && (
         <>
           {/* The same strip the offering page uses — counts stay readable in
               one pass even while only one area's rows are showing. */}
-          <div role="tablist" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-border-light">
-            {live.map((b) => {
+          <div role="tablist" className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-border-light">
+            {ordered.map((b) => {
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
               const isActive = b.key === active.key;
               return (
@@ -212,10 +175,19 @@ export function Customer360({
                     "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-2.5 text-[13.5px] transition-colors",
                     isActive
                       ? "border-blue-primary font-medium text-text-primary"
-                      : "border-transparent text-text-secondary hover:text-text-primary"
+                      : "border-transparent hover:text-text-primary",
+                    /* An area with nothing in it is still a tab, just a
+                       quieter one, so a full area and an empty one are never
+                       mistaken for each other at a glance. */
+                    !isActive && (b.count === 0 ? "text-text-tertiary" : "text-text-secondary")
                   )}
                 >
-                  <Icon size={13.5} strokeWidth={2.2} style={{ color: b.color }} />
+                  <Icon
+                    size={13.5}
+                    strokeWidth={2.2}
+                    style={{ color: b.count === 0 ? undefined : b.color }}
+                    className={b.count === 0 ? "text-text-tertiary" : undefined}
+                  />
                   {b.label}
                   <b className="tnum font-semibold">{b.count}</b>
                   {b.total !== undefined && b.total > 0 && (
@@ -226,6 +198,21 @@ export function Customer360({
                 </button>
               );
             })}
+            {/* THE WAY IN, AT THE END OF THE STRIP (Anir, Aug 28: "'all
+                deals' is ugly and awkwardly placed"). It used to sit in a
+                footer row whose left half was a non-breaking space whenever
+                there were eight rows or fewer, so the link floated alone
+                against the bottom-right corner with nothing to align to.
+                Here it lands in the empty right of the tab strip, which is
+                also space the card was not using. */}
+            {active.href && (
+              <Link
+                href={active.href}
+                className="-mb-px ml-auto border-b-2 border-transparent pb-2.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
+              >
+                {active.hrefLabel ?? "Open"} &rsaquo;
+              </Link>
+            )}
           </div>
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
@@ -466,10 +453,27 @@ export function Customer360({
                   });
                 })()}
               </div>
+            ) : active.count === 0 ? (
+              <p className="mt-1 py-6 text-center text-[12.5px] text-text-secondary">
+                Nothing on {active.label.toLowerCase()} for {company} yet.
+              </p>
             ) : (
-            <ul className="mt-1 divide-y divide-border-light">
+            /* TWO COLUMNS ON A WIDE CARD (Anir, Aug 28: "theres so much space
+               to the right ur not taking advantage of"). Two deals used to
+               stack down the left third of a full-width card with the rest of
+               it blank. The facts still sit BESIDE the words rather than
+               flushed to a far edge — that was the original complaint and it
+               stands — there are simply two columns of them.
+
+               A border on each row rather than divide-y on the list: dividers
+               run between grid CELLS, so in two columns they draw a line down
+               the middle and skip the row boundaries. */
+            <ul className="mt-1 grid gap-x-6 sm:grid-cols-2">
               {active.items.slice(0, 8).map((item) => (
-                <li key={item.id} className="flex items-start gap-3 py-2.5">
+                <li
+                  key={item.id}
+                  className="flex items-start gap-3 border-t border-border-light py-2.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
+                >
                   {/* The module's own left mark: a company brings its logo,
                       an offering its category-coloured tile. */}
                   {item.logo ? (
@@ -538,36 +542,15 @@ export function Customer360({
               ))}
             </ul>
             )}
-            {(active.count > 8 || active.href) && (
-              <p className="mt-2 flex items-baseline justify-between gap-3 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
-                <span>
-                  {active.count > 8 ? `and ${active.count - 8} more` : "\u00A0"}
-                </span>
-                {active.href && (
-                  <Link
-                    href={active.href}
-                    className="font-semibold text-blue-primary hover:underline"
-                  >
-                    {active.hrefLabel ?? "Open"} &rsaquo;
-                  </Link>
-                )}
+            {active.count > 8 && (
+              <p className="mt-2 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
+                and {active.count - 8} more
               </p>
             )}
           </div>
         </>
       )}
 
-      {/* Empty bands, named rather than silent — the gap is the useful part. */}
-      {bands.some((b) => b.count === 0) && (
-        <p className="mt-3 text-[12px] text-text-tertiary">
-          Nothing yet on:{" "}
-          {bands
-            .filter((b) => b.count === 0)
-            .map((b) => b.label.toLowerCase())
-            .join(", ")}
-          .
-        </p>
-      )}
     </section>
   );
 }
