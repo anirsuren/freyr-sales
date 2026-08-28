@@ -104,6 +104,11 @@ const RELEASED_MODULE_PREFIXES = [
   "/leads",
   "/revenue-accruals",
   "/contracts",
+  // Meetings, from Suren's Aug 28 walkthrough ("I need to have a meetings
+  // module"). Same deal as the three above: admin-only in lib/moduleAccess,
+  // and released here so an admin can open it in Real mode at all. Without
+  // this line the route exists and the gate bounces it to /offerings.
+  "/meetings",
   // /goals is the door with Suren's name on it; it redirects to /performance,
   // which is already released above.
   "/goals",

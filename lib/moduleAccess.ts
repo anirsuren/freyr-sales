@@ -80,6 +80,9 @@ export const NEW_MODULES_ADMIN_ONLY = [
   "/leads",
   "/revenue-accruals",
   "/contracts",
+  /* Meetings, built from Suren's Aug 28 walkthrough. Same standing rule: a
+     module starts closed and Anir decides when reps see it. */
+  "/meetings",
 ] as const;
 
 /**

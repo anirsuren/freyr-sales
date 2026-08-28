@@ -70,6 +70,12 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   // Solutions role fulfils (Suren, Aug 24). Sits by Opportunities because
   // that is what most requests are against.
   { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
+  /* MEETINGS ARE THEIR OWN OBJECT (Suren, Aug 28: "I need to have a meetings
+     module"). Beside Solutioning because a meeting is often what a request or
+     a presentation is FOR, but separate from it because a meeting is not work
+     handed to the Solutions team — it is held, attended and written up,
+     usually by the sales person. Admin-only for now, like every new module. */
+  { href: "/meetings", label: "Meetings", icon: CalendarClock },
   /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes
      an opportunity, an opportunity plans its accrued revenue, and a contract
      is where sales closes it. All three are admin-only for now
