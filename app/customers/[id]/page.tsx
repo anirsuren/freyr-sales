@@ -9,6 +9,9 @@ import { IndustryTag } from "@/components/ui/IndustryTag";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
+import { RequestSolutioningButton } from "@/components/customers/RequestSolutioningButton";
+import { readOpportunities } from "@/lib/opportunities";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getRole } from "@/lib/role";
 import { buildCustomer360 } from "@/lib/customer360";
 import { Customer360 } from "@/components/customers/Customer360";
@@ -150,6 +153,39 @@ export default async function CustomerDetailPage({
     customer.company_name,
     await getRole()
   ).catch(() => []);
+
+  /* What the in-place "Request solutioning" dialog needs. Same shapes the
+     Solutioning page builds, so one form behaves identically wherever it is
+     opened from. Every one is non-fatal: a missing picker costs a dropdown,
+     never the page. */
+  const [solutioningDealsRaw, solutioningCustomersRaw, solutioningDirectory] =
+    await Promise.all([
+      readOpportunities()
+        .then((s) => s.opportunities)
+        .catch(() => []),
+      db.customers.list().catch(() => []),
+      process.env.FREYR_WORKSPACE_ID
+        ? listWorkspaceAccess(process.env.FREYR_WORKSPACE_ID).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+  const solutioningCustomers = solutioningCustomersRaw
+    .map((c) => ({ id: c.id, name: c.company_name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const solutioningDeals = solutioningDealsRaw.map((o) => ({
+    id: o.id,
+    label: o.name || `${o.customer} deal`,
+    customer: o.customer,
+    customerId: o.customerId ?? null,
+  }));
+  /* Real workspace accounts only. Never invented names on real data. */
+  const solutioningMembers = [
+    ...new Set(
+      (solutioningDirectory?.members ?? [])
+        .filter((m) => m.active && m.accountType === "real")
+        .map((m) => m.name.trim())
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
   if (c360.length) {
     c360.splice(1, 0, {
       key: "contacts",
@@ -239,14 +275,16 @@ export default async function CustomerDetailPage({
           />
           {/* THE SALES-SIDE DOOR INTO SOLUTIONING (Suren, Aug 24: "from the
               customer module itself they can request against an opportunity").
-              Lands on the module with this account already picked. */}
-          <Link
-            href={`/solutioning?new=1&customer=${customer.id}`}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-          >
-            <ClipboardList size={15} strokeWidth={1.7} />
-            Request solutioning
-          </Link>
+              Opens the request form HERE rather than sending you to another
+              page (Anir, Aug 28: "when I press 'Request Solutioning', why does
+              it take me to another page?"). Same dialog the leads page uses. */}
+          <RequestSolutioningButton
+            customerId={customer.id}
+            companyName={customer.company_name}
+            customers={solutioningCustomers}
+            opportunities={solutioningDeals}
+            members={solutioningMembers}
+          />
           <Link
             href={`/customers/${customer.id}/report`}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
