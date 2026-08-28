@@ -2,7 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BarChart3, Layers, Paperclip } from "lucide-react";
+import {
+  BarChart3,
+  Briefcase,
+  FileSignature,
+  Layers,
+  Paperclip,
+  Target,
+  UserPlus,
+} from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -26,7 +34,11 @@ export type EntityKind =
   | "component"
   | "person"
   | "report"
-  | "material";
+  | "material"
+  | "deal"
+  | "contract"
+  | "lead"
+  | "goal";
 
 export type Entity = { name: string; id: string; kind: EntityKind };
 
@@ -65,6 +77,25 @@ const KIND: Record<
    * named video in an answer lands on it playing rather than on the offering
    * page with a tab to hunt through.
    */
+  /* These four list pages do not deep-link to a single row yet, so the pill
+     lands on the list — identity first, navigation as far as it goes, the
+     same bargain the `person` pill has always struck with /team. */
+  deal: {
+    href: () => "/opportunities",
+    mark: () => <Briefcase size={13} strokeWidth={1.9} className="shrink-0" />,
+  },
+  contract: {
+    href: () => "/contracts",
+    mark: () => <FileSignature size={13} strokeWidth={1.9} className="shrink-0" />,
+  },
+  lead: {
+    href: () => "/leads",
+    mark: () => <UserPlus size={13} strokeWidth={1.9} className="shrink-0" />,
+  },
+  goal: {
+    href: () => "/goals",
+    mark: () => <Target size={13} strokeWidth={1.9} className="shrink-0" />,
+  },
   material: {
     href: (id) => {
       const [offeringId, materialId] = id.split(":");
@@ -161,7 +192,8 @@ export function injectEntities(
       const hasPage =
         linkable || hit.kind === "offering" || hit.kind === "component" ||
         hit.kind === "person" || hit.kind === "report" ||
-        hit.kind === "material";
+        hit.kind === "material" || hit.kind === "deal" ||
+        hit.kind === "contract" || hit.kind === "lead" || hit.kind === "goal";
       out.push(
         hasPage ? (
           <Link key={`${keyBase}-e${k++}`} href={style.href(hit.id)} className={PILL}>
@@ -212,6 +244,10 @@ export function useEntityIndex(): Entity[] {
           ...take(d.offerings, "offering"),
           ...take(d.components, "component"),
           ...take(d.materials, "material"),
+          ...take(d.deals, "deal"),
+          ...take(d.contracts, "contract"),
+          ...take(d.leads, "lead"),
+          ...take(d.goals, "goal"),
           ...take(d.people, "person"),
           ...take(d.reports, "report"),
         ].filter((e) => e.name && e.name.length > 2);
