@@ -985,8 +985,13 @@ export function RequestDetail({
             router.push("/solutioning");
           }
         }}
-        title={`Delete ${r.ref}?`}
-        body="The request and its document list go with it. Documents linked into other requests are unlinked there too."
+        /* NAME THE THING BEING DELETED (Anir, Aug 28: "here I need the name,
+           lol — the request id is just the id"). "Delete REQ-0003?" asks you
+           to confirm against a reference number nobody carries in their head;
+           the title is what tells you it is the right record. The ref stays,
+           after it, for the person who does work by number. */
+        title={`Delete "${r.title}"?`}
+        body={`${r.ref} and its document list go with it. Documents linked into other requests are unlinked there too.`}
         confirmLabel="Delete the request"
       />
     </div>

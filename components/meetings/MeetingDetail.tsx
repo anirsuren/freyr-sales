@@ -697,7 +697,7 @@ export function MeetingDetail({
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete this meeting?"
+        title={`Delete "${m.title}"?`}
         body={`${m.ref} and everything written on it will be removed. This cannot be undone.`}
         confirmLabel="Delete it"
         tone="destructive"
