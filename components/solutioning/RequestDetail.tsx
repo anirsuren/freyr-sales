@@ -34,6 +34,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -1352,10 +1353,19 @@ function AddDocForm({
           )}
         </div>
       ) : linkables.length === 0 ? (
-        <p className="flex h-full min-h-[380px] items-center justify-center rounded-lg border border-dashed border-border-light bg-surface/40 px-4 text-center text-[12.5px] text-text-secondary">
-          No other request has documents to link yet. Build one somewhere else
-          and it becomes linkable here.
-        </p>
+        /* A DESIGNED EMPTY STATE, NOT A VOID (Anir, Aug 28: "now this just
+           looks weird"). Pinning the height stopped the dialog resizing, but
+           wrapping one grey sentence in a dashed box the size of the whole
+           form just made the emptiness the loudest thing on screen. Same
+           EmptyState the rest of the app uses: a mark, a heading, a line, and
+           nothing drawn around the space it does not need. */
+        <div className="flex h-full items-center justify-center">
+          <EmptyState
+            icon={Link2}
+            title="Nothing to link yet"
+            description="Documents built on another request show up here. There are none on any other request so far."
+          />
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ColorSelect
