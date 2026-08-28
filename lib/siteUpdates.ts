@@ -55,8 +55,42 @@ const MAX_ITEMS = 8;
  * written from that same result's snippet, so still about that page — is
  * the only usable words there are.
  */
-const GENERIC_TITLE =
-  /^(press release details?|news release details?|news details?|media (centre|center)?|newsroom|news|press releases?|investors?|investor relations|home|about us?)$/i;
+const GENERIC_TITLE = new RegExp(
+  [
+    // The whole title is the name of the SECTION, not of the announcement.
+    "^(press release details?|news release details?|news details?",
+    "|media (centre|center)?|newsroom|news|press releases?|media releases?",
+    "|investors?|investor relations|home)$",
+    // "Stock-exchange announcement", "Regulatory announcement" — the wrapper
+    // a listed company puts round a release, caught by hand on GSK's card
+    // where a Jemperli FDA filing was titled exactly that.
+    "|^(stock[ -]exchange|regulatory|company|corporate) announcements?$",
+    // An "About …" page title is never an announcement headline. GSK's
+    // Cabenuva release came back titled "About Viiv Healthcare". A SPACE,
+    // not a word boundary: "\\b" also fired on the perfectly good headline
+    // "About-face strategy pays off for Roche".
+    "|^about(\\s|$)",
+  ].join(""),
+  "i"
+);
+
+/**
+ * A HEADLINE THE READER CANNOT READ IS NOT A HEADLINE.
+ *
+ * Big pharma runs a country site per market, and the domain filter reaches
+ * all of them, so GSK's card carried two Japanese headlines from jp.gsk.com
+ * — both translations of releases already on gsk.com in English (found by
+ * hand, Aug 28). Freyr's reps read English, so a title that is mostly
+ * non-Latin script falls back to the model's own English headline, which was
+ * written from that same result's snippet and so still describes that same
+ * page. The URL is untouched: the link still goes where the words came from.
+ */
+function mostlyLatin(text: string): boolean {
+  const letters = text.replace(/[^\p{L}]/gu, "");
+  if (!letters) return true;
+  const latin = letters.replace(/[^\p{Script=Latin}]/gu, "");
+  return latin.length / letters.length >= 0.6;
+}
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -140,7 +174,7 @@ export async function scrapeSiteUpdates(
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Recent updates published by ${source.name} on their own website ${domain}. Cover every section of their site: press releases, media statements, quarterly and annual financial results, investor updates, product launches, partnerships, leadership appointments, regulatory milestones. For each one give a one-sentence summary and sourceIndex = the 1-based position of the search result it comes from. Prefer English-language pages when the site offers both.`,
+        content: `Recent updates published by ${source.name} on their own website ${domain}. Cover every section of their site: press releases, media statements, quarterly and annual financial results, investor updates, product launches, partnerships, leadership appointments, regulatory milestones. For each one give a one-sentence summary and sourceIndex = the 1-based position of the search result it comes from. Use the company's English-language pages. Many of these companies run one site per country; when the same announcement exists in English and in another language, take the English one and never list both.`,
       },
     ],
     search_domain_filter: [domain],
@@ -202,7 +236,7 @@ export async function scrapeSiteUpdates(
           .replace(/\*+/g, "")
           .trim();
         const title =
-          !raw || GENERIC_TITLE.test(raw) || raw.length < 12
+          !raw || GENERIC_TITLE.test(raw) || raw.length < 12 || !mostlyLatin(raw)
             ? modelHeadline || raw
             : raw;
         if (!url || !title) continue;
