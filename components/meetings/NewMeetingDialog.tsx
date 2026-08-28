@@ -122,7 +122,19 @@ export function NewMeetingDialog({
           A fixed working height with the rooms scrolling inside it: opening a
           room fills space that was already there instead of taking more. */}
       <div className="h-[min(64vh,560px)] space-y-3 overflow-y-auto pr-1">
-        <FormRoom icon={CalendarDays} title="The meeting" defaultOpen summary={title || "Not named yet"}>
+        {/* EDITING OPENS EVERYTHING (found in the browser, Aug 28: with the
+            rooms collapsed the dialog held 200px of white under three closed
+            strips). Creating is a sequence — you fill the first room, then the
+            next — so one room open is right. Editing is not: you came to change
+            one specific thing and you do not know which room it lives in, so
+            closing them makes you hunt, and the fixed height turns the hunt
+            into dead space. */}
+        <FormRoom
+          icon={CalendarDays}
+          title="The meeting"
+          defaultOpen
+          summary={title || "Not named yet"}
+        >
           <Field label="What is this meeting about">
             <Input
               value={title}
@@ -162,6 +174,7 @@ export function NewMeetingDialog({
         <FormRoom
           icon={Building2}
           title="Who it is with"
+          defaultOpen={editing}
           summary={customer ? customer.name : "No account picked"}
         >
           <Field label="Customer">
@@ -278,6 +291,7 @@ export function NewMeetingDialog({
         <FormRoom
           icon={Users}
           title="Our side"
+          defaultOpen={editing}
           summary={
             presenters.length
               ? `${presenters.length} presenting`

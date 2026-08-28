@@ -106,6 +106,25 @@ export function menuMotionVars(style: FloatingMenuStyle | null): CSSProperties {
   };
 }
 
+/**
+ * A MENU IS AS WIDE AS ITS ROWS NEED, NOT AS WIDE AS ITS FIELD.
+ *
+ * Anir, Aug 28, on the picker inside a 980px dialog: "this need not be so
+ * long, the checkmark so far away from name." The menu took the trigger's
+ * width, which was fine while these forms were 640px and absurd once they went
+ * to 980: a list of company names stretched the whole dialog and threw the
+ * tick to the far edge, a hand-span from the row it belonged to.
+ *
+ * 560 is as wide as a label-plus-description row can usefully get. Under it
+ * the menu still follows the field, so every narrow picker in the app is
+ * unchanged.
+ */
+const MENU_MAX_WIDTH = 560;
+
+function menuWidthFor(triggerWidth: number, floor: number): number {
+  return Math.min(Math.max(triggerWidth, floor), MENU_MAX_WIDTH);
+}
+
 export function floatingMenuStyle(
   trigger: DOMRect,
   desiredWidth: number,
@@ -249,7 +268,7 @@ export function ColorSelect({
     const t = window.setTimeout(() => {
       const rect = ref.current?.getBoundingClientRect();
       if (rect) {
-        const desiredWidth = Math.max(rect.width, 240);
+        const desiredWidth = menuWidthFor(rect.width, 240);
         setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
       }
       setOpen(true);
@@ -348,7 +367,7 @@ export function ColorSelect({
          1200px control (Anir, Aug 27: "why is the drop-down so small?...
          it looks bad"). The list is the field's own — it wears the field's
          width. */
-      const desiredWidth = Math.max(rect.width, detailed ? 304 : 240);
+      const desiredWidth = menuWidthFor(rect.width, detailed ? 304 : 240);
       setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
     }
     setMenuQuery("");
@@ -386,7 +405,8 @@ export function ColorSelect({
       if (!rect) return;
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
-        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
+        const width =
+          typeof prev?.width === "number" ? prev.width : menuWidthFor(rect.width, 240);
         return floatingMenuStyle(rect, width, 260);
       });
     };
@@ -984,7 +1004,8 @@ export function MultiColorSelect({
       if (!rect) return;
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
-        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
+        const width =
+          typeof prev?.width === "number" ? prev.width : menuWidthFor(rect.width, 240);
         return floatingMenuStyle(rect, width, 260);
       });
     };

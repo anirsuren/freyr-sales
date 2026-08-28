@@ -67,16 +67,25 @@ const NOTE_META: Record<
     color: "#7C3AED",
     placeholder: "Paste the transcript…",
   },
+  /* NEITHER OF THESE MAY WEAR WHAT IT WAS WEARING (found in the browser,
+     Aug 28). Outcome was #16A34A — the exact green this app uses for verified
+     and complete, spent here as an identity colour, which is the thing the
+     status-tone rule exists to prevent. Comment was #64748B, a plain slate,
+     against the standing rule that a category chip is never gray.
+
+     Teal and pink are FILTER_PALETTE slots: distinct from each other, distinct
+     from Brief's blue and Transcript's purple, and neither is mistakable for a
+     status. */
   outcome: {
     label: "Outcome",
     icon: Target,
-    color: "#16A34A",
+    color: "#0D9488",
     placeholder: "What came out of it, and what happens next…",
   },
   comment: {
     label: "Comment",
     icon: MessageSquare,
-    color: "#64748B",
+    color: "#DB2777",
     placeholder: "Anything worth saying about this meeting…",
   },
 };
