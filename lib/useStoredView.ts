@@ -62,3 +62,50 @@ export function useStoredView<T extends string>(
 
   return [view, choose, hydrated];
 }
+
+/**
+ * THE SAME PREFERENCE, BUT A LIST OF THEM.
+ *
+ * Which grouped cards somebody has folded shut is a view preference exactly
+ * like the view mode above, and it was being thrown away on every navigation
+ * (Anir, Aug 28: "also ur not saving if I had it closed or opened"). Folding
+ * eleven customer groups to look at the twelfth, then coming back to all
+ * eleven open again, is the kind of small forgetting that makes a page feel
+ * like it is not listening.
+ *
+ * Values are opaque strings — a customer name, an offering id — so nothing is
+ * validated against an allow-list the way a view mode is. A stale entry for a
+ * group that no longer exists is harmless: it matches nothing and is dropped
+ * the next time the set is written.
+ */
+export function useStoredSet(
+  key: string
+): [string[], (next: string[]) => void, boolean] {
+  const [items, setItems] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(key);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed))
+          setItems(parsed.filter((v): v is string => typeof v === "string"));
+      }
+    } catch {
+      /* no storage, or something wrote junk here: start empty */
+    }
+    setHydrated(true);
+  }, [key]);
+
+  function remember(next: string[]) {
+    setItems(next);
+    try {
+      window.localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* nothing to remember, the page still works */
+    }
+  }
+
+  return [items, remember, hydrated];
+}

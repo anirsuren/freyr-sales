@@ -58,7 +58,7 @@ import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn } from "@/lib/utils";
 import { refreshOpportunities } from "@/lib/useOpportunities";
-import { useStoredView } from "@/lib/useStoredView";
+import { useStoredSet, useStoredView } from "@/lib/useStoredView";
 import {
   CONFIDENCE_GO_GET,
   CONFIDENCE_HIGH,
@@ -772,9 +772,11 @@ export function OpportunitiesBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, groupBy, offeringName]);
 
-  /** Which grouped cards are folded shut — session-local, exactly like the
-   *  Goal Master's categories. */
-  const [shutGroups, setShutGroups] = useState<string[]>([]);
+  /** Which grouped cards are folded shut. Remembered across navigations, not
+   *  session-local: closing eleven customers to read the twelfth and finding
+   *  all eleven open again on the way back is the page not listening (Anir,
+   *  Aug 28: "also ur not saving if I had it closed or opened"). */
+  const [shutGroups, setShutGroups] = useStoredSet("freyr.opportunities.shutGroups");
 
   const groupSections = useMemo(() => {
     if (groupBy === "none") return [] as { key: string; rows: Opportunity[] }[];
@@ -1834,10 +1836,10 @@ export function OpportunitiesBrowser({
                 <button
                   type="button"
                   onClick={() =>
-                    setShutGroups((current) =>
-                      current.includes(key)
-                        ? current.filter((k) => k !== key)
-                        : [...current, key]
+                    setShutGroups(
+                      shutGroups.includes(key)
+                        ? shutGroups.filter((k) => k !== key)
+                        : [...shutGroups, key]
                     )
                   }
                   aria-expanded={!shut}
