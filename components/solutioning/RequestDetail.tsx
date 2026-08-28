@@ -253,11 +253,26 @@ export function RequestDetail({
 
   return (
     <div>
+      {/* THE WAY BACK NAMES THE ROOM YOU CAME FROM (Suren, Aug 28: "when I go
+          and click on this, it should not say 'all requests'. It's all
+          submissions"). Every record wore "All requests" whatever it was, so
+          a submission offered to take you back to a list it is not on. */}
       <SmartBack
-        fallback="/solutioning"
+        fallback={
+          r.type === "submission"
+            ? "/solutioning?tab=submissions"
+            : r.type === "presentation"
+              ? "/solutioning?tab=presentations"
+              : "/solutioning"
+        }
         className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary"
       >
-        <ArrowLeft size={15} strokeWidth={1.8} /> All requests
+        <ArrowLeft size={15} strokeWidth={1.8} />{" "}
+        {r.type === "submission"
+          ? "All submissions"
+          : r.type === "presentation"
+            ? "All presentations"
+            : "All requests"}
       </SmartBack>
 
       {/* ------------- header: identity left, primary actions right --------- */}
