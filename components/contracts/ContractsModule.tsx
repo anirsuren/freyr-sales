@@ -1414,67 +1414,42 @@ export function ContractsModule({
               </p>
             )}
 
-            {/* NO VALUE, NO WALL OF ZEROES (Anir, Aug 28: "I don't like this
-                either" — twelve rows each reading 0, before anybody had said
-                what the contract is worth).
+            {scheduleRows.length > 0 ? (
+              /* TWO MONTHS TO A ROW (Anir, Aug 28: "I didn't like the way this
+                 looked").
 
-                The table is the ANSWER to the contract value. With no value
-                there is no answer, only twelve boxes demanding to be typed
-                into by hand, so it says what it is waiting for instead. Type
-                a value and the months appear already spread. */}
-            {scheduleValue <= 0 ? (
-              <p className="mt-2 rounded-lg border border-dashed border-border-light bg-surface/40 px-3 py-4 text-center text-[12.5px] text-text-secondary">
-                Set the contract value above and these{" "}
-                {scheduleRows.length}{" "}
-                {scheduleRows.length === 1 ? "month" : "months"} fill in
-                themselves. You can adjust any of them afterwards.
-              </p>
-            ) : scheduleRows.length > 0 ? (
-              /* Header outside the scroll box, body inside, and the cap is
-                 exactly five rows of `h-11` — so a long schedule is cut
-                 between months rather than through the middle of one. */
-              <div className="mt-2 overflow-hidden rounded-lg border border-border-light bg-white">
-                <table className="w-full table-fixed text-left">
-                  <thead className="bg-surface">
-                    <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
-                      <th className="w-1/2">Month</th>
-                      <th className="w-1/2">Amount (USD)</th>
-                    </tr>
-                  </thead>
-                </table>
-                <div className="max-h-[220px] overflow-y-auto border-t border-border-light">
-                  <table className="w-full table-fixed text-left">
-                    <tbody className="divide-y divide-border-light">
-                      {scheduleRows.map((line, i) => (
-                        <tr key={line.month || i} className="h-11">
-                          <td className="w-1/2 px-3 py-1.5 text-[13px] font-semibold text-text-primary">
-                            {monthLabel(line.month)}
-                          </td>
-                          <td className="w-1/2 px-3 py-1.5">
-                            <input
-                              value={line.amount}
-                              placeholder="0"
-                              inputMode="numeric"
-                              aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
-                              onChange={(e) =>
-                                editScheduleMonth(
-                                  i,
-                                  e.target.value.replace(/[^0-9]/g, "")
-                                )
-                              }
-                              className={cn(
-                                "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",
-                                line.pinned
-                                  ? "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
-                                  : "border-border-light"
-                              )}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                 It was one month per row with an amount box running half the
+                 width of the dialog, so a year of revenue was twelve tall rows
+                 with a canyon of white between each month and its own number,
+                 and the section was twice the height it needed to be. Paired
+                 up, a year is six rows, the number sits beside the month it
+                 belongs to, and the width is used instead of spanned. */
+              <div className="mt-2 grid gap-x-6 rounded-lg border border-border-light bg-white p-1.5 sm:grid-cols-2">
+                {scheduleRows.map((line, i) => (
+                  <label
+                    key={line.month || i}
+                    className="flex h-10 items-center gap-3 rounded-md px-2 transition-colors hover:bg-surface/60"
+                  >
+                    <span className="w-[74px] shrink-0 text-[12.5px] font-semibold text-text-primary">
+                      {monthLabel(line.month)}
+                    </span>
+                    <input
+                      value={line.amount}
+                      placeholder="0"
+                      inputMode="numeric"
+                      aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
+                      onChange={(e) =>
+                        editScheduleMonth(i, e.target.value.replace(/[^0-9]/g, ""))
+                      }
+                      className={cn(
+                        "h-8 min-w-0 flex-1 rounded-md border px-2 text-right text-[13px] tnum outline-none focus:border-blue-subtle",
+                        line.pinned
+                          ? "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
+                          : "border-border-light"
+                      )}
+                    />
+                  </label>
+                ))}
               </div>
             ) : null}
 
