@@ -1358,6 +1358,11 @@ export function RevenueAccrualsModule({
               value={editing.opportunityId}
               ariaLabel="Which deal are you planning"
               collapsible={false}
+              /* One line per deal (Anir, Aug 28). The menu runs the full
+                 width of its field, so stacking the name over its customer
+                 and value wasted that room and showed four deals where it
+                 can show eight. */
+              inlineDescription
               searchable
               className="w-full"
               minWidth={0}
@@ -1369,7 +1374,30 @@ export function RevenueAccrualsModule({
                 ...missing.map((d) => ({
                   value: d.id,
                   label: d.name,
-                  description: `${d.customer}${d.offeringLabel ? ` · ${d.offeringLabel}` : ""} · ${formatMoney(d.value)}`,
+                  /* The account's own mark on every row (Anir, Aug 28: "I
+                     need the company profile picture on the plan a deal") —
+                     the standing rule that a company on screen always brings
+                     its logo, and seventy deals as seventy identical grey
+                     dots said nothing about which account you were picking. */
+                  logoName: d.customer,
+                  /* SAY EACH THING ONCE (Anir, Aug 28: "why are you
+                     repeating"). A deal is named after its offering and its
+                     account — "GRI — Takeda (ARR)" — so printing "Takeda ·
+                     GRI" beside it said the same two words twice. Only the
+                     parts the name does not already carry survive; the
+                     value always does, because a name never carries it. */
+                  description: [
+                    d.name.toLowerCase().includes(d.customer.toLowerCase())
+                      ? null
+                      : d.customer,
+                    d.offeringLabel &&
+                    !d.name.toLowerCase().includes(d.offeringLabel.toLowerCase())
+                      ? d.offeringLabel
+                      : null,
+                    formatMoney(d.value),
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
                 })),
                 /* The deal being edited stays selectable even though it is no
                    longer "missing a plan" — otherwise reopening an existing
@@ -1379,7 +1407,18 @@ export function RevenueAccrualsModule({
                       {
                         value: editing.opportunityId,
                         label: dealById.get(editing.opportunityId)?.name ?? "This deal",
-                        description: dealById.get(editing.opportunityId)?.customer,
+                        ...(dealById.get(editing.opportunityId)?.customer
+                          ? { logoName: dealById.get(editing.opportunityId)!.customer }
+                          : {}),
+                        /* Same rule on the chosen row: the account only when
+                           the deal's own name does not already say it. */
+                        description: (() => {
+                          const d = dealById.get(editing.opportunityId);
+                          if (!d?.customer) return undefined;
+                          return d.name.toLowerCase().includes(d.customer.toLowerCase())
+                            ? undefined
+                            : d.customer;
+                        })(),
                       },
                     ]
                   : []),

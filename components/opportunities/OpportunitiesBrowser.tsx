@@ -59,6 +59,8 @@ import { cn } from "@/lib/utils";
 import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredView } from "@/lib/useStoredView";
 import {
+  CONFIDENCE_GO_GET,
+  CONFIDENCE_HIGH,
   OPPORTUNITY_LEVELS,
   revenueTypeFromConfidence,
   revenueTypeRule,
@@ -2111,41 +2113,61 @@ export function OpportunitiesBrowser({
                       ? undefined
                       : Number(editing.rows[0].confidence);
                   const derived = revenueTypeFromConfidence(conf, isFuture);
-                  const Icon = LEVEL_ICON[derived];
+                  /* A DROPDOWN, NOT A TICK BOX (Anir, Aug 28: "this is
+                     weird — they should make the revenue type a drop down.
+                     Why is it a checkbox?"). It was a read-only pill with a
+                     checkbox underneath, so the one field had two controls
+                     and neither looked like the others on the row.
+
+                     There are exactly TWO things a person can choose here,
+                     so the menu offers exactly two. Pipeline, High
+                     confidence and Go get are not choices — the confidence
+                     bar decides which one applies (Suren, Aug 18: "you play
+                     with the bar, the moment you put it at 99 that means
+                     I'll take it as go get") — so they appear as ONE row
+                     wearing whichever the bar currently says. Future is the
+                     real decision: it answers WHEN the money lands, not how
+                     likely it is, which is why a 99% deal can still be
+                     future revenue. */
+                  const barLevel = revenueTypeFromConfidence(conf, false);
+                  const BarIcon = LEVEL_ICON[barLevel];
                   return (
                     <div className="mt-1 space-y-1.5">
-                      <div
-                        data-derived-revenue-type={derived}
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-[7px] text-[13px] font-semibold"
-                        style={{
-                          background: `${LEVEL_COLOR[derived]}18`,
-                          color: LEVEL_COLOR[derived],
-                        }}
-                      >
-                        {Icon && <Icon size={13} strokeWidth={2.3} />}
-                        {derived}
-                      </div>
-                      <p className="text-[11px] leading-snug text-text-tertiary">
-                        {isFuture
-                          ? "Set by the box below."
-                          : `Set by the confidence bar. ${revenueTypeRule(derived)}.`}
-                      </p>
-                      <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-semibold text-text-secondary">
-                        <input
-                          type="checkbox"
-                          checked={isFuture}
-                          onChange={(e) =>
+                      <span data-derived-revenue-type={derived} className="block">
+                        <ColorSelect
+                          value={isFuture ? "Future" : "bar"}
+                          ariaLabel="Revenue type"
+                          collapsible={false}
+                          className="w-full"
+                          minWidth={0}
+                          dense
+                          onChange={(v) =>
                             setEditing({
                               ...editing,
-                              level: e.target.checked
-                                ? "Future"
-                                : revenueTypeFromConfidence(conf, false),
+                              level: v === "Future" ? "Future" : barLevel,
                             })
                           }
-                          className="h-3.5 w-3.5 accent-[color:#7C3AED]"
+                          options={[
+                            {
+                              value: "bar",
+                              label: barLevel,
+                              color: LEVEL_COLOR[barLevel],
+                              ...(BarIcon ? { icon: BarIcon } : {}),
+                            },
+                            {
+                              value: "Future",
+                              label: "Future",
+                              color: LEVEL_COLOR.Future,
+                              ...(LEVEL_ICON.Future ? { icon: LEVEL_ICON.Future } : {}),
+                            },
+                          ]}
                         />
-                        Future revenue
-                      </label>
+                      </span>
+                      <p className="text-[11px] leading-snug text-text-tertiary">
+                        {isFuture
+                          ? "Revenue lands in a later financial year."
+                          : `Follows the confidence bar. ${revenueTypeRule(derived)}.`}
+                      </p>
                     </div>
                   );
                 })()}
@@ -2267,14 +2289,26 @@ export function OpportunitiesBrowser({
                           ),
                         })
                       }
+                      /* GROUPED BY GOAL TYPE (Anir, Aug 28: "I would like
+                         the categories here, please — I think you do this
+                         somewhere else, like on the offering"). Sorted so
+                         each family's rows are contiguous, which is all the
+                         heading needs to draw itself. */
                       options={[
                         { value: "", label: "Pick a goal…", color: "#8E98A8" },
-                        ...goals.map((g) => ({
-                          value: g.id,
-                          label: `${g.name} · ${g.year}`,
-                          color: typeMeta(g.type ?? "").color,
-                          icon: typeMeta(g.type ?? "").icon,
-                        })),
+                        ...[...goals]
+                          .sort(
+                            (a, b) =>
+                              (a.type ?? "").localeCompare(b.type ?? "") ||
+                              a.name.localeCompare(b.name)
+                          )
+                          .map((g) => ({
+                            value: g.id,
+                            label: `${g.name} · ${g.year}`,
+                            section: g.type || "Other goals",
+                            color: typeMeta(g.type ?? "").color,
+                            icon: typeMeta(g.type ?? "").icon,
+                          })),
                       ]}
                     />
                     <ColorSelect
@@ -2762,13 +2796,24 @@ function ConfidenceSlider({
           the dot always") — anchored at the thumb's percent and clamped so it
           never slides off the ends. Translate and scale are both Tailwind
           transforms so the drag pop still composes with the centering. */}
-      <div className="relative h-6">
+      <div className="relative h-[26px]">
+        {/* THE FIGURE IS A CHIP, NOT LOOSE DIGITS (Anir, Aug 28: "even at
+            30%, it looks weird, something's wrong"). A bold number and a
+            small grey % floating alone under the bar, at whatever percent
+            the thumb happens to sit, read as strays: three rows, three
+            different alignments. In a tinted chip carrying the bar's own
+            colour it reads as the thumb's own label, which is what it is,
+            and it is still typeable. */}
         <div
           className={cn(
-            "absolute top-0 flex -translate-x-1/2 items-center gap-0.5 transition-transform duration-150",
+            "absolute top-0 flex -translate-x-1/2 items-center gap-0.5 rounded-full border px-2 py-[1px] transition-transform duration-150",
             dragging && "scale-110"
           )}
-          style={{ left: `clamp(30px, ${pct}%, calc(100% - 30px))` }}
+          style={{
+            left: `clamp(34px, ${pct}%, calc(100% - 34px))`,
+            background: active ? `${color}14` : "var(--surface)",
+            borderColor: active ? `${color}40` : "var(--border-light)",
+          }}
         >
           <input
             value={value}
@@ -2786,10 +2831,12 @@ function ConfidenceSlider({
             inputMode="numeric"
             placeholder="25"
             aria-label="Confidence. Type an exact figure"
-            className="w-[40px] border-0 bg-transparent p-0 text-center text-[16px] font-bold tnum outline-none placeholder:text-text-tertiary"
+            className="w-[30px] border-0 bg-transparent p-0 text-center text-[14.5px] font-bold tnum outline-none placeholder:text-text-tertiary"
             style={{ color }}
           />
-          <span className="text-[11.5px] font-semibold text-text-tertiary">%</span>
+          <span className="text-[10.5px] font-semibold" style={{ color: active ? color : undefined }}>
+            %
+          </span>
         </div>
       </div>
     </div>
@@ -3364,13 +3411,32 @@ function SingleOfferingEditor({
                 : Number(line.confidence);
             const derived = revenueTypeFromConfidence(conf, false);
             const Icon = LEVEL_ICON[derived];
+            /* ONE LINE, ALWAYS THE SAME HEIGHT (Anir, Aug 28: "when it hits
+               99 or 95, it takes up two lines now, which is weird. I don't
+               want it to move"). The rule used to end with "the revenue
+               type follows the bar", which at Go get pushed the sentence
+               past the column and wrapped, so the whole block grew a line
+               and everything under it jumped. The pill moving as you drag
+               teaches that rule better than the sentence did, so the tail
+               is gone and the row is pinned to one line at a fixed height:
+               drag from 0 to 100 and nothing below shifts by a pixel. */
+            const rule =
+              conf === undefined
+                ? "Move the bar to set this"
+                : derived === "Go get"
+                  ? `${CONFIDENCE_GO_GET}% and up, paperwork is the only thing left`
+                  : derived === "High confidence"
+                    ? `${CONFIDENCE_HIGH}% to ${CONFIDENCE_GO_GET - 1}%`
+                    : derived === "Future"
+                      ? "Lands in a later financial year"
+                      : `Under ${CONFIDENCE_HIGH}%`;
             return (
               <p
                 data-confidence-verdict={derived}
-                className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary"
+                className="mt-1.5 flex h-[20px] items-center gap-1.5 overflow-hidden text-[11.5px] text-text-tertiary"
               >
                 <span
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-bold"
                   style={{
                     background: `${LEVEL_COLOR[derived]}18`,
                     color: LEVEL_COLOR[derived],
@@ -3379,9 +3445,7 @@ function SingleOfferingEditor({
                   {Icon && <Icon size={11} strokeWidth={2.4} />}
                   {derived}
                 </span>
-                {conf === undefined
-                  ? "Move the bar and the revenue type follows."
-                  : `${revenueTypeRule(derived)} — the revenue type follows the bar.`}
+                <span className="min-w-0 truncate">{rule}</span>
               </p>
             );
           })()}

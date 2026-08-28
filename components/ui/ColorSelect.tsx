@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Check, Crown, Search, type LucideIcon } from "lucide-react";
 import {
@@ -26,6 +26,14 @@ export type ColorOption = {
    *  said nothing about which one you were picking. */
   logoName?: string;
   description?: string;
+  /**
+   * The category this option belongs to. Consecutive options sharing one
+   * get a small heading above them (Anir, Aug 28, on the goal picker: "I
+   * would like the categories here, please — I think you do this somewhere
+   * else, like on the offering"). Options without a section are listed as
+   * they come, so a caller opting in changes nothing for anybody else.
+   */
+  section?: string;
   /**
    * THE OWNER WEARS THE CROWN (Anir, Aug 19, picking a group to put on a
    * goal: "I don't need that icon. I need the owner profile picture with the
@@ -164,6 +172,7 @@ export function ColorSelect({
   ariaLabel,
   collapsible = true,
   compactTrigger = false,
+  inlineDescription = false,
   triggerLabel,
   dense = false,
   autoOpen = false,
@@ -189,6 +198,13 @@ export function ColorSelect({
   ariaLabel?: string;
   /** Opt out of the search-priority compression (default: follow the toolbar). */
   collapsible?: boolean;
+  /**
+   * Put each option's description on the SAME line as its label instead of
+   * under it. A wide menu (the accrual deal picker runs the width of its
+   * field) stacking two short lines wastes the room it was given and shows
+   * four rows where it could show eight.
+   */
+  inlineDescription?: boolean;
   /** Keep detailed descriptions in the menu while using a standard one-line trigger. */
   compactTrigger?: boolean;
   /** A shorter stable label for dense toolbars, while the menu keeps full option labels. */
@@ -659,7 +675,25 @@ export function ColorSelect({
             // Selected look = a whisper of the option's own color (Suren: the old
             // solid-blue fill + left notch looked bad). No bar, no heavy fill.
             const accent = o.color || "#0071E3";
+            /* A CATEGORY HEADING WHEN THE CATEGORY CHANGES. Purely derived
+               from the order the caller passed, so grouping is the caller's
+               job and this only draws the divider. */
+            const heading =
+              o.section && o.section !== visibleOptions[rowIndex - 1]?.section
+                ? o.section
+                : null;
             return (
+              <Fragment key={`${o.value || "__all"}-wrap`}>
+              {heading && (
+                <p
+                  className={cn(
+                    "px-2.5 pb-1 text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary",
+                    rowIndex === 0 ? "pt-0.5" : "mt-1.5 border-t border-border-light pt-2"
+                  )}
+                >
+                  {heading}
+                </p>
+              )}
               <button
                 key={o.value || "__all"}
                 type="button"
@@ -671,7 +705,11 @@ export function ColorSelect({
                 }}
                 className={cn(
                   "menu-row-in relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
-                  detailed ? "min-h-[54px] gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-2 text-[13px]",
+                  detailed
+                    ? inlineDescription
+                      ? "gap-2.5 px-2.5 py-1.5"
+                      : "min-h-[54px] gap-3 px-2.5 py-2"
+                    : "gap-2.5 px-2.5 py-2 text-[13px]",
                   !on && "hover:bg-surface active:scale-[0.99]"
                 )}
                 style={{
@@ -679,11 +717,17 @@ export function ColorSelect({
                   ["--row" as string]: rowIndex,
                 }}
               >
-                <Dot o={o} prominent={detailed} />
-                <span className="flex-1 min-w-0">
+                <Dot o={o} prominent={detailed && !inlineDescription} />
+                <span
+                  className={cn(
+                    "flex-1 min-w-0",
+                    inlineDescription && "flex items-baseline gap-2"
+                  )}
+                >
                   <span
                     className={cn(
-                      "block whitespace-normal leading-snug",
+                      "block leading-snug",
+                      inlineDescription ? "shrink-0 whitespace-nowrap" : "whitespace-normal",
                       on && "font-semibold",
                       detailed && "text-[13px] leading-tight"
                     )}
@@ -696,7 +740,14 @@ export function ColorSelect({
                     )}
                   </span>
                   {detailed && o.description && (
-                    <span className="mt-1 block whitespace-normal text-[10.5px] font-normal leading-snug text-text-tertiary">
+                    <span
+                      className={cn(
+                        "block font-normal leading-snug text-text-tertiary",
+                        inlineDescription
+                          ? "min-w-0 truncate text-[11.5px]"
+                          : "mt-1 whitespace-normal text-[10.5px]"
+                      )}
+                    >
                       {o.description}
                     </span>
                   )}
@@ -741,6 +792,7 @@ export function ColorSelect({
                   <Check size={15} strokeWidth={2.6} className="shrink-0" style={{ color: accent }} />
                 )}
               </button>
+              </Fragment>
             );
           })}
           {searchable &&
