@@ -8,7 +8,6 @@ import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
 import { getRole } from "@/lib/role";
 import { buildCustomer360 } from "@/lib/customer360";
@@ -255,7 +254,6 @@ export default async function CustomerDetailPage({
             <FileText size={15} strokeWidth={1.7} />
             Report
           </Link>
-          <ReEnrichButton customerId={customer.id} />
         </div>
       </div>
 
