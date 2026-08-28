@@ -1,9 +1,9 @@
-FROM node:22-bookworm-slim AS dependencies
+FROM node:22-trixie-slim AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:22-bookworm-slim AS builder
+FROM node:22-trixie-slim AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -17,7 +17,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:22-bookworm-slim AS runner
+FROM node:22-trixie-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -37,6 +37,25 @@ ENV NODE_ENV=production \
 # pulls every published Debian security patch into the one stage that
 # actually ships; the build stages ship nothing. Node 20 also left LTS in
 # April, hence 22 above.
+#
+# DEBIAN 13, NOT 12 (Krishna, Aug 28: "the latest image still have many
+# vulnarabilities"). That round got it to 74, and then it stopped moving,
+# because 65 of the 99 package findings report fixedInVersion: NotAvailable.
+# There was no patch left to install: bookworm simply freezes these packages
+# at versions the CVEs were written against, and dist-upgrade cannot conjure
+# a fix Debian has not published. Every one of the four Criticals was in
+# that set.
+#
+# Trixie moves the floor instead of chasing patches on top of an old one:
+#
+#     perl    5.36.0  ->  5.40.1     (3 of the 4 Criticals are perl)
+#     tiff    4.5.0   ->  4.7.0      (the 4th Critical is libtiff)
+#     expat   2.5.0   ->  2.7.1      (18 findings)
+#     libreoffice 7.4.7 -> 25.2.3
+#
+# All three stages move together so the standalone build and the runtime
+# share a glibc. No dependency here is a native module, so there is no ABI
+# to break: the only compiled thing in the image is Node itself.
 RUN apt-get update && \
     apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends \
