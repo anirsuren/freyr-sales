@@ -1501,18 +1501,31 @@ export function OpportunitiesBrowser({
                                         .slice(0, 4)
                                         .map((mt) => (
                                           <li key={mt.id}>
+                                            {/* THE TITLE GETS THE LINE, the
+                                                reference and the date share
+                                                the one under it. All three
+                                                on one row in a 230px rail
+                                                left the title seven
+                                                characters wide — "Inittia…"
+                                                beside a date with room to
+                                                spare (found in the browser,
+                                                Aug 28). What the meeting was
+                                                about is the half a reader
+                                                needs; a ref they can read
+                                                after they have found it. */}
                                             <Link
                                               href={`/meetings/${mt.id}`}
-                                              className="flex items-baseline gap-2 text-[12.5px] hover:text-blue-primary"
+                                              className="block text-[12.5px] hover:text-blue-primary"
                                             >
-                                              <span className="shrink-0 text-[10.5px] font-bold tnum text-text-tertiary">
-                                                {mt.ref}
-                                              </span>
-                                              <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
+                                              <span className="block truncate font-medium text-text-primary">
                                                 {mt.title}
                                               </span>
-                                              <span className="shrink-0 tnum text-[11.5px] text-text-secondary">
-                                                {formatDate(mt.meetingAt)}
+                                              <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                                                <span className="font-bold tnum">{mt.ref}</span>
+                                                <span aria-hidden="true">·</span>
+                                                <span className="tnum">
+                                                  {formatDate(mt.meetingAt)}
+                                                </span>
                                               </span>
                                             </Link>
                                           </li>
