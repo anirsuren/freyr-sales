@@ -262,6 +262,10 @@ export function SolutioningModule({
         return null;
       }
       if (data.state) setState(data.state);
+      /* The page's own server data backs the counters and the tiles, so it is
+         re-read after every action (Anir, Aug 28: "I had to keep reloading
+         whenever I added something new"). */
+      router.refresh();
       return data;
     } catch {
       toast("That didn't save.", "error");

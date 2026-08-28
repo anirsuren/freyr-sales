@@ -170,6 +170,7 @@ export function RequestDetail({
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
   const [adding, setAdding] = useState(false);
   const [comment, setComment] = useState("");
+  const [commenting, setCommenting] = useState(false);
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -243,6 +244,11 @@ export function RequestDetail({
         return null;
       }
       toast(`${data.request.ref} created.`);
+      /* AND THE PAGE BEHIND IT (Anir, Aug 28: "I had to keep reloading
+         whenever I added something new"). `post` already refreshed; this
+         path did not, so a submission created from a request appeared only
+         after a manual reload. */
+      router.refresh();
       return data.request as SolutionRequest;
     } catch {
       toast("That didn't save.", "error");
@@ -362,7 +368,11 @@ export function RequestDetail({
                 type="button"
                 disabled={busy}
                 onClick={() => post({ op: "release" })}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-[rgba(180,83,9,0.45)] hover:bg-[rgba(180,83,9,0.07)] hover:text-[color:#B45309] disabled:opacity-50"
+                /* RED, LIKE EVERY OTHER UNDO (Anir, Aug 28: "hand it back
+                   should be red"). It takes your name off work in progress
+                   and puts it back in the queue, which is the same shape as
+                   the app's other reversals. */
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
               >
                 <Undo2 size={14} strokeWidth={2.2} /> Hand it back
               </button>
@@ -671,7 +681,7 @@ export function RequestDetail({
                       ? "Put it back so somebody else can take it up"
                       : `Take it off ${r.owner}`
                   }
-                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-light px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-[rgba(180,83,9,0.45)] hover:bg-[rgba(180,83,9,0.07)] hover:text-[color:#B45309] disabled:opacity-50"
+                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] px-3 py-2 text-[12.5px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
                 >
                   <Undo2 size={13.5} strokeWidth={2.2} />
                   {iOwn ? "Hand it back" : `Take it off ${r.owner.split(" ")[0]}`}
@@ -759,30 +769,19 @@ export function RequestDetail({
                   on a completed record too: the moment work is handed back is
                   exactly when the person who asked for it has something to
                   say. */}
+              {/* A BUTTON, NOT A BOX SITTING THERE (Anir, Aug 28: "super
+                  fucking ugly ui here should just be a button to popup"). An
+                  always-open textarea took a third of the card to say nothing,
+                  and it sat under a timeline that is already scrolling. */}
               <div className="mt-3 border-t border-border-light pt-3">
-                <Textarea
-                  rows={2}
-                  value={comment}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setComment(e.target.value)
-                  }
-                  placeholder="Add a comment for whoever picks this up next…"
-                  aria-label="Add a comment"
-                />
-                <div className="mt-2 flex justify-end">
-                  <button
-                    type="button"
-                    disabled={busy || !comment.trim()}
-                    onClick={async () => {
-                      const text = comment.trim();
-                      if (!text) return;
-                      if (await post({ op: "comment", text })) setComment("");
-                    }}
-                    className="rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
-                    Comment
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setCommenting(true)}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                >
+                  <MessageSquare size={13.5} strokeWidth={2.2} />
+                  Add a comment
+                </button>
               </div>
             </SectionCard>
           </div>
@@ -886,6 +885,50 @@ export function RequestDetail({
           onClose={() => setViewing(null)}
         />
       )}
+
+      {/* THE COMMENT POPUP. Deliberately available on a completed record too:
+          the moment work is handed back is exactly when the person who asked
+          for it has something to say. */}
+      <Modal
+        open={commenting}
+        onClose={() => setCommenting(false)}
+        title="Add a comment"
+      >
+        <Textarea
+          rows={5}
+          autoFocus
+          value={comment}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            setComment(e.target.value)
+          }
+          placeholder="What the person picking this up next needs to know…"
+          aria-label="Comment"
+        />
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setCommenting(false)}
+            className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy || !comment.trim()}
+            onClick={async () => {
+              const text = comment.trim();
+              if (!text) return;
+              if (await post({ op: "comment", text })) {
+                setComment("");
+                setCommenting(false);
+              }
+            }}
+            className="rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            Comment
+          </button>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         open={confirmRemoveDoc !== null}
@@ -1143,6 +1186,12 @@ function AddDocForm({
   const refDoc = home?.docs.find((d) => d.id === refDocId) ?? null;
 
   return (
+    /* THE DIALOG HOLDS ONE SIZE (Anir, Aug 28: "why is this popup small",
+       and before that "the dimensions have to stay the same"). The two tabs
+       hold very different amounts — a full upload form against a single line
+       of "nothing to link yet" — so switching between them resized the whole
+       popup under the cursor. A floor on the body means the shorter tab fills
+       space that is already there. */
     <div className="space-y-3">
       <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
         <button
@@ -1173,6 +1222,7 @@ function AddDocForm({
         </button>
       </div>
 
+      <div className="min-h-[420px]">
       {mode === "new" ? (
         /* THE SALES MATERIALS SHAPE (Anir, Aug 28: "this is the worst UI I've
            ever seen. Make it look more like the Offering Sales Materials
@@ -1302,8 +1352,9 @@ function AddDocForm({
           )}
         </div>
       ) : linkables.length === 0 ? (
-        <p className="text-[12px] text-text-tertiary">
-          No other request has documents to link yet.
+        <p className="flex h-full min-h-[380px] items-center justify-center rounded-lg border border-dashed border-border-light bg-surface/40 px-4 text-center text-[12.5px] text-text-secondary">
+          No other request has documents to link yet. Build one somewhere else
+          and it becomes linkable here.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1361,7 +1412,19 @@ function AddDocForm({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      </div>
+
+      {/* CANCEL THEN PRIMARY, BOTTOM RIGHT (Anir, Aug 28: "why are the buttons
+          on the left"). Every other dialog in the app ends this way; this one
+          had them flush left in the reverse order. */}
+      <div className="mt-4 flex items-center justify-end gap-2 border-t border-border-light pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+        >
+          Cancel
+        </button>
         <button
           type="button"
           disabled={
@@ -1374,7 +1437,7 @@ function AddDocForm({
               mode === "new"
                 ? {
                     name: name.trim(),
-                    version: version.trim() ? Number(version.trim()) : undefined,
+                    version: Number(version) || 1,
                     url: file ? undefined : url.trim() || undefined,
                     docsPath: file?.docsPath,
                     fileName: file?.fileName,
@@ -1389,17 +1452,10 @@ function AddDocForm({
                   }
             )
           }
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Plus size={13} strokeWidth={2.4} />
+          <Plus size={14} strokeWidth={2.4} />
           Add to {tabLabel.toLowerCase()}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-        >
-          Cancel
         </button>
       </div>
     </div>
