@@ -27,6 +27,17 @@ export type ColorOption = {
   logoName?: string;
   description?: string;
   /**
+   * DRAW THE EYE TO THE ROWS THAT HAVE SOMETHING (Suren, Aug 28: "make the
+   * ones that have a deal pop more").
+   *
+   * A count only helps if you can find it. When most rows read "nothing on
+   * file yet" in the same quiet gray as the few that read "2 deals", the
+   * useful rows disappear into the list they were added to rescue. The ones
+   * that carry something wear the count as a real badge; the empty ones stay
+   * as quiet as possible.
+   */
+  descriptionAccent?: boolean;
+  /**
    * The category this option belongs to. Consecutive options sharing one
    * get a small heading above them (Anir, Aug 28, on the goal picker: "I
    * would like the categories here, please — I think you do this somewhere
@@ -742,9 +753,12 @@ export function ColorSelect({
                   {detailed && o.description && (
                     <span
                       className={cn(
-                        "block font-normal leading-snug text-text-tertiary",
+                        "block leading-snug",
+                        o.descriptionAccent
+                          ? "shrink-0 rounded-full bg-blue-light px-1.5 py-[1px] text-[10.5px] font-bold text-blue-primary"
+                          : "font-normal text-text-tertiary/70",
                         inlineDescription
-                          ? "min-w-0 truncate text-[11.5px]"
+                          ? cn("min-w-0", !o.descriptionAccent && "truncate text-[11.5px]")
                           : "mt-1 whitespace-normal text-[10.5px]"
                       )}
                     >

@@ -55,10 +55,23 @@ export function KindChip({
   kind,
   size = "md",
   className,
+  iconOnly = false,
 }: {
   kind: SolutioningKind;
   size?: "sm" | "md";
   className?: string;
+  /**
+   * DROP THE WORD, KEEP THE MARK (Suren, Aug 28: "you don't have to say
+   * submission or presentation here etc, it's already the column header. Show
+   * the icon / colour though").
+   *
+   * In a table filtered to one kind, every row repeating that kind's name
+   * under a header of the same name is a column of noise — but the coloured
+   * mark still earns its place, because it is how the row reads as a
+   * submission at a glance and it stays consistent with the same chip
+   * everywhere else. The name survives as the accessible label.
+   */
+  iconOnly?: boolean;
 }) {
   const meta = KIND_META[kind];
   const Icon = meta.icon;
@@ -70,14 +83,22 @@ export function KindChip({
           "--semantic-bg": `${meta.color}1A`,
         } as CSSProperties
       }
+      title={iconOnly ? meta.label : undefined}
+      aria-label={iconOnly ? meta.label : undefined}
       className={cn(
         "semantic-color-pill inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-semibold",
-        size === "sm" ? "px-2 py-0.5 text-[10.5px]" : "px-2.5 py-1 text-[11.5px]",
+        iconOnly
+          ? size === "sm"
+            ? "px-1.5 py-1"
+            : "px-2 py-1.5"
+          : size === "sm"
+            ? "px-2 py-0.5 text-[10.5px]"
+            : "px-2.5 py-1 text-[11.5px]",
         className
       )}
     >
       <Icon size={size === "sm" ? 11 : 12.5} strokeWidth={2.2} />
-      {meta.label}
+      {!iconOnly && meta.label}
     </span>
   );
 }

@@ -6,28 +6,33 @@ import {
   ArrowLeft,
   Briefcase,
   Building2,
-  CalendarDays,
   CheckCircle2,
   FileText,
   MessageSquare,
   Mic,
+  MonitorPlay,
+  Pencil,
+  Plus,
+  UserCog,
   RotateCcw,
   Target,
   Trash2,
+  Upload,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Textarea } from "@/components/ui/Textarea";
-import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
-import { MEETING_TYPES, type Meeting, type MeetingNoteKind } from "@/lib/meetings";
-import { Field, Input } from "@/components/ui/Input";
+import { type Meeting, type MeetingNoteKind } from "@/lib/meetings";
+import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
+import { Modal } from "@/components/ui/Modal";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 
 /**
@@ -81,11 +86,22 @@ export function MeetingDetail({
   meName,
   meRole,
   members,
+  customers,
+  contacts,
+  opportunities,
 }: {
   meeting: Meeting;
   meName: string;
   meRole: string;
   members: string[];
+  customers: { id: string; name: string }[];
+  contacts: { id: string; name: string; customerId: string | null; title: string }[];
+  opportunities: {
+    id: string;
+    label: string;
+    customer: string;
+    customerId: string | null;
+  }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -96,7 +112,10 @@ export function MeetingDetail({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [docOpen, setDocOpen] = useState(false);
 
   const mine = m.owner.trim().toLowerCase() === meName.trim().toLowerCase();
   const canDelete = mine || meRole === "admin";
@@ -175,6 +194,21 @@ export function MeetingDetail({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* EDITING IS A BUTTON UP HERE, NOT A LINK BURIED IN A CARD.
+              Suren, Aug 28: "How do we edit it, man? There is no editing
+              there. Once I created the thing, change the type or the dates...
+              I cannot edit who was there. This one doesn't allow you."
+              There WAS an edit link, at the bottom of the third card, covering
+              three fields. He never found it, and it could not touch the
+              people — which is the half most likely to be wrong, because who
+              actually turned up is only known afterwards. */}
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          >
+            <Pencil size={15} strokeWidth={2} /> Edit
+          </button>
           {/* "Somebody has to go once the meeting is done and say that meeting
               is complete." Anyone who can see it may, because a meeting is not
               owned work. */}
@@ -216,64 +250,34 @@ export function MeetingDetail({
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
-          <SectionCard title="The write-up" icon={FileText}>
+          <SectionCard
+            title="The write-up"
+            icon={FileText}
+            /* ADDING IS A BUTTON, THEN A POPUP (Anir, Aug 28: "this is so
+               ugly, I hate when you do this. Adding should never be just like
+               that. You press a button, then there's a popup, then you add
+               it").
+
+               A kind picker, a textarea and a Save button sitting permanently
+               open in the card pushed the actual write-up — the thing you came
+               to read — below the fold on a meeting with nothing written on it
+               yet. Every other add in this app is a button that opens a
+               dialog; this one had no reason to be the exception. */
+            action={
+              <AddSquare
+                label="Add to the write-up"
+                onClick={() => {
+                  setNoteKind("outcome");
+                  setNoteText("");
+                  setNoteOpen(true);
+                }}
+              />
+            }
+          >
             <p className="text-[12.5px] text-text-secondary">
               A brief before it, a transcript or an outcome after. Anything
-              typed here is part of the meeting record.
+              written here is part of the meeting record.
             </p>
-
-            <div className="mt-3 rounded-xl border border-border-light bg-surface/40 p-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(Object.keys(NOTE_META) as MeetingNoteKind[]).map((k) => {
-                  const meta = NOTE_META[k];
-                  const on = noteKind === k;
-                  const Icon = meta.icon;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setNoteKind(k)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
-                        on
-                          ? "text-white"
-                          : "border border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-                      )}
-                      style={on ? { background: meta.color } : undefined}
-                    >
-                      <Icon size={11} strokeWidth={2.4} />
-                      {meta.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-2">
-                <Textarea
-                  rows={noteKind === "transcript" ? 6 : 3}
-                  value={noteText}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setNoteText(e.target.value)
-                  }
-                  placeholder={NOTE_META[noteKind].placeholder}
-                  aria-label={`Add a ${NOTE_META[noteKind].label.toLowerCase()}`}
-                />
-              </div>
-              <div className="mt-2 flex justify-end">
-                <button
-                  type="button"
-                  disabled={busy || !noteText.trim()}
-                  onClick={async () => {
-                    const text = noteText.trim();
-                    if (!text) return;
-                    if (await post({ op: "add-note", kind: noteKind, text }))
-                      setNoteText("");
-                  }}
-                  className="rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  Add {NOTE_META[noteKind].label.toLowerCase()}
-                </button>
-              </div>
-            </div>
 
             {m.notes.length === 0 ? (
               <p className="mt-3 py-6 text-center text-[12.5px] text-text-secondary">
@@ -324,64 +328,38 @@ export function MeetingDetail({
               written record rather than instead of it — his whole point about
               analysis was that it is sometimes a document and sometimes just
               words. */}
-          <SectionCard title="Documents" icon={FileText}>
+          {/* SAME SHAPE AS THE WRITE-UP (Anir, Aug 28: "same thing on the
+              documents thing, there has to be the blue square with the white
+              plus on the top right and I add that way"). A permanent dashed
+              drop zone is a second way of doing the one thing this card does,
+              and it sat where the files themselves should be. */}
+          <SectionCard
+            title="Documents"
+            icon={FileText}
+            action={
+              <AddSquare
+                label="Add a document"
+                busy={uploading}
+                onClick={() => {
+                  setUploadError(null);
+                  setDocOpen(true);
+                }}
+              />
+            }
+          >
             <p className="text-[12.5px] text-text-secondary">
               The deck that was shown, and anything handed over.
             </p>
-            <label
-              className={cn(
-                "mt-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors",
-                "border-border-light hover:border-blue-subtle hover:bg-blue-light/20",
-                uploading && "opacity-60"
-              )}
-            >
-              <input
-                type="file"
-                className="hidden"
-                disabled={uploading}
-                onChange={async (e) => {
-                  const chosen = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!chosen) return;
-                  setUploading(true);
-                  setUploadError(null);
-                  try {
-                    const body = new FormData();
-                    body.append("file", chosen);
-                    const res = await fetch(
-                      `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`,
-                      { method: "POST", body }
-                    );
-                    const data = await res.json().catch(() => null);
-                    if (!res.ok || !data?.ok) {
-                      setUploadError(data?.error || "That file did not upload.");
-                      return;
-                    }
-                    await post({
-                      op: "add-doc",
-                      label: data.fileName,
-                      docsPath: data.docsPath,
-                    });
-                  } catch {
-                    setUploadError("That file did not upload.");
-                  } finally {
-                    setUploading(false);
-                  }
-                }}
-              />
-              <span className="text-[13.5px] font-semibold text-text-primary">
-                {uploading ? "Uploading…" : "Upload a file"}
-              </span>
-              <span className="text-[11.5px] text-text-tertiary">
-                The deck, the one-pager, whatever was in the room
-              </span>
-            </label>
             {uploadError && (
               <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">
                 {uploadError}
               </p>
             )}
-            {m.docs.length > 0 && (
+            {m.docs.length === 0 ? (
+              <p className="mt-3 py-6 text-center text-[12.5px] text-text-secondary">
+                Nothing handed over yet.
+              </p>
+            ) : (
               <ul className="mt-3 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light">
                 {m.docs.map((d) => (
                   <li key={d.id} className="flex items-center gap-2.5 px-3 py-2.5">
@@ -410,38 +388,44 @@ export function MeetingDetail({
         </div>
 
         <div className="space-y-4">
+          {/* THREE DIFFERENT JOBS IN A ROOM, NOT ONE.
+              Suren, Aug 28: "you have presenter, but I think you also have
+              somebody presenting and somebody attending. There is something
+              called meeting owner: who was running the meeting?" — so the
+              person who RAN it, the people who PRESENTED, and the people who
+              were simply there are three separate lines, and all three are
+              editable, because who actually turned up is a fact you only have
+              after the meeting. */}
+          {/* THREE DIFFERENT JOBS IN A ROOM, NOT ONE.
+              Suren, Aug 28: "you have presenter, but I think you also have
+              somebody presenting and somebody attending. There is something
+              called meeting owner: who was running the meeting?" — so the
+              person who RAN it, the people who PRESENTED, and the people who
+              were simply there are three separate lines. All of them are
+              editable, behind the Edit button at the top. */}
           <SectionCard title="Who was there" icon={Users}>
-            <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-              Presenting
-            </p>
-            <PeopleRow names={m.presenters} empty="Nobody named as presenter." />
-
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-              From Freyr
-            </p>
-            <PeopleRow names={m.attendees} empty="Nobody else recorded." />
-
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-              From {m.customer}
-            </p>
-            <PeopleRow names={m.contactNames} empty="No contacts recorded." />
-
-            <div className="mt-3 border-t border-border-light pt-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Owner
-              </p>
-              <div className="mt-1.5">
-                <ColorSelect
-                  value={m.owner}
-                  ariaLabel="Meeting owner"
-                  collapsible={false}
-                  dense
-                  className="w-full"
-                  onChange={(v) => post({ op: "update", patch: { owner: v } })}
-                  options={[...new Set([m.owner, ...members])]
-                    .filter(Boolean)
-                    .map((n) => ({ value: n, label: n, avatarName: n }))}
-                />
+            {/* FOUR GROUPS, FOUR BLOCKS (Anir, Aug 28: "hard to read, need
+                proper separation"). Evenly spaced label-then-faces pairs read
+                as one column of eight things rather than four groups of two —
+                a caption and the row above it sat as close as a caption and
+                its own row. A rule and real air between each group makes the
+                grouping do the work the labels were doing alone. */}
+            <div className="divide-y divide-border-light">
+              <div className="pb-3">
+                <WhoLabel icon={UserCog} text="Ran the meeting" />
+                <PeopleRow names={[m.owner].filter(Boolean)} empty="Nobody named." />
+              </div>
+              <div className="py-3">
+                <WhoLabel icon={MonitorPlay} text="Presented" />
+                <PeopleRow names={m.presenters} empty="Nobody named as presenter." />
+              </div>
+              <div className="py-3">
+                <WhoLabel icon={Users} text="Also there from Freyr" />
+                <PeopleRow names={m.attendees} empty="Nobody else recorded." />
+              </div>
+              <div className="pt-3">
+                <WhoLabel logoName={m.customer} text={`From ${m.customer}`} />
+                <PeopleRow names={m.contactNames} empty="No contacts recorded." />
               </div>
             </div>
           </SectionCard>
@@ -470,64 +454,6 @@ export function MeetingDetail({
                 The account itself, no specific deal.
               </p>
             )}
-            {m.materialsBy && !editing && (
-              <p className="mt-3 flex items-center gap-1.5 border-t border-border-light pt-3 text-[12px] text-text-secondary">
-                <CalendarDays size={13} strokeWidth={2} className="shrink-0" />
-                Materials needed by {formatDate(m.materialsBy)}
-              </p>
-            )}
-
-            {/* A MEETING MOVES. Dates slip, a discovery call turns into a
-                demo, the deck is needed earlier than planned — so the three
-                facts most likely to change are editable in place rather than
-                frozen at whatever was typed when it was created. */}
-            <div className="mt-3 border-t border-border-light pt-3">
-              {editing ? (
-                <div className="space-y-2.5">
-                  <Field label="Type of meeting">
-                    <ColorSelect
-                      value={String(m.type)}
-                      ariaLabel="Type of meeting"
-                      collapsible={false}
-                      dense
-                      className="w-full"
-                      onChange={(v) => post({ op: "update", patch: { type: v } })}
-                      options={MEETING_TYPES.map((t) => ({
-                        value: t,
-                        label: t,
-                        color: meetingTypeMeta(t).color,
-                        icon: meetingTypeMeta(t).icon,
-                      }))}
-                    />
-                  </Field>
-                  <Field label="When is it">
-                    <Input
-                      type="date"
-                      value={m.meetingAt}
-                      onChange={(e) =>
-                        post({ op: "update", patch: { meetingAt: e.target.value } })
-                      }
-                    />
-                  </Field>
-                  <Field label="Materials needed by">
-                    <Input
-                      type="date"
-                      value={m.materialsBy ?? ""}
-                      onChange={(e) =>
-                        post({ op: "update", patch: { materialsBy: e.target.value } })
-                      }
-                    />
-                  </Field>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setEditing((v) => !v)}
-                className="mt-1 text-[12px] font-semibold text-blue-primary hover:underline"
-              >
-                {editing ? "Done editing" : "Change the type or the dates"}
-              </button>
-            </div>
             {m.completedAt && (
               <p className="mt-2 text-[12px] text-text-secondary">
                 Marked done by <b>{m.completedBy}</b>
@@ -539,6 +465,235 @@ export function MeetingDetail({
           </SectionCard>
         </div>
       </div>
+
+      {/* ADD TO THE WRITE-UP — pick what it is, type it or upload it, save. */}
+      <Modal
+        open={noteOpen}
+        onClose={() => setNoteOpen(false)}
+        title="Add to the write-up"
+        size="wide"
+      >
+        <div>
+          <p className="text-[12.5px] text-text-secondary">
+            What kind of note is this?
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {(Object.keys(NOTE_META) as MeetingNoteKind[]).map((k) => {
+              const meta = NOTE_META[k];
+              const on = noteKind === k;
+              const Icon = meta.icon;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setNoteKind(k)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                    on
+                      ? "text-white"
+                      : "border border-border-light bg-white text-text-secondary hover:border-blue-subtle"
+                  )}
+                  style={on ? { background: meta.color } : undefined}
+                >
+                  <Icon size={12} strokeWidth={2.4} />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3">
+            {/* ONE HEIGHT FOR ALL FOUR (Anir, Aug 28: "why is transcript
+                bigger than the rest of them"). Ten rows for a transcript and
+                six for everything else made the dialog jump every time a pill
+                was pressed — the resizing-popup complaint again, this time
+                caused by the picker inside it. Eight rows suits a pasted
+                transcript and does not dwarf a one-line comment. */}
+            <Textarea
+              rows={8}
+              value={noteText}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setNoteText(e.target.value)
+              }
+              placeholder={NOTE_META[noteKind].placeholder}
+              aria-label={`Add a ${NOTE_META[noteKind].label.toLowerCase()}`}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            {/* UPLOAD IT INSTEAD OF TYPING IT (Suren, Aug 28: "what is this?
+                This should be like an upload thing, or it should be an option
+                at least"). Nobody walks out of a call holding a transcript;
+                they hold a recording. It comes back as timestamped lines in
+                the box above, to be read and corrected before it is saved. */}
+            <label
+              className={cn(
+                "mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary",
+                transcribing && "pointer-events-none opacity-60"
+              )}
+            >
+              <Upload size={14} strokeWidth={2.2} />
+              {transcribing
+                ? "Reading the file…"
+                : noteKind === "transcript"
+                  ? "Upload a recording or transcript"
+                  : "Upload a file instead"}
+              <input
+                type="file"
+                className="hidden"
+                accept="audio/*,video/*,.txt,.md,.docx,.pdf,.vtt,.srt"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f) return;
+                  setTranscribing(true);
+                  try {
+                    const fd = new FormData();
+                    fd.append("file", f);
+                    const res = await fetch("/api/meetings/transcribe", {
+                      method: "POST",
+                      body: fd,
+                    });
+                    const data = await res.json().catch(() => null);
+                    if (!res.ok || !data?.ok) {
+                      toast(data?.error || "That file could not be read.", "error");
+                      return;
+                    }
+                    /* Appended, never overwritten — a half-typed note in the
+                       box is somebody's work. */
+                    setNoteText((cur) =>
+                      cur.trim() ? `${cur.trim()}\n\n${data.text}` : data.text
+                    );
+                    toast(
+                      data.kind === "recording"
+                        ? `Transcribed ${data.minutes || "<1"} min. Read it over, then add it.`
+                        : "Text pulled out. Read it over, then add it.",
+                      "success"
+                    );
+                  } catch {
+                    toast("That file could not be read.", "error");
+                  } finally {
+                    setTranscribing(false);
+                  }
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setNoteOpen(false)}
+              className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={busy || transcribing || !noteText.trim()}
+              onClick={async () => {
+                const text = noteText.trim();
+                if (!text) return;
+                if (await post({ op: "add-note", kind: noteKind, text })) {
+                  setNoteText("");
+                  setNoteOpen(false);
+                }
+              }}
+              className="rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              Add {NOTE_META[noteKind].label.toLowerCase()}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ADD A DOCUMENT — the deck, the one-pager, whatever was handed over. */}
+      <Modal
+        open={docOpen}
+        onClose={() => setDocOpen(false)}
+        title="Add a document"
+        size="wide"
+      >
+        <div>
+          <p className="text-[12.5px] text-text-secondary">
+            The deck that was shown, the one-pager, whatever was in the room.
+          </p>
+          <label
+            className={cn(
+              "mt-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-3 py-10 text-center transition-colors",
+              "border-border-light hover:border-blue-subtle hover:bg-blue-light/20",
+              uploading && "pointer-events-none opacity-60"
+            )}
+          >
+            <input
+              type="file"
+              className="hidden"
+              disabled={uploading}
+              onChange={async (e) => {
+                const chosen = e.target.files?.[0];
+                e.target.value = "";
+                if (!chosen) return;
+                setUploading(true);
+                setUploadError(null);
+                try {
+                  const body = new FormData();
+                  body.append("file", chosen);
+                  const res = await fetch(
+                    `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`,
+                    { method: "POST", body }
+                  );
+                  const data = await res.json().catch(() => null);
+                  if (!res.ok || !data?.ok) {
+                    setUploadError(data?.error || "That file did not upload.");
+                    return;
+                  }
+                  if (
+                    await post({
+                      op: "add-doc",
+                      label: data.fileName,
+                      docsPath: data.docsPath,
+                    })
+                  )
+                    setDocOpen(false);
+                } catch {
+                  setUploadError("That file did not upload.");
+                } finally {
+                  setUploading(false);
+                }
+              }}
+            />
+            <Upload size={20} strokeWidth={2} className="text-blue-primary" />
+            <span className="mt-1 text-[13.5px] font-semibold text-text-primary">
+              {uploading ? "Uploading…" : "Choose a file"}
+            </span>
+            <span className="text-[11.5px] text-text-tertiary">
+              It is stored against this meeting and anyone on it can open it
+            </span>
+          </label>
+          {uploadError && (
+            <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">
+              {uploadError}
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      {/* THE SAME FORM THAT MADE IT, PREFILLED (Suren, Aug 28: "the edit
+          should be like offering"). One Save at the end, so a half-typed date
+          is never written and nothing is committed until it is meant. */}
+      {editOpen && (
+        <NewMeetingDialog
+          meeting={m}
+          meName={meName}
+          members={members}
+          customers={customers}
+          contacts={contacts}
+          opportunities={opportunities}
+          onClose={() => setEditOpen(false)}
+          onCreate={async (patch) => {
+            const ok = await post({ op: "update", patch });
+            if (ok) setEditOpen(false);
+            return ok;
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmDelete}
@@ -567,17 +722,122 @@ export function MeetingDetail({
   );
 }
 
+/**
+ * THE BLUE SQUARE WITH THE WHITE PLUS (Anir, Aug 28: "there has to be the blue
+ * square with the white plus on the top right and I add that way").
+ *
+ * The same 36px mark the offering cards use, so "add one of these" looks
+ * identical wherever it appears.
+ */
+function AddSquare({
+  label,
+  onClick,
+  busy = false,
+}: {
+  label: string;
+  onClick: () => void;
+  busy?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-label={label}
+      title={label}
+      className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
+    >
+      <Plus size={17} strokeWidth={2.4} />
+    </button>
+  );
+}
+
+/**
+ * A LABEL WEARS A MARK (Suren, Aug 28: "icons / company pfp").
+ *
+ * Four stacked gray captions read as one block of small print, and the reader
+ * has to parse each one to find the row they want. A mark in front makes each
+ * group findable at a glance — and the customer's group wears the customer's
+ * own logo, which is the same thing every other account reference in the app
+ * does.
+ */
+function WhoLabel({
+  icon: Icon,
+  logoName,
+  text,
+  className,
+}: {
+  icon?: LucideIcon;
+  logoName?: string;
+  text: string;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary",
+        className
+      )}
+    >
+      {logoName ? (
+        <CompanyLogo name={logoName} className="h-[15px] w-[15px] shrink-0 text-[6px]" />
+      ) : Icon ? (
+        <Icon size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+      ) : null}
+      {text}
+    </p>
+  );
+}
+
+/**
+ * A HUNDRED PEOPLE STILL HAS TO LOOK LIKE SOMETHING (Anir, Aug 28: "if there's
+ * 100 people, how will this look? Ensure it looks good").
+ *
+ * A conference or a town hall genuinely has that many, and an unbounded list
+ * would run a 340px rail off the bottom of the screen and push everything
+ * under it — the same thing the solutioning timeline did before it was given a
+ * window.
+ *
+ * So: six names, then a count you can press. Opened, it scrolls inside a fixed
+ * height instead of growing the page, and the card is the same size at 100
+ * people as it is at two. Six is chosen because it is what fits without the
+ * group taller than its neighbours — the four groups stay comparable at a
+ * glance, which is the whole point of separating them.
+ */
+const FACES_SHOWN = 6;
+
 function PeopleRow({ names, empty }: { names: string[]; empty: string }) {
+  const [all, setAll] = useState(false);
   if (names.length === 0)
     return <p className="mt-1 text-[12px] text-text-tertiary">{empty}</p>;
+
+  const extra = names.length - FACES_SHOWN;
+  const list = all ? names : names.slice(0, FACES_SHOWN);
+
   return (
-    <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1.5">
-      {names.map((n) => (
-        <li key={n} className="inline-flex items-center gap-1.5">
-          <Avatar name={n} className="h-[22px] w-[22px] text-[8px]" />
-          <span className="text-[12.5px] text-text-primary">{n}</span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul
+        className={cn(
+          "mt-1.5 flex flex-wrap gap-x-3 gap-y-1.5",
+          all && "max-h-[220px] overflow-y-auto pr-1"
+        )}
+      >
+        {list.map((n) => (
+          <li key={n} className="inline-flex items-center gap-1.5">
+            <Avatar name={n} className="h-[22px] w-[22px] text-[8px]" />
+            <span className="text-[12.5px] text-text-primary">{n}</span>
+          </li>
+        ))}
+      </ul>
+      {extra > 0 && (
+        <button
+          type="button"
+          onClick={() => setAll((v) => !v)}
+          className="mt-1.5 text-[11.5px] font-semibold text-blue-primary hover:underline"
+        >
+          {all ? "Show fewer" : `+${extra} more`}
+        </button>
+      )}
+    </>
   );
 }

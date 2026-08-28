@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Plus,
   Users,
 } from "lucide-react";
@@ -76,6 +77,15 @@ export function MeetingsModule({
     "planned",
     ["planned", "completed"] as const
   );
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggleRow = (id: string) =>
+    setOpenIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   const [period, setPeriod] = useStoredView<"week" | "month">(
     "freyr.meetings.period",
     "month",
@@ -222,7 +232,11 @@ export function MeetingsModule({
                   of weeks rather than a thousand rows. */}
               <h2 className="flex items-center gap-2 text-[12.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 {g.label}
-                <span className="tnum font-semibold text-text-secondary">
+                {/* A COUNT, NOT PART OF THE DATE (Anir, Aug 28: "this is ugly,
+                    looks like it's the year 2026 1"). A bare numeral set in
+                    the same weight one space after the year read as a fourth
+                    digit of it. A pill is unmistakably a count. */}
+                <span className="tnum inline-flex min-w-[20px] items-center justify-center rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold normal-case tracking-normal text-text-secondary">
                   {g.meetings.length}
                 </span>
                 <span className="h-0 flex-1 border-t border-border-light" aria-hidden="true" />
@@ -232,9 +246,23 @@ export function MeetingsModule({
                   .sort((a, b) => a.meetingAt.localeCompare(b.meetingAt))
                   .map((m) => (
                     <li key={m.id}>
-                      <Link
-                        href={`/meetings/${m.id}`}
-                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
+                      {/* THE ROW OPENS WHERE IT SITS (Anir, Aug 28: "also
+                          probably want the same thing dropdown here"). Same
+                          chevron the solutioning rows carry: a glance at who
+                          was in the room and what came out of it without
+                          leaving the list, and the title still opens the
+                          meeting itself. */}
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleRow(m.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleRow(m.id);
+                          }
+                        }}
+                        className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
                       >
                         <CompanyLogo name={m.customer} className="h-8 w-8 shrink-0 text-[9px]" />
                         <span className="min-w-0 flex-1">
@@ -284,7 +312,92 @@ export function MeetingsModule({
                         <span className="w-[96px] shrink-0 text-right text-[12.5px] font-semibold tnum text-text-primary">
                           {formatDate(m.meetingAt)}
                         </span>
-                      </Link>
+                        <span
+                          aria-hidden="true"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary"
+                        >
+                          <ChevronDown
+                            size={15}
+                            strokeWidth={2.2}
+                            className={cn(
+                              "transition-transform duration-200",
+                              openIds.has(m.id) && "rotate-180"
+                            )}
+                          />
+                        </span>
+                      </div>
+                      {openIds.has(m.id) && (
+                        <div className="bg-surface px-4 pb-4 pl-7 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]">
+                          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white px-4 py-4">
+                            <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
+                              <div className="min-w-0">
+                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  What came out of it
+                                </span>
+                                {m.notes.length === 0 ? (
+                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                                    Nothing written down yet.
+                                  </p>
+                                ) : (
+                                  <p className="mt-1.5 max-w-[68ch] whitespace-pre-wrap text-[13px] leading-relaxed text-text-primary">
+                                    {m.notes[m.notes.length - 1].text}
+                                  </p>
+                                )}
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-text-secondary">
+                                  <span>
+                                    <b className="tnum text-text-primary">
+                                      {m.notes.length}
+                                    </b>{" "}
+                                    {m.notes.length === 1 ? "note" : "notes"}
+                                  </span>
+                                  <span>
+                                    <b className="tnum text-text-primary">
+                                      {m.docs.length}
+                                    </b>{" "}
+                                    {m.docs.length === 1 ? "document" : "documents"}
+                                  </span>
+                                  <Link
+                                    href={`/meetings/${m.id}`}
+                                    className="font-semibold text-blue-primary hover:underline"
+                                  >
+                                    Open the meeting
+                                  </Link>
+                                </div>
+                              </div>
+                              <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
+                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Ran it
+                                </span>
+                                <span className="mt-1.5 flex items-center gap-1.5">
+                                  <Avatar name={m.owner} className="h-[20px] w-[20px] text-[7px]" />
+                                  <span className="truncate text-[12.5px] text-text-primary">
+                                    {m.owner}
+                                  </span>
+                                </span>
+                                <span className="mt-3 block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  From {m.customer}
+                                </span>
+                                {m.contactNames.length === 0 ? (
+                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                                    Nobody recorded.
+                                  </p>
+                                ) : (
+                                  <ul className="mt-1.5 space-y-1">
+                                    {m.contactNames.map((n) => (
+                                      <li key={n} className="flex items-center gap-1.5">
+                                        <Avatar name={n} className="h-[20px] w-[20px] text-[7px]" />
+                                        <span className="truncate text-[12.5px] text-text-primary">
+                                          {n}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </li>
                   ))}
               </ul>

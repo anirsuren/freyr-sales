@@ -113,9 +113,6 @@ export type Meeting = {
   /** The day it is held. ISO date, because a meeting belongs to a day on a
    *  calendar before it belongs to a minute. */
   meetingAt: string;
-  /** "as part of a meeting you can ask for materials needed by" */
-  materialsBy?: string;
-
   customerId?: string;
   customer: string;
   opportunityIds: string[];
@@ -246,7 +243,6 @@ function normalizeMeeting(v: unknown): Meeting | null {
     type: str(m.type, 60) || "Introductory",
     status: normalizeStatus(m.status),
     meetingAt: str(m.meetingAt, 40),
-    materialsBy: str(m.materialsBy, 20) || undefined,
     customerId: str(m.customerId, 60) || undefined,
     customer: str(m.customer, 120),
     opportunityIds: strList(m.opportunityIds, 60),
@@ -324,7 +320,6 @@ export type MeetingInput = {
   title: string;
   type: string;
   meetingAt: string;
-  materialsBy?: string;
   customerId?: string;
   customer: string;
   opportunityIds?: string[];
@@ -333,6 +328,8 @@ export type MeetingInput = {
   contactNames?: string[];
   attendees?: string[];
   presenters?: string[];
+  /** "who was running the meeting" — the creator unless they say otherwise. */
+  owner?: string;
 };
 
 export async function createMeeting(
@@ -354,7 +351,6 @@ export async function createMeeting(
       type: str(input.type, 60) || "Introductory",
       status: "planned",
       meetingAt,
-      materialsBy: str(input.materialsBy, 20) || undefined,
       customerId: str(input.customerId, 60) || undefined,
       customer,
       opportunityIds: strList(input.opportunityIds, 60),
@@ -363,8 +359,9 @@ export async function createMeeting(
       contactNames: strList(input.contactNames, 120),
       attendees: strList(input.attendees, 80),
       presenters: strList(input.presenters, 80),
-      /* "a meeting owner, who is the guy who created the meeting" */
-      owner: str(input.by, 80) || "Unknown",
+      /* "a meeting owner, who is the guy who created the meeting" — unless
+         they booked it for somebody else and said so. */
+      owner: str(input.owner, 80) || str(input.by, 80) || "Unknown",
       createdAt: new Date().toISOString(),
       notes: [],
       docs: [],
@@ -386,8 +383,6 @@ export async function updateMeeting(input: {
     if (p.title !== undefined) m.title = str(p.title, 200) || m.title;
     if (p.type !== undefined) m.type = str(p.type, 60) || m.type;
     if (p.meetingAt !== undefined) m.meetingAt = str(p.meetingAt, 40) || m.meetingAt;
-    if (p.materialsBy !== undefined)
-      m.materialsBy = str(p.materialsBy, 20) || undefined;
     if (p.customer !== undefined) m.customer = str(p.customer, 120) || m.customer;
     if (p.customerId !== undefined)
       m.customerId = str(p.customerId, 60) || undefined;

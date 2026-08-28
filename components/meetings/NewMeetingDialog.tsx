@@ -7,7 +7,7 @@ import { FormRoom } from "@/components/ui/FormRoom";
 import { Field, Input } from "@/components/ui/Input";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
-import { MEETING_TYPES } from "@/lib/meetings";
+import { MEETING_TYPES, type Meeting } from "@/lib/meetings";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 import type {
   ContactOption,
@@ -24,6 +24,17 @@ import type {
  *
  * Three rooms rather than one long form, the same shape the contract and deal
  * forms use: what and when, who is in the room, and what it hangs off.
+ *
+ * ONE FORM DOES BOTH JOBS. Suren, Aug 28: "the only thing is you need to allow
+ * people to edit. It's not there" — and then, on the first attempt at it: "no
+ * no, the edit should be like offering". Offerings edits a material by
+ * reopening the form that made it, prefilled, behind a pencil, with a Save at
+ * the bottom. Not a mode that turns a read page into a grid of live inputs
+ * writing on every keystroke.
+ *
+ * So `meeting` decides which job this is. Passing one prefills every field and
+ * turns the footer into "Save changes"; leaving it out is a blank new meeting.
+ * Create and edit cannot drift apart, because they are the same form.
  */
 export function NewMeetingDialog({
   meName,
@@ -31,6 +42,7 @@ export function NewMeetingDialog({
   customers,
   contacts,
   opportunities,
+  meeting,
   onClose,
   onCreate,
 }: {
@@ -39,18 +51,35 @@ export function NewMeetingDialog({
   customers: CustomerOption[];
   contacts: ContactOption[];
   opportunities: OpportunityOption[];
+  /** Prefill and save back onto this meeting instead of creating one. */
+  meeting?: Meeting;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<string>(MEETING_TYPES[0]);
-  const [meetingAt, setMeetingAt] = useState("");
-  const [materialsBy, setMaterialsBy] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [contactIds, setContactIds] = useState<string[]>([]);
-  const [attendees, setAttendees] = useState<string[]>([meName]);
-  const [presenters, setPresenters] = useState<string[]>([]);
-  const [opportunityIds, setOpportunityIds] = useState<string[]>([]);
+  const editing = !!meeting;
+  const [title, setTitle] = useState(meeting?.title ?? "");
+  const [type, setType] = useState<string>(
+    meeting ? String(meeting.type) : MEETING_TYPES[0]
+  );
+  const [meetingAt, setMeetingAt] = useState(meeting?.meetingAt ?? "");
+  const [customerId, setCustomerId] = useState(
+    meeting?.customerId ??
+      customers.find((c) => c.name === meeting?.customer)?.id ??
+      ""
+  );
+  const [contactIds, setContactIds] = useState<string[]>(
+    meeting?.contactIds ?? []
+  );
+  const [attendees, setAttendees] = useState<string[]>(
+    meeting?.attendees ?? [meName]
+  );
+  const [presenters, setPresenters] = useState<string[]>(
+    meeting?.presenters ?? []
+  );
+  const [owner, setOwner] = useState(meeting?.owner ?? meName);
+  const [opportunityIds, setOpportunityIds] = useState<string[]>(
+    meeting?.opportunityIds ?? []
+  );
   const [busy, setBusy] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId);
@@ -70,7 +99,18 @@ export function NewMeetingDialog({
   const ready = title.trim() && customerId && meetingAt;
 
   return (
-    <Modal open onClose={onClose} title="New meeting" size="wide">
+    <Modal
+      open
+      onClose={onClose}
+      title={editing ? "Edit meeting" : "New meeting"}
+      /* THE BIG STANDARD SIZE, the one every other workflow dialog uses
+         (Anir, Aug 28: "make the popup a standard size, the bigger size").
+         At 640px the three rooms squeezed two-up fields into half-columns;
+         980px is what Solutioning's new-request dialog runs at, so a form of
+         this weight now opens at the size the app already established for
+         forms of this weight. */
+      size="workflow"
+    >
       {/* THE DIALOG HOLDS ITS SIZE (Anir, Aug 28: "again, but these pop-ups,
           bro. Stop. the dimensions have to stay the same" — and on the accrual
           dialog before it: "why is the pop-up so small? It looks bad, but once
@@ -81,7 +121,7 @@ export function NewMeetingDialog({
           cursor and, with all of them open, ran off the bottom of the screen.
           A fixed working height with the rooms scrolling inside it: opening a
           room fills space that was already there instead of taking more. */}
-      <div className="h-[min(60vh,520px)] space-y-3 overflow-y-auto pr-1">
+      <div className="h-[min(64vh,560px)] space-y-3 overflow-y-auto pr-1">
         <FormRoom icon={CalendarDays} title="The meeting" defaultOpen summary={title || "Not named yet"}>
           <Field label="What is this meeting about">
             <Input
@@ -90,7 +130,7 @@ export function NewMeetingDialog({
               placeholder="Initial meeting with GSK regulatory affairs"
             />
           </Field>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Type of meeting">
               <ColorSelect
                 value={type}
@@ -116,14 +156,6 @@ export function NewMeetingDialog({
                 onChange={(e) => setMeetingAt(e.target.value)}
               />
             </Field>
-            {/* "as part of a meeting you can ask for materials needed by" */}
-            <Field label="Materials needed by">
-              <Input
-                type="date"
-                value={materialsBy}
-                onChange={(e) => setMaterialsBy(e.target.value)}
-              />
-            </Field>
           </div>
         </FormRoom>
 
@@ -139,6 +171,7 @@ export function NewMeetingDialog({
               collapsible={false}
               dense
               searchable
+              inlineDescription
               className="w-full"
               onChange={(v) => {
                 setCustomerId(v);
@@ -148,12 +181,38 @@ export function NewMeetingDialog({
                 setContactIds([]);
                 setOpportunityIds([]);
               }}
-              options={customers.map((c) => ({
-                value: c.id,
-                label: c.name,
-                logoName: c.name,
-                color: "#0071E3",
-              }))}
+              /* SAY WHAT IS BEHIND EACH ONE BEFORE IT IS PICKED (Suren,
+                 Aug 28: "if I click on a company and I want to see how many
+                 deals before even clicking, so do that there and everywhere
+                 else this could be helpful where the next step is dependent
+                 on the first dropdown having data").
+                 
+                 The two pickers under this one are filtered BY this choice,
+                 so picking an account with no contacts and no deals leads to
+                 two empty boxes and no explanation. The count belongs on the
+                 row that causes it. */
+              options={customers.map((c) => {
+                const deals = opportunities.filter(
+                  (o) => o.customerId === c.id
+                ).length;
+                const people = contacts.filter(
+                  (x) => x.customerId === c.id
+                ).length;
+                const parts = [
+                  deals ? `${deals} ${deals === 1 ? "deal" : "deals"}` : null,
+                  people
+                    ? `${people} ${people === 1 ? "contact" : "contacts"}`
+                    : null,
+                ].filter(Boolean);
+                return {
+                  value: c.id,
+                  label: c.name,
+                  logoName: c.name,
+                  color: "#0071E3",
+                  description: parts.length ? parts.join(" · ") : "nothing yet",
+                  descriptionAccent: parts.length > 0,
+                };
+              })}
             />
           </Field>
           <div className="mt-3">
@@ -225,7 +284,26 @@ export function NewMeetingDialog({
               : `${attendees.length} attending`
           }
         >
+          {/* WHO RAN IT IS ITS OWN QUESTION.
+              Suren, Aug 28: "there is something called meeting owner: who was
+              running the meeting?" It defaults to you, because usually you are
+              booking your own meeting — but somebody booking on a director's
+              behalf should not have to hand the meeting over afterwards. */}
+          <Field label="Ran the meeting">
+            <ColorSelect
+              value={owner}
+              ariaLabel="Who ran the meeting"
+              collapsible={false}
+              dense
+              className="w-full"
+              onChange={setOwner}
+              options={[...new Set([meName, ...members])]
+                .filter(Boolean)
+                .map((n) => ({ value: n, label: n, avatarName: n }))}
+            />
+          </Field>
           {/* "who is the primary presenter of the meeting" */}
+          <div className="mt-3">
           <Field label="Presenting">
             <MultiPicker
               variant="dropdown"
@@ -240,6 +318,7 @@ export function NewMeetingDialog({
               emptyLabel="Nobody in the directory yet."
             />
           </Field>
+          </div>
           <div className="mt-3">
             <Field label="Also attending from Freyr">
               <MultiPicker
@@ -256,9 +335,6 @@ export function NewMeetingDialog({
               />
             </Field>
           </div>
-          <p className="mt-2 text-[11.5px] text-text-tertiary">
-            You own this meeting because you are creating it.
-          </p>
         </FormRoom>
       </div>
 
@@ -281,7 +357,6 @@ export function NewMeetingDialog({
                 title,
                 type,
                 meetingAt,
-                materialsBy: materialsBy || undefined,
                 customerId,
                 customer: customer?.name ?? "",
                 contactIds,
@@ -294,6 +369,7 @@ export function NewMeetingDialog({
                   .filter(Boolean),
                 attendees,
                 presenters,
+                owner,
               });
             } finally {
               setBusy(false);
@@ -301,7 +377,7 @@ export function NewMeetingDialog({
           }}
           className="rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Create meeting"}
+          {busy ? "Saving…" : editing ? "Save changes" : "Create meeting"}
         </button>
       </div>
     </Modal>

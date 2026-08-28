@@ -525,7 +525,13 @@ export function RequestDetail({
       {tab === "overview" ? (
         <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* ------------------------------------------------ MAIN column */}
-          <div className="tab-panel">
+          {/* KEYED ON THE TAB, WHICH IS WHAT MAKES IT ANIMATE AT ALL
+              (Suren, Aug 28: "add premium animations when I switch between").
+              The .tab-panel class was here from the start and did nothing on a
+              switch: React kept the same node, and a CSS animation only runs
+              when an element mounts. The key forces the remount the class
+              always assumed. */}
+          <div key={tab} className="tab-panel tab-panel-stagger">
             <section className="border-b border-border-light pb-7">
               <SectionHeading
                 icon={FileText}
@@ -644,7 +650,7 @@ export function RequestDetail({
           </div>
 
           {/* ------------------------------------------------- SIDE rail */}
-          <div className="tab-panel space-y-4">
+          <div key={tab} className="tab-panel tab-panel-stagger space-y-4">
             <SectionCard title="Owner" icon={UserRound}>
               {r.owner ? (
                 <div className="flex items-center gap-2.5">
@@ -714,8 +720,34 @@ export function RequestDetail({
                   of its own, so a hundred entries still pushed the comment box
                   and everything under it off the page. A FIXED height pins the
                   card wherever it sits and scrolls the events inside it. */}
+              {/* ONE MINUTE OF FIDDLING IS ONE ENTRY, NOT SIX (Suren, Aug 28:
+                  "this should show like 5 not 7").
+
+                  Toggling completed → reopened → completed while looking at a
+                  record is one person making up their mind, and it wrote a row
+                  per click: the same two lines three times over, stamped to
+                  the same minute, burying the two things that actually
+                  happened that day.
+
+                  So a repeat of the same action, by the same person, inside
+                  the same minute shows once. A COMMENT is never folded — the
+                  same sentence typed twice is two things somebody said. */}
               <ol className="h-[360px] overflow-y-auto pr-1">
-                {[...r.activity].reverse().map((a, i, all) => {
+                {[...r.activity]
+                  .reverse()
+                  .filter((a, i, arr) =>
+                    a.comment
+                      ? true
+                      : !arr.some(
+                          (b, j) =>
+                            j < i &&
+                            !b.comment &&
+                            b.what === a.what &&
+                            b.by === a.by &&
+                            b.at.slice(0, 16) === a.at.slice(0, 16)
+                        )
+                  )
+                  .map((a, i, all) => {
                   /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
                      MOVING. Same spine, different voice: a comment wears a
                      speech mark and its words are set as prose, so a sentence
@@ -789,7 +821,7 @@ export function RequestDetail({
         </div>
       ) : (
         /* -------------------------- one document tab, a page of its own */
-        <div className="tab-panel mt-6">
+        <div key={tab} className="tab-panel tab-panel-stagger mt-6">
           <div className="flex items-start justify-between gap-4">
             <SectionHeading
               icon={FileText}

@@ -208,6 +208,12 @@ export function SolutioningModule({
     });
   }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room]);
 
+  /* Every row on screen is the same kind, so the chip drops its word and keeps
+     its mark. Computed from what is on screen, not from the tab, so a mixed
+     room keeps its labels. */
+  const oneKind =
+    shown.length > 0 && new Set(shown.map((r) => r.kind)).size === 1;
+
   const open = state.requests.filter((r) => r.status !== "completed");
   const unclaimed = state.requests.filter(
     (r) => r.status === "initiated" && !r.owner
@@ -437,6 +443,11 @@ export function SolutioningModule({
         />
       </div>
 
+      {/* THE ROW DOES NOT REPEAT THE COLUMN HEADER (Suren, Aug 28: "you
+          don't have to say submission or presentation here etc, it's already
+          the column header. Show the icon / colour though"). Computed from
+          what is actually on screen rather than from the tab, so a room that
+          mixes kinds keeps its labels. */}
       {/* COUNT THE ROOM YOU ARE IN, not the whole store. Submissions read
           "Showing 2 of 9 requests" — the 9 was every item in Solutioning, and
           the word was wrong twice over. */}
@@ -507,6 +518,7 @@ export function SolutioningModule({
                     key={r.id}
                     request={r}
                     fulfiller={fulfiller}
+                    hideKindLabel={oneKind}
                     busy={busy === r.id}
                     open={openIds.has(r.id)}
                     onToggle={() =>
@@ -581,9 +593,12 @@ function RequestRow({
   open,
   onToggle,
   onPickUp,
+  hideKindLabel = false,
 }: {
   request: SolutionRequest;
   fulfiller: boolean;
+  /** Every row in view is the same kind, so the header already said it. */
+  hideKindLabel?: boolean;
   busy: boolean;
   open: boolean;
   onToggle: () => void;
@@ -653,7 +668,7 @@ function RequestRow({
             <span className="whitespace-nowrap text-[11px] font-bold text-text-tertiary tnum">
               {r.ref}
             </span>
-            <KindChip kind={r.kind} size="sm" />
+            <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
             {r.subtype && (
               <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 {r.subtype}
@@ -1324,6 +1339,7 @@ export function NewRequestDialog({
                   ariaLabel="Customer"
                   minWidth={220}
                   searchable
+                  inlineDescription
                   options={[
                     ...(customerId
                       ? []
@@ -1335,11 +1351,26 @@ export function NewRequestDialog({
                             icon: CircleDashed,
                           },
                         ]),
-                    ...customers.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                      logoName: c.name,
-                    })),
+                    /* HOW MUCH IS BEHIND EACH ACCOUNT, BEFORE IT IS PICKED
+                       (Suren, Aug 28: "if I click on a company and I want to
+                       see how many deals before even clicking, so do that
+                       there and everywhere else this could be helpful where
+                       the next step is dependent on the first dropdown having
+                       data"). The deal picker below is filtered by this one. */
+                    ...customers.map((c) => {
+                      const deals = opportunities.filter(
+                        (o) => o.customerId === c.id || o.customer === c.name
+                      ).length;
+                      return {
+                        value: c.id,
+                        label: c.name,
+                        logoName: c.name,
+                        description: deals
+                          ? `${deals} ${deals === 1 ? "deal" : "deals"}`
+                          : "no deals",
+                        descriptionAccent: deals > 0,
+                      };
+                    }),
                   ]}
                 />
               </div>

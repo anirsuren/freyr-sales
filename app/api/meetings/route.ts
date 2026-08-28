@@ -61,13 +61,15 @@ export async function POST(req: Request) {
         title: String(body.title ?? ""),
         type: String(body.type ?? ""),
         meetingAt: String(body.meetingAt ?? ""),
-        materialsBy: body.materialsBy ? String(body.materialsBy) : undefined,
         customerId: body.customerId ? String(body.customerId) : undefined,
         customer: String(body.customer ?? ""),
         opportunityIds: body.opportunityIds as string[] | undefined,
         opportunityLabels: body.opportunityLabels as string[] | undefined,
         contactIds: body.contactIds as string[] | undefined,
         contactNames: body.contactNames as string[] | undefined,
+        /* Whoever the creator named as running it, falling back to the
+           creator. */
+        owner: body.owner ? String(body.owner) : undefined,
         attendees: body.attendees as string[] | undefined,
         presenters: body.presenters as string[] | undefined,
         by: me.name,

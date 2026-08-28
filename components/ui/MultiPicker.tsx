@@ -219,7 +219,16 @@ function DropdownPicker({
   /** Panel placement: beside the trigger when side="right" and there is
    *  room, else the usual below/above from floatingMenuStyle. */
   const sideStyle = (rect: DOMRect): FloatingMenuStyle => {
-    const width = Math.max(side === "right" ? 400 : rect.width, 400);
+    /* A NAME IS NOT 900 PIXELS WIDE (Anir, Aug 28: "this need not be so long,
+       the checkmark so far away from name").
+
+       The menu took the trigger's width, which was fine while these forms were
+       640px and absurd once they went to 980: a list of people stretched the
+       full dialog and threw the tick to the far edge, a hand-span from the
+       name it belonged to. 400 is the floor a name and a role need; 520 is as
+       wide as a list of names can usefully get. Between them it still follows
+       the field, so a narrow picker is unchanged. */
+    const width = Math.min(Math.max(side === "right" ? 400 : rect.width, 400), 520);
     if (side === "right") {
       const edge = 12;
       const maxHeight = Math.min(440, window.innerHeight - edge * 2);
