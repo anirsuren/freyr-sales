@@ -1,7 +1,19 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Sparkles } from "lucide-react";
+import {
+  Blocks,
+  Boxes,
+  Compass,
+  Cpu,
+  Gauge,
+  Layers,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +31,12 @@ import { cn } from "@/lib/utils";
  * same colour on a deal row as it does on its own card. Get the offset wrong
  * and the chips are still colourful and still lie.
  *
- * The icon matches too — the same Sparkles the type pill has always carried.
+ * The icon matches too, and it is per-type rather than one shape for all of
+ * them (Anir, Aug 28: "Why do they all have the same icon"). It is derived
+ * from the COLOUR rather than passed in, which is what makes it consistent
+ * for free: the colour already IS the type's identity, so every surface that
+ * already draws the right colour now draws the right icon with it, and
+ * nothing had to be threaded through thirty call sites to make that true.
  *
  * An offering that is not in the catalogue (free text off Suren's sheet) has no
  * type to colour by, so it wears the neutral slate slot rather than borrowing
@@ -37,6 +54,35 @@ const UNTYPED = "#475569";
  * never look gray, so identities draw from the palette without its neutral.
  */
 const IDENTITY_PALETTE = FILTER_PALETTE.filter((c) => c !== "#475569");
+
+/**
+ * Colour slot → icon, in the same order as the palette, so a type's icon is
+ * as stable as its colour and neither needs configuring. The master list is
+ * user-editable, so mapping by NAME would break the moment somebody adds a
+ * type; mapping by palette position cannot.
+ */
+const IDENTITY_ICONS: LucideIcon[] = [
+  Sparkles,
+  Boxes,
+  Workflow,
+  Cpu,
+  Layers,
+  Rocket,
+  ShieldCheck,
+  Gauge,
+  Blocks,
+  Compass,
+];
+
+/** The icon that belongs with a given offering colour. Untyped offerings wear
+ *  the neutral slate and keep the neutral spark. */
+export function iconForOfferingColor(color?: string): LucideIcon {
+  if (!color || color === UNTYPED) return Sparkles;
+  const slot = IDENTITY_PALETTE.indexOf(color);
+  return slot < 0
+    ? Sparkles
+    : IDENTITY_ICONS[slot % IDENTITY_ICONS.length];
+}
 
 export function offeringTypeColors(
   types: { name: string }[]
@@ -63,6 +109,7 @@ export function OfferingChip({
   title?: string;
 }) {
   const accent = color || UNTYPED;
+  const Icon = iconForOfferingColor(color);
   return (
     <span
       title={title ?? name}
@@ -78,7 +125,7 @@ export function OfferingChip({
         } as CSSProperties
       }
     >
-      <Sparkles
+      <Icon
         size={size === "xs" ? 9.5 : 11}
         strokeWidth={2.4}
         aria-hidden="true"
