@@ -302,9 +302,22 @@ export function MeetingsModule({
                             <span className="text-[10.5px] font-bold tnum text-text-tertiary">
                               {m.ref}
                             </span>
-                            <span className="truncate text-[13.5px] font-semibold text-text-primary">
+                            {/* THE TITLE STILL OPENS THE MEETING (Anir, Aug 28:
+                                "couldn't I click on the meeting and go to a
+                                separate page before"). Adding the fold-open
+                                chevron turned the whole row into a toggle and
+                                took the navigation away with it — the same
+                                mistake the solutioning table made and fixed:
+                                the title is a link, the rest of the row folds,
+                                and the link stops the click reaching the
+                                toggle. */}
+                            <Link
+                              href={`/meetings/${m.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="truncate text-[13.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
+                            >
                               {m.title}
-                            </span>
+                            </Link>
                             {(() => {
                               const meta = meetingTypeMeta(String(m.type));
                               const TypeIcon = meta.icon;
