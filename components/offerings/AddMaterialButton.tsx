@@ -1270,6 +1270,7 @@ export function AddMaterialButton({
                 options={DIVISION_OPTIONS}
                 onChange={(values) => setDivisions(values as Division[])}
                 allLabel="Any division"
+                placeholder="Choose one or more divisions"
                 allIcon={Building2}
                 allColor="#0071E3"
                 ariaLabel="Division"

@@ -772,6 +772,7 @@ export function MultiColorSelect({
   options,
   onChange,
   allLabel,
+  placeholder,
   className,
   minWidth = 170,
   ariaLabel,
@@ -789,6 +790,12 @@ export function MultiColorSelect({
   onChange: (next: string[]) => void;
   /** Trigger + clear-row label when nothing is restricted, e.g. "All formats". */
   allLabel: string;
+  /** What the empty trigger says, when "nothing picked" must read as a
+   *  prompt rather than a state (Saras, Aug 28: two offering owners read
+   *  the required division picker's "Any division" as a valid choice —
+   *  "can you replace it with 'Choose one or more divisions'?"). The menu's
+   *  clear row keeps allLabel, where "any" is exactly what it means. */
+  placeholder?: string;
   className?: string;
   minWidth?: number;
   ariaLabel?: string;
@@ -935,7 +942,7 @@ export function MultiColorSelect({
   const joined = picked.map((option) => option.label).join(", ");
   const summary =
     picked.length === 0
-      ? triggerLabel || allLabel
+      ? triggerLabel || placeholder || allLabel
       : picked.length === 1
         ? picked[0].label
         : joined.length <= 34
@@ -943,7 +950,7 @@ export function MultiColorSelect({
           : `${picked.length} selected`;
   const selectionLabel =
     picked.length === 0
-      ? allLabel
+      ? (placeholder ?? allLabel)
       : `${allLabel}: ${picked.map((option) => option.label).join(", ")}`;
   // `minWidth` is the caller's floor, not permission to ellipsize the normal
   // unrestricted label. Keep the track stable through every selection state,

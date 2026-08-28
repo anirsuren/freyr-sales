@@ -266,6 +266,7 @@ export function EditMaterialButton({
                 onChange={(values) => setDivisions(values as Division[])}
                 options={DIVISION_OPTIONS}
                 allLabel="Any division"
+                placeholder="Choose one or more divisions"
                 allIcon={Building2}
                 allColor="#0071E3"
                 ariaLabel="Division"
