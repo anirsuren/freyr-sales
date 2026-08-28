@@ -55,6 +55,13 @@ export type Customer360Item = {
    * marks those pages draw, not a lookalike.
    */
   logo?: string;
+  /**
+   * A PERSON'S OWN FACE, for the bands whose rows are people rather than
+   * records (Anir has corrected this three times: "profile pictures", "never
+   * do this mistake again with the profile pictures"). A company brings its
+   * logo through `logo`; a person brings their headshot through this.
+   */
+  face?: string;
   code?: string;
   goalType?: string;
   /** Everything the goals page's own GoalZoom needs to run in the row's

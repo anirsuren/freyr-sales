@@ -31,6 +31,7 @@ export type { BandIconKey, Customer360Band, Customer360Item };
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
 import { ChevronDown } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import {
   MetPill,
@@ -494,8 +495,14 @@ export function Customer360({
                   className="flex items-start gap-3 border-t border-border-light py-2.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
                 >
                   {/* The module's own left mark: a company brings its logo,
-                      an offering its category-coloured tile. */}
-                  {item.logo ? (
+                      an offering its category-coloured tile, a person
+                      their headshot. */}
+                  {item.face ? (
+                    <Avatar
+                      name={item.face}
+                      className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
+                    />
+                  ) : item.logo ? (
                     <CompanyLogo
                       name={item.logo}
                       className="mt-0.5 h-7 w-7 shrink-0 text-[8px]"

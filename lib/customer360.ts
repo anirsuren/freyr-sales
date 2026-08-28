@@ -63,6 +63,8 @@ export async function buildCustomer360(
     );
 
   const myDeals = mine(opps);
+  /* One list, read by both the Meetings band and the Team band. */
+  const accountMeetings = meetingsForCustomer(meetings, customerId, companyName);
   const myRequests = mine(solutioning);
   const myContracts = mine(contracts);
   const myLeads = leads.filter(
@@ -138,7 +140,7 @@ export async function buildCustomer360(
   }
 
   if (may("/meetings")) {
-    const myMeetings = meetingsForCustomer(meetings, customerId, companyName);
+    const myMeetings = accountMeetings;
     bands.push({
       key: "meetings",
       label: "Meetings",
@@ -184,6 +186,145 @@ export async function buildCustomer360(
           when: l.createdAt,
           href: "/leads",
         })),
+    });
+  }
+
+  /* WHO IS ON THIS ACCOUNT.
+     Suren, Aug 28: "let's say if I'm in a customer page, then tab is the team.
+     Team wins. In the team I should know who's the OWNER, and then if there
+     are other people that would be one — owner is one and then there should be
+     other people is a team."
+
+     The owner is a stored fact. The team is not stored anywhere yet, so it is
+     READ FROM THE WORK rather than invented: the people who own this account's
+     deals, who ran or presented at its meetings, and who fulfilled its
+     solution requests. That is a true answer to "who is on this account" today
+     and it needs no field nobody has filled in. An explicitly assigned team
+     can replace this list later without moving the tab.
+
+     Each name says how it got here, because "owner" and "was in one meeting"
+     are very different kinds of involvement. */
+  if (may("/team")) {
+    const roles = new Map<string, Set<string>>();
+    const add = (who: string | undefined, how: string) => {
+      const name = (who ?? "").trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      const existing = [...roles.keys()].find((k) => k === key);
+      const set = existing ? roles.get(existing)! : new Set<string>();
+      set.add(how);
+      roles.set(key, set);
+    };
+    const display = new Map<string, string>();
+    const remember = (who: string | undefined) => {
+      const name = (who ?? "").trim();
+      if (name) display.set(name.toLowerCase(), name);
+    };
+
+    /* The account's own owner field is not on this function's inputs, so the
+       owner shown here is whoever owns its work. When an explicit account
+       owner is wired through, it takes this slot. */
+    for (const d of myDeals) {
+      remember(d.owner);
+      add(d.owner, "owns a deal");
+    }
+    for (const m of accountMeetings) {
+      remember(m.owner);
+      add(m.owner, "ran a meeting");
+      for (const p of m.presenters) {
+        remember(p);
+        add(p, "presented");
+      }
+      for (const a of m.attendees) {
+        remember(a);
+        add(a, "was in a meeting");
+      }
+    }
+    for (const r of myRequests) {
+      remember(r.owner);
+      add(r.owner, "fulfilled a request");
+      remember(r.requestedBy);
+      add(r.requestedBy, "raised a request");
+    }
+
+    /* The owner leads, then whoever is doing the most on the account. */
+    const people = [...roles.entries()]
+      .map(([key, how]) => ({
+        name: display.get(key) ?? key,
+        how: [...how],
+        isOwner: how.has("account owner"),
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.isOwner) - Number(a.isOwner) ||
+          b.how.length - a.how.length ||
+          a.name.localeCompare(b.name)
+      );
+
+    bands.push({
+      key: "team",
+      label: "Team",
+      icon: BAND_ICONS.contacts,
+      color: "#0369A1",
+      count: people.length,
+      href: "/team",
+      hrefLabel: "The team",
+      empty: "Nobody is working this account yet.",
+      items: people.map<Customer360Item>((p) => ({
+        id: p.name,
+        title: p.name,
+        sub: p.how.join(" · "),
+        face: p.name,
+      })),
+    });
+  }
+
+  /* WHAT THIS ACCOUNT BUYS, AND WHAT IT IS BEING SOLD.
+     His grid, Customer row, Offerings column: "Contracted Offerings,
+     Opportunity offerings" — two different states of the same thing, and the
+     difference is the useful part. An offering under contract is revenue; an
+     offering on an open deal is a bet. Both are named here, and each row says
+     which it is. */
+  if (may("/offerings")) {
+    const contracted = new Map<string, number>();
+    for (const c of myContracts) {
+      const label = (c as { offeringLabel?: string }).offeringLabel;
+      if (label) contracted.set(label, (contracted.get(label) ?? 0) + (c.value || 0));
+    }
+    const proposed = new Map<string, number>();
+    for (const o of myDeals) {
+      if (o.status === "Won" || o.status === "Lost") continue;
+      for (const label of o.offeringLabels ?? [])
+        proposed.set(label, (proposed.get(label) ?? 0) + (o.value || 0));
+    }
+    const names = [...new Set([...contracted.keys(), ...proposed.keys()])].sort(
+      (a, b) => a.localeCompare(b)
+    );
+    bands.push({
+      key: "offerings",
+      label: "Offerings",
+      icon: BAND_ICONS.offerings,
+      color: "#C2410C",
+      count: names.length,
+      href: "/offerings",
+      hrefLabel: "All offerings",
+      empty: "Nothing sold to or proposed for this account yet.",
+      items: names.map<Customer360Item>((name) => {
+        const won = contracted.get(name);
+        const open = proposed.get(name);
+        return {
+          id: name,
+          title: name,
+          sub: [
+            won !== undefined ? "under contract" : null,
+            open !== undefined ? "on an open deal" : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          amount: (won ?? 0) + (open ?? 0),
+          href: "/offerings",
+        };
+      }),
     });
   }
 
