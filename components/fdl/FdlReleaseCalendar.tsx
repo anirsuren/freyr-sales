@@ -286,8 +286,28 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           aria-hidden="true"
         />
       )}
+      {/* ONE PANEL, NOT TWO GLUED TOGETHER (Anir, Aug 28: "when I click on
+          the expand button here to see it in the pop-up, it's kind of buggy
+          and clunky").
+
+          The header and the grid used to be two separately positioned fixed
+          boxes, each running matrixPopIn on its own. That animation scales
+          0.955 from the element's OWN centre, and the boxes are 53px and
+          ~800px tall, so mid-flight the grid's top edge fell about 18px while
+          the header's bottom edge rose about 1px: the panel tore open down
+          the seam and snapped shut at the end, every single time.
+
+          One flex column now carries the border, the radius and the single
+          animation, so there is one transform on one box and no seam to come
+          apart. */}
+      <div
+        className={cn(
+          fullScreen &&
+            "matrix-pop-in fixed inset-6 z-[201] flex flex-col overflow-hidden rounded-2xl border border-border-light bg-white"
+        )}
+      >
       {fullScreen && (
-        <div className="matrix-pop-in fixed inset-x-6 top-6 z-[201] flex h-[53px] items-center justify-between gap-4 rounded-t-2xl border border-b-0 border-border-light bg-white px-5">
+        <div className="flex h-[53px] shrink-0 items-center justify-between gap-4 border-b border-border-light px-5">
           <h2 className="text-[15px] font-semibold text-text-primary">
             Release calendar
           </h2>
@@ -316,10 +336,10 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           style={!fullScreen && gridHeight ? { height: gridHeight } : undefined}
           onMouseLeave={() => setCross(null)}
           className={cn(
-            "overflow-auto border border-border-light bg-white",
+            "overflow-auto bg-white",
             fullScreen
-              ? "matrix-pop-in fixed inset-x-6 bottom-6 top-[calc(1.5rem+53px)] z-[201] rounded-b-2xl border-t-0"
-              : "-mb-28 rounded-xl"
+              ? "min-h-0 flex-1"
+              : "-mb-28 rounded-xl border border-border-light"
           )}
         >
           <table
@@ -450,6 +470,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           </table>
         </div>
       )}
+      </div>
 
       <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
         <CalendarRange size={13} strokeWidth={2} />
