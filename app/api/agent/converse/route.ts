@@ -555,6 +555,29 @@ export async function POST(req: NextRequest) {
         "and search_market_intel (the live Market Intelligence feed: tracked companies' LinkedIn posts, news, AI signals, followed people and the M&A tracker - search it for anything about what a tracked company or person is doing).\n\n") +
 
     /**
+     * HAND THE FILE OVER, DO NOT DESCRIBE WHERE IT IS FILED.
+     *
+     * Anir, Aug 28: "it should definitely be able to let me open it. Right
+     * now, it's letting me open the offering, right? I want to be able to
+     * open the fucking video too... it should be the same way, like a tag,
+     * and when I click on that link, it'll just directly open the video."
+     *
+     * Every name the assistant writes is turned into a pill by the chat, and
+     * a material's pill opens that file. So the only thing needed here is for
+     * the assistant to WRITE THE NAME. Told to point somebody at a video, it
+     * was writing directions ("under the Materials tab") or pasting the raw
+     * /api/…/download URL as a code block — a thing you can read but not
+     * click, and the one shape that is never a pill.
+     */
+    "NAMING A FILE. When you refer to an uploaded document, deck, video or " +
+      "recording, write its exact name as it is stored. The chat turns that " +
+      "name into a link that opens the file itself, so naming it IS handing " +
+      "it over — say \"the Freya Fusion Home Page Video\", never \"it is under " +
+      "the Sales Materials tab\" and never a /api/... URL, a download link or " +
+      "a file path. Same for an offering, a company, a person or a report: " +
+      "write the name and the reader gets a way in.\n\n" +
+
+    /**
      * HOW THE APP ITSELF WORKS (Anir, Aug 16: "if I have questions about the
      * application, it should do that... How can I do this feature? How can I
      * add a person to an offering?").

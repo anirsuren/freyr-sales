@@ -157,6 +157,13 @@ export function buildKnowledgeBase(
       // Giving the container its upload date as well would make an old document
       // look recent merely because somebody uploaded it today.
       const doc = m.docsPath && isReadByAgent(m) ? fileText[m.docsPath] : undefined;
+      /* THE FILE, NOT THE PAGE IT LIVES ON (Anir, Aug 28: "it should
+         definitely be able to let me open it... when I click on that link,
+         it'll just directly open the video"). Both passages used to point at
+         /offerings/<id>, so the assistant had no way to hand over the file
+         itself and resorted to pasting a raw download URL as code. This is
+         the same `?material=` the viewer's own share link uses. */
+      const openHref = `/offerings/${o.id}?tab=materials&material=${encodeURIComponent(m.id)}`;
       const materialDate = m.docsPath
         ? undefined
         : effectiveSourceDate(undefined, m.addedAt);
@@ -164,7 +171,7 @@ export function buildKnowledgeBase(
         id: m.id,
         kind: "material",
         title: m.label,
-        href: `/offerings/${o.id}`,
+        href: openHref,
         text: [
           `${m.label}, a ${m.kind} for ${o.offering_name}`,
           materialJourneyStages(m).length &&
@@ -208,7 +215,7 @@ export function buildKnowledgeBase(
               id: `${m.id}#${member ? `archive:${member}:` : ""}${i}`,
               kind: "file",
               title: `${m.label}${member ? ` › ${member}` : ""}${part}`,
-              href: `/offerings/${o.id}`,
+              href: openHref,
               text: member
                 ? `From archive "${doc.filename}", member "${member}", uploaded to ${o.offering_name}:\n${chunk}`
                 : `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk}`,

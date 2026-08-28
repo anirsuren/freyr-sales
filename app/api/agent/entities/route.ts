@@ -41,9 +41,29 @@ export async function GET() {
 
   let offerings: { name: string; id: string }[] = [];
   let components: { name: string; id: string }[] = [];
+  /**
+   * FILES ARE THINGS THE ASSISTANT NAMES TOO (Anir, Aug 28: "it should
+   * definitely be able to let me open it... it should be the same way, like a
+   * tag, and when I click on that link, it'll just directly open the video").
+   *
+   * Asked where a demo video was, the agent printed a raw
+   * /api/offerings/…/materials/download?path=… line as code — a thing you can
+   * read but not click. A material has a real destination (its offering page,
+   * opened on that file), so it gets the same pill everything else gets.
+   *
+   * The id carries both halves the destination needs, offering and material,
+   * because a pill only knows the id it was given.
+   */
+  let materials: { name: string; id: string }[] = [];
   try {
-    offerings = listOfferings().map((o) => ({ name: o.offering_name, id: o.id }));
+    const list = listOfferings();
+    offerings = list.map((o) => ({ name: o.offering_name, id: o.id }));
     components = listFdlComponents().map((c) => ({ name: c.name, id: c.id }));
+    materials = list.flatMap((o) =>
+      (o.materials || [])
+        .filter((m) => m.label && m.id)
+        .map((m) => ({ name: m.label, id: `${o.id}:${m.id}` }))
+    );
   } catch {
     // Catalogue unavailable: the other kinds still pill correctly.
   }
@@ -57,6 +77,7 @@ export async function GET() {
     contacts: contacts.map((c) => ({ name: c.full_name, id: c.id })),
     offerings,
     components,
+    materials,
     people,
     // Named destinations rather than records. The assistant says "the coverage
     // report" far more often than it says a report's id.

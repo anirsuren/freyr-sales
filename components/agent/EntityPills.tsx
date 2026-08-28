@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BarChart3, Layers } from "lucide-react";
+import { BarChart3, Layers, Paperclip } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -25,7 +25,8 @@ export type EntityKind =
   | "offering"
   | "component"
   | "person"
-  | "report";
+  | "report"
+  | "material";
 
 export type Entity = { name: string; id: string; kind: EntityKind };
 
@@ -57,6 +58,21 @@ const KIND: Record<
   report: {
     href: (id) => (id ? `/reports/${id}` : "/reports"),
     mark: () => <BarChart3 size={13} strokeWidth={1.9} className="shrink-0" />,
+  },
+  /**
+   * A FILE OPENS THE FILE. The id is "offeringId:materialId", and `?material=`
+   * is the same parameter the viewer's own share link uses, so clicking a
+   * named video in an answer lands on it playing rather than on the offering
+   * page with a tab to hunt through.
+   */
+  material: {
+    href: (id) => {
+      const [offeringId, materialId] = id.split(":");
+      return materialId
+        ? `/offerings/${offeringId}?tab=materials&material=${encodeURIComponent(materialId)}`
+        : `/offerings/${offeringId}?tab=materials`;
+    },
+    mark: () => <Paperclip size={13} strokeWidth={1.9} className="shrink-0" />,
   },
 };
 
@@ -144,7 +160,8 @@ export function injectEntities(
       // pills and simply do not navigate.
       const hasPage =
         linkable || hit.kind === "offering" || hit.kind === "component" ||
-        hit.kind === "person" || hit.kind === "report";
+        hit.kind === "person" || hit.kind === "report" ||
+        hit.kind === "material";
       out.push(
         hasPage ? (
           <Link key={`${keyBase}-e${k++}`} href={style.href(hit.id)} className={PILL}>
@@ -194,6 +211,7 @@ export function useEntityIndex(): Entity[] {
           ...take(d.contacts, "contact"),
           ...take(d.offerings, "offering"),
           ...take(d.components, "component"),
+          ...take(d.materials, "material"),
           ...take(d.people, "person"),
           ...take(d.reports, "report"),
         ].filter((e) => e.name && e.name.length > 2);
