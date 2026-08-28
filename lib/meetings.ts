@@ -321,7 +321,7 @@ export async function readMeetings(): Promise<MeetingsState> {
   if (getDataMode() !== "mock")
     return readRow().catch(() => structuredClone(EMPTY_MEETINGS));
   const existing = await readRowRaw().catch(() => null);
-  if (existing) return normalize(existing);
+  if (existing && !isPreLinkSeed(existing)) return normalize(existing);
   const seeded = sampleMeetings();
   await writeRow(seeded).catch(() => undefined);
   return seeded;
@@ -613,6 +613,35 @@ export function groupMeetingsByPeriod(
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/**
+ * A MOCK ROW SEEDED BEFORE THE DEMO DEALS EXISTED.
+ *
+ * The first meetings sample carried no opportunity ids, because in mock there
+ * were no deals against the demo accounts to carry (the customers and the
+ * pipeline seed were two different casts until Aug 28). A store seeded from
+ * that set would show meetings joined to nothing forever, which is the exact
+ * hole this was meant to fill.
+ *
+ * Sample data is disposable by definition, so a pre-link seed is replaced with
+ * the current one. Only ever fires in mock, only when EVERY row is one of the
+ * originals AND not one of them links to a deal — which no store written after
+ * this change can look like, and which anything a person made cannot look like
+ * either.
+ */
+function isPreLinkSeed(raw: unknown): boolean {
+  const rows = (raw as { meetings?: unknown[] } | null)?.meetings;
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  return rows.every((row) => {
+    if (!row || typeof row !== "object") return false;
+    const m = row as { id?: unknown; opportunityIds?: unknown };
+    return (
+      typeof m.id === "string" &&
+      m.id.startsWith("mtg-sample-") &&
+      (!Array.isArray(m.opportunityIds) || m.opportunityIds.length === 0)
+    );
+  });
+}
+
 /* ---------------------------------------------------------------- samples */
 
 /**
@@ -648,8 +677,8 @@ function sampleMeetings(): MeetingsState {
       meetingAt: d(-9),
       customerId: "cust-003",
       customer: "Cortexa Biopharma",
-      opportunityIds: [],
-      opportunityLabels: ["EMA filing — CMC writing"],
+      opportunityIds: ["demo-opp-1"],
+      opportunityLabels: ["NDA/MAA CMC Writing. Cortexa Biopharma"],
       contactIds: ["con-sample-1"],
       contactNames: ["Marcus Thorne"],
       attendees: ["Elena Rossi", "Omar Haddad"],
@@ -692,8 +721,8 @@ function sampleMeetings(): MeetingsState {
       meetingAt: d(-4),
       customerId: "cust-004",
       customer: "Helix Biologics",
-      opportunityIds: [],
-      opportunityLabels: [],
+      opportunityIds: ["demo-opp-3"],
+      opportunityLabels: ["Publishing & Submission. Helix Biologics"],
       contactIds: ["con-sample-2"],
       contactNames: ["Dr. Lena Vogt"],
       attendees: ["Nina Kowalski", "Marcus Chen", "Grace Liu"],
@@ -729,8 +758,8 @@ function sampleMeetings(): MeetingsState {
       meetingAt: d(3),
       customerId: "cust-007",
       customer: "Aether Medical Devices",
-      opportunityIds: [],
-      opportunityLabels: [],
+      opportunityIds: ["demo-opp-4"],
+      opportunityLabels: ["EU MDR Technical Files. Aether Medical Devices"],
       contactIds: ["con-sample-3"],
       contactNames: ["Stefan Bauer"],
       attendees: ["Daniel Foster", "Elena Rossi"],
@@ -757,8 +786,8 @@ function sampleMeetings(): MeetingsState {
       meetingAt: d(11),
       customerId: "cust-009",
       customer: "Quantum Oncology",
-      opportunityIds: [],
-      opportunityLabels: [],
+      opportunityIds: ["demo-opp-5"],
+      opportunityLabels: ["Clinical Trial Applications. Quantum Oncology"],
       contactIds: ["con-sample-4"],
       contactNames: ["Dr. Arthur Pennington"],
       attendees: ["Grace Liu", "Marcus Chen"],
@@ -777,8 +806,8 @@ function sampleMeetings(): MeetingsState {
       meetingAt: d(6),
       customerId: "cust-012",
       customer: "Orion Vaccines",
-      opportunityIds: [],
-      opportunityLabels: [],
+      opportunityIds: ["demo-opp-9"],
+      opportunityLabels: ["Regulatory Strategy. Orion Vaccines"],
       contactIds: ["con-sample-5"],
       contactNames: ["Dr. Hana Kim"],
       attendees: ["Marcus Chen"],

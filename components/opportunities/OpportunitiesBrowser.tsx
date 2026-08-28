@@ -88,6 +88,8 @@ import { typeMeta } from "@/components/performance/bits";
 import { CURRENCIES, convert, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
+import { Customer360 } from "@/components/customers/Customer360";
+import type { Customer360Band } from "@/lib/customer360Shared";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -467,6 +469,7 @@ export type AccrualBadge = {
 export function OpportunitiesBrowser({
   opportunities,
   meetingsByDeal = {},
+  bandsByDeal = {},
   accrualPlans = {},
   offerings,
   offeringTypes = [],
@@ -483,6 +486,9 @@ export function OpportunitiesBrowser({
   opportunities: Opportunity[];
   /** Meetings held against each deal, newest first (Suren, Aug 28:
    *  "similarly against opportunities"). */
+  /** Everything connected to each deal — the same strip the customer page
+   *  carries, scoped to one opportunity. */
+  bandsByDeal?: Record<string, Customer360Band[]>;
   meetingsByDeal?: Record<
     string,
     {
@@ -1594,6 +1600,28 @@ export function OpportunitiesBrowser({
                                   </div>
                                 )}
                               </div>
+                              {/* EVERYTHING CONNECTED TO THIS DEAL — the same
+                                  strip the customer page carries, scoped to
+                                  one opportunity (Suren, Aug 28: "if I go to
+                                  opportunities and click on opportunity, all
+                                  the presentation and everything will come...
+                                  all the materials, everything, like how
+                                  you're showing customers").
+
+                                  Only drawn when something is actually
+                                  connected: an all-zero strip repeated down
+                                  78 deals is noise, and the deal already says
+                                  what it has in the panel above. */}
+                              {(bandsByDeal[o.id] ?? []).some((b) => b.count > 0) && (
+                                <div className="border-t border-border-light pt-3.5 sm:col-span-2">
+                                  <Customer360
+                                    bands={bandsByDeal[o.id] ?? []}
+                                    company={o.customer}
+                                    heading="Everything on this deal"
+                                    emptyLine="Nothing is connected to this deal yet."
+                                  />
+                                </div>
+                              )}
                               <div className="border-t border-border-light pt-3.5 sm:col-span-2">
                                 <OpportunityActivities
                                   opportunity={o}

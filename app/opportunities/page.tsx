@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
 import { meetingsForOpportunity, readMeetings } from "@/lib/meetings";
+import { buildOpportunity360 } from "@/lib/opportunity360";
+import { getRole } from "@/lib/role";
 import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { judgePlan } from "@/lib/revenueAccrualsShared";
 import { listOfferings } from "@/lib/offerings";
@@ -43,8 +45,23 @@ export default async function OpportunitiesPage() {
   const db = getDb();
   const customers = await db.customers.list();
 
+  /* EVERYTHING ON EACH DEAL (Suren, Aug 28: "if I go to opportunities and
+     click on opportunity, all the presentation and everything will come...
+     all the materials, everything, like how you're showing customers").
+     Built once per deal here rather than fetched when a row opens, so the
+     strip is there the instant it unfolds. */
+  const role = await getRole();
+  const bandsByDeal = Object.fromEntries(
+    await Promise.all(
+      opportunities.map(
+        async (o) => [o.id, await buildOpportunity360(o.id, role)] as const
+      )
+    )
+  );
+
   return (
     <OpportunitiesBrowser
+      bandsByDeal={bandsByDeal}
       opportunities={opportunities}
       /* Meetings held against each deal, keyed by deal id, newest first. */
       meetingsByDeal={Object.fromEntries(
