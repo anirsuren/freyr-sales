@@ -1,3 +1,4 @@
+import { orderBands } from "./connectionOrder";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
 import { readSolutioning } from "./solutioning";
@@ -139,5 +140,6 @@ export async function buildOpportunity360(
     });
   }
 
-  return bands;
+  /* One shared order for every connection strip in the app. */
+  return orderBands(bands);
 }

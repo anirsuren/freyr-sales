@@ -22,6 +22,7 @@ export const BAND_ICONS = {
   opportunities: "opportunities",
   goals: "goals",
   offerings: "offerings",
+  solutionRequests: "solutionRequests",
   submissions: "submissions",
   presentations: "presentations",
   meetings: "meetings",

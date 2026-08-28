@@ -70,14 +70,18 @@ const ROOM_META: Record<
     rowNoun: string;
   }
 > = {
+  /* SOLUTION REQUESTS, in the company's own words (Suren, Aug 28: "now you
+     should call it as solution request not request — they call it solution
+     request"). The record is still a request; what changed is that the app
+     now says it the way the floor says it. */
   requests: {
-    title: "Requests",
+    title: "Solution requests",
     subtitle:
       "What sales has asked the Solutions team for: a submission, a presentation or a meeting.",
-    empty: "No requests yet.",
-    newLabel: "New request",
-    noun: "requests",
-    rowNoun: "Request",
+    empty: "No solution requests yet.",
+    newLabel: "New solution request",
+    noun: "solution requests",
+    rowNoun: "Solution request",
   },
   submissions: {
     title: "Submissions",

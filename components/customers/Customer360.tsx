@@ -9,6 +9,7 @@ import {
   Contact as ContactIcon,
   FileSignature,
   FileText,
+  Inbox,
   Goal,
   Package,
   Presentation,
@@ -81,6 +82,7 @@ const BAND_ICON_MAP = {
      each area gets its own glyph. */
   goals: Goal,
   offerings: Package,
+  solutionRequests: Inbox,
   submissions: FileText,
   presentations: Presentation,
   meetings: CalendarClock,
@@ -138,9 +140,24 @@ export function Customer360({
    * belonged with. The empty areas join the strip instead, dimmed and showing
    * a zero, so the whole picture is one row of tabs and the sentence is gone.
    */
-  const ordered = [...live, ...bands.filter((b) => b.count === 0)];
+  /* THE ORDER IS HIS, NOT THE DATA'S (Suren, Aug 28, dictating the tabs and
+     then writing the same sequence out as a grid: "so this is like the order
+     in which I need everything to be shown").
+
+     These were sorted with the non-empty areas first, which meant the tabs
+     moved every time a record was added and the same page never looked the
+     same twice. A fixed order is what makes a strip learnable: Submissions is
+     always in the same place whether it holds nine or none. The empty ones
+     stay dimmed and showing a zero, which is what carries the "nothing here
+     yet" signal that the reordering used to carry.
+
+     The first ACTIVE tab is still a non-empty one where there is one, so
+     opening a page still lands on something worth reading. */
+  const ordered = bands;
   const active =
-    ordered.find((b) => b.key === activeKey) ?? (ordered.length ? ordered[0] : null);
+    ordered.find((b) => b.key === activeKey) ??
+    live[0] ??
+    (ordered.length ? ordered[0] : null);
 
   return (
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">

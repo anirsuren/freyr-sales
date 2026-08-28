@@ -1,3 +1,5 @@
+import { orderBands } from "@/lib/connectionOrder";
+import type { Customer360Band } from "@/lib/customer360Shared";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
 import { ClipboardList,
@@ -148,7 +150,7 @@ export default async function CustomerDetailPage({
    * Each band is gated on what this person may actually open, and the contacts
    * band is filled in here because this page already holds them.
    */
-  const c360 = await buildCustomer360(
+  const c360: Customer360Band[] = await buildCustomer360(
     customer.id,
     customer.company_name,
     await getRole()
@@ -187,7 +189,10 @@ export default async function CustomerDetailPage({
     ),
   ].sort((a, b) => a.localeCompare(b));
   if (c360.length) {
-    c360.splice(1, 0, {
+    /* Pushed and re-ordered rather than spliced into position 1: the order
+       comes from lib/connectionOrder now, and a hand-placed index was jumping
+       the queue his grid sets. */
+    c360.push({
       key: "contacts",
       label: "Contacts",
       icon: BAND_ICONS.contacts,
@@ -203,6 +208,7 @@ export default async function CustomerDetailPage({
       })),
     });
   }
+  const bands360 = orderBands(c360);
 
 
   return (
@@ -304,7 +310,7 @@ export default async function CustomerDetailPage({
           whole point is that it reads before you choose a tab at all. */}
       {c360.length > 0 && (
         <div className="mb-5">
-          <Customer360 company={customer.company_name} bands={c360} />
+          <Customer360 company={customer.company_name} bands={bands360} />
         </div>
       )}
 

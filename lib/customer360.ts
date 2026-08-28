@@ -1,3 +1,4 @@
+import { orderBands } from "./connectionOrder";
 import "server-only";
 
 import { readOpportunities } from "./opportunities";
@@ -99,6 +100,11 @@ export async function buildCustomer360(
        submissions have I done"), so they are three bands, not one. */
     const byKind = (kind: string) => myRequests.filter((r) => r.kind === kind);
     for (const [key, label, kind, color] of [
+      /* SOLUTION REQUESTS ARE THEIR OWN COLUMN on his grid, separate from
+         the submissions and presentations they turn into — and no page
+         carried them at all. "Now you should call it as solution request, not
+         request; they call it solution request." */
+      ["solutionRequests", "Solution requests", "request", "#0071E3"],
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
       /* Named for what it is — somebody ASKED the Solutions team for a
@@ -204,5 +210,6 @@ export async function buildCustomer360(
     });
   }
 
-  return bands;
+  /* One shared order for every connection strip in the app. */
+  return orderBands(bands);
 }

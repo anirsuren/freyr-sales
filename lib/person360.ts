@@ -1,3 +1,4 @@
+import { orderBands } from "./connectionOrder";
 import "server-only";
 
 import { readOpportunities } from "./opportunities";
@@ -202,6 +203,11 @@ export async function buildPerson360(
       (r) => same(r.owner, personName) || same(r.requestedBy, personName)
     );
     for (const [key, label, kind, color] of [
+      /* SOLUTION REQUESTS ARE THEIR OWN COLUMN on his grid, separate from
+         the submissions and presentations they turn into — and no page
+         carried them at all. "Now you should call it as solution request, not
+         request; they call it solution request." */
+      ["solutionRequests", "Solution requests", "request", "#0071E3"],
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
       /* Same collision as the customer page: a meeting ASKED FOR is not a
@@ -225,9 +231,18 @@ export async function buildPerson360(
             title: r.title,
             code: r.ref || undefined,
             logo: r.customer || undefined,
+            /* WHICH SIDE OF IT THEY WERE ON. His grid spells the roles out
+               for a person: "requestor, Fulfilled" — one of these is somebody
+               asking the Solutions team for something and the other is
+               somebody building it, and a person's page is where that
+               distinction is the entire point. */
             sub: [
               r.customer,
-              same(r.owner, personName) ? "owner" : "requested it",
+              same(r.owner, personName)
+                ? same(r.requestedBy, personName)
+                  ? "raised it and fulfilled it"
+                  : "fulfilled it"
+                : "raised it",
             ]
               .filter(Boolean)
               .join(" · "),
@@ -350,5 +365,6 @@ export async function buildPerson360(
     });
   }
 
-  return bands;
+  /* One shared order for every connection strip in the app. */
+  return orderBands(bands);
 }
