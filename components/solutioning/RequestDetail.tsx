@@ -24,7 +24,9 @@ import {
   Undo2,
   UserRound,
   type LucideIcon,
+  MessageSquare,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/Textarea";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -166,6 +168,7 @@ export function RequestDetail({
   const [r, setR] = useState(initial);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
   const [adding, setAdding] = useState(false);
+  const [comment, setComment] = useState("");
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -692,7 +695,14 @@ export function RequestDetail({
                   removals — the reserved meanings. */}
               <ol className="max-h-[420px] overflow-y-auto pr-1">
                 {[...r.activity].reverse().map((a, i, all) => {
-                  const mark = timelineMark(a.what);
+                  /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
+                     MOVING. Same spine, different voice: a comment wears a
+                     speech mark and its words are set as prose, so a sentence
+                     from a person is never mistaken for something the app
+                     did. */
+                  const mark = a.comment
+                    ? { icon: MessageSquare, color: "#0071E3" }
+                    : timelineMark(a.what);
                   const MarkIcon = mark.icon;
                   return (
                     <li key={`${a.at}-${i}`} className="relative pl-9 pb-4 last:pb-0">
@@ -710,7 +720,14 @@ export function RequestDetail({
                         <MarkIcon size={13} strokeWidth={2.3} />
                       </span>
                       <span className="block min-w-0">
-                        <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
+                        <span
+                          className={cn(
+                            "block whitespace-pre-wrap text-[12.5px] leading-snug",
+                            a.comment
+                              ? "rounded-lg bg-surface px-2.5 py-2 text-text-primary"
+                              : "font-semibold text-text-primary"
+                          )}
+                        >
                           {a.what}
                         </span>
                         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
@@ -724,6 +741,39 @@ export function RequestDetail({
                   );
                 })}
               </ol>
+
+              {/* ANYONE WHO CAN SEE IT CAN SAY SOMETHING (Suren, Aug 28: "like
+                  how you have a comment section when you hand it back,
+                  somebody comes and provides some comments... anyone can
+                  comment, whoever has access to this"). Deliberately available
+                  on a completed record too: the moment work is handed back is
+                  exactly when the person who asked for it has something to
+                  say. */}
+              <div className="mt-3 border-t border-border-light pt-3">
+                <Textarea
+                  rows={2}
+                  value={comment}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setComment(e.target.value)
+                  }
+                  placeholder="Add a comment for whoever picks this up next…"
+                  aria-label="Add a comment"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={busy || !comment.trim()}
+                    onClick={async () => {
+                      const text = comment.trim();
+                      if (!text) return;
+                      if (await post({ op: "comment", text })) setComment("");
+                    }}
+                    className="rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    Comment
+                  </button>
+                </div>
+              </div>
             </SectionCard>
           </div>
         </div>

@@ -130,6 +130,22 @@ export type RequestActivity = {
   at: string;
   by: string;
   what: string;
+  /**
+   * SOMEBODY'S WORDS, NOT SOMETHING THE APP DID.
+   *
+   * Suren, Aug 28, on handing work back: "like how you have a comment section
+   * when you hand it back, somebody comes and provides some comments... like
+   * whatever comments everybody has provided in different times, all those
+   * comments will come together and then mark it complete... anyone can
+   * comment, whoever has access to this."
+   *
+   * A comment lives in the SAME timeline as the events rather than in a
+   * second list, because "all those comments come together" and the order
+   * that matters is when each was said relative to what was happening. The
+   * flag only changes how it is drawn and who may write it: an event is
+   * something the record did, a comment is something a person said.
+   */
+  comment?: boolean;
 };
 
 export type SolutionRequest = {
@@ -274,7 +290,7 @@ function normalizeDoc(v: unknown): SolutionDoc | null {
 function normalizeActivity(v: unknown): RequestActivity | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Partial<RequestActivity>;
-  let what = str(r.what, 240);
+  let what = str(r.what, r.comment ? 2000 : 240);
   if (!what) return null;
   /* A NAME, NOT A TOKEN (Anir, Aug 27, twice: "why does it say that weird
      number" and again "why is that weird text still showing up? What is
@@ -292,6 +308,7 @@ function normalizeActivity(v: unknown): RequestActivity | null {
     at: str(r.at, 40) || new Date().toISOString(),
     by: str(r.by, 80) || "Unknown",
     what,
+    ...(r.comment ? { comment: true as const } : {}),
   };
 }
 
@@ -894,6 +911,31 @@ async function buildRecord(
     if (persist) await writeRow(state);
     return record;
   }
+}
+
+/**
+ * ANYONE WHO CAN SEE IT CAN SAY SOMETHING ABOUT IT (Suren: "anyone can
+ * comment, whoever has access to this"). No ownership check and no status
+ * check: a completed record is exactly the one somebody wants to remark on.
+ */
+export async function commentOnRequest(input: {
+  requestId: string;
+  by: string;
+  text: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const text = str(input.text, 2000);
+    if (!text) throw new Error("Write something first.");
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    r.activity.push({
+      at: new Date().toISOString(),
+      by: input.by,
+      what: text,
+      comment: true,
+    });
+    await writeRow(state);
+  });
 }
 
 function mustFind(state: SolutioningState, requestId: string): SolutionRequest {

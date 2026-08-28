@@ -17,6 +17,7 @@ import {
   updateRequest,
   type DocCategory,
   type SolutioningKind,
+  commentOnRequest,
 } from "@/lib/solutioning";
 
 export const dynamic = "force-dynamic";
@@ -160,6 +161,15 @@ export async function POST(req: NextRequest) {
         );
       }
       await pickUpRequest({ requestId, by: me.name });
+    } else if (op === "comment") {
+      /* NO GATE BEYOND SEEING IT (Suren: "anyone can comment, whoever has
+         access to this"). Reaching this handler already means the reader
+         passed the module's own access check. */
+      await commentOnRequest({
+        requestId,
+        by: me.name,
+        text: String((body as { text?: unknown }).text ?? ""),
+      });
     } else if (op === "release") {
       /* The way back out of a pick-up. The owner may always put it down; a
          manager or admin may take it off somebody who has gone quiet. */
