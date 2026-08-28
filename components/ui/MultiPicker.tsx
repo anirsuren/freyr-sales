@@ -40,10 +40,24 @@ export type MultiPickerOption = {
   group?: string;
 };
 
+/**
+ * A CHOSEN THING WEARS THE SAME PILL EVERY OTHER CHOSEN THING WEARS (Anir,
+ * Aug 28: "I don't like how this looks. The blue thing, just keep it
+ * consistent. Where is the profile picture and stuff?").
+ *
+ * The uncoloured chip was solid blue with white text, which is the shape of a
+ * BUTTON, not of an identity — and it was the only chip in the app drawn that
+ * way. It also swallowed the logo it was already being handed: a company mark
+ * on a saturated blue field reads as a smudge, which is why the picked deals
+ * had no logo while the very same rows in the list below did.
+ *
+ * Tinted fill, hairline border, blue text: the pill every entity already
+ * wears, and a surface a logo can actually sit on.
+ */
 function cnChip(color?: string): string {
   return color
     ? "group inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-opacity hover:opacity-80"
-    : "group inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white transition-colors hover:bg-[color:#0058B0]";
+    : "group inline-flex cursor-pointer items-center gap-1 rounded-full border border-blue-subtle/60 bg-blue-light/70 px-2 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light";
 }
 
 function OptionRow({
@@ -560,7 +574,7 @@ export function MultiPicker({
                 style={c ? { background: `${c}16`, color: c } : undefined}
               >
                 {o?.logoName ? (
-                  <CompanyLogo name={o.logoName} className="h-4 w-4 text-[6px]" />
+                  <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 ) : (
                   Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
                 )}

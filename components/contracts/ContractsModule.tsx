@@ -1141,7 +1141,16 @@ export function ContractsModule({
                   { value: "", label: "Not against a deal", color: "#8E98A8" },
                   ...deals.map((d) => ({
                     value: d.id,
-                    label: `${d.name} · ${d.customer}`,
+                    /* SAY EACH THING ONCE (Anir, Aug 28: "why r u repeating").
+                       A deal is named after its offering and its account, so
+                       "GRI — Gilead · Gilead" printed the account twice. */
+                    label: d.name.toLowerCase().includes(d.customer.toLowerCase())
+                      ? d.name
+                      : `${d.name} · ${d.customer}`,
+                    /* THE ACCOUNT'S OWN MARK, not a blue dot (Anir, Aug 28:
+                       "profile Pictures, hello"). Every other picker in the
+                       app carries the logo; these two were the holdouts. */
+                    logoName: d.customer,
                     color: "#0071E3",
                   })),
                 ]}
@@ -1198,7 +1207,10 @@ export function ContractsModule({
                 onChange={(v) => setEditing({ ...editing, owner: v })}
                 options={[
                   { value: "", label: "Unassigned", color: "#8E98A8" },
-                  ...members.map((m) => ({ value: m, label: m, color: "#0071E3" })),
+                  /* A person is a face, not a dot (Anir, Aug 28: "profile
+                     Pictures, hello"). Same avatar the booked-revenue picker
+                     right below this one already uses. */
+                  ...members.map((m) => ({ value: m, label: m, avatarName: m })),
                 ]}
               />
             </Field>
