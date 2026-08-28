@@ -45,6 +45,7 @@ import type {
   SolutionRequest,
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, StatusPill } from "./bits";
+import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { formatFromFilename } from "@/lib/offeringMaterials";
@@ -704,6 +705,20 @@ export function RequestDetail({
               )}
             </SectionCard>
 
+            {/* THE DEADLINE AS A DISTANCE, NOT A STRING (Anir, Aug 28: "for
+                the needed by I want the timeline, so I want to visually see
+                today, when the thing was requested, and when it is needed by.
+                Just like the FDL components timeline"). */}
+            {r.neededBy && (
+              <SectionCard title="Where it stands" icon={CalendarDays}>
+                <NeededByTimeline
+                  requestedAt={r.requestedAt}
+                  neededBy={r.neededBy}
+                  done={r.status === "completed"}
+                />
+              </SectionCard>
+            )}
+
             <SectionCard title="Timeline" icon={History}>
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
@@ -1221,6 +1236,7 @@ function AddDocForm({
   };
 
   const home = linkables.find((l) => l.id === refRequestId) ?? null;
+  const picked = home?.docs.find((d) => d.id === refDocId) ?? null;
   const refDoc = home?.docs.find((d) => d.id === refDocId) ?? null;
 
   return (
@@ -1414,15 +1430,24 @@ function AddDocForm({
             ariaLabel="Which request is it on"
             minWidth={220}
             searchable
+            inlineDescription
             options={[
               ...(refRequestId
                 ? []
                 : [{ value: "", label: "Pick the request", color: "#64748B", icon: CircleDashed }]),
+              /* HOW MANY DOCUMENTS ARE BEHIND EACH ONE, before it is picked
+                 (Suren, Aug 28: "do that everywhere else this could be helpful
+                 where the next step is dependent on the first dropdown having
+                 data"). The picker beside this one is filled from this choice. */
               ...linkables.map((l) => ({
                 value: l.id,
                 label: `${l.ref} · ${l.title}`,
                 color: "#0D9488",
                 icon: Link2,
+                description: `${l.docs.length} ${
+                  l.docs.length === 1 ? "document" : "documents"
+                }`,
+                descriptionAccent: l.docs.length > 0,
               })),
             ]}
           />
@@ -1450,6 +1475,29 @@ function AddDocForm({
               })),
             ]}
           />
+          {/* LOOK AT IT BEFORE YOU LINK IT (Anir, Aug 28: "if I choose that
+              document I should be able to like open it or something lol"). Two
+              dropdowns and a note asked you to vouch for a file by its
+              filename. It opens in a new tab rather than a viewer inside this
+              dialog, because a viewer stacked on a dialog stacked on a page is
+              three layers deep to close. */}
+          {picked && (
+            <a
+              href={solutioningDownloadUrl(refRequestId, picked.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="col-span-full inline-flex items-center gap-2 rounded-lg border border-border-light bg-surface/50 px-3 py-2 text-[12.5px] transition-colors hover:border-blue-subtle hover:bg-blue-light/20 sm:w-fit"
+            >
+              <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
+              <span className="min-w-0 truncate font-semibold text-text-primary">
+                {picked.name} v{picked.version}
+              </span>
+              <span className="shrink-0 font-semibold text-blue-primary">
+                Open it
+              </span>
+              <ExternalLink size={12} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+            </a>
+          )}
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
