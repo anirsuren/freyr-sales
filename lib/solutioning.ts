@@ -274,8 +274,20 @@ function normalizeDoc(v: unknown): SolutionDoc | null {
 function normalizeActivity(v: unknown): RequestActivity | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Partial<RequestActivity>;
-  const what = str(r.what, 240);
+  let what = str(r.what, 240);
   if (!what) return null;
+  /* A NAME, NOT A TOKEN (Anir, Aug 27, twice: "why does it say that weird
+     number" and again "why is that weird text still showing up? What is
+     that name"). The Aug 26 add flow stored internal ids ("m-yne0li2") as
+     document NAMES before uploads derived names from the real file; the
+     write side cannot produce this any more, but the rows it minted still
+     read like debug output. Healed here at read — the stored bytes stay,
+     the display says the one true thing left to say about a document whose
+     garbage name is all we ever had. */
+  what = what.replace(
+    /^(Added|Removed) m-[a-z0-9]{4,}( v\d+)?$/,
+    (_, verb: string, ver: string | undefined) => `${verb} a document${ver ?? ""}`
+  );
   return {
     at: str(r.at, 40) || new Date().toISOString(),
     by: str(r.by, 80) || "Unknown",
