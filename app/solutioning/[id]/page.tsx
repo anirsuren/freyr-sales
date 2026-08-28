@@ -55,6 +55,12 @@ export default async function SolutioningRequestPage({
           name: d.name,
           version: d.version,
           category: d.category,
+          /* Whether there is a FILE behind the name. A document can be a
+             named entry with nothing uploaded against it, and the link
+             dialog has to know: offering "Open it" on one of those sends
+             the reader to a 404. The path itself never leaves the server —
+             only the fact that it exists. */
+          hasFile: !!d.docsPath,
         })),
     }));
 

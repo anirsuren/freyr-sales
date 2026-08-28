@@ -28,6 +28,11 @@ import { cn } from "@/lib/utils";
 
 const DAY = 86_400_000;
 
+/* Vertical geometry in one place, the way the FDL timeline keeps it: the
+   today band sits above the rail, the dots straddle it, the captions hang
+   below. Changing the rail moves everything that references it. */
+const RAIL_TOP = 30;
+
 function midnight(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
@@ -79,6 +84,11 @@ export function NeededByTimeline({
         ? { hue: "#D97706", text: "text-[color:#D97706]" }
         : { hue: "#16A34A", text: "text-[color:#16A34A]" };
 
+  /* Today sitting on a marker at either end of the rail: the flag hugs that
+     edge rather than centring past it. */
+  const atStart = Math.abs(today - Math.min(asked, due)) < DAY / 2;
+  const atEnd = !atStart && Math.abs(today - Math.max(asked, due)) < DAY / 2;
+
   const remaining = done
     ? "Closed"
     : overdue
@@ -97,12 +107,20 @@ export function NeededByTimeline({
         <span className={cn("text-[11.5px] font-bold", tone.text)}>{remaining}</span>
       </div>
 
-      {/* The rail. 44px of height buys room for the today flag above it and the
-          two dates below without either colliding with the line. */}
-      <div className="relative mt-4 h-[42px]">
+      {/* THE TODAY FLAG GETS ITS OWN BAND ABOVE THE RAIL.
+          Anir asked to "visually see today", and the first cut hid it whenever
+          it landed on one of the two dots — which is the common case, because
+          most requests are looked at on the day they are raised. It was hidden
+          because a flag at the dot's own height collided with it.
+
+          Giving the flag 22px of clear air above the rail means it never
+          collides with anything, so it never has to be suppressed: today is on
+          this chart on every request, including the ones where today IS the
+          day it was asked for. */}
+      <div className="relative mt-3 h-[64px]">
         <div
           className="absolute left-0 right-0 h-[6px] rounded-full bg-border-light"
-          style={{ top: 8 }}
+          style={{ top: RAIL_TOP }}
         />
         {/* HOW MUCH OF THE RUN IS GONE. Drawn from the request to today (or to
             the deadline once it is past, so an overdue bar does not run off
@@ -110,7 +128,7 @@ export function NeededByTimeline({
         <div
           className="absolute h-[6px] rounded-full transition-[width] duration-500"
           style={{
-            top: 8,
+            top: RAIL_TOP,
             left: at(Math.min(asked, due)),
             width: `${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * 100}%`,
             background: tone.hue,
@@ -138,23 +156,29 @@ export function NeededByTimeline({
           side={due >= asked ? "right" : "left"}
         />
 
-        {/* TODAY. The one line here that is not a plan. Suppressed when it sits
-            on top of one of the dots, where the flag would cover the date it
-            is meant to clarify. */}
-        {Math.abs(today - asked) > DAY / 2 && Math.abs(today - due) > DAY / 2 && (
-          <div
-            className="pointer-events-none absolute z-20 -translate-x-1/2"
-            style={{ left: at(today), top: -6 }}
-          >
-            <span className="block whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
-              Today
-            </span>
-            <span
-              className="mx-auto block w-px bg-blue-primary/70"
-              style={{ height: 12, boxShadow: "0 0 8px rgba(0,113,227,0.35)" }}
-            />
-          </div>
-        )}
+        {/* TODAY. The one mark here that is not a plan, so it is always drawn.
+            It hugs whichever end it sits at, for the same reason the captions
+            do: centred on a marker at 0% or 100%, half the pill would hang
+            outside the card. */}
+        <div
+          className={cn(
+            "pointer-events-none absolute z-20 flex flex-col items-center",
+            atStart ? "items-start" : atEnd ? "items-end" : "-translate-x-1/2"
+          )}
+          style={{
+            left: atStart ? 0 : atEnd ? undefined : at(today),
+            right: atEnd ? 0 : undefined,
+            top: 0,
+          }}
+        >
+          <span className="block whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
+            Today
+          </span>
+          <span
+            className={cn("block w-px bg-blue-primary/70", atStart && "ml-[11px]", atEnd && "mr-[11px]")}
+            style={{ height: RAIL_TOP - 16, boxShadow: "0 0 8px rgba(0,113,227,0.35)" }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -180,16 +204,23 @@ function Marker({
     <div className="absolute z-10" style={{ left, top: 0 }}>
       <span
         className="absolute grid h-[22px] w-[22px] -translate-x-1/2 place-items-center rounded-full ring-2 ring-white"
-        style={{ top: 0, background: `${hue}1F`, color: hue }}
+        style={{ top: RAIL_TOP - 8, background: `${hue}1F`, color: hue }}
       >
         <Icon size={12} strokeWidth={2.4} />
       </span>
+      {/* THE CAPTION HANGS INWARD FROM ITS MARKER (found in the browser,
+          Aug 28: the rail's two markers sit at the very ends of a 340px card,
+          and centring each caption on its marker pushed half of both outside
+          the card — the left one read "QUESTED / 1 28, 2026" and the right one
+          lost its year).
+
+          So neither caption is centred: the first one's LEFT edge starts at
+          its marker and reads rightward, the last one's RIGHT edge ends at its
+          marker and reads leftward. Both stay inside the rail they describe,
+          at any card width. */}
       <span
-        className={cn(
-          "absolute whitespace-nowrap",
-          side === "left" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"
-        )}
-        style={{ top: 26 }}
+        className={cn("absolute whitespace-nowrap", side === "left" ? "left-0" : "right-0")}
+        style={{ top: RAIL_TOP + 18 }}
       >
         <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
           {title}

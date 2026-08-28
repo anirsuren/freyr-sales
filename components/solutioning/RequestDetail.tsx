@@ -123,7 +123,14 @@ type Linkable = {
   id: string;
   ref: string;
   title: string;
-  docs: { id: string; name: string; version: number; category: DocCategory }[];
+  docs: {
+    id: string;
+    name: string;
+    version: number;
+    category: DocCategory;
+    /** There is a file behind the name, so it can actually be opened. */
+    hasFile?: boolean;
+  }[];
 };
 
 /** The offering page's section heading, in miniature: icon in a blue-light
@@ -532,7 +539,11 @@ export function RequestDetail({
               switch: React kept the same node, and a CSS animation only runs
               when an element mounts. The key forces the remount the class
               always assumed. */}
-          <div key={tab} className="tab-panel tab-panel-stagger">
+          {/* The key is what makes the animation replay, but these two panels
+              are SIBLINGS — keying both on `tab` gave React two children keyed
+              "overview" and it warned that one may be dropped. Prefixed, so
+              each still remounts on a switch and neither collides. */}
+          <div key={`main-${tab}`} className="tab-panel tab-panel-stagger">
             <section className="border-b border-border-light pb-7">
               <SectionHeading
                 icon={FileText}
@@ -651,7 +662,7 @@ export function RequestDetail({
           </div>
 
           {/* ------------------------------------------------- SIDE rail */}
-          <div key={tab} className="tab-panel tab-panel-stagger space-y-4">
+          <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
             <SectionCard title="Owner" icon={UserRound}>
               {r.owner ? (
                 <div className="flex items-center gap-2.5">
@@ -1481,7 +1492,7 @@ function AddDocForm({
               filename. It opens in a new tab rather than a viewer inside this
               dialog, because a viewer stacked on a dialog stacked on a page is
               three layers deep to close. */}
-          {picked && (
+          {picked?.hasFile ? (
             <a
               href={solutioningDownloadUrl(refRequestId, picked.id)}
               target="_blank"
@@ -1497,7 +1508,21 @@ function AddDocForm({
               </span>
               <ExternalLink size={12} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
             </a>
-          )}
+          ) : picked ? (
+            /* A DOCUMENT CAN BE A NAME WITH NOTHING BEHIND IT. Rendering
+               "Open it" on one of those sent the reader to a 404 — found in
+               the browser, Aug 28, on the first document I tried. Say what
+               it is instead of offering a door that does not open. */
+            <span className="col-span-full inline-flex items-center gap-2 rounded-lg border border-border-light bg-surface/50 px-3 py-2 text-[12.5px] sm:w-fit">
+              <FileText size={14} strokeWidth={2} className="shrink-0 text-text-tertiary" />
+              <span className="min-w-0 truncate font-semibold text-text-primary">
+                {picked.name} v{picked.version}
+              </span>
+              <span className="shrink-0 text-text-tertiary">
+                No file uploaded against this one
+              </span>
+            </span>
+          ) : null}
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
