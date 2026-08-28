@@ -111,6 +111,9 @@ const BLANK = {
 
 type Draft = typeof BLANK;
 
+/** How many handover rows the queue banner shows before it asks to be opened. */
+const AWAITING_PREVIEW = 4;
+
 /** The schedule rows on screen: `scheduleMonths` of them, always keyed from
  *  the start date, so moving the start slides the whole schedule. Months
  *  parked beyond the visible count are remembered, not counted. */
@@ -151,6 +154,7 @@ export function ContractsModule({
   const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
   const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
+  const [showAllAwaiting, setShowAllAwaiting] = useState(false);
 
   const contracts = state.contracts;
   /* The schedule ON SCREEN is the schedule. A month parked past the visible
@@ -475,7 +479,13 @@ export function ContractsModule({
         />
       </div>
 
-      {/* The queue that the new opportunity status creates. */}
+      {/* The queue that the new opportunity status creates.
+
+          IT IS A BANNER, NOT A SECOND LIST (Anir, Aug 28: "why is it so height
+          wise long. u see that?"). It sat above the contracts table with no
+          ceiling, so a busy week of handovers pushed the actual page below the
+          fold. Four rows, then a count you can open — the top of the queue is
+          always the part worth seeing first. */}
       {awaiting.length > 0 && (
         <section className="mt-4 rounded-xl border border-[rgba(180,83,9,0.3)] bg-white p-5 shadow-card">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
@@ -484,7 +494,7 @@ export function ContractsModule({
             <InfoHint text="These deals have reached the “Create contract” status and nobody has drafted the contract yet. That status is where sales hands over to delivery, so anything sitting here is a handover that has not happened." />
           </h2>
           <div className="mt-2 divide-y divide-border-light">
-            {awaiting.map((d) => (
+            {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((d) => (
               <div key={d.id} className="flex items-center gap-3 py-2.5" data-awaiting-contract={d.id}>
                 <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -511,6 +521,17 @@ export function ContractsModule({
               </div>
             ))}
           </div>
+          {awaiting.length > AWAITING_PREVIEW && (
+            <button
+              type="button"
+              onClick={() => setShowAllAwaiting((v) => !v)}
+              className="mt-2 text-[12.5px] font-semibold text-blue-primary hover:underline"
+            >
+              {showAllAwaiting
+                ? "Show fewer"
+                : `Show all ${awaiting.length} waiting`}
+            </button>
+          )}
         </section>
       )}
 
