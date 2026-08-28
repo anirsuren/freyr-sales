@@ -25,6 +25,11 @@ export const BAND_ICONS = {
   submissions: "submissions",
   presentations: "presentations",
   meetings: "meetings",
+  /* A MEETING ASKED FOR IS NOT A MEETING HELD. Both bands were keyed and
+     labelled "meetings", so the customer page showed the word twice with two
+     different counts beside it (found in the browser, Aug 28: "Meetings 1"
+     and "Meetings 0" three columns apart). */
+  meetingRequests: "meetingRequests",
   contacts: "contacts",
   leads: "leads",
   contracts: "contracts",

@@ -204,7 +204,9 @@ export async function buildPerson360(
     for (const [key, label, kind, color] of [
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
-      ["meetings", "Meetings", "meeting", "#B4318F"],
+      /* Same collision as the customer page: a meeting ASKED FOR is not a
+         meeting held, and both bands were called "Meetings". */
+      ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
     ] as const) {
       const rows = touched.filter((r) => r.kind === kind);
       bands.push({

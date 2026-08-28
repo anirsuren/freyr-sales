@@ -101,7 +101,10 @@ export async function buildCustomer360(
     for (const [key, label, kind, color] of [
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
-      ["meetings", "Meetings", "meeting", "#B4318F"],
+      /* Named for what it is — somebody ASKED the Solutions team for a
+         meeting — so it cannot be mistaken for the meetings that were
+         actually held, which have their own band below. */
+      ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
     ] as const) {
       const rows = byKind(kind);
       bands.push({

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Briefcase,
   CalendarClock,
+  CalendarPlus,
   Contact as ContactIcon,
   FileSignature,
   FileText,
@@ -83,6 +84,7 @@ const BAND_ICON_MAP = {
   submissions: FileText,
   presentations: Presentation,
   meetings: CalendarClock,
+  meetingRequests: CalendarPlus,
   contacts: ContactIcon,
   leads: UserPlus,
   contracts: FileSignature,

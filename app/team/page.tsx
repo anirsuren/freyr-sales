@@ -6,6 +6,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { meetingsForPerson, readMeetings } from "@/lib/meetings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import {
@@ -80,14 +81,25 @@ export default async function TeamPage() {
     // zeros everywhere until deals and meetings exist (Anir, Aug 6: "same
     // thing as fake mode, but all the data should say 0").
     const workspace = process.env.FREYR_WORKSPACE_ID;
-    const [directory, currentUser, memberProfiles, opps] = await Promise.all([
-      workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
-      getCurrentUser().catch(() => null),
-      workspace
-        ? readWorkspaceMemberProfiles(workspace).catch(() => new Map())
-        : new Map(),
-      readOpportunities(),
-    ]);
+    const [directory, currentUser, memberProfiles, opps, meetingState] =
+      await Promise.all([
+        workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
+        getCurrentUser().catch(() => null),
+        workspace
+          ? readWorkspaceMemberProfiles(workspace).catch(() => new Map())
+          : new Map(),
+        readOpportunities(),
+        /* THE ZERO IN THE MEETINGS COLUMN WAS A PLACEHOLDER THAT OUTLIVED ITS
+           REASON. It was written when meetings did not exist as records (see
+           the note below about zeros meant to expire), and stayed literal
+           after the Meetings module shipped — so the roster showed a Meetings
+           column, a Meetings sort and a Meetings total that read 0 for people
+           who were demonstrably in the room (found in the browser, Aug 28:
+           Abhishek Sharma presenting MTG-0001 and counted as 0). */
+        readMeetings()
+          .then((st) => st.meetings)
+          .catch(() => []),
+      ]);
     /**
      * THE ZEROS WERE MEANT TO EXPIRE (Anir, Aug 6: "same thing as fake mode,
      * but all the data should say 0" — written when the live workspace held
@@ -201,7 +213,10 @@ export default async function TeamPage() {
         openValue: mine?.openValue ?? 0,
         weighted: mine?.weighted ?? 0,
         openCount: mine?.openCount ?? 0,
-        meetings: 0,
+        /* In the room counts however you got there — ran it, presented, or
+           simply attended. */
+        meetings: meetingsForPerson(meetingState, member.name || "").attended
+          .length,
         quota: 0,
         wonFY: 0,
         trend: [0, 0, 0, 0, 0, 0],
@@ -267,7 +282,24 @@ export default async function TeamPage() {
         ),
         sub: "probability-adjusted",
       },
-      { icon: CalendarCheck, label: "Meetings booked", value: "0", sub: "live across the team" },
+      {
+        icon: CalendarCheck,
+        label: "Meetings booked",
+        /* THE SECOND LITERAL ZERO ON THIS PAGE. The per-person column was one;
+           this tile was the other, and it stayed at "0" over a roster whose
+           own rows said 1.
+
+           Counted as DISTINCT meetings rather than by summing the rows: a
+           meeting with five people in it is one meeting booked, not five, and
+           the tile sits directly above a column that counts the other way. */
+        value: String(
+          meetingState.filter((m) => m.status === "planned").length
+        ),
+        sub: (() => {
+          const n = meetingState.filter((m) => m.status === "planned").length;
+          return n === 0 ? "nothing scheduled yet" : "still to happen";
+        })(),
+      },
     ];
     return (
       <div className="space-y-5">
