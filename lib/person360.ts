@@ -4,6 +4,7 @@ import { readOpportunities } from "./opportunities";
 import { readSolutioning } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
+import { meetingsForPerson, readMeetings } from "./meetings";
 import { readPerformance } from "./performance";
 import {
   listOfferings,
@@ -14,7 +15,11 @@ import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { getDb } from "./db";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
-import type { Customer360Band } from "@/lib/customer360Shared";
+import {
+  BAND_ICONS,
+  type Customer360Band,
+  type Customer360Item,
+} from "@/lib/customer360Shared";
 
 /**
  * ONE PERSON, EVERYTHING THEY OWN (Suren, Aug 25).
@@ -50,7 +55,7 @@ export async function buildPerson360(
   const may = (path: string) => canAccessModule(path, role);
   await initializeLiveOfferings().catch(() => undefined);
 
-  const [opps, solutioning, leads, contracts, perf, customers] = await Promise.all([
+  const [opps, solutioning, leads, contracts, perf, customers, meetings] = await Promise.all([
     may("/opportunities")
       ? readOpportunities().then((s) => s.opportunities).catch(() => [])
       : Promise.resolve([]),
@@ -63,9 +68,54 @@ export async function buildPerson360(
       : Promise.resolve([]),
     may("/performance") ? readPerformance().catch(() => null) : Promise.resolve(null),
     may("/customers") ? getDb().customers.list().catch(() => []) : Promise.resolve([]),
+    may("/meetings")
+      ? readMeetings().then((s) => s.meetings).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const bands: Customer360Band[] = [];
+
+  /**
+   * WHAT THIS PERSON DID IN MEETINGS (Suren, Aug 28): "if I click on the
+   * people guy... and Ravi, I know all the meetings that he is the meeting
+   * owner, that he conducted, I will see. And then I'll also know, if he's
+   * been a presenter, then I know which all meetings he has been a presenter,
+   * which all meetings he has been a participant."
+   *
+   * Three questions, so the row says which of the three it is rather than
+   * three near-identical bands: presenting is the notable role, owning is
+   * next, and simply being in the room is the rest.
+   */
+  if (may("/meetings")) {
+    const { attended } = meetingsForPerson(meetings, personName);
+    const roleOn = (m: (typeof attended)[number]) => {
+      const is = (x: string) => same(x, personName);
+      if (m.presenters.some(is)) return "presented";
+      if (is(m.owner)) return "ran it";
+      return "attended";
+    };
+    bands.push({
+      key: "meetings",
+      label: "Meetings",
+      icon: BAND_ICONS.meetings,
+      color: "#B4318F",
+      count: attended.length,
+      href: "/meetings",
+      hrefLabel: "All meetings",
+      empty: "They have not been in a customer meeting yet.",
+      items: [...attended]
+        .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
+        .map<Customer360Item>((m) => ({
+          id: m.id,
+          title: m.title,
+          code: m.ref,
+          logo: m.customer,
+          sub: [roleOn(m), m.type, m.customer].filter(Boolean).join(" · "),
+          when: m.meetingAt,
+          href: `/meetings/${m.id}`,
+        })),
+    });
+  }
 
   if (may("/customers")) {
     const mine = customers.filter((c) => same(c.owner, personName));

@@ -70,12 +70,6 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   // Solutions role fulfils (Suren, Aug 24). Sits by Opportunities because
   // that is what most requests are against.
   { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
-  /* MEETINGS ARE THEIR OWN OBJECT (Suren, Aug 28: "I need to have a meetings
-     module"). Beside Solutioning because a meeting is often what a request or
-     a presentation is FOR, but separate from it because a meeting is not work
-     handed to the Solutions team — it is held, attended and written up,
-     usually by the sales person. Admin-only for now, like every new module. */
-  { href: "/meetings", label: "Meetings", icon: CalendarClock },
   /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes
      an opportunity, an opportunity plans its accrued revenue, and a contract
      is where sales closes it. All three are admin-only for now
@@ -189,7 +183,12 @@ export function Sidebar({
   }
 
   const navLink = (item: { href: string; label: string; icon: LucideIcon }) => {
-    const active = isActive(pathname, item.href);
+    /* Meetings is a room of Solutioning in the nav but a route of its own, so
+       the parent has to answer for it — otherwise opening a meeting leaves
+       nothing in the sidebar lit and the four sub-items vanish. */
+    const active =
+      isActive(pathname, item.href) ||
+      (item.href === "/solutioning" && isActive(pathname, "/meetings"));
     const Icon = item.icon;
     const badge = item.href === "/agent" && inboxCount > 0 ? inboxCount : 0;
     return (
@@ -378,19 +377,26 @@ export function Sidebar({
                     ]
                 ).map(subNavLink)}
 
-              {/* THE THREE ROOMS UNDER SOLUTIONING (Anir, Aug 26: "you're
+              {/* THE FOUR ROOMS UNDER SOLUTIONING (Anir, Aug 26: "you're
                   supposed to have the thing where it says under solutioning
-                  the three things, like goals"). Suren's shape: what people
-                  ASKED for, what is being submitted, and what is being
-                  presented. Same idiom as Performance and Market Intel — only
-                  while you are inside the module. */}
+                  the three things, like goals"; and Aug 28: "Meetings have to
+                  be a fourth submodule, by the way"). Suren's shape: what
+                  people ASKED for, what is being submitted, what is being
+                  presented, and the meetings themselves.
+
+                  Meetings keeps its own route and its own store — it is a
+                  different object, not a filter on requests — and simply
+                  lives here in the nav, because this is where somebody goes
+                  looking for it. `isActive` covers /meetings too, so the
+                  parent stays open while you are on one. */}
               {item.href === "/solutioning" &&
                 !collapsed &&
-                isActive(pathname, "/solutioning") &&
+                (isActive(pathname, "/solutioning") || isActive(pathname, "/meetings")) &&
                 [
                   { href: "/solutioning", label: "Requests", icon: Inbox },
                   { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileCheck2 },
                   { href: "/solutioning?tab=presentations", label: "Presentations", icon: MonitorPlay },
+                  { href: "/meetings", label: "Meetings", icon: CalendarClock },
                 ].map(subNavLink)}
 
               {item.href === "/market-intel" &&

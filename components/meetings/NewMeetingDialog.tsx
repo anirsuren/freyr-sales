@@ -70,7 +70,17 @@ export function NewMeetingDialog({
 
   return (
     <Modal open onClose={onClose} title="New meeting" size="wide">
-      <div className="space-y-3">
+      {/* THE DIALOG HOLDS ITS SIZE (Anir, Aug 28: "again, but these pop-ups,
+          bro. Stop. the dimensions have to stay the same" — and on the accrual
+          dialog before it: "why is the pop-up so small? It looks bad, but once
+          I pick a deal, it looks good. Keep the size").
+
+          Four collapsible rooms mean the form's natural height changes every
+          time one is opened, so the whole dialog grew and shrank under the
+          cursor and, with all of them open, ran off the bottom of the screen.
+          A fixed working height with the rooms scrolling inside it: opening a
+          room fills space that was already there instead of taking more. */}
+      <div className="h-[min(60vh,520px)] space-y-3 overflow-y-auto pr-1">
         <FormRoom icon={CalendarDays} title="The meeting" defaultOpen summary={title || "Not named yet"}>
           <Field label="What is this meeting about">
             <Input

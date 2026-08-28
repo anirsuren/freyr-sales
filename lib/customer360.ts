@@ -4,6 +4,7 @@ import { readOpportunities } from "./opportunities";
 import { readSolutioning } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
+import { meetingsForCustomer, readMeetings } from "./meetings";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
 import {
@@ -35,7 +36,7 @@ export async function buildCustomer360(
 ): Promise<Customer360Band[]> {
   const may = (path: string) => canAccessModule(path, role);
 
-  const [opps, solutioning, leads, contracts] = await Promise.all([
+  const [opps, solutioning, leads, contracts, meetings] = await Promise.all([
     may("/opportunities")
       ? readOpportunities().then((s) => s.opportunities).catch(() => [])
       : Promise.resolve([]),
@@ -45,6 +46,11 @@ export async function buildCustomer360(
     may("/leads") ? readLeads().then((s) => s.leads).catch(() => []) : Promise.resolve([]),
     may("/contracts")
       ? readContracts().then((s) => s.contracts).catch(() => [])
+      : Promise.resolve([]),
+    /* "Against the customer, what all meetings happen, who did those meetings,
+       I can take a look at there" (Suren, Aug 28). */
+    may("/meetings")
+      ? readMeetings().then((s) => s.meetings).catch(() => [])
       : Promise.resolve([]),
   ]);
 
@@ -120,6 +126,34 @@ export async function buildCustomer360(
           })),
       });
     }
+  }
+
+  if (may("/meetings")) {
+    const myMeetings = meetingsForCustomer(meetings, customerId, companyName);
+    bands.push({
+      key: "meetings",
+      label: "Meetings",
+      icon: BAND_ICONS.meetings,
+      color: "#B4318F",
+      count: myMeetings.length,
+      href: "/meetings",
+      hrefLabel: "All meetings",
+      empty: "No meeting has been held with this account yet.",
+      items: [...myMeetings]
+        .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
+        .map<Customer360Item>((m) => ({
+          id: m.id,
+          title: m.title,
+          code: m.ref,
+          /* Who ran it, which is the half of his question the date cannot
+             answer: "what all meetings happen, WHO did those meetings". */
+          sub: [m.type, m.owner, m.status === "completed" ? "completed" : "planned"]
+            .filter(Boolean)
+            .join(" · "),
+          when: m.meetingAt,
+          href: `/meetings/${m.id}`,
+        })),
+    });
   }
 
   if (may("/leads")) {
