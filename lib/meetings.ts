@@ -285,6 +285,19 @@ async function readRow(): Promise<MeetingsState> {
   return normalize(data?.catalog);
 }
 
+/** The raw stored value, so a never-written mock row can be told from an
+ *  empty one. */
+async function readRowRaw(): Promise<unknown | null> {
+  if (!hasDatabase()) return null;
+  const { data, error } = await client()
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", activeRowId())
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.catalog ?? null;
+}
+
 async function writeRow(state: MeetingsState): Promise<void> {
   const { error } = await client()
     .from("offering_catalog_state")
@@ -296,8 +309,22 @@ async function writeRow(state: MeetingsState): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * MOCK SEEDS ITSELF ONCE, then behaves like any other store.
+ *
+ * Same shape as readSolutioning: live reads its own row and never touches the
+ * samples; mock seeds the row the first time it is read and every write after
+ * that is ordinary, so a meeting added in mock persists and a mock row
+ * emptied on purpose stays empty.
+ */
 export async function readMeetings(): Promise<MeetingsState> {
-  return readRow();
+  if (getDataMode() !== "mock")
+    return readRow().catch(() => structuredClone(EMPTY_MEETINGS));
+  const existing = await readRowRaw().catch(() => null);
+  if (existing) return normalize(existing);
+  const seeded = sampleMeetings();
+  await writeRow(seeded).catch(() => undefined);
+  return seeded;
 }
 
 /** MTG-0001, MTG-0002 — the same shape every other record here wears. */
@@ -584,4 +611,184 @@ export function groupMeetingsByPeriod(
   return [...buckets.entries()]
     .map(([key, b]) => ({ key, label: b.label, meetings: b.meetings }))
     .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/* ---------------------------------------------------------------- samples */
+
+/**
+ * THE MOCK WORKSPACE LOOKS BUSY (standing rule: every page in mock looks full
+ * of fake data — Anir, Aug 28: "no mock data fix", and "need mock data for
+ * every single part in real mode in the in progress mode").
+ *
+ * Meetings shipped without a sample set, so in-progress mode showed "Nothing
+ * on meetings for Cortexa Biopharma yet" on an account whose every other band
+ * had something — the one empty shelf in a shop that is meant to look stocked.
+ *
+ * The cast is the demo sales floor and nobody real (the same rule the
+ * solutioning samples follow: every name below resolves to a generated
+ * headshot, and every contact is one of the mapped demo contacts), and the
+ * accounts are the ones lib/mock-db already carries, so the customer, person
+ * and deal joins all land somewhere. Sample only: live mode never reads this.
+ */
+function sampleMeetings(): MeetingsState {
+  const day = (offset: number) => {
+    const t = new Date("2026-08-28T12:00:00.000Z");
+    t.setDate(t.getDate() + offset);
+    return t.toISOString();
+  };
+  const d = (offset: number) => day(offset).slice(0, 10);
+
+  const meetings: Meeting[] = [
+    {
+      id: "mtg-sample-1",
+      ref: "MTG-0001",
+      title: "Cortexa CMC dossier — first working session",
+      type: "Technical deep dive",
+      status: "completed",
+      meetingAt: d(-9),
+      customerId: "cust-003",
+      customer: "Cortexa Biopharma",
+      opportunityIds: [],
+      opportunityLabels: ["EMA filing — CMC writing"],
+      contactIds: ["con-sample-1"],
+      contactNames: ["Marcus Thorne"],
+      attendees: ["Elena Rossi", "Omar Haddad"],
+      presenters: ["Omar Haddad"],
+      owner: "Elena Rossi",
+      createdAt: day(-14),
+      completedAt: day(-9),
+      completedBy: "Elena Rossi",
+      notes: [
+        {
+          id: "mn-sample-1",
+          kind: "brief",
+          text: "Walk their CMC lead through how we structure Module 3 and agree who writes what. They have two Phase 2 assets and one EMA filing planned.",
+          by: "Elena Rossi",
+          at: day(-11),
+        },
+        {
+          id: "mn-sample-2",
+          kind: "outcome",
+          text: "They will send the current Module 3 draft this week. We take technical writing; they keep regulatory strategy in house. Next: a costed proposal by the 12th.",
+          by: "Omar Haddad",
+          at: day(-9),
+        },
+      ],
+      docs: [
+        {
+          id: "md-sample-1",
+          label: "CMC writing — approach.pdf",
+          addedBy: "Omar Haddad",
+          addedAt: day(-9),
+        },
+      ],
+    },
+    {
+      id: "mtg-sample-2",
+      ref: "MTG-0002",
+      title: "Helix Biologics — capability demo",
+      type: "Capability / demo",
+      status: "completed",
+      meetingAt: d(-4),
+      customerId: "cust-004",
+      customer: "Helix Biologics",
+      opportunityIds: [],
+      opportunityLabels: [],
+      contactIds: ["con-sample-2"],
+      contactNames: ["Dr. Lena Vogt"],
+      attendees: ["Nina Kowalski", "Marcus Chen", "Grace Liu"],
+      presenters: ["Nina Kowalski"],
+      owner: "Nina Kowalski",
+      createdAt: day(-8),
+      completedAt: day(-4),
+      completedBy: "Nina Kowalski",
+      notes: [
+        {
+          id: "mn-sample-3",
+          kind: "transcript",
+          text: "[0:02] Nina: thanks for the time — I will keep this to the two things you asked about.\n[4:18] Lena: our bottleneck is the publishing step, not the writing.\n[19:40] Nina: then that is where we would start, and I can show you that today.",
+          by: "Nina Kowalski",
+          at: day(-4),
+        },
+        {
+          id: "mn-sample-4",
+          kind: "comment",
+          text: "Lena is the decision maker on tooling; her director signs anything over 100k.",
+          by: "Grace Liu",
+          at: day(-4),
+        },
+      ],
+      docs: [],
+    },
+    {
+      id: "mtg-sample-3",
+      ref: "MTG-0003",
+      title: "Aether Medical Devices — EU MDR scoping",
+      type: "Discovery",
+      status: "planned",
+      meetingAt: d(3),
+      customerId: "cust-007",
+      customer: "Aether Medical Devices",
+      opportunityIds: [],
+      opportunityLabels: [],
+      contactIds: ["con-sample-3"],
+      contactNames: ["Stefan Bauer"],
+      attendees: ["Daniel Foster", "Elena Rossi"],
+      presenters: ["Daniel Foster"],
+      owner: "Daniel Foster",
+      createdAt: day(-2),
+      notes: [
+        {
+          id: "mn-sample-5",
+          kind: "brief",
+          text: "Find out how many devices fall under the new classification and when their notified body slot is. Do not pitch — this one is a listening meeting.",
+          by: "Daniel Foster",
+          at: day(-2),
+        },
+      ],
+      docs: [],
+    },
+    {
+      id: "mtg-sample-4",
+      ref: "MTG-0004",
+      title: "Quantum Oncology — quarterly review",
+      type: "QBR / review",
+      status: "planned",
+      meetingAt: d(11),
+      customerId: "cust-009",
+      customer: "Quantum Oncology",
+      opportunityIds: [],
+      opportunityLabels: [],
+      contactIds: ["con-sample-4"],
+      contactNames: ["Dr. Arthur Pennington"],
+      attendees: ["Grace Liu", "Marcus Chen"],
+      presenters: ["Grace Liu"],
+      owner: "Grace Liu",
+      createdAt: day(-1),
+      notes: [],
+      docs: [],
+    },
+    {
+      id: "mtg-sample-5",
+      ref: "MTG-0005",
+      title: "Orion Vaccines — introductory call",
+      type: "Introductory",
+      status: "planned",
+      meetingAt: d(6),
+      customerId: "cust-012",
+      customer: "Orion Vaccines",
+      opportunityIds: [],
+      opportunityLabels: [],
+      contactIds: ["con-sample-5"],
+      contactNames: ["Dr. Hana Kim"],
+      attendees: ["Marcus Chen"],
+      presenters: [],
+      owner: "Marcus Chen",
+      createdAt: day(-1),
+      notes: [],
+      docs: [],
+    },
+  ];
+
+  return { meetings };
 }
