@@ -27,6 +27,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
+import { Field, Input } from "@/components/ui/Input";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -1173,96 +1174,132 @@ function AddDocForm({
       </div>
 
       {mode === "new" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex gap-2">
+        /* THE SALES MATERIALS SHAPE (Anir, Aug 28: "this is the worst UI I've
+           ever seen. Make it look more like the Offering Sales Materials
+           UI").
+
+           It was a two-column grid of bare inputs whose only labels were
+           their own placeholders, with the upload squeezed into a pill the
+           size of a text field — so the primary action looked like the least
+           important thing on the form and nothing said what anything was.
+
+           Same order the materials dialog uses: the FILE first and large,
+           because attaching one is the point, then what to call it, then the
+           optional details. Real labels on everything. */
+        <div className="space-y-3">
+          <label
+            className={cn(
+              "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors",
+              file
+                ? "border-blue-subtle bg-blue-light/30"
+                : "border-border-light hover:border-blue-subtle hover:bg-blue-light/20",
+              uploading && "opacity-60"
+            )}
+          >
             <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Document name"
-              className="h-9 w-full min-w-0 flex-1 rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              type="file"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const chosen = e.target.files?.[0];
+                if (chosen) void pickFile(chosen);
+                e.target.value = "";
+              }}
             />
+            {file ? (
+              <>
+                <span className="flex items-center gap-1.5 text-[13.5px] font-semibold text-text-primary">
+                  <FileText size={15} strokeWidth={2} className="text-blue-primary" />
+                  {file.fileName}
+                </span>
+                <span className="text-[11.5px] text-text-tertiary">
+                  Click to replace, or{" "}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setFile(null);
+                    }}
+                    className="font-semibold text-[color:#B02020]"
+                  >
+                    remove it
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[13.5px] font-semibold text-text-primary">
+                  {uploading ? "Uploading…" : "Upload a file"}
+                </span>
+                <span className="text-[11.5px] text-text-tertiary">
+                  It previews in the app the way a sales material does
+                </span>
+              </>
+            )}
+          </label>
+
+          {uploadError && (
+            <p className="text-[11.5px] font-medium text-[color:#DC2626]">
+              {uploadError}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_96px]">
+            <Field label="Document name">
+              <Input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="RFP response, final"
+              />
+            </Field>
             {/* The version, right beside the name it versions (Suren,
-                Aug 27: "we have given the field name... I need a version
-                number also when you add the document"). */}
-            <label className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-secondary">
-              v
-              <input
+                Aug 27: "I need a version number also when you add the
+                document"). */}
+            <Field label="Version">
+              <Input
                 value={version}
                 onChange={(e) => setVersion(e.target.value.replace(/[^0-9]/g, ""))}
                 inputMode="numeric"
                 aria-label="Version number"
-                className="w-10 bg-transparent text-[12.5px] font-semibold text-text-primary outline-none tnum"
               />
-            </label>
+            </Field>
           </div>
-          {/* UPLOAD THE FILE, or paste a link to one that lives elsewhere.
-              An uploaded file previews in the app exactly the way a sales
-              material does; a link can only ever open in a new tab. */}
-          {file ? (
-            <span className="flex h-9 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12.5px]">
-              <FileText size={13.5} strokeWidth={2} className="shrink-0 text-blue-primary" />
-              <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
-                {file.fileName}
-              </span>
-              <button
-                type="button"
-                onClick={() => setFile(null)}
-                className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-text-tertiary hover:text-[color:#DC2626]"
-              >
-                Remove
-              </button>
-            </span>
-          ) : (
-            <label
-              className={cn(
-                "flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-light bg-white px-3 text-[12.5px] text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary",
-                uploading && "opacity-60"
-              )}
-            >
-              <Plus size={13.5} strokeWidth={2.2} className="shrink-0" />
-              {uploading ? "Uploading…" : "Upload a file"}
-              <input
-                type="file"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const chosen = e.target.files?.[0];
-                  if (chosen) void pickFile(chosen);
-                  e.target.value = "";
-                }}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Who is working on it">
+              <ColorSelect
+                value={assignedTo}
+                onChange={setAssignedTo}
+                ariaLabel="Who is working on it"
+                className="w-full"
+                dense
+                options={[
+                  { value: "", label: "Nobody on it yet", color: "#64748B", icon: CircleDashed },
+                  ...members.map((m) => ({ value: m, label: m, avatarName: m })),
+                ]}
               />
-            </label>
+            </Field>
+            <Field label="Note">
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Optional"
+              />
+            </Field>
+          </div>
+
+          {!file && (
+            <Field label="Or link to one that lives elsewhere">
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://… SharePoint, Drive, anywhere"
+              />
+            </Field>
           )}
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={file ? "Link — not needed, the file is attached" : "Or paste a link (SharePoint, Drive…) — optional"}
-            disabled={!!file}
-            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:bg-surface/60 disabled:text-text-tertiary"
-          />
-          {uploadError && (
-            <p className="sm:col-span-2 text-[11.5px] font-medium text-[color:#DC2626]">
-              {uploadError}
-            </p>
-          )}
-          <ColorSelect
-            value={assignedTo}
-            onChange={setAssignedTo}
-            ariaLabel="Who is working on it"
-            minWidth={180}
-            dense
-            options={[
-              { value: "", label: "Nobody on it yet", color: "#64748B", icon: CircleDashed },
-              ...members.map((m) => ({ value: m, label: m, avatarName: m })),
-            ]}
-          />
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Note — optional"
-            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-          />
         </div>
       ) : linkables.length === 0 ? (
         <p className="text-[12px] text-text-tertiary">

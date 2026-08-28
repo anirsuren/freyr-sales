@@ -351,7 +351,19 @@ function DropdownPicker({
                   className={cnChip(c)}
                   style={c ? { background: `${c}16`, color: c } : undefined}
                 >
-                  {Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />}
+                  {/* THE FOURTH PLACE THIS DRAWS A CHIP, and the one that was
+                      still wrong (Anir, Aug 28: "profile pictures here too").
+                      The chips shown INSIDE the closed field only ever drew an
+                      icon, so the same person wore a face in the menu and
+                      nothing at all once picked. All four sites read the same
+                      three marks now, in the same order. */}
+                  {o?.avatarName ? (
+                    <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                  ) : o?.logoName ? (
+                    <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                  ) : (
+                    Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                  )}
                   {o?.label ?? id}
                   <X size={11} strokeWidth={2.8} className="opacity-70 group-hover:opacity-100" />
                 </span>
