@@ -895,10 +895,16 @@ function RequestRow({
                   timeline gets the ruled-off rail full-height, scrolling on
                   its own when the story gets long. */}
               <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
-                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  Latest activity
-                </span>
-                <div className="mt-2 max-h-[320px] overflow-y-auto pr-1">
+                {/* THE HEADING SCROLLS WITH ITS LIST (Anir, Aug 28: "also the
+                    'latest activity' I don't want it to be sticky"). It sat
+                    OUTSIDE the scrolling box, so it held still while the
+                    events moved under it — sticky in effect even without the
+                    class. Inside the box it behaves like a heading again. */}
+                <div className="max-h-[320px] overflow-y-auto pr-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Latest activity
+                  </span>
+                  <div className="mt-2">
                   {/* A TIMELINE, WITH ITS CLOCK (Anir, Aug 27: "I need
                       times and date and also I need latest activity like a
                       timeline"). Three bare avatar lines said what happened
@@ -962,6 +968,7 @@ function RequestRow({
                         })
                     )}
                   </ul>
+                  </div>
                 </div>
               </div>
             </div>
