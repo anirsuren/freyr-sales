@@ -45,6 +45,7 @@ import {
   judgePlan,
   monthKey,
   monthLabel,
+  monthsFrom,
   planTotal,
   spreadEvenly,
   type AccrualPlan,
@@ -87,9 +88,27 @@ type Draft = {
   contractValue: string;
   startMonth: string;
   months: string;
-  lines: { month: string; amount: string }[];
+  /** `pinned` means a person typed this month's amount, so the even split
+   *  works around it instead of overwriting it. */
+  lines: { month: string; amount: string; pinned?: boolean }[];
   note: string;
 };
+
+/** How many months the dialog is showing, whatever is half-typed in the box. */
+function planMonthCount(d: Draft): number {
+  return Math.max(1, Math.min(60, Number(d.months) || 1));
+}
+
+/** The rows on screen: `months` of them, always keyed from the first month, so
+ *  moving the start date slides the whole schedule instead of relabelling it. */
+function planRows(d: Draft): { month: string; amount: string; pinned?: boolean }[] {
+  const count = planMonthCount(d);
+  return monthsFrom(d.startMonth, count).map((month, i) => ({
+    month,
+    amount: d.lines[i]?.amount ?? "",
+    ...(d.lines[i]?.pinned ? { pinned: true } : {}),
+  }));
+}
 
 const AMBER = "#B45309";
 
@@ -433,26 +452,105 @@ export function RevenueAccrualsModule({
          months add up to $0... saving is allowed". Two messages, opposite
          instructions, and the button did nothing either way. The defaults are
          right there, so apply them and let the person adjust. */
-      lines: (existing?.lines ?? spreadEvenly(contractValue, startMonth, months)).map(
-        (l) => ({ month: l.month, amount: String(l.amount) })
-      ),
+      /* A SAVED PLAN'S OWN SHAPE IS DELIBERATE. If its months are not a plain
+         even split, somebody sat down and chose those numbers, so they open
+         held — changing the count re-splits around them instead of flattening
+         a hand-built schedule. A plan that IS an even split opens loose and
+         keeps following the formula. */
+      lines: (() => {
+        const even = spreadEvenly(contractValue, startMonth, months);
+        if (!existing?.lines) {
+          return even.map((l) => ({ month: l.month, amount: String(l.amount) }));
+        }
+        const wasEven =
+          existing.lines.length === even.length &&
+          existing.lines.every((l, i) => l.amount === even[i]?.amount);
+        return existing.lines.map((l) => ({
+          month: l.month,
+          amount: String(l.amount),
+          ...(wasEven ? {} : { pinned: true }),
+        }));
+      })(),
       note: existing?.note ?? "",
     });
   }
 
-  /** "You give them a simple formula: this is the contract value." */
+  /** "You give them a simple formula: this is the contract value." Also the
+   *  way back: every month goes loose again and the value re-splits clean. */
   function applySpread() {
     if (!editing) return;
-    const value = Number(editing.contractValue) || 0;
-    const months = Math.max(1, Math.min(60, Number(editing.months) || 1));
-    setEditing({
-      ...editing,
-      months: String(months),
-      lines: spreadEvenly(value, editing.startMonth, months).map((l) => ({
-        month: l.month,
-        amount: String(l.amount),
-      })),
+    setEditing(reshape({ ...editing, lines: [] }));
+  }
+
+  /**
+   * THE THREE FIELDS ARE THE FORMULA AND THE TABLE IS ITS ANSWER (Anir,
+   * Aug 28: "if I'm changing the number here, shouldn't it change below? and
+   * make me enter in other stuff / prefill it"). Typing 8 into "number of
+   * months" left four rows sitting underneath, so the top of the form and the
+   * bottom of the form disagreed until you went looking for "Spread evenly".
+   *
+   * A month is either LOCKED — someone typed that number, and it is theirs —
+   * or loose. Every loose month carries an equal share of whatever the locked
+   * ones have not claimed, recomputed on every keystroke. So the table always
+   * adds up to the contract value on its own, and pinning December to $500K
+   * makes the other months absorb the difference instead of leaving the plan
+   * over by $500K until someone notices the banner.
+   *
+   * Shrinking the count only HIDES months; their amounts stay in `lines`. That
+   * matters because typing "12" over "4" passes through the empty string, and
+   * a rebuild on that keystroke would otherwise throw away nine months of
+   * typing between one character and the next.
+   */
+  function reshape(next: Draft): Draft {
+    const count = planMonthCount(next);
+    const keys = monthsFrom(next.startMonth, count);
+    if (!keys.length) return { ...next, months: String(count) };
+    const value = Number(next.contractValue) || 0;
+
+    const locked = keys.map((_, i) =>
+      next.lines[i]?.pinned ? Number(next.lines[i]?.amount) || 0 : null
+    );
+    const loose = locked.filter((a) => a === null).length;
+    const left = Math.max(
+      0,
+      value - locked.reduce((s: number, a) => s + (a ?? 0), 0)
+    );
+    /* The rounding remainder lands on the last loose month, so the rows add
+       back to exactly the contract value rather than to $499,999. */
+    const per = loose ? Math.floor(left / loose) : 0;
+    let seen = 0;
+
+    const lines = keys.map((month, i) => {
+      const pinned = locked[i] !== null;
+      if (pinned) return { month, amount: next.lines[i].amount, pinned: true };
+      seen += 1;
+      const share = seen === loose ? left - per * (loose - 1) : per;
+      return { month, amount: String(share) };
     });
+
+    return {
+      ...next,
+      months: String(count),
+      /* Months past the visible count ride along untouched, ready for the
+         moment the count goes back up. */
+      lines: [...lines, ...next.lines.slice(count)],
+    };
+  }
+
+  /** Edit one of the three formula fields and let the table follow. */
+  function editFormula(patch: Partial<Draft>) {
+    if (!editing) return;
+    setEditing(reshape({ ...editing, ...patch }));
+  }
+
+  /** Typing an amount locks that month; the loose ones re-split around it. */
+  function editMonth(index: number, raw: string) {
+    if (!editing) return;
+    const lines = [...editing.lines];
+    while (lines.length <= index)
+      lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
+    lines[index] = { ...lines[index], amount: raw, pinned: true };
+    setEditing(reshape({ ...editing, lines }));
   }
 
   async function savePlan() {
@@ -462,7 +560,7 @@ export function RevenueAccrualsModule({
       toast("Pick an opportunity first.", "error");
       return;
     }
-    const lines = editing.lines
+    const lines = planRows(editing)
       .map((l) => ({ month: l.month, amount: Math.round(Number(l.amount) || 0) }))
       .filter((l) => l.month);
     if (!lines.length) {
@@ -503,9 +601,13 @@ export function RevenueAccrualsModule({
     }
   }
 
-  const editingTotal = editing
-    ? editing.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
-    : 0;
+  /* The months ON SCREEN are the plan. A row parked beyond the visible count
+     is remembered, not counted, or the total would argue with the table. */
+  const editingRows = editing ? planRows(editing) : [];
+  const editingTotal = editingRows.reduce(
+    (s, l) => s + (Number(l.amount) || 0),
+    0
+  );
   const editingValue = editing ? Number(editing.contractValue) || 0 : 0;
 
   return (
@@ -1451,8 +1553,7 @@ export function RevenueAccrualsModule({
                 value={editing.contractValue}
                 inputMode="numeric"
                 onChange={(e) =>
-                  setEditing({
-                    ...editing,
+                  editFormula({
                     contractValue: e.target.value.replace(/[^0-9]/g, ""),
                   })
                 }
@@ -1462,9 +1563,7 @@ export function RevenueAccrualsModule({
               <Input
                 type="month"
                 value={editing.startMonth}
-                onChange={(e) =>
-                  setEditing({ ...editing, startMonth: e.target.value })
-                }
+                onChange={(e) => editFormula({ startMonth: e.target.value })}
               />
             </Field>
             <Field label="Number of months">
@@ -1472,58 +1571,79 @@ export function RevenueAccrualsModule({
                 value={editing.months}
                 inputMode="numeric"
                 onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    months: e.target.value.replace(/[^0-9]/g, ""),
-                  })
+                  editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
                 }
               />
             </Field>
           </div>
-          <button
-            type="button"
-            onClick={applySpread}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-          >
-            <Coins size={13} strokeWidth={2.2} /> Spread evenly
-          </button>
+          {/* The table moves on its own now, so this stopped being the way to
+              fill it in and became the way BACK: it lets go of every month
+              somebody typed and re-splits the contract value clean. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button
+              type="button"
+              onClick={applySpread}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+            >
+              <Coins size={13} strokeWidth={2.2} />
+              {editingRows.some((l) => l.pinned)
+                ? "Start over, even split"
+                : "Spread evenly"}
+            </button>
+            <span className="text-[12px] text-text-secondary">
+              Type an amount to hold that month. The rest share what is left.
+            </span>
+          </div>
 
-          {editing.lines.length > 0 && (
-            <div className="mt-3 max-h-[280px] overflow-y-auto rounded-lg border border-border-light">
-              <table className="w-full text-left">
-                <thead className="sticky top-0 bg-surface">
+          {editingRows.length > 0 && (
+            /* THE SCROLL BOX ENDS ON A ROW, NOT THROUGH ONE. The header used
+               to sit inside the scrolling element, so its height ate into the
+               budget and a twelve-month plan was cut off across the middle of
+               April. Header outside, body inside, and the cap is exactly six
+               rows of `h-11` — 264px — so the seventh is either fully there or
+               fully below the fold. */
+            <div className="mt-3 overflow-hidden rounded-lg border border-border-light">
+              <table className="w-full table-fixed text-left">
+                <thead className="bg-surface">
                   <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
                     <th className="w-1/2">Month</th>
                     <th className="w-1/2">Amount (USD)</th>
                   </tr>
                 </thead>
+              </table>
+              <div className="max-h-[264px] overflow-y-auto border-t border-border-light">
+              <table className="w-full table-fixed text-left">
                 <tbody className="divide-y divide-border-light">
-                  {editing.lines.map((line, i) => (
-                    <tr key={line.month || i}>
-                      <td className="px-3 py-1.5 text-[13px] font-semibold text-text-primary">
+                  {editingRows.map((line, i) => (
+                    <tr key={line.month || i} className="h-11">
+                      <td className="w-1/2 px-3 py-1.5 text-[13px] font-semibold text-text-primary">
                         {monthLabel(line.month)}
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="w-1/2 px-3 py-1.5">
                         <input
                           value={line.amount}
                           placeholder="0"
                           inputMode="numeric"
                           aria-label={`Amount for ${monthLabel(line.month)}`}
-                          onChange={(e) => {
-                            const lines = [...editing.lines];
-                            lines[i] = {
-                              ...line,
-                              amount: e.target.value.replace(/[^0-9]/g, ""),
-                            };
-                            setEditing({ ...editing, lines });
-                          }}
-                          className="h-8 w-full rounded-md border border-border-light px-2 text-[13px] tnum outline-none focus:border-blue-subtle"
+                          onChange={(e) =>
+                            editMonth(i, e.target.value.replace(/[^0-9]/g, ""))
+                          }
+                          className={cn(
+                            "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",
+                            /* A locked month is the one number on the table
+                               that is not the app's arithmetic, so it says so
+                               rather than looking identical to a share. */
+                            line.pinned
+                              ? "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
+                              : "border-border-light"
+                          )}
                         />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
