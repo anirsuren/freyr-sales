@@ -26,7 +26,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
-import type { Meeting, MeetingNoteKind } from "@/lib/meetings";
+import { MEETING_TYPES, type Meeting, type MeetingNoteKind } from "@/lib/meetings";
+import { Field, Input } from "@/components/ui/Input";
 
 /**
  * ONE MEETING.
@@ -92,6 +93,9 @@ export function MeetingDetail({
   const [noteKind, setNoteKind] = useState<MeetingNoteKind>("outcome");
   const [noteText, setNoteText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const mine = m.owner.trim().toLowerCase() === meName.trim().toLowerCase();
   const canDelete = mine || meRole === "admin";
@@ -304,6 +308,94 @@ export function MeetingDetail({
               </ul>
             )}
           </SectionCard>
+          {/* WHAT WAS PRESENTED (Suren, Aug 28: "whatever that was presented,
+              they provide that presented details"). Files sit BESIDE the
+              written record rather than instead of it — his whole point about
+              analysis was that it is sometimes a document and sometimes just
+              words. */}
+          <SectionCard title="Documents" icon={FileText}>
+            <p className="text-[12.5px] text-text-secondary">
+              The deck that was shown, and anything handed over.
+            </p>
+            <label
+              className={cn(
+                "mt-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors",
+                "border-border-light hover:border-blue-subtle hover:bg-blue-light/20",
+                uploading && "opacity-60"
+              )}
+            >
+              <input
+                type="file"
+                className="hidden"
+                disabled={uploading}
+                onChange={async (e) => {
+                  const chosen = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!chosen) return;
+                  setUploading(true);
+                  setUploadError(null);
+                  try {
+                    const body = new FormData();
+                    body.append("file", chosen);
+                    const res = await fetch(
+                      `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`,
+                      { method: "POST", body }
+                    );
+                    const data = await res.json().catch(() => null);
+                    if (!res.ok || !data?.ok) {
+                      setUploadError(data?.error || "That file did not upload.");
+                      return;
+                    }
+                    await post({
+                      op: "add-doc",
+                      label: data.fileName,
+                      docsPath: data.docsPath,
+                    });
+                  } catch {
+                    setUploadError("That file did not upload.");
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
+              <span className="text-[13.5px] font-semibold text-text-primary">
+                {uploading ? "Uploading…" : "Upload a file"}
+              </span>
+              <span className="text-[11.5px] text-text-tertiary">
+                The deck, the one-pager, whatever was in the room
+              </span>
+            </label>
+            {uploadError && (
+              <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">
+                {uploadError}
+              </p>
+            )}
+            {m.docs.length > 0 && (
+              <ul className="mt-3 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light">
+                {m.docs.map((d) => (
+                  <li key={d.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                    <FileText size={15} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                        {d.label}
+                      </span>
+                      <span className="block text-[11px] text-text-tertiary">
+                        {d.addedBy} · {stampedAt(d.addedAt)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => post({ op: "remove-doc", docId: d.id })}
+                      aria-label={`Remove ${d.label}`}
+                      className="shrink-0 rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                    >
+                      <Trash2 size={13} strokeWidth={2.2} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
         </div>
 
         <div className="space-y-4">
@@ -367,12 +459,63 @@ export function MeetingDetail({
                 The account itself, no specific deal.
               </p>
             )}
-            {m.materialsBy && (
+            {m.materialsBy && !editing && (
               <p className="mt-3 flex items-center gap-1.5 border-t border-border-light pt-3 text-[12px] text-text-secondary">
                 <CalendarDays size={13} strokeWidth={2} className="shrink-0" />
                 Materials needed by {formatDate(m.materialsBy)}
               </p>
             )}
+
+            {/* A MEETING MOVES. Dates slip, a discovery call turns into a
+                demo, the deck is needed earlier than planned — so the three
+                facts most likely to change are editable in place rather than
+                frozen at whatever was typed when it was created. */}
+            <div className="mt-3 border-t border-border-light pt-3">
+              {editing ? (
+                <div className="space-y-2.5">
+                  <Field label="Type of meeting">
+                    <ColorSelect
+                      value={String(m.type)}
+                      ariaLabel="Type of meeting"
+                      collapsible={false}
+                      dense
+                      className="w-full"
+                      onChange={(v) => post({ op: "update", patch: { type: v } })}
+                      options={MEETING_TYPES.map((t) => ({
+                        value: t,
+                        label: t,
+                        color: "#0071E3",
+                      }))}
+                    />
+                  </Field>
+                  <Field label="When is it">
+                    <Input
+                      type="date"
+                      value={m.meetingAt}
+                      onChange={(e) =>
+                        post({ op: "update", patch: { meetingAt: e.target.value } })
+                      }
+                    />
+                  </Field>
+                  <Field label="Materials needed by">
+                    <Input
+                      type="date"
+                      value={m.materialsBy ?? ""}
+                      onChange={(e) =>
+                        post({ op: "update", patch: { materialsBy: e.target.value } })
+                      }
+                    />
+                  </Field>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setEditing((v) => !v)}
+                className="mt-1 text-[12px] font-semibold text-blue-primary hover:underline"
+              >
+                {editing ? "Done editing" : "Change the type or the dates"}
+              </button>
+            </div>
             {m.completedAt && (
               <p className="mt-2 text-[12px] text-text-secondary">
                 Marked done by <b>{m.completedBy}</b>
