@@ -161,6 +161,11 @@ export function ContractsModule({
      count is remembered, not counted, or the running total would argue with
      the table it sits under. */
   const scheduleRows = editing ? scheduleRowsOf(editing) : [];
+  const scheduleTotalNow = scheduleRows.reduce(
+    (sum, l) => sum + (Number(l.amount) || 0),
+    0
+  );
+  const scheduleValue = editing ? Number(editing.value) || 0 : 0;
   const goalName = useMemo(
     () => new Map(goals.map((g) => [g.id, `${g.name} · ${g.year}`])),
     [goals]
@@ -1126,8 +1131,10 @@ export function ContractsModule({
                 searchable
                 onChange={(v) => {
                   const deal = deals.find((d) => d.id === v);
-                  setEditing({
-                    ...editing,
+                  /* Picking a deal brings its value with it, and the value is
+                     what the schedule is a division of — so the months have to
+                     follow, exactly as they do when the value is typed. */
+                  editSchedule({
                     opportunityId: v,
                     opportunityName: deal?.name ?? "",
                     customer: deal?.customer ?? editing.customer,
@@ -1161,11 +1168,13 @@ export function ContractsModule({
                 value={editing.value}
                 placeholder="250000"
                 inputMode="numeric"
+                /* THE VALUE IS PART OF THE SCHEDULE'S FORMULA. Typing it used
+                   to leave the months below untouched, so the rows appeared
+                   and stayed blank and the schedule read $0 against a $600K
+                   contract. Same three fields the accrual dialog uses: value,
+                   start, count. */
                 onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    value: e.target.value.replace(/[^0-9]/g, ""),
-                  })
+                  editSchedule({ value: e.target.value.replace(/[^0-9]/g, "") })
                 }
               />
             </Field>
@@ -1233,9 +1242,9 @@ export function ContractsModule({
               <Input
                 type="date"
                 value={editing.startDate}
-                onChange={(e) =>
-                  setEditing({ ...editing, startDate: e.target.value })
-                }
+                /* The months are keyed from the start date, so moving it
+                   slides the whole schedule rather than relabelling it. */
+                onChange={(e) => editSchedule({ startDate: e.target.value })}
               />
             </Field>
             <Field label="Ends">
@@ -1384,14 +1393,43 @@ export function ContractsModule({
                   ? "Start over, even split"
                   : "Spread evenly from the start date"}
               </button>
-              <span className="mb-2 text-[12.5px] text-text-secondary tnum">
-                {formatMoney(
-                  scheduleRows.reduce((s, l) => s + (Number(l.amount) || 0), 0)
-                )}{" "}
-                scheduled
-              </span>
             </div>
-            {scheduleRows.length > 0 && (
+
+            {/* THE MONTHS ADD UP, OR THEY SAY SO. The same sentence the accrual
+                dialog carries, for the same reason: a schedule that quietly
+                does not match the contract it belongs to is the thing that
+                sends people back to a spreadsheet. */}
+            {scheduleValue > 0 && (
+              <p className="mt-2 text-[12.5px]">
+                The months add up to{" "}
+                <b className="tnum text-text-primary">{formatMoney(scheduleTotalNow)}</b>
+                {Math.abs(scheduleTotalNow - scheduleValue) > 1 && (
+                  <span className="font-semibold text-[color:#B45309]">
+                    {" "}
+                    — that is {formatMoney(Math.abs(scheduleTotalNow - scheduleValue))}{" "}
+                    {scheduleTotalNow > scheduleValue ? "more" : "less"} than the
+                    contract value.
+                  </span>
+                )}
+              </p>
+            )}
+
+            {/* NO VALUE, NO WALL OF ZEROES (Anir, Aug 28: "I don't like this
+                either" — twelve rows each reading 0, before anybody had said
+                what the contract is worth).
+
+                The table is the ANSWER to the contract value. With no value
+                there is no answer, only twelve boxes demanding to be typed
+                into by hand, so it says what it is waiting for instead. Type
+                a value and the months appear already spread. */}
+            {scheduleValue <= 0 ? (
+              <p className="mt-2 rounded-lg border border-dashed border-border-light bg-surface/40 px-3 py-4 text-center text-[12.5px] text-text-secondary">
+                Set the contract value above and these{" "}
+                {scheduleRows.length}{" "}
+                {scheduleRows.length === 1 ? "month" : "months"} fill in
+                themselves. You can adjust any of them afterwards.
+              </p>
+            ) : scheduleRows.length > 0 ? (
               /* Header outside the scroll box, body inside, and the cap is
                  exactly five rows of `h-11` — so a long schedule is cut
                  between months rather than through the middle of one. */
@@ -1438,7 +1476,7 @@ export function ContractsModule({
                   </table>
                 </div>
               </div>
-            )}
+            ) : null}
 
           <div className="mt-3">
             <Field label="Notes for the delivery team">
