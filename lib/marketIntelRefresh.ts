@@ -8,6 +8,7 @@ import { bustMarketIntelFeedCache, cleanSourceLabel } from "./marketIntelFeed";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import { classifyMna, digestCompany } from "./marketIntelSummarize";
 import { scrapeFreshNews } from "./perplexityNews";
+import { resolveOfficialDomain, scrapeSiteUpdates } from "./siteUpdates";
 import {
   bustMarketIntelTrackingCache,
   miSlug,
@@ -38,6 +39,10 @@ import {
 // per-user.
 const STALE_AFTER_MS = 11 * 60 * 60 * 1000;
 const COMPANY_FRESH_MS = 10 * 60 * 60 * 1000;
+/** The website pass's own clock: a company posts to its newsroom a handful
+ *  of times a month, so checking it twice a day would buy the same answer
+ *  twice. Once a day keeps the column fresh at a third of the spend. */
+const SITE_FRESH_MS = 22 * 60 * 60 * 1000;
 const LOCK_MS = 30 * 60 * 1000;
 // Sized to the $200/month Apify plan: ~$3.20 twice a day is ~$192/month,
 // with the rotation spreading whatever the cap cuts across runs.
@@ -395,6 +400,11 @@ function trackedToSource(company: TrackedCompany): CompanySource {
     name: company.name,
     li: slug ? [slug] : null,
     expect: expectToken,
+    /* The Website field on the tracking form IS the third source (Anir,
+       Aug 28: "if someone enters a new company it has to work too"). A
+       company added today gets website updates on its very first briefing,
+       exactly like the built-in watchlist. */
+    ...(company.website ? { site: company.website } : {}),
   };
 }
 
@@ -552,6 +562,55 @@ export async function runMarketIntelRefresh(options?: {
       if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
     }
 
+    // ---- Pass 1b: THE COMPANY'S OWN WEBSITE. A newsroom moves in weeks,
+    // not hours, so this runs on its own daily clock rather than the news
+    // pass's twice-daily one — same ~$0.006 a company, a third of the
+    // frequency. A company with no domain on file costs nothing and simply
+    // has no website column.
+    if (activePerplexityKey) {
+      let sinceWrite = 0;
+      for (const source of sources) {
+        if (!source.site) continue;
+        const existing: FeedCompany | undefined = feed.companies[source.id];
+        const siteAt = existing?.siteAt;
+        if (
+          !options?.force &&
+          siteAt &&
+          Date.now() - Date.parse(siteAt) < SITE_FRESH_MS
+        ) {
+          continue;
+        }
+        const result = await scrapeSiteUpdates(source, activePerplexityKey);
+        spentFresh += result.cost;
+        if (result.failed) continue;
+        const entry: FeedCompany = existing ?? {
+          id: source.id,
+          name: source.name,
+          slug: null,
+          author: null,
+          posts: [],
+          news: [],
+          tldr: null,
+          group: competitorIds.has(source.id) ? "competitor" : "customer",
+          fetchedAt: new Date(0).toISOString(),
+        };
+        if (result.updates.length > 0) {
+          entry.site = mergeNews(entry.site ?? [], result.updates);
+        }
+        entry.siteAt = new Date().toISOString();
+        feed.companies[source.id] = entry;
+        feed.updatedAt = new Date().toISOString();
+        feed.spendUsd =
+          Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
+        sinceWrite += 1;
+        if (sinceWrite >= 10) {
+          await writeRow(FEED_ROW, feed);
+          sinceWrite = 0;
+        }
+      }
+      if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
+    }
+
     // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
     // working?" — it was 101 hours behind while companies were 3 hours
     // fresh). The company queue drained the run's budget every time, so the
@@ -689,6 +748,8 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   // The first briefing should include today's stories, same as the standing
   // watch gets on every run.
   const freshResult = await scrapeFreshNews(source, activePerplexityKey);
+  // Their own website, on the first briefing rather than a day later.
+  const siteResult = await scrapeSiteUpdates(source, activePerplexityKey);
   if (postsResult.cost + newsResult.cost > TARGETED_CAP_USD) {
     // Cannot exceed by design (10 posts + 10 articles is at most ~$0.10),
     // but the guard stays in case limits change.
@@ -700,16 +761,22 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     author: postsResult.author,
     posts: postsResult.posts,
     news: mergeNews(newsResult.news, freshResult.news),
+    site: siteResult.updates,
     tldr: null,
     fetchedAt: new Date().toISOString(),
     newsAt: new Date().toISOString(),
+    siteAt: new Date().toISOString(),
   };
   await applyDigest(entry);
   feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
   feed.spendUsd =
     Math.round(
-      ((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost + freshResult.cost) *
+      ((feed.spendUsd ?? 0) +
+        postsResult.cost +
+        newsResult.cost +
+        freshResult.cost +
+        siteResult.cost) *
         1000
     ) / 1000;
   await writeRow(FEED_ROW, feed);
@@ -794,6 +861,21 @@ export async function addCompanyByLink(
 
   const newsResult = await scrapeNews({ name });
   const freshResult = await scrapeFreshNews({ name }, activePerplexityKey);
+  /* THE FORM ASKS FOR ONE LINK, so the domain has to be found rather than
+     typed (Anir, Aug 28: "if someone enters a new company it has to work
+     too"). Resolved once here and written onto the tracked company, so
+     every later refresh reads it straight off the record. */
+  const resolved = await resolveOfficialDomain(name, activePerplexityKey);
+  if (resolved.domain) {
+    company.website = `https://${resolved.domain}`;
+    const stored = tracking.companies.find((c: TrackedCompany) => c.id === id);
+    if (stored) stored.website = company.website;
+    await writeRow(TRACKING_ROW, tracking);
+  }
+  const siteResult = await scrapeSiteUpdates(
+    { name, site: resolved.domain ?? undefined },
+    activePerplexityKey
+  );
   const entry: FeedCompany = {
     id,
     name,
@@ -801,17 +883,25 @@ export async function addCompanyByLink(
     author: probe.author,
     posts: probe.posts,
     news: mergeNews(newsResult.news, freshResult.news),
+    site: siteResult.updates,
     tldr: null,
     group,
     fetchedAt: new Date().toISOString(),
     newsAt: new Date().toISOString(),
+    siteAt: new Date().toISOString(),
   };
   await applyDigest(entry);
   feed.companies[id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
   feed.spendUsd =
     Math.round(
-      ((feed.spendUsd ?? 0) + probe.cost + newsResult.cost + freshResult.cost) * 1000
+      ((feed.spendUsd ?? 0) +
+        probe.cost +
+        newsResult.cost +
+        freshResult.cost +
+        resolved.cost +
+        siteResult.cost) *
+        1000
     ) / 1000;
   await writeRow(FEED_ROW, feed);
   return company;

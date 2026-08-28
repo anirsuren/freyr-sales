@@ -70,7 +70,9 @@ const SIGNAL_ICON: Record<MiSignalKind, LucideIcon> = {
   deal: Handshake,
 };
 
-type Kind = "company" | "people" | "news" | "signal";
+/** "site" is the company's OWN website — a source in its own right beside
+ *  the news wire and LinkedIn (Anir, Aug 28). */
+type Kind = "company" | "people" | "news" | "signal" | "site";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
@@ -96,7 +98,7 @@ export function LiveCompanyBriefing({
   /** Collected posts per tracked person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
 }) {
-  const ALL_KINDS: Kind[] = ["company", "people", "news", "signal"];
+  const ALL_KINDS: Kind[] = ["company", "people", "news", "signal", "site"];
   const [kinds, setKinds] = useState<Set<Kind>>(new Set(ALL_KINDS));
   const [kindsOpen, setKindsOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
@@ -149,12 +151,19 @@ export function LiveCompanyBriefing({
   const signals = briefing.signals.filter(
     (s) => inRange(s.date) && hit(s.title, s.sourceLabel, s.why)
   );
+  const site = (briefing.site ?? []).filter(
+    (n) => inRange(n.published) && hit(n.title, n.summary, n.source)
+  );
   // Four content types, each its own toggle (Anir, Aug 11: "I can even filter
   // to only see what people are posting").
   const KIND_META: { key: Kind; label: string; icon: LucideIcon; color: string; count: number }[] = [
     { key: "company", label: "Company posts", icon: Building2, color: "#0071E3", count: posts.filter((p) => !p.by).length },
     { key: "people", label: "People posts", icon: Users, color: "#B4318F", count: posts.filter((p) => p.by).length },
     { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: news.length },
+    /* Their own words, from their own site: a different colour and a
+       different glyph from the news wire, because "the company said this"
+       and "a reporter wrote this" are different claims. */
+    { key: "site", label: "Their website", icon: Globe2, color: "#C2410C", count: site.length },
     { key: "signal", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
   ];
   const activeCount = KIND_META.filter((k) => kinds.has(k.key)).reduce((a, k) => a + k.count, 0);
@@ -163,7 +172,7 @@ export function LiveCompanyBriefing({
     ? "Everything"
     : kinds.size === 1
       ? KIND_META.find((k) => kinds.has(k.key))?.label ?? "Filtered"
-      : `${kinds.size} of 4 types`;
+      : `${kinds.size} of ${ALL_KINDS.length} types`;
   const toggleKind = (kind: Kind) =>
     setKinds((prev) => {
       const next = new Set(prev);
@@ -276,6 +285,47 @@ export function LiveCompanyBriefing({
     );
   };
 
+  /* THE COMPANY'S OWN PAGE, said plainly. Same anatomy as a news card so
+     the timeline stays one rhythm, but a warm chip and "Published by them"
+     instead of a publication name, because the difference between a
+     reporter's account and the company's own statement is the whole reason
+     this source exists. */
+  const siteCard = (item: LiveBriefing["news"][number], key: string) => (
+    <Card key={key} className="p-4">
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#C2410C]">
+          <Globe2 size={10.5} strokeWidth={2.2} /> {item.source}
+        </span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          Published by them
+        </span>
+        <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
+          {fmtDate(item.published)}
+        </span>
+      </p>
+      <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
+        {item.title}
+      </h3>
+      {item.summary && (
+        <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
+          {item.summary}{" "}
+          <span className="inline-flex translate-y-[1px] items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            <Sparkles size={9} strokeWidth={2.2} /> AI summary
+          </span>
+        </p>
+      )}
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+      >
+        Read it on their site
+        <ExternalLink size={12} strokeWidth={2.2} />
+      </a>
+    </Card>
+  );
+
   const newsCard = (item: LiveBriefing["news"][number], key: string) => (
     <Card key={key} className="p-4">
       <p className="flex flex-wrap items-center gap-2">
@@ -346,12 +396,14 @@ export function LiveCompanyBriefing({
   const TABLE_TAG = {
     post: { color: "#0071E3" },
     news: { color: "#0F766E" },
+    site: { color: "#C2410C" },
     signal: { color: "#7C3AED" },
   } as const;
 
   type FeedItem =
     | { kind: "company" | "people"; date: string | null; post: LiveBriefing["posts"][number] }
     | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] }
+    | { kind: "site"; date: string | null; news: LiveBriefing["news"][number] }
     | { kind: "signal"; date: string | null; signal: LiveBriefing["signals"][number] };
 
   const merged: FeedItem[] = [
@@ -361,6 +413,7 @@ export function LiveCompanyBriefing({
       post,
     })),
     ...news.map((item) => ({ kind: "news" as const, date: item.published, news: item })),
+    ...site.map((item) => ({ kind: "site" as const, date: item.published, news: item })),
     ...signals.map((signal) => ({ kind: "signal" as const, date: signal.date, signal })),
   ].sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
 
@@ -368,7 +421,7 @@ export function LiveCompanyBriefing({
 
   /** The table layout works on every lens: one row per item, whatever it is. */
   type TableRow = {
-    kind: "post" | "news" | "signal";
+    kind: "post" | "news" | "site" | "signal";
     tag: string;
     what: string;
     sub?: string | null;
@@ -385,9 +438,9 @@ export function LiveCompanyBriefing({
           when: item.signal.date,
           url: item.signal.url,
         }
-      : item.kind === "news"
+      : item.kind === "news" || item.kind === "site"
         ? {
-            kind: "news" as const,
+            kind: item.kind,
             tag: item.news.source,
             what: item.news.title,
             sub: item.news.summary,
@@ -458,7 +511,7 @@ export function LiveCompanyBriefing({
             )}
           </h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {subtitle || "Live briefing from LinkedIn and Google News, past 3 months"}
+            {subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months"}
           </p>
         </div>
         <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
@@ -748,7 +801,9 @@ export function LiveCompanyBriefing({
                   ? signalCard(item.signal, `s-${index}`)
                   : item.kind === "news"
                     ? newsCard(item.news, `n-${index}`)
-                    : postCard(item.post, `p-${index}`)
+                    : item.kind === "site"
+                      ? siteCard(item.news, `w-${index}`)
+                      : postCard(item.post, `p-${index}`)
               )
             )}
           </div>

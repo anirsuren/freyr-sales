@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Newspaper,
+  Globe2,
   Radar,
   TrendingDown,
   TrendingUp,
@@ -137,6 +138,15 @@ export function LiveCompanyCard({
           <Newspaper size={10.5} strokeWidth={2.2} />
           {briefing.news.length} news
         </span>
+        {(briefing.site?.length ?? 0) > 0 && (
+          /* The company's own website, counted beside the wire and LinkedIn
+             (Anir, Aug 28) — only when there is something, so a card never
+             advertises an empty source. */
+          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#C2410C]">
+            <Globe2 size={10.5} strokeWidth={2.2} />
+            {briefing.site!.length} from them
+          </span>
+        )}
         <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#7C3AED]">
           <Radar size={10.5} strokeWidth={2.2} />
           {briefing.signals.length}{" "}

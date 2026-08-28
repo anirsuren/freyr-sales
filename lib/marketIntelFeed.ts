@@ -72,6 +72,17 @@ export type FeedCompany = {
    *  from `fetchedAt`, which still means "full Apify sync" and drives that
    *  rotation's ordering. */
   newsAt?: string;
+  /**
+   * What the company published on ITS OWN website (Anir, Aug 28: "can you
+   * add updates from their respective official websites as well?"). Same
+   * shape as news because a press release is a story with a title, a link
+   * and a date — but kept in its own field so the card can say plainly that
+   * this came from the company itself rather than from a reporter.
+   */
+  site?: FeedNews[];
+  /** Last time the website pass visited. Its own clock: a newsroom moves in
+   *  weeks, so it is checked far less often than the news wire. */
+  siteAt?: string;
 };
 
 /** One merger or acquisition on the tracker (Aug 11 call): who bought whom,
@@ -136,6 +147,9 @@ export type LiveBriefing = {
   trendLabels: string[];
   posts: BriefingPost[];
   news: FeedNews[];
+  /** What the company published on its own website — the third source
+   *  beside news outlets and LinkedIn (Anir, Aug 28). */
+  site: FeedNews[];
   signals: LiveSignal[];
   competitorMentions: { name: string; count: number }[];
 };
@@ -396,6 +410,13 @@ export function buildBriefing(
     .sort(
       (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
     );
+  /* The site column keeps the SAME window as news, so a briefing never
+     shows a press release older than the stories beside it. */
+  const site = (company.site ?? [])
+    .filter((n) => !n.published || Date.parse(n.published) > cutoff)
+    .sort(
+      (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
+    );
   const windowed: FeedCompany = { ...company, posts, news };
   const { points, labels } = weeklyTrend(windowed);
   const { signals, competitorMentions } = deriveSignals(windowed, allNames);
@@ -405,7 +426,7 @@ export function buildBriefing(
   // Apify rotation), so showing fetchedAt alone read "updated 25h ago" over
   // news collected two hours earlier.
   const freshest =
-    [company.fetchedAt, company.newsAt].filter(Boolean).sort().pop() ??
+    [company.fetchedAt, company.newsAt, company.siteAt].filter(Boolean).sort().pop() ??
     company.fetchedAt;
   return {
     id: company.id,
@@ -422,6 +443,7 @@ export function buildBriefing(
     trendLabels: labels,
     posts,
     news,
+    site,
     signals,
     competitorMentions,
   };
