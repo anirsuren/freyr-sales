@@ -525,6 +525,7 @@ export function SolutioningModule({
                     request={r}
                     fulfiller={fulfiller}
                     hideKindLabel={oneKind}
+                    room={room}
                     busy={busy === r.id}
                     open={openIds.has(r.id)}
                     onToggle={() =>
@@ -600,9 +601,13 @@ function RequestRow({
   onToggle,
   onPickUp,
   hideKindLabel = false,
+  room,
 }: {
   request: SolutionRequest;
   fulfiller: boolean;
+  /** The room this row is being read in — it travels with the record link so
+   *  the sidebar can keep the right sub-item lit on the detail page. */
+  room: "requests" | "submissions" | "presentations";
   /** Every row in view is the same kind, so the header already said it. */
   hideKindLabel?: boolean;
   busy: boolean;
@@ -666,7 +671,7 @@ function RequestRow({
             link exactly the width of its own two lines and hands every pixel
             beside them back to the row's toggle. */}
         <Link
-          href={`/solutioning/${r.id}`}
+          href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
           onClick={(e) => e.stopPropagation()}
           className="inline-block w-fit max-w-full min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
         >
@@ -902,7 +907,7 @@ function RequestRow({
                 </div>
                 <p className="mt-4">
                   <Link
-                    href={`/solutioning/${r.id}`}
+                    href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
                     className="inline-flex items-center gap-1 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
                   >
                     Open the full request

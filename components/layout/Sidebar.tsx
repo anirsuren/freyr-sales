@@ -229,10 +229,33 @@ export function Sidebar({
        alone would light all three at once. Compare what is in the address bar:
        the path for a real sub-route, the path AND its ?tab= for a room. */
     const [itemPath, itemQuery = ""] = item.href.split("?");
+
+    /* A RECORD BELONGS TO THE ROOM YOU OPENED IT FROM (Anir, Aug 28: "when I
+       click on a presentation from the table it takes me to the presentation
+       but it takes me to the REQUESTS sidebar page").
+
+       A solutioning record lives at /solutioning/<id> with no ?tab=, so the
+       Requests entry — whose href is the bare /solutioning — matched it on the
+       startsWith branch and lit up, whichever room you had actually come from.
+       Every presentation and every submission read as a request the moment you
+       opened it.
+
+       So the room travels with the link: the tables append ?tab= to the record
+       href, and the comparison reads that tab rather than the whole query
+       string. A record opened from outside solutioning carries no tab and
+       lights nothing, which is honest — better a quiet sidebar than a wrong
+       one. */
+    const tabOf = (q: string) => new URLSearchParams(q).get("tab") ?? "";
+    const itemTab = tabOf(itemQuery);
+    const hereTab = tabOf(search ?? "");
+    const isChild = pathname.startsWith(itemPath + "/");
+
     const active =
-      itemQuery || search
-        ? pathname === itemPath && (search ?? "") === itemQuery
-        : pathname === itemPath || pathname.startsWith(itemPath + "/");
+      itemPath === "/solutioning"
+        ? (pathname === itemPath || isChild) && hereTab === itemTab
+        : itemQuery || search
+          ? pathname === itemPath && (search ?? "") === itemQuery
+          : pathname === itemPath || isChild;
     const Icon = item.icon;
     return (
       <Link
