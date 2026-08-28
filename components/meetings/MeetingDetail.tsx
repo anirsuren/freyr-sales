@@ -7,6 +7,7 @@ import {
   Briefcase,
   Building2,
   CheckCircle2,
+  ExternalLink,
   FileText,
   MessageSquare,
   Mic,
@@ -119,6 +120,14 @@ export function MeetingDetail({
   const [noteKind, setNoteKind] = useState<MeetingNoteKind>("outcome");
   const [noteText, setNoteText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /* WHAT IS ABOUT TO BE DESTROYED, held by id.
+     Standing rule since Aug 25: every delete control is red AND asks first,
+     and only a delete already inside a popup may act directly. These two did
+     not ask — found in the browser on Aug 28 by clicking one: an uploaded
+     transcript, which can be an hour of a customer call, disappeared on a
+     single click with nothing to undo it. */
+  const [confirmNote, setConfirmNote] = useState<string | null>(null);
+  const [confirmDoc, setConfirmDoc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -316,7 +325,7 @@ export function MeetingDetail({
                         </span>
                         <button
                           type="button"
-                          onClick={() => post({ op: "remove-note", noteId: n.id })}
+                          onClick={() => setConfirmNote(n.id)}
                           aria-label="Remove this note"
                           className="ml-auto rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                         >
@@ -373,17 +382,41 @@ export function MeetingDetail({
                 {m.docs.map((d) => (
                   <li key={d.id} className="flex items-center gap-2.5 px-3 py-2.5">
                     <FileText size={15} strokeWidth={2} className="shrink-0 text-blue-primary" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                    {/* THE ROW IS THE WAY IN. A card that took the file and
+                        then only offered a filename and a delete button gave
+                        you no way back to what was handed over (found in the
+                        browser, Aug 28). The whole row opens it, so there is
+                        nothing to aim at. */}
+                    <a
+                      href={`/api/meetings/download?meetingId=${encodeURIComponent(
+                        m.id
+                      )}&docId=${encodeURIComponent(d.id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group min-w-0 flex-1"
+                    >
+                      <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                         {d.label}
                       </span>
                       <span className="block text-[11px] text-text-tertiary">
                         {d.addedBy} · {stampedAt(d.addedAt)}
                       </span>
-                    </span>
+                    </a>
+                    <a
+                      href={`/api/meetings/download?meetingId=${encodeURIComponent(
+                        m.id
+                      )}&docId=${encodeURIComponent(d.id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${d.label}`}
+                      title={`Open ${d.label}`}
+                      className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <ExternalLink size={14} strokeWidth={2.2} />
+                    </a>
                     <button
                       type="button"
-                      onClick={() => post({ op: "remove-doc", docId: d.id })}
+                      onClick={() => setConfirmDoc(d.id)}
                       aria-label={`Remove ${d.label}`}
                       className="shrink-0 rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
@@ -703,6 +736,43 @@ export function MeetingDetail({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmNote}
+        title="Remove this from the write-up?"
+        body={(() => {
+          const n = m.notes.find((x) => x.id === confirmNote);
+          if (!n) return "It will be removed from the meeting record.";
+          const words = n.text.trim().split(/\s+/).length;
+          return `A ${NOTE_META[n.kind].label.toLowerCase()} of ${words} ${
+            words === 1 ? "word" : "words"
+          }, written by ${n.by}. It goes from the meeting record and cannot be brought back.`;
+        })()}
+        confirmLabel="Remove it"
+        tone="destructive"
+        onClose={() => setConfirmNote(null)}
+        onConfirm={async () => {
+          const id = confirmNote;
+          setConfirmNote(null);
+          if (id) await post({ op: "remove-note", noteId: id });
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDoc}
+        title="Remove this document?"
+        body={`${
+          m.docs.find((x) => x.id === confirmDoc)?.label ?? "This file"
+        } comes off the meeting and cannot be brought back.`}
+        confirmLabel="Remove it"
+        tone="destructive"
+        onClose={() => setConfirmDoc(null)}
+        onConfirm={async () => {
+          const id = confirmDoc;
+          setConfirmDoc(null);
+          if (id) await post({ op: "remove-doc", docId: id });
+        }}
+      />
 
       <ConfirmDialog
         open={confirmDelete}
