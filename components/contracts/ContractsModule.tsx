@@ -10,6 +10,8 @@ import {
   CircleDashed,
   ChevronDown,
   Circle,
+  CalendarClock,
+  CalendarDays,
   Coins,
   Download,
   FileText,
@@ -21,6 +23,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { FormRoom } from "@/components/ui/FormRoom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
 import { PageToolbar } from "@/components/ui/PageToolbar";
@@ -39,7 +42,7 @@ import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
-import { monthKey, monthLabel, spreadEvenly } from "@/lib/revenueAccrualsShared";
+import { monthKey, monthLabel, monthsFrom } from "@/lib/revenueAccrualsShared";
 import { BarChart } from "@/components/charts/Charts";
 import {
   CONTRACT_STATUSES,
@@ -101,10 +104,25 @@ const BLANK = {
   goalPerson: "",
   note: "",
   scheduleMonths: "12",
-  schedule: [] as { month: string; amount: string }[],
+  /** `pinned` means a person typed this month, so the even split works
+   *  around it instead of overwriting it. */
+  schedule: [] as { month: string; amount: string; pinned?: boolean }[],
 };
 
 type Draft = typeof BLANK;
+
+/** The schedule rows on screen: `scheduleMonths` of them, always keyed from
+ *  the start date, so moving the start slides the whole schedule. Months
+ *  parked beyond the visible count are remembered, not counted. */
+function scheduleRowsOf(d: Draft): { month: string; amount: string; pinned?: boolean }[] {
+  const count = Math.max(1, Math.min(120, Number(d.scheduleMonths) || 1));
+  const start = d.startDate ? monthKey(d.startDate) : monthKey(new Date());
+  return monthsFrom(start, count).map((month, i) => ({
+    month,
+    amount: d.schedule[i]?.amount ?? "",
+    ...(d.schedule[i]?.pinned ? { pinned: true } : {}),
+  }));
+}
 
 export function ContractsModule({
   state: initial,
@@ -135,6 +153,10 @@ export function ContractsModule({
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
 
   const contracts = state.contracts;
+  /* The schedule ON SCREEN is the schedule. A month parked past the visible
+     count is remembered, not counted, or the running total would argue with
+     the table it sits under. */
+  const scheduleRows = editing ? scheduleRowsOf(editing) : [];
   const goalName = useMemo(
     () => new Map(goals.map((g) => [g.id, `${g.name} · ${g.year}`])),
     [goals]
@@ -289,21 +311,69 @@ export function ContractsModule({
     });
   }
 
+  /**
+   * THE SAME LIVE FORMULA THE ACCRUAL DIALOG USES. Both forms ask for a value,
+   * a start and a month count and then draw a table, so both behave the same
+   * way: the table follows the three fields on every keystroke (Anir, Aug 28:
+   * "if I'm changing the number here, shouldn't it change below? and make me
+   * enter in other stuff / prefill it").
+   *
+   * A month someone typed into is HELD and never rewritten; the loose months
+   * share whatever the held ones have not claimed, so the schedule lands on
+   * the contract value by itself. Shrinking the count only hides months —
+   * their amounts stay put, because typing "12" over "4" passes through an
+   * empty box and must not throw work away in that keystroke.
+   */
+  function reshapeSchedule(next: Draft): Draft {
+    const count = Math.max(1, Math.min(120, Number(next.scheduleMonths) || 1));
+    const start = next.startDate ? monthKey(next.startDate) : monthKey(new Date());
+    const keys = monthsFrom(start, count);
+    if (!keys.length) return { ...next, scheduleMonths: String(count) };
+    const value = Number(next.value) || 0;
+
+    const held = keys.map((_, i) =>
+      next.schedule[i]?.pinned ? Number(next.schedule[i]?.amount) || 0 : null
+    );
+    const loose = held.filter((a) => a === null).length;
+    const left = Math.max(0, value - held.reduce((s: number, a) => s + (a ?? 0), 0));
+    const per = loose ? Math.floor(left / loose) : 0;
+    let seen = 0;
+
+    const schedule = keys.map((month, i) => {
+      if (held[i] !== null)
+        return { month, amount: next.schedule[i].amount, pinned: true };
+      seen += 1;
+      /* The rounding remainder lands on the last loose month so the rows add
+         back to exactly the contract value. */
+      return { month, amount: String(seen === loose ? left - per * (loose - 1) : per) };
+    });
+
+    return {
+      ...next,
+      scheduleMonths: String(count),
+      schedule: [...schedule, ...next.schedule.slice(count)],
+    };
+  }
+
+  /** Edit the value, the start date or the month count; the table follows. */
+  function editSchedule(patch: Partial<Draft>) {
+    if (!editing) return;
+    setEditing(reshapeSchedule({ ...editing, ...patch }));
+  }
+
+  /** Typing an amount holds that month; the loose ones re-split around it. */
+  function editScheduleMonth(index: number, raw: string) {
+    if (!editing) return;
+    const schedule = [...editing.schedule];
+    while (schedule.length <= index) schedule.push({ month: "", amount: "" });
+    schedule[index] = { ...schedule[index], amount: raw, pinned: true };
+    setEditing(reshapeSchedule({ ...editing, schedule }));
+  }
+
+  /** The way back: every month goes loose and the value re-splits clean. */
   function applySpread() {
     if (!editing) return;
-    const value = Number(editing.value) || 0;
-    const months = Math.max(1, Math.min(120, Number(editing.scheduleMonths) || 1));
-    const start = editing.startDate
-      ? monthKey(editing.startDate)
-      : monthKey(new Date());
-    setEditing({
-      ...editing,
-      scheduleMonths: String(months),
-      schedule: spreadEvenly(value, start, months).map((l) => ({
-        month: l.month,
-        amount: String(l.amount),
-      })),
-    });
+    setEditing(reshapeSchedule({ ...editing, schedule: [] }));
   }
 
   async function save() {
@@ -339,7 +409,7 @@ export function ContractsModule({
             ? { goalId: editing.goalId, person: editing.goalPerson || undefined }
             : undefined,
           note: editing.note || undefined,
-          schedule: editing.schedule
+          schedule: scheduleRowsOf(editing)
             .map((l) => ({
               month: l.month,
               amount: Math.round(Number(l.amount) || 0),
@@ -989,7 +1059,22 @@ export function ContractsModule({
              a short form collapsing into a strip. */
           size="workflow"
         >
-          <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
+          {/* FOUR ROOMS, NOT TEN CONTROLS IN A ROW (Anir, Aug 28: "it just
+              has 10 dropdowns off the rip for the user, they got overwhelmed
+              ... the booked revenue part isn't really that visible, make it
+              like the other one where you have 4 sections. Same for
+              scheduled revenue"). Same FormRoom the deal form uses, so the
+              two long forms in this app now read the same way: the first
+              room open, the rest shut with a one-line summary of what is
+              inside. */}
+          <div className="min-h-[420px] space-y-3">
+          <FormRoom
+            icon={FileSignature}
+            title="The contract"
+            defaultOpen
+            summary={editing.name || "Not named yet"}
+          >
+          <div className="grid grid-cols-2 content-start gap-3">
             <div className="col-span-2">
               <Field label="Contract name">
                 <Input
@@ -1071,6 +1156,46 @@ export function ContractsModule({
                 }))}
               />
             </Field>
+            <div className="col-span-2">
+              <Field label="Link to the executed contract">
+                <Input
+                  value={editing.documentUrl}
+                  onChange={(e) =>
+                    setEditing({ ...editing, documentUrl: e.target.value })
+                  }
+                  placeholder="https://… wherever the signed PDF lives"
+                />
+              </Field>
+            </div>
+            <Field label="Owner">
+              <ColorSelect
+                value={editing.owner}
+                ariaLabel="Contract owner"
+                className="w-full"
+                collapsible={false}
+                dense
+                onChange={(v) => setEditing({ ...editing, owner: v })}
+                options={[
+                  { value: "", label: "Unassigned", color: "#8E98A8" },
+                  ...members.map((m) => ({ value: m, label: m, color: "#0071E3" })),
+                ]}
+              />
+            </Field>
+          </div>
+          </FormRoom>
+
+          <FormRoom
+            icon={CalendarDays}
+            title="Dates and signature"
+            summary={
+              editing.signedOn
+                ? `Signed ${editing.signedOn}`
+                : editing.startDate
+                  ? `Starts ${editing.startDate}`
+                  : "No dates yet"
+            }
+          >
+          <div className="grid grid-cols-2 content-start gap-3">
             <Field label="Starts">
               <Input
                 type="date"
@@ -1103,6 +1228,15 @@ export function ContractsModule({
                 placeholder="Who signed for the customer"
               />
             </Field>
+          </div>
+          </FormRoom>
+
+          <FormRoom
+            icon={Coins}
+            title="Booked revenue"
+            summary={editing.goalId ? "A goal is picked" : "No goal picked"}
+          >
+          <div className="grid grid-cols-2 content-start gap-3">
             {/* WHERE THE MONEY LANDS (Suren, Aug 18: a signed contract is
                 what produces booked revenue; Anir, Aug 26, on which goal:
                 "Yeah, the person picks the goal"). Nothing is inferred from
@@ -1111,11 +1245,11 @@ export function ContractsModule({
                 signature month, and withdraws itself if the contract goes
                 back to Draft or Cancelled — unless a group owner has already
                 signed the number off, in which case it is theirs and stays. */}
-            <div className="col-span-2 rounded-xl border border-border-light bg-surface/40 p-3.5">
-              <p className="text-[12.5px] font-semibold text-text-primary">
-                Booked revenue
-              </p>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary">
+            {/* The room's own header says "Booked revenue" now, so the card
+                that used to introduce this block only repeated it inside a
+                second border (Anir, Aug 28: "why r u repeating"). */}
+            <div className="col-span-2">
+              <p className="text-[12px] leading-snug text-text-secondary">
                 {editing.goalId
                   ? editing.status === "Signed"
                     ? `${editing.value ? formatMoney(Number(String(editing.value).replace(/[^0-9.]/g, "")) || 0) : "The value"} counts towards this goal${editing.signedOn ? ` in ${formatDate(editing.signedOn)}` : " once you set the signed date"}.`
@@ -1176,39 +1310,18 @@ export function ContractsModule({
                 </p>
               )}
             </div>
-
-            <div className="col-span-2">
-              <Field label="Link to the executed contract">
-                <Input
-                  value={editing.documentUrl}
-                  onChange={(e) =>
-                    setEditing({ ...editing, documentUrl: e.target.value })
-                  }
-                  placeholder="https://… wherever the signed PDF lives"
-                />
-              </Field>
-            </div>
-            <Field label="Owner">
-              <ColorSelect
-                value={editing.owner}
-                ariaLabel="Contract owner"
-                className="w-full"
-                collapsible={false}
-                dense
-                onChange={(v) => setEditing({ ...editing, owner: v })}
-                options={[
-                  { value: "", label: "Unassigned", color: "#8E98A8" },
-                  ...members.map((m) => ({ value: m, label: m, color: "#0071E3" })),
-                ]}
-              />
-            </Field>
           </div>
+          </FormRoom>
 
-          <div className="mt-4 rounded-lg border border-border-light bg-surface/40 p-3">
-            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
-              <Coins size={13} strokeWidth={2.2} className="text-blue-primary" />
-              Schedule revenue
-            </p>
+          <FormRoom
+            icon={CalendarClock}
+            title="Schedule revenue"
+            summary={
+              scheduleRows.some((m) => Number(m.amount) > 0)
+                ? "Months set"
+                : "Nothing scheduled yet"
+            }
+          >
             <p className="mt-0.5 text-[12px] text-text-secondary">
               What delivery will recognise, month by month. Once this contract is
               Ready for delivery or Signed, this replaces the deal&apos;s accrual
@@ -1221,66 +1334,78 @@ export function ContractsModule({
                   inputMode="numeric"
                   className="w-[140px]"
                   onChange={(e) =>
-                    setEditing({
-                      ...editing,
+                    editSchedule({
                       scheduleMonths: e.target.value.replace(/[^0-9]/g, ""),
                     })
                   }
                 />
               </Field>
+              {/* The table moves on its own now, so this became the way BACK:
+                  it lets go of every month somebody typed and re-splits. */}
               <button
                 type="button"
                 onClick={applySpread}
                 className="mb-[1px] inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
               >
-                Spread evenly from the start date
+                {scheduleRows.some((m) => m.pinned)
+                  ? "Start over, even split"
+                  : "Spread evenly from the start date"}
               </button>
               <span className="mb-2 text-[12.5px] text-text-secondary tnum">
                 {formatMoney(
-                  editing.schedule.reduce((s, l) => s + (Number(l.amount) || 0), 0)
+                  scheduleRows.reduce((s, l) => s + (Number(l.amount) || 0), 0)
                 )}{" "}
                 scheduled
               </span>
             </div>
-            {editing.schedule.length > 0 && (
-              <div className="mt-2 max-h-[220px] overflow-y-auto rounded-lg border border-border-light bg-white">
-                <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-surface">
+            {scheduleRows.length > 0 && (
+              /* Header outside the scroll box, body inside, and the cap is
+                 exactly five rows of `h-11` — so a long schedule is cut
+                 between months rather than through the middle of one. */
+              <div className="mt-2 overflow-hidden rounded-lg border border-border-light bg-white">
+                <table className="w-full table-fixed text-left">
+                  <thead className="bg-surface">
                     <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
                       <th className="w-1/2">Month</th>
                       <th className="w-1/2">Amount (USD)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-light">
-                    {editing.schedule.map((line, i) => (
-                      <tr key={line.month || i}>
-                        <td className="px-3 py-1.5 text-[13px] font-semibold text-text-primary">
-                          {monthLabel(line.month)}
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <input
-                            value={line.amount}
-                            placeholder="0"
-                            inputMode="numeric"
-                            aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
-                            onChange={(e) => {
-                              const schedule = [...editing.schedule];
-                              schedule[i] = {
-                                ...line,
-                                amount: e.target.value.replace(/[^0-9]/g, ""),
-                              };
-                              setEditing({ ...editing, schedule });
-                            }}
-                            className="h-8 w-full rounded-md border border-border-light px-2 text-[13px] tnum outline-none focus:border-blue-subtle"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
                 </table>
+                <div className="max-h-[220px] overflow-y-auto border-t border-border-light">
+                  <table className="w-full table-fixed text-left">
+                    <tbody className="divide-y divide-border-light">
+                      {scheduleRows.map((line, i) => (
+                        <tr key={line.month || i} className="h-11">
+                          <td className="w-1/2 px-3 py-1.5 text-[13px] font-semibold text-text-primary">
+                            {monthLabel(line.month)}
+                          </td>
+                          <td className="w-1/2 px-3 py-1.5">
+                            <input
+                              value={line.amount}
+                              placeholder="0"
+                              inputMode="numeric"
+                              aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
+                              onChange={(e) =>
+                                editScheduleMonth(
+                                  i,
+                                  e.target.value.replace(/[^0-9]/g, "")
+                                )
+                              }
+                              className={cn(
+                                "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",
+                                line.pinned
+                                  ? "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
+                                  : "border-border-light"
+                              )}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
 
           <div className="mt-3">
             <Field label="Notes for the delivery team">
@@ -1291,6 +1416,8 @@ export function ContractsModule({
                 placeholder="Anything the delivery side needs to know when they pick this up."
               />
             </Field>
+          </div>
+          </FormRoom>
           </div>
 
           <div className="mt-4 flex items-center justify-end gap-2">
