@@ -675,6 +675,14 @@ export async function runMarketIntelRefresh(options?: {
         group: competitorIds.has(source.id) ? "competitor" : "customer",
         fetchedAt: new Date().toISOString(),
         newsAt: existing?.newsAt,
+        /* THE WEBSITE COLUMN SURVIVES THIS PASS. This rotation rebuilds the
+           entry from scratch rather than mutating it, so anything it does
+           not name is dropped — which silently erased the site updates
+           collected minutes earlier by Pass 1b (caught by hand: gsk.com
+           returned four press releases to a direct probe while the stored
+           entry had none). Carried forward exactly like newsAt. */
+        ...(existing?.site ? { site: existing.site } : {}),
+        ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
       await applyDigest(entry);

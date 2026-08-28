@@ -46,7 +46,17 @@ const FALLBACK_COST_USD = 0.006;
  * than that and it is not an update, it is the archive.
  */
 const MAX_AGE_MS = 45 * 24 * 60 * 60 * 1000;
-const MAX_ITEMS = 6;
+/** Wider now that investor results and media statements count too. */
+const MAX_ITEMS = 8;
+/**
+ * A PAGE TITLE THAT NAMES NOTHING. Investor-relations templates title every
+ * release "Press Release Details" (caught in the browser on Amgen's card,
+ * where that was the whole headline). For these the model's own headline —
+ * written from that same result's snippet, so still about that page — is
+ * the only usable words there are.
+ */
+const GENERIC_TITLE =
+  /^(press release details?|news release details?|news details?|media (centre|center)?|newsroom|news|press releases?|investors?|investor relations|home|about us?)$/i;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -56,6 +66,7 @@ const RESPONSE_SCHEMA = {
       items: {
         type: "object",
         properties: {
+          headline: { type: "string" },
           summary: { type: "string" },
           sourceIndex: { type: "integer" },
         },
@@ -68,8 +79,19 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/**
+ * EVERY ROOM OF THE NEWSROOM, not just the press-release page (Anir,
+ * Aug 28, with four GSK links as the shape of it: financial reports,
+ * quarterly results, media statements, press releases — "these are just
+ * examples, everything should be tracked for every single company").
+ *
+ * Those four are the standard sections of a listed pharma site, so they
+ * are named explicitly here rather than left to chance: a quarterly result
+ * is exactly the kind of thing a rep should walk in knowing, and it never
+ * appears under "press releases".
+ */
 const SYSTEM_PROMPT =
-  "You read a company's OWN website and report what it has published about itself. From your search results pick only real updates the company posted: press releases, news items, product or service launches, partnerships, results, leadership appointments, event appearances, regulatory milestones. Never include navigation pages, contact or careers index pages, cookie or privacy notices, generic 'about us' copy, or product catalogue pages with no announcement in them. If nothing on the site is a real update, return an empty list; an empty list is a good answer. Plain text only, no markdown.";
+  "You read a company's OWN website and report what it has published about itself. From your search results pick only real updates the company posted, from ANY part of their site: press releases, media statements, newsroom items, investor and financial updates (quarterly results, half-year and annual results, financial reports, trading statements), product or service launches, partnerships, acquisitions, leadership appointments, regulatory approvals and filings, event appearances. Never include navigation pages, contact or careers index pages, cookie or privacy notices, generic 'about us' copy, or product catalogue pages with no announcement in them. If nothing on the site is a real update, return an empty list; an empty list is a good answer. Plain text only, no markdown.";
 
 /** "takeda.com" from anything a person might have typed into Website. */
 export function normalizeSiteDomain(raw: string | undefined | null): string | null {
@@ -118,7 +140,7 @@ export async function scrapeSiteUpdates(
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Recent updates published by ${source.name} on their own website ${domain}: press releases, announcements, launches, partnerships, appointments. For each one give a one-sentence summary and sourceIndex = the 1-based position of the search result it comes from. Prefer English-language pages when the site offers both.`,
+        content: `Recent updates published by ${source.name} on their own website ${domain}. Cover every section of their site: press releases, media statements, quarterly and annual financial results, investor updates, product launches, partnerships, leadership appointments, regulatory milestones. For each one give a one-sentence summary and sourceIndex = the 1-based position of the search result it comes from. Prefer English-language pages when the site offers both.`,
       },
     ],
     search_domain_filter: [domain],
@@ -169,13 +191,20 @@ export async function scrapeSiteUpdates(
         const hit = results[Number(item?.sourceIndex) - 1];
         const url = typeof hit?.url === "string" ? hit.url : null;
         // The page's OWN title, so the words and the link always match.
-        const title = String(hit?.title ?? "")
+        const raw = String(hit?.title ?? "")
           .replace(/\s*\|.*$/, "")
           .replace(/\s*[–-]\s*[^–-]{0,40}$/, (tail) =>
             /\b(news|press|release|newsroom)\b/i.test(tail) ? "" : tail
           )
           .replace(/\*+/g, "")
           .trim();
+        const modelHeadline = String(item?.headline ?? "")
+          .replace(/\*+/g, "")
+          .trim();
+        const title =
+          !raw || GENERIC_TITLE.test(raw) || raw.length < 12
+            ? modelHeadline || raw
+            : raw;
         if (!url || !title) continue;
         // THE CHECK THAT MAKES THIS SOURCE MEAN ANYTHING. Without it the
         // column would quietly become "news again, sometimes".
