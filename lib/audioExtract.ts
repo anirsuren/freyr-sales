@@ -33,17 +33,66 @@ const CHUNK_SECONDS = 45 * 60;
 /** A cut-off for a genuinely stuck ffmpeg, not a limit on the input. */
 const FFMPEG_TIMEOUT_MS = 15 * 60 * 1000;
 
+/**
+ * FINDING FFMPEG, WHICH IS HARDER THAN IT SOUNDS AND WAS THE WHOLE BUG.
+ *
+ * ffmpeg-static does not export a path; it COMPUTES one at load time from
+ * `path.join(__dirname, "ffmpeg")`. Inside a Next server bundle `__dirname` is
+ * the bundle's directory, not the package's, so the module cheerfully handed
+ * back a path to a file that has never existed there. `Boolean(path)` was
+ * true, ffmpeg was declared available, spawn failed, and the failure came back
+ * as the indistinguishable "no audio could be extracted from this file" —
+ * which the indexer then recorded as "this video has no readable text",
+ * permanently, for every video anyone had ever uploaded.
+ *
+ * So: try the candidates in order and return the first that is REALLY THERE.
+ * Never trust a computed path without looking at the disk.
+ *
+ *   1. FFMPEG_BIN — ffmpeg-static's own override, and the escape hatch if a
+ *      host ever wants to point at a system build.
+ *   2. Whatever the package computed, when it happens to be right (a plain
+ *      `node` process, where __dirname is the package).
+ *   3. node_modules, resolved from the working directory — the standalone
+ *      server's own layout, and where outputFileTracingIncludes puts it.
+ */
 function ffmpegPath(): string | null {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require("node:fs") as typeof import("node:fs");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require("node:path") as typeof import("node:path");
+
+  const candidates: (string | null | undefined)[] = [process.env.FFMPEG_BIN];
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return (require("ffmpeg-static") as string) || null;
+    candidates.push(require("ffmpeg-static") as string);
   } catch {
-    return null;
+    // The package itself may not be bundled; the path below still finds it.
   }
+  candidates.push(
+    path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg")
+  );
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      // An unreadable path is simply not the one.
+    }
+  }
+  return null;
 }
 
 export function audioExtractionAvailable(): boolean {
   return Boolean(ffmpegPath());
+}
+
+/** The reason extraction cannot run, or null when it can. Callers use this to
+ *  tell "our packaging is broken" from "this file has no sound in it". */
+export function audioExtractionProblem(): string | null {
+  return ffmpegPath()
+    ? null
+    : "the audio extractor (ffmpeg) is missing from this build";
 }
 
 function run(args: string[]): Promise<boolean> {

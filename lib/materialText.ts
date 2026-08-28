@@ -43,7 +43,61 @@ export type MaterialTextEntry = {
     text: string;
     contentDate?: string;
   }>;
+  /**
+   * WHAT WAS SAID, WITH ITS TIMINGS (Anir, Aug 28: "I should be able to see
+   * the transcript... it'll obviously be timestamped, kind of like a Zoom
+   * meeting"). Whisper reports segments, so they are kept as segments: the
+   * viewer runs them beside the video and a click on a line seeks to it.
+   * `text` above stays the flat join, because that is what the agent reads.
+   */
+  transcript?: MaterialTranscript;
+  /**
+   * WHY THERE IS NOTHING TO READ, WHEN THERE IS NOTHING.
+   *
+   * Empty text used to mean two very different things — "we held the bytes,
+   * we tried, and this file genuinely has no words" versus "we never got to
+   * try" — and the second was being recorded as the first, permanently. A
+   * demo video went in, Whisper answered 429 because the OpenAI account had
+   * no credits, and the file was marked unreadable forever with nobody told
+   * (Saras, Aug 28: "the videos aren't even working, even though you
+   * transcribe it").
+   *
+   * So a reason here means WE could not do our job, the file is fine, and it
+   * is worth trying again. No reason plus empty text means the file really
+   * has no words in it.
+   */
+  unreadableReason?: string;
 };
+
+export type TranscriptSource = "machine" | "owner" | "reconciled" | "edited";
+
+export type MaterialTranscript = {
+  segments: TranscriptSegment[];
+  source: TranscriptSource;
+  /** Seconds of audio, as the transcriber measured it. */
+  duration?: number;
+  /** Set only once a person has edited it, so the viewer can say whose words
+   *  these now are (Anir: "whoever uploaded it, or admins, should be able to
+   *  edit the video transcript"). */
+  editedBy?: string;
+  editedAt?: string;
+};
+
+export type TranscriptSegment = {
+  /** Seconds from the start of the recording. */
+  start: number;
+  end: number;
+  text: string;
+};
+
+/** The flat text the agent searches, rebuilt from segments. */
+export function transcriptToText(t: MaterialTranscript): string {
+  return t.segments
+    .map((s) => s.text.trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
 
 type TextIndex = Record<string, MaterialTextEntry>;
 

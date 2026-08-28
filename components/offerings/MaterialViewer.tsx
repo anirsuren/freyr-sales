@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronUp,
   Check,
+  Captions,
   Download,
   ExternalLink,
   Link2,
@@ -31,6 +32,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { PdfViewer } from "@/components/offerings/PdfViewer";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
+import { TranscriptPanel } from "@/components/offerings/TranscriptPanel";
 import { askFreyrAgent } from "@/lib/agentEvents";
 import {
   ACCESS_LEVEL_META,
@@ -299,6 +301,19 @@ export function MaterialViewer({
   // player on black instead, like every native video lightbox.
   const isVideo = isNative && ["mp4", "webm", "mov"].includes(ext);
   const isText = isNative && ["txt", "md", "csv"].includes(ext);
+
+  /* THE TRANSCRIPT RIDES BESIDE THE RECORDING (Anir, Aug 28: "it'll keep the
+     video, but it'll just move it to the left, like shrink it… on the right,
+     it'll be the transcript"). Open by default on a video, because the reason
+     he asked was that he could not find the transcript at all.
+
+     `videoTime` is state so the spoken line can highlight; `seekRef` is a ref
+     so a click on a line can call INTO the player without lifting playback
+     state up and re-rendering the video on every tick. */
+  const [showTranscript, setShowTranscript] = useState(true);
+  const [videoTime, setVideoTime] = useState(0);
+  const seekRef = useRef<((seconds: number) => void) | null>(null);
+  const transcriptOpen = isVideo && showTranscript && !embed;
 
   // Keep the assistant aware of the exact file on screen without forcing the
   // chat panel open. The dock remains available above this full-screen viewer;
@@ -842,6 +857,26 @@ export function MaterialViewer({
               to open the thing"). The address bar already carries it now, but
               nobody should have to know that — this hands it over, and says so
               for two seconds. */}
+          {/* THE WAY BACK TO THE TRANSCRIPT. Closing the panel used to be a
+              one-way door, and a transcript nobody can reopen is a transcript
+              nobody can find — the complaint that started this. */}
+          {isVideo && !embed && (
+            <button
+              type="button"
+              onClick={() => setShowTranscript((v) => !v)}
+              title={showTranscript ? "Hide the transcript" : "Show the transcript"}
+              aria-label={showTranscript ? "Hide the transcript" : "Show the transcript"}
+              aria-pressed={showTranscript}
+              className={`hidden h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] font-semibold transition-colors lg:inline-flex ${
+                showTranscript
+                  ? "bg-blue-light text-blue-primary"
+                  : "text-text-tertiary hover:bg-[var(--surface)] hover:text-blue-primary"
+              }`}
+            >
+              <Captions size={16} strokeWidth={1.9} />
+              Transcript
+            </button>
+          )}
           {!standalone && (
             <button
               type="button"
@@ -923,7 +958,12 @@ export function MaterialViewer({
           ref={scroller}
           className={`material-scroll h-full rounded-xl border border-border-light ${
             isVideo
-              ? "overflow-auto bg-black"
+              ? /* With the transcript open the black belongs to the PLAYER,
+                   not to the whole pane — otherwise the panel reads as
+                   floating on top of the video instead of sitting beside it. */
+                transcriptOpen
+                ? "overflow-hidden bg-[var(--surface)]"
+                : "overflow-auto bg-black"
               : ext === "pdf"
                 ? "overflow-hidden bg-[#202124]"
                 : sheets
@@ -1024,7 +1064,36 @@ export function MaterialViewer({
               className="h-full min-h-[calc(100vh-8rem)] w-full rounded-lg bg-white"
             />
           )}
-          {isVideo && <VideoPlayer src={inlineUrl} label={currentLabel} showTitle={!embed} />}
+          {isVideo && (
+            <div className={transcriptOpen ? "flex h-full w-full gap-3 p-3" : "contents"}>
+              <div
+                className={
+                  transcriptOpen
+                    ? "flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-black"
+                    : "contents"
+                }
+              >
+                <VideoPlayer
+                  src={inlineUrl}
+                  label={currentLabel}
+                  showTitle={!embed}
+                  onTime={setVideoTime}
+                  seekRef={seekRef}
+                />
+              </div>
+              {transcriptOpen && (
+                <div className="hidden h-full w-[340px] shrink-0 lg:block xl:w-[400px]">
+                  <TranscriptPanel
+                    offeringId={offeringId}
+                    path={currentPath}
+                    currentTime={videoTime}
+                    onSeek={(t) => seekRef.current?.(t)}
+                    onClose={() => setShowTranscript(false)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={inlineUrl} alt={currentLabel} className="mx-auto max-h-[68vh] rounded-lg" />

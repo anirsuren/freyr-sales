@@ -1,7 +1,12 @@
 import "server-only";
 
-import { extractAudioParts } from "./audioExtract";
-import { saveMaterialText } from "./materialText";
+import { audioExtractionProblem, extractAudioParts } from "./audioExtract";
+import {
+  saveMaterialText,
+  transcriptToText,
+  type MaterialTranscript,
+  type TranscriptSegment,
+} from "./materialText";
 
 /**
  * VIDEOS GET TRANSCRIBED, AND AN OWNER'S OWN TRANSCRIPT MAKES THEM BETTER.
@@ -58,6 +63,15 @@ export type TranscribeOutcome = {
   reconciled: boolean;
   words: number;
   reason?: string;
+  /**
+   * "blocked" means we never got a verdict on this file — no key, no credits,
+   * no ffmpeg, the API refused. The file is fine and this is worth retrying,
+   * so callers must NOT record it as unreadable.
+   * "silent" means the audio was transcribed and there were genuinely no
+   * words in it. That is an answer, and asking again gets the same one.
+   */
+  failure?: "blocked" | "silent";
+  transcript?: MaterialTranscript;
 };
 
 export function transcriptionConfigured(): boolean {
@@ -71,67 +85,157 @@ export function isTranscribableFile(filename: string): boolean {
   );
 }
 
-/** One call to Whisper. Returns the plain text, or null. */
+export type SpeechResult =
+  | { ok: true; segments: TranscriptSegment[]; duration: number }
+  | { ok: false; blocked: true; reason: string }
+  | { ok: false; blocked: false; reason: string };
+
+/**
+ * Audio in, timed segments out.
+ *
+ * It returns a RESULT rather than null-or-text because the caller has to tell
+ * "there was nothing said" apart from "we could not ask" — those two used to
+ * arrive as the same `null` and got written down as the same permanent answer.
+ */
 export async function speechToText(
   bytes: Buffer,
   filename: string
-): Promise<string | null> {
+): Promise<SpeechResult> {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
+  if (!key)
+    return { ok: false, blocked: true, reason: "OPENAI_API_KEY is not set" };
 
   // Strip the picture and, if the audio is still long, cut it into parts.
   // This is what removes the size ceiling; see lib/audioExtract.ts.
   const parts = await extractAudioParts(bytes, filename);
   if (!parts.length) {
-    console.warn(`[transcribe] no audio could be extracted from ${filename}`);
-    return null;
+    const why = audioExtractionProblem() ?? "no audio track in this file";
+    console.warn(`[transcribe] no audio from ${filename}: ${why}`);
+    // A missing ffmpeg is our problem; a silent file is the file's.
+    return audioExtractionProblem()
+      ? { ok: false, blocked: true, reason: why }
+      : { ok: false, blocked: false, reason: why };
   }
 
-  const pieces: string[] = [];
+  const segments: TranscriptSegment[] = [];
+  let offset = 0;
+  let duration = 0;
+  let blocked: string | null = null;
+
   for (const [index, part] of parts.entries()) {
-    const text = await whisperOnce(key, part.bytes, part.name);
-    if (text) pieces.push(text);
-    else
+    const heard = await whisperOnce(key, part.bytes, part.name);
+    if (!heard.ok) {
+      // One refused part means the rest will refuse too (a bad key, an empty
+      // balance), so stop rather than burn the whole file against it.
+      blocked = heard.reason;
       console.error(
-        `[transcribe] part ${index + 1}/${parts.length} of ${filename} returned nothing`
+        `[transcribe] part ${index + 1}/${parts.length} of ${filename}: ${heard.reason}`
       );
+      break;
+    }
+    /* Each part was cut from the same recording, so its timings restart at
+       zero. Shifting them by everything already transcribed is what keeps a
+       four-hour recording's timestamps true at the end. */
+    for (const seg of heard.segments)
+      segments.push({
+        start: seg.start + offset,
+        end: seg.end + offset,
+        text: seg.text,
+      });
+    offset += heard.duration;
+    duration += heard.duration;
   }
+
+  if (blocked && !segments.length)
+    return { ok: false, blocked: true, reason: blocked };
   if (parts.length > 1)
-    console.log(
-      `[transcribe] ${filename}: ${pieces.length}/${parts.length} parts transcribed`
-    );
-  const joined = pieces.join("\n").trim();
-  return joined || null;
+    console.log(`[transcribe] ${filename}: ${segments.length} segments`);
+  if (!segments.length)
+    return { ok: false, blocked: false, reason: "no speech in the audio" };
+  return { ok: true, segments, duration };
 }
 
-/** A single Whisper request. Every caller sends an already-small audio part. */
+type WhisperReply =
+  | { ok: true; segments: TranscriptSegment[]; duration: number }
+  | { ok: false; reason: string };
+
+/**
+ * A single Whisper request. Every caller sends an already-small audio part.
+ *
+ * `verbose_json` with segment granularity, not plain text, because the
+ * transcript is shown beside the video and every line needs the moment it was
+ * said (Anir: "it'll obviously be timestamped, kind of like a Zoom meeting").
+ */
 async function whisperOnce(
   key: string,
   bytes: Buffer,
   filename: string
-): Promise<string | null> {
+): Promise<WhisperReply> {
   try {
     const form = new FormData();
     form.append("file", new Blob([new Uint8Array(bytes)]), filename);
     form.append("model", "whisper-1");
+    form.append("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "segment");
     const res = await fetch(WHISPER_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
       body: form,
     });
     if (!res.ok) {
-      console.error(
-        `[transcribe] whisper ${res.status} for ${filename}: ${(await res.text()).slice(0, 200)}`
-      );
-      return null;
+      const body = (await res.text()).slice(0, 400);
+      console.error(`[transcribe] whisper ${res.status} for ${filename}: ${body}`);
+      return { ok: false, reason: whisperReason(res.status, body) };
     }
-    const data = (await res.json()) as { text?: string };
-    const text = (data.text || "").trim();
-    return text || null;
+    const data = (await res.json()) as {
+      text?: string;
+      duration?: number;
+      segments?: { start?: number; end?: number; text?: string }[];
+    };
+    const segments = (data.segments ?? [])
+      .map((s) => ({
+        start: Number(s.start) || 0,
+        end: Number(s.end) || 0,
+        text: (s.text || "").trim(),
+      }))
+      .filter((s) => s.text);
+    if (segments.length)
+      return {
+        ok: true,
+        segments,
+        duration: Number(data.duration) || segments[segments.length - 1].end,
+      };
+    /* Older responses, and very short clips, can come back as one blob with
+       no segment list. One segment covering the whole part is still a usable
+       transcript, so it is not treated as a failure. */
+    const flat = (data.text || "").trim();
+    if (flat)
+      return {
+        ok: true,
+        segments: [{ start: 0, end: Number(data.duration) || 0, text: flat }],
+        duration: Number(data.duration) || 0,
+      };
+    return { ok: false, reason: "whisper returned no words" };
   } catch (error) {
     console.error("[transcribe] whisper call failed:", error);
-    return null;
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "the transcriber could not be reached",
+    };
   }
+}
+
+/** A sentence a person can act on, not an HTTP code. */
+function whisperReason(status: number, body: string): string {
+  if (/insufficient_quota|credit_balance_exhausted|no credits/i.test(body))
+    return "the OpenAI account has no credits left, so nothing can be transcribed until it is topped up";
+  if (status === 401)
+    return "the OpenAI key was rejected";
+  if (status === 429)
+    return "the transcriber is rate limited right now";
+  if (status >= 500)
+    return "the transcriber is down right now";
+  return `the transcriber refused this file (${status})`;
 }
 
 /**
@@ -159,6 +263,10 @@ export async function reconcileTranscripts(
         "- Keep anything the machine captured that the owner's copy is missing.",
         "- Never summarise, never paraphrase, never invent a line neither has.",
         "- Keep the speaking order and any speaker labels that exist.",
+        "- The machine transcript is NUMBERED, one line per line. Return exactly",
+        "  the same count, in the same order, each still numbered the same way.",
+        "  Never merge two lines, never split one, never drop one. If a line has",
+        "  nothing to correct, return it unchanged.",
       ].join("\n"),
       `MACHINE TRANSCRIPT:\n${machine}\n\n---\n\nOWNER'S TRANSCRIPT:\n${owner}`
     );
@@ -194,36 +302,88 @@ export async function transcribeMaterial(args: {
     words: 0,
   };
   if (process.env.NODE_ENV !== "production" && !args.force)
-    return { ...idle, reason: "transcription is production-only" };
+    return {
+      ...idle,
+      failure: "blocked",
+      reason: "transcription is production-only",
+    };
   if (!transcriptionConfigured())
-    return { ...idle, reason: "OPENAI_API_KEY is not set" };
+    return { ...idle, failure: "blocked", reason: "OPENAI_API_KEY is not set" };
   if (!isTranscribableFile(args.filename))
     return { ...idle, reason: "no audio track expected in this file" };
 
-  const machine = await speechToText(args.bytes, args.filename);
-  if (!machine) return { ...idle, reason: "speech-to-text returned nothing" };
 
+  const heard = await speechToText(args.bytes, args.filename);
+  if (!heard.ok)
+    return {
+      ...idle,
+      failure: heard.blocked ? "blocked" : "silent",
+      reason: heard.reason,
+    };
+
+  /* THE OWNER'S OWN COPY WINS ON NAMES. Speech recognition mangles exactly
+     the words that matter here — Freya.GRR-PAC, eCTD, a customer's name — and
+     the owner's copy usually has them right. Only the words change; the
+     timings stay the machine's, because only the machine measured them. */
   const owner = (args.ownerTranscript || "").trim();
-  let finalText = machine;
-  let reconciled = false;
+  let segments = heard.segments;
+  let source: MaterialTranscript["source"] = "machine";
   if (owner.length > 40) {
-    const merged = await reconcileTranscripts(machine, owner);
+    const merged = await reconcileSegments(segments, owner);
     if (merged) {
-      finalText = merged;
-      reconciled = true;
+      segments = merged;
+      source = "reconciled";
     }
   }
 
+  const transcript: MaterialTranscript = {
+    segments,
+    source,
+    duration: heard.duration,
+  };
+  const finalText = transcriptToText(transcript);
   const words = finalText.match(/\S+/g)?.length ?? 0;
   await saveMaterialText(args.path, {
     offeringId: args.offeringId,
     filename: args.filename,
     text: finalText,
+    bytes: args.bytes.length,
+    transcript,
     extractedAt: new Date().toISOString(),
   }).catch(() => undefined);
 
   console.log(
-    `[transcribe] ${args.filename}: ${words} words${reconciled ? ", reconciled with the owner's transcript" : ""}`
+    `[transcribe] ${args.filename}: ${words} words in ${segments.length} segments${source === "reconciled" ? ", reconciled with the owner's transcript" : ""}`
   );
-  return { transcribed: true, reconciled, words };
+  return { transcribed: true, reconciled: source === "reconciled", words, transcript };
+}
+
+/**
+ * Reconcile the machine's timed segments against the owner's flat transcript.
+ *
+ * The timings are never up for negotiation — the owner's copy has none — so
+ * Claude is given the numbered lines and asked to return the same lines with
+ * the same numbering, corrected. A reply that changes the line count is
+ * discarded rather than guessed at: a transcript whose timings have slipped is
+ * worse than one with a misspelled product name.
+ */
+async function reconcileSegments(
+  segments: TranscriptSegment[],
+  owner: string
+): Promise<TranscriptSegment[] | null> {
+  const numbered = segments.map((s, i) => `${i + 1}. ${s.text}`).join("\n");
+  const merged = await reconcileTranscripts(numbered, owner);
+  if (!merged) return null;
+  const lines = merged
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => l.replace(/^\d+\.\s*/, ""));
+  if (lines.length !== segments.length) {
+    console.warn(
+      `[transcribe] reconciliation returned ${lines.length} lines for ${segments.length} segments; keeping the machine copy`
+    );
+    return null;
+  }
+  return segments.map((s, i) => ({ ...s, text: lines[i] }));
 }

@@ -44,11 +44,20 @@ export function VideoPlayer({
   src,
   label,
   showTitle = true,
+  onTime,
+  seekRef,
 }: {
   src: string;
   label: string;
   /** Off in the hover peek — the row right under the card already names it. */
   showTitle?: boolean;
+  /** Ticks as the recording plays, so a transcript beside it can follow along. */
+  onTime?: (seconds: number) => void;
+  /** Filled with a seek function, so clicking a transcript line jumps here.
+   *  A ref rather than a prop callback: the transcript needs to CALL the
+   *  player, and lifting playback state up would re-render the video on every
+   *  tick. */
+  seekRef?: { current: ((seconds: number) => void) | null };
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const vid = useRef<HTMLVideoElement>(null);
@@ -78,6 +87,22 @@ export function VideoPlayer({
     }, 2400);
   }, []);
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+
+  /* Hand the caller a way in. Clicking a transcript line should behave like
+     clicking the scrubber: jump there and keep playing if it already was. */
+  useEffect(() => {
+    if (!seekRef) return;
+    seekRef.current = (seconds: number) => {
+      const v = vid.current;
+      if (!v) return;
+      v.currentTime = Math.max(0, seconds);
+      setTime(v.currentTime);
+      void v.play().catch(() => undefined);
+    };
+    return () => {
+      seekRef.current = null;
+    };
+  }, [seekRef]);
 
   // Opening or reloading a material is a read action, never an instruction to
   // start playback. Some browsers restore media state during reload, so pause
@@ -172,7 +197,10 @@ export function VideoPlayer({
         onDoubleClick={fullscreen}
         onPlay={() => { setPlaying(true); poke(); }}
         onPause={() => { setPlaying(false); setShowControls(true); }}
-        onTimeUpdate={(e) => { if (!scrubbing) setTime(e.currentTarget.currentTime); }}
+        onTimeUpdate={(e) => {
+          if (!scrubbing) setTime(e.currentTarget.currentTime);
+          onTime?.(e.currentTarget.currentTime);
+        }}
         onDurationChange={(e) => setDuration(e.currentTarget.duration)}
         onProgress={(e) => {
           const b = e.currentTarget.buffered;

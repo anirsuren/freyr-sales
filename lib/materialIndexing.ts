@@ -149,6 +149,7 @@ export async function indexStoredMaterial(args: {
      * Last, and awaited inside the same try, because it is the slowest step
      * and everything above it is worth having even if this fails.
      */
+    let blockedReason: string | undefined;
     if (!readable && isTranscribableFile(filename)) {
       const heard = await transcribeMaterial({
         offeringId,
@@ -159,6 +160,10 @@ export async function indexStoredMaterial(args: {
       if (heard?.transcribed) {
         readable = true;
         words = heard.words;
+      } else if (heard?.failure === "blocked") {
+        blockedReason = heard.reason;
+      } else if (!heard) {
+        blockedReason = "the transcriber crashed on this file";
       }
     }
 
@@ -171,6 +176,14 @@ export async function indexStoredMaterial(args: {
      * were in hand and extraction and transcription both ran and found
      * nothing — asking again gets the same answer. Record it, with the size,
      * so the row can say "no readable text" instead of pretending forever.
+     *
+     * A BLOCKED TRANSCRIPTION IS NOT THAT ANSWER (Saras, Aug 28: "the videos
+     * aren't even working, even though you transcribe it"). Whisper refused
+     * every video because the OpenAI account had run out of credit, and each
+     * one was filed here as "no readable text" — a permanent verdict on a
+     * perfectly good recording, recorded without anyone being told. When we
+     * were the thing that failed, the reason is stored INSTEAD, so the file
+     * reads as "not transcribed yet, here is why" and can be retried.
      */
     if (!readable) {
       await saveMaterialText(path, {
@@ -179,6 +192,7 @@ export async function indexStoredMaterial(args: {
         text: "",
         bytes: bytes.length,
         extractedAt: new Date().toISOString(),
+        ...(blockedReason ? { unreadableReason: blockedReason } : {}),
       }).catch(() => undefined);
     }
   } catch {

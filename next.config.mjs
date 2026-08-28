@@ -10,6 +10,25 @@ const nextConfig = {
   // refuses standalone output — so only the real build gets it.
   output: process.env.NEXT_DIST_DIR ? undefined : "standalone",
   outputFileTracingRoot: process.cwd(),
+  /**
+   * ffmpeg-static picks its binary at RUNTIME — `path.join(__dirname,
+   * "ffmpeg")` — so Next's tracer copies the wrapper module into
+   * .next/standalone and leaves the 78MB executable behind. The Dockerfile
+   * ships only .next/standalone, so the container had a transcription
+   * pipeline with no transcoder in it. Naming the file here is what puts it
+   * in the image.
+   */
+  outputFileTracingIncludes: {
+    "/api/offerings/**": ["./node_modules/ffmpeg-static/ffmpeg"],
+  },
+  /**
+   * And keep it OUT of the server bundle. Bundled, ffmpeg-static computes its
+   * binary path from a `__dirname` that points at the bundle rather than at
+   * the package, so it returned a path to nothing — which is how every video
+   * ever uploaded came back "no readable text". Left external, it is required
+   * at runtime from real node_modules and computes the right path itself.
+   */
+  serverExternalPackages: ["ffmpeg-static"],
   // Disabled so the streaming pipeline effect on the loading page runs exactly
   // once in dev (React StrictMode double-invokes effects, which would fire the
   // SSE pipeline twice).
