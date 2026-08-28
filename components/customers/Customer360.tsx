@@ -107,11 +107,36 @@ export function Customer360({
   bands,
   heading,
   emptyLine,
+  bandActions,
+  chromeless = false,
+  forceKey,
 }: {
   company: string;
   bands: Customer360Band[];
   heading?: string;
   emptyLine?: string;
+  /**
+   * A control belonging to ONE area, keyed by band. The Team tab needs a way
+   * to say who is on the record, and that control has no business appearing
+   * over Submissions. The page supplies it because the page knows the record;
+   * this component only knows where to put it.
+   */
+  bandActions?: Record<string, React.ReactNode>;
+  /**
+   * ONE PAGE, ONE TAB ROW (Suren, Aug 28: "all the tabs have to be on one
+   * line... I think he just doesn't want there to be a box, bro... maybe just
+   * combine them all and make it one big thing, because there's no point
+   * having two tabs. The entire thing should be just one big page").
+   *
+   * The customer page had two tab rows stacked — this card's, and the page's
+   * own Digital components / Activity — inside a box, above a second box.
+   * Chromeless drops the card and the heading and lets the page own the row,
+   * so a band renders as a full-width section of one page rather than a blurb
+   * in a panel.
+   */
+  chromeless?: boolean;
+  /** The page is driving which band shows. */
+  forceKey?: string;
 }) {
   const live = bands.filter((b) => b.count > 0);
   /**
@@ -156,21 +181,33 @@ export function Customer360({
      opening a page still lands on something worth reading. */
   const ordered = bands;
   const active =
+    (forceKey ? ordered.find((b) => b.key === forceKey) : null) ??
     ordered.find((b) => b.key === activeKey) ??
     live[0] ??
     (ordered.length ? ordered[0] : null);
+  /* Which columns this band actually fills in. */
+  const anyAmount = !!active?.items.some((i) => i.amount !== undefined && i.amount > 0);
+  const anyWhen = !!active?.items.some((i) => !!i.when);
 
   return (
-    <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+    <section
+      className={
+        chromeless
+          ? ""
+          : "rounded-xl border border-border-light bg-white p-5 shadow-card"
+      }
+    >
+      {!chromeless && (
       <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
         <Briefcase size={15} strokeWidth={2} className="text-blue-primary" />
         {heading ?? `Everything on ${company}`}
         <InfoHint text="Every module that has something on this account, counted in one place: deals, submissions, presentations, meetings, contacts, leads and contracts. Each tab shows that area; Open jumps to the module that owns it." />
       </h2>
+      )}
       {/* The strip below counts every area, so restating "1 of 7 areas have
           something here" underneath it was a second way of saying the same
           thing. Only the genuinely empty account still needs a sentence. */}
-      {live.length === 0 && (
+      {!chromeless && live.length === 0 && (
         <p className="mt-0.5 text-[12.5px] text-text-secondary">
           {emptyLine ?? "Nothing is connected to this account yet."}
         </p>
@@ -187,6 +224,7 @@ export function Customer360({
               with real spacing. Same size and rhythm as every other tab row in
               the app now: the count stays a bolder weight beside the label so
               the number is still the thing you scan for. */}
+                    {chromeless ? null : (
           <div role="tablist" className="mt-3 flex flex-wrap items-end gap-x-7 gap-y-1.5 border-b border-border-light">
             {ordered.map((b) => {
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
@@ -232,15 +270,67 @@ export function Customer360({
                 against the bottom-right corner with nothing to align to.
                 Here it lands in the empty right of the tab strip, which is
                 also space the card was not using. */}
-            {active.href && (
-              <Link
-                href={active.href}
-                className="-mb-px ml-auto border-b-2 border-transparent pb-2.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
-              >
-                {active.hrefLabel ?? "Open"} &rsaquo;
-              </Link>
-            )}
+            <span className="-mb-px ml-auto flex items-center gap-3 border-b-2 border-transparent pb-2">
+              {bandActions?.[active.key]}
+              {active.href && (
+                <Link
+                  href={active.href}
+                  className="text-[12.5px] font-semibold text-blue-primary hover:underline"
+                >
+                  {active.hrefLabel ?? "Open"} &rsaquo;
+                </Link>
+              )}
+            </span>
           </div>
+          )}
+
+          {/* THE WHOLE THING, NOT A BLURB (Suren, Aug 28: "it has to be the
+              whole thing, bro, visually — numbers, stats, everything, not just
+              a little blurb").
+
+              A tab that owns the page needs a head on it: what this area is,
+              how much of it there is, and what it is worth, at the size the
+              rest of the app writes a number. Two thin rows under a tab strip
+              was the old panel doing a summary's job on a page that is no
+              longer a summary. */}
+          {chromeless && (
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+              <div className="flex items-end gap-6">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[30px] font-semibold leading-none tracking-[-0.02em] tnum text-text-primary">
+                    {active.count}
+                  </span>
+                  <span className="text-[13px] text-text-secondary">
+                    {active.label.toLowerCase()}
+                  </span>
+                </span>
+                {active.total !== undefined && active.total > 0 && (
+                  <span className="flex items-baseline gap-2">
+                    <span
+                      className="text-[30px] font-semibold leading-none tracking-[-0.02em] tnum"
+                      style={{ color: active.color }}
+                    >
+                      {formatMoney(active.total)}
+                    </span>
+                    <span className="text-[13px] text-text-secondary">
+                      in value
+                    </span>
+                  </span>
+                )}
+              </div>
+              <span className="flex items-center gap-3">
+                {bandActions?.[active.key]}
+                {active.href && (
+                  <Link
+                    href={active.href}
+                    className="text-[12.5px] font-semibold text-blue-primary hover:underline"
+                  >
+                    {active.hrefLabel ?? "Open"} &rsaquo;
+                  </Link>
+                )}
+              </span>
+            </div>
+          )}
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
@@ -484,6 +574,136 @@ export function Customer360({
               <p className="mt-1 py-6 text-center text-[12.5px] text-text-secondary">
                 Nothing on {active.label.toLowerCase()} for {company} yet.
               </p>
+            ) : chromeless ? (
+              /* A REAL TABLE, ONE ROW PER RECORD (Suren, Aug 28: "he wants it
+                 in probably one row, like a table format, for everything, and
+                 you have to make it look at the goals — look how full those
+                 rows are. That table is exactly like that for every single
+                 one").
+
+                 The two-column list below is a SUMMARY, and it is right where
+                 it still is a summary: inside an expanded deal row, or on a
+                 card. Here the band owns the whole page, so it gets the shape
+                 every other full page in this app uses — a header row, one
+                 record per line, the facts in columns that line up down the
+                 table, and no cap, because the page is not borrowing space
+                 from anything. */
+              <div className="overflow-x-auto">
+                {/* A COLUMN NOBODY IN THIS BAND FILLS IN IS NOT A COLUMN.
+                    A team has no value and no date; a contract has both. Drawing
+                    every column for every band gave a table of em-dashes, which
+                    is the opposite of "look how full those rows are". */}
+                <table className="w-full min-w-[480px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-border-light">
+                      <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        {/* "Opportunities" is not "Opportunitie". Strip the
+                            plural properly, and leave anything that does not
+                            end in one alone. */}
+                        {active.label.endsWith("ies")
+                          ? `${active.label.slice(0, -3)}y`
+                          : active.label.endsWith("s")
+                            ? active.label.slice(0, -1)
+                            : active.label}
+                      </th>
+                      <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        Detail
+                      </th>
+                      {anyAmount && (
+                        <th className="pb-2 pr-4 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          Value
+                        </th>
+                      )}
+                      {anyWhen && (
+                        <th className="pb-2 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          When
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {active.items.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b border-border-light transition-colors last:border-b-0 hover:bg-surface/60"
+                      >
+                        <td className="py-3 pr-4">
+                          <span className="flex items-center gap-2.5">
+                            {item.face ? (
+                              <Avatar
+                                name={item.face}
+                                className="h-7 w-7 shrink-0 text-[9px]"
+                              />
+                            ) : item.logo ? (
+                              <CompanyLogo
+                                name={item.logo}
+                                className="h-7 w-7 shrink-0 text-[8px]"
+                              />
+                            ) : (
+                              <span
+                                aria-hidden="true"
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                                style={{
+                                  background: `${item.tone ?? active.color}1A`,
+                                  color: item.tone ?? active.color,
+                                }}
+                              >
+                                <Package size={14} strokeWidth={2.2} />
+                              </span>
+                            )}
+                            <span className="min-w-0">
+                              {item.href ? (
+                                <Link
+                                  href={item.href}
+                                  className="block truncate text-[13.5px] font-semibold text-text-primary hover:text-blue-primary"
+                                >
+                                  {item.title}
+                                </Link>
+                              ) : (
+                                <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                                  {item.title}
+                                </span>
+                              )}
+                              {item.code && (
+                                <span className="mt-0.5 block text-[10.5px] font-bold tnum text-text-tertiary">
+                                  {item.code}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
+                          {item.sub || "—"}
+                        </td>
+                        {anyAmount && (
+                          <td className="py-3 pr-4 text-right">
+                            {item.amount !== undefined && item.amount > 0 ? (
+                              <b
+                                className="text-[13px] font-semibold tnum"
+                                style={{ color: active.color }}
+                              >
+                                {formatMoney(item.amount)}
+                              </b>
+                            ) : (
+                              <span className="text-[12.5px] text-text-tertiary">—</span>
+                            )}
+                          </td>
+                        )}
+                        {anyWhen && (
+                          <td className="py-3 text-right text-[12.5px] tnum text-text-secondary">
+                            {item.when ? formatDate(item.when) : "—"}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {active.items.length === 0 && (
+                  <p className="py-10 text-center text-[13px] text-text-secondary">
+                    {active.empty}
+                  </p>
+                )}
+              </div>
             ) : (
             /* TWO COLUMNS ON A WIDE CARD (Anir, Aug 28: "theres so much space
                to the right ur not taking advantage of"). Two deals used to

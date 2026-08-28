@@ -1,5 +1,8 @@
 "use client";
 
+import { Customer360 } from "@/components/customers/Customer360";
+import type { Customer360Band } from "@/lib/customer360Shared";
+import { formatMoney as fmtMoney } from "@/lib/pipeline";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -179,12 +182,24 @@ export function CustomerTabs({
   fdlComponents = [],
   canEditComponents = false,
   includeDemoTeam,
+  bands = [],
+  bandActions,
 }: {
   customer: Customer;
   contacts: Contact[];
   sessions: PitchSession[];
   interactions: Interaction[];
   includeDemoTeam: boolean;
+  /**
+   * THE CONNECTIONS, AS TABS ON THIS PAGE'S OWN ROW (Suren, Aug 28: "all the
+   * tabs have to be on one line... there's no point having two tabs. The
+   * entire thing should be just one big page").
+   *
+   * They used to be a second tab row inside a card above this one. Same tabs,
+   * same panels, one row.
+   */
+  bands?: Customer360Band[];
+  bandActions?: Record<string, React.ReactNode>;
   // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
   // offerings applicable to this customer's type + the ones already in use,
   // serialized by the server page for the Offerings tab.
@@ -227,6 +242,10 @@ export function CustomerTabs({
     try {
       const wanted = new URLSearchParams(window.location.search).get("tab");
       if (wanted === "ask") window.dispatchEvent(new CustomEvent("freyr:ask-agent"));
+      /* A connection tab is a real tab now, so its deep link has to survive a
+         reload like any other — the row writes ?tab=band:meetings and the page
+         has to read it back. */
+      else if (wanted?.startsWith("band:")) setTab(wanted);
       else if (
         wanted &&
         TABS.some((t) => t.key === wanted) &&
@@ -291,10 +310,17 @@ export function CustomerTabs({
     try {
       wanted = new URLSearchParams(window.location.search).get("tab");
     } catch {}
+    /* A CONNECTION TAB IS A VISIBLE TAB TOO. This reset only recognised the
+       old TABS list, so it fell back to Overview and quietly overwrote the
+       deep link the effect above had just honoured — ?tab=band:team opened on
+       Digital components. Found in the browser, Aug 28: the first effect was
+       right and this one undid it a tick later. */
     const visible = (key: string | null) =>
       !!key &&
-      TABS.some((t) => t.key === key) &&
-      (includeDemoTeam || REAL_MODE_TABS.has(key));
+      (key.startsWith("band:")
+        ? bands.some((b) => `band:${b.key}` === key)
+        : TABS.some((t) => t.key === key) &&
+          (includeDemoTeam || REAL_MODE_TABS.has(key)));
     setTabState(
       visible(wanted) ? (wanted as string) : includeDemoTeam ? "overview" : "components"
     );
@@ -682,11 +708,37 @@ export function CustomerTabs({
     >
       <div>
         {/* Tabs */}
+        {/* ONE LINE, SCROLLED — never wrapped (Suren, Aug 28: "all the tabs
+            have to be on one line... obviously you have to scroll left and
+            right to click on it"). Wrapping to a second row is what made the
+            page read as two tab systems in the first place. */}
         <div
           role="tablist"
           aria-label="Account sections"
-          className="flex gap-8 border-b border-border-light mb-6"
+          className="mb-6 flex flex-nowrap gap-8 overflow-x-auto border-b border-border-light [scrollbar-width:thin]"
         >
+          {bands.map((b) => (
+            <button
+              key={`band:${b.key}`}
+              role="tab"
+              aria-selected={tab === `band:${b.key}`}
+              onClick={() => setTab(`band:${b.key}`)}
+              className={cn(
+                "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+                tab === `band:${b.key}`
+                  ? "border-blue-primary font-semibold text-blue-primary"
+                  : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+              )}
+            >
+              {b.label}
+              <b className="tnum font-semibold">{b.count}</b>
+              {b.total !== undefined && b.total > 0 && (
+                <span className="tnum text-[12px] text-text-secondary">
+                  · {fmtMoney(b.total)}
+                </span>
+              )}
+            </button>
+          ))}
           {TABS.filter(
             (t) => includeDemoTeam || REAL_MODE_TABS.has(t.key)
           ).map((t) => (
@@ -696,7 +748,7 @@ export function CustomerTabs({
               aria-selected={tab === t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "pb-3 -mb-px border-b-2 text-[14px] transition-colors",
+                "shrink-0 whitespace-nowrap pb-3 -mb-px border-b-2 text-[14px] transition-colors",
                 tab === t.key
                   ? "border-blue-primary text-blue-primary font-semibold"
                   : "border-transparent text-text-secondary hover:text-text-primary font-medium"
@@ -709,6 +761,15 @@ export function CustomerTabs({
 
         {/* Keyed on `tab` so the panel re-mounts and animates on every switch. */}
         <div key={tab} className="tab-panel">
+        {tab.startsWith("band:") && (
+          <Customer360
+            chromeless
+            forceKey={tab.slice(5)}
+            company={customer.company_name}
+            bands={bands}
+            bandActions={bandActions}
+          />
+        )}
         {tab === "overview" && (
           <div className="space-y-6">
             {/* Identity FIRST (Anir's audit): who this account IS leads the

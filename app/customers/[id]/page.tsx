@@ -1,4 +1,6 @@
 import { orderBands } from "@/lib/connectionOrder";
+import { readRecordTeams, teamFor } from "@/lib/recordTeams";
+import { RecordTeamButton } from "@/components/team/RecordTeamButton";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -209,6 +211,7 @@ export default async function CustomerDetailPage({
     });
   }
   const bands360 = orderBands(c360);
+  const recordTeams = await readRecordTeams();
 
 
   return (
@@ -301,20 +304,22 @@ export default async function CustomerDetailPage({
         </div>
       </div>
 
-      {/* EVERYTHING CONNECTED TO THIS ACCOUNT, ABOVE THE TABS (Suren, Aug 25:
-          "one customer perspective will get everything, one shot").
-
-          Deliberately not inside a tab. Real mode shows only two of the nine
-          tabs — Digital components and Activity — so a panel on Overview would
-          have been invisible to exactly the people who asked for it, and the
-          whole point is that it reads before you choose a tab at all. */}
-      {c360.length > 0 && (
-        <div className="mb-5">
-          <Customer360 company={customer.company_name} bands={bands360} />
-        </div>
-      )}
-
+      {/* The connections are TABS ON THE PAGE'S OWN ROW now, not a card
+          above it (Suren, Aug 28: "there's no point having two tabs — the
+          entire thing should be just one big page"). See CustomerTabs. */}
       <CustomerTabs
+        bands={bands360}
+        bandActions={{
+          team: (
+            <RecordTeamButton
+              type="customer"
+              id={customer.id}
+              label={customer.company_name}
+              team={teamFor(recordTeams, "customer", customer.id)}
+              members={solutioningMembers}
+            />
+          ),
+        }}
         customer={customer}
         contacts={contacts}
         sessions={sessions}

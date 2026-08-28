@@ -1,3 +1,4 @@
+import { readRecordTeams, teamFor } from "./recordTeams";
 import { orderBands } from "./connectionOrder";
 import "server-only";
 
@@ -37,7 +38,7 @@ export async function buildCustomer360(
 ): Promise<Customer360Band[]> {
   const may = (path: string) => canAccessModule(path, role);
 
-  const [opps, solutioning, leads, contracts, meetings] = await Promise.all([
+  const [opps, solutioning, leads, contracts, meetings, recordTeams] = await Promise.all([
     may("/opportunities")
       ? readOpportunities().then((s) => s.opportunities).catch(() => [])
       : Promise.resolve([]),
@@ -53,6 +54,7 @@ export async function buildCustomer360(
     may("/meetings")
       ? readMeetings().then((s) => s.meetings).catch(() => [])
       : Promise.resolve([]),
+    readRecordTeams(),
   ]);
 
   /* Records carry a customerId when they were made in-app and only a name when
@@ -206,6 +208,12 @@ export async function buildCustomer360(
      are very different kinds of involvement. */
   if (may("/team")) {
     const roles = new Map<string, Set<string>>();
+    /* ASSIGNED FIRST, INFERRED BEHIND IT. Somebody has now said who owns this
+       account and who is on it; that answer outranks anything read off the
+       work. The inferred names stay, underneath, because "Elena also ran two
+       meetings here" is worth knowing even when she is not on the named
+       team — it just no longer pretends to BE the team. */
+    const assigned = teamFor(recordTeams, "customer", customerId);
     const add = (who: string | undefined, how: string) => {
       const name = (who ?? "").trim();
       if (!name) return;
@@ -221,9 +229,14 @@ export async function buildCustomer360(
       if (name) display.set(name.toLowerCase(), name);
     };
 
-    /* The account's own owner field is not on this function's inputs, so the
-       owner shown here is whoever owns its work. When an explicit account
-       owner is wired through, it takes this slot. */
+    if (assigned?.owner) {
+      remember(assigned.owner);
+      add(assigned.owner, "account owner");
+    }
+    for (const m of assigned?.members ?? []) {
+      remember(m);
+      add(m, "on the account team");
+    }
     for (const d of myDeals) {
       remember(d.owner);
       add(d.owner, "owns a deal");
@@ -253,10 +266,14 @@ export async function buildCustomer360(
         name: display.get(key) ?? key,
         how: [...how],
         isOwner: how.has("account owner"),
+        onTeam: how.has("on the account team"),
       }))
+      /* Owner, then the named team, then everyone else by how much they are
+         actually doing. */
       .sort(
         (a, b) =>
           Number(b.isOwner) - Number(a.isOwner) ||
+          Number(b.onTeam) - Number(a.onTeam) ||
           b.how.length - a.how.length ||
           a.name.localeCompare(b.name)
       );
@@ -269,7 +286,7 @@ export async function buildCustomer360(
       count: people.length,
       href: "/team",
       hrefLabel: "The team",
-      empty: "Nobody is working this account yet.",
+      empty: "Nobody is on this account yet.",
       items: people.map<Customer360Item>((p) => ({
         id: p.name,
         title: p.name,
