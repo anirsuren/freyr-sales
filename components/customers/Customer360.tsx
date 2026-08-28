@@ -178,9 +178,16 @@ export function Customer360({
 
       {ordered.length > 0 && active && (
         <>
-          {/* The same strip the offering page uses — counts stay readable in
-              one pass even while only one area's rows are showing. */}
-          <div role="tablist" className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-border-light">
+          {/* PROPER TABS (Suren, Aug 28, on the person page: "I need tabs,
+              man. I don't like this thing, this looks very small for me. I
+              need tabs, proper tabs").
+
+              It was 13.5px with a 2px rule and six pixels of air — a strip you
+              had to lean in to read, on a page whose other tab row is 14px
+              with real spacing. Same size and rhythm as every other tab row in
+              the app now: the count stays a bolder weight beside the label so
+              the number is still the thing you scan for. */}
+          <div role="tablist" className="mt-3 flex flex-wrap items-end gap-x-7 gap-y-1.5 border-b border-border-light">
             {ordered.map((b) => {
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
               const isActive = b.key === active.key;
@@ -192,9 +199,9 @@ export function Customer360({
                   onClick={() => setActiveKey(b.key)}
                   aria-selected={isActive}
                   className={cn(
-                    "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-2.5 text-[13.5px] transition-colors",
+                    "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-3 text-[14px] transition-colors",
                     isActive
-                      ? "border-blue-primary font-medium text-text-primary"
+                      ? "border-blue-primary font-semibold text-blue-primary"
                       : "border-transparent hover:text-text-primary",
                     /* An area with nothing in it is still a tab, just a
                        quieter one, so a full area and an empty one are never
@@ -203,7 +210,7 @@ export function Customer360({
                   )}
                 >
                   <Icon
-                    size={13.5}
+                    size={14.5}
                     strokeWidth={2.2}
                     style={{ color: b.count === 0 ? undefined : b.color }}
                     className={b.count === 0 ? "text-text-tertiary" : undefined}

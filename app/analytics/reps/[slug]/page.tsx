@@ -1,3 +1,4 @@
+import { meetingsForPerson, readMeetings } from "@/lib/meetings";
 import Link from "next/link";
 import {
   SearchX,
@@ -133,9 +134,20 @@ export default async function RepPage({
      * The roster now shows what each person is carrying, so clicking their
      * name had to stop contradicting the row it was opened from. Same
      * arithmetic as Team and Opportunities: total is the sum of the offering
-     * rows, weighted applies each row's own confidence. Meetings has no live
-     * source yet, so it stays an honest zero.
+     * rows, weighted applies each row's own confidence.
+     *
+     * The Meetings tile WAS an honest zero, written before meetings existed as
+     * records. It stopped being honest the day the module shipped, and this
+     * page then carried the contradiction on one screen: a tile reading 0
+     * booked above a strip reading Meetings 1 (found in the browser, Aug 28).
+     * It counts what the person is actually in now.
      */
+    const myMeetings = meetingsForPerson(
+      await readMeetings()
+        .then((st) => st.meetings)
+        .catch(() => []),
+      member.name
+    ).attended;
     const myOpen = (await readOpportunities()).opportunities.filter(
       (deal) =>
         (deal.owner ?? "").trim().toLowerCase() === member.name.trim().toLowerCase() &&
@@ -156,7 +168,17 @@ export default async function RepPage({
       },
       { label: "Weighted forecast", value: formatMoney(myWeighted), sub: "probability-adjusted", icon: TrendingUp },
       { label: "Open deals", value: String(myOpen.length), sub: "in the pipeline", icon: Briefcase },
-      { label: "Meetings", value: "0", sub: "booked", icon: CalendarCheck },
+      {
+        label: "Meetings",
+        value: String(myMeetings.length),
+        /* Booked means still to come; a meeting already held is not
+           something you are carrying. */
+        sub:
+          myMeetings.filter((m) => m.status === "planned").length > 0
+            ? `${myMeetings.filter((m) => m.status === "planned").length} still to come`
+            : "all written up",
+        icon: CalendarCheck,
+      },
     ];
     const person360 = await buildPerson360(
       member.name,
