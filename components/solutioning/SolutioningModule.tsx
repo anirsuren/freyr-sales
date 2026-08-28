@@ -214,11 +214,16 @@ export function SolutioningModule({
   const oneKind =
     shown.length > 0 && new Set(shown.map((r) => r.kind)).size === 1;
 
-  const open = state.requests.filter((r) => r.status !== "completed");
-  const unclaimed = state.requests.filter(
-    (r) => r.status === "initiated" && !r.owner
-  );
-  const completed = state.requests.filter((r) => r.status === "completed");
+  /* COUNT THE ROOM YOU ARE IN, not the whole store — the same correction Anir
+     made about the sentence directly under these tiles ("Submissions read
+     'Showing 2 of 9 requests' — the 9 was every item in Solutioning"). The
+     sentence was fixed and the tiles above it were not, so the Submissions
+     room announced "OPEN REQUESTS 6" over a list of one submission, and named
+     a longest-waiting record that is not even in this room. A number that
+     disagrees with the list under it is worse than no number. */
+  const open = inRoom.filter((r) => r.status !== "completed");
+  const unclaimed = inRoom.filter((r) => r.status === "initiated" && !r.owner);
+  const completed = inRoom.filter((r) => r.status === "completed");
 
   /**
    * TURNAROUND — the only analysis he asked this module for (Suren, Aug 25):
@@ -334,7 +339,7 @@ export function SolutioningModule({
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           icon={ClipboardList}
-          label="Open requests"
+          label={`Open ${ROOM_META[room].noun}`}
           value={String(open.length)}
           sub={open.length === 0 ? "nothing in flight" : "being asked for or built"}
         />
@@ -358,7 +363,7 @@ export function SolutioningModule({
           sub={
             avgTurnaround === null
               ? "nothing closed yet"
-              : `across ${turnarounds.length} closed ${turnarounds.length === 1 ? "request" : "requests"}`
+              : `across ${turnarounds.length} closed`
           }
         />
         <StatTile
@@ -377,7 +382,8 @@ export function SolutioningModule({
         <PageToolbar
           query={query}
           onQuery={setQuery}
-          placeholder="Search requests, customers, people…"
+          /* The room's own noun, like the tiles and the count under it. */
+          placeholder={`Search ${ROOM_META[room].noun}, customers, people…`}
           searchAriaLabel="Search solutioning requests"
           onClearAll={() => {
             setQuery("");
