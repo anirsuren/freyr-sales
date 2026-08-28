@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
+import { meetingsForOpportunity, readMeetings } from "@/lib/meetings";
 import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { judgePlan } from "@/lib/revenueAccrualsShared";
 import { listOfferings } from "@/lib/offerings";
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function OpportunitiesPage() {
   await requireModuleAccess("/opportunities");
-  const [{ opportunities }, accruals, offerings, perf, me, master] =
+  const [{ opportunities }, accruals, offerings, perf, me, master, meetingState] =
     await Promise.all([
     readOpportunities(),
     readRevenueAccruals(),
@@ -34,6 +35,10 @@ export default async function OpportunitiesPage() {
     readPerformance(),
     getCurrentUser(),
     readActivityMaster(),
+    /* "Similarly against opportunities" (Suren, Aug 28) — a deal should say
+       which meetings were held against it. Non-fatal: a deal with no meeting
+       list is a deal, a page that fails to load is not. */
+    readMeetings().catch(() => ({ meetings: [] })),
   ]);
   const db = getDb();
   const customers = await db.customers.list();
@@ -41,6 +46,23 @@ export default async function OpportunitiesPage() {
   return (
     <OpportunitiesBrowser
       opportunities={opportunities}
+      /* Meetings held against each deal, keyed by deal id, newest first. */
+      meetingsByDeal={Object.fromEntries(
+        opportunities.map((o) => [
+          o.id,
+          meetingsForOpportunity(meetingState.meetings, o.id)
+            .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
+            .map((m) => ({
+              id: m.id,
+              ref: m.ref,
+              title: m.title,
+              type: m.type,
+              owner: m.owner,
+              meetingAt: m.meetingAt,
+              status: m.status,
+            })),
+        ])
+      )}
       /* WHETHER THIS DEAL'S MONEY HAS BEEN PLANNED, AND WHETHER THAT PLAN
          STILL HOLDS (Suren, Aug 26: "the moment you plan a deal, you put an
          icon which says that the plan for the accrual is already done, and

@@ -693,7 +693,16 @@ export function RequestDetail({
                   mark: what KIND of thing happened is visible before a single
                   word is read. Green only for completion and red only for
                   removals — the reserved meanings. */}
-              <ol className="max-h-[420px] overflow-y-auto pr-1">
+              {/* THE TIMELINE IS A WINDOW, NOT A LEDGER THAT GROWS (Suren,
+                  Aug 28: "this thing's getting longer and longer and longer,
+                  right? The timeline has to be stuck there, and then obviously
+                  I can scroll inside").
+
+                  max-h alone was not enough: the card around it had no height
+                  of its own, so a hundred entries still pushed the comment box
+                  and everything under it off the page. A FIXED height pins the
+                  card wherever it sits and scrolls the events inside it. */}
+              <ol className="h-[360px] overflow-y-auto pr-1">
                 {[...r.activity].reverse().map((a, i, all) => {
                   /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
                      MOVING. Same spine, different voice: a comment wears a

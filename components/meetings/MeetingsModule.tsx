@@ -10,7 +10,6 @@ import {
   Plus,
   Users,
 } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -21,6 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useStoredView } from "@/lib/useStoredView";
 import { cn, formatDate } from "@/lib/utils";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
+import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
 import {
   groupMeetingsByPeriod,
   type Meeting,
@@ -116,21 +116,24 @@ export function MeetingsModule({
 
   return (
     <div>
-      <PageHeader
-        title="Meetings"
-        subtitle="Customer meetings: who is in the room on both sides, what was presented, and what came out of it."
+      {/* THE FOURTH ROOM, IN THE SAME STRIP (Anir, Aug 28: "you added the
+          meetings thing, but there's no fourth thing at the top right"). The
+          strip owns the title and the subtitle, so a PageHeader here would
+          say the page name twice. */}
+      <SolutioningTabs
+        active="meetings"
         action={
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
           >
             <Plus size={15} strokeWidth={2.4} /> New meeting
           </button>
         }
-      />
+      >
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile icon={CalendarClock} label="Planned" value={String(planned.length)} color="#0071E3" sub="still to happen" />
         <StatTile icon={CheckCircle2} label="Completed" value={String(completed.length)} color="#16A34A" sub="written up" />
         <StatTile
@@ -306,6 +309,7 @@ export function MeetingsModule({
           }}
         />
       )}
+      </SolutioningTabs>
     </div>
   );
 }

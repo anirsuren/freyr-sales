@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileCheck2, Inbox, MonitorPlay } from "lucide-react";
+import { FileCheck2, Inbox, CalendarClock,
+  MonitorPlay } from "lucide-react";
 import { PageTabs } from "@/components/ui/PageTabs";
 
 /**
@@ -43,6 +44,19 @@ const TABS = [
     icon: MonitorPlay,
     color: "#7C3AED",
     subtitle: "Decks and demos being prepared for a customer meeting.",
+  },
+  /* THE FOURTH ROOM (Anir, Aug 28: "you added the meetings thing, but there's
+     no fourth thing at the top right, so you got to fix that"). It is a route
+     of its own rather than a ?tab= of this one, because a meeting is its own
+     object with its own store — but it belongs in this strip, because this is
+     where somebody standing in Solutioning goes looking for it. */
+  {
+    key: "meetings",
+    label: "Meetings",
+    href: "/meetings",
+    icon: CalendarClock,
+    color: "#B4318F",
+    subtitle: "Customer meetings: who was in the room, and what came out of it.",
   },
 ];
 

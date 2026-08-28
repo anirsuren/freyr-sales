@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
 import {
@@ -36,6 +37,17 @@ export type MultiPickerOption = {
   /** Company whose logo fronts the row — deals wear their account's mark
    *  (Anir, Aug 18: "that's ugly. I need colors, logos, etc."). */
   logoName?: string;
+  /**
+   * PERSON WHOSE FACE FRONTS THE ROW.
+   *
+   * The company case was supported and the person case was not, so a picker
+   * full of teammates fell through to a coloured dot — the same complaint,
+   * a third time (Anir, Aug 28: "never do this mistake again with the profile
+   * pictures"). Both marks are handled at every one of the three places this
+   * component draws a row, so a new picker cannot reintroduce it by passing
+   * the obvious prop.
+   */
+  avatarName?: string;
   /** Category this option lives under in the dropdown variant. */
   group?: string;
 };
@@ -87,7 +99,9 @@ function OptionRow({
         ["--row" as string]: rowIndex,
       }}
     >
-      {o.logoName ? (
+      {o.avatarName ? (
+        <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
+      ) : o.logoName ? (
         <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
       ) : o.icon ? (
         <o.icon
@@ -573,7 +587,9 @@ export function MultiPicker({
                 className={cnChip(c)}
                 style={c ? { background: `${c}16`, color: c } : undefined}
               >
-                {o?.logoName ? (
+                {o?.avatarName ? (
+                  <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                ) : o?.logoName ? (
                   <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 ) : (
                   Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
@@ -633,7 +649,9 @@ export function MultiPicker({
                 }}
                 className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
               >
-                {o.logoName ? (
+                {o.avatarName ? (
+                  <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
+                ) : o.logoName ? (
                   <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
                 ) : o.icon ? (
                   <o.icon

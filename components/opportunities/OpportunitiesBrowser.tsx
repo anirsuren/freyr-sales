@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Flag,
   Target as TargetIcon,
@@ -56,7 +57,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredSet, useStoredView } from "@/lib/useStoredView";
 import {
@@ -465,6 +466,7 @@ export type AccrualBadge = {
 
 export function OpportunitiesBrowser({
   opportunities,
+  meetingsByDeal = {},
   accrualPlans = {},
   offerings,
   offeringTypes = [],
@@ -479,6 +481,20 @@ export function OpportunitiesBrowser({
   live,
 }: {
   opportunities: Opportunity[];
+  /** Meetings held against each deal, newest first (Suren, Aug 28:
+   *  "similarly against opportunities"). */
+  meetingsByDeal?: Record<
+    string,
+    {
+      id: string;
+      ref: string;
+      title: string;
+      type: string;
+      owner: string;
+      meetingAt: string;
+      status: string;
+    }[]
+  >;
   /**
    * PER DEAL: is its money planned, and does that plan still hold?
    *
@@ -1468,6 +1484,47 @@ export function OpportunitiesBrowser({
                                 )}
                               </div>
                               <div className="min-w-0 space-y-3.5 sm:border-l sm:border-border-light sm:pl-8">
+                                {/* MEETINGS HELD AGAINST THIS DEAL (Suren,
+                                    Aug 28: "similarly against opportunities"
+                                    — a meeting connects to the customer, the
+                                    person and the deal, and each of them
+                                    should be able to say which meetings
+                                    touched it). Only when there are any: an
+                                    empty heading on every deal is noise. */}
+                                {(meetingsByDeal[o.id] ?? []).length > 0 && (
+                                  <div>
+                                    <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                      Meetings
+                                    </span>
+                                    <ul className="mt-1.5 space-y-1.5">
+                                      {(meetingsByDeal[o.id] ?? [])
+                                        .slice(0, 4)
+                                        .map((mt) => (
+                                          <li key={mt.id}>
+                                            <Link
+                                              href={`/meetings/${mt.id}`}
+                                              className="flex items-baseline gap-2 text-[12.5px] hover:text-blue-primary"
+                                            >
+                                              <span className="shrink-0 text-[10.5px] font-bold tnum text-text-tertiary">
+                                                {mt.ref}
+                                              </span>
+                                              <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
+                                                {mt.title}
+                                              </span>
+                                              <span className="shrink-0 tnum text-[11.5px] text-text-secondary">
+                                                {formatDate(mt.meetingAt)}
+                                              </span>
+                                            </Link>
+                                          </li>
+                                        ))}
+                                    </ul>
+                                    {(meetingsByDeal[o.id] ?? []).length > 4 && (
+                                      <span className="mt-1 block text-[11.5px] text-text-tertiary">
+                                        and {(meetingsByDeal[o.id] ?? []).length - 4} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                                 <div>
                                   <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                     Owner
