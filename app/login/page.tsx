@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { PasskeySignIn } from "@/components/auth/PasskeySignIn";
 import { appHomePath } from "@/lib/appHome";
 import { ShieldCheck } from "lucide-react";
@@ -10,7 +11,17 @@ import { autoApproveEmailDomains } from "@/lib/authEmailPolicy";
 export const metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  /* DEV SAYS SO, PROD NEVER DOES (Anir, Aug 27: "put a message on the login
+     page that eventually it's gonna get moved over to the actual production
+     environment, but right now it is here"). Both environments run the SAME
+     image; they differ by the address they answer on, so the request's own
+     Host header is the one switch that needs no config and survives every
+     promote: the banner shows on freyrsales.dev.* and localhost, and can
+     never appear on freyrsales.freyrapps.com. */
+  const host = ((await headers()).get("host") ?? "").toLowerCase();
+  const isDevHome =
+    host.includes(".dev.") || host.startsWith("localhost") || host.startsWith("127.");
   const authMode = process.env.AUTH_MODE;
   const entra = authMode === "entra";
   const alb = authMode === "aws-alb";
@@ -37,7 +48,21 @@ export default function LoginPage() {
   const joinDomainLabel = joinDomains.map((d) => `@${d}`).join(" or ");
 
   return (
-    <div className="flex h-dvh items-center justify-center overflow-hidden bg-surface px-6 py-4">
+    <div className="flex h-dvh flex-col items-center justify-center gap-3 overflow-hidden bg-surface px-6 py-4">
+      {/* Plain words, and NO address (Anir, Aug 27, two rounds: "it's very
+          unclear... don't say this link is temporary, and don't give them
+          the link because I don't want them to have the link yet. Just say
+          that eventually they will be moved"). One calm sentence: keep
+          signing in here, a new home is coming, you will be told. */}
+      {isDevHome && (
+        <div className="w-full max-w-[420px] rounded-xl border border-blue-subtle bg-blue-light px-4 py-3 text-center text-[12.5px] leading-relaxed text-blue-primary">
+          {/* Literal words only (Anir: "stop speaking in metaphors") — no
+              "home", no "move", just the fact and what to do. */}
+          <b className="font-semibold">Sign in here as usual.</b>{" "}
+          This website&apos;s address will change in the future. You will be
+          told when it does.
+        </div>
+      )}
       <Card className="max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto p-8">
         <div className="text-center">
           <span className="text-[25px] font-bold text-blue-primary tracking-tight">FREYR</span>
