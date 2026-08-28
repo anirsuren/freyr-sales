@@ -1279,7 +1279,23 @@ export function CustomerOfferingHeatMap({
                   <section
                     key={version.id}
                     className={cn(
-                      "relative transition-colors",
+                      /* IT OPENS, IT DOES NOT LURCH (Anir, Aug 28: "why are
+                         you doing this weird thing with the drop-down where it
+                         looks like I'm pushing into it? Fix that. make it
+                         consistent").
+
+                         Expanding used to add a margin, a 3px left border and
+                         a corner radius all at once under `transition-colors`,
+                         which animates none of them. The colour faded while
+                         the geometry snapped: the row shoved itself down by
+                         the new margin and its contents sideways by the new
+                         border, which reads as the row being pressed into the
+                         page.
+
+                         The rule is now always THERE and merely transparent,
+                         so nothing shifts horizontally, and the transition
+                         covers the properties that actually change. */
+                      "relative border-l-[3px] border-transparent transition-[background-color,border-color,border-radius,margin] duration-200",
                       expanded
                         // Row + form as one visibly bounded card: lifted out of
                         // the list and tinted, so the form does not read as a
@@ -1294,7 +1310,7 @@ export function CustomerOfferingHeatMap({
                         // down the sides with no ends — which reads as broken.
                         // A rule down the left edge belongs to the row it hangs
                         // off and looks deliberate however it is clipped.
-                        ? "z-20 my-1.5 overflow-visible rounded-xl border-l-[3px] border-blue-primary/60 bg-blue-light/30"
+                        ? "z-20 my-1.5 overflow-visible rounded-xl border-blue-primary/60 bg-blue-light/30"
                         : "overflow-hidden border-t border-border-light bg-white first:border-t-0"
                     )}
                   >
