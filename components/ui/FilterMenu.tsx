@@ -229,6 +229,25 @@ export function FilterMenu({
                       aria-expanded={on}
                       className={cn(
                         "flex w-full cursor-pointer items-center gap-2 px-2.5 py-2.5 text-left text-[12.5px] transition-colors",
+                        /* THE RAIL HAS TO TURN THE CORNER (Anir, Aug 28: "you
+                           can see the issue with the left side blue line").
+                           The menu is rounded and clips to it, but the top row
+                           underneath was square, so the straight blue rail ran
+                           past the curve and read as a stray tick sitting
+                           outside the panel.
+
+                           15px, measured rather than assumed: `rounded-xl` is
+                           16px in this config, not the stock 12, and the row
+                           sits inside the menu's 1px border. A tighter radius
+                           looks identical to no radius at all, because the
+                           rail still crosses the panel's wider arc.
+
+                           Only the FIRST row. The group list is shorter than
+                           the menu — the values pane and the footer make the
+                           menu taller — so the last group sits mid-panel, and
+                           rounding it would put a curve where there is no
+                           corner. */
+                        "first:rounded-tl-[15px]",
                         on
                           /* The open group is white, like the pane it opens,
                              with a rail down its left: the two panes read as
