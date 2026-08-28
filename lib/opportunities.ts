@@ -407,6 +407,81 @@ function seededMock(): OpportunitiesState {
       updatedAt: now,
     });
   }
+
+  /* THE MOCK CUSTOMERS HAD NO DEALS AGAINST THEM.
+     SEED_OPPORTUNITIES is Suren's real pipeline sheet — AbbVie, Amgen,
+     Astellas — while the mock CUSTOMER list is a separate invented cast
+     (Cortexa Biopharma, Helix Biologics, ...). The two never overlapped, so
+     every mock customer page read "Opportunities 0" and every customer group
+     totalled $0 pipeline over accounts that clearly had work on them (found
+     in the browser, Aug 28, building the groups tab).
+
+     Anir: "need mock data for every single part". So the demo cast gets deals
+     of its own, appended rather than replacing anything: the pipeline pages
+     keep the full sheet, and the customer joins now land somewhere. Values and
+     stages are fixed rather than random so two reads never disagree. */
+  const demoDeals: {
+    customer: string;
+    offering: string;
+    value: number;
+    confidence: number;
+    level: string;
+    owner: string;
+    signs: string;
+  }[] = [
+    { customer: "Cortexa Biopharma", offering: "NDA/MAA CMC Writing", value: 420_000, confidence: 50, level: "Pipeline", owner: "Elena Rossi", signs: "2026-11-30" },
+    { customer: "Cortexa Biopharma", offering: "Regulatory Strategy", value: 180_000, confidence: 25, level: "Pipeline", owner: "Elena Rossi", signs: "2027-02-15" },
+    { customer: "Helix Biologics", offering: "Publishing & Submission", value: 265_000, confidence: 75, level: "Pipeline", owner: "Nina Kowalski", signs: "2026-10-15" },
+    { customer: "Aether Medical Devices", offering: "EU MDR Technical Files", value: 310_000, confidence: 50, level: "Pipeline", owner: "Daniel Foster", signs: "2026-12-20" },
+    { customer: "Quantum Oncology", offering: "Clinical Trial Applications", value: 540_000, confidence: 75, level: "Pipeline", owner: "Grace Liu", signs: "2026-09-30" },
+    { customer: "Northwind Biosciences", offering: "Labelling & Artwork", value: 95_000, confidence: 25, level: "Pipeline", owner: "Marcus Chen", signs: "2027-01-31" },
+    { customer: "NovaGene Therapeutics", offering: "Pharmacovigilance", value: 225_000, confidence: 50, level: "Pipeline", owner: "Omar Haddad", signs: "2026-11-15" },
+    { customer: "Meridian Pharmaceuticals", offering: "Lifecycle Maintenance", value: 140_000, confidence: 75, level: "Pipeline", owner: "Grace Liu", signs: "2026-10-31" },
+    { customer: "Orion Vaccines", offering: "Regulatory Strategy", value: 375_000, confidence: 25, level: "Pipeline", owner: "Marcus Chen", signs: "2027-03-31" },
+    { customer: "BioNex Therapeutics", offering: "NDA/MAA CMC Writing", value: 610_000, confidence: 50, level: "Pipeline", owner: "Elena Rossi", signs: "2026-12-01" },
+    { customer: "Solvance Pharma", offering: "Publishing & Submission", value: 120_000, confidence: 25, level: "Pipeline", owner: "Nina Kowalski", signs: "2027-01-15" },
+    { customer: "Solara Consumer Health", offering: "Labelling & Artwork", value: 88_000, confidence: 50, level: "Pipeline", owner: "Daniel Foster", signs: "2026-11-20" },
+  ];
+  demoDeals.forEach((d, i) => {
+    const k = i + 1;
+    opportunities.push({
+      id: `demo-opp-${k}`,
+      name: `${d.offering}. ${d.customer}`,
+      customer: d.customer,
+      offeringIds: [],
+      offeringLabels: [d.offering],
+      lines: [
+        {
+          id: `demo-line-${k}-1`,
+          offeringLabel: d.offering,
+          revenueType: normalizeRevenueType("OTS"),
+          value: d.value,
+          confidence: normalizeConfidence(d.confidence),
+          estSignDate: d.signs,
+        },
+      ],
+      level: normalizeLevel(d.level),
+      status: normalizeStatus("Open"),
+      revenueType: normalizeRevenueType("OTS"),
+      value: d.value,
+      confidence: normalizeConfidence(d.confidence),
+      estSignDate: d.signs,
+      owner: d.owner,
+      goalIds: [],
+      activities: [
+        {
+          id: `demo-act-${k}-1`,
+          activity: (["lead", "opportunity", "pilot", "contract"] as const)[k % 4],
+          status: (["initiated", "under_progress", "completed"] as const)[k % 3],
+          person: d.owner,
+          date: `2026-0${(k % 6) + 2}-${String((k % 27) + 1).padStart(2, "0")}`,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+
   return { opportunities };
 }
 

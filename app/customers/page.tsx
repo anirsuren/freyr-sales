@@ -3,6 +3,10 @@ import { CustomersWorkspace } from "@/components/customers/CustomersWorkspace";
 import { getRole } from "@/lib/role";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { readTargets } from "@/lib/targets";
+import { readCustomerGroups } from "@/lib/customerGroups";
+import { readOpportunities } from "@/lib/opportunities";
+import { opportunityValue } from "@/lib/opportunitiesShared";
+import { meetingsForCustomer, readMeetings } from "@/lib/meetings";
 import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
@@ -125,6 +129,34 @@ export default async function CustomersPage() {
   );
 
   const { targets } = await readTargets();
+
+  /* CUSTOMER GROUPS — named sets over the same accounts, with their numbers
+     computed here rather than stored (Suren, Aug 28: "for every group, you can
+     actually put these statistics"). A stored total is a total that goes stale
+     the first time somebody edits a deal. */
+  const [{ groups }, oppState, meetingState] = await Promise.all([
+    readCustomerGroups().catch(() => ({ groups: [] })),
+    readOpportunities().catch(() => ({ opportunities: [] })),
+    readMeetings()
+      .then((st) => st.meetings)
+      .catch(() => []),
+  ]);
+  const groupCustomers = enriched.map((c) => {
+    const mine = oppState.opportunities.filter(
+      (o) =>
+        (o.customerId && o.customerId === c.id) || o.customer === c.company_name
+    );
+    const open = mine.filter(
+      (o) => o.status !== "Won" && o.status !== "Lost" && o.level !== "Future"
+    );
+    return {
+      id: c.id,
+      name: c.company_name,
+      openValue: open.reduce((s, o) => s + opportunityValue(o), 0),
+      openCount: open.length,
+      meetings: meetingsForCustomer(meetingState, c.id, c.company_name).length,
+    };
+  });
   // WHO IS ACTUALLY IN THE APP (Anir, Aug 17: "if the owner is not in the
   // app, you can't just say that — it has to be like real data"). Target
   // owners come from the sheet; only the ones who are real members may wear
@@ -150,6 +182,8 @@ export default async function CustomersPage() {
           includeDemoTeam: getDataMode() === "mock",
         }}
         targets={targets}
+        groups={groups}
+        groupCustomers={groupCustomers}
         memberNames={memberNames}
         live={getDataMode() !== "mock"}
         canEditTargets={isManagerOrAdmin(await getRole())}
