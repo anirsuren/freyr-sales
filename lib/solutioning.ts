@@ -804,12 +804,26 @@ export async function createRequest(input: {
    *  its maker — nobody "takes up" their own submission. */
   owner?: string;
 }): Promise<SolutionRequest> {
-  return withWrite(async () => {
+  return withWrite(async () => buildRecord(await readRow(), input, true));
+}
+
+/**
+ * The record itself, built INTO a state that the caller already holds.
+ *
+ * Split out of createRequest because picking a request up now creates the
+ * submission it asked for, and withWrite is a serial queue — a nested call
+ * would wait on a lock its own caller is holding and never return.
+ */
+async function buildRecord(
+  state: SolutioningState,
+  input: Parameters<typeof createRequest>[0],
+  persist: boolean
+): Promise<SolutionRequest> {
+  {
     const title = str(input.title, 200);
     if (!title) throw new Error("Give the request a title.");
     const customer = str(input.customer, 120);
     if (!customer) throw new Error("Pick the customer this is for.");
-    const state = await readRow();
     const type: SolutionItemType = input.type ?? "request";
     const record: SolutionRequest = {
       id: uid("sr"),
@@ -877,9 +891,9 @@ export async function createRequest(input: {
             : `Started this ${KIND_WORD[input.kind]}`,
     });
     state.requests.unshift(record);
-    await writeRow(state);
+    if (persist) await writeRow(state);
     return record;
-  });
+  }
 }
 
 function mustFind(state: SolutioningState, requestId: string): SolutionRequest {
@@ -913,6 +927,65 @@ export async function pickUpRequest(input: {
          the timeline mark matches both. */
       what: "Took this up",
     });
+
+    /**
+     * TAKING IT UP IS WHERE THE WORK GETS MADE.
+     *
+     * Suren, Aug 28: "When I say 'pick it up,' it has to create a submission,
+     * which it did not... If I pick this up, then that becomes the submission
+     * there, and it creates a record there. When it creates a record, it
+     * should say there should be one against this, and again, there should be
+     * one request ID."
+     *
+     * Everything needed for this already existed — a submission is its own
+     * object, it may carry the `requestId` of the ask behind it, and the
+     * hand-off copies the customer and analysis documents across. Nothing
+     * ever called it, so a picked-up request just sat there with a name on
+     * it and Submissions stayed empty.
+     *
+     * Only a REQUEST spawns work, and only once: taking up a submission is
+     * just taking up that submission. A meeting request spawns nothing, since
+     * a meeting is not one of the work objects.
+     */
+    const spawns: SolutionItemType | null =
+      (r.type ?? "request") === "request"
+        ? r.kind === "submission"
+          ? "submission"
+          : r.kind === "presentation"
+            ? "presentation"
+            : null
+        : null;
+    const already =
+      spawns && state.requests.some((x) => x.requestId === r.id && x.type === spawns);
+    if (spawns && !already) {
+      const made = await buildRecord(
+        state,
+        {
+          type: spawns,
+          kind: r.kind,
+          requestId: r.id,
+          subtype: r.subtype,
+          title: r.title,
+          details: r.details,
+          customerId: r.customerId,
+          customer: r.customer,
+          opportunityIds: r.opportunityIds,
+          opportunityLabels: r.opportunityLabels,
+          contactIds: r.contactIds,
+          contactNames: r.contactNames,
+          neededBy: r.neededBy,
+          requestedBy: input.by,
+          owner: input.by,
+        },
+        false
+      );
+      r.activity.push({
+        at: new Date().toISOString(),
+        by: input.by,
+        what: `Started ${made.ref} from this`,
+      });
+    }
+
     await writeRow(state);
   });
 }
