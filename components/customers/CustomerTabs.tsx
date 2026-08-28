@@ -715,7 +715,17 @@ export function CustomerTabs({
         <div
           role="tablist"
           aria-label="Account sections"
-          className="mb-6 flex flex-nowrap gap-8 overflow-x-auto border-b border-border-light [scrollbar-width:thin]"
+          /* SCROLLS, WITHOUT A SCROLLBAR (Anir, Aug 28: "the scroll bar is a
+             problem... it's just a problem, I don't like it"). Hidden in every
+             engine rather than styled thin — a visible bar under a tab row
+             reads as a second UI element, and on a trackpad the row already
+             scrolls by feel.
+
+             overflow-y-hidden with it: a scrollable box scrolls in BOTH axes
+             by default, so the row had picked up a vertical wobble of its own
+             ("because of the scroll bar now I can scroll vertically on this
+             little panel, which is kind of annoying"). */
+          className="mb-6 flex flex-nowrap gap-8 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {bands.map((b) => (
             <button

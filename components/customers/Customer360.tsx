@@ -102,6 +102,14 @@ const BAND_ICON_MAP = {
  * heading changes, so it takes one rather than growing a second component that
  * would drift away from this one.
  */
+/** "Opportunities" is not "Opportunitie". Anything not plural is left alone. */
+function singularLabel(label: string): string {
+  if (label.endsWith("ies")) return `${label.slice(0, -3)}y`;
+  if (label.endsWith("ss")) return label;
+  if (label.endsWith("s")) return label.slice(0, -1);
+  return label;
+}
+
 export function Customer360({
   company,
   bands,
@@ -296,18 +304,28 @@ export function Customer360({
           {chromeless && (
             <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
               <div className="flex items-end gap-6">
+                {/* THE SAME NUMBER THE REST OF THE APP WRITES (Anir, Aug 28:
+                    "this 298K, that doesn't look like a font that we've used").
+                    It was 30px semibold at -0.02em, invented here; every stat
+                    tile in the app is 24px BOLD at -0.01em. Matched, so a
+                    number on this page reads as the same kind of number as one
+                    on the tiles above it. */}
                 <span className="flex items-baseline gap-2">
-                  <span className="text-[30px] font-semibold leading-none tracking-[-0.02em] tnum text-text-primary">
+                  <span className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum text-text-primary">
                     {active.count}
                   </span>
                   <span className="text-[13px] text-text-secondary">
-                    {active.label.toLowerCase()}
+                    {/* "1 opportunities" was wrong on every band holding one
+                        of anything. */}
+                    {active.count === 1
+                      ? singularLabel(active.label).toLowerCase()
+                      : active.label.toLowerCase()}
                   </span>
                 </span>
                 {active.total !== undefined && active.total > 0 && (
                   <span className="flex items-baseline gap-2">
                     <span
-                      className="text-[30px] font-semibold leading-none tracking-[-0.02em] tnum"
+                      className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum"
                       style={{ color: active.color }}
                     >
                       {formatMoney(active.total)}
@@ -597,14 +615,7 @@ export function Customer360({
                   <thead>
                     <tr className="border-b border-border-light">
                       <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                        {/* "Opportunities" is not "Opportunitie". Strip the
-                            plural properly, and leave anything that does not
-                            end in one alone. */}
-                        {active.label.endsWith("ies")
-                          ? `${active.label.slice(0, -3)}y`
-                          : active.label.endsWith("s")
-                            ? active.label.slice(0, -1)
-                            : active.label}
+                        {singularLabel(active.label)}
                       </th>
                       <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         Detail
