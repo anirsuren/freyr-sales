@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, CalendarDays, Users } from "lucide-react";
+import { Building2, CalendarDays, CircleDashed, Users } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { FormRoom } from "@/components/ui/FormRoom";
 import { Field, Input } from "@/components/ui/Input";
@@ -204,7 +204,26 @@ export function NewMeetingDialog({
                  so picking an account with no contacts and no deals leads to
                  two empty boxes and no explanation. The count belongs on the
                  row that causes it. */
-              options={customers.map((c) => {
+              options={[
+                /* A PICKER WITH NOTHING CHOSEN MUST NOT NAME A COMPANY.
+                   ColorSelect falls back to options[0] when the value matches
+                   nothing, so an untouched customer field displayed "CuraTeQ"
+                   — first alphabetically — while Create stayed disabled and
+                   the contacts list underneath said "pick the account first".
+                   Found in the browser, Aug 28, opening the form for the first
+                   time. Every other picker in the app that can start empty
+                   carries this row; this one did not. */
+                ...(customerId
+                  ? []
+                  : [
+                      {
+                        value: "",
+                        label: "Pick the account",
+                        color: "#64748B",
+                        icon: CircleDashed,
+                      },
+                    ]),
+                ...customers.map((c) => {
                 const deals = opportunities.filter(
                   (o) => o.customerId === c.id
                 ).length;
@@ -225,7 +244,8 @@ export function NewMeetingDialog({
                   description: parts.length ? parts.join(" · ") : "nothing yet",
                   descriptionAccent: parts.length > 0,
                 };
-              })}
+                }),
+              ]}
             />
           </Field>
           <div className="mt-3">

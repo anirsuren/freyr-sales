@@ -267,8 +267,19 @@ function DropdownPicker({
         setOpen(false);
       }
     };
+    /* ESCAPE DISMISSES THIS MENU AND STOPS THERE.
+       It reached the Modal's own Escape handler as well, so tapping Escape to
+       back out of a picker threw away the whole half-filled form behind it —
+       found in the browser on Aug 28, filling the new-meeting form: one press
+       closed the dropdown AND the dialog, and everything typed was gone.
+
+       ColorSelect was given this exact guard on Aug 22 and MultiPicker never
+       was, which is the second time today the two picker components have
+       differed on something that should be identical in both. */
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
       // Escape steps BACK first, then closes.
       setLevel((prev) => {
         if (prev !== null) return null;
