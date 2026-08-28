@@ -325,7 +325,7 @@ export function OfferingActivities({
            they will consume it… activity has to be a table, columns have to
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
-        <div className="relative">
+        <div className="relative pt-9">
           {/* THE + IS THE APP'S BLUE SQUARE, TOP RIGHT (Anir, Aug 27: "I
               don't want the add activity going here. It should be like a blue
               square with a white plus, and it should just be in the top
@@ -335,7 +335,7 @@ export function OfferingActivities({
           {/* The anchor is the SPAN, not the button — Tooltip's own wrapper
               is position:relative, so an absolute button pinned itself to
               the tooltip span and sat at the left edge. */}
-          <span className="absolute -top-1 right-0 z-10">
+          <span className="absolute right-0 top-0 z-10">
             <Tooltip label="Add activity">
               <button
                 type="button"
@@ -366,10 +366,12 @@ export function OfferingActivities({
                     there should be an actions column"). The pencil and the bin
                     sit under a header that says what they are; adding moved to
                     the footer row below, where a table normally puts it. */}
-                {/* The header keeps clear of the + square parked over this
-                    corner — without the padding the button trimmed the word
-                    to "ACT". */}
-                <th className="w-[124px] py-2 pr-11 text-right font-bold">Actions</th>
+                {/* Back over its own icons (Anir, Aug 28: "the column is not
+                    aligned with the actual thing"). The + used to sit inside
+                    this corner and the header had to dodge it; the button
+                    lives above the table now, so the label lines up with the
+                    pencils under it. */}
+                <th className="w-[88px] py-2 pr-1 text-right font-bold">Actions</th>
               </tr>
             </thead>
             <tbody>
