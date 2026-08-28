@@ -201,6 +201,17 @@ export function RequestDetail({
         (x: SolutionRequest) => x.id === r.id
       );
       if (next) setR(next);
+      /* AND THE LIST BEHIND THIS PAGE (Suren, Aug 28: "now I say mark it
+         completed... if I go to this presentation it just disappears, man...
+         maybe I have to refresh — now it shows up").
+
+         This page updated its own copy and nothing else. The list it was
+         opened from is server-rendered, so going back replayed the version
+         from before the change: the record was missing, or still showed the
+         status it had a minute ago, until the browser was reloaded by hand.
+         Every action here changes what that list should say, so the server
+         data is re-fetched after each one. */
+      router.refresh();
       return true;
     } catch {
       toast("That didn't save.", "error");
