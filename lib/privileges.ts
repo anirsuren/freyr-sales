@@ -31,11 +31,8 @@ import { hasSupabase } from "./env";
  * who sees what six times since Aug 12, and every one of those was a one-line
  * edit to lib/moduleAccess plus a deploy. This is a table he edits in Admin.
  *
- * WHAT THIS DOES NOT DO YET. Nothing here removes access anybody has today.
- * `enforced` starts false, and while it is false the matrix is a document he
- * can fill in and look at, not a gate — because turning a live workspace's
- * permissions over to a half-filled table is exactly the kind of change that
- * belongs to him and not to me. Flipping it on is one switch in Admin.
+ * THIS TABLE IS THE AUTHORITY. Not a plan, not a document, no switch to make
+ * it stop counting — see the note above emptyPrivilegeState.
  */
 
 const ROW_ID = "privileges";
@@ -113,28 +110,19 @@ export type ModuleKey =
   | "goals"
   | "reports"
   | "market_intel"
-  | "admin"
-  /* THE REST OF THE APP (Anir, Aug 29: "do it all"). His sheet named eight
-     modules; the audit found seventeen routable pages with no row at all, so
-     enforcement would have decided nothing about them. Every page the app
-     serves now has a row. */
-  | "dashboard"
-  | "pipeline"
-  | "forecast"
-  | "analytics"
-  | "activity"
-  | "sessions"
-  | "recordings"
-  | "sequences"
-  | "campaigns"
-  | "voice"
-  | "tasks"
-  | "services"
-  | "notifications"
-  | "search"
-  | "settings"
-  | "onboarding"
-  | "import";
+  | "admin";
+/* ONE ROW PER THING IN THE PRODUCT, AND NOT ONE MORE (Anir, Aug 29: "you have
+   way too many fucking pages here — just follow whatever the fuck he said").
+   I had briefly given every routable URL a row, seventeen of them beyond this
+   list: dashboard, pipeline, forecast, analytics, activity, sessions,
+   recordings, sequences, campaigns, voice, tasks, services, notifications,
+   search, settings, onboarding, import. Most are not in the sidebar and some
+   are not surfaces anybody navigates to, so all they did was bury the modules
+   that matter under thirty-five rows of scrolling.
+
+   A module with no row here is NOT thereby forbidden. lib/moduleAccess falls
+   back to the role rules for any path this table does not name, which is how
+   those pages behaved before the table existed and how they behave now. */
 
 export const PRIVILEGE_MODULES: {
   key: ModuleKey;
@@ -159,23 +147,6 @@ export const PRIVILEGE_MODULES: {
   { key: "reports", label: "Reports", path: "/reports" },
   { key: "market_intel", label: "Market Intel", path: "/market-intel" },
   { key: "admin", label: "Admin", path: "/admin" },
-  { key: "dashboard", label: "Dashboard", path: "/dashboard" },
-  { key: "pipeline", label: "Pipeline", path: "/pipeline" },
-  { key: "forecast", label: "Forecast", path: "/forecast" },
-  { key: "analytics", label: "Analytics", path: "/analytics" },
-  { key: "activity", label: "Activity", path: "/activity" },
-  { key: "sessions", label: "Sessions", path: "/sessions" },
-  { key: "recordings", label: "Recordings", path: "/recordings" },
-  { key: "sequences", label: "Sequences", path: "/sequences" },
-  { key: "campaigns", label: "Campaigns", path: "/campaigns" },
-  { key: "voice", label: "Voice agents", path: "/voice" },
-  { key: "tasks", label: "Tasks", path: "/tasks" },
-  { key: "services", label: "Services", path: "/services" },
-  { key: "notifications", label: "Notifications", path: "/notifications" },
-  { key: "search", label: "Search", path: "/search" },
-  { key: "settings", label: "Settings", path: "/settings" },
-  { key: "onboarding", label: "Onboarding", path: "/onboarding" },
-  { key: "import", label: "Import", path: "/import" },
 ];
 
 /* ------------------------------------------------------------- privileges */
@@ -234,16 +205,24 @@ export type PrivilegeState = {
   groupPrivileges: Record<string, string[]>;
   /** person name -> privileges held directly, on top of their groups'. */
   peoplePrivileges: Record<string, string[]>;
-  /**
-   * Is the matrix a GATE yet, or a document? Off until Anir says otherwise —
-   * see the note at the top of this file.
-   */
-  enforced: boolean;
   updatedBy?: string;
   updatedAt?: string;
 };
 
-/** Everything off, every badge present, nothing enforced. */
+/* THERE IS NO OFF SWITCH (Anir, Aug 29: "why the fuck would they stop
+   enforcing it?"). This table used to carry an `enforced` flag with a button
+   in Admin to turn it off, on the reasoning that a half-filled permissions
+   table should not be allowed to lock a live workspace out. That reasoning
+   describes the day it was built, not the product: a table of permissions with
+   a switch that makes it stop meaning anything is not a table of permissions,
+   and the button was one click away from quietly handing everybody everything.
+
+   The table is the authority, always. The one remaining fallback is in
+   lib/viewerAccess and it is narrow on purpose: if the table cannot be READ at
+   all, access reverts to the role rules rather than to nothing, so a Supabase
+   blip cannot lock the company out. */
+
+/** Every badge present, the shipped grid, nothing assigned to anybody yet. */
 export function emptyPrivilegeState(): PrivilegeState {
   return {
     privileges: BUILT_IN_PRIVILEGES.map((p) => ({ ...p })),
@@ -251,7 +230,6 @@ export function emptyPrivilegeState(): PrivilegeState {
     groupTypes: {},
     groupPrivileges: {},
     peoplePrivileges: {},
-    enforced: false,
   };
 }
 
@@ -304,34 +282,6 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
     reports:            ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
     market_intel:       ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
     admin:              ["none",  "none",  "none", "none", "none", "none", "none",  "none",  "write"],
-
-    /* SALES SURFACES follow the accounts they are about: BD writes, everybody
-       else reads. */
-    dashboard:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    pipeline:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    forecast:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    sessions:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    recordings:         ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    sequences:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    campaigns:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    voice:              ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    tasks:              ["write", "write", "write","write","write","write","write", "write", "write"],
-
-    /* READING SURFACES: everybody looks, nobody edits but an admin. */
-    analytics:          ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-    activity:           ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-    services:           ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-
-    /* YOUR OWN THINGS. Locking somebody out of their own settings, their own
-       notifications or the search box is how a permissions table takes the
-       product away, so these are write for everyone. */
-    notifications:      ["write", "write", "write","write","write","write","write", "write", "write"],
-    search:             ["write", "write", "write","write","write","write","write", "write", "write"],
-    settings:           ["write", "write", "write","write","write","write","write", "write", "write"],
-    onboarding:         ["write", "write", "write","write","write","write","write", "write", "write"],
-
-    /* Bulk import rewrites the catalogue. Admin only. */
-    import:             ["none",  "none",  "none", "none", "none", "none", "none",  "none",  "write"],
   };
 
   const COLUMNS = [
@@ -530,7 +480,6 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     groupTypes,
     groupPrivileges: listOf(v.groupPrivileges),
     peoplePrivileges: listOf(v.peoplePrivileges),
-    enforced: v.enforced === true,
     updatedBy: str(v.updatedBy, 80) || undefined,
     updatedAt: str(v.updatedAt, 40) || undefined,
   };

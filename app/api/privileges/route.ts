@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
     void notifyPrivilegesChanged({
       changedBy: me.name,
       lines: diffLines(before, state),
-      enforcedNow:
-        before.enforced === state.enforced ? null : state.enforced,
     });
 
     return NextResponse.json({ ok: true, state });

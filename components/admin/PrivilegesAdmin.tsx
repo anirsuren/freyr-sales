@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { cn } from "@/lib/utils";
 import {
   ACCESS_META,
   MODULES_FROM_SHEET,
@@ -133,8 +132,8 @@ export function PrivilegesAdmin() {
           instruction the header does not carry stays. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12.5px] text-text-tertiary">
-          Pick what each privilege may do. Every change asks first, and the
-          admins are emailed what changed.
+          Pick what each privilege may do. Every change takes effect straight
+          away, asks first, and emails the admins what changed.
         </p>
         {saving && (
           <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
@@ -143,56 +142,13 @@ export function PrivilegesAdmin() {
         )}
       </div>
 
-      {/* IS THIS A GATE YET, OR A DOCUMENT? Stated at the top, because a table
-          of permissions that is not being enforced looks exactly like one that
-          is, and the difference matters more than anything else on the page. */}
-      <div
-        className={cn(
-          "mb-5 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3",
-          state.enforced
-            ? "border-[rgba(26,122,53,0.3)] bg-[rgba(26,122,53,0.06)]"
-            : "border-[rgba(194,65,12,0.3)] bg-[rgba(194,65,12,0.05)]"
-        )}
-      >
-        <span
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-            state.enforced
-              ? "bg-[rgba(26,122,53,0.12)] text-[color:#1A7A35]"
-              : "bg-[rgba(194,65,12,0.12)] text-[color:#C2410C]"
-          )}
-        >
-          {state.enforced ? (
-            <ShieldCheck size={15} strokeWidth={2.2} />
-          ) : (
-            <TriangleAlert size={15} strokeWidth={2.2} />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-text-primary">
-            {state.enforced
-              ? "This table is being enforced."
-              : "This table is not being enforced yet."}
-          </span>
-          <span className="block text-[12px] text-text-secondary">
-            {state.enforced
-              ? "Every module checks it. Changing a cell changes what people can do."
-              : "It is a plan you are filling in. Access still follows the old role rules, so nothing here has taken anything away from anybody."}
-          </span>
-        </span>
-        <button
-          type="button"
-          onClick={() => void save({ ...state, enforced: !state.enforced })}
-          className={cn(
-            "shrink-0 rounded-lg border px-3.5 py-2 text-[12.5px] font-semibold transition-colors",
-            state.enforced
-              ? "border-border-light bg-white text-text-secondary hover:text-text-primary"
-              : "border-[rgba(26,122,53,0.4)] bg-[rgba(26,122,53,0.08)] text-[color:#1A7A35] hover:bg-[rgba(26,122,53,0.14)]"
-          )}
-        >
-          {state.enforced ? "Stop enforcing" : "Start enforcing"}
-        </button>
-      </div>
+      {/* NO ENFORCEMENT BANNER, AND NO SWITCH UNDER IT (Anir, Aug 29: "why the
+          fuck would they stop enforcing it? Use your fucking brain. Remove
+          that."). The table always decides, so a bar announcing that it does
+          was a permanent green stripe saying nothing, and the button beside it
+          was a way to turn the company's permissions off by accident. What the
+          bar actually needed to say — that a change lands immediately — is one
+          clause in the line above the grid. */}
 
       <div className="overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <table className="w-full min-w-[1100px] border-collapse text-left">
@@ -321,13 +277,9 @@ export function PrivilegesAdmin() {
             </>
           )
         }
-        detail={
-          state.enforced
-            ? "This table is being enforced, so it changes what people can do as soon as you confirm. The admins are emailed."
-            : "This table is not being enforced yet, so nobody's access changes today. The admins are emailed."
-        }
+        detail="This changes what those people can do as soon as you confirm. The admins are emailed."
         confirmLabel="Change it"
-        tone={state.enforced ? "destructive" : "primary"}
+        tone="destructive"
         busy={saving}
       />
     </div>

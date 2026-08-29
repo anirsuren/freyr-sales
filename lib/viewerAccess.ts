@@ -21,13 +21,14 @@ import {
  * answer. React's `cache` makes the whole thing one round trip per request no
  * matter how many pages, layouts and routes ask.
  *
- * RETURNS NULL WHEN THE TABLE IS NOT THE AUTHORITY. Two ways that happens:
- * the admin has not switched enforcement on, or the table could not be read at
- * all. Both mean the same thing to every caller — fall back to the role rules
- * in lib/moduleAccess — and both are deliberate: a permissions table that
- * cannot be loaded must not become a permissions table that denies everything.
- * A workspace locked out by a Supabase blip is a worse failure than one that
- * kept yesterday's rules for a minute.
+ * RETURNS NULL ONLY WHEN THE TABLE CANNOT BE READ. There is no longer a switch
+ * that turns enforcement off (Anir, Aug 29: "why the fuck would they stop
+ * enforcing it?") — the table always decides. The one case left is the store
+ * being unreachable, and then every caller falls back to the role rules in
+ * lib/moduleAccess, deliberately: a permissions table that cannot be loaded
+ * must not become a permissions table that denies everything. A workspace
+ * locked out by a Supabase blip is a worse failure than one that kept
+ * yesterday's rules for a minute.
  *
  * THE PREVIEW IS HONOURED. `getRole()` applies the view-as downgrade, so an
  * admin previewing as a BD Member resolves a BD Member's map and sees exactly
@@ -47,8 +48,6 @@ export const resolveViewerAccess = cache(
         getRole(),
         readPrivileges(),
       ]);
-      if (!privileges.enforced) return null;
-
       /* Only read the groups when the table actually uses them. Nobody holds a
          group privilege on day one, and this saves a second store read on
          every request until somebody does. */

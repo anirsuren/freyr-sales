@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ShieldCheck, UserRound, UsersRound, PencilRuler } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -39,8 +40,19 @@ const ROLE_OPTIONS: ColorOption[] = [
 ];
 
 /** Least power to most, so the dialog can say "promoting" or "reducing"
- *  instead of the useless "changing". */
-const RANK: Record<string, number> = { rep: 0, solutions: 0, manager: 1, admin: 2 };
+ *  instead of the useless "changing". Keyed on the roles as they are stored
+ *  now; the pre-024 words are still listed because a row written before the
+ *  migration reads back as `rep` or `manager` and an unranked role would make
+ *  every change read as a demotion. */
+const RANK: Record<string, number> = {
+  bd_member: 0,
+  sol_member: 0,
+  bd_owner: 1,
+  admin: 2,
+  rep: 0,
+  solutions: 0,
+  manager: 1,
+};
 
 type Member = {
   id: string;
@@ -53,6 +65,15 @@ type Member = {
 
 export function MemberRoles({ canEdit }: { canEdit: boolean }) {
   const { toast } = useToast();
+  const me = useCurrentUserOrNull();
+  /* Email first because it is the one thing that is unique — two people can
+     share a name, and this list has several Anirs on it. */
+  const isMe = (m: Member) => {
+    if (!me) return false;
+    const mine = (me.email ?? "").trim().toLowerCase();
+    if (mine && m.email.trim().toLowerCase() === mine) return true;
+    return !mine && m.name.trim().toLowerCase() === me.name.trim().toLowerCase();
+  };
   const [members, setMembers] = useState<Member[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   /** The role change waiting on a yes. Nothing is sent until it gets one. */
@@ -191,6 +212,18 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                   <span className="truncate text-[13px] font-semibold text-text-primary">
                     {m.name}
                   </span>
+                  {/* WHICH ONE OF THESE IS ME (Anir, Aug 29: "whoever I am
+                      needs to have a proper label on this page, like it should
+                      say You, just like it does on the other pages"). Forty
+                      rows of names and one of them decides what he himself can
+                      do — the same pill the performance pickers and the
+                      offering owners use, so it reads as the app's one way of
+                      saying this rather than a new one invented here. */}
+                  {isMe(m) && (
+                    <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                      You
+                    </span>
+                  )}
                   {!m.active && (
                     <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                       Suspended

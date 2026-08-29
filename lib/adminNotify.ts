@@ -217,29 +217,19 @@ export async function notifyAccessChanged(change: {
 export async function notifyPrivilegesChanged(change: {
   changedBy: string;
   lines: string[];
-  enforcedNow?: boolean | null;
 }): Promise<void> {
   try {
-    if (change.lines.length === 0 && change.enforcedNow == null) return;
+    if (change.lines.length === 0) return;
     const headline =
-      change.enforcedNow != null
-        ? change.enforcedNow
-          ? "Privileges are now being enforced"
-          : "Privileges are no longer being enforced"
-        : change.lines.length === 1
-          ? "A privilege changed"
-          : `${change.lines.length} privileges changed`;
+      change.lines.length === 1
+        ? "A privilege changed"
+        : `${change.lines.length} privileges changed`;
 
-    const body: string[] = [`${change.changedBy} changed privilege management.`, ""];
-    if (change.enforcedNow != null) {
-      body.push(
-        change.enforcedNow
-          ? "The privilege table is now ENFORCED: it decides what people can open and edit."
-          : "The privilege table is NO LONGER enforced: access has gone back to the old role rules."
-      );
-      if (change.lines.length) body.push("");
-    }
-    body.push(...change.lines);
+    const body: string[] = [
+      `${change.changedBy} changed privilege management.`,
+      "",
+      ...change.lines,
+    ];
 
     await tell(
       headline,
@@ -247,15 +237,6 @@ export async function notifyPrivilegesChanged(change: {
       SHELL(
         esc(headline),
         `${
-          change.enforcedNow != null
-            ? `<p style="margin:0 0 12px">${
-                change.enforcedNow
-                  ? "The privilege table is now <b>enforced</b> — it decides what people can open and edit."
-                  : "The privilege table is <b>no longer enforced</b> — access has gone back to the old role rules."
-              }</p>`
-            : ""
-        }
-        ${
           change.lines.length
             ? `<table style="border-collapse:collapse">${change.lines
                 .map((l) => {
