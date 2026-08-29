@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   ChevronDown,
   Crown,
@@ -434,193 +434,266 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             No groups yet. Create the first department and pick who owns it.
           </p>
         ) : (
-          groups.map((g) => {
-            const open = openIds.has(g.id);
-            // The owner belongs in the roster whether or not they were also
-            // added as a member; they are the one person guaranteed to be in
-            // the group.
-            const roster = [
-              ...new Set(
-                [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
-              ),
-            ];
-            return (
-            <div
-              key={g.id}
-              className="overflow-hidden rounded-xl border border-border-light bg-white"
-            >
-            {/* More air top and bottom: the faces were grazing the card's own
-                edge (Anir, Aug 19: "my profile picture is kind of hitting the
-                top, give a little bit more gap"). */}
-            <div className="flex items-center gap-3 px-3.5 py-4">
-              {/* The whole left side is the toggle: the row answers "who is in
-                  here" without sending you into the editor to find out. */}
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenIds((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(g.id)) next.delete(g.id);
-                    else next.add(g.id);
-                    return next;
-                  })
-                }
-                aria-expanded={open}
-                className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left"
-              >
-                <ChevronDown
-                  size={15}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  className={cn(
-                    "shrink-0 text-text-tertiary transition-transform",
-                    open && "rotate-180 text-blue-primary"
-                  )}
-                />
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-text-primary">
-                    {g.name}
-                  </span>
-                  {/* Say the word "owner" (Anir, Aug 14: "where is the fucking
-                      owner"). A crown next to a name reads as just another
-                      member unless it is spelled out. */}
-                  {/* The owner wears their own face (Anir, Aug 15: "when you
-                      say owner, put my profile picture of whoever the owner
-                      is"). A name in bold reads like any other name. */}
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                    <Crown size={10} strokeWidth={2.6} className="shrink-0 text-[color:#7C3AED]" />
-                    Owner
-                    <Avatar name={g.head} className="h-5 w-5 shrink-0 text-[7.5px]" />
-                    <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
-                    {roster.length}{" "}
-                    {roster.length === 1 ? "person" : "people"}
-                    {(() => {
-                      const r = rollup(g);
-                      if (!r) return null;
-                      return (
-                        <>
-                          {" · "}
-                          <span className="inline-flex items-center gap-1 font-semibold text-blue-primary">
-                            <ClipboardList size={10} strokeWidth={2.4} />
-                            {r.held} {r.held === 1 ? "goal" : "goals"}
-                          </span>
-                          {r.target > 0 && (
-                            <>
-                              {" · "}
-                              <span className="font-semibold text-[color:#0F766E] tnum">
+          /* THE SAME TABLE GOAL MASTER USES (Anir, Aug 29: "you need to fix
+             this screen, make it look like goal master").
+
+             It was a stack of loose cards, each one packing owner, headcount,
+             goal count, money and the verify warning into a single run-on line
+             of interpuncts. Goal Master answers the same shape of question with
+             real columns and a headed Actions cluster, so the eye goes down a
+             column instead of parsing a sentence per row — and two screens that
+             list things in one product should not be two different designs.
+
+             Same colgroup-and-thead structure, same row hover, same expand, and
+             the same action buttons at the same sizes. */
+          <div className="overflow-hidden rounded-2xl border border-border-light bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[860px] table-fixed">
+                <colgroup>
+                  <col style={{ width: "30%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "10%" }} />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-light bg-surface">
+                    {["Group", "Owner", "People", "Goals", "Progress"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                    <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light">
+                  {groups.map((g) => {
+                    const open = openIds.has(g.id);
+                    // The owner belongs in the roster whether or not they were
+                    // also added as a member; they are the one person
+                    // guaranteed to be in the group.
+                    const roster = [
+                      ...new Set(
+                        [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
+                      ),
+                    ];
+                    const r = rollup(g);
+                    return (
+                      <Fragment key={g.id}>
+                        <tr
+                          onClick={() =>
+                            setOpenIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(g.id)) next.delete(g.id);
+                              else next.add(g.id);
+                              return next;
+                            })
+                          }
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            open ? "bg-surface" : "hover:bg-surface"
+                          )}
+                        >
+                          <td className="px-4 py-3.5">
+                            <span className="flex items-center gap-2.5">
+                              <ChevronDown
+                                size={15}
+                                strokeWidth={2.2}
+                                aria-hidden="true"
+                                className={cn(
+                                  "shrink-0 text-text-tertiary transition-transform duration-200",
+                                  open ? "rotate-180 text-blue-primary" : "-rotate-90"
+                                )}
+                              />
+                              <span className="min-w-0">
+                                <span className="block truncate text-[13px] font-semibold text-text-primary">
+                                  {g.name}
+                                </span>
+                                {g.groupType && (
+                                  <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                    {GROUP_TYPE_META[
+                                      g.groupType as keyof typeof GROUP_TYPE_META
+                                    ]?.label ?? g.groupType}
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                          </td>
+                          {/* Say the word "owner" (Anir, Aug 14: "where is the
+                              fucking owner"), and wear their face (Aug 15:
+                              "put my profile picture of whoever the owner
+                              is") — but in a column of its own now, so it is
+                              not competing with four other facts. */}
+                          <td className="px-4 py-3.5">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <Crown
+                                size={11}
+                                strokeWidth={2.6}
+                                className="shrink-0 text-[color:#7C3AED]"
+                              />
+                              <Avatar
+                                name={g.head}
+                                className="h-5 w-5 shrink-0 text-[7.5px]"
+                              />
+                              <span className="truncate text-[12.5px] font-semibold text-text-primary">
+                                {g.head}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            {/* The faces still fan apart on hover (Anir, Aug
+                                15: "that animation I like"). */}
+                            <PersonFan
+                              people={roster.map((m) => ({
+                                name: m,
+                                role:
+                                  m === g.head
+                                    ? `Group owner · ${roleLabel(roles[m])}`
+                                    : roleLabel(roles[m]),
+                                context: g.name,
+                              }))}
+                              avatarClassName="h-6 w-6 text-[9px]"
+                            />
+                          </td>
+                          <td className="px-4 py-3.5">
+                            {r ? (
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-blue-primary">
+                                  <ClipboardList size={11} strokeWidth={2.4} />
+                                  {r.held} {r.held === 1 ? "goal" : "goals"}
+                                </span>
+                                {r.waiting > 0 && (
+                                  <span className="whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#B45309] tnum">
+                                    {r.waiting} to verify
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-[12.5px] text-text-tertiary">.</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            {r && r.target > 0 ? (
+                              <span className="whitespace-nowrap text-[12.5px] font-semibold text-[color:#0F766E] tnum">
                                 {chipMoney(r.achieved)} of {chipMoney(r.target)}
                               </span>
-                            </>
-                          )}
-                          {r.waiting > 0 && (
-                            <>
-                              {" · "}
-                              <span className="font-semibold text-[color:#B45309] tnum">
-                                {r.waiting} to verify
-                              </span>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </span>
-                </span>
-              </button>
-              {/* The faces fan apart on hover, the same mechanic as Offerings
-                  and the campaigns row (Anir, Aug 15: "do the same thing with
-                  the profile pictures... that animation I like"). */}
-              <Link
-                /* The tab picks a group by ID, so linking the NAME landed on
-                   the page with the first group selected instead of this one
-                   (Anir, Aug 19: "make sure it actually takes me to that
-                   group, not just the page"). */
-                href={`/performance/groups?group=${encodeURIComponent(g.id)}`}
-                title="See group performance"
-                aria-label={`See ${g.name} on Group performance`}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-              >
-                <ArrowUpRight size={14} strokeWidth={2.2} />
-              </Link>
-              <span className="shrink-0">
-                <PersonFan
-                  people={roster.map((m) => ({
-                    name: m,
-                    role:
-                      m === g.head
-                        ? `Group owner · ${roleLabel(roles[m])}`
-                        : roleLabel(roles[m]),
-                    context: g.name,
-                  }))}
-                  avatarClassName="h-6 w-6 text-[9px]"
-                />
-              </span>
-              <button
-                type="button"
-                title={`Edit ${g.name}`}
-                aria-label={`Edit ${g.name}`}
-                onClick={() => openEdit(g)}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-              >
-                <Pencil size={13} strokeWidth={2.2} />
-              </button>
-              <button
-                type="button"
-                title={`Remove ${g.name}`}
-                aria-label={`Remove ${g.name}`}
-                onClick={() => setConfirmRemove(g)}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
-              >
-                <Trash2 size={13} strokeWidth={2.2} />
-              </button>
+                            ) : (
+                              <span className="text-[12.5px] text-text-tertiary">.</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 pl-2 pr-4">
+                            <span className="flex items-center justify-end gap-0.5">
+                              <Link
+                                /* The tab picks a group by ID, so linking the
+                                   NAME landed on the page with the first group
+                                   selected instead of this one (Anir, Aug 19:
+                                   "make sure it actually takes me to that
+                                   group, not just the page"). */
+                                href={`/performance/groups?group=${encodeURIComponent(g.id)}`}
+                                title="See group performance"
+                                aria-label={`See ${g.name} on Group performance`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <ArrowUpRight size={13} strokeWidth={2.2} />
+                              </Link>
+                              <button
+                                type="button"
+                                title={`Edit ${g.name}`}
+                                aria-label={`Edit ${g.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(g);
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <Pencil size={13} strokeWidth={2.2} />
+                              </button>
+                              <button
+                                type="button"
+                                title={`Remove ${g.name}`}
+                                aria-label={`Remove ${g.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmRemove(g);
+                                }}
+                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                              >
+                                <Trash2 size={13} strokeWidth={2.2} />
+                              </button>
+                            </span>
+                          </td>
+                        </tr>
+                        {open && (
+                          <tr>
+                            <td colSpan={6} className="bg-surface p-0">
+                              <div className="tab-panel border-t border-border-light px-4 py-3">
+                                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  In this group
+                                </p>
+                                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                                  {roster.map((m) => (
+                                    <div
+                                      key={m}
+                                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+                                    >
+                                      <Avatar
+                                        name={m}
+                                        className="h-7 w-7 shrink-0 text-[10px]"
+                                      />
+                                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                                        {m}
+                                      </span>
+                                      {m === g.head && (
+                                        <Crown
+                                          size={11}
+                                          strokeWidth={2.6}
+                                          aria-label="Group owner"
+                                          className="shrink-0 text-[color:#7C3AED]"
+                                        />
+                                      )}
+                                      <RoleTag
+                                        role={roles[m]}
+                                        size="sm"
+                                        className="shrink-0"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                                {/* No "Add or remove people" link: the pencil
+                                    on the row already opens the editor (Anir,
+                                    Aug 15: "we don't need the add or remove
+                                    people because there's already an edit
+                                    button"). */}
+                                {/* AND UNDER THE PEOPLE, THE GOALS (Anir, Aug
+                                    25: "when I click the dropdown below the
+                                    people, it shows me the goals, and then I
+                                    can click into each goal"). */}
+                                {perf && (
+                                  <GroupGoalsDrilldown
+                                    state={perf}
+                                    groupId={g.id}
+                                    groupName={g.name}
+                                    members={roster}
+                                  />
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            {open && (
-              <div className="tab-panel border-t border-border-light px-3.5 py-3">
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  In this group
-                </p>
-                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-                  {roster.map((m) => (
-                    <div
-                      key={m}
-                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
-                    >
-                      <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                        {m}
-                      </span>
-                      {m === g.head && (
-                        <Crown
-                          size={11}
-                          strokeWidth={2.6}
-                          aria-label="Group owner"
-                          className="shrink-0 text-[color:#7C3AED]"
-                        />
-                      )}
-                      <RoleTag role={roles[m]} size="sm" className="shrink-0" />
-                    </div>
-                  ))}
-                </div>
-                {/* No "Add or remove people" link: the pencil on the row above
-                    already opens the editor (Anir, Aug 15: "we don't need the
-                    add or remove people because there's already an edit
-                    button"). */}
-                {/* AND UNDER THE PEOPLE, THE GOALS (Anir, Aug 25: "I want to
-                    see all their goals and how they're doing on the goals...
-                    when I click the dropdown below the people, it shows me the
-                    goals, and then I can click into each goal"). */}
-                {perf && (
-                  <GroupGoalsDrilldown
-                    state={perf}
-                    groupId={g.id}
-                    groupName={g.name}
-                    members={roster}
-                  />
-                )}
-              </div>
-            )}
-            </div>
-            );
-          })
+          </div>
         )}
       </div>
 
