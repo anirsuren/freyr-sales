@@ -57,12 +57,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
      group type"). Empty means nobody has classified it yet, which is what
      every group created before today is. */
   const [groupType, setGroupType] = useState("");
-  /* WHAT EVERYONE IN THE GROUP CARRIES (Suren, Aug 29: "when that particular
-     group or the particular person is added, a privilege is given"). Held in
-     the privilege store rather than on the group, because the same table is
-     what the modules read. */
-  const [groupPrivs, setGroupPrivs] = useState<string[]>([]);
-  const [privState, setPrivState] = useState<PrivilegeState | null>(null);
   const [head, setHead] = useState("");
   const [members, setMembers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -108,10 +102,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   // as "No groups yet", which reads as somebody having deleted them all.
   const load = useCallback(async () => {
     try {
-      fetch("/api/privileges", { cache: "no-store" })
-        .then((r) => r.json())
-        .then((d) => d?.state && setPrivState(d.state as PrivilegeState))
-        .catch(() => {});
       const res = await fetch("/api/performance", { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.state) {
@@ -219,7 +209,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     setEditing(null);
     setName("");
     setGroupType("");
-    setGroupPrivs([]);
     setHead("");
     setMembers([]);
     setCreating(true);
@@ -233,7 +222,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     setEditing(g);
     setName(g.name);
     setGroupType(g.groupType ?? "");
-    setGroupPrivs(privState?.groupPrivileges[g.id] ?? []);
     setHead(g.head);
     setMembers([...g.members]);
     setCreating(true);
@@ -255,50 +243,16 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           `${name.trim()} created`
         );
     if (ok) {
-      /* The group is saved by /api/performance and its privileges by
-         /api/privileges — two stores, one action, so the second only runs once
-         the first has actually landed. A group that failed to save must not
-         leave privileges pointing at an id that does not exist. */
-      await savePrivilegesForGroup();
+      /* ONE STORE AGAIN. Saving a group used to write to /api/performance and
+         then to /api/privileges, because a group carried privileges of its
+         own. Suren corrected the direction on Aug 29 — the people bring their
+         privileges with them and the group grants nothing — so there is no
+         second write to keep in step with the first. */
       setName("");
       setGroupType("");
-      setGroupPrivs([]);
       setHead("");
       setMembers([]);
       closeEditor();
-    }
-  }
-
-  /** Store this group's privileges, resolving the id for a group just made. */
-  async function savePrivilegesForGroup() {
-    if (!privState) return;
-    let groupId = editing?.id ?? "";
-    if (!groupId) {
-      /* Just created: find it by the name we asked for. */
-      const fresh = await fetch("/api/performance", { cache: "no-store" })
-        .then((r) => r.json())
-        .catch(() => null);
-      const made = (fresh?.state?.groups as PerfGroup[] | undefined)?.find(
-        (g) => g.name.trim().toLowerCase() === name.trim().toLowerCase()
-      );
-      groupId = made?.id ?? "";
-    }
-    if (!groupId) return;
-    const next: PrivilegeState = {
-      ...privState,
-      groupPrivileges: { ...privState.groupPrivileges, [groupId]: groupPrivs },
-    };
-    if (groupPrivs.length === 0) delete next.groupPrivileges[groupId];
-    try {
-      const res = await fetch("/api/privileges", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: next }),
-      });
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.state) setPrivState(data.state as PrivilegeState);
-    } catch {
-      toast("The group saved, but its privileges did not.", "error");
     }
   }
 
@@ -349,7 +303,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group type
-                <InfoHint text={"What kind of group this is. It decides which privileges its people naturally carry.\nBusiness development, Business offering, Solutioning or Admin."} />
+                <InfoHint text={"What kind of work this group can be given, not what its people may do.\nA business development group can be given customers, contracts and opportunities. A solutioning group can be given solution requests, submissions, presentations and meetings.\nEverybody keeps whatever privileges they already hold."} />
               </label>
               <div className="mt-1">
                 <ColorSelect

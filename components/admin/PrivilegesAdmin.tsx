@@ -7,6 +7,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
+  ACCESS_LEVELS,
   ACCESS_META,
   PRIVILEGE_MODULES,
   type Access,
@@ -243,7 +244,13 @@ export function PrivilegesAdmin() {
                             });
                           }}
                           options={(
-                            ["none", "read", "write"] as Access[]
+                            /* The four Suren named, weakest first, so the menu
+                               reads as an escalation rather than a set. Built
+                               from ACCESS_LEVELS rather than written out here,
+                               because the last time this list was a literal it
+                               went stale the moment Access changed and took the
+                               whole page down with it. */
+                            ACCESS_LEVELS
                           ).map((a) => ({
                             value: a,
                             label: ACCESS_META[a].label,

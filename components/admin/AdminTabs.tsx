@@ -53,7 +53,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: KeyRound,
     color: "#B45309",
     subtitle:
-      "What each privilege may do in each module: nothing, read, or write. A person holds the privileges their groups carry, plus any given to them directly.",
+      "What each privilege may do in each module. View looks, Edit changes what is already there, Create makes new ones and is the only one that can delete. It applies to records a person created or was assigned; View all is what lets them see everybody else's.",
   },
   {
     key: "activity",

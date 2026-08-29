@@ -3,9 +3,9 @@ import "server-only";
 import { cache } from "react";
 import { getCurrentUser } from "./currentUser";
 import { getRole } from "./role";
-import { readPerformance } from "./performance";
 import {
   accessMapFor,
+  hasViewAll,
   readPrivileges,
   type Access,
   type ModuleKey,
@@ -36,6 +36,8 @@ import {
  */
 export type ViewerAccess = {
   access: Record<ModuleKey, Access>;
+  /** Can they see records that are not theirs? Read only, always. */
+  viewAll: boolean;
   /** The role the map was built for, after any view-as downgrade. */
   role: string;
 };
@@ -48,21 +50,15 @@ export const resolveViewerAccess = cache(
         getRole(),
         readPrivileges(),
       ]);
-      /* Only read the groups when the table actually uses them. Nobody holds a
-         group privilege on day one, and this saves a second store read on
-         every request until somebody does. */
-      const usesGroups = Object.keys(privileges.groupPrivileges).length > 0;
-      const groups = usesGroups
-        ? (await readPerformance().catch(() => null))?.groups ?? []
-        : [];
-
+      /* NO GROUP READ HERE ANY MORE. Groups used to confer privileges, so
+         resolving what somebody could do meant loading every group first.
+         Suren corrected that on Aug 29 — privileges are held by the person and
+         a group hands out none — so this is one store read again. Groups still
+         matter, but for which RECORDS are reachable, which each module asks
+         for itself when it has records in hand. */
       return {
-        access: accessMapFor({
-          state: privileges,
-          role,
-          person: me.name,
-          groups,
-        }),
+        access: accessMapFor({ state: privileges, role, person: me.name }),
+        viewAll: hasViewAll(privileges, me.name, role),
         role,
       };
     } catch {

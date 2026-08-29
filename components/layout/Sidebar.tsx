@@ -45,6 +45,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
 import { canAccessModule, canAccessModuleWith } from "@/lib/moduleAccess";
+import type { Access } from "@/lib/privileges";
 import {
   useCurrentUser,
   useMyPhoto,
@@ -130,7 +131,7 @@ export function Sidebar({
   mobileOpen?: boolean;
   onMobileClose?: () => void;
   /** Resolved server-side in app/layout. Null = the role rules still decide. */
-  moduleAccess?: Record<string, "none" | "read" | "write"> | null;
+  moduleAccess?: Record<string, Access> | null;
 }) {
   const pathname = usePathname() || "";
   const currentUser = useCurrentUser();

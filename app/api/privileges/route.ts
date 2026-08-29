@@ -90,23 +90,8 @@ function diffLines(before: PrivilegeState, after: PrivilegeState): string[] {
     }
   }
 
-  const keys = new Set([
-    ...Object.keys(before.groupPrivileges),
-    ...Object.keys(after.groupPrivileges),
-  ]);
-  for (const gid of keys) {
-    const was = (before.groupPrivileges[gid] ?? []).slice().sort().join(", ");
-    const now = (after.groupPrivileges[gid] ?? []).slice().sort().join(", ");
-    if (was === now) continue;
-    out.push(
-      `Group ${gid}: ${
-        now
-          ? now.split(", ").map(nameOf).join(", ")
-          : "no privileges"
-      }`
-    );
-  }
-
+  /* No group lines any more: a group grants nothing, so there is nothing about
+     one that could change what a person may do. */
   const people = new Set([
     ...Object.keys(before.peoplePrivileges),
     ...Object.keys(after.peoplePrivileges),

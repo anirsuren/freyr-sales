@@ -1,5 +1,11 @@
 import type { UserIdentityRole } from "./userIdentity";
-import { moduleForPath as moduleKeyForPath } from "./privileges";
+import {
+  moduleForPath as moduleKeyForPath,
+  canCreate,
+  canDelete,
+  canEdit,
+  type Access,
+} from "./privileges";
 
 /**
  * WHO CAN OPEN WHICH MODULE (Freyr, Aug 12, via Anir).
@@ -155,7 +161,7 @@ export function isManagerOnlyPath(path: string): boolean {
 export function canAccessModuleWith(
   path: string,
   role: UserIdentityRole,
-  access: Partial<Record<string, "none" | "read" | "write">> | null
+  access: Partial<Record<string, Access>> | null
 ): boolean {
   if (!access) return canAccessModule(path, role);
   // Signing in, settings, notifications: never a module, never gated.
@@ -166,16 +172,54 @@ export function canAccessModuleWith(
   return level !== "none";
 }
 
-/** May they CHANGE things here, as opposed to only look? */
+/**
+ * May they CHANGE things here, as opposed to only look?
+ *
+ * Edit or Create both answer yes. Suren split the old single "write" in two on
+ * Aug 29 ("owner can create, member can edit"), and most callers only need to
+ * know whether the pen is in the room at all — a save handler, a disabled
+ * form, a hidden edit button. The two that differ are below.
+ */
 export function canWriteModuleWith(
   path: string,
   role: UserIdentityRole,
-  access: Partial<Record<string, "none" | "read" | "write">> | null
+  access: Partial<Record<string, Access>> | null
 ): boolean {
   if (!access) return canAccessModule(path, role);
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
-  return (access[key] ?? "none") === "write";
+  return canEdit(access[key] ?? "none");
+}
+
+/** May they make a NEW one? Owners only. */
+export function canCreateModuleWith(
+  path: string,
+  role: UserIdentityRole,
+  access: Partial<Record<string, Access>> | null
+): boolean {
+  if (!access) return canAccessModule(path, role);
+  const key = moduleKeyForPath(path);
+  if (!key) return canAccessModule(path, role);
+  return canCreate(access[key] ?? "none");
+}
+
+/**
+ * May they REMOVE one?
+ *
+ * Suren, Aug 29: "the person who can create only can delete. The edit person
+ * can only edit, cannot delete." So this is deliberately not "can they write" —
+ * a member who can correct every field on a contract still cannot make the
+ * contract go away.
+ */
+export function canDeleteModuleWith(
+  path: string,
+  role: UserIdentityRole,
+  access: Partial<Record<string, Access>> | null
+): boolean {
+  if (!access) return canAccessModule(path, role);
+  const key = moduleKeyForPath(path);
+  if (!key) return canAccessModule(path, role);
+  return canDelete(access[key] ?? "none");
 }
 
 /** The one question every nav item and every guarded page asks. */

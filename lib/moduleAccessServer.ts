@@ -2,7 +2,13 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "./currentUser";
-import { canAccessModule, canAccessModuleWith, canWriteModuleWith } from "./moduleAccess";
+import {
+  canAccessModule,
+  canAccessModuleWith,
+  canCreateModuleWith,
+  canDeleteModuleWith,
+  canWriteModuleWith,
+} from "./moduleAccess";
 import { viewerAccessMap } from "./viewerAccess";
 
 /**
@@ -36,7 +42,39 @@ export async function moduleWriteRefusal(path: string): Promise<string | null> {
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
   if (!canWriteModuleWith(path, user.role, access))
-    return "You can read this, but not change it.";
+    return "You can look at this, but not change it.";
+  return null;
+}
+
+/**
+ * MAY THEY MAKE A NEW ONE? Owners only.
+ *
+ * Suren, Aug 29: "owner can create, member can edit." A member who can correct
+ * every field on an existing record still cannot start a new one, so this is a
+ * separate question from moduleWriteRefusal and a separate answer.
+ */
+export async function moduleCreateRefusal(path: string): Promise<string | null> {
+  const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
+  if (!canAccessModuleWith(path, user.role, access))
+    return "Not available on this account.";
+  if (!canCreateModuleWith(path, user.role, access))
+    return "You can change these, but only an owner can make a new one.";
+  return null;
+}
+
+/**
+ * MAY THEY REMOVE ONE?
+ *
+ * "The person who can create only can delete. The edit person can only edit,
+ * cannot delete." Deleting is the one thing that cannot be undone by editing
+ * it back, which is why it sits with whoever could have created it.
+ */
+export async function moduleDeleteRefusal(path: string): Promise<string | null> {
+  const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
+  if (!canAccessModuleWith(path, user.role, access))
+    return "Not available on this account.";
+  if (!canDeleteModuleWith(path, user.role, access))
+    return "Only an owner can delete this.";
   return null;
 }
 

@@ -151,14 +151,53 @@ export const PRIVILEGE_MODULES: {
 
 /* ------------------------------------------------------------- privileges */
 
-/** Nothing, look but do not touch, or the pen. */
-export type Access = "none" | "read" | "write";
+/**
+ * WHAT SOMEBODY MAY DO IN A MODULE. Four answers, not three.
+ *
+ * Suren, Aug 29: "You know the difference between owner and member? Owner can
+ * create, member can edit... there is create, edit and view. Remember, the
+ * person who can create only can delete. The edit person can only edit, cannot
+ * delete."
+ *
+ * So the old "write" was two different jobs wearing one word, and the thing it
+ * hid is DELETE. An owner creates a customer and can remove it; the member the
+ * owner then assigns can correct anything on it and cannot make it disappear.
+ * That is the whole reason this is four values and not three, and it is why
+ * `canDelete` asks for "create" rather than for "not view".
+ *
+ * They escalate: create does everything edit does, edit does everything view
+ * does. RANK below is what makes that true, and mergeAccess is why holding two
+ * privileges is never worse than holding one.
+ */
+export type Access = "none" | "view" | "edit" | "create";
 
 export const ACCESS_META: Record<Access, { label: string; color: string }> = {
   none: { label: "No access", color: "#8E98A8" },
-  read: { label: "Read", color: "#0071E3" },
-  write: { label: "Write", color: "#1A7A35" },
+  view: { label: "View", color: "#0071E3" },
+  edit: { label: "Edit", color: "#7C3AED" },
+  create: { label: "Create", color: "#1A7A35" },
 };
+
+/** Weakest to strongest. The one list every picker builds itself from. */
+export const ACCESS_LEVELS: Access[] = ["none", "view", "edit", "create"];
+
+/** May they make new ones? Owners only. */
+export function canCreate(a: Access): boolean {
+  return a === "create";
+}
+
+/** May they change one that exists? Owners and members. */
+export function canEdit(a: Access): boolean {
+  return a === "create" || a === "edit";
+}
+
+/**
+ * May they remove one? Only whoever could have created it.
+ * "The person who can create only can delete."
+ */
+export function canDelete(a: Access): boolean {
+  return a === "create";
+}
 
 export type PrivilegeDef = {
   id: string;
@@ -192,18 +231,33 @@ export const BUILT_IN_PRIVILEGES: PrivilegeDef[] = [
   { id: "delivery_owner", label: "Delivery Owner", blurb: "Owns what has been sold being delivered.", builtIn: true },
   { id: "delivery_member", label: "Delivery Member", blurb: "Delivers the work.", builtIn: true },
   { id: "admin", label: "Admin", groupType: "admin", blurb: "Runs the workspace. Everything, everywhere.", builtIn: true },
+  /**
+   * THE ONE THAT WORKS DIFFERENTLY (Suren, Aug 29): "View all privilege is the
+   * only one which helps you to see customers that are not related to you...
+   * If he has view all access, that means in the customer module he can look
+   * at other customers, but he cannot write."
+   *
+   * Every other privilege answers "what may you do", and the answer only ever
+   * applies to records you created or were assigned. This one answers "what
+   * may you SEE that is not yours", and it never carries the pen — see
+   * VIEW_ALL and the note above recordAccess.
+   */
+  { id: "view_all", label: "View all", blurb: "Can look at records that are not theirs. Read only, never write.", builtIn: true },
 ];
+
+/** The privilege that widens what you can SEE rather than what you can do. */
+export const VIEW_ALL = "view_all";
 
 export type PrivilegeState = {
   /** The badges that exist. */
   privileges: PrivilegeDef[];
   /** privilegeId -> moduleKey -> access. Missing means "none". */
   matrix: Record<string, Partial<Record<ModuleKey, Access>>>;
-  /** groupId -> its type. */
+  /** groupId -> its type. Decides which modules the group can hold work for,
+   *  never what its people may do — see MODULE_GROUPING. */
   groupTypes: Record<string, GroupType>;
-  /** groupId -> privileges everybody in it holds. */
-  groupPrivileges: Record<string, string[]>;
-  /** person name -> privileges held directly, on top of their groups'. */
+  /** person name -> the privileges they hold. The only place privileges are
+   *  granted; a group confers none. */
   peoplePrivileges: Record<string, string[]>;
   updatedBy?: string;
   updatedAt?: string;
@@ -228,7 +282,6 @@ export function emptyPrivilegeState(): PrivilegeState {
     privileges: BUILT_IN_PRIVILEGES.map((p) => ({ ...p })),
     matrix: defaultMatrix(),
     groupTypes: {},
-    groupPrivileges: {},
     peoplePrivileges: {},
   };
 }
@@ -260,26 +313,31 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
    *   Goals: owners set targets, members read the one they were given.
    *   Admin runs the workspace, so nobody else touches it.
    */
+  /* WHERE HIS SHEET SAYS "WRITE", THE OWNER COLUMN GETS Create AND THE MEMBER
+     COLUMN GETS Edit — that is the split he described, applied down every row
+     rather than decided cell by cell. Admin creates everywhere. View all only
+     ever views, on every row, which is what makes it the one privilege that
+     widens what you see without ever handing you the pen. */
   const GRID: Record<string, Access[]> = {
-    //                    BDo      BDm      BOo     BOm     SOLo    SOLm    DELo     DELm     ADM
-    agent:              ["write", "write", "write","write","write","write","write", "write", "write"],
-    offerings:          ["read",  "read",  "write","write","read", "read", "read",  "read",  "write"],
-    digital_components: ["read",  "read",  "write","write","read", "read", "read",  "read",  "write"],
-    opportunities:      ["write", "write", "write","write","read", "read", "write", "write", "write"],
-    customers:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    contacts:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    solution_requests:  ["write", "write", "write","write","write","write","write", "write", "write"],
-    submissions:        ["write", "write", "write","write","write","write","write", "write", "write"],
-    presentations:      ["write", "write", "write","write","write","write","write", "write", "write"],
-    meetings:           ["write", "write", "write","write","write","write","write", "write", "write"],
-    leads:              ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    contracts:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    revenue_accruals:   ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    team:               ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-    goals:              ["write", "read",  "write","read", "write","read", "write", "read",  "write"],
-    reports:            ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-    market_intel:       ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
-    admin:              ["none",  "none",  "none", "none", "none", "none", "none",  "none",  "write"],
+    //                     BDo       BDm     BOo       BOm     SOLo      SOLm    DELo      DELm    ADM       VIEWALL
+    agent:              ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
+    offerings:          ["view",   "view", "create", "edit", "view",   "view", "view",   "view", "create", "view"],
+    digital_components: ["view",   "view", "create", "edit", "view",   "view", "view",   "view", "create", "view"],
+    opportunities:      ["create", "edit", "create", "edit", "view",   "view", "create", "edit", "create", "view"],
+    customers:          ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    contacts:           ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    solution_requests:  ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
+    submissions:        ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
+    presentations:      ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
+    meetings:           ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
+    leads:              ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    contracts:          ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    revenue_accruals:   ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    team:               ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    goals:              ["create", "view", "create", "view", "create", "view", "create", "view", "create", "view"],
+    reports:            ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    market_intel:       ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    admin:              ["none",   "none", "none",   "none", "none",   "none", "none",   "none", "create", "none"],
   };
 
   const COLUMNS = [
@@ -292,6 +350,7 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
     "delivery_owner",
     "delivery_member",
     "admin",
+    "view_all",
   ];
 
   const out: Record<string, Partial<Record<ModuleKey, Access>>> = {};
@@ -306,7 +365,7 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
 
 /* --------------------------------------------------------------- resolving */
 
-const RANK: Record<Access, number> = { none: 0, read: 1, write: 2 };
+const RANK: Record<Access, number> = { none: 0, view: 1, edit: 2, create: 3 };
 
 /** The most generous answer across everything somebody holds. */
 export function mergeAccess(a: Access, b: Access): Access {
@@ -314,31 +373,102 @@ export function mergeAccess(a: Access, b: Access): Access {
 }
 
 /**
- * EVERY PRIVILEGE THIS PERSON HOLDS — from their groups, plus their own.
+ * EVERY PRIVILEGE THIS PERSON HOLDS. All of them come from the person.
  *
- * "The person actually belongs to a particular group. Predominantly, he
- * belongs to a particular group, so when that particular group or the
- * particular person is added, a privilege is given."
+ * A GROUP CONFERS NOTHING (Suren, Aug 29): "a user creates a group. When he
+ * creates a group, he just assigns people... The user only selects a group and
+ * then puts all the people in this. Based on these people's privileges, which
+ * are already defined here, the privileges will automatically come."
+ *
+ * It runs the other way round from what I first built. A group does not hand
+ * out privileges; the people carry their own in, and the group is a bag to put
+ * work in front of them. So "if somebody is a solutioning owner, then that
+ * person becomes a solutioning owner because that person already has the
+ * privilege" — being in the group did not make them one.
+ *
+ * `groups` is therefore not a parameter any more. What a group DOES decide is
+ * which records you can reach: see recordAccess and MODULE_GROUPING.
  */
 export function privilegesForPerson(
   state: PrivilegeState,
-  person: string,
-  groups: { id: string; head: string; members: string[] }[]
+  person: string
 ): string[] {
-  const is = (n: string) =>
-    n.trim().toLowerCase() === person.trim().toLowerCase();
   const held = new Set<string>();
-
-  for (const g of groups) {
-    const inIt = g.members.some(is) || is(g.head);
-    if (!inIt) continue;
-    for (const p of state.groupPrivileges[g.id] ?? []) held.add(p);
-  }
   for (const [name, list] of Object.entries(state.peoplePrivileges)) {
-    if (!is(name)) continue;
+    if (name.trim().toLowerCase() !== person.trim().toLowerCase()) continue;
     for (const p of list) held.add(p);
   }
   return [...held];
+}
+
+/**
+ * WHICH KIND OF GROUP OWNS THE WORK IN EACH MODULE, off the bottom of his
+ * sheet.
+ *
+ * Suren: "if the group is an MPR solution team you created and the group type
+ * is business development, then what happens in the customer module? Only this
+ * group is applicable. That means in the customer module, you can add a bunch
+ * of customers to that particular group."
+ *
+ * So a customer is assigned to a BUSINESS DEVELOPMENT group and never to a
+ * solutioning one; a submission is assigned to a SOLUTIONING group and never
+ * to a BD one. A module with no entry here is not grouped at all — Offerings
+ * is blank on his sheet, and the ten modules that are not on it inherit the
+ * nearest one that is.
+ */
+export const MODULE_GROUPING: Partial<Record<ModuleKey, GroupType>> = {
+  customers: "business_development",
+  contacts: "business_development",
+  contracts: "business_development",
+  opportunities: "business_development",
+  leads: "business_development",
+  revenue_accruals: "business_development",
+  submissions: "solutioning",
+  presentations: "solutioning",
+  meetings: "solutioning",
+  solution_requests: "solutioning",
+};
+
+/**
+ * CAN THIS PERSON REACH THIS RECORD, AND MAY THEY CHANGE IT?
+ *
+ * The matrix alone was never the whole answer (Suren, Aug 29): "all these
+ * privileges that you see are only if those customers have been assigned to
+ * him or they have created them... If they want to see other things which are
+ * not connected with them, then they need to have the view all privilege."
+ *
+ * So there are two gates and a record has to pass both:
+ *
+ *   1. IS IT YOURS? You created it, you are its owner, you were assigned to
+ *      it, or it sits in a group you are in. "The moment he creates a
+ *      customer, he becomes the owner of the customer. When he assigns
+ *      somebody as a member, that particular person can actually start
+ *      writing things."
+ *   2. WHAT DOES THE MATRIX SAY? Read or write on that module.
+ *
+ * VIEW ALL OPENS THE FIRST GATE ONLY, AND ONLY FOR READING. Somebody with it
+ * sees every record in the module and can change none of the ones that are not
+ * theirs. That asymmetry is the whole point of the privilege, so it is written
+ * here once rather than re-derived at each call site.
+ */
+export type RecordAccess = Access;
+
+export function recordAccess(input: {
+  /** What the matrix says this person may do in this module. */
+  moduleAccess: Access;
+  /** Do they hold View all? */
+  viewAll: boolean;
+  /** Did they create it, own it, or were they assigned to it? */
+  mine: boolean;
+  /** Is it in a group they belong to? */
+  inMyGroup: boolean;
+}): RecordAccess {
+  if (input.moduleAccess === "none") return "none";
+  const connected = input.mine || input.inMyGroup;
+  if (connected) return input.moduleAccess;
+  /* Not theirs. View all is the only way through, and it never writes —
+     never Edit and never Create, however generous the matrix row is. */
+  return input.viewAll ? "view" : "none";
 }
 
 /** What those privileges add up to on one module. */
@@ -372,8 +502,28 @@ function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
-function isAccess(v: unknown): v is Access {
-  return v === "none" || v === "read" || v === "write";
+/**
+ * READ ONE CELL, INCLUDING ONE SAVED BEFORE THE SPLIT.
+ *
+ * Every row stored before Aug 29 holds "read" or "write", the two values that
+ * existed when Access had three. Left unhandled they simply fail validation and
+ * vanish, and a cell that vanishes inherits the shipped default — which would
+ * have quietly reset the whole table on the first read after deploying, with
+ * nothing on any screen to say it happened.
+ *
+ *   read  -> view. Same thing under a new name, no judgement needed.
+ *   write -> UNDEFINED, on purpose, so the shipped default decides.
+ *
+ * The second one is the careful case. "Write" is exactly the word Suren split
+ * because it hid two jobs, so there is no honest way to tell whether a stored
+ * "write" meant Create or Edit. Guessing Create would hand delete to every
+ * member column in one deploy. Letting the default fill it in gives the owner
+ * column Create and the member column Edit, which is his answer.
+ */
+function readAccess(v: unknown): Access | undefined {
+  if (v === "none" || v === "view" || v === "edit" || v === "create") return v;
+  if (v === "read") return "view";
+  return undefined;
 }
 
 function isGroupType(v: unknown): v is GroupType {
@@ -412,8 +562,8 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     if (!byId.has(privId) || !row || typeof row !== "object") continue;
     const out: Partial<Record<ModuleKey, Access>> = {};
     for (const m of PRIVILEGE_MODULES) {
-      const cell = row[m.key];
-      if (isAccess(cell)) out[m.key] = cell;
+      const cell = readAccess(row[m.key]);
+      if (cell) out[m.key] = cell;
     }
     matrix[privId] = out;
   }
@@ -461,7 +611,6 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     privileges: [...byId.values()],
     matrix,
     groupTypes,
-    groupPrivileges: listOf(v.groupPrivileges),
     peoplePrivileges: listOf(v.peoplePrivileges),
     updatedBy: str(v.updatedBy, 80) || undefined,
     updatedAt: str(v.updatedAt, 40) || undefined,
@@ -578,17 +727,24 @@ export const ROLE_PRIVILEGE: Record<string, string> = {
 /**
  * EVERYTHING THIS PERSON MAY DO, MODULE BY MODULE.
  *
- * Their role's badge, plus every badge their groups carry, plus anything given
- * to them directly — merged to the most generous answer, because holding two
- * privileges must never be worse than holding one.
+ * Their role's badge plus anything given to them directly, merged to the most
+ * generous answer, because holding two privileges must never be worse than
+ * holding one. Suren's own example is one person holding two: "User 1 — BD
+ * Owner and BO Owner."
+ *
+ * THIS IS THE MODULE-LEVEL ANSWER AND NOT THE WHOLE ANSWER. It says whether
+ * the Customers page opens and whether its buttons work at all; whether THIS
+ * customer can be opened or changed is recordAccess, which takes this as its
+ * starting point and then asks whether the record is theirs.
  */
 export function accessMapFor(input: {
   state: PrivilegeState;
   role: string;
   person: string;
-  groups: { id: string; head: string; members: string[] }[];
 }): Record<ModuleKey, Access> {
-  const held = new Set<string>(privilegesForPerson(input.state, input.person, input.groups));
+  const held = new Set<string>(
+    privilegesForPerson(input.state, input.person)
+  );
   const fromRole = ROLE_PRIVILEGE[input.role];
   if (fromRole) held.add(fromRole);
 
@@ -598,6 +754,16 @@ export function accessMapFor(input: {
     out[m.key] = accessForPrivileges(input.state, ids, m.key);
   }
   return out;
+}
+
+/** Do they hold View all, by direct grant or through their role? */
+export function hasViewAll(
+  state: PrivilegeState,
+  person: string,
+  role: string
+): boolean {
+  if (ROLE_PRIVILEGE[role] === "admin") return true;
+  return privilegesForPerson(state, person).includes(VIEW_ALL);
 }
 
 /** Which module row a path belongs to, longest match first. */

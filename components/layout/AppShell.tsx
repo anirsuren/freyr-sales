@@ -10,6 +10,7 @@ import { AgentDock } from "@/components/agent/AgentDock";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import { NavHistoryTracker } from "@/components/ui/BackButton";
 import type { DataMode } from "@/lib/dataMode";
+import type { Access } from "@/lib/privileges";
 import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
 import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
@@ -47,7 +48,7 @@ export function AppShell({
   currentUser: UserIdentity;
   /** What this person may do per module, when the privilege table is the
    *  authority. Null = fall back to the role rules. */
-  moduleAccess?: Record<string, "none" | "read" | "write"> | null;
+  moduleAccess?: Record<string, Access> | null;
 }) {
   const pathname = usePathname() || "";
   const scrollerRef = useRef<HTMLElement | null>(null);
