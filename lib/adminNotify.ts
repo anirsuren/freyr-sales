@@ -199,3 +199,78 @@ export async function notifyAccessChanged(change: {
     console.error("[admin-notify] access:", error);
   }
 }
+
+/**
+ * A PRIVILEGE CHANGED — TELL THE ADMINS, EVERY TIME.
+ *
+ * Suren, Aug 29: "you gotta make sure that it sends emails every time
+ * something is changed."
+ *
+ * Who may read and write which module is the most consequential setting in the
+ * workspace, and it is the one change that leaves no trace on any page — a
+ * cell moves from Read to Write and the only person who knows is whoever
+ * moved it. So every edit is announced, with the before and the after, to
+ * everybody who could have made it.
+ *
+ * Each line is one cell: "Customers · BO Owner: Read to Write".
+ */
+export async function notifyPrivilegesChanged(change: {
+  changedBy: string;
+  lines: string[];
+  enforcedNow?: boolean | null;
+}): Promise<void> {
+  try {
+    if (change.lines.length === 0 && change.enforcedNow == null) return;
+    const headline =
+      change.enforcedNow != null
+        ? change.enforcedNow
+          ? "Privileges are now being enforced"
+          : "Privileges are no longer being enforced"
+        : change.lines.length === 1
+          ? "A privilege changed"
+          : `${change.lines.length} privileges changed`;
+
+    const body: string[] = [`${change.changedBy} changed privilege management.`, ""];
+    if (change.enforcedNow != null) {
+      body.push(
+        change.enforcedNow
+          ? "The privilege table is now ENFORCED: it decides what people can open and edit."
+          : "The privilege table is NO LONGER enforced: access has gone back to the old role rules."
+      );
+      if (change.lines.length) body.push("");
+    }
+    body.push(...change.lines);
+
+    await tell(
+      headline,
+      body,
+      SHELL(
+        esc(headline),
+        `${
+          change.enforcedNow != null
+            ? `<p style="margin:0 0 12px">${
+                change.enforcedNow
+                  ? "The privilege table is now <b>enforced</b> — it decides what people can open and edit."
+                  : "The privilege table is <b>no longer enforced</b> — access has gone back to the old role rules."
+              }</p>`
+            : ""
+        }
+        ${
+          change.lines.length
+            ? `<table style="border-collapse:collapse">${change.lines
+                .map((l) => {
+                  const [left, right] = l.split(": ");
+                  return row(esc(left ?? l), esc(right ?? ""));
+                })
+                .join("")}</table>`
+            : ""
+        }
+        <table style="border-collapse:collapse;margin-top:12px">
+          ${row("Changed by", esc(change.changedBy))}
+        </table>`
+      )
+    );
+  } catch (error) {
+    console.error("[admin-notify] privileges:", error);
+  }
+}

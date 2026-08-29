@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-react";
+import { KeyRound, ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { MemberRoles } from "./MemberRoles";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
+import { PrivilegesAdmin } from "./PrivilegesAdmin";
 import { ActivityMasterCard } from "@/components/performance/ActivityMasterCard";
 import { EmailComposer } from "./EmailComposer";
 
@@ -43,6 +44,17 @@ const TABS: (PageTab & { subtitle: string })[] = [
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").
+  /* PRIVILEGES SIT NEXT TO GROUPS, because a group is where a person picks one
+     up (Suren, Aug 29: "the person belongs to a particular group… when that
+     group or that person is added, a privilege is given"). */
+  {
+    key: "privileges",
+    label: "Privileges",
+    icon: KeyRound,
+    color: "#B45309",
+    subtitle:
+      "What each privilege may do in each module: nothing, read, or write. A person holds the privileges their groups carry, plus any given to them directly.",
+  },
   {
     key: "activity",
     label: "Activity master",
@@ -64,7 +76,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
   },
 ];
 
-const KEYS = ["members", "groups", "activity", "email"] as const;
+const KEYS = ["members", "groups", "privileges", "activity", "email"] as const;
 
 export function AdminTabs({
   memberNames,
@@ -121,6 +133,8 @@ export function AdminTabs({
           <MemberRoles canEdit />
         ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />
+        ) : current.key === "privileges" ? (
+          <PrivilegesAdmin />
         ) : current.key === "email" ? (
           <EmailComposer />
         ) : (

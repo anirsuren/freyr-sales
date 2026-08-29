@@ -587,6 +587,9 @@ export async function POST(req: NextRequest) {
           head: String(body.head ?? ""),
           members: Array.isArray(body.members) ? body.members.map(String) : [],
           addedBy: me.name,
+          ...(body.groupType !== undefined
+            ? { groupType: String(body.groupType) }
+            : {}),
         });
         break;
       case "update-group":
@@ -596,6 +599,9 @@ export async function POST(req: NextRequest) {
           ...(body.head !== undefined ? { head: String(body.head) } : {}),
           ...(Array.isArray(body.members)
             ? { members: body.members.map(String) }
+            : {}),
+          ...(body.groupType !== undefined
+            ? { groupType: String(body.groupType) }
             : {}),
         });
         break;

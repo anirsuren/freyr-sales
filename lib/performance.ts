@@ -1,5 +1,6 @@
 import { isCurrencyCode, normalizeRates, type CurrencyCode } from "./currency";
 import { getDataMode } from "./dataMode";
+import { GROUP_TYPES } from "./privileges";
 import {
   DEFAULT_GOAL_TYPES,
   EMPTY_PERFORMANCE,
@@ -240,6 +241,7 @@ function normalize(value: unknown): PerformanceState {
               : [],
             createdBy: str(rg.createdBy, 80) || "Unknown",
             createdAt: str(rg.createdAt, 40) || new Date().toISOString(),
+            ...(isGroupType(rg.groupType) ? { groupType: rg.groupType } : {}),
           },
         ];
       })
@@ -1160,11 +1162,21 @@ export async function sendBackActual(input: {
   await writeRow(state);
 }
 
+/** Is this one of the four kinds of group Suren named? */
+function isGroupType(v: unknown): v is string {
+  return (
+    typeof v === "string" &&
+    (GROUP_TYPES as readonly string[]).includes(v)
+  );
+}
+
 export async function addGroup(input: {
   name: string;
   head: string;
   members: string[];
   addedBy: string;
+  /** One of lib/privileges GROUP_TYPES (Suren, Aug 29). */
+  groupType?: string;
 }): Promise<PerfGroup> {
   const name = str(input.name, 100);
   if (!name) throw new Error("Give the group a name.");
@@ -1185,6 +1197,7 @@ export async function addGroup(input: {
     members,
     createdBy: input.addedBy,
     createdAt: new Date().toISOString(),
+    ...(isGroupType(input.groupType) ? { groupType: input.groupType } : {}),
   };
   state.groups.push(group);
   await writeRow(state);
@@ -1436,6 +1449,7 @@ export async function updateGroup(input: {
   name?: string;
   head?: string;
   members?: string[];
+  groupType?: string;
 }): Promise<PerfGroup> {
   const state = await readRow();
   const group = state.groups.find((g) => g.id === input.groupId);
@@ -1452,6 +1466,14 @@ export async function updateGroup(input: {
       throw new Error(`A group called "${name}" already exists.`);
     }
     group.name = name;
+  }
+
+  if (input.groupType !== undefined) {
+    /* Clearing it back to "not classified yet" is allowed: a group somebody
+       typed the wrong type on must be fixable to nothing, not only to another
+       wrong one. */
+    if (isGroupType(input.groupType)) group.groupType = input.groupType;
+    else delete group.groupType;
   }
 
   const head = input.head !== undefined ? str(input.head, 80) : group.head;

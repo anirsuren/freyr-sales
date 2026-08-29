@@ -259,6 +259,16 @@ export type PerfGroup = {
   members: string[];
   createdBy: string;
   createdAt: string;
+  /**
+   * WHAT KIND OF GROUP THIS IS (Suren, Aug 29: "a group already always has a
+   * group type: is it a business development group, a business offering group,
+   * a solutioning group, an admin group?").
+   *
+   * One of lib/privileges GROUP_TYPES. Optional because every group that
+   * existed before this field does not have one yet, and a group with no type
+   * is a group nobody has classified rather than a broken record.
+   */
+  groupType?: string;
 };
 
 export type ActualEvidence = { name: string; url: string };

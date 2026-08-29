@@ -24,6 +24,13 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { RoleTag, roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MultiPicker } from "@/components/ui/MultiPicker";
+import {
+  GROUP_TYPES,
+  GROUP_TYPE_META,
+  type PrivilegeState,
+} from "@/lib/privileges";
 import Link from "next/link";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
 import {
@@ -46,6 +53,16 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const [perf, setPerf] = useState<PerformanceState | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  /* WHAT KIND OF GROUP IT IS (Suren, Aug 29: "a group already always has a
+     group type"). Empty means nobody has classified it yet, which is what
+     every group created before today is. */
+  const [groupType, setGroupType] = useState("");
+  /* WHAT EVERYONE IN THE GROUP CARRIES (Suren, Aug 29: "when that particular
+     group or the particular person is added, a privilege is given"). Held in
+     the privilege store rather than on the group, because the same table is
+     what the modules read. */
+  const [groupPrivs, setGroupPrivs] = useState<string[]>([]);
+  const [privState, setPrivState] = useState<PrivilegeState | null>(null);
   const [head, setHead] = useState("");
   const [members, setMembers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -91,6 +108,10 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   // as "No groups yet", which reads as somebody having deleted them all.
   const load = useCallback(async () => {
     try {
+      fetch("/api/privileges", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => d?.state && setPrivState(d.state as PrivilegeState))
+        .catch(() => {});
       const res = await fetch("/api/performance", { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.state) {
@@ -197,6 +218,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   function openCreate() {
     setEditing(null);
     setName("");
+    setGroupType("");
+    setGroupPrivs([]);
     setHead("");
     setMembers([]);
     setCreating(true);
@@ -209,6 +232,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   function openEdit(g: PerfGroup) {
     setEditing(g);
     setName(g.name);
+    setGroupType(g.groupType ?? "");
+    setGroupPrivs(privState?.groupPrivileges[g.id] ?? []);
     setHead(g.head);
     setMembers([...g.members]);
     setCreating(true);
@@ -222,15 +247,58 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   async function save() {
     const ok = editing
       ? await run(
-          { op: "update-group", groupId: editing.id, name, head, members },
+          { op: "update-group", groupId: editing.id, name, groupType, head, members },
           `${name.trim()} saved`
         )
-      : await run({ op: "add-group", name, head, members }, `${name.trim()} created`);
+      : await run(
+          { op: "add-group", name, groupType, head, members },
+          `${name.trim()} created`
+        );
     if (ok) {
+      /* The group is saved by /api/performance and its privileges by
+         /api/privileges — two stores, one action, so the second only runs once
+         the first has actually landed. A group that failed to save must not
+         leave privileges pointing at an id that does not exist. */
+      await savePrivilegesForGroup();
       setName("");
+      setGroupType("");
+      setGroupPrivs([]);
       setHead("");
       setMembers([]);
       closeEditor();
+    }
+  }
+
+  /** Store this group's privileges, resolving the id for a group just made. */
+  async function savePrivilegesForGroup() {
+    if (!privState) return;
+    let groupId = editing?.id ?? "";
+    if (!groupId) {
+      /* Just created: find it by the name we asked for. */
+      const fresh = await fetch("/api/performance", { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null);
+      const made = (fresh?.state?.groups as PerfGroup[] | undefined)?.find(
+        (g) => g.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      groupId = made?.id ?? "";
+    }
+    if (!groupId) return;
+    const next: PrivilegeState = {
+      ...privState,
+      groupPrivileges: { ...privState.groupPrivileges, [groupId]: groupPrivs },
+    };
+    if (groupPrivs.length === 0) delete next.groupPrivileges[groupId];
+    try {
+      const res = await fetch("/api/privileges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: next }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.state) setPrivState(data.state as PrivilegeState);
+    } catch {
+      toast("The group saved, but its privileges did not.", "error");
     }
   }
 
@@ -277,6 +345,29 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 placeholder="e.g. Growth Accounts"
                 className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary"
               />
+            </div>
+            <div>
+              <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
+                Group type
+                <InfoHint text={"What kind of group this is. It decides which privileges its people naturally carry.\nBusiness development, Business offering, Solutioning or Admin."} />
+              </label>
+              <div className="mt-1">
+                <ColorSelect
+                  value={groupType}
+                  ariaLabel="Group type"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={setGroupType}
+                  options={[
+                    { value: "", label: "Not classified yet", color: "#C7CDD6" },
+                    ...GROUP_TYPES.map((t) => ({
+                      value: t,
+                      label: GROUP_TYPE_META[t].label,
+                      color: GROUP_TYPE_META[t].color,
+                    })),
+                  ]}
+                />
+              </div>
             </div>
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
