@@ -27,7 +27,6 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { GROUP_TYPES, GROUP_TYPE_META } from "@/lib/privileges";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
 import {
   actualValue,
@@ -44,7 +43,6 @@ import {
  */
 export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const { toast } = useToast();
-  const router = useRouter();
   const [groups, setGroups] = useState<PerfGroup[] | null>(null);
   /** The same performance state the rooms read, for the glance chips. */
   const [perf, setPerf] = useState<PerformanceState | null>(null);
@@ -501,7 +499,14 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                             target are set. So the quick question is answered in
                             place and the work happens on its own screen. */}
                         <tr
-                          onClick={() => router.push(`/admin/groups/${g.id}`)}
+                          onClick={() =>
+                            setOpenIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(g.id)) next.delete(g.id);
+                              else next.add(g.id);
+                              return next;
+                            })
+                          }
                           className={cn(
                             "cursor-pointer transition-colors",
                             open ? "bg-surface" : "hover:bg-surface"
@@ -538,9 +543,23 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                 />
                               </button>
                               <span className="min-w-0">
-                                <span className="block truncate text-[13px] font-semibold text-text-primary">
+                                {/* ONLY THE NAME OPENS THE GROUP (Anir, Aug 29:
+                                    "when I fucking click it it's going to the
+                                    page. Only when I click on the name should
+                                    it take me to a page. Make this like the
+                                    goals page").
+
+                                    Goal Master's row toggles and nothing else,
+                                    so a click meant to peek never leaves the
+                                    list. Here the row toggles the same way and
+                                    the name is the one thing that navigates. */}
+                                <Link
+                                  href={`/admin/groups/${g.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block truncate text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+                                >
                                   {g.name}
-                                </span>
+                                </Link>
                                 {g.groupType && (
                                   <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                                     {GROUP_TYPE_META[
