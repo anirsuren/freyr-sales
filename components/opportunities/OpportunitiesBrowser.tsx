@@ -1617,7 +1617,6 @@ export function OpportunitiesBrowser({
                                   <Customer360
                                     bands={bandsByDeal[o.id] ?? []}
                                     company={o.customer}
-                                    heading="Everything on this deal"
                                     emptyLine="Nothing is connected to this deal yet."
                                   />
                                 </div>

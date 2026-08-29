@@ -3,7 +3,6 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
-  Briefcase,
   CalendarClock,
   CalendarPlus,
   Contact as ContactIcon,
@@ -28,7 +27,6 @@ import {
    BAND_ICONS as a real value, not a client reference. */
 export { BAND_ICONS };
 export type { BandIconKey, Customer360Band, Customer360Item };
-import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
 import { ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -113,7 +111,6 @@ function singularLabel(label: string): string {
 export function Customer360({
   company,
   bands,
-  heading,
   emptyLine,
   bandActions,
   chromeless = false,
@@ -121,7 +118,6 @@ export function Customer360({
 }: {
   company: string;
   bands: Customer360Band[];
-  heading?: string;
   emptyLine?: string;
   /**
    * A control belonging to ONE area, keyed by band. The Team tab needs a way
@@ -205,13 +201,11 @@ export function Customer360({
           : "rounded-xl border border-border-light bg-white p-5 shadow-card"
       }
     >
-      {!chromeless && (
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-        <Briefcase size={15} strokeWidth={2} className="text-blue-primary" />
-        {heading ?? `Everything on ${company}`}
-        <InfoHint text="Every module that has something on this account, counted in one place: deals, submissions, presentations, meetings, contacts, leads and contracts. Each tab shows that area; Open jumps to the module that owns it." />
-      </h2>
-      )}
+      {/* NO HEADING (Anir, Aug 29: "you don't even have to say this on any of
+          the pages"). "Everything Anir owns" / "Everything on Opella" labelled
+          a strip that already names every area it counts, on a page whose
+          title is the person or the company — three ways of saying whose page
+          this is, stacked. The tabs are the heading. */}
       {/* The strip below counts every area, so restating "1 of 7 areas have
           something here" underneath it was a second way of saying the same
           thing. Only the genuinely empty account still needs a sentence. */}
@@ -232,8 +226,27 @@ export function Customer360({
               with real spacing. Same size and rhythm as every other tab row in
               the app now: the count stays a bolder weight beside the label so
               the number is still the thing you scan for. */}
-                    {chromeless ? null : (
-          <div role="tablist" className="mt-3 flex flex-wrap items-end gap-x-7 gap-y-1.5 border-b border-border-light">
+          {/* ONE LINE, SCROLLED — never wrapped (Suren, Aug 28: "all the tabs
+              have to be on one line… obviously you have to scroll left and
+              right to click on it"; Anir, Aug 29, finding this strip still
+              wrapping on the person page: "what the fuck is this").
+
+              flex-wrap put eleven areas on two rows and pushed the "All
+              offerings" link down onto the second one with nothing to align
+              to. The customer page's strip was fixed for exactly this a day
+              earlier; this one is the same component wearing different
+              classes, which is how it got missed. Same behaviour now: one
+              row, hidden scrollbar, and the action pinned OUTSIDE the
+              scroller so it stays put instead of scrolling away. */}
+          {chromeless ? null : (
+          <div className="mt-3 flex items-end gap-4 border-b border-border-light">
+          <div className="flex min-w-0 flex-1">
+          <div
+            role="tablist"
+            /* pr-3 so the last visible tab is not sliced flush against the
+               pinned link beside it. */
+            className="flex min-w-0 flex-1 flex-nowrap items-end gap-5 overflow-x-auto overflow-y-hidden pr-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {ordered.map((b) => {
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
               const isActive = b.key === active.key;
@@ -245,7 +258,7 @@ export function Customer360({
                   onClick={() => setActiveKey(b.key)}
                   aria-selected={isActive}
                   className={cn(
-                    "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-3 text-[14px] transition-colors",
+                    "-mb-px flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
                     isActive
                       ? "border-blue-primary font-semibold text-blue-primary"
                       : "border-transparent hover:text-text-primary",
@@ -278,7 +291,9 @@ export function Customer360({
                 against the bottom-right corner with nothing to align to.
                 Here it lands in the empty right of the tab strip, which is
                 also space the card was not using. */}
-            <span className="-mb-px ml-auto flex items-center gap-3 border-b-2 border-transparent pb-2">
+          </div>
+          </div>
+            <span className="-mb-px flex shrink-0 items-center gap-3 whitespace-nowrap border-b-2 border-transparent pb-2">
               {bandActions?.[active.key]}
               {active.href && (
                 <Link

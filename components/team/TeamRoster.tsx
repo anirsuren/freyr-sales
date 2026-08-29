@@ -830,9 +830,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 <th className="px-4 py-2.5">Rep</th>
                 <th className="px-4 py-2.5">Contact</th>
                 <th className="px-4 py-2.5 w-[230px]">Open pipeline</th>
-                <th className="px-4 py-2.5 text-right">Weighted</th>
-                <th className="px-4 py-2.5 text-right">Open deals</th>
-                <th className="px-4 py-2.5 text-right">Meetings</th>
+                {/* LEFT, LIKE EVERY OTHER COLUMN (Anir, Aug 29: "these have
+                    to be left aligned"). Three right-aligned columns in the
+                    middle of a left-aligned table put the numbers hard against
+                    the NEXT column's heading, so "$600K" read as if it
+                    belonged to Open deals. The app's standing rule since Aug 8
+                    is that only a fixed row of icons centres or trails; facts
+                    share the left edge with their heading. */}
+                <th className="px-4 py-2.5">Weighted</th>
+                <th className="px-4 py-2.5">Open deals</th>
+                <th className="px-4 py-2.5">Meetings</th>
                 <th className="px-4 py-2.5 w-[120px]">Activity · 10w</th>
                 {/* Trailing arrow column: header aligns like its cells. */}
                 <th className="px-4 py-2.5 text-right" />
@@ -1087,13 +1094,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <PipelineBarInspector rep={r} />
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
+                    <td className="px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
                       {formatMoney(r.weighted)}
                     </td>
-                    <td className="px-4 py-3.5 text-right text-[14px] text-text-secondary tnum">
+                    <td className="px-4 py-3.5 text-[14px] text-text-secondary tnum">
                       {r.openCount}
                     </td>
-                    <td className="px-4 py-3.5 text-right text-[14px] text-text-secondary tnum">
+                    <td className="px-4 py-3.5 text-[14px] text-text-secondary tnum">
                       {r.meetings}
                     </td>
                     <td className="px-4 py-3.5">
