@@ -6,6 +6,7 @@ import { canAccessModule } from "@/lib/moduleAccess";
 import { readMeetings } from "@/lib/meetings";
 import { readPublicFile } from "@/lib/publicFile";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 
 /**
  * READ A MEETING'S DOCUMENT WITHOUT DOWNLOADING IT.
@@ -26,7 +27,7 @@ import { sampleDocUrl } from "@/lib/sampleDocuments";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  if (!canAccessModule("/meetings", await getRole()))
+  if (!(await canOpenModule("/meetings")))
     return NextResponse.json(
       { error: "Not available on this account." },
       { status: 403 }

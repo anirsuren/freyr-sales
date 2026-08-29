@@ -19,6 +19,7 @@ import {
   type SolutioningKind,
   commentOnRequest,
 } from "@/lib/solutioning";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export const dynamic = "force-dynamic";
  */
 async function moduleClosed(): Promise<NextResponse | null> {
   const me = await getCurrentUser();
-  return canAccessModule("/solutioning", me.role)
+  return (await canOpenModule("/solutioning"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
 }
@@ -81,6 +82,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/solutioning");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });

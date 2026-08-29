@@ -113,7 +113,28 @@ export type ModuleKey =
   | "goals"
   | "reports"
   | "market_intel"
-  | "admin";
+  | "admin"
+  /* THE REST OF THE APP (Anir, Aug 29: "do it all"). His sheet named eight
+     modules; the audit found seventeen routable pages with no row at all, so
+     enforcement would have decided nothing about them. Every page the app
+     serves now has a row. */
+  | "dashboard"
+  | "pipeline"
+  | "forecast"
+  | "analytics"
+  | "activity"
+  | "sessions"
+  | "recordings"
+  | "sequences"
+  | "campaigns"
+  | "voice"
+  | "tasks"
+  | "services"
+  | "notifications"
+  | "search"
+  | "settings"
+  | "onboarding"
+  | "import";
 
 export const PRIVILEGE_MODULES: {
   key: ModuleKey;
@@ -138,6 +159,23 @@ export const PRIVILEGE_MODULES: {
   { key: "reports", label: "Reports", path: "/reports" },
   { key: "market_intel", label: "Market Intel", path: "/market-intel" },
   { key: "admin", label: "Admin", path: "/admin" },
+  { key: "dashboard", label: "Dashboard", path: "/dashboard" },
+  { key: "pipeline", label: "Pipeline", path: "/pipeline" },
+  { key: "forecast", label: "Forecast", path: "/forecast" },
+  { key: "analytics", label: "Analytics", path: "/analytics" },
+  { key: "activity", label: "Activity", path: "/activity" },
+  { key: "sessions", label: "Sessions", path: "/sessions" },
+  { key: "recordings", label: "Recordings", path: "/recordings" },
+  { key: "sequences", label: "Sequences", path: "/sequences" },
+  { key: "campaigns", label: "Campaigns", path: "/campaigns" },
+  { key: "voice", label: "Voice agents", path: "/voice" },
+  { key: "tasks", label: "Tasks", path: "/tasks" },
+  { key: "services", label: "Services", path: "/services" },
+  { key: "notifications", label: "Notifications", path: "/notifications" },
+  { key: "search", label: "Search", path: "/search" },
+  { key: "settings", label: "Settings", path: "/settings" },
+  { key: "onboarding", label: "Onboarding", path: "/onboarding" },
+  { key: "import", label: "Import", path: "/import" },
 ];
 
 /* ------------------------------------------------------------- privileges */
@@ -266,6 +304,34 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
     reports:            ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
     market_intel:       ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
     admin:              ["none",  "none",  "none", "none", "none", "none", "none",  "none",  "write"],
+
+    /* SALES SURFACES follow the accounts they are about: BD writes, everybody
+       else reads. */
+    dashboard:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    pipeline:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    forecast:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    sessions:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    recordings:         ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    sequences:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    campaigns:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    voice:              ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    tasks:              ["write", "write", "write","write","write","write","write", "write", "write"],
+
+    /* READING SURFACES: everybody looks, nobody edits but an admin. */
+    analytics:          ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
+    activity:           ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
+    services:           ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
+
+    /* YOUR OWN THINGS. Locking somebody out of their own settings, their own
+       notifications or the search box is how a permissions table takes the
+       product away, so these are write for everyone. */
+    notifications:      ["write", "write", "write","write","write","write","write", "write", "write"],
+    search:             ["write", "write", "write","write","write","write","write", "write", "write"],
+    settings:           ["write", "write", "write","write","write","write","write", "write", "write"],
+    onboarding:         ["write", "write", "write","write","write","write","write", "write", "write"],
+
+    /* Bulk import rewrites the catalogue. Admin only. */
+    import:             ["none",  "none",  "none", "none", "none", "none", "none",  "none",  "write"],
   };
 
   const COLUMNS = [
@@ -419,9 +485,23 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     matrix[privId] = out;
   }
   /* A badge with no stored row keeps the shipped default rather than becoming
-     silently powerless. */
+     silently powerless — and so does a single MISSING CELL.
+     
+     The second half matters more than the first and was missing: a table saved
+     before a module existed has no cell for it, and `?? "none"` turned every
+     such module into a locked door. Switching enforcement on immediately took
+     Settings, Search, Notifications and fourteen other pages away from
+     everyone, because the stored copy predated the row (caught turning it on,
+     Aug 29). A module the table has never heard of inherits what shipped with
+     it; only a cell somebody actually SET can take access away. */
   for (const [id, row] of Object.entries(base.matrix)) {
-    if (!matrix[id]) matrix[id] = row;
+    if (!matrix[id]) {
+      matrix[id] = row;
+      continue;
+    }
+    for (const m of PRIVILEGE_MODULES) {
+      if (matrix[id][m.key] === undefined) matrix[id][m.key] = row[m.key];
+    }
   }
 
   const groupTypes: Record<string, GroupType> = {};
@@ -543,10 +623,24 @@ export async function writePrivileges(
  * admin can hand any of them a different privilege directly.
  */
 export const ROLE_PRIVILEGE: Record<string, string> = {
-  rep: "bd_member",
-  manager: "bd_owner",
+  /* The stored values, which ARE the privilege ids now. Identity, but written
+     out rather than assumed: the day a role exists that is not also a badge,
+     this is the file that has to say so. */
+  bd_member: "bd_member",
+  bd_owner: "bd_owner",
+  sol_member: "sol_member",
   admin: "admin",
+  /* And every word that used to mean them, for a row written before migration
+     024 ran. Without these a person whose row still says "rep" resolves NO
+     privilege at all and is refused everything — which is exactly what
+     happened the first time enforcement was switched on (caught Aug 29,
+     testing a BD Member against Meetings). */
+  rep: "bd_member",
+  sales: "bd_member",
+  manager: "bd_owner",
+  editor: "bd_owner",
   solutions: "sol_member",
+  solution: "sol_member",
 };
 
 /**

@@ -46,6 +46,7 @@ export const dynamic = "force-dynamic";
 // Imported for its global queue declaration and to share one line with every
 // other performance writer.
 import "@/lib/performanceQueue";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 
 // THREE KINDS OF PEOPLE WALK IN (Suren, Aug 12): the org head sees everything,
@@ -150,6 +151,15 @@ function measure(v: unknown): GoalMeasure {
 }
 
 export async function POST(req: NextRequest) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/performance");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });

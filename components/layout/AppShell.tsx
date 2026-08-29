@@ -39,11 +39,15 @@ export function AppShell({
   dataMode,
   approvalEnabled,
   currentUser,
+  moduleAccess = null,
 }: {
   children: React.ReactNode;
   dataMode: DataMode;
   approvalEnabled: boolean;
   currentUser: UserIdentity;
+  /** What this person may do per module, when the privilege table is the
+   *  authority. Null = fall back to the role rules. */
+  moduleAccess?: Record<string, "none" | "read" | "write"> | null;
 }) {
   const pathname = usePathname() || "";
   const scrollerRef = useRef<HTMLElement | null>(null);
@@ -432,6 +436,7 @@ export function AppShell({
             dataMode={dataMode}
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
+            moduleAccess={moduleAccess}
           />
           <div className="flex h-full min-w-0 flex-1 flex-col">
             <TopBar

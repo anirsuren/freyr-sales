@@ -15,6 +15,7 @@ import {
   type MeetingNoteKind,
   type MeetingStatus,
 } from "@/lib/meetings";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export const dynamic = "force-dynamic";
 
 async function guard() {
   const role = await getRole();
-  if (!canAccessModule("/meetings", role)) return null;
+  if (!(await canOpenModule("/meetings"))) return null;
   return { me: await getCurrentUser(), role };
 }
 
@@ -46,6 +47,15 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/meetings");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const ctx = await guard();
   if (!ctx)
     return NextResponse.json({ error: "Not available on this account." }, { status: 403 });

@@ -6,6 +6,7 @@ import {
   type SequenceStep,
 } from "@/lib/sequences";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export async function GET() {
   return NextResponse.json({ ok: true, sequences: listSequences() });
@@ -29,6 +30,15 @@ function validSteps(value: unknown): SequenceStep[] {
 }
 
 export async function POST(request: NextRequest) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/sequences");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const actor = await verifiedWorkflowActor(request);
   if (!actor) {
     return NextResponse.json(

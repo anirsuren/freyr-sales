@@ -9,6 +9,7 @@ import {
   removeAccrualSnapshot,
   saveAccrualPlan,
 } from "@/lib/revenueAccruals";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
  */
 async function closed(): Promise<NextResponse | null> {
   const me = await getCurrentUser();
-  return canAccessModule("/revenue-accruals", me.role)
+  return (await canOpenModule("/revenue-accruals"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
 }

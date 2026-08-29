@@ -4,6 +4,7 @@ import { getOffering } from "@/lib/offerings";
 import { descSnippet, FREYR_CONTEXT } from "@/lib/outreach";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import type { CampaignObjective } from "@/lib/campaigns";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export async function GET() {
   return NextResponse.json({ ok: true, campaigns: listCampaigns() });
@@ -12,6 +13,15 @@ export async function GET() {
 // Create a campaign. When subject/body are omitted, drafts starter content
 // from the selected offering; the rep can edit it before queuing.
 export async function POST(req: NextRequest) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/campaigns");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const actor = await verifiedWorkflowActor(req);
   if (!actor) {
     return NextResponse.json(

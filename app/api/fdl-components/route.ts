@@ -8,6 +8,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,15 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/components");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   if (!(await canManageOfferings())) {
     return NextResponse.json(
       { error: "Only admins and editors can create components." },

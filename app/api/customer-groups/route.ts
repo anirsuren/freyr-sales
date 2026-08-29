@@ -9,6 +9,7 @@ import {
   toggleMember,
   updateGroup,
 } from "@/lib/customerGroups";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,16 @@ export const dynamic = "force-dynamic";
  * the accounts inside it — which is why the confirm copy says so.
  */
 export async function POST(req: NextRequest) {
-  if (!canAccessModule("/customers", await getRole()))
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/customers");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
+  if (!(await canOpenModule("/customers")))
     return NextResponse.json(
       { error: "Not available on this account." },
       { status: 403 }

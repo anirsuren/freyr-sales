@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
-import { canAccessModule } from "@/lib/moduleAccess";
+import { canAccessModule, canAccessModuleWith } from "@/lib/moduleAccess";
 import {
   useCurrentUser,
   useMyPhoto,
@@ -124,10 +124,13 @@ export function Sidebar({
   dataMode,
   mobileOpen = false,
   onMobileClose,
+  moduleAccess = null,
 }: {
   dataMode: DataMode;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  /** Resolved server-side in app/layout. Null = the role rules still decide. */
+  moduleAccess?: Record<string, "none" | "read" | "write"> | null;
 }) {
   const pathname = usePathname() || "";
   const currentUser = useCurrentUser();
@@ -141,7 +144,7 @@ export function Sidebar({
   const navItems = ALL_NAV_ITEMS.filter(
     (item) =>
       isReleased(item.href, dataMode) &&
-      canAccessModule(item.href, currentUser.role)
+      canAccessModuleWith(item.href, currentUser.role, moduleAccess)
   );
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);

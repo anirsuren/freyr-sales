@@ -3,6 +3,7 @@ import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { speechToText, isTranscribableFile } from "@/lib/videoTranscribe";
 import { extractFileText, isReadableFile } from "@/lib/fileText";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -77,7 +78,7 @@ function clock(seconds: number): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!canAccessModule("/meetings", await getRole()))
+  if (!(await canOpenModule("/meetings")))
     return NextResponse.json(
       { error: "Not available on this account." },
       { status: 403 }

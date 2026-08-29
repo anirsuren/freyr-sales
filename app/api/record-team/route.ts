@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { setRecordTeam, type TeamedRecord } from "@/lib/recordTeams";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (!owningModule || !id)
     return NextResponse.json({ error: "Which record?" }, { status: 400 });
 
-  if (!canAccessModule(owningModule, await getRole()))
+  if (!(await canOpenModule(owningModule)))
     return NextResponse.json(
       { error: "Not available on this account." },
       { status: 403 }

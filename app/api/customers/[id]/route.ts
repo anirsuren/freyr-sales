@@ -22,6 +22,7 @@ import {
   normalizeActivity,
   normalizeStatus,
 } from "@/lib/customerOfferingHeatMap";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,15 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/customers");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const actorName = await authenticatedRequestActorName(req);
   const db = getDb();
   const customer = await db.customers.get((await params).id);

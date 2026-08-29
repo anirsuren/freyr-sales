@@ -14,6 +14,7 @@ import {
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
 import { withPerformanceWrite } from "@/lib/performanceQueue";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -216,6 +217,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
+     handler reads a body, so a person who may READ this module cannot
+     change it. Falls through to the old role rules while the privilege
+     table is not being enforced. */
+  {
+    const refusal = await moduleWriteRefusal("/opportunities");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });

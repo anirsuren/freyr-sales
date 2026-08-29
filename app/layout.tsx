@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getDataMode } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
 import { getCurrentUser } from "@/lib/currentUser";
+import { viewerAccessMap } from "@/lib/viewerAccess";
 import { getRoleInfo } from "@/lib/role";
 import { PreviewBanner } from "@/components/layout/PreviewBanner";
 
@@ -72,6 +73,11 @@ export default async function RootLayout({
           dataMode={getDataMode()}
           approvalEnabled={isApprovalGateEnabled()}
           currentUser={currentUser}
+          /* Resolved once here and threaded down: the sidebar and the command
+             palette are client components and cannot read Supabase, and asking
+             per nav item would be one round trip per link. Null means the
+             privilege table is not the authority — see lib/viewerAccess. */
+          moduleAccess={await viewerAccessMap()}
         >
           {children}
         </AppShell>

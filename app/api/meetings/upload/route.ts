@@ -4,6 +4,7 @@ import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { uploadMaterialFile } from "@/lib/materialStorage";
 import { readMeetings } from "@/lib/meetings";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,7 +18,7 @@ export const maxDuration = 60;
  * document with `op: "add-doc"`. A failed save never leaves a half-made row.
  */
 export async function POST(req: NextRequest) {
-  if (!canAccessModule("/meetings", await getRole()))
+  if (!(await canOpenModule("/meetings")))
     return NextResponse.json({ error: "Not available on this account." }, { status: 403 });
 
   const meetingId = new URL(req.url).searchParams.get("meetingId") ?? "";
