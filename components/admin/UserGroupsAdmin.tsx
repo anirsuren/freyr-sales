@@ -19,6 +19,7 @@ import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { cn } from "@/lib/utils";
 import { PersonSelect } from "@/components/performance/bits";
 import { roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
@@ -64,6 +65,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const [roles, setRoles] = useState<Record<string, string>>({});
   /** True when the last group load failed, so the page can say so. */
   const [loadFailed, setLoadFailed] = useState(false);
+  /** Which rows are peeked open. Several at once (Anir, Aug 17: "I should be
+   *  able to open up multiple of these — it shouldn't close"). */
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
@@ -483,28 +487,56 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                       ),
                     ];
                     const r = rollup(g);
+                    const open = openIds.has(g.id);
                     return (
                       <Fragment key={g.id}>
-                        {/* CLICKING A GROUP GOES INTO IT (Suren, Aug 29: "I
-                            don't want expansion, I don't like this, I don't
-                            need expansion at all... he clicks on the group,
-                            this screen goes away"). Unfolding a row here meant
-                            reading this group's people and goals with nine
-                            other groups still on screen: "when I'm not
-                            focusing on other things I'm seeing all the other
-                            things and I'm getting lost." */}
+                        {/* BOTH, NOT ONE OR THE OTHER (Anir, Aug 29: "you can
+                            keep the dropdown, but obviously I should be able to
+                            click into it as well"; then "I just said I want a
+                            drop down too").
+
+                            The chevron peeks — who is in this group, without
+                            leaving the list you are scanning. The row opens the
+                            group, which is where the goals and each person's
+                            target are set. So the quick question is answered in
+                            place and the work happens on its own screen. */}
                         <tr
                           onClick={() => router.push(`/admin/groups/${g.id}`)}
-                          className="cursor-pointer transition-colors hover:bg-surface"
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            open ? "bg-surface" : "hover:bg-surface"
+                          )}
                         >
                           <td className="px-4 py-3.5">
                             <span className="flex items-center gap-2.5">
-                              <ChevronRight
-                                size={15}
-                                strokeWidth={2.2}
-                                aria-hidden="true"
-                                className="shrink-0 text-text-tertiary"
-                              />
+                              <button
+                                type="button"
+                                aria-expanded={open}
+                                aria-label={`${open ? "Hide" : "Show"} who is in ${g.name}`}
+                                onClick={(e) => {
+                                  /* Without this the row's own handler fires
+                                     too and the peek navigates away instead of
+                                     opening. */
+                                  e.stopPropagation();
+                                  setOpenIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(g.id)) next.delete(g.id);
+                                    else next.add(g.id);
+                                    return next;
+                                  });
+                                }}
+                                className="-ml-1 shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <ChevronRight
+                                  size={15}
+                                  strokeWidth={2.2}
+                                  aria-hidden="true"
+                                  className={cn(
+                                    "transition-transform duration-200",
+                                    open && "rotate-90 text-blue-primary"
+                                  )}
+                                />
+                              </button>
                               <span className="min-w-0">
                                 <span className="block truncate text-[13px] font-semibold text-text-primary">
                                   {g.name}
@@ -624,6 +656,66 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                             </span>
                           </td>
                         </tr>
+                        {open && (
+                          <tr>
+                            <td colSpan={6} className="bg-surface p-0">
+                              {/* THE PEEK, not the workbench. Who is in the
+                                  group and what they are, so the list answers
+                                  it without a trip. Setting goals and targets
+                                  is inside the group, where there is room for
+                                  it and nothing else competing (Suren, Aug 29:
+                                  "when I'm not focusing on other things I'm
+                                  seeing all the other things and I'm getting
+                                  lost"). */}
+                              <div className="tab-panel border-t border-border-light px-4 py-3">
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                    In this group
+                                  </p>
+                                  <Link
+                                    href={`/admin/groups/${g.id}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[11.5px] font-semibold text-blue-primary hover:underline"
+                                  >
+                                    Open {g.name} →
+                                  </Link>
+                                </div>
+                                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                                  {roster.map((m) => (
+                                    <div
+                                      key={m}
+                                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+                                    >
+                                      <Avatar
+                                        name={m}
+                                        className="h-7 w-7 shrink-0 text-[10px]"
+                                      />
+                                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+                                        {m}
+                                      </span>
+                                      {m === g.head ? (
+                                        /* HIS WORD IS GROUP OWNER (Suren, Aug
+                                           29: "don't say admin, you say owner
+                                           for the group"). Inside a group, the
+                                           head's workspace role is a different
+                                           fact and reading "Admin" here was
+                                           the confusion he pointed at. */
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
+                                          <Crown size={9} strokeWidth={2.6} />
+                                          Group owner
+                                        </span>
+                                      ) : (
+                                        <span className="shrink-0 text-[10.5px] font-medium text-text-tertiary">
+                                          {roleLabel(roles[m])}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                       </Fragment>
                     );
                   })}
