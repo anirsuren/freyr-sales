@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
-  ChevronDown,
+  ChevronRight,
   Crown,
   Pencil,
   Plus,
@@ -15,23 +15,18 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
 import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
-import { PersonSelect } from "@/components/performance/bits";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { RoleTag, roleLabel } from "@/components/ui/RoleTag";
+import { PersonSelect } from "@/components/performance/bits";
+import { roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
-import {
-  GROUP_TYPES,
-  GROUP_TYPE_META,
-  type PrivilegeState,
-} from "@/lib/privileges";
+import { GROUP_TYPES, GROUP_TYPE_META } from "@/lib/privileges";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
 import {
   actualValue,
@@ -48,6 +43,7 @@ import {
  */
 export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [groups, setGroups] = useState<PerfGroup[] | null>(null);
   /** The same performance state the rooms read, for the glance chips. */
   const [perf, setPerf] = useState<PerformanceState | null>(null);
@@ -63,12 +59,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const [confirmRemove, setConfirmRemove] = useState<PerfGroup | null>(null);
   /** Set while editing an existing group — the same popup, prefilled. */
   const [editing, setEditing] = useState<PerfGroup | null>(null);
-  /** Which group is unfolded to show who is actually in it (Anir, Aug 15:
-   *  "it's not even showing me the groups, like who's in this group"). A row
-   *  that only counts heads makes you open the editor to answer that. */
-  // Several groups open at once (Anir, Aug 17: "I should be able to open up
-  // multiple of these — it shouldn't close").
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   /** name → workspace role, so the unfolded list can say what each person is
    *  rather than just who they are. Same directory the Team members tab reads. */
   const [roles, setRoles] = useState<Record<string, string>>({});
@@ -199,11 +189,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   // Neither field fills the other in. Adding a person used to quietly crown
   // them when no owner was set yet — the same surprise as the owner adding
   // themselves to the roster. Two questions, two answers, both his.
-  function addMember(m: string) {
-    const clean = m.trim();
-    if (!clean || members.includes(clean)) return;
-    setMembers((prev) => [...prev, clean]);
-  }
 
   function openCreate() {
     setEditing(null);
@@ -256,7 +241,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     }
   }
 
-  const freeMembers = memberNames.filter((m) => !members.includes(m));
 
   return (
     <div className="rounded-2xl border border-border-light bg-white p-5">
@@ -348,16 +332,32 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <label className="flex h-[18px] items-center text-[12px] font-semibold text-text-primary">
               People in the group
             </label>
-            {/* THE PICKER SITS ABOVE WHAT IT BUILDS (Anir, Aug 12: "when I add
-                a person, why do the people show up on top? That doesn't make
-                any sense. It should be below."). You reach for the same
-                control every time, and the group grows downward under it. */}
+            {/* TICK THEM, DO NOT ADD THEM ONE AT A TIME (Anir, Aug 29: "I
+                think you should have a check box man, you cannot do one by
+                one, that's not — doesn't make sense UI point of view"). A
+                group is usually built in one sitting from a list you are
+                reading anyway, and the old control made that N trips through
+                the same menu.
+
+                THE PICKER STILL SITS ABOVE WHAT IT BUILDS (Anir, Aug 12: "when
+                I add a person, why do the people show up on top? It should be
+                below."). */}
             <div className="mt-1.5">
-              <PersonSelect
-                value=""
-                onChange={(next) => next && addMember(next)}
-                people={freeMembers}
-                placeholder="Add a person…"
+              <MultiPicker
+                options={memberNames.map((m) => ({ id: m, label: m }))}
+                selected={members}
+                onToggle={(id) =>
+                  setMembers((prev) => {
+                    if (!prev.includes(id)) return [...prev, id];
+                    /* Taking out the person who was crowned leaves a group
+                       with no owner, so the crown comes off with them. */
+                    if (head === id) setHead("");
+                    return prev.filter((x) => x !== id);
+                  })
+                }
+                placeholder="Tick everyone in this group…"
+                emptyLabel="Nobody to add"
+                ariaLabel="People in the group"
               />
             </div>
             {members.length > 0 && (
@@ -474,7 +474,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 </thead>
                 <tbody className="divide-y divide-border-light">
                   {groups.map((g) => {
-                    const open = openIds.has(g.id);
                     // The owner belongs in the roster whether or not they were
                     // also added as a member; they are the one person
                     // guaranteed to be in the group.
@@ -486,30 +485,25 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     const r = rollup(g);
                     return (
                       <Fragment key={g.id}>
+                        {/* CLICKING A GROUP GOES INTO IT (Suren, Aug 29: "I
+                            don't want expansion, I don't like this, I don't
+                            need expansion at all... he clicks on the group,
+                            this screen goes away"). Unfolding a row here meant
+                            reading this group's people and goals with nine
+                            other groups still on screen: "when I'm not
+                            focusing on other things I'm seeing all the other
+                            things and I'm getting lost." */}
                         <tr
-                          onClick={() =>
-                            setOpenIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(g.id)) next.delete(g.id);
-                              else next.add(g.id);
-                              return next;
-                            })
-                          }
-                          className={cn(
-                            "cursor-pointer transition-colors",
-                            open ? "bg-surface" : "hover:bg-surface"
-                          )}
+                          onClick={() => router.push(`/admin/groups/${g.id}`)}
+                          className="cursor-pointer transition-colors hover:bg-surface"
                         >
                           <td className="px-4 py-3.5">
                             <span className="flex items-center gap-2.5">
-                              <ChevronDown
+                              <ChevronRight
                                 size={15}
                                 strokeWidth={2.2}
                                 aria-hidden="true"
-                                className={cn(
-                                  "shrink-0 text-text-tertiary transition-transform duration-200",
-                                  open ? "rotate-180 text-blue-primary" : "-rotate-90"
-                                )}
+                                className="shrink-0 text-text-tertiary"
                               />
                               <span className="min-w-0">
                                 <span className="block truncate text-[13px] font-semibold text-text-primary">
@@ -630,63 +624,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                             </span>
                           </td>
                         </tr>
-                        {open && (
-                          <tr>
-                            <td colSpan={6} className="bg-surface p-0">
-                              <div className="tab-panel border-t border-border-light px-4 py-3">
-                                <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                                  In this group
-                                </p>
-                                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-                                  {roster.map((m) => (
-                                    <div
-                                      key={m}
-                                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
-                                    >
-                                      <Avatar
-                                        name={m}
-                                        className="h-7 w-7 shrink-0 text-[10px]"
-                                      />
-                                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                                        {m}
-                                      </span>
-                                      {m === g.head && (
-                                        <Crown
-                                          size={11}
-                                          strokeWidth={2.6}
-                                          aria-label="Group owner"
-                                          className="shrink-0 text-[color:#7C3AED]"
-                                        />
-                                      )}
-                                      <RoleTag
-                                        role={roles[m]}
-                                        size="sm"
-                                        className="shrink-0"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                                {/* No "Add or remove people" link: the pencil
-                                    on the row already opens the editor (Anir,
-                                    Aug 15: "we don't need the add or remove
-                                    people because there's already an edit
-                                    button"). */}
-                                {/* AND UNDER THE PEOPLE, THE GOALS (Anir, Aug
-                                    25: "when I click the dropdown below the
-                                    people, it shows me the goals, and then I
-                                    can click into each goal"). */}
-                                {perf && (
-                                  <GroupGoalsDrilldown
-                                    state={perf}
-                                    groupId={g.id}
-                                    groupName={g.name}
-                                    members={roster}
-                                  />
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                       </Fragment>
                     );
                   })}

@@ -49,6 +49,17 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // Reports stays in mock mode: it aggregates revenue across customers and there
 // is no revenue recorded yet, so it would open on zeroes.
 const RELEASED_MODULE_PREFIXES = [
+  // Running the workspace — user groups, privileges, the goal master. Its own
+  // page, not a Settings tab (Anir, Aug 12: "there should be a separate admin
+  // page"). Without this it 307s in live mode and the admin who needs it can
+  // never open it; the sections inside are still role-gated.
+  //
+  // A PREFIX, NOT AN EXACT PATH. It sat in NON_MODULE_PATHS, which matches the
+  // string exactly, so the day Admin grew a sub-page — /admin/groups/<id>,
+  // opening one group (Suren, Aug 29: "he clicks on the group, this screen
+  // goes away") — clicking a group redirected to /offerings. Found in the
+  // browser the moment the route existed.
+  "/admin",
   "/offerings",
   // The bell's own "View all notifications" link points here. Without this the
   // gate bounced it straight back to /offerings, so the link looked broken
@@ -126,11 +137,6 @@ const NON_MODULE_PATHS: ReadonlySet<string> = new Set([
   "/auth/reset-password",
   "/access-pending",
   "/settings",
-  // Running the workspace — user groups and system status. Its own page, not
-  // a Settings tab (Anir, Aug 12: "there should be a separate admin page").
-  // Without this the page 307s in live mode, so the admin who needs it can
-  // never open it; the sections inside are still role-gated.
-  "/admin",
   "/onboarding",
 ]);
 
