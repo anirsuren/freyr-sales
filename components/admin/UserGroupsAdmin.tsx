@@ -15,6 +15,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
 import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -678,14 +679,18 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         {open && (
                           <tr>
                             <td colSpan={6} className="bg-surface p-0">
-                              {/* THE PEEK, not the workbench. Who is in the
-                                  group and what they are, so the list answers
-                                  it without a trip. Setting goals and targets
-                                  is inside the group, where there is room for
-                                  it and nothing else competing (Suren, Aug 29:
-                                  "when I'm not focusing on other things I'm
-                                  seeing all the other things and I'm getting
-                                  lost"). */}
+                              {/* THE WHOLE PANEL, EXACTLY AS IT WAS (Anir, Aug
+                                  29: "whatever the fuck you had before, bring
+                                  it back... I needed that exact same way,
+                                  except when I click on the name it takes me to
+                                  the new page").
+
+                                  I had cut this down to a people list on the
+                                  reasoning that the goals belong on the group's
+                                  own screen. They do — and they also belong
+                                  here, because this is where he checks a group
+                                  without leaving the list. The group page is
+                                  the extra room, not the replacement. */}
                               <div className="tab-panel border-t border-border-light px-4 py-3">
                                 <div className="mb-2 flex items-center justify-between gap-3">
                                   <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -731,6 +736,21 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                     </div>
                                   ))}
                                 </div>
+                                {/* AND UNDER THE PEOPLE, THE GOALS (Anir, Aug
+                                    25: "I want to see all their goals and how
+                                    they're doing on the goals... when I click
+                                    the dropdown below the people, it shows me
+                                    the goals, and then I can click into each
+                                    goal"). This is the part that went missing
+                                    and the part he wanted back. */}
+                                {perf && (
+                                  <GroupGoalsDrilldown
+                                    state={perf}
+                                    groupId={g.id}
+                                    groupName={g.name}
+                                    members={roster}
+                                  />
+                                )}
                               </div>
                             </td>
                           </tr>
