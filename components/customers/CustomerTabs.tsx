@@ -725,7 +725,19 @@ export function CustomerTabs({
              by default, so the row had picked up a vertical wobble of its own
              ("because of the scroll bar now I can scroll vertically on this
              little panel, which is kind of annoying"). */
-          className="mb-6 flex flex-nowrap gap-8 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          /* gap-5, NOT gap-8 (Anir, Aug 29: "the activity is too much to the
+             right, like it's awkward"). Thirteen tabs at 32px apart spent
+             384px on nothing but air, which stranded the last two — Digital
+             components and Activity — nearly 400px past the right edge of a
+             row with no visible scrollbar to say so. 20px pulls the strip
+             144px in and makes it read as one row of tabs rather than items
+             marooned from each other.
+
+             It still scrolls, and it has to: the labels alone are 1217px in a
+             1208px row, so no gap on earth fits thirteen of them on one line.
+             He chose scrolling over wrapping ("obviously you have to scroll
+             left and right to click on it"); this makes the scroll shorter. */
+          className="mb-6 flex flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {bands.map((b) => (
             <button
