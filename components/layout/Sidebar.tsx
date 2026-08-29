@@ -396,11 +396,9 @@ export function Sidebar({
                       { href: "/performance/org", label: "Org performance", icon: Gauge },
                       { href: "/performance/groups", label: "Group performance", icon: UsersRound },
                       { href: "/performance/people", label: "People performance", icon: CircleUserRound },
-                      { href: "/performance/goal-master", label: "Goal Master", icon: ClipboardList },
                     ]
                   : [
                       { href: "/performance/people", label: "People performance", icon: CircleUserRound },
-                      { href: "/performance/goal-master", label: "Goal Master", icon: ClipboardList },
                     ]
                 ).map(subNavLink)}
 
@@ -433,6 +431,19 @@ export function Sidebar({
                   { href: "/market-intel", label: "Customer Intelligence", icon: Building2 },
                   { href: "/market-intel?tab=competitors", label: "Competitor Intelligence", icon: Swords },
                   { href: "/market-intel?tab=market", label: "Market Intelligence", icon: Globe2 },
+                ].map(subNavLink)}
+
+              {/* THE GOAL MASTER HANGS UNDER ADMIN NOW (Suren, Aug 29: "goal
+                  master is also an admin function... bring the goal master
+                  there"). It used to sit under Goals with the three rooms that
+                  read the plan, which put the screen that WRITES the plan in
+                  with the screens that only report on it. */}
+              {item.href === "/admin" &&
+                !collapsed &&
+                isActive(pathname, "/admin") &&
+                [
+                  { href: "/admin", label: "Workspace", icon: ShieldCheck },
+                  { href: "/admin/goal-master", label: "Goal Master", icon: ClipboardList },
                 ].map(subNavLink)}
             </Fragment>
           ))}

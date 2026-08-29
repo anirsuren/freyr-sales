@@ -31,7 +31,13 @@ export default async function PerformanceTabPage({
   params: Promise<{ tab: string }>;
 }) {
   const { tab: raw } = await params;
-  const master = raw === "goal-master";
+  /* THE GOAL MASTER MOVED TO ADMIN (Suren, Aug 29: "goal master is also an
+     admin function... bring the goal master there"). Performance keeps the
+     rooms that READ the plan; the screen that writes it is an admin screen.
+     The old address keeps working, the same way /performance/activity-master
+     did when the Activity Master moved. */
+  if (raw === "goal-master") redirect("/admin/goal-master");
+  const master = false;
   // The Activity Master lives on the Admin page now (Suren, Aug 18: "you
   // should have admin module where all these are configured"). The old
   // address keeps working for anyone who bookmarked it.

@@ -165,6 +165,7 @@ export function PerformanceModule({
   memberRoles,
   routeTab,
   routeMaster,
+  chrome = "performance",
 }: {
   initial: PerformanceState;
   live: boolean;
@@ -179,6 +180,17 @@ export function PerformanceModule({
   /** Name → workspace role, so a person reads as a person rather than a bare
    *  string (Anir, Aug 15: "it should show a role"). */
   memberRoles?: Record<string, string>;
+  /**
+   * WHERE THIS IS BEING RENDERED.
+   *
+   * "admin" drops the org/groups/people selector and the Goal Master button,
+   * leaving only the master itself. Suren, Aug 29: "goal master is also an
+   * admin function, right? Adding goals which are the master goals — this goal
+   * master has to go in admin function... this is an execution screen, this is
+   * an admin screen." The Performance rooms stay where they are and keep
+   * reading the plan; what moved is the screen that WRITES it.
+   */
+  chrome?: "performance" | "admin";
   /**
    * WHICH SCREEN, FROM THE URL (Anir, Aug 15: "the 4 page should have
    * different / within the /performance").
@@ -436,7 +448,13 @@ export function PerformanceModule({
                 break Goal Master onto a second line, which read as a fifth
                 control adrift under the other four. They scroll together on a
                 narrow screen instead of splitting up. */}
-            <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* Inside Admin the selector is the Admin tab strip, one level up.
+                Two rows of pills stacked on each other is the "so much" Suren
+                was complaining about. */}
+            <div className={cn(
+              "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              chrome === "admin" && "hidden"
+            )}>
               {visibleTabs.map((key) => {
                 const r = ROOMS[key];
                 const Icon = r.icon;
@@ -467,25 +485,11 @@ export function PerformanceModule({
                   </button>
                 );
               })}
-              <button
-                type="button"
-                aria-pressed={showMaster}
-                onClick={() => setMasterFor(tab)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
-                  showMaster
-                    ? "bg-white text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                <ClipboardList
-                  size={16}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  style={showMaster ? { color: "#6D28D9" } : undefined}
-                />
-                Goal Master
-              </button>
+              {/* NO GOAL MASTER BUTTON HERE ANY MORE (Suren, Aug 29: "I
+                  don't want the goal master there anymore... goal master has
+                  to go in admin function"). The rooms beside it are for
+                  reading the plan; writing it is an admin job and lives on the
+                  Admin page. /performance/goal-master redirects there. */}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
