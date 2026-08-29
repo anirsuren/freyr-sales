@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   Briefcase,
   Building2,
-  CheckCircle2,
+  Check,
   ExternalLink,
   FileText,
   MessageSquare,
@@ -38,6 +38,13 @@ import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
+import {
+  RECORD_ACTION_DELETE,
+  RECORD_ACTION_DELETE_ICON,
+  RECORD_ACTION_DONE,
+  RECORD_ACTION_ICON,
+  RECORD_ACTION_NEUTRAL,
+} from "@/components/solutioning/recordActions";
 
 /**
  * ONE MEETING.
@@ -251,9 +258,9 @@ export function MeetingDetail({
           <button
             type="button"
             onClick={() => setEditOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+            className={RECORD_ACTION_NEUTRAL}
           >
-            <Pencil size={15} strokeWidth={2} /> Edit
+            <Pencil size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Edit
           </button>
           {/* "Somebody has to go once the meeting is done and say that meeting
               is complete." Anyone who can see it may, because a meeting is not
@@ -264,20 +271,23 @@ export function MeetingDetail({
             onClick={() =>
               post({ op: "status", status: done ? "planned" : "completed" })
             }
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50",
-              done
-                ? "border border-border-light bg-white text-text-secondary"
-                : "bg-blue-primary text-white"
-            )}
+            /* THE SAME GREEN AS THE OTHER THREE PAGES, not a brand fill
+               (Anir, Aug 29). Green is what this app says "complete" in;
+               solid blue said "this is the primary action on the page",
+               which it is not. */
+            className={done ? RECORD_ACTION_NEUTRAL : RECORD_ACTION_DONE}
           >
             {done ? (
               <>
-                <RotateCcw size={15} strokeWidth={2} /> Reopen
+                <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
               </>
             ) : (
               <>
-                <CheckCircle2 size={15} strokeWidth={2} /> Mark it done
+                {/* The bare tick the other three pages use — a circled one
+                    beside the same words in the same green is the fifth small
+                    way this button was different. */}
+                <Check size={RECORD_ACTION_ICON} strokeWidth={2.4} /> Mark it
+                completed
               </>
             )}
           </button>
@@ -286,9 +296,10 @@ export function MeetingDetail({
               type="button"
               onClick={() => setConfirmDelete(true)}
               aria-label="Delete this meeting"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-light text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+              title="Delete this meeting"
+              className={RECORD_ACTION_DELETE}
             >
-              <Trash2 size={15} strokeWidth={2} />
+              <Trash2 size={RECORD_ACTION_DELETE_ICON} strokeWidth={2} />
             </button>
           )}
         </div>

@@ -48,6 +48,14 @@ import { KIND_META, KindChip, StatusPill } from "./bits";
 import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import {
+  RECORD_ACTION_DELETE,
+  RECORD_ACTION_DELETE_ICON,
+  RECORD_ACTION_DONE,
+  RECORD_ACTION_ICON,
+  RECORD_ACTION_NEUTRAL,
+  RECORD_ACTION_UNDO,
+} from "@/components/solutioning/recordActions";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
 
@@ -390,9 +398,9 @@ export function RequestDetail({
                    should be red"). It takes your name off work in progress
                    and puts it back in the queue, which is the same shape as
                    the app's other reversals. */
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
+                className={RECORD_ACTION_UNDO}
               >
-                <Undo2 size={14} strokeWidth={2.2} /> Hand it back
+                <Undo2 size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Hand it back
               </button>
             )}
             {r.status !== "completed" && (iRequested || managerial) && (
@@ -407,9 +415,9 @@ export function RequestDetail({
                     : `Closing on ${r.requestedBy}'s behalf`
                 }
                 onClick={() => post({ op: "complete" })}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(26,122,53,0.4)] bg-[rgba(26,122,53,0.08)] px-4 py-2 text-[13px] font-semibold text-[color:#1A7A35] transition-colors hover:bg-[rgba(26,122,53,0.14)] disabled:opacity-50"
+                className={RECORD_ACTION_DONE}
               >
-                <Check size={14} strokeWidth={2.4} /> Mark it completed
+                <Check size={RECORD_ACTION_ICON} strokeWidth={2.4} /> Mark it completed
               </button>
             )}
             {r.status === "completed" && (iRequested || managerial) && (
@@ -417,9 +425,9 @@ export function RequestDetail({
                 type="button"
                 disabled={busy}
                 onClick={() => post({ op: "reopen" })}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+                className={RECORD_ACTION_NEUTRAL}
               >
-                <RotateCcw size={14} strokeWidth={2.2} /> Reopen
+                <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
               </button>
             )}
             {(meRole === "admin" || (iRequested && r.status === "initiated")) && (
@@ -429,9 +437,9 @@ export function RequestDetail({
                 onClick={() => setConfirmDelete(true)}
                 title="Delete this request"
                 aria-label="Delete this request"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-[color:#DC2626] transition-colors hover:border-[rgba(220,38,38,0.4)] hover:bg-[rgba(220,38,38,0.06)]"
+                className={RECORD_ACTION_DELETE}
               >
-                <Trash2 size={14.5} strokeWidth={2} />
+                <Trash2 size={RECORD_ACTION_DELETE_ICON} strokeWidth={2} />
               </button>
             )}
           </div>
