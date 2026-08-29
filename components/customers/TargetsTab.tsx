@@ -548,11 +548,27 @@ export function TargetsTab({
           squeezed into 280px each and the whole thing read as a tall ribbon.
           "workflow" is 980px, the size the app already gives a multi-section
           form. */}
+      {/* ONE SIZE, ALWAYS — AND THIS IS A HARD RULE (Anir, Aug 20: "the size
+          should stay the same, you could literally make it a proper pop-up,
+          whatever the normal size is, and it doesn't change"; again Aug 28:
+          "why are you fucking moving the dimensions of the pop-up? It has to
+          be a hard rule. You keep making this mistake").
+
+          The moment the sections could fold, the dialog sized to its content
+          again: shut one and the frame shrank and re-centred under the cursor,
+          shut both and it collapsed to a strip. A pinned height is what makes
+          folding a section change what is IN the dialog rather than move the
+          dialog. Anything taller than the frame scrolls inside it.
+
+          Any new dialog in this app gets this treatment, not just the ones he
+          has caught. */}
       <Modal
         open={adding}
         onClose={() => setAdding(false)}
         title="Add a target"
         size="workflow"
+        tall
+        dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
       >
         <div className="space-y-4">
           {/* SECTIONED, NOT STUFFED (Anir, Aug 18: "you can't just do two
@@ -566,12 +582,18 @@ export function TargetsTab({
               instead of vanishing. Open on arrival — this is a form somebody
               came here to fill in — and closing one is how you get the other
               in front of you. */}
-          <div className="rounded-xl border border-border-light bg-white px-3.5 py-3.5">
+          <div className="rounded-xl border border-border-light bg-white px-3.5 py-2.5">
+            {/* THE HEADER IS A ROW, NOT A BAND (Anir, Aug 28: "why are they so
+                thick?"). The card kept 14px of padding top and bottom and the
+                header kept a 12px bottom margin whether or not anything was
+                under it, so a shut section was a 24px title floating in 40px
+                of air. The margin moved onto the fold's own content, where it
+                only exists while the fold is open. */}
             <button
               type="button"
               aria-expanded={openWho}
               onClick={() => setOpenWho((v) => !v)}
-              className="mb-3 flex w-full cursor-pointer items-center gap-2 text-left"
+              className="flex w-full cursor-pointer items-center gap-2 text-left"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                 <Building2 size={13} strokeWidth={2.2} aria-hidden="true" />
@@ -591,7 +613,7 @@ export function TargetsTab({
               />
             </button>
             <div className="freyr-fold" data-open={openWho ? "true" : "false"}>
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid gap-3.5 pt-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Company
@@ -689,12 +711,12 @@ export function TargetsTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
+          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-2.5">
             <button
               type="button"
               aria-expanded={openPursuit}
               onClick={() => setOpenPursuit((v) => !v)}
-              className="mb-3 flex w-full cursor-pointer items-center gap-2 text-left"
+              className="flex w-full cursor-pointer items-center gap-2 text-left"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                 <Crosshair size={13} strokeWidth={2.2} aria-hidden="true" />
@@ -714,7 +736,7 @@ export function TargetsTab({
               />
             </button>
             <div className="freyr-fold" data-open={openPursuit ? "true" : "false"}>
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid gap-3.5 pt-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Owner
