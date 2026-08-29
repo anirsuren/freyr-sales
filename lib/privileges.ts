@@ -234,48 +234,46 @@ export function emptyPrivilegeState(): PrivilegeState {
 }
 
 /**
- * A FIRST PASS AT THE GRID — his to correct.
+ * WHAT THE TABLE SAYS ON A FRESH WORKSPACE.
  *
- * Only one cell in here is his: BO owner reads Customers and cannot write it.
- * The rest follows the shape of the four group types, so the table opens with
- * something to react to rather than eighteen empty rows. Admin is the only
- * privilege that writes everywhere.
+ * Not a suggestion — this is the answer until somebody changes a cell in
+ * Admin, and it is what a module inherits if the stored copy has never heard
+ * of it. Admin is the only privilege that writes everywhere.
  */
 function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
   /**
-   * THE EIGHT ROWS HE SPECIFIED, cell for cell off his sheet. Read the columns
-   * down: bd_owner, bd_member, bo_owner, bo_member, sol_owner, sol_member,
+   * ONE GRID, IN THE ORDER THE SCREEN SHOWS IT. Read the columns down:
+   * bd_owner, bd_member, bo_owner, bo_member, sol_owner, sol_member,
    * delivery_owner, delivery_member, admin.
+   *
+   * Eight of these rows are Suren's, cell for cell off his sheet: customers,
+   * contracts, offerings, opportunities, submissions, presentations, meetings,
+   * solution_requests. The other ten are the ones he asked to have filled in
+   * ("for some modules we are missing digital offerings and all that, but you
+   * need to add that"), and each follows the nearest module he did decide:
+   *
+   *   Contacts move with Customers — the same people, one level down.
+   *   Digital components move with Offerings — BO owns what is being sold.
+   *   Leads and Revenue accruals move with Contracts — BD's paperwork.
+   *   Agent is the assistant. Taking it off anybody would be strange.
+   *   Team, Reports and Market Intel are things you look at. Admin edits.
+   *   Goals: owners set targets, members read the one they were given.
+   *   Admin runs the workspace, so nobody else touches it.
    */
-  const SHEET: Record<string, Access[]> = {
+  const GRID: Record<string, Access[]> = {
     //                    BDo      BDm      BOo     BOm     SOLo    SOLm    DELo     DELm     ADM
-    customers:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    contracts:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    agent:              ["write", "write", "write","write","write","write","write", "write", "write"],
     offerings:          ["read",  "read",  "write","write","read", "read", "read",  "read",  "write"],
+    digital_components: ["read",  "read",  "write","write","read", "read", "read",  "read",  "write"],
     opportunities:      ["write", "write", "write","write","read", "read", "write", "write", "write"],
+    customers:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    contacts:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    solution_requests:  ["write", "write", "write","write","write","write","write", "write", "write"],
     submissions:        ["write", "write", "write","write","write","write","write", "write", "write"],
     presentations:      ["write", "write", "write","write","write","write","write", "write", "write"],
     meetings:           ["write", "write", "write","write","write","write","write", "write", "write"],
-    solution_requests:  ["write", "write", "write","write","write","write","write", "write", "write"],
-  };
-
-  /**
-   * THE ROWS HE ASKED ME TO ADD (Suren, Aug 29: "for some modules we are
-   * missing digital offerings and all that, but you need to add that this
-   * module, this privilege").
-   *
-   * These are MINE, not his, and the Admin screen marks them so — they are a
-   * proposal to correct, not a decision. Each one follows the nearest module
-   * he did specify: Contacts move with Customers, Digital components with
-   * Offerings, Leads and Revenue accruals with Contracts. What nobody owns
-   * operationally is readable by everyone and writable by Admin.
-   */
-  const PROPOSED: Record<string, Access[]> = {
-    //                    BDo      BDm      BOo     BOm     SOLo    SOLm    DELo     DELm     ADM
-    agent:              ["write", "write", "write","write","write","write","write", "write", "write"],
-    contacts:           ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
-    digital_components: ["read",  "read",  "write","write","read", "read", "read",  "read",  "write"],
     leads:              ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
+    contracts:          ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
     revenue_accruals:   ["write", "write", "read", "read", "read", "read", "read",  "read",  "write"],
     team:               ["read",  "read",  "read", "read", "read", "read", "read",  "read",  "write"],
     goals:              ["write", "read",  "write","read", "write","read", "write", "read",  "write"],
@@ -298,28 +296,13 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
 
   const out: Record<string, Partial<Record<ModuleKey, Access>>> = {};
   for (const id of COLUMNS) out[id] = {};
-  for (const [moduleKey, row] of Object.entries({ ...SHEET, ...PROPOSED })) {
+  for (const [moduleKey, row] of Object.entries(GRID)) {
     COLUMNS.forEach((id, i) => {
       out[id][moduleKey as ModuleKey] = row[i];
     });
   }
   return out;
 }
-
-/**
- * Which rows came off his sheet and which I proposed — the Admin screen says
- * so on the row, so the ones he has not blessed are obvious at a glance.
- */
-export const MODULES_FROM_SHEET: ModuleKey[] = [
-  "customers",
-  "contracts",
-  "offerings",
-  "opportunities",
-  "submissions",
-  "presentations",
-  "meetings",
-  "solution_requests",
-];
 
 /* --------------------------------------------------------------- resolving */
 

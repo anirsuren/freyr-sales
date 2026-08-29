@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -8,7 +8,6 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   ACCESS_META,
-  MODULES_FROM_SHEET,
   PRIVILEGE_MODULES,
   type Access,
   type PrivilegeState,
@@ -26,10 +25,12 @@ import {
  * three-way toggle, saved the moment it changes — a grid with a Save button is
  * a grid somebody edits and then loses.
  *
- * THE ROWS HE DID NOT WRITE ARE MARKED. His sheet covers eight modules; the
- * app has eighteen, and he asked for the rest to be added. Those rows say
- * "proposed" so the ones he has actually blessed are obvious, and so nobody
- * mistakes my guess for his decision.
+ * EVERY ROW IS A DECISION, NOT A QUESTION. Suren's sheet covers eight of the
+ * eighteen modules and he asked for the rest to be filled in; the ten I filled
+ * in used to carry a "proposed" tag. Anir cut it: a permissions screen where
+ * half the rows are marked as unconfirmed is asking the reader to re-decide it
+ * every time they open it. The reasoning behind each of those ten lives in
+ * defaultMatrix, and a cell that is wrong is one dropdown away from right.
  */
 export function PrivilegesAdmin() {
   const { toast } = useToast();
@@ -95,7 +96,6 @@ export function PrivilegesAdmin() {
     [load, toast]
   );
 
-  const fromSheet = useMemo(() => new Set(MODULES_FROM_SHEET), []);
 
   if (failed)
     return (
@@ -168,23 +168,21 @@ export function PrivilegesAdmin() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
+            {/* EVERY ROW READS THE SAME (Anir, Aug 29: "remove the proposed
+                stuff... use your head, what the fuck would we need? Don't say
+                Proposed"). Ten of these eighteen were mine rather than off
+                Suren's sheet and each carried a Proposed tag saying so, which
+                turned a control panel into a document with footnotes and put
+                the question back on him on every row. The answer for each one
+                is settled in defaultMatrix; a cell that is wrong gets changed
+                in the dropdown like any other. */}
             {PRIVILEGE_MODULES.map((m) => {
-              const proposed = !fromSheet.has(m.key);
               return (
                 <tr key={m.key}>
                   <td className="sticky left-0 z-10 bg-white px-4 py-3 align-middle">
                     <span className="block whitespace-nowrap text-[13px] font-semibold text-text-primary">
                       {m.label}
                     </span>
-                    {proposed && (
-                      /* NOT HIS ROW, AND SAYING SO. He wrote eight modules;
-                         these are the ones I added at his instruction, and a
-                         guess wearing the same clothes as a decision is how a
-                         guess becomes policy. */
-                      <span className="mt-0.5 block whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[color:#C2410C]">
-                        Proposed
-                      </span>
-                    )}
                   </td>
                   {state.privileges.map((p) => {
                     const value: Access = state.matrix[p.id]?.[m.key] ?? "none";
