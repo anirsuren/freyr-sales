@@ -96,26 +96,35 @@ const DOC_TABS: {
   key: DocCategory;
   label: string;
   hint: string;
+  /** An example of the thing, so the dialog cannot be mistaken for another
+   *  one (Anir, Aug 28: "can you customise this a little bit, because I don't
+   *  know if I'm on analysis or deliverables or documents"). Four dialogs that
+   *  differed only in a title bar read as one dialog. */
+  example: string;
 }[] = [
   {
     key: "customer",
     label: "Customer documents",
     hint: "What the customer gave us: the RFP package, their requirements.",
+    example: "RFP package from the customer",
   },
   {
     key: "working",
     label: "Working documents",
     hint: "Work in progress: the drafts being built.",
+    example: "Response draft v2",
   },
   {
     key: "final",
     label: "Final deliverables",
     hint: "What was actually submitted or presented.",
+    example: "RFP response, final",
   },
   {
     key: "analysis",
     label: "Analysis",
     hint: "What we made of the customer documents.",
+    example: "Requirements gap analysis",
   },
 ];
 
@@ -758,7 +767,18 @@ export function RequestDetail({
                   So a repeat of the same action, by the same person, inside
                   the same minute shows once. A COMMENT is never folded — the
                   same sentence typed twice is two things somebody said. */}
-              <ol className="h-[360px] overflow-y-auto pr-1">
+              {/* IT TAKES THE ROOM IT NEEDS, AND NO MORE (Anir, Aug 28: "why
+                  is it so big? This should only take up five or six, and then
+                  it should be scrolling within that").
+
+                  A FIXED 360px pinned the card so a hundred entries could not
+                  push the comment box off the page — which was the right
+                  problem to solve and the wrong way to solve it: five entries
+                  then reserved the same 360px and left a hand's width of white
+                  above the comment button. max-height does both jobs: it
+                  shrinks to five rows and it still caps and scrolls at a
+                  hundred. Roughly six rows at 52px each. */}
+              <ol className="max-h-[320px] overflow-y-auto pr-1">
                 {[...r.activity]
                   .reverse()
                   .filter((a, i, arr) =>
@@ -877,6 +897,10 @@ export function RequestDetail({
             >
               <AddDocForm
                 tabLabel={DOC_TABS.find((t) => t.key === tab)?.label ?? ""}
+                tabHint={DOC_TABS.find((t) => t.key === tab)?.hint ?? ""}
+                tabExample={
+                  DOC_TABS.find((t) => t.key === tab)?.example ?? "Document name"
+                }
                 requestId={r.id}
                 members={members}
                 linkables={linkables}
@@ -1191,6 +1215,8 @@ function DocRow({
 
 function AddDocForm({
   tabLabel,
+  tabHint,
+  tabExample,
   members,
   linkables,
   busy,
@@ -1199,6 +1225,8 @@ function AddDocForm({
   onAdd,
 }: {
   tabLabel: string;
+  tabHint: string;
+  tabExample: string;
   members: string[];
   linkables: Linkable[];
   busy: boolean;
@@ -1258,6 +1286,28 @@ function AddDocForm({
        popup under the cursor. A floor on the body means the shorter tab fills
        space that is already there. */
     <div className="space-y-3">
+      {/* WHICH OF THE FOUR YOU ARE IN, said inside the dialog rather than only
+          in its title bar (Anir, Aug 28: "I don't know if I'm on analysis or
+          deliverables or documents"). The four dialogs were identical below
+          the header, so the one line that distinguished them was the easiest
+          line on screen to miss. The category leads, in its own colour, with
+          the sentence that says what belongs in it. */}
+      <div className="flex items-start gap-2.5 rounded-lg border border-border-light bg-surface/50 px-3 py-2.5">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-blue-light text-blue-primary"
+        >
+          <FileText size={13} strokeWidth={2.4} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[13px] font-semibold text-text-primary">
+            {tabLabel}
+          </span>
+          <span className="block text-[12px] leading-relaxed text-text-secondary">
+            {tabHint}
+          </span>
+        </span>
+      </div>
       <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
         <button
           type="button"
@@ -1367,7 +1417,7 @@ function AddDocForm({
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="RFP response, final"
+                placeholder={tabExample}
               />
             </Field>
             {/* The version, right beside the name it versions (Suren,
