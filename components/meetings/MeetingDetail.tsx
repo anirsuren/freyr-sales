@@ -31,9 +31,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
-import { type Meeting, type MeetingNoteKind } from "@/lib/meetings";
+import { type Meeting, type MeetingDoc, type MeetingNoteKind } from "@/lib/meetings";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { Modal } from "@/components/ui/Modal";
+import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { formatFromFilename } from "@/lib/offeringMaterials";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 
 /**
@@ -91,6 +93,21 @@ const NOTE_META: Record<
   },
 };
 
+/** Where this meeting's files are read from — never an offering's route. */
+const meetingDownloadUrl = (meetingId: string, docId: string) =>
+  `/api/meetings/download?meetingId=${encodeURIComponent(
+    meetingId
+  )}&docId=${encodeURIComponent(docId)}`;
+
+const meetingPreviewUrl =
+  (meetingId: string, docId: string) =>
+  (_path: string, member: string | null) =>
+    `/api/meetings/preview?meetingId=${encodeURIComponent(
+      meetingId
+    )}&docId=${encodeURIComponent(docId)}${
+      member ? `&member=${encodeURIComponent(member)}` : ""
+    }`;
+
 export function MeetingDetail({
   meeting: initial,
   meName,
@@ -134,6 +151,16 @@ export function MeetingDetail({
   const [transcribing, setTranscribing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
+  /* THE SAME VIEWER THE SALES MATERIALS USE (Anir, Aug 28: "you're gonna have
+     to do it in another viewer, just like you have on sales materials.
+     Literally copy it... whenever there are files, bro, you have to do this
+     same exact thing. You already have it built"). A document on a meeting
+     opens in the app now instead of being handed to the browser as a
+     download. */
+  const [viewing, setViewing] = useState<MeetingDoc | null>(null);
+  /* A real percentage, not a word. An upload that only says "Uploading…" is
+     an upload you cannot tell from a hung one. */
+  const [uploadPct, setUploadPct] = useState(0);
 
   const mine = m.owner.trim().toLowerCase() === meName.trim().toLowerCase();
   const canDelete = mine || meRole === "admin";
@@ -387,13 +414,22 @@ export function MeetingDetail({
                         you no way back to what was handed over (found in the
                         browser, Aug 28). The whole row opens it, so there is
                         nothing to aim at. */}
-                    <a
-                      href={`/api/meetings/download?meetingId=${encodeURIComponent(
-                        m.id
-                      )}&docId=${encodeURIComponent(d.id)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group min-w-0 flex-1"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        /* A DEAD CLICK IS WORSE THAN A REFUSAL. A document can
+                           be a named entry with no file behind it — every
+                           sample one is — and the viewer only mounts when
+                           there is something to render, so the row simply did
+                           nothing when clicked. Say why instead. */
+                        d.docsPath || d.url
+                          ? setViewing(d)
+                          : toast(
+                              `"${d.label}" is a name on the record — no file was uploaded against it.`,
+                              "error"
+                            )
+                      }
+                      className="group min-w-0 flex-1 cursor-pointer text-left"
                     >
                       <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                         {d.label}
@@ -401,15 +437,15 @@ export function MeetingDetail({
                       <span className="block text-[11px] text-text-tertiary">
                         {d.addedBy} · {stampedAt(d.addedAt)}
                       </span>
-                    </a>
+                    </button>
                     <a
                       href={`/api/meetings/download?meetingId=${encodeURIComponent(
                         m.id
                       )}&docId=${encodeURIComponent(d.id)}`}
                       target="_blank"
                       rel="noreferrer"
-                      aria-label={`Open ${d.label}`}
-                      title={`Open ${d.label}`}
+                      aria-label={`Download ${d.label}`}
+                      title={`Download ${d.label}`}
                       className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                     >
                       <ExternalLink size={14} strokeWidth={2.2} />
@@ -507,6 +543,28 @@ export function MeetingDetail({
           </SectionCard>
         </div>
       </div>
+
+      {viewing?.docsPath && (
+        /* THE SAME COMPONENT, THE SAME RENDERER — only the endpoint differs,
+           which is what stops the two surfaces drifting apart. */
+        <MaterialViewer
+          offeringId=""
+          offeringName={m.customer || "This meeting"}
+          material={{
+            id: viewing.id,
+            kind: formatFromFilename(viewing.label),
+            label: viewing.label,
+            url: viewing.url ?? "",
+            docsPath: viewing.docsPath,
+          }}
+          path={viewing.docsPath}
+          label={viewing.label}
+          downloadUrl={meetingDownloadUrl(m.id, viewing.id)}
+          openInNewTabUrl={meetingDownloadUrl(m.id, viewing.id)}
+          previewUrl={meetingPreviewUrl(m.id, viewing.id)}
+          onClose={() => setViewing(null)}
+        />
+      )}
 
       {/* ADD TO THE WRITE-UP — pick what it is, type it or upload it, save. */}
       <Modal
@@ -673,16 +731,42 @@ export function MeetingDetail({
                 e.target.value = "";
                 if (!chosen) return;
                 setUploading(true);
+                setUploadPct(0);
                 setUploadError(null);
                 try {
                   const body = new FormData();
                   body.append("file", chosen);
-                  const res = await fetch(
-                    `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`,
-                    { method: "POST", body }
-                  );
-                  const data = await res.json().catch(() => null);
-                  if (!res.ok || !data?.ok) {
+                  /* XHR RATHER THAN FETCH, FOR THE ONE THING FETCH CANNOT DO
+                     (Anir, Aug 28: "I need to see a progress bar or
+                     something"). fetch has no upload-progress event, so a
+                     40MB deck showed the word "Uploading…" and nothing else —
+                     indistinguishable from a hung request. */
+                  const data = await new Promise<{
+                    ok?: boolean;
+                    error?: string;
+                    docsPath?: string;
+                    fileName?: string;
+                  } | null>((resolve) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open(
+                      "POST",
+                      `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`
+                    );
+                    xhr.upload.onprogress = (e) => {
+                      if (e.lengthComputable)
+                        setUploadPct(Math.round((e.loaded / e.total) * 100));
+                    };
+                    xhr.onload = () => {
+                      try {
+                        resolve(JSON.parse(xhr.responseText));
+                      } catch {
+                        resolve(null);
+                      }
+                    };
+                    xhr.onerror = () => resolve(null);
+                    xhr.send(body);
+                  });
+                  if (!data?.ok) {
                     setUploadError(data?.error || "That file did not upload.");
                     return;
                   }
@@ -703,11 +787,23 @@ export function MeetingDetail({
             />
             <Upload size={20} strokeWidth={2} className="text-blue-primary" />
             <span className="mt-1 text-[13.5px] font-semibold text-text-primary">
-              {uploading ? "Uploading…" : "Choose a file"}
+              {uploading ? `Uploading… ${uploadPct}%` : "Choose a file"}
             </span>
-            <span className="text-[11.5px] text-text-tertiary">
-              It is stored against this meeting and anyone on it can open it
-            </span>
+            {uploading ? (
+              <span
+                aria-hidden="true"
+                className="mt-2 block h-1.5 w-48 overflow-hidden rounded-full bg-border-light"
+              >
+                <span
+                  className="block h-full rounded-full bg-blue-primary transition-[width] duration-200"
+                  style={{ width: `${uploadPct}%` }}
+                />
+              </span>
+            ) : (
+              <span className="text-[11.5px] text-text-tertiary">
+                It is stored against this meeting and anyone on it can open it
+              </span>
+            )}
           </label>
           {uploadError && (
             <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">

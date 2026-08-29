@@ -136,7 +136,7 @@ export type Meeting = {
   docs: MeetingDoc[];
 };
 
-export type MeetingsState = { meetings: Meeting[] };
+export type MeetingsState = { meetings: Meeting[]; sampleVersion?: number };
 
 export const EMPTY_MEETINGS: MeetingsState = { meetings: [] };
 
@@ -321,9 +321,13 @@ export async function readMeetings(): Promise<MeetingsState> {
   if (getDataMode() !== "mock")
     return readRow().catch(() => structuredClone(EMPTY_MEETINGS));
   const existing = await readRowRaw().catch(() => null);
-  if (existing && !isPreLinkSeed(existing)) return normalize(existing);
+  if (existing && !isStaleSeed(existing)) return normalize(existing);
   const seeded = sampleMeetings();
-  await writeRow(seeded).catch(() => undefined);
+  /* The version rides along with the rows so a later change to the samples can
+     tell "seeded from an older set" from "somebody's own data". */
+  await writeRow({ ...seeded, sampleVersion: SAMPLE_VERSION } as MeetingsState).catch(
+    () => undefined
+  );
   return seeded;
 }
 
@@ -614,32 +618,33 @@ export function groupMeetingsByPeriod(
 }
 
 /**
- * A MOCK ROW SEEDED BEFORE THE DEMO DEALS EXISTED.
+ * A MOCK ROW SEEDED FROM AN OLDER SAMPLE SET.
  *
- * The first meetings sample carried no opportunity ids, because in mock there
- * were no deals against the demo accounts to carry (the customers and the
- * pipeline seed were two different casts until Aug 28). A store seeded from
- * that set would show meetings joined to nothing forever, which is the exact
- * hole this was meant to fill.
+ * Sample data is disposable by definition, and it changes as the module grows:
+ * the first meetings sample carried no opportunity links (there were no demo
+ * deals to link to), and the second carried almost no documents until Anir
+ * asked to see what a meeting with files looks like. A store seeded from an
+ * older set would keep showing that older set forever.
  *
- * Sample data is disposable by definition, so a pre-link seed is replaced with
- * the current one. Only ever fires in mock, only when EVERY row is one of the
- * originals AND not one of them links to a deal — which no store written after
- * this change can look like, and which anything a person made cannot look like
- * either.
+ * So the seed carries its version, and a mock row written from an older one is
+ * replaced. It only ever fires in mock, and only when EVERY row is still one
+ * of the originals — the moment somebody makes or edits a meeting of their
+ * own, this stops touching anything.
  */
-function isPreLinkSeed(raw: unknown): boolean {
-  const rows = (raw as { meetings?: unknown[] } | null)?.meetings;
+const SAMPLE_VERSION = 3;
+
+function isStaleSeed(raw: unknown): boolean {
+  const row = raw as { meetings?: unknown[]; sampleVersion?: number } | null;
+  const rows = row?.meetings;
   if (!Array.isArray(rows) || rows.length === 0) return false;
-  return rows.every((row) => {
-    if (!row || typeof row !== "object") return false;
-    const m = row as { id?: unknown; opportunityIds?: unknown };
-    return (
-      typeof m.id === "string" &&
-      m.id.startsWith("mtg-sample-") &&
-      (!Array.isArray(m.opportunityIds) || m.opportunityIds.length === 0)
-    );
-  });
+  if ((row?.sampleVersion ?? 0) >= SAMPLE_VERSION) return false;
+  return rows.every(
+    (r) =>
+      !!r &&
+      typeof r === "object" &&
+      typeof (r as { id?: unknown }).id === "string" &&
+      (r as { id: string }).id.startsWith("mtg-sample-")
+  );
 }
 
 /* ---------------------------------------------------------------- samples */
@@ -747,7 +752,26 @@ function sampleMeetings(): MeetingsState {
           at: day(-4),
         },
       ],
-      docs: [],
+      /* MOCK SHOWS WHAT A ROOM ACTUALLY LEAVES BEHIND (Anir, Aug 28: "show me
+         what it would look like with documents — obviously you don't need the
+         actual documents, but in mock mode I need to see"). Named the way a
+         real deck is named, with the person who brought it. No docsPath: these
+         are the SHAPE of the record, not files, and the viewer says so rather
+         than pretending to open one. */
+      docs: [
+        {
+          id: "md-sample-2",
+          label: "Helix — capability deck.pptx",
+          addedBy: "Nina Kowalski",
+          addedAt: day(-4),
+        },
+        {
+          id: "md-sample-3",
+          label: "Publishing workflow — one pager.pdf",
+          addedBy: "Marcus Chen",
+          addedAt: day(-4),
+        },
+      ],
     },
     {
       id: "mtg-sample-3",
@@ -775,7 +799,14 @@ function sampleMeetings(): MeetingsState {
           at: day(-2),
         },
       ],
-      docs: [],
+      docs: [
+        {
+          id: "md-sample-4",
+          label: "EU MDR — discovery questions.docx",
+          addedBy: "Daniel Foster",
+          addedAt: day(-2),
+        },
+      ],
     },
     {
       id: "mtg-sample-4",
@@ -795,7 +826,20 @@ function sampleMeetings(): MeetingsState {
       owner: "Grace Liu",
       createdAt: day(-1),
       notes: [],
-      docs: [],
+      docs: [
+        {
+          id: "md-sample-5",
+          label: "Q3 review pack.pptx",
+          addedBy: "Grace Liu",
+          addedAt: day(-1),
+        },
+        {
+          id: "md-sample-6",
+          label: "Delivery metrics.xlsx",
+          addedBy: "Marcus Chen",
+          addedAt: day(-1),
+        },
+      ],
     },
     {
       id: "mtg-sample-5",

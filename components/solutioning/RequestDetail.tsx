@@ -1286,28 +1286,18 @@ function AddDocForm({
        popup under the cursor. A floor on the body means the shorter tab fills
        space that is already there. */
     <div className="space-y-3">
-      {/* WHICH OF THE FOUR YOU ARE IN, said inside the dialog rather than only
-          in its title bar (Anir, Aug 28: "I don't know if I'm on analysis or
-          deliverables or documents"). The four dialogs were identical below
-          the header, so the one line that distinguished them was the easiest
-          line on screen to miss. The category leads, in its own colour, with
-          the sentence that says what belongs in it. */}
-      <div className="flex items-start gap-2.5 rounded-lg border border-border-light bg-surface/50 px-3 py-2.5">
-        <span
-          aria-hidden="true"
-          className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-blue-light text-blue-primary"
-        >
-          <FileText size={13} strokeWidth={2.4} />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-[13px] font-semibold text-text-primary">
-            {tabLabel}
-          </span>
-          <span className="block text-[12px] leading-relaxed text-text-secondary">
-            {tabHint}
-          </span>
-        </span>
-      </div>
+      {/* WHAT BELONGS IN THIS ONE, and only that (Anir, Aug 28: "you already
+          have Add to Analysis — you don't need another analysis thing at the
+          top").
+
+          The first cut put the category in a bordered card with its name in
+          bold, directly under a title bar that already said the same word. The
+          sentence was the useful half; the name was the dialog title again,
+          boxed. So it is one quiet line now, and the document-name placeholder
+          carries the rest of the distinction. */}
+      <p className="text-[12.5px] leading-relaxed text-text-secondary">
+        {tabHint}
+      </p>
       <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
         <button
           type="button"
