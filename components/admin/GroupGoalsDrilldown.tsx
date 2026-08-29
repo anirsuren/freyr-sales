@@ -9,7 +9,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { PersonGoalPanel } from "@/components/performance/bits";
+import {
+  PersonGoalPanel,
+  TypeChip,
+  TypeIconTile,
+  typeMeta,
+} from "@/components/performance/bits";
 import { cn } from "@/lib/utils";
 import {
   actualValue,
@@ -166,13 +171,27 @@ export function GroupGoalsDrilldown({
                    individual person has to be easily separated"). The rail and
                    the tint are the deal table's own idiom for "this header and
                    everything under it are the same thing". */
+                /* THE SAME IDIOM AS GOAL MASTER (Anir, Aug 29: "where are the
+                   fucking icons? When I click on something it should hide it,
+                   it should dim the other things. Look at the goals page and do
+                   a full audit... and I need the colours too for the goals
+                   thing with the icon").
+
+                   Three things brought over from the master rows: the type's
+                   coloured icon tile, the rail in that same type colour rather
+                   than a flat blue, and the open goal stepping the others back
+                   so one goal is obviously the subject. */
                 <div
                   key={goal.id}
+                  style={{
+                    ["--goal-accent" as string]: typeMeta(goal.type).color,
+                  }}
                   className={cn(
-                    "overflow-hidden rounded-xl border bg-white transition-colors",
+                    "overflow-hidden rounded-xl border bg-white transition-all",
                     isOpen
-                      ? "border-blue-subtle [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                      : "border-border-light"
+                      ? "border-[color:var(--goal-accent)] [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                      : "border-border-light",
+                    openGoal !== null && !isOpen && "opacity-45 hover:opacity-100"
                   )}
                 >
                   <button
@@ -190,17 +209,35 @@ export function GroupGoalsDrilldown({
                       aria-hidden="true"
                       className={cn(
                         "shrink-0 text-text-tertiary transition-transform duration-200",
-                        isOpen && "rotate-90 text-blue-primary"
+                        isOpen && "rotate-90 text-[color:var(--goal-accent)]"
                       )}
                     />
-                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                      {goal.name}
+                    <TypeIconTile type={goal.type} className="h-7 w-7 rounded-lg" />
+                    {/* NAME OVER YEAR, the way the master row stacks it — the
+                        drilldown printed the name alone, so two goals of the
+                        same name in different years were indistinguishable. */}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                        {goal.name}
+                      </span>
+                      <span className="block text-[10px] text-text-tertiary tnum">
+                        {goal.year}
+                      </span>
+                    </span>
+                    {/* WHAT IT IS COUNTED IN, in the type's own colour. The
+                        master's "Counted in" column, carried over so a money
+                        goal reads as money without doing the sum. */}
+                    <span className="hidden shrink-0 sm:inline-flex">
+                      <TypeChip type={goal.type} size="sm" />
                     </span>
                     {target > 0 && (
                       <>
-                        <span className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] sm:flex">
+                        {/* THE BAR TAKES THE GOAL'S COLOUR TOO, so a row is one
+                            colour end to end rather than a coloured icon in
+                            front of a blue bar. */}
+                        <span className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-[color:var(--goal-accent)]/15 sm:flex">
                           <span
-                            className="block h-full rounded-full bg-blue-primary"
+                            className="block h-full rounded-full bg-[color:var(--goal-accent)]"
                             style={{ width: `${pct}%` }}
                           />
                         </span>
@@ -209,7 +246,7 @@ export function GroupGoalsDrilldown({
                             row printed the raw pair and left the reader to do
                             the division. Capped at 100 like every other verdict
                             in the module. */}
-                        <span className="shrink-0 whitespace-nowrap text-[12px] font-bold text-blue-primary tnum">
+                        <span className="shrink-0 whitespace-nowrap text-[12px] font-bold text-[color:var(--goal-accent)] tnum">
                           {pct}%
                         </span>
                         <span className="shrink-0 whitespace-nowrap text-[11.5px] text-text-secondary tnum">
