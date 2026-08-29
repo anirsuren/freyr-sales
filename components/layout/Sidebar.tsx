@@ -37,8 +37,8 @@ import {
   Swords,
   Globe2,
   Inbox,
-  FileCheck2,
-  MonitorPlay,
+  FileUp,
+  LayoutTemplate,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -417,8 +417,8 @@ export function Sidebar({
                 (isActive(pathname, "/solutioning") || isActive(pathname, "/meetings")) &&
                 [
                   { href: "/solutioning", label: "Solution requests", icon: Inbox },
-                  { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileCheck2 },
-                  { href: "/solutioning?tab=presentations", label: "Presentations", icon: MonitorPlay },
+                  { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileUp },
+                  { href: "/solutioning?tab=presentations", label: "Presentations", icon: LayoutTemplate },
                   { href: "/meetings", label: "Meetings", icon: CalendarClock },
                 ].map(subNavLink)}
 

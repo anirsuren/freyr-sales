@@ -21,6 +21,7 @@ import {
   materialPreviewHref,
   openMaterial,
 } from "@/components/offerings/materialActions";
+import { CopyMaterialLinkButton } from "@/components/offerings/CopyMaterialLinkButton";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { PinnableTable } from "@/components/ui/PinnableTable";
@@ -519,6 +520,10 @@ const TABLE_CLASS =
                           <Download size={14} strokeWidth={1.9} />
                         </button>
                       </Tooltip>
+                      <CopyMaterialLinkButton
+                        offeringId={row.offeringId}
+                        material={row.material}
+                      />
                     </div>
                   </td>
                 </tr>

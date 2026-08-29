@@ -43,6 +43,49 @@ export function openMaterial(
   window.open(href, "_blank", "noopener,noreferrer");
 }
 
+/**
+ * THE LINK YOU PASTE TO SOMEBODY (Anir, Aug 28: "I also had the copy button
+ * link here in the actions").
+ *
+ * An UPLOADED file's link is its own page inside Freyr — the viewer, which
+ * renders it and respects who may open it. A pasted link copies the address it
+ * already points at, because that is the thing it is. Absolute either way: a
+ * relative path is useless the moment it leaves the page.
+ */
+export function materialShareLink(
+  offeringId: string,
+  material: Pick<OfferingMaterial, "id" | "url" | "docsPath">
+): string {
+  if (!isUploadedMaterial(material)) return material.url || "";
+  const path = materialPreviewHref(offeringId, material);
+  return typeof window === "undefined"
+    ? path
+    : new URL(path, window.location.origin).toString();
+}
+
+/** Copy it, falling back to a selection when the clipboard is refused. */
+export async function copyMaterialLink(
+  offeringId: string,
+  material: Pick<OfferingMaterial, "id" | "url" | "docsPath">
+): Promise<boolean> {
+  const link = materialShareLink(offeringId, material);
+  if (!link) return false;
+  try {
+    await navigator.clipboard.writeText(link);
+    return true;
+  } catch {
+    // No permission, or an insecure origin. Put it somewhere the keyboard can
+    // still reach rather than letting the button do nothing.
+    const box = document.createElement("input");
+    box.value = link;
+    document.body.appendChild(box);
+    box.select();
+    const ok = document.execCommand("copy");
+    box.remove();
+    return ok;
+  }
+}
+
 function safeDownloadName(label: string): string {
   return (
     label

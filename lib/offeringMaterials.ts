@@ -4,14 +4,14 @@ import {
   DollarSign,
   File,
   FileText,
+  LayoutTemplate,
   Handshake,
   Lightbulb,
   Lock,
+  Paperclip,
   Pill,
-  Presentation,
   Quote,
   Scale,
-  Shapes,
   ShoppingBag,
   Stethoscope,
   Swords,
@@ -328,9 +328,9 @@ export const MATERIAL_FORMAT_META: Record<
   // and access pills beside them, which DO use colour to mean something. One
   // family, four glyphs, calmer row.
   video: { label: "Video", color: "#0071E3", icon: Video },
-  presentation: { label: "Presentation", color: "#0071E3", icon: Presentation },
+  presentation: { label: "Presentation", color: "#0071E3", icon: LayoutTemplate },
   document: { label: "Document", color: "#0071E3", icon: FileText },
-  other: { label: "Others", color: "#0071E3", icon: Shapes },
+  other: { label: "Others", color: "#0071E3", icon: Paperclip },
 };
 
 /**
@@ -483,9 +483,9 @@ export const MATERIAL_META: Record<MaterialKind, { label: string; plural: string
 // the icons. You had icons before that had, like, if it was a video").
 export const MATERIAL_ICON: Record<MaterialKind, LucideIcon> = {
   video: Video,
-  presentation: Presentation,
+  presentation: LayoutTemplate,
   document: FileText,
-  other: Shapes,
+  other: Paperclip,
   whitepaper: FileText,
   pricing: DollarSign,
   competition: Swords,

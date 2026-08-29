@@ -37,6 +37,7 @@ import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { FolderPeek } from "@/components/offerings/FolderPeek";
+import { CopyMaterialLinkButton } from "@/components/offerings/CopyMaterialLinkButton";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -1515,6 +1516,12 @@ export function MaterialsSection({
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                             ><Download size={14} strokeWidth={1.9} /></button>
                         </Tooltip>
+                        {offeringId && (
+                          <CopyMaterialLinkButton
+                            offeringId={offeringId}
+                            material={material}
+                          />
+                        )}
                         {canEdit && offeringId && <EditMaterialButton offeringId={offeringId} material={material} materials={materials} materialFolders={materialFolders} />}
                         {canEdit && offeringId && (
                           <Tooltip label="Remove material" side="top">
