@@ -1464,16 +1464,33 @@ export function PersonGoalPanel({
           <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
             Month by month
           </p>
-          {/* THE PLOT USES THE ROOM IT IS GIVEN (Anir, Aug 26: "why is it in
-              the center? You can imagine if it's 100%, it's gonna be so small.
-              You have so much room below… that bar chart should go almost till
-              the bottom, and it can go a little higher too. Look at what you
-              did in 'How far along each goal is'").
+          {/* THE BARS SIT ON THE BOTTOM, AND THE SECTION IS THE SIZE OF WHAT
+              IT DRAWS (Anir, Aug 28: "why is it taking up so much space, and
+              why are those bar charts so far up? That month-by-month section
+              can be half the size it is if you just move all the bars to the
+              very bottom. How is that 100%? That green shit is supposed to be
+              100%, but I can barely even see it").
 
-              Same treatment as that card: a real height instead of 140, and
-              fillCard bleeding the columns to the panel's left and right edges
-              with -mx so the plot owns the width rather than sitting inset. */}
-          <div className="-mx-4 -mb-1 mt-1.5 min-h-[210px] flex-1">
+              The wrapper was `min-h-[210px] flex-1` — and both of those did
+              nothing useful. `flex-1` needs a flex parent and this one is a
+              plain block, so it was inert; `min-h` gives a MINIMUM, not a
+              height, so the chart's own `h-full` had no definite parent to
+              resolve against and fell back to its content height. The plot
+              therefore drew itself small, hugged the top of a 210px box, and
+              left a band of nothing underneath — which is also why a
+              full-height bar looked tiny: the plot it was full of was 80px.
+
+              A definite height fixes both: the bars grow into it and the axis
+              lands on the bottom edge. And when nothing has been logged there
+              is no bar to give height to, so the section collapses to exactly
+              its labels instead of reserving a plot for data that is not
+              there. */}
+          <div
+            className={cn(
+              "-mx-4 -mb-1 mt-1.5",
+              months.some((m) => m.value) ? "h-[170px]" : undefined
+            )}
+          >
             {/* `unit` here is the WORD printed after each value ("12 calls"),
                 not the goal's kind — passing goal.unit put the literal word
                 "count" after every bar, so a month read "80K count" while the
@@ -1484,7 +1501,7 @@ export function PersonGoalPanel({
             <BarChart
               hideLabelDots
               data={months}
-              height={210}
+              height={170}
               fillCard={16}
               format={goal.unit === "currency" ? "money" : "number"}
             />

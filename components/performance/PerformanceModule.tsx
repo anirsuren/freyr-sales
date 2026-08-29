@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { canAccessModule } from "@/lib/moduleAccess";
 import {
   ChevronDown,
   Check,
@@ -1696,7 +1698,19 @@ function AssignGroupModal({
   const [moreBelow, setMoreBelow] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const parsed = parseAmountInput(target);
+  const badTarget = targetIsGarbage(target, parsed);
   const picked = groups.find((g) => g.id === groupId);
+  /* MAKING A GROUP IS ONE CLICK FROM NEEDING ONE (Anir, Aug 28: "if I want to
+     create a new group, that should be an option. There should be a button,
+     and it takes me to the group master to be able to do that, assuming I have
+     the permissions").
+
+     The dialog knew the answer was "go to Admin" — it printed that sentence
+     when the list was EMPTY and then said nothing when the list simply did not
+     have the group you wanted. Gated on the same door Admin itself is gated
+     on, so nobody is offered a room they cannot open. */
+  const me = useCurrentUser();
+  const canMakeGroups = canAccessModule("/admin", me.role);
 
   const syncFade = useCallback(() => {
     const el = listRef.current;
@@ -1708,7 +1722,7 @@ function AssignGroupModal({
   }, [open, groups.length, openPeople, syncFade]);
 
   async function save() {
-    if (!groupId) return;
+    if (!groupId || badTarget) return;
     const ok = await run(
       {
         op: "assign-goal-group",
@@ -1746,6 +1760,14 @@ function AssignGroupModal({
         <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
           Pick one
         </span>
+        {canMakeGroups && (
+          <Link
+            href="/admin?tab=groups"
+            className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+          >
+            <Plus size={11} strokeWidth={2.6} /> New group
+          </Link>
+        )}
         <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-border-light">
           {[1, 2].map((n) => (
             <button
@@ -1886,10 +1908,13 @@ function AssignGroupModal({
                           )}
                         </span>
                       </button>
-                      {expanded && (
+                      <span
+                        className="freyr-fold"
+                        data-open={expanded ? "true" : "false"}
+                      >
                         <span
                           className={cn(
-                            "tab-panel mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2",
+                            "mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2",
                             rosterCols === 2 && "sm:grid-cols-2"
                           )}
                         >
@@ -1910,7 +1935,7 @@ function AssignGroupModal({
                             </span>
                           ))}
                         </span>
-                      )}
+                      </span>
                     </span>
                   </span>
                 </div>
@@ -1960,7 +1985,7 @@ function AssignGroupModal({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={!groupId} loading={busy}>
+          <Button onClick={save} disabled={!groupId || badTarget} loading={busy}>
             {picked ? `Assign to ${picked.name}` : "Assign to group"}
           </Button>
         </div>
@@ -2023,8 +2048,10 @@ function AssignPersonModal({
   const [person, setPerson] = useState("");
   const [target, setTarget] = useState("");
   const parsed = parseAmountInput(target);
+  const badTarget = targetIsGarbage(target, parsed);
 
   async function save() {
+    if (badTarget) return;
     const ok = await run(
       {
         op: "assign-goal",
@@ -2080,7 +2107,7 @@ function AssignPersonModal({
         />
       </div>
       <div className="mt-4 flex items-center justify-end">
-        <Button onClick={save} disabled={!person} loading={busy}>
+        <Button onClick={save} disabled={!person || badTarget} loading={busy}>
           Assign goal
         </Button>
       </div>
@@ -2121,6 +2148,23 @@ function AssignPersonModal({
       {form}
     </Modal>
   );
+}
+
+/**
+ * TYPED SOMETHING THAT IS NOT A NUMBER (Anir, Aug 28: "why am I able to assign
+ * the goal if I enter in a fucking wrong personal target like this?").
+ *
+ * The field already said "Numbers only, e.g. 900k" in red and the button beside
+ * it stayed live — and saving simply DROPPED the target, because the op spreads
+ * it in only when it parses. So "oioioiomioio" quietly assigned a goal with no
+ * number on it, and the row afterwards read $0 with no way to tell that from a
+ * target somebody meant to leave empty.
+ *
+ * Empty is still fine — the target is optional and can be set later. Garbage is
+ * not: it is somebody mid-thought, and the button waits for them.
+ */
+function targetIsGarbage(typed: string, parsed: number | null): boolean {
+  return typed.trim() !== "" && parsed === null;
 }
 
 function ConfirmUnder({
@@ -2621,8 +2665,8 @@ function GoalPopupBody({
                   )}
                 />
               </button>
-              {expanded && (
-                <div className="tab-panel bg-[rgba(0,113,227,0.02)] p-3.5">
+              <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
+                <div className="bg-[rgba(0,113,227,0.02)] p-3.5">
                   {live ? (
                     <>
                       <SubgoalEditorFields
@@ -2660,7 +2704,7 @@ function GoalPopupBody({
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
@@ -3057,46 +3101,71 @@ function GoalPopupBody({
                 }
               />
               {live && isManager && (
-                <span className="relative shrink-0">
+                <span className="shrink-0">
                   <button
                     type="button"
                     title={`Unassign ${a.person}`}
                     aria-label={`Unassign ${a.person}`}
-                    onClick={() =>
-                      setConfirmUnassign(
-                        confirmUnassign === a.person ? null : a.person
-                      )
-                    }
+                    onClick={() => setConfirmUnassign(a.person)}
                     className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10"
                   >
                     <Trash2 size={13} strokeWidth={2.2} />
                   </button>
-                  {confirmUnassign === a.person && (
-                    <ConfirmUnder
-                      question={`Take this goal off ${a.person}?`}
-                      actionLabel="Unassign"
-                      onConfirm={() => {
-                        setConfirmUnassign(null);
-                        void run(
-                          { op: "unassign-goal", goalId: goal.id, person: a.person },
-                          `${a.person} unassigned`
-                        );
-                      }}
-                      onCancel={() => setConfirmUnassign(null)}
-                    />
-                  )}
+                  {/* THE REAL DIALOG, NOT A POPOVER UNDER THE BUTTON (Anir,
+                      Aug 28: "this delete button doesn't even work. Did you
+                      check on it? Click on it yourself").
+
+                      It did fire — ConfirmUnder opened, absolutely positioned
+                      under the trash can, and the card it lives in clips its
+                      overflow, so the question was sliced off at the card's
+                      bottom edge and both of its buttons were outside the
+                      visible area. A confirmation you cannot reach is a delete
+                      button that does nothing.
+
+                      ConfirmDialog is the app-wide answer and portals out of
+                      every container, so there is no box left that can cut it
+                      in half. */}
+                  <ConfirmDialog
+                    open={confirmUnassign === a.person}
+                    onClose={() => setConfirmUnassign(null)}
+                    onConfirm={() => {
+                      setConfirmUnassign(null);
+                      void run(
+                        { op: "unassign-goal", goalId: goal.id, person: a.person },
+                        `${a.person} unassigned`
+                      );
+                    }}
+                    title="Take this goal off them?"
+                    body={
+                      <>
+                        <b>{a.person}</b> stops carrying{" "}
+                        <b>{goal.name}</b>.
+                      </>
+                    }
+                    detail="Anything they already logged against it stays on the record."
+                    confirmLabel="Unassign"
+                    busy={busy}
+                  />
                 </span>
               )}
             </div>
-            {isOpen && (
-              <PersonGoalPanel
-                goal={goal}
-                person={a.person}
-                target={a.target}
-                done={done}
-                state={state}
-              />
-            )}
+            {/* IT HAS TO DROP (Anir, Aug 28: "when I click on this dropdown,
+                it has to do an animation. It's not doing anything right now.
+                Same thing everywhere"). The panel was mounted or not, so the
+                rows below teleported. .freyr-fold animates to the panel's own
+                height without anybody measuring it — the same fold the
+                accruals rows and the email composer already use. */}
+            <div className="freyr-fold" data-open={isOpen ? "true" : "false"}>
+              <div>
+                <PersonGoalPanel
+                  goal={goal}
+                  person={a.person}
+                  target={a.target}
+                  done={done}
+                  state={state}
+                />
+              </div>
+            </div>
             </div>
           );
           })}
