@@ -22,6 +22,7 @@ import {
   openMaterial,
 } from "@/components/offerings/materialActions";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -84,6 +85,24 @@ export function AllMaterialsBrowser({
      that this did not. */
   const [formats, setFormats] = useState<string[]>([]);
   const [sort, setSort] = useState("offering");
+  /**
+   * OPENING A FILE STAYS ON THIS PAGE (Anir, Aug 28: "when I'm here, why is it
+   * automatically opening it up in a new page? Why isn't it just in the
+   * pop-up").
+   *
+   * This page shipped with `openMaterial`, which window.opens the material's
+   * own route — right when the click came from somewhere with no viewer of its
+   * own, wrong now that the row can mount one. The offering's own materials tab
+   * has always opened the dialog in place; a list of files that throws you into
+   * a new tab loses the list you were reading. A pasted LINK still opens in a
+   * new tab: it is somebody else's page, and there is nothing here to render.
+   */
+  const [viewing, setViewing] = useState<MaterialRow | null>(null);
+
+  const openRow = (row: MaterialRow) => {
+    if (isUploadedMaterial(row.material)) setViewing(row);
+    else openMaterial(row.offeringId, row.material);
+  };
 
   const offeringOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -277,7 +296,7 @@ const TABLE_CLASS =
                     >
                       <button
                         type="button"
-                        onClick={() => openMaterial(row.offeringId, row.material)}
+                        onClick={() => openRow(row)}
                         title={
                           isUploadedMaterial(row.material)
                             ? `Open ${row.material.label}`
@@ -477,7 +496,7 @@ const TABLE_CLASS =
                         <button
                           type="button"
                           aria-label={`Open ${row.material.label}`}
-                          onClick={() => openMaterial(row.offeringId, row.material)}
+                          onClick={() => openRow(row)}
                           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                         >
                           <ExternalLink size={14} strokeWidth={1.9} />
@@ -567,6 +586,18 @@ const TABLE_CLASS =
 
   return (
     <div className="mt-5">
+      {viewing?.material.docsPath && (
+        <MaterialViewer
+          offeringId={viewing.offeringId}
+          offeringName={viewing.offeringName}
+          material={viewing.material}
+          path={viewing.material.docsPath}
+          label={viewing.material.label}
+          downloadUrl={viewing.material.url}
+          openInNewTabUrl={materialPreviewHref(viewing.offeringId, viewing.material)}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {/* THE SAME TOOLBAR AS OFFERINGS, to the pixel (Anir, Aug 21:
           "whatever you have here on the offerings page, I like that search
           bar — the size of it, the filter, the sort. Keep that on the sales

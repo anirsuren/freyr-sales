@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, FileQuestion, Sparkles } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 /**
  * "HAS THE AI READ IT?" — ANSWERED WHERE THE FILE LIVES.
@@ -90,14 +91,37 @@ export function MaterialReadState({
 
   if (!state) return null;
 
+  /**
+   * THE SENTENCE BECOMES AN ICON (Anir, Aug 28: "this looks so weird… instead
+   * of the green text, you can just remove that. I feel like you can just have
+   * some sort of icon, and then when I hover over it, you can say that").
+   *
+   * "Freyr AI read 438 words · 9.8 MB" was a flex row under a file name, so a
+   * narrow column broke it wherever a space fell — mid-sentence and then
+   * mid-size: "Freyr AI read 438 / words · 9.8 / MB". It is a reassurance you
+   * want once, not a sentence you re-read on every row.
+   *
+   * So: a badge that says READ at a glance, the word count behind it on hover,
+   * and the size as the only text — which is the fact people actually scan
+   * for, and it is short enough never to wrap.
+   */
   if (state === "read") {
     return (
-      <span className="mt-1 flex items-center gap-1.5 text-[10.5px] font-semibold text-success">
-        <Check size={11} strokeWidth={3} />
-        Freyr AI read {words.toLocaleString()} words
+      <span className="mt-1 flex items-center gap-1.5">
+        <Tooltip
+          label={`Freyr AI read this file — ${words.toLocaleString()} words`}
+          side="top"
+        >
+          <span
+            aria-label={`Freyr AI read this file, ${words.toLocaleString()} words`}
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[rgba(22,163,74,0.12)] text-success"
+          >
+            <Check size={10} strokeWidth={3.2} aria-hidden="true" />
+          </span>
+        </Tooltip>
         {bytes !== null && (
-          <span className="font-medium text-text-tertiary">
-            · {fmtBytes(bytes)}
+          <span className="whitespace-nowrap text-[10.5px] font-medium text-text-tertiary">
+            {fmtBytes(bytes)}
           </span>
         )}
       </span>
@@ -106,9 +130,23 @@ export function MaterialReadState({
 
   if (state === "no-text") {
     return (
-      <span className="mt-1 block text-[10.5px] text-text-tertiary">
-        No readable text inside — stored and downloadable as-is
-        {bytes !== null ? ` · ${fmtBytes(bytes)}` : ""}
+      <span className="mt-1 flex items-center gap-1.5">
+        <Tooltip
+          label="No readable text inside — stored and downloadable as it is"
+          side="top"
+        >
+          <span
+            aria-label="No readable text inside; stored and downloadable as it is"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary"
+          >
+            <FileQuestion size={10} strokeWidth={2.4} aria-hidden="true" />
+          </span>
+        </Tooltip>
+        {bytes !== null && (
+          <span className="whitespace-nowrap text-[10.5px] font-medium text-text-tertiary">
+            {fmtBytes(bytes)}
+          </span>
+        )}
       </span>
     );
   }

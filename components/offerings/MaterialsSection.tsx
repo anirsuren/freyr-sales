@@ -1173,7 +1173,7 @@ export function MaterialsSection({
         </p>
       ) : columns === "table" ? (
         <div className="materials-view-enter mt-3 overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <table className="w-full min-w-[920px] border-collapse text-left">
+          <table className="w-full min-w-[1280px] border-collapse text-left">
             <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               {/* "Uploaded by" — the person is the headline and the date sits
                   under their name anyway, so the old "Upload date" labelled the
@@ -1187,8 +1187,8 @@ export function MaterialsSection({
                     column a bit wider so that it's not so clustered within
                     less space — just the file name column"). Titles were
                     wrapping to four lines beside a 32px tile. */}
-                <th className="w-[26%] px-4 py-3 align-middle">File name</th>
-                <th className="px-3 py-3 align-middle">File format</th>
+                <th className="w-[24%] px-4 py-4 align-middle">File name</th>
+                <th className="px-4 py-4 align-middle">File format</th>
                 {/* FOLDER IS A COLUMN NOW (Anir, Aug 25: "in the file view,
                     when we're just looking at the list of files, can you add a
                     column called Folder? Currently the folder name is visible
@@ -1196,16 +1196,16 @@ export function MaterialsSection({
                     there, let's put this in a separate column"). Under the
                     name it read as part of the description; in its own column
                     it sorts, scans and lines up with everything else. */}
-                <th className="px-3 py-3 align-middle">Folder</th>
-                <th className="px-3 py-3 align-middle">Access level</th>
-                <th className="px-3 py-3 align-middle">Buyer&apos;s journey stage(s)</th>
-                <th className="px-3 py-3 align-middle">Division</th>
-                <th className="px-3 py-3 align-middle">Uploaded by</th>
+                <th className="px-4 py-4 align-middle">Folder</th>
+                <th className="px-4 py-4 align-middle">Access level</th>
+                <th className="px-4 py-4 align-middle">Buyer&apos;s journey stage(s)</th>
+                <th className="px-4 py-4 align-middle">Division</th>
+                <th className="px-4 py-4 align-middle">Uploaded by</th>
                 {/* LEFT, like every other column and like the same table on the
                     Sales Materials page (Anir, Aug 26: "align this column
                     properly on the sales materials part of the offerings, it
                     should be left-aligned"). */}
-                <th className="px-4 py-3 align-middle">Actions</th>
+                <th className="px-4 py-4 align-middle">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1244,7 +1244,7 @@ export function MaterialsSection({
                         : ""
                     }`}
                   >
-                    <td className="max-w-[320px] px-4 py-3 align-middle">
+                    <td className="max-w-[380px] px-4 py-4 align-middle">
                       <div className="flex min-w-0 items-center gap-2.5">
                         {canEdit && !showAllFiles && !anyFilter && (
                           // The six dots ARE the handle: they carry draggable,
@@ -1329,7 +1329,7 @@ export function MaterialsSection({
                       </button>
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       {/* FILE FORMAT means the format. Nothing else. The
                           document-kind tag ("Sales deck", "Training material",
                           "Success story / case study") repeated the folder the
@@ -1361,7 +1361,7 @@ export function MaterialsSection({
                         {formatMeta.label}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       {/* ONE FOLDER PER LINE (Anir, Aug 28: "I hate how this
                           looks, I need Product Demos on one line and then
                           Marketing Demos on one line").
@@ -1373,39 +1373,41 @@ export function MaterialsSection({
                           line and never breaks inside itself; the parent sits
                           above its child, which is what the path meant all
                           along. */}
+                      {/* EVERY FOLDER LOOKS LIKE A FOLDER (Anir, Aug 28: "maybe
+                          each folder has its own folder icon. Why is one gray
+                          and one black?"). One glyph for two lines made the
+                          second line look like a caption on the first, and the
+                          two weights I gave them read as two different KINDS
+                          of thing rather than a path. They are both folders:
+                          same icon, same colour, one per line. */}
                       <span
                         title={materialFolderLabel(material.folder || "Others")}
-                        className="flex min-w-0 items-start gap-1.5 text-[12.5px] text-text-secondary"
+                        className="block min-w-0 text-[12.5px] text-text-secondary"
                       >
-                        <FolderOpen
-                          size={12}
-                          strokeWidth={2}
-                          aria-hidden="true"
-                          className="mt-[3px] shrink-0 text-text-tertiary"
-                        />
-                        <span className="min-w-0">
-                          {materialFolderLabel(material.folder || "Others")
-                            .split(" · ")
-                            .map((part, index) => (
-                              <span
-                                key={`${part}-${index}`}
-                                className={cn(
-                                  "block truncate whitespace-nowrap",
-                                  /* The parent is context; the folder the file
-                                     is actually in is the fact. */
-                                  index > 0 ? "text-text-primary" : undefined
-                                )}
-                              >
+                        {materialFolderLabel(material.folder || "Others")
+                          .split(" · ")
+                          .map((part, index) => (
+                            <span
+                              key={`${part}-${index}`}
+                              className="flex min-w-0 items-center gap-1.5"
+                            >
+                              <FolderOpen
+                                size={12}
+                                strokeWidth={2}
+                                aria-hidden="true"
+                                className="shrink-0 text-text-tertiary"
+                              />
+                              <span className="min-w-0 truncate whitespace-nowrap">
                                 {part}
                               </span>
-                            ))}
-                        </span>
+                            </span>
+                          ))}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       {level ? <TagPill label={level.label} color={level.color} icon={level.icon} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       {/* Stacked. Side by side, two stages ran wider than the
                           column and pushed the row's other facts around. */}
                       <div className="flex flex-col items-start gap-1">
@@ -1422,7 +1424,7 @@ export function MaterialsSection({
                         }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       {/* Same pill language as the stages beside it, so the row
                           reads as one vocabulary rather than two. */}
                       <div className="flex flex-wrap items-center gap-1">
@@ -1440,7 +1442,7 @@ export function MaterialsSection({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       <div className="flex min-w-[145px] items-center gap-2">
                         {material.addedBy ? (
                           <Avatar
@@ -1490,7 +1492,7 @@ export function MaterialsSection({
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 align-middle">
+                    <td className="px-4 py-4 align-middle">
                       <div className="flex items-center gap-1">
                         <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
                           <button
