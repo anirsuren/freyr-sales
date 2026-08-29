@@ -568,9 +568,9 @@ export function TargetsTab({
         title="Add a target"
         size="workflow"
         tall
-        dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
+        dialogClassName="!h-[min(745px,calc(100vh-3rem))]"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* SECTIONED, NOT STUFFED (Anir, Aug 18: "you can't just do two
               columns and stuff them all in there. Maybe you have a section
               and then another section and then notes"). First who they are,
@@ -582,7 +582,7 @@ export function TargetsTab({
               instead of vanishing. Open on arrival — this is a form somebody
               came here to fill in — and closing one is how you get the other
               in front of you. */}
-          <div className="rounded-xl border border-border-light bg-white px-3.5 py-2.5">
+          <div className="rounded-xl border border-border-light bg-white px-3.5 py-2">
             {/* THE HEADER IS A ROW, NOT A BAND (Anir, Aug 28: "why are they so
                 thick?"). The card kept 14px of padding top and bottom and the
                 header kept a 12px bottom margin whether or not anything was
@@ -711,7 +711,7 @@ export function TargetsTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-2.5">
+          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-2">
             <button
               type="button"
               aria-expanded={openPursuit}
@@ -806,7 +806,11 @@ export function TargetsTab({
                   ]}
                 />
               </div>
-              <div className="min-w-0 sm:col-span-2">
+              {/* IN THE GRID, NOT ACROSS IT. Spanning both columns cost the
+                  form a whole extra row for one number — which is height the
+                  fixed frame then has to carry (Anir, Aug 28: "it's so
+                  height-wise thick"). */}
+              <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Estimated potential (USD)
                 </label>
