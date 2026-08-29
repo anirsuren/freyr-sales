@@ -11,11 +11,19 @@
 # refused unless the person doing it states, in that command, that this
 # specific push is approved.
 #
-#   FREYR_DEPLOY_APPROVED=yes git push origin HEAD:main
+#   FREYR_DEPLOY_APPROVED=<short-sha-being-pushed> git push origin HEAD:main
 #
 # Any other branch pushes normally. Nothing here can be satisfied by intent,
 # by an earlier approval, or by a queue of work the owner asked for: the
 # variable has to be typed for the push in hand.
+#
+# WHY IT IS THE SHA AND NOT "yes" (Anir, Aug 28: "why are you deploying it? I
+# did not tell you to deploy it... something is wrong, fix it"). It WAS "yes",
+# and a fixed word that satisfies every push is a word you stop reading: it
+# became the tail of the push command rather than a statement about one batch,
+# and an approval for one deploy got carried to the next four. A value that has
+# to match THIS commit cannot be muscle memory — it has to be looked up, which
+# is the pause the rule was always asking for.
 #
 # Wired up with:  git config core.hooksPath .githooks
 
@@ -24,7 +32,8 @@ protected="refs/heads/main"
 while read -r _local_ref _local_sha remote_ref _remote_sha; do
   case "$remote_ref" in
     "$protected")
-      if [ "$FREYR_DEPLOY_APPROVED" != "yes" ]; then
+      pushing_short=$(printf '%s' "$_local_sha" | cut -c1-7)
+      if [ "$FREYR_DEPLOY_APPROVED" != "$pushing_short" ]; then
         cat >&2 <<'MSG'
 
   ✋ Push to main BLOCKED — this would deploy to production.
@@ -38,7 +47,10 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
 
   When he has said yes to this specific push:
 
-      FREYR_DEPLOY_APPROVED=yes git push origin HEAD:main
+      FREYR_DEPLOY_APPROVED=$pushing_short git push origin HEAD:main
+
+  The value is the commit being pushed, not the word "yes". If you find
+  yourself typing it without checking, that is the thing this is here to stop.
 
 MSG
         exit 1
