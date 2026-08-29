@@ -145,6 +145,7 @@ export async function buildMaterialPreview({
   member,
   inlineUrl,
   label,
+  readBytes,
 }: {
   /** The stored docs-storage path of the material itself. */
   path: string;
@@ -154,6 +155,16 @@ export async function buildMaterialPreview({
   inlineUrl: string;
   /** What to call it in the viewer's header. */
   label: string;
+  /**
+   * WHERE THE BYTES COME FROM WHEN THEY ARE NOT IN FREYA.DOCS.
+   *
+   * Mock's documents are real files committed under public/sample-documents,
+   * which have no storage path and no signed URL. PDFs never needed this — the
+   * browser renders those from `inlineUrl` — but Word and Excel are converted
+   * here, and conversion needs the bytes. Left unset, everything reads from
+   * storage exactly as before.
+   */
+  readBytes?: () => Promise<Buffer>;
 }): Promise<PreviewPayload> {
     const contentPath = member || path;
   const ext = extensionOf(contentPath);
@@ -201,6 +212,8 @@ export async function buildMaterialPreview({
     if (member) {
       const extracted = await readMaterialArchiveMember(path, member);
       buffer = Buffer.from(extracted.bytes);
+    } else if (readBytes) {
+      buffer = await readBytes();
     } else {
       const { presignUrl } = await docsStorage.getDownloadUrl(path);
       const upstream = await fetch(presignUrl);

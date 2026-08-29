@@ -261,6 +261,42 @@ export function PdfViewer({
   const [bareScrolling, setBareScrolling] = useState(false);
   const bareScrollTimer = useRef<number | null>(null);
 
+  /**
+   * PINCH THE TRACKPAD, ZOOM THE PDF.
+   *
+   * Anir, Aug 28: "I'm trying to zoom out. Why can't I zoom out by enlarging
+   * and using my trackpad, like zooming in?"
+   *
+   * A trackpad pinch arrives as a wheel event with ctrlKey set. This viewer had
+   * no wheel handler at all, so the gesture bubbled to MaterialViewer, which
+   * caught it and drove ITS zoom — a value forced to 1 whenever a PDF is on
+   * screen, because this component owns the zoom for PDFs. The pinch was being
+   * swallowed and applied to nothing, in both directions, which is why only the
+   * toolbar's − and + did anything.
+   *
+   * Handled here, and stopped from propagating, so the gesture reaches the
+   * thing it is pointed at. preventDefault keeps the browser from zooming the
+   * whole tab instead — the same reason the listener is registered natively
+   * rather than through React, whose wheel listeners are passive.
+   */
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setZoom((value) =>
+        Math.min(
+          2.2,
+          Math.max(0.6, Math.round((value - event.deltaY * 0.01) * 100) / 100)
+        )
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     const node = viewport.current;
     if (!node) return;

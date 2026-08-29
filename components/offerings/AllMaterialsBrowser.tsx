@@ -46,6 +46,7 @@ import {
 import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
 import { cn, formatDate } from "@/lib/utils";
+import { shortPersonName } from "@/lib/personName";
 
 export type MaterialRow = {
   material: OfferingMaterial;
@@ -445,8 +446,13 @@ const TABLE_CLASS =
                           name={row.material.addedBy}
                           className="h-6 w-6 shrink-0 text-[8px]"
                         />
-                        <span className="min-w-0 truncate text-[12px] text-text-primary">
-                          {row.material.addedBy}
+                        {/* First name, last initial — the same cut the
+                            offering's own table takes (Anir, Aug 28). */}
+                        <span
+                          title={row.material.addedBy}
+                          className="min-w-0 truncate text-[12px] text-text-primary"
+                        >
+                          {shortPersonName(row.material.addedBy)}
                         </span>
                       </span>
                     ) : (

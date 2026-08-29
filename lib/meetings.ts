@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getDataMode } from "./dataMode";
 import { hasSupabase } from "./env";
+import { sampleDocPath } from "./sampleDocuments";
 
 /**
  * MEETINGS — customer meetings, as their own object.
@@ -631,7 +632,7 @@ export function groupMeetingsByPeriod(
  * of the originals — the moment somebody makes or edits a meeting of their
  * own, this stops touching anything.
  */
-const SAMPLE_VERSION = 3;
+const SAMPLE_VERSION = 4;
 
 function isStaleSeed(raw: unknown): boolean {
   const row = raw as { meetings?: unknown[]; sampleVersion?: number } | null;
@@ -712,6 +713,7 @@ function sampleMeetings(): MeetingsState {
         {
           id: "md-sample-1",
           label: "CMC writing — approach.pdf",
+          docsPath: sampleDocPath("cmc-writing-approach.pdf"),
           addedBy: "Omar Haddad",
           addedAt: day(-9),
         },
@@ -754,20 +756,24 @@ function sampleMeetings(): MeetingsState {
       ],
       /* MOCK SHOWS WHAT A ROOM ACTUALLY LEAVES BEHIND (Anir, Aug 28: "show me
          what it would look like with documents — obviously you don't need the
-         actual documents, but in mock mode I need to see"). Named the way a
-         real deck is named, with the person who brought it. No docsPath: these
-         are the SHAPE of the record, not files, and the viewer says so rather
-         than pretending to open one. */
+         actual documents, but in mock mode I need to see"). These OPEN: each
+         one points at a real file committed under public/sample-documents, so
+         mock demonstrates the same three renderers real mode does — PDF
+         natively, Word through mammoth, Excel through the workbook reader —
+         and the hover card shows the page rather than nothing. The two decks
+         are PDFs because that is what a deck is once it has been sent. */
       docs: [
         {
           id: "md-sample-2",
-          label: "Helix — capability deck.pptx",
+          label: "Helix — capability deck.pdf",
+          docsPath: sampleDocPath("helix-capability-deck.pdf"),
           addedBy: "Nina Kowalski",
           addedAt: day(-4),
         },
         {
           id: "md-sample-3",
           label: "Publishing workflow — one pager.pdf",
+          docsPath: sampleDocPath("publishing-workflow-one-pager.pdf"),
           addedBy: "Marcus Chen",
           addedAt: day(-4),
         },
@@ -803,6 +809,7 @@ function sampleMeetings(): MeetingsState {
         {
           id: "md-sample-4",
           label: "EU MDR — discovery questions.docx",
+          docsPath: sampleDocPath("eu-mdr-discovery-questions.docx"),
           addedBy: "Daniel Foster",
           addedAt: day(-2),
         },
@@ -829,13 +836,15 @@ function sampleMeetings(): MeetingsState {
       docs: [
         {
           id: "md-sample-5",
-          label: "Q3 review pack.pptx",
+          label: "Q3 review pack.pdf",
+          docsPath: sampleDocPath("q3-review-pack.pdf"),
           addedBy: "Grace Liu",
           addedAt: day(-1),
         },
         {
           id: "md-sample-6",
           label: "Delivery metrics.xlsx",
+          docsPath: sampleDocPath("delivery-metrics.xlsx"),
           addedBy: "Marcus Chen",
           addedAt: day(-1),
         },

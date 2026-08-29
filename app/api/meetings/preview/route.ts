@@ -4,6 +4,8 @@ import { hasDocsStorage } from "@/lib/docsStorage";
 import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { readMeetings } from "@/lib/meetings";
+import { readPublicFile } from "@/lib/publicFile";
+import { sampleDocUrl } from "@/lib/sampleDocuments";
 
 /**
  * READ A MEETING'S DOCUMENT WITHOUT DOWNLOADING IT.
@@ -51,7 +53,12 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
 
-  if (!(await hasDocsStorage()))
+  /* MOCK'S DOCUMENTS ARE FILES THAT SHIP WITH THE APP, not storage — so they
+     preview on a machine with no Freya.Docs configured at all, which is most
+     of the point of mock. PDFs render from the inline URL; Word and Excel are
+     converted here and get their bytes off disk. */
+  const sample = sampleDocUrl(doc.docsPath);
+  if (!sample && !(await hasDocsStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }
@@ -62,10 +69,11 @@ export async function GET(req: NextRequest) {
   )}&docId=${encodeURIComponent(docId)}&view=1`;
 
   const { body, status } = await buildMaterialPreview({
-    path: doc.docsPath,
+    path: sample ?? doc.docsPath,
     member,
     inlineUrl,
     label: doc.label,
+    ...(sample ? { readBytes: () => readPublicFile(sample) } : {}),
   });
   return NextResponse.json(body, status ? { status } : undefined);
 }

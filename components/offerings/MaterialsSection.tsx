@@ -41,6 +41,7 @@ import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
+import { shortPersonName } from "@/lib/personName";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -1272,14 +1273,25 @@ export function MaterialsSection({
                         onClick={() => uploaded ? openViewer(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
                         className="flex min-w-0 items-center gap-2.5 text-left"
                       >
-                        {/* NO FILE-TYPE TILE AT THE ROW HEAD (Anir, Aug 26:
-                            "can you remove these icons from the very left?").
-                            The File format column two along already names the
-                            type in words, so the tile repeated it as a glyph
-                            and ate the width the file name needed. */}
-                        <span className="hidden">
-                          <Icon size={15} strokeWidth={1.9} />
-                        </span>
+                        {/* THE FORMAT ICON, BACK (Anir, Aug 28: "I need the
+                            icons back. I know someone told you to remove it,
+                            but I need the icons back… just do what you did
+                            here, like how you have the small icon. Do it on
+                            the offering sales material too").
+
+                            What he cut on Aug 26 was the 32px tile that ate
+                            the width the file name needed. This is the Sales
+                            Materials page's treatment instead: a 14px blue
+                            glyph on the name, centred on the row rather than
+                            pinned to its first line — about twenty pixels,
+                            not a column. Blue, like every format icon in the
+                            app (Jul 29). */}
+                        <Icon
+                          size={14}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                          className="shrink-0 text-blue-primary"
+                        />
                         <span className="min-w-0">
                           {/* Only the NAME previews. Wrapping the whole row
                               button meant the card appeared over the icon, the
@@ -1350,8 +1362,44 @@ export function MaterialsSection({
                       </span>
                     </td>
                     <td className="px-3 py-3 align-middle">
-                      <span className="block break-words text-[12.5px] text-text-secondary">
-                        {materialFolderLabel(material.folder || "Others")}
+                      {/* ONE FOLDER PER LINE (Anir, Aug 28: "I hate how this
+                          looks, I need Product Demos on one line and then
+                          Marketing Demos on one line").
+
+                          It was the whole path as one string, so a narrow
+                          column broke it wherever a space happened to fall —
+                          "Product / Demos · / Marketing / Demos", four lines,
+                          none of them a folder name. Each segment is its own
+                          line and never breaks inside itself; the parent sits
+                          above its child, which is what the path meant all
+                          along. */}
+                      <span
+                        title={materialFolderLabel(material.folder || "Others")}
+                        className="flex min-w-0 items-start gap-1.5 text-[12.5px] text-text-secondary"
+                      >
+                        <FolderOpen
+                          size={12}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                          className="mt-[3px] shrink-0 text-text-tertiary"
+                        />
+                        <span className="min-w-0">
+                          {materialFolderLabel(material.folder || "Others")
+                            .split(" · ")
+                            .map((part, index) => (
+                              <span
+                                key={`${part}-${index}`}
+                                className={cn(
+                                  "block truncate whitespace-nowrap",
+                                  /* The parent is context; the folder the file
+                                     is actually in is the fact. */
+                                  index > 0 ? "text-text-primary" : undefined
+                                )}
+                              >
+                                {part}
+                              </span>
+                            ))}
+                        </span>
                       </span>
                     </td>
                     <td className="px-3 py-3 align-middle">
@@ -1405,8 +1453,17 @@ export function MaterialsSection({
                           </span>
                         )}
                         <span className="min-w-0">
-                          <span className="flex items-center gap-1 break-words text-[11.5px] font-semibold text-text-primary">
-                            {material.addedBy || "Not recorded"}
+                          {/* FIRST NAME, LAST INITIAL (Anir, Aug 28: "when you
+                              say uploaded by, you don't have to say the full
+                              name… the first name and then the last name
+                              initial"). The same cut the owner column took on
+                              Aug 21 — the face beside it and the title carry
+                              the whole person. */}
+                          <span
+                            title={material.addedBy || undefined}
+                            className="flex items-center gap-1 whitespace-nowrap text-[11.5px] font-semibold text-text-primary"
+                          >
+                            {shortPersonName(material.addedBy) || "Not recorded"}
                             {uploaderIsOwner(material.addedBy) && (
                               <span title="Offering owner" className="shrink-0 leading-none">
                                 <Crown

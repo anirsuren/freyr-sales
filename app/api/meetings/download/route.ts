@@ -4,6 +4,7 @@ import { streamStoredFile } from "@/lib/storedFileResponse";
 import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { readMeetings } from "@/lib/meetings";
+import { sampleDocUrl } from "@/lib/sampleDocuments";
 
 /**
  * THE BYTES OF A DOCUMENT ON A MEETING.
@@ -50,6 +51,12 @@ export async function GET(req: NextRequest) {
       { error: "There is no file behind this one." },
       { status: 404 }
     );
+
+  /* A MOCK DOCUMENT IS A REAL FILE THAT SHIPS WITH THE APP. It is not in
+     Freya.Docs and needs no signed URL — the static route serves it, with the
+     right content type, so a PDF still opens inline in the viewer. */
+  const sample = sampleDocUrl(doc.docsPath);
+  if (sample) return NextResponse.redirect(new URL(sample, req.url), 302);
 
   if (!(await hasDocsStorage()))
     return NextResponse.json(
