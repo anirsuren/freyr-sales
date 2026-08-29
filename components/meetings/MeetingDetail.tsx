@@ -35,6 +35,7 @@ import { type Meeting, type MeetingDoc, type MeetingNoteKind } from "@/lib/meeti
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { Modal } from "@/components/ui/Modal";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 
@@ -414,6 +415,35 @@ export function MeetingDetail({
                         you no way back to what was handed over (found in the
                         browser, Aug 28). The whole row opens it, so there is
                         nothing to aim at. */}
+                    {/* HOVER TO SEE IT, CLICK TO OPEN IT — the sales-materials
+                        behaviour, from the same two components (Anir, Aug 28:
+                        "when I hover over it, you didn't do that part").
+                        Copying the viewer was half the job: the peek is the
+                        other half, and solutioning already wraps its rows the
+                        same way. A row with no file behind it is not wrapped —
+                        there is nothing to render, and an empty frame reads as
+                        broken. */}
+                    <MaterialPeek
+                      material={{
+                        id: d.id,
+                        kind: formatFromFilename(d.label),
+                        label: d.label,
+                        url: d.url ?? "",
+                        ...(d.docsPath ? { docsPath: d.docsPath } : {}),
+                      }}
+                      /* THE PAGE, NOT THE API. The card iframes this URL, so it
+                         has to be a page that renders the document — pointed at
+                         /api/meetings/preview it faithfully displayed the API's
+                         JSON as text. ?embed=1 is the same bare-document mode
+                         the sales-materials peek has always used. */
+                      previewUrl={
+                        d.docsPath
+                          ? `/meetings/${encodeURIComponent(
+                              m.id
+                            )}/documents/${encodeURIComponent(d.id)}?embed=1`
+                          : null
+                      }
+                    >
                     <button
                       type="button"
                       onClick={() =>
@@ -438,6 +468,7 @@ export function MeetingDetail({
                         {d.addedBy} · {stampedAt(d.addedAt)}
                       </span>
                     </button>
+                    </MaterialPeek>
                     <a
                       href={`/api/meetings/download?meetingId=${encodeURIComponent(
                         m.id
@@ -466,14 +497,6 @@ export function MeetingDetail({
         </div>
 
         <div className="space-y-4">
-          {/* THREE DIFFERENT JOBS IN A ROOM, NOT ONE.
-              Suren, Aug 28: "you have presenter, but I think you also have
-              somebody presenting and somebody attending. There is something
-              called meeting owner: who was running the meeting?" — so the
-              person who RAN it, the people who PRESENTED, and the people who
-              were simply there are three separate lines, and all three are
-              editable, because who actually turned up is a fact you only have
-              after the meeting. */}
           {/* THREE DIFFERENT JOBS IN A ROOM, NOT ONE.
               Suren, Aug 28: "you have presenter, but I think you also have
               somebody presenting and somebody attending. There is something

@@ -1130,9 +1130,14 @@ function DocRow({
                  behaviour, from the same two components. */
               <MaterialPeek
                 material={asMaterial(d)}
-                previewUrl={`/api/solutioning/preview?requestId=${encodeURIComponent(
+                /* THE PAGE, NOT THE API — the card iframes this, so it must be
+                   something that renders the document rather than the JSON the
+                   preview endpoint returns (found in the browser, Aug 28: the
+                   card opened onto `{"preview":{"kind":"native"…`). ?embed=1 is
+                   the bare-document mode sales materials peek through. */
+                previewUrl={`/solutioning/${encodeURIComponent(
                   requestId
-                )}&docId=${encodeURIComponent(d.id)}`}
+                )}/documents/${encodeURIComponent(d.id)}?embed=1`}
               >
                 <button
                   type="button"

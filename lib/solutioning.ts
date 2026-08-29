@@ -87,6 +87,15 @@ export const DOC_CATEGORIES: DocCategory[] = [
   "analysis",
 ];
 
+/** ONE of them, for the line above a document opened on its own page. The tabs
+ *  name the shelf ("Customer documents"); this names the thing on it. */
+export const DOC_CATEGORY_NOUN: Record<DocCategory, string> = {
+  customer: "Customer document",
+  working: "Working document",
+  final: "Final deliverable",
+  analysis: "Analysis",
+};
+
 export type SolutionDoc = {
   id: string;
   category: DocCategory;

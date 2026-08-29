@@ -65,9 +65,25 @@ export function AppShell({
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname]);
   const searchParams = useSearchParams();
-  const isMaterialPage = /^\/offerings\/[^/]+\/materials\/[^/]+$/.test(pathname);
+  /**
+   * A PAGE WHOSE WHOLE CONTENT IS ONE DOCUMENT.
+   *
+   * This was a single regex for an offering's materials, which is why the
+   * hover peek on a MEETING document rendered the whole application inside a
+   * 560px card — the ?embed=1 strip never matched (found in the browser, Aug
+   * 28, chasing Anir's "when I hover over it, you didn't do that part").
+   *
+   * Anir, Aug 28: "whenever there are files, bro, you have to do this same
+   * exact thing" — so it is a list of document routes rather than one, and a
+   * new surface that stores files joins it by adding its route here.
+   */
+  const isDocumentPage = [
+    /^\/offerings\/[^/]+\/materials\/[^/]+$/,
+    /^\/meetings\/[^/]+\/documents\/[^/]+$/,
+    /^\/solutioning\/[^/]+\/documents\/[^/]+$/,
+  ].some((route) => route.test(pathname));
   const isEmbeddedMaterial =
-    isMaterialPage && searchParams?.get("embed") === "1";
+    isDocumentPage && searchParams?.get("embed") === "1";
   /** Any page whose whole job is a form you fill in and save. */
   const isEditingForm =
     pathname.endsWith("/edit") || pathname.endsWith("/new");
@@ -295,7 +311,7 @@ export function AppShell({
   // into Offerings. The assistant behaves like it does everywhere else by
   // default (floating popup, zero layout change). Its header offers an explicit
   // right-dock option; only choosing that option allocates a side column.
-  if (isMaterialPage) {
+  if (isDocumentPage) {
     return (
       <CurrentUserProvider user={currentUser} dataMode={dataMode}>
         <MyPhotoProvider>

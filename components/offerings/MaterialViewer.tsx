@@ -131,6 +131,8 @@ export function MaterialViewer({
   embed = false,
   initialMember = null,
   previewUrl,
+  kicker = "Sales material",
+  showOfferingFacts = true,
 }: {
   offeringId: string;
   offeringName: string;
@@ -163,6 +165,20 @@ export function MaterialViewer({
    * serves that file. Defaults to the offering route.
    */
   previewUrl?: (path: string, member: string | null) => string;
+  /**
+   * WHAT KIND OF THING THIS IS, on the standalone page's kicker line.
+   *
+   * It was the words "Sales material", always — so a customer document opened
+   * from a solution request announced itself as "GSK · SALES MATERIAL" (found
+   * in the browser, Aug 28). The renderer is shared; the noun is not.
+   */
+  kicker?: string;
+  /**
+   * Buyer stage and Access are facts an OFFERING's material carries. A meeting
+   * document has neither, and printing "Not recorded" twice under a file is
+   * worse than not asking the question.
+   */
+  showOfferingFacts?: boolean;
 }) {
   /** The ZIP remains the material of record. Opening a row swaps only the
    * bytes rendered in this dialog; Back returns to the archive manifest. */
@@ -1580,7 +1596,7 @@ export function MaterialViewer({
           <div className="flex min-w-0 items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                {offeringName} · Sales material
+                {offeringName} · {kicker}
               </p>
               <h1 className="mt-0.5 truncate text-[17px] font-semibold text-text-primary">
                 {currentLabel}
@@ -1601,16 +1617,20 @@ export function MaterialViewer({
               <dt className="font-medium text-text-tertiary">Format</dt>
               <dd className="font-semibold text-text-primary">{format.label}</dd>
             </div>
-<span aria-hidden="true" className="h-4 w-px bg-border-light" />
-            <div className="flex items-center gap-1.5">
-              <dt className="font-medium text-text-tertiary">Added by</dt>
-              <dd className="flex items-center gap-1.5 font-semibold text-text-primary">
-                {material.addedBy && (
-                  <Avatar name={material.addedBy} className="h-5 w-5 text-[8px]" />
-                )}
-                {material.addedBy || "Not recorded"}
-              </dd>
-            </div>
+            {(showOfferingFacts || material.addedBy) && (
+              <>
+                <span aria-hidden="true" className="h-4 w-px bg-border-light" />
+                <div className="flex items-center gap-1.5">
+                  <dt className="font-medium text-text-tertiary">Added by</dt>
+                  <dd className="flex items-center gap-1.5 font-semibold text-text-primary">
+                    {material.addedBy && (
+                      <Avatar name={material.addedBy} className="h-5 w-5 text-[8px]" />
+                    )}
+                    {material.addedBy || "Not recorded"}
+                  </dd>
+                </div>
+              </>
+            )}
             {material.folder && (
               <>
               <span aria-hidden="true" className="h-4 w-px bg-border-light" />
@@ -1620,7 +1640,9 @@ export function MaterialViewer({
               </div>
               </>
             )}
-<span aria-hidden="true" className="h-4 w-px bg-border-light" />
+            {showOfferingFacts && (
+              <>
+            <span aria-hidden="true" className="h-4 w-px bg-border-light" />
             <div className="flex items-center gap-1.5">
               <dt className="font-medium text-text-tertiary">Buyer stage</dt>
               <dd className="flex flex-wrap gap-1">
@@ -1658,6 +1680,8 @@ export function MaterialViewer({
                 )}
               </dd>
             </div>
+              </>
+            )}
             {/* WHAT THE ASSISTANT HAS FOR THIS ONE. It read "Cannot watch
                 video" until Anir corrected the direction on Aug 14: Freyr
                 transcribes the recording itself, and an owner's own transcript
