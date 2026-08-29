@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, CalendarDays, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -109,6 +109,9 @@ export function TargetsTab({
   /** The list is live state: adding a target shows it without a reload. */
   const [list, setList] = useState<TargetAccount[]>(targets);
   const [adding, setAdding] = useState(false);
+  /* Both sections of the add form, open on arrival. */
+  const [openWho, setOpenWho] = useState(true);
+  const [openPursuit, setOpenPursuit] = useState(true);
   const [draft, setDraft] = useState({ ...BLANK_TARGET });
   const [busy, setBusy] = useState(false);
   const set = (patch: Partial<typeof BLANK_TARGET>) =>
@@ -556,8 +559,20 @@ export function TargetsTab({
               columns and stuff them all in there. Maybe you have a section
               and then another section and then notes"). First who they are,
               then how we chase them, then notes. */}
+          {/* BOTH SECTIONS FOLD (Anir, Aug 28: "I literally said who they are
+              and the pursuit should both be collapsible drop-downs"). The
+              headers were labels; now they are the control, with the same
+              .freyr-fold the rest of the app uses so a section rolls up
+              instead of vanishing. Open on arrival — this is a form somebody
+              came here to fill in — and closing one is how you get the other
+              in front of you. */}
           <div className="rounded-xl border border-border-light bg-white px-3.5 py-3.5">
-            <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={openWho}
+              onClick={() => setOpenWho((v) => !v)}
+              className="mb-3 flex w-full cursor-pointer items-center gap-2 text-left"
+            >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                 <Building2 size={13} strokeWidth={2.2} aria-hidden="true" />
               </span>
@@ -565,7 +580,17 @@ export function TargetsTab({
                 Who they are
               </span>
               <span className="h-px min-w-4 flex-1 bg-border-light" aria-hidden />
-            </div>
+              <ChevronDown
+                size={15}
+                strokeWidth={2.2}
+                aria-hidden="true"
+                className={cn(
+                  "shrink-0 text-text-tertiary transition-transform duration-200",
+                  !openWho && "-rotate-90"
+                )}
+              />
+            </button>
+            <div className="freyr-fold" data-open={openWho ? "true" : "false"}>
             <div className="grid gap-3.5 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
@@ -661,10 +686,16 @@ export function TargetsTab({
                 />
               </div>
             </div>
+            </div>
           </div>
 
           <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3.5">
-            <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={openPursuit}
+              onClick={() => setOpenPursuit((v) => !v)}
+              className="mb-3 flex w-full cursor-pointer items-center gap-2 text-left"
+            >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                 <Crosshair size={13} strokeWidth={2.2} aria-hidden="true" />
               </span>
@@ -672,7 +703,17 @@ export function TargetsTab({
                 The pursuit
               </span>
               <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
-            </div>
+              <ChevronDown
+                size={15}
+                strokeWidth={2.2}
+                aria-hidden="true"
+                className={cn(
+                  "shrink-0 text-text-tertiary transition-transform duration-200",
+                  !openPursuit && "-rotate-90"
+                )}
+              />
+            </button>
+            <div className="freyr-fold" data-open={openPursuit ? "true" : "false"}>
             <div className="grid gap-3.5 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
@@ -757,6 +798,7 @@ export function TargetsTab({
                   className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary tnum"
                 />
               </div>
+            </div>
             </div>
           </div>
 
