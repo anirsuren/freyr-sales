@@ -5,6 +5,7 @@ import { Building2, CalendarDays, Crosshair, DollarSign, Plus, UserRound, DoorOp
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { countryOptions } from "@/lib/countries";
 import { PersonSelect } from "@/components/performance/bits";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -74,6 +75,23 @@ const BLANK_TARGET = {
   companyRevenue: "",
   notes: "",
 };
+
+
+/**
+ * REVENUE, AS A BAND (Anir, Aug 28: "I would make these two in dropdowns").
+ *
+ * What a rep knows about a prospect is its order of magnitude, not its filing.
+ * Typed free, the same company arrived as "~$3B", "3 billion" and "$3,000M",
+ * and none of the three could be sorted or grouped against the others.
+ */
+const REVENUE_BANDS = [
+  "Under $100M",
+  "$100M - $500M",
+  "$500M - $1B",
+  "$1B - $5B",
+  "$5B - $20B",
+  "Over $20B",
+];
 
 export function TargetsTab({
   targets,
@@ -520,11 +538,18 @@ export function TargetsTab({
         )}
       </Card>
 
+      {/* A PROPER POP-UP, NOT A COLUMN (Anir, Aug 28: "can you make this a
+          proper pop-up size? I don't know why it's so skinny"). "wide" is
+          640px, which is the size for a form that is one stack of fields —
+          this one is three sections of two-up fields, so every pair was
+          squeezed into 280px each and the whole thing read as a tall ribbon.
+          "workflow" is 980px, the size the app already gives a multi-section
+          form. */}
       <Modal
         open={adding}
         onClose={() => setAdding(false)}
         title="Add a target"
-        size="wide"
+        size="workflow"
       >
         <div className="space-y-4">
           {/* SECTIONED, NOT STUFFED (Anir, Aug 18: "you can't just do two
@@ -576,22 +601,63 @@ export function TargetsTab({
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   HQ country
                 </label>
-                <input
+                {/* THE COUNTRY LIST THE APP ALREADY HAS (Anir, Aug 28: "I
+                    would make these two in dropdowns"). Typed free, "Germany",
+                    "germany" and "DE" were three countries as far as any
+                    filter was concerned. Searchable, because fifty-five
+                    countries is a scroll, and a value already on the record
+                    that is not on the list is kept rather than silently
+                    dropped when somebody opens the form. */}
+                <ColorSelect
                   value={draft.hq}
-                  onChange={(e) => set({ hq: e.target.value })}
-                  placeholder="e.g. Germany"
-                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+                  ariaLabel="HQ country"
+                  collapsible={false}
+                  searchable
+                  className="w-full"
+                  onChange={(v) => set({ hq: v })}
+                  options={[
+                    { value: "", label: "Not known yet", color: "#C7CDD6" },
+                    ...countryOptions(),
+                    ...(draft.hq &&
+                    !countryOptions().some((c) => c.value === draft.hq)
+                      ? [{ value: draft.hq, label: draft.hq, noMark: true as const }]
+                      : []),
+                  ]}
                 />
               </div>
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Company revenue
                 </label>
-                <input
+                {/* A BAND, NOT A FIGURE. Nobody knows a prospect's revenue to
+                    the dollar, and "~$3B", "3 billion" and "$3,000M" were the
+                    same company three ways. Bands sort and group; an existing
+                    typed value is kept as its own option so opening this form
+                    on an old row cannot erase what somebody wrote. */}
+                <ColorSelect
                   value={draft.companyRevenue}
-                  onChange={(e) => set({ companyRevenue: e.target.value })}
-                  placeholder={'e.g. ~$3B'}
-                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+                  ariaLabel="Company revenue"
+                  collapsible={false}
+                  className="w-full"
+                  onChange={(v) => set({ companyRevenue: v })}
+                  options={[
+                    { value: "", label: "Not known yet", color: "#C7CDD6" },
+                    ...REVENUE_BANDS.map((b) => ({
+                      value: b,
+                      label: b,
+                      noMark: true as const,
+                    })),
+                    ...(draft.companyRevenue &&
+                    !REVENUE_BANDS.includes(draft.companyRevenue)
+                      ? [
+                          {
+                            value: draft.companyRevenue,
+                            label: draft.companyRevenue,
+                            noMark: true as const,
+                          },
+                        ]
+                      : []),
+                  ]}
                 />
               </div>
             </div>
