@@ -1267,7 +1267,7 @@ ${input.customerSummary}
 CONTACT PROFILE:
 ${JSON.stringify(input.contactProfile, null, 2)}
 
-ADDITIONAL CONTEXT FROM SALES REP:
+ADDITIONAL CONTEXT FROM THE DEAL OWNER:
 ${input.additionalContext || "None provided"}
 
 Return JSON matching this schema:
@@ -1323,7 +1323,7 @@ export async function generatePitches(
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4000,
-    system: `You are writing sales pitch materials for ${input.senderName}, a Freyr Solutions sales representative.
+    system: `You are writing sales pitch materials for ${input.senderName}, a Freyr Solutions business development lead.
 Write in a professional but human voice. Be specific to this customer and contact,
 no generic phrases. Use Freyr's own language and proof points where relevant.
 Write every first-person introduction and signature as ${input.senderName}; never substitute another salesperson.
@@ -1388,7 +1388,7 @@ export async function generateOutreachWithClaude(input: {
   await hydrateAnthropicKey();
   if (!client) return null;
   const isLi = input.kind === "linkedin";
-  const prompt = `You write outreach for a Freyr Solutions sales rep. Context about Freyr: ${input.freyrContext}
+  const prompt = `You write outreach for a Freyr Solutions business development lead. Context about Freyr: ${input.freyrContext}
 
 Write a ${isLi ? `LinkedIn connection note (HARD LIMIT ${input.linkedinLimit} characters)` : "short sales email (subject + 120-170 word body)"} to:
 - ${input.contactName}, ${input.contactTitle} at ${input.company}

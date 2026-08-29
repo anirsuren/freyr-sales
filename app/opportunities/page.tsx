@@ -137,7 +137,7 @@ export default async function OpportunitiesPage() {
        * it just stops hiding it from the person whose deal it is.
        */
       canEdit
-      privileged={me.role !== "rep"}
+      privileged={me.role !== "bd_member"}
       live={getDataMode() === "live"}
     />
   );

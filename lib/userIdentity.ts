@@ -1,4 +1,4 @@
-export type UserIdentityRole = "rep" | "manager" | "admin" | "solutions";
+export type UserIdentityRole = "bd_member" | "bd_owner" | "admin" | "sol_member";
 
 export type UserIdentity = {
   id: string;
@@ -25,7 +25,7 @@ export const GENERIC_USER_IDENTITY: UserIdentity = {
   memberId: null,
   name: "Freyr user",
   email: null,
-  role: "rep",
+  role: "bd_member",
   title: "Workspace User",
 };
 
@@ -39,11 +39,16 @@ export const GENERIC_USER_IDENTITY: UserIdentity = {
  * components/ui/RoleTag.tsx holds the colour and icon for the same three; this
  * stays a plain string for the places that need text (page titles, alt text).
  */
+/**
+ * WHAT THIS PERSON IS CALLED (Suren, Aug 29: "sales rep is now bd member,
+ * owner is the new manager"). Same four stored values, the privilege
+ * vocabulary in front of them — see components/ui/RoleTag for the whole map.
+ */
 export function titleForUserRole(role: UserIdentityRole): string {
   if (role === "admin") return "Admin";
-  if (role === "manager") return "Manager";
-  if (role === "solutions") return "Solutions";
-  return "Rep";
+  if (role === "bd_owner") return "Owner";
+  if (role === "sol_member") return "Solutioning Member";
+  return "BD Member";
 }
 
 export function firstNameForUser(user: Pick<UserIdentity, "name">): string {

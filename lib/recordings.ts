@@ -282,7 +282,7 @@ export const RECORDINGS: Recording[] = [
 export interface TranscriptLine {
   sec: number;
   at: string;
-  speaker: "Rep" | "Prospect";
+  speaker: "Freyr" | "Prospect";
   text: string;
   key?: boolean;
   tone?: "good" | "warn" | "neutral";
@@ -320,7 +320,7 @@ const FILLER_PROSPECT = [
 export function transcriptFor(rec: Recording): TranscriptLine[] {
   const total = tSec(rec.duration);
   const out: Omit<TranscriptLine, "at">[] = [
-    { sec: 2, speaker: "Rep", text: "Hi: thanks for taking the time today. I'll keep this focused." },
+    { sec: 2, speaker: "Freyr", text: "Hi: thanks for taking the time today. I'll keep this focused." },
     { sec: 13, speaker: "Prospect", text: "Sounds good, I've got a few minutes." },
   ];
   const kms = [...rec.keyMoments].sort((a, b) => tSec(a.at) - tSec(b.at));
@@ -328,13 +328,13 @@ export function transcriptFor(rec: Recording): TranscriptLine[] {
     const sec = tSec(m.at);
     out.push({
       sec: Math.max(20, sec - 18),
-      speaker: idx % 2 ? "Prospect" : "Rep",
+      speaker: idx % 2 ? "Prospect" : "Freyr",
       text: (idx % 2 ? FILLER_PROSPECT : FILLER_REP)[idx % 6],
     });
     const isQ = /\?$/.test(m.quote);
     out.push({
       sec,
-      speaker: isQ ? "Prospect" : "Rep",
+      speaker: isQ ? "Prospect" : "Freyr",
       text: m.quote,
       key: true,
       tone: m.tone,
@@ -342,7 +342,7 @@ export function transcriptFor(rec: Recording): TranscriptLine[] {
   });
   out.push({
     sec: Math.max(total - 10, Math.floor(total * 0.9)),
-    speaker: "Rep",
+    speaker: "Freyr",
     text:
       rec.outcome.includes("Meeting") || rec.outcome === "Interested"
         ? "Appreciate it. I'll send a recap and we'll lock the next step."
@@ -360,7 +360,7 @@ export function transcriptFor(rec: Recording): TranscriptLine[] {
 export interface TalkSegment {
   start: number;
   end: number;
-  speaker: "Rep" | "Prospect";
+  speaker: "Freyr" | "Prospect";
 }
 
 // Derive who-was-talking spans across the call from the time-locked transcript.
@@ -384,7 +384,7 @@ export function talkRatio(rec: Recording): {
   let prospect = 0;
   for (const s of talkSegments(rec)) {
     const d = Math.max(0, s.end - s.start);
-    if (s.speaker === "Rep") rep += d;
+    if (s.speaker === "Freyr") rep += d;
     else prospect += d;
   }
   const total = rep + prospect || 1;

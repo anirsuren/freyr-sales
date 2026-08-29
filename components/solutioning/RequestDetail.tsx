@@ -203,8 +203,8 @@ export function RequestDetail({
   const [confirmRemoveDoc, setConfirmRemoveDoc] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const managerial = meRole === "admin" || meRole === "manager";
-  const fulfiller = managerial || meRole === "solutions";
+  const managerial = meRole === "admin" || meRole === "bd_owner";
+  const fulfiller = managerial || meRole === "sol_member";
   const iRequested =
     r.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
   const iOwn = (r.owner ?? "").trim().toLowerCase() === meName.trim().toLowerCase();

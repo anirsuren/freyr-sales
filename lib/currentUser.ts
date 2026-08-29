@@ -25,8 +25,8 @@ import {
 
 function roleFromClaims(user: AuthenticatedUser): UserIdentityRole {
   if (hasAppRole(user, "Platform-Admins")) return "admin";
-  if (hasAppRole(user, "Offering-Editors")) return "manager";
-  return "rep";
+  if (hasAppRole(user, "Offering-Editors")) return "bd_owner";
+  return "bd_member";
 }
 
 function identityFromPrincipal(
@@ -150,8 +150,8 @@ async function memberForEmail(email: string): Promise<{
       .eq("active", true)
       .maybeSingle();
     if (!data?.id) return null;
-    const raw = String(data.app_role ?? "rep");
-    const role = raw === "admin" ? "admin" : raw === "manager" ? "manager" : "rep";
+    const raw = String(data.app_role ?? "bd_member");
+    const role = raw === "admin" ? "admin" : raw === "bd_owner" ? "bd_owner" : "bd_member";
     return {
       id: String(data.id),
       name: String(data.display_name ?? email),

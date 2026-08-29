@@ -30,7 +30,7 @@ type OnboardingResponse = {
     status?: OnboardingStatus;
     currentStep?: number;
   };
-  role?: "rep" | "manager" | "admin";
+  role?: "bd_member" | "bd_owner" | "admin";
 };
 
 const CHAPTERS = [

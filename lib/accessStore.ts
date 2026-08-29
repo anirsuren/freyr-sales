@@ -270,7 +270,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
           status: "approved",
           workspaceId: workspace,
           userId: devMember.id,
-          role: normalizeWorkspaceRole(devMember.app_role) ?? "rep",
+          role: normalizeWorkspaceRole(devMember.app_role) ?? "bd_member",
           displayName: devMember.display_name,
         }
       : { status: "pending", workspaceId: workspace };
@@ -297,7 +297,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       status: "approved",
       workspaceId: workspace,
       userId: canonical.id,
-      role: normalizeWorkspaceRole(canonical.app_role) ?? "rep",
+      role: normalizeWorkspaceRole(canonical.app_role) ?? "bd_member",
       displayName: canonical.display_name,
     };
   }
@@ -322,7 +322,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       status: "approved",
       workspaceId: workspace,
       userId: existing.id,
-      role: normalizeWorkspaceRole(existing.app_role) ?? "rep",
+      role: normalizeWorkspaceRole(existing.app_role) ?? "bd_member",
       displayName: existing.display_name,
     };
   }
@@ -335,7 +335,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
         provider_subject: user.id,
         email,
         display_name: user.name,
-        requested_role: "rep",
+        requested_role: "bd_member",
         status: "pending",
         updated_at: new Date().toISOString(),
       },
@@ -383,7 +383,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
     !bootstrapOwner && !invitedRole && isAutoApprovedEmail(email);
   const role: WorkspaceRole | null = bootstrapOwner
     ? "admin"
-    : invitedRole ?? (domainMember ? "rep" : null);
+    : invitedRole ?? (domainMember ? "bd_member" : null);
   if (role) {
     // Bootstrap ownership and domain auto-join are tied to a verified email,
     // so the member's own registered name is canonical. Every ordinary invited
@@ -510,7 +510,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       provider_subject: user.id,
       email,
       display_name: user.name,
-      requested_role: "rep",
+      requested_role: "bd_member",
       status: "pending",
       updated_at: new Date().toISOString(),
     },
@@ -597,7 +597,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
         id: item.id,
         name: item.display_name,
         email: item.email,
-        role: normalizeWorkspaceRole(item.app_role) ?? "rep",
+        role: normalizeWorkspaceRole(item.app_role) ?? "bd_member",
         active: item.active,
         accountType,
         lastSeenAt: item.last_seen_at,
@@ -622,7 +622,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       id: item.id,
       name: item.display_name || null,
       email: item.email,
-      role: normalizeWorkspaceRole(item.app_role) ?? "rep",
+      role: normalizeWorkspaceRole(item.app_role) ?? "bd_member",
       expiresAt: item.expires_at,
       createdAt: item.created_at,
       // The inviter's own name, resolved from the same directory this call
@@ -740,7 +740,7 @@ export async function ensureCompanyDomainInvitation(
       workspace_id: workspace,
       display_name: name || email.slice(0, email.indexOf("@")),
       email,
-      app_role: "rep" satisfies WorkspaceRole,
+      app_role: "bd_member" satisfies WorkspaceRole,
       status: "pending",
       invited_by: null,
       accepted_by: null,
@@ -760,7 +760,7 @@ export async function reviewAccessRequest(
   actorId: string,
   requestId: string,
   decision: "approve" | "reject",
-  role: WorkspaceRole = "rep"
+  role: WorkspaceRole = "bd_member"
 ) {
   const client = adminClient();
   const request = await client
@@ -824,7 +824,7 @@ export async function reviewAccessRequest(
         );
       }
       invitationId = invitation.data.id;
-      approvedRole = normalizeWorkspaceRole(invitation.data.app_role) ?? "rep";
+      approvedRole = normalizeWorkspaceRole(invitation.data.app_role) ?? "bd_member";
     }
     if (canonicalName.length < 2 || canonicalName.length > 120) {
       throw new Error("A valid canonical member name is required.");

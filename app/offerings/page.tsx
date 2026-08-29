@@ -179,7 +179,7 @@ export default async function OfferingsPage() {
   const offeringCategories = listOfferingCategories();
   const me = await getCurrentUser();
   const role = await getRole();
-  const canEdit = role === "admin" || role === "manager";
+  const canEdit = role === "admin" || role === "bd_owner";
   /* The heat map reads across every customer and every deal, so it follows the
      report page's own gate rather than the offering-edit one. */
   const canSeeHeatMap = canAccessModule("/reports", role);

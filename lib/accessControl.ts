@@ -14,16 +14,33 @@ export const ACCESS_TTL_SECONDS = 15 * 60;
  * solution team fulfils presentation/submission/meeting requests; they are not
  * sales, so everywhere legacy code asks "manager or admin?" they answer no and
  * fall to least privilege, exactly like a rep. */
-export type WorkspaceRole = "rep" | "manager" | "admin" | "solutions";
+/**
+ * THE ROLES, AS PRIVILEGES (Suren, Aug 29: "these are the roles from now on…
+ * we are removing sales rep. Sales rep is now BD member. Owner is the new
+ * manager." And: "it shouldn't say sales rep or anything anywhere — not in the
+ * database, the code, the app. Don't cut any corners").
+ *
+ * So the stored value itself changed, not only what it is called. The
+ * normalizer below still ACCEPTS the old words, because rows written before
+ * the migration ran must keep working — a person whose row still says "rep"
+ * signs in as a BD Member rather than being locked out — but nothing writes
+ * them any more and the migration in supabase/migrations rewrites the table.
+ */
+export type WorkspaceRole = "bd_member" | "bd_owner" | "admin" | "sol_member";
 
 /** The stored names used to be "sales"/"editor". Rows, snapshots and cookies
  * minted before the Aug 13 rename still carry them; every ingress maps them
  * to the canonical names so nothing ever breaks on old data. */
 export function normalizeWorkspaceRole(raw: unknown): WorkspaceRole | null {
   if (raw === "admin") return "admin";
-  if (raw === "manager" || raw === "editor") return "manager";
-  if (raw === "rep" || raw === "sales") return "rep";
-  if (raw === "solutions" || raw === "solution") return "solutions";
+  /* The new words first, then every word that ever meant the same thing —
+     "editor" and "sales" predate even the old vocabulary. */
+  if (raw === "bd_owner" || raw === "manager" || raw === "editor")
+    return "bd_owner";
+  if (raw === "bd_member" || raw === "rep" || raw === "sales")
+    return "bd_member";
+  if (raw === "sol_member" || raw === "solutions" || raw === "solution")
+    return "sol_member";
   return null;
 }
 export type AccessGrant = {

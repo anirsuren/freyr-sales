@@ -90,7 +90,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         if (!alive || !res.ok || !Array.isArray(data.members)) return;
         const map: Record<string, string> = {};
         for (const m of data.members as { name?: string; role?: string }[]) {
-          // No role recorded means no role shown — coercing to "rep" is how
+          // No role recorded means no role shown — coercing to a role is how
           // an admin ended up labelled Rep in their own group.
           if (m.name?.trim() && m.role) map[m.name.trim()] = m.role;
         }

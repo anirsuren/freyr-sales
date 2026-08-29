@@ -140,7 +140,7 @@ function linesFor(subject: DigestSubject, member: AccessMember): string[] {
   );
   const maySeeNext =
     member.role === "admin" ||
-    member.role === "manager" ||
+    member.role === "bd_owner" ||
     (subject.offering ? isOfferingOwner(subject.offering, member.id) : false) ||
     Boolean(member.email && approved.has(member.email.toLowerCase()));
   return maySeeNext

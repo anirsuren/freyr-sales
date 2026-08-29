@@ -8,7 +8,7 @@ import {
   updateWorkspaceMember,
 } from "@/lib/accessStore";
 
-const ROLES = new Set<WorkspaceRole>(["rep", "manager", "admin"]);
+const ROLES = new Set<WorkspaceRole>(["bd_member", "bd_owner", "admin"]);
 
 async function adminGrant(request: NextRequest) {
   const grant = await verifyAccessGrant(request.cookies.get(ACCESS_COOKIE)?.value);
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) ?? {};
   // Accept the pre-rename spellings too: a stale admin tab can still POST
   // "sales"/"editor" for a few minutes after the deploy.
-  const role: WorkspaceRole = normalizeWorkspaceRole(body.role) ?? "rep";
+  const role: WorkspaceRole = normalizeWorkspaceRole(body.role) ?? "bd_member";
   try {
     let invitationDelivery = null;
     if (body.action === "invite") {

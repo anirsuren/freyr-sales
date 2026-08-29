@@ -505,7 +505,7 @@ tab. Both directions write the same link.`,
   },
   {
     routes: ["/team"],
-    keywords: ["team", "rep", "roster", "sales floor", "teams chat", "phone",
+    keywords: ["team", "roster", "sales floor", "teams chat", "phone",
       "invite", "invitation", "teammate", "joiner", "new starter"],
     title: "Team",
     body: `Team is the sales floor and every role can open it: the card is

@@ -272,11 +272,12 @@ async function linkedInByMember(
  * you just saying Sales?").
  *
  * "sales" is the LEGACY stored value for the rep role, and it leaked into the
- * UI as if it were the role's name. The role is Sales rep, and the picker
- * should say so beside Manager and Workspace admin.
+ * UI as if it were the role's name. The role is BD Member, and the picker
+ * should say so beside Owner and Workspace admin (Suren, Aug 29).
  */
 function roleLabel(role: string): string {
   if (role === "admin") return "Workspace admin";
-  if (role === "manager") return "Manager";
-  return "Sales rep";
+  if (role === "bd_owner") return "Owner";
+  if (role === "sol_member") return "Solutioning Member";
+  return "BD Member";
 }

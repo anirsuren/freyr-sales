@@ -17,7 +17,7 @@ export async function canViewNextCustomerVersion(
   offering: Pick<Offering, "owners">
 ): Promise<boolean> {
   const [role, user] = await Promise.all([getRole(), getCurrentUser()]);
-  if (role === "admin" || role === "manager") return true;
+  if (role === "admin" || role === "bd_owner") return true;
   if (isOfferingOwner(offering, user.memberId)) return true;
 
   const approvedEmails = new Set(

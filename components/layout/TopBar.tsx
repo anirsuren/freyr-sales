@@ -725,7 +725,7 @@ export function TopBar({
                   {/* Two different intentions, and only one of them was here.
                       Log out means "I am done"; switching means "I want to be
                       someone else for a minute" — which an admin testing what
-                      a Sales Rep can see needs constantly (Anir, Aug 13). */}
+                      a BD Member can see needs constantly (Anir, Aug 13). */}
                   <a
                     role="menuitem"
                     href="/api/auth/logout?next=/login"

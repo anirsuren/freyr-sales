@@ -51,7 +51,7 @@ function isOnboardingResponse(value: unknown): value is OnboardingResponse {
   const response = value as Partial<OnboardingResponse>;
   return (
     isOnboardingState(response.state) &&
-    ["sales", "editor", "admin", "rep", "manager"].includes(String(response.role))
+    ["admin", "bd_member", "bd_owner", "sol_member", "sales", "editor", "rep", "manager"].includes(String(response.role))
   );
 }
 

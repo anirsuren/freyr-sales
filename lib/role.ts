@@ -5,12 +5,18 @@ import { ACCESS_COOKIE, isApprovalGateEnabled, normalizeWorkspaceRole, verifyAcc
 // Workspace roles come from the signed access grant in every protected
 // deployment. The browser-only role switch remains available solely in the
 // unauthenticated local demo harness.
-export type Role = "admin" | "manager" | "rep" | "solutions";
+/** One vocabulary with lib/accessControl WorkspaceRole — see the note there. */
+export type Role = "admin" | "bd_owner" | "bd_member" | "sol_member";
 
 // Higher number = more privilege. Used so "view as" can only ever DOWNGRADE.
-// Solutions sits beside rep, not above it: fulfilling requests grants nothing
-// extra anywhere else in the app.
-const ROLE_RANK: Record<Role, number> = { admin: 3, manager: 2, rep: 1, solutions: 1 };
+// Solutioning Member sits beside BD Member, not above it: fulfilling requests
+// grants nothing extra anywhere else in the app.
+const ROLE_RANK: Record<Role, number> = {
+  admin: 3,
+  bd_owner: 2,
+  bd_member: 1,
+  sol_member: 1,
+};
 
 /**
  * "Viewing as" preview. An admin checking what the sales team sees is a real
@@ -59,7 +65,7 @@ async function roleForLocalPersona(email: string): Promise<Role | null> {
     );
     const rows = (await res.json()) as { app_role?: string }[];
     const raw = rows?.[0]?.app_role;
-    return raw === "admin" ? "admin" : raw === "manager" ? "manager" : raw === "rep" ? "rep" : raw === "solutions" ? "solutions" : null;
+    return raw === "admin" ? "admin" : raw === "bd_owner" ? "bd_owner" : raw === "bd_member" ? "bd_member" : raw === "sol_member" ? "sol_member" : null;
   } catch {
     return null;
   }
@@ -74,7 +80,7 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
       return { role: applyViewAs(grant.role, viewAs), realRole: grant.role };
     // Protected deployments must never turn a missing or invalid grant into
     // administrator access.
-    return { role: "rep", realRole: "rep" };
+    return { role: "bd_member", realRole: "bd_member" };
   }
 
   const headerStore = await headers();
@@ -91,8 +97,8 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
     if (hasAppRole(principal, "Platform-Admins"))
       return { role: applyViewAs("admin", viewAs), realRole: "admin" };
     if (hasAppRole(principal, "Offering-Editors"))
-      return { role: applyViewAs("manager", viewAs), realRole: "manager" };
-    return { role: "rep", realRole: "rep" };
+      return { role: applyViewAs("bd_owner", viewAs), realRole: "bd_owner" };
+    return { role: "bd_member", realRole: "bd_member" };
   }
 
   if (!process.env.AUTH_MODE) {
@@ -112,11 +118,11 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
     // and its identity defaults to admin.
     const role = normalizeWorkspaceRole(store.get("freyr_as_role")?.value);
     return {
-      role: role === "rep" || role === "manager" ? role : "admin",
+      role: role === "bd_member" || role === "bd_owner" ? role : "admin",
       realRole: "admin",
     };
   }
-  return { role: "rep", realRole: "rep" };
+  return { role: "bd_member", realRole: "bd_member" };
 }
 
 export async function isAdmin(): Promise<boolean> {
@@ -125,7 +131,7 @@ export async function isAdmin(): Promise<boolean> {
 
 export async function canManageOfferings(): Promise<boolean> {
   const role = await getRole();
-  return role === "admin" || role === "manager";
+  return role === "admin" || role === "bd_owner";
 }
 
 /** Compliance queue and workspace-wide outreach actions are manager-level.
@@ -133,5 +139,5 @@ export async function canManageOfferings(): Promise<boolean> {
  * the entire workspace queue. */
 export async function canManageReviewQueue(): Promise<boolean> {
   const role = await getRole();
-  return role === "admin" || role === "manager";
+  return role === "admin" || role === "bd_owner";
 }

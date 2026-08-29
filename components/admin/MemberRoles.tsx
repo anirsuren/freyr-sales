@@ -25,11 +25,16 @@ import { useToast } from "@/components/ui/Toast";
  */
 
 const ROLE_OPTIONS: ColorOption[] = [
-  { value: "rep", label: "Rep", color: "#0071E3", icon: UserRound },
-  { value: "manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "bd_member", label: "BD Member", color: "#0071E3", icon: UserRound },
+  { value: "bd_owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
   /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"): fulfils solutioning
-     requests, sees the Solutioning module, and nothing manager-only. */
-  { value: "solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
+     requests, sees the Solutioning module, and nothing an Owner-only module. */
+  {
+    value: "sol_member",
+    label: "Solutioning Member",
+    color: "#DB2777",
+    icon: PencilRuler,
+  },
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
@@ -135,7 +140,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           Member roles
           <InfoHint
             text={
-              "Rep, Manager or Admin. What each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
+              "BD Member, Owner, Solutioning Member or Admin. What each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
             }
           />
         </p>
@@ -200,7 +205,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                 <div className="w-[170px] shrink-0">
                   <ColorSelect
                     value={
-                      ROLE_OPTIONS.some((o) => o.value === m.role) ? m.role : "rep"
+                      ROLE_OPTIONS.some((o) => o.value === m.role) ? m.role : "bd_member"
                     }
                     onChange={(next) => setPending({ member: m, nextRole: next })}
                     ariaLabel={`${m.name}'s workspace role`}
@@ -250,7 +255,7 @@ function RoleChangeDialog({
   const toKey = roleKey(pending?.nextRole);
   const promoting = RANK[toKey] > RANK[fromKey];
   const first = member?.name.trim().split(/\s+/)[0] || "They";
-  /** "an Admin", "a Manager" — the article follows the word, not the role. */
+  /** "an Admin", "an Owner", "a BD Member" — the article follows the word. */
   const a = (label: string) => (/^[AEIOU]/i.test(label) ? "an" : "a");
   const toLabel = ROLE_META[toKey].label;
   const fromLabel = ROLE_META[fromKey].label;

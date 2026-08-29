@@ -32,7 +32,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: ShieldCheck,
     color: "#0071E3",
     subtitle:
-      "Everyone in the workspace and what they are: Rep, Manager or Admin. Only an admin can change a role, and the server enforces that too.",
+      "Everyone in the workspace and what they are: BD Member, Owner, Solutioning Member or Admin. Only an admin can change a role, and the server enforces that too.",
   },
   {
     key: "groups",

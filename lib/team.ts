@@ -54,27 +54,29 @@ export function teamsChatUrl(name: string, verifiedEmail?: string | null): strin
   )}`;
 }
 
+/* Job titles, not access. The access vocabulary is BD Member / Owner / Admin
+   (Suren, Aug 29) and no title may borrow the words it retired. */
 const TITLES = [
   "Account Executive",
   "Senior Account Executive",
   "Enterprise AE",
-  "Regional Sales Rep",
+  "Regional Business Development Lead",
   "Strategic Account Manager",
-  "Senior Sales Rep",
+  "Senior Business Development Lead",
 ];
 
-// Suren shows as "Senior Sales Rep" in the sidebar; Mark Miller is the manager
-// (matches Settings › Team). Everyone else gets a stable sales title.
+// Walter Hensley shows as a senior BD lead in the sidebar; Mark Miller runs a
+// group (matches Settings › Team). Everyone else gets a stable title.
 export function repTitle(name: string): string {
-  if (name === "Walter Hensley") return "Senior Sales Rep";
-  if (name === "Mark Miller") return "Regional Sales Manager";
+  if (name === "Walter Hensley") return "Senior Business Development Lead";
+  if (name === "Mark Miller") return "Regional Business Development Manager";
   return TITLES[hashName(name) % TITLES.length];
 }
 
-export function repRole(name: string): "Admin" | "Manager" | "Rep" {
+export function repRole(name: string): "Admin" | "Owner" | "BD Member" {
   if (name === "Walter Hensley") return "Admin";
-  if (name === "Mark Miller") return "Manager";
-  return "Rep";
+  if (name === "Mark Miller") return "Owner";
+  return "BD Member";
 }
 
 const REGIONS = [

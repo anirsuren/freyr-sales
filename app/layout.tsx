@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ROLE_RANK = { admin: 3, manager: 2, rep: 1, solutions: 1 } as const;
+const ROLE_RANK = { admin: 3, bd_owner: 2, bd_member: 1, sol_member: 1 } as const;
 
 export default async function RootLayout({
   children,
@@ -40,7 +40,7 @@ export default async function RootLayout({
    * but the shell was handed the first, so previewing as Rep left the whole
    * sidebar at admin: Customers, Reports, Performance, Market Intel and Admin
    * all still listed, every one of them manager-or-admin only. Clicking Admin
-   * as a "Rep" landed on "Admin tools are open to workspace admins" — a nav
+   * as a BD Member landed on "Admin tools are open to workspace admins" — a nav
    * item that opens onto a wall (found Aug 14 walking the flows).
    *
    * Nothing changes for a real user: without a preview the two roles are

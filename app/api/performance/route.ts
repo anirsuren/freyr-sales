@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
   const visible = callerScope(
     state,
     me.name,
-    me.role === "admin" || me.role === "manager"
+    me.role === "admin" || me.role === "bd_owner"
   );
   return NextResponse.json({
     state: visible ? scopeState(state, visible) : state,
@@ -625,7 +625,7 @@ export async function POST(req: NextRequest) {
   const visible = callerScope(
     state,
     me.name,
-    me.role === "admin" || me.role === "manager"
+    me.role === "admin" || me.role === "bd_owner"
   );
   return NextResponse.json({
     ok: true,

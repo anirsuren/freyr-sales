@@ -1,4 +1,5 @@
 import type { UserIdentityRole } from "./userIdentity";
+import { moduleForPath as moduleKeyForPath } from "./privileges";
 
 /**
  * WHO CAN OPEN WHICH MODULE (Freyr, Aug 12, via Anir).
@@ -7,7 +8,7 @@ import type { UserIdentityRole } from "./userIdentity";
  *   Performance, Opportunities, Market Intel.
  *   Managers and Admins only — FDL Components, Customers, Reports.
  *
- * Roles in this app: "rep" = Sales Rep, "manager" = Manager, "admin" =
+ * Roles in this app: "bd_member" = Sales Rep, "bd_owner" = Manager, "admin" =
  * Admin. This is a VISIBILITY *and* ACCESS rule: the sidebar hides what a rep
  * may not open, and every restricted page re-checks on the server, so typing
  * the URL is not a way in.
@@ -108,7 +109,7 @@ export const NEW_MODULES_ADMIN_ONLY = [
 export const TEAM_ADMIN_ONLY = false;
 
 export function isManagerOrAdmin(role: UserIdentityRole): boolean {
-  return role === "admin" || role === "manager";
+  return role === "admin" || role === "bd_owner";
 }
 
 /**
@@ -133,6 +134,50 @@ export function isManagerOnlyPath(path: string): boolean {
   );
 }
 
+/**
+ * THE PRIVILEGE TABLE, WHEN IT IS THE ONE IN CHARGE.
+ *
+ * Suren, Aug 29: "these are the roles from now on. I need this executed… I
+ * don't know why you're saying it's not enforced."
+ *
+ * `access` is the module map resolved from lib/privileges for this person —
+ * their role's badge, their groups' badges, and anything given to them
+ * directly. Pass null and nothing changes: every rule below is exactly what it
+ * was, which is what keeps a page working while the table is still being
+ * filled in.
+ *
+ * WHAT THE TABLE DOES NOT DECIDE. It has a row per module it knows about, and
+ * the app has pages it does not — the dashboard, the pipeline, sessions, voice
+ * agents. Those keep the old rules rather than being closed by omission,
+ * because a permission system that denies whatever nobody remembered to list
+ * takes the product away one page at a time.
+ */
+export function canAccessModuleWith(
+  path: string,
+  role: UserIdentityRole,
+  access: Partial<Record<string, "none" | "read" | "write">> | null
+): boolean {
+  if (!access) return canAccessModule(path, role);
+  // Signing in, settings, notifications: never a module, never gated.
+  if (isAlwaysOpen(path)) return true;
+  const key = moduleKeyForPath(path);
+  if (!key) return canAccessModule(path, role);
+  const level = access[key] ?? "none";
+  return level !== "none";
+}
+
+/** May they CHANGE things here, as opposed to only look? */
+export function canWriteModuleWith(
+  path: string,
+  role: UserIdentityRole,
+  access: Partial<Record<string, "none" | "read" | "write">> | null
+): boolean {
+  if (!access) return canAccessModule(path, role);
+  const key = moduleKeyForPath(path);
+  if (!key) return canAccessModule(path, role);
+  return (access[key] ?? "none") === "write";
+}
+
 /** The one question every nav item and every guarded page asks. */
 export function canAccessModule(
   path: string,
@@ -144,7 +189,7 @@ export function canAccessModule(
   // Ahead of every other rule, including the rep whitelist and the manager
   // default, so no role picks it up by being none of the above.
   if (SOLUTIONING_ADMIN_ONLY && isUnder(path, "/solutioning")) {
-    return role === "admin" || role === "solutions";
+    return role === "admin" || role === "sol_member";
   }
   // Same rule, same place in the order: ahead of the rep whitelist and the
   // manager default, so nothing picks these up by being none of the above.
@@ -156,8 +201,8 @@ export function canAccessModule(
   if (isAlwaysOpen(path)) return true;
   // A rep gets exactly the modules on that list, and nothing gets added to it
   // by being built later.
-  if (role === "rep") return REP_MODULES.some((m) => isUnder(path, m));
-  if (role === "solutions")
+  if (role === "bd_member") return REP_MODULES.some((m) => isUnder(path, m));
+  if (role === "sol_member")
     return SOLUTIONS_MODULES.some((m) => isUnder(path, m));
   if (!isManagerOnlyPath(path)) return true;
   return isManagerOrAdmin(role);

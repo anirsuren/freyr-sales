@@ -50,7 +50,7 @@ export type RosterRep = {
   name: string;
   slug: string;
   title: string;
-  role: "Admin" | "Manager" | "Rep";
+  role: "Admin" | "Owner" | "BD Member";
   /**
    * INVITED, NOT ARRIVED (Anir, Aug 25: "it's gonna show up as the person in
    * this list of people, but it's gonna say Pending, and it's gonna be in
@@ -563,7 +563,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               // own third scrambling of the palette (Rep was wearing Admin's
               // teal), so filtering by Rep highlighted a colour no Rep chip
               // ever used.
-              options: (["Admin", "Manager", "Rep"] as const).map((value) => ({
+              options: (["Admin", "Owner", "BD Member"] as const).map((value) => ({
                 value,
                 label: ROLE_META[roleKey(value)].label,
                 color: ROLE_META[roleKey(value)].color,
@@ -827,7 +827,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                   px-4 buy back the width it needs, and py-2.5 trims the strip
                   to a single text line's worth of padding. */}
               <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary border-b border-border-light bg-surface/50 [&>th]:whitespace-nowrap">
-                <th className="px-4 py-2.5">Rep</th>
+                <th className="px-4 py-2.5">Person</th>
                 <th className="px-4 py-2.5">Contact</th>
                 <th className="px-4 py-2.5 w-[230px]">Open pipeline</th>
                 {/* LEFT, LIKE EVERY OTHER COLUMN (Anir, Aug 29: "these have

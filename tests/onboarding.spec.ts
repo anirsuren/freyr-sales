@@ -62,7 +62,7 @@ async function expectTourRoute(page: Page, step: number) {
 }
 
 type TourStatus = "not_started" | "in_progress" | "completed" | "skipped";
-type TourRole = "rep" | "manager" | "admin";
+type TourRole = "bd_member" | "bd_owner" | "admin";
 type TourState = {
   version: number;
   status: TourStatus;
@@ -371,7 +371,7 @@ test("a canonical saved navigation step resumes and opens the right page", async
   context,
   page,
 }) => {
-  const role: TourRole = "rep";
+  const role: TourRole = "bd_member";
   const savedCatalogStep = catalogStepIndex("to-analytics");
   const nextCatalogStep = catalogStepIndex("analytics-growth");
   const roleSteps = getProductTourSteps({ offeringsOnly: false, role });

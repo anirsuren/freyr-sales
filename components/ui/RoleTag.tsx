@@ -3,16 +3,23 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * THE THREE ROLES, SAID THE SAME WAY EVERYWHERE.
+ * THE ROLES, SAID THE SAME WAY EVERYWHERE — AND THEY ARE PRIVILEGES NOW.
  *
- * There are exactly three (Anir, Jul 30: "the only roles we have are Rep,
- * Manager, and Admin… in this platform, eventually, it's just those three roles
- * for now"), and the app had been calling each of them something different
- * depending on where you looked: `admin` was "Workspace Admin" in the account
- * menu and "Admin" in the directory; `editor` was "Manager" in the invite
- * picker, "Catalog editor" in the directory and "Offering Editor" in the
- * identity library; `sales` was "Sales Representative", "Sales rep" or "Rep".
- * Invite someone as a Manager, find them listed as a Catalog editor.
+ * Suren, Aug 29: "these are the roles from now on. I need this executed… we
+ * are removing sales rep. Sales rep is now BD member. Owner is the new
+ * manager." And: "literally everywhere has to be up to date now, a full
+ * transformation."
+ *
+ * So Rep and Manager are gone from the product. The stored value against each
+ * account is unchanged — renaming a column every auth path reads is a
+ * migration with a lockout at the end of it — but what it MEANS, and what it
+ * is called in front of anybody, is the privilege vocabulary from
+ * lib/privileges:
+ *
+ *   rep       -> BD Member
+ *   manager   -> Owner
+ *   admin     -> Admin
+ *   solutions -> Solutioning Member
  *
  * One vocabulary, one colour, one icon, imported everywhere a role is shown.
  *
@@ -24,7 +31,7 @@ import { cn } from "@/lib/utils";
  * what you may do.
  */
 
-export type WorkspaceRoleKey = "admin" | "manager" | "rep" | "solutions";
+export type WorkspaceRoleKey = "admin" | "bd_owner" | "bd_member" | "sol_member";
 
 export const ROLE_META: Record<
   WorkspaceRoleKey,
@@ -36,38 +43,38 @@ export const ROLE_META: Record<
     icon: ShieldCheck,
     what: "Invites and approves teammates, and hands out offering ownership",
   },
-  manager: {
-    label: "Manager",
+  bd_owner: {
+    label: "Owner",
     color: "#7C3AED",
     icon: UsersRound,
-    what: "Runs the catalogue day to day alongside the reps",
+    what: "Runs a group and the numbers inside it. What used to be Manager.",
   },
-  rep: {
-    label: "Rep",
+  bd_member: {
+    label: "BD Member",
     color: "#0071E3",
     icon: UserRound,
-    what: "Browses offerings, opens materials and asks the assistant",
+    what: "Works accounts and opportunities in a business development group.",
   },
   /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"). The solution team
      picks up presentation, submission and meeting requests and builds the
      deliverables. Pink is identity, not status, and none of the other three
      wear it. */
-  solutions: {
-    label: "Solutions",
+  sol_member: {
+    label: "Solutioning Member",
     color: "#DB2777",
     icon: PencilRuler,
     what: "Picks up solutioning requests and builds the deliverables",
   },
 };
 
-/** Anything stored (or typed) that is not one of the three reads as Rep — the
- *  least privilege, never the most. */
+/** Anything stored (or typed) that is not one of the four reads as BD Member —
+ *  the least privilege, never the most. */
 export function roleKey(role: string | null | undefined): WorkspaceRoleKey {
   const r = (role || "").toLowerCase();
   if (r === "admin") return "admin";
-  if (r === "editor" || r === "manager") return "manager";
-  if (r === "solutions" || r === "solution") return "solutions";
-  return "rep";
+  if (r === "editor" || r === "bd_owner") return "bd_owner";
+  if (r === "sol_member" || r === "solution") return "sol_member";
+  return "bd_member";
 }
 
 export function roleLabel(role: string | null | undefined): string {
@@ -89,10 +96,10 @@ export function RoleTag({
    * AN UNKNOWN ROLE IS NOT "REP" (bug, Anir, Aug 15: "in user groups, it says
    * I'm a rep. What the fuck? That can be very misleading").
    *
-   * roleKey() falls back to "rep" so callers always get a key, which is right
+   * roleKey() falls back to "bd_member" so callers always get a key, which is right
    * for logic and wrong for a label: a directory lookup that misses — a name
    * that does not match, a directory that has not loaded — then printed a
-   * confident "Rep" next to an admin. Nothing is better than wrong here.
+   * confident "BD Member" next to an admin. Nothing is better than wrong here.
    */
   if (!role || !role.trim()) return null;
   const meta = ROLE_META[roleKey(role)];

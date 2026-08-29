@@ -157,7 +157,7 @@ Reply with ONLY valid JSON, no markdown fence:
 {"tldr": "...", "summaries": [{"i": 0, "summary": "..."}]}
 
 Rules:
-- "tldr": at most 45 words, plain English, present tense. The quick rundown a sales rep reads before a call: what is happening at ${company.name} lately, from these items only. No hype words, no advice.
+- "tldr": at most 45 words, plain English, present tense. The quick rundown somebody reads before a call: what is happening at ${company.name} lately, from these items only. No hype words, no advice.
 - "summaries": one entry PER ITEM THAT HAS article_text, 1-2 factual sentences each, drawn only from that item's text and title. SKIP items without article_text entirely. Never invent facts.`;
 
   try {

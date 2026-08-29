@@ -117,7 +117,7 @@ export default async function OfferingDetailPage({
    * to see the 'Customers' tab within an Offering Page", so reps aren't
    * confused by the thin beta customer list). Managers and admins keep it.
    * Deliberately temporary: delete this flag to give it back to everyone. */
-  const showOfferingCustomers = me.role !== "rep";
+  const showOfferingCustomers = me.role !== "bd_member";
   // The package's contents: FDL components connected by id.
   const allComponents = listFdlComponents();
   const connectedComponents = (o.component_ids ?? [])
@@ -950,7 +950,7 @@ export default async function OfferingDetailPage({
                 Hiding the Customers page and then naming its accounts, with
                 revenue, in a rail card was the same data through a side door.
                 Managers and admins still see it. */}
-            {report.customers.length > 0 && role !== "rep" && (
+            {report.customers.length > 0 && role !== "bd_member" && (
               <SectionCard
                 title={`Current customers (${report.customers.length})`}
                 icon={Building2}

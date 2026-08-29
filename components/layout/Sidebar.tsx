@@ -136,7 +136,7 @@ export function Sidebar({
   // The signed-in user's uploaded picture, shared by every avatar of them.
   const { photo: myPhoto } = useMyPhoto();
   const offeringsOnly = isOfferingsOnly(dataMode);
-  // Released for this rollout AND open to this person's role — a Sales Rep
+  // Released for this rollout AND open to this person's role — a BD Member
   // never sees a module they cannot open (Freyr, Aug 12).
   const navItems = ALL_NAV_ITEMS.filter(
     (item) =>
@@ -387,7 +387,7 @@ export function Sidebar({
               {item.href === "/performance" &&
                 !collapsed &&
                 isActive(pathname, "/performance") &&
-                (currentUser.role !== "rep"
+                (currentUser.role !== "bd_member"
                   ? [
                       { href: "/performance/org", label: "Org performance", icon: Gauge },
                       { href: "/performance/groups", label: "Group performance", icon: UsersRound },

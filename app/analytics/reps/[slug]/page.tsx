@@ -49,7 +49,7 @@ import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
 
 /**
- * The teammate's own name in the tab. A static "Rep" made every open profile
+ * The teammate's own name in the tab. A static "Rep" label made every open profile
  * identical in the tab strip, and it is the same slug-to-name mapping the page
  * itself uses below (found Aug 14 walking the flows). Derived from the slug so
  * this costs no extra lookup: the slug IS the name, lowercased and hyphenated.

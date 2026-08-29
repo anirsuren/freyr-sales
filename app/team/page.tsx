@@ -165,14 +165,21 @@ export default async function TeamPage() {
       );
     }
     // Stored roles flipped from editor/sales to manager/rep on Aug 13; this
-    // map missed the rename and every manager fell through to Rep (Saras:
-    // "I only see Admin and Rep access levels"). Accept both spellings.
+    // map missed the rename and every manager fell through (Saras: "I only
+    // see Admin and Rep access levels"). Accept every spelling.
     const ACCESS_ROLE: Record<string, RosterRep["role"]> = {
       admin: "Admin",
-      manager: "Manager",
-      editor: "Manager",
-      rep: "Rep",
-      sales: "Rep",
+      bd_owner: "Owner",
+      /* Every word that has ever meant these two, so a row written before the
+         Aug 29 rename still lands on the right label instead of falling
+         through to the least privilege. */
+      manager: "Owner",
+      editor: "Owner",
+      bd_member: "BD Member",
+      rep: "BD Member",
+      sales: "BD Member",
+      sol_member: "BD Member",
+      solutions: "BD Member",
     };
     const zeroStages = STAGES.map((stage) => ({
       stage,
@@ -203,7 +210,7 @@ export default async function TeamPage() {
         name: member.name,
         slug: member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         title: title || "Title not set",
-        role: ACCESS_ROLE[member.role] ?? "Rep",
+        role: ACCESS_ROLE[member.role] ?? "BD Member",
         you: currentUser?.memberId === member.id,
         region: "Global",
         email: member.email || "",
@@ -242,7 +249,7 @@ export default async function TeamPage() {
       name: (inv.name || inv.email.split("@")[0] || "Invited teammate").trim(),
       slug: `invite-${inv.id}`,
       title: "Invited, not signed up yet",
-      role: ACCESS_ROLE[String(inv.role).toLowerCase()] ?? "Rep",
+      role: ACCESS_ROLE[String(inv.role).toLowerCase()] ?? "BD Member",
       pending: true,
       invitedExpiresAt: inv.expiresAt,
       invitedBy: inv.invitedBy,
@@ -436,9 +443,9 @@ export default async function TeamPage() {
         you
           ? currentUser.role === "admin"
             ? "Admin"
-            : currentUser.role === "manager"
-              ? "Manager"
-              : "Rep"
+            : currentUser.role === "bd_owner"
+              ? "Owner"
+              : "BD Member"
           : repRole(r.name),
       // NEVER invent identity facts for the real signed-in person — the
       // hashed demo region/phone are for the synthetic roster only (Anir:

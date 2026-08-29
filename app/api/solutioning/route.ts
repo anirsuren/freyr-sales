@@ -91,8 +91,8 @@ export async function POST(req: NextRequest) {
      nothing to refuse (Anir, Aug 26: "all the same functionality (add, edit
      etc.) should be on mock mode, but it shouldn't affect real data"). */
   const me = await getCurrentUser();
-  const managerial = me.role === "admin" || me.role === "manager";
-  const fulfiller = managerial || me.role === "solutions";
+  const managerial = me.role === "admin" || me.role === "bd_owner";
+  const fulfiller = managerial || me.role === "sol_member";
   const body = (await req.json().catch(() => ({}))) ?? {};
   const op = String(body.op ?? "");
 

@@ -706,8 +706,9 @@ export function GoalBar({
  */
 const ROLE_META: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   admin: { label: "Admin", color: "#7C3AED", icon: ShieldCheck },
-  manager: { label: "Manager", color: "#0071E3", icon: UsersRound },
-  rep: { label: "Rep", color: "#0F766E", icon: UserRound },
+  bd_owner: { label: "Owner", color: "#0071E3", icon: UsersRound },
+  bd_member: { label: "BD Member", color: "#0F766E", icon: UserRound },
+  sol_member: { label: "Solutioning Member", color: "#DB2777", icon: UserRound },
 };
 
 export function RoleChip({ role }: { role: string }) {

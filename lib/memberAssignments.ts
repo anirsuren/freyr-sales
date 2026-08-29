@@ -186,7 +186,7 @@ export async function verifiedOwnerAssignment(
       ? grant.role
       : process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
         ? "admin"
-        : "rep";
+        : "bd_member";
   const assigningSelf =
     requestedId === scope.userId ||
     (!requestedId &&
@@ -198,7 +198,7 @@ export async function verifiedOwnerAssignment(
   // their own assignment. Moving work to another person (or taking over a
   // legacy name-only assignment) requires a manager/admin so display-name
   // ambiguity cannot become an ownership bypass.
-  if (actorRole === "rep") {
+  if (actorRole === "bd_member") {
     if (
       (currentOwnerId && currentOwnerId !== scope.userId) ||
       (!currentOwnerId && currentOwnerName)

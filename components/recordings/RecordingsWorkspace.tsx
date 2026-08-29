@@ -538,7 +538,7 @@ export function RecordingsWorkspace() {
                     key={i}
                     title={`${s.speaker} talking · ${fmt(s.start)}`}
                     style={{ width: `${total ? ((s.end - s.start) / total) * 100 : 0}%` }}
-                    className={s.speaker === "Rep" ? "bg-blue-primary" : "bg-blue-subtle"}
+                    className={s.speaker === "Freyr" ? "bg-blue-primary" : "bg-blue-subtle"}
                   />
                 ))}
               </div>
@@ -655,20 +655,20 @@ export function RecordingsWorkspace() {
                       </span>
                       {/* Who is talking is a category, so it gets colour + a mark
                          , and the mark is the REAL person's face (the rep for
-                          "Rep", the contact for "Prospect") rather than a generic
+                          "Freyr", the contact for "Prospect") rather than a generic
                           glyph. Prospect was flat gray on gray, which is banned
                           for anything categorical. */}
                       <span className="shrink-0 pt-0.5">
                         <span
                           className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap"
                           style={
-                            l.speaker === "Rep"
+                            l.speaker === "Freyr"
                               ? { background: "rgba(0,113,227,0.12)", color: "#0040A0" }
                               : { background: "rgba(15,158,142,0.14)", color: "#0F766E" }
                           }
                         >
                           <Avatar
-                            name={l.speaker === "Rep" ? rec.rep : rec.contact}
+                            name={l.speaker === "Freyr" ? rec.rep : rec.contact}
                             className="w-[14px] h-[14px] text-[6px]"
                           />
                           {l.speaker}

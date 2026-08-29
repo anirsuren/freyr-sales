@@ -51,7 +51,7 @@ export function ForecastExport({
       byStage.map((s) => [s.stage, s.prob, s.count, s.value, s.weighted])
     );
     const rep = toCSV(
-      ["Rep", "Open", "Weighted", "% of quota"],
+      ["Owner", "Open", "Weighted", "% of quota"],
       byRep.map((r) => [r.name, r.open, r.weighted, r.pct])
     );
     downloadCSV("freyr-forecast.csv", [summary, "", stage, "", rep].join("\n"));

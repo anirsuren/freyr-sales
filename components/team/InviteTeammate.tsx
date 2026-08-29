@@ -18,18 +18,23 @@ import { useToast } from "@/components/ui/Toast";
    exists once you have decided to use it. */
 
 const ROLE_OPTIONS: ColorOption[] = [
-  { value: "Rep", label: "Rep", color: "#0071E3", icon: UserRound },
-  { value: "Manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "BD Member", label: "BD Member", color: "#0071E3", icon: UserRound },
+  { value: "Owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
   /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role") — the solution team
      has to be invitable from the same door as everyone else. */
-  { value: "Solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
+  {
+    value: "Solutioning Member",
+    label: "Solutioning Member",
+    color: "#DB2777",
+    icon: PencilRuler,
+  },
   { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
 const ACCESS_ROLE: Record<string, string> = {
-  Rep: "rep",
-  Manager: "manager",
-  Solutions: "solutions",
+  "BD Member": "bd_member",
+  Owner: "bd_owner",
+  "Solutioning Member": "sol_member",
   Admin: "admin",
 };
 
@@ -45,7 +50,7 @@ export function InviteTeammate({
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Rep");
+  const [role, setRole] = useState("BD Member");
   /** Optional line the admin adds to the invitation email. */
   const [note, setNote] = useState("");
 
@@ -54,7 +59,7 @@ export function InviteTeammate({
     setOpen(false);
     setName("");
     setEmail("");
-    setRole("Rep");
+    setRole("BD Member");
     setNote("");
   }
 
@@ -78,7 +83,7 @@ export function InviteTeammate({
           action: "invite",
           name: name.trim(),
           email: email.trim(),
-          role: ACCESS_ROLE[role] ?? "rep",
+          role: ACCESS_ROLE[role] ?? "bd_member",
           ...(note.trim() ? { note: note.trim() } : {}),
         }),
       });
@@ -102,7 +107,7 @@ export function InviteTeammate({
       setOpen(false);
       setName("");
       setEmail("");
-      setRole("Rep");
+      setRole("BD Member");
       setNote("");
     } catch (error) {
       toast(

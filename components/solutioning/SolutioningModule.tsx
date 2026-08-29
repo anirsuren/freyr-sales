@@ -42,7 +42,7 @@ import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
- * customer page; the Solutions team lives here — "he'll come to the
+ * customer page; the Solutioning team lives here — "he'll come to the
  * solutioning module and then he'll see all the requests."
  */
 
@@ -77,7 +77,7 @@ const ROOM_META: Record<
   requests: {
     title: "Solution requests",
     subtitle:
-      "What sales has asked the Solutions team for: a submission, a presentation or a meeting.",
+      "What sales has asked the Solutioning team for: a submission, a presentation or a meeting.",
     empty: "No solution requests yet.",
     newLabel: "New solution request",
     noun: "solution requests",
@@ -139,7 +139,7 @@ export function SolutioningModule({
   /** The fulfiller side of the flow: Solutions picks up; managers and admins
    *  can too, so a request is never stranded when the team is out. */
   const fulfiller =
-    meRole === "solutions" || meRole === "manager" || meRole === "admin";
+    meRole === "sol_member" || meRole === "bd_owner" || meRole === "admin";
 
   /* The customer page's "Request solutioning" button lands here with the
      account already chosen — the dialog opens itself, prefilled. */
@@ -477,7 +477,7 @@ export function SolutioningModule({
         <EmptyState
           icon={ClipboardList}
           title={ROOM_META[room].empty}
-          description="Ask for a presentation, a submission or a meeting. The Solutions team picks it up from here, and you close it when it's delivered."
+          description="Ask for a presentation, a submission or a meeting. The Solutioning team picks it up from here, and you close it when it's delivered."
           action={
             (
               <button
@@ -1244,7 +1244,7 @@ export function NewRequestDialog({
                   ["3", "You complete it", "Marking it completed finishes the work, and closes its request if it came from one."],
                 ]
               : [
-                  ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutions team's queue straight away."],
+                  ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutioning team's queue straight away."],
                   ["2", "Solutions takes it up", "Whoever takes it owns it, and builds the documents against your request."],
                   ["3", "You close it", "The requester decides when it is done, not the person who built it."],
                 ]
@@ -1489,7 +1489,7 @@ export function NewRequestDialog({
 
           <label className="block">
             <span className="text-[12px] font-semibold text-text-primary">
-              What does the Solutions team need to know?
+              What does the Solutioning team need to know?
             </span>
             <textarea
               value={details}

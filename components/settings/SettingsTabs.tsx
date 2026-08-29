@@ -48,18 +48,28 @@ import { MemberPresence } from "@/components/presence/PresenceDot";
  * one that has to be unmistakable at a glance.
  */
 const INVITE_ROLE_OPTIONS: ColorOption[] = [
-  { value: "Rep", label: "Rep", color: "#0071E3", icon: UserRound },
-  { value: "Manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
-  { value: "Solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
+  { value: "BD Member", label: "BD Member", color: "#0071E3", icon: UserRound },
+  { value: "Owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
+  {
+    value: "Solutioning Member",
+    label: "Solutioning Member",
+    color: "#DB2777",
+    icon: PencilRuler,
+  },
   { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
 // The directory's role control for admins — same three identities, keyed by
 // the STORED role values the access API expects.
 const ROLE_CHANGE_OPTIONS: ColorOption[] = [
-  { value: "rep", label: "Rep", color: "#0071E3", icon: UserRound },
-  { value: "manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
-  { value: "solutions", label: "Solutions", color: "#DB2777", icon: PencilRuler },
+  { value: "bd_member", label: "BD Member", color: "#0071E3", icon: UserRound },
+  { value: "bd_owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
+  {
+    value: "sol_member",
+    label: "Solutioning Member",
+    color: "#DB2777",
+    icon: PencilRuler,
+  },
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
@@ -93,53 +103,53 @@ const CONNECTORS = [
   { key: "linkedin", name: "LinkedIn", icon: Link2, desc: "Enrich contacts and send connection notes without leaving Freyr." },
 ] as const;
 
-const ROLES = ["Admin", "Manager", "Rep"];
+const ROLES = ["Admin", "Owner", "BD Member"];
 /**
  * WHAT THE CODE ACTUALLY ENFORCES — checked against lib/role.ts and
  * lib/offeringOwnership.ts, not written from memory.
  *
  * The row this table used to get badly wrong was editing offerings: it claimed
- * Admin ✓ Manager ✓ Rep ✗, and the truth is neither. Editing is gated on
+ * Admin ✓ Owner ✓ BD Member ✗, and the truth is neither. Editing is gated on
  * OWNERSHIP, for everyone — "a workspace admin does not get to edit an offering
- * merely by being an admin". A Rep who owns one can edit it; an Admin who does
- * not own it cannot. What admin buys is the right to assign ownership to a
+ * merely by being an admin". A BD Member who owns one can edit it; an Admin who
+ * does not own it cannot. What admin buys is the right to assign ownership to a
  * workspace member. A permissions table that contradicts
  * the server is worse than no table: it is the page people check before they
  * trust the product with their access model.
  */
-const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean; note?: string }[] = [
-  { cap: "Browse offerings & open sales materials", admin: true, manager: true, rep: true },
-  { cap: "Ask the assistant", admin: true, manager: true, rep: true },
+const PERMISSIONS: { cap: string; admin: boolean; bd_owner: boolean; bd_member: boolean; note?: string }[] = [
+  { cap: "Browse offerings & open sales materials", admin: true, bd_owner: true, bd_member: true },
+  { cap: "Ask the assistant", admin: true, bd_owner: true, bd_member: true },
   {
     cap: "Open FDL Components, Customers, Reports, Goals & Market Intel",
     admin: true,
-    manager: true,
-    rep: false,
+    bd_owner: true,
+    bd_member: false,
     note: "AI Agent, Offerings and Team stay open to every role",
   },
   {
     cap: "Change a teammate's role",
     admin: true,
-    manager: false,
-    rep: false,
+    bd_owner: false,
+    bd_member: false,
     note: "From the member directory on the Team tab",
   },
   {
     cap: "Edit an offering & its materials",
     admin: true,
-    manager: false,
-    rep: false,
+    bd_owner: false,
+    bd_member: false,
     note: "Owners of that offering, any role. Admins can edit any offering",
   },
   {
     cap: "Assign offering owners",
     admin: true,
-    manager: false,
-    rep: false,
+    bd_owner: false,
+    bd_member: false,
     note: "Only an admin can grant edit access",
   },
-  { cap: "Invite, approve or suspend teammates", admin: true, manager: false, rep: false },
-  { cap: "Preview modules that are still in progress", admin: true, manager: true, rep: true },
+  { cap: "Invite, approve or suspend teammates", admin: true, bd_owner: false, bd_member: false },
+  { cap: "Preview modules that are still in progress", admin: true, bd_owner: true, bd_member: true },
 ];
 
 // Function-first, no vendor names — a seller reads WHAT each connection
@@ -184,7 +194,7 @@ function lastSeenLabel(iso: string | null | undefined): string {
   if (days < 7) return `${days} days ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-type AccessRole = "admin" | "manager" | "rep" | "solutions";
+type AccessRole = "admin" | "bd_owner" | "bd_member" | "sol_member";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null; joinedAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
@@ -442,7 +452,7 @@ export function SettingsTabs({
     // the Title box on first paint, and the fetched profile then blanked it,
     // which is the flash Anir kept seeing (Aug 7: "why is it saying admin and
     // then it's disappearing… why is it saying my job title is admin?").
-    // Rep / Manager / Admin is ACCESS; the job title is the person's own.
+    // BD Member / Owner / Admin is ACCESS; the job title is the person's own.
     title: "",
     email: currentUser.email || "",
     signature: `${currentUser.name}\nFreyr Solutions`,
@@ -461,16 +471,18 @@ export function SettingsTabs({
   // Tracks the last URL we sent for enrichment so repeated saves don't re-run a
   // scrape (and burn Apify credits) for a link that has not changed.
   const savedLinkedinRef = useRef<string>("");
-  const [invite, setInvite] = useState({ name: "", email: "", role: "Rep" });
+  const [invite, setInvite] = useState({ name: "", email: "", role: "BD Member" });
   const [notifs, setNotifs] = useState<Record<string, boolean>>(
     DEFAULT_NOTIFICATIONS
   );
   const authenticatedRoleLabel =
     currentUser.role === "admin"
       ? "Admin"
-      : currentUser.role === "manager"
-        ? "Manager"
-        : "Rep";
+      : currentUser.role === "bd_owner"
+        ? "Owner"
+        : currentUser.role === "sol_member"
+          ? "Solutioning Member"
+          : "BD Member";
   const [role, setRole] = useState(authenticatedRoleLabel);
   const [sso, setSso] = useState({
     provider: "Azure AD",
@@ -535,7 +547,7 @@ export function SettingsTabs({
       signature: `${currentUser.name}\nFreyr Solutions`,
       linkedin: "",
     };
-    setInvite({ name: "", email: "", role: "Rep" });
+    setInvite({ name: "", email: "", role: "BD Member" });
     setNotifs({ ...DEFAULT_NOTIFICATIONS });
     setRole(authenticatedRoleLabel);
     setSso({
@@ -921,7 +933,7 @@ export function SettingsTabs({
       toast("Enter the full name, first and last, plus the email", "error");
       return;
     }
-    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "manager" : invite.role === "Solutions" ? "solutions" : "rep";
+    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Owner" ? "bd_owner" : invite.role === "Solutioning Member" ? "sol_member" : "bd_member";
     setAccessBusy("invite");
     try {
       if (authConfig.approvalEnabled) {
@@ -971,7 +983,7 @@ export function SettingsTabs({
         }));
         toast(`Demo invitation created for ${invite.email}`);
       }
-      setInvite({ name: "", email: "", role: "Rep" });
+      setInvite({ name: "", email: "", role: "BD Member" });
     } catch (error) {
       toast(error instanceof Error ? error.message : "Invite failed", "error");
     } finally {
@@ -1245,7 +1257,7 @@ export function SettingsTabs({
                 <span className="mb-1.5 flex items-center gap-1.5">
                   <span className="text-[13px] font-medium text-text-primary">Title</span>
                   <InfoHint
-                    text={"This job title appears on your Team profile.\nYour Admin, Manager or Rep access is managed separately."}
+                    text={"This job title appears on your Team profile.\nYour Admin, Owner or BD Member access is managed separately."}
                   />
                 </span>
                 <Input
@@ -1529,7 +1541,7 @@ export function SettingsTabs({
                     </span>
                     {/* The same role tag the directory above uses. This was
                         amber, which in this app means "waiting" or "at risk",
-                        not "Rep" (Anir, Aug 15: "why is it red? You have to
+                        not the least privilege (Anir, Aug 15: "why is it red? You have to
                         have consistent colors everywhere"). */}
                     <RoleTag role={invitation.role} size="sm" className="shrink-0" />
                   </li>
@@ -1674,7 +1686,7 @@ export function SettingsTabs({
                         </span>
                       )}
                     </td>
-                    {(["admin", "manager", "rep"] as const).map((k) => (
+                    {(["admin", "bd_owner", "bd_member"] as const).map((k) => (
                       <td key={k} className="px-3 py-3 text-center">
                         {p[k] ? (
                           <Check size={15} strokeWidth={2.5} className="text-success inline" />

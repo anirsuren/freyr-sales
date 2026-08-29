@@ -516,3 +516,72 @@ export async function writePrivileges(
     return state;
   });
 }
+
+/* ------------------------------------------------- roles become privileges */
+
+/**
+ * THE OLD ROLES ARE THE NEW PRIVILEGES (Suren, Aug 29: "these are the roles
+ * from now on. I need this executed… we are removing sales rep. Sales rep is
+ * now BD member. Owner is the new manager.").
+ *
+ * Four role values are stored against every account in `app_users.app_role`,
+ * and thousands of rows and every auth path read them. Renaming the stored
+ * value would be a migration with a lockout at the end of it if any single
+ * caller were missed; renaming what the value MEANS costs nothing and is what
+ * he actually asked for — "sales rep" gone from the product, Owner in place of
+ * Manager, and the privilege table deciding access.
+ *
+ * So: the stored value is an id, and this is the badge it carries.
+ *
+ *   rep       -> BD Member    ("sales rep is now bd member")
+ *   manager   -> BD Owner     ("owner is the new manager")
+ *   admin     -> Admin
+ *   solutions -> Solutioning Member
+ *
+ * The last one is mine: he did not mention the Solutions role, and Solutioning
+ * Member is the badge whose modules match what that role already opens. An
+ * admin can hand any of them a different privilege directly.
+ */
+export const ROLE_PRIVILEGE: Record<string, string> = {
+  rep: "bd_member",
+  manager: "bd_owner",
+  admin: "admin",
+  solutions: "sol_member",
+};
+
+/**
+ * EVERYTHING THIS PERSON MAY DO, MODULE BY MODULE.
+ *
+ * Their role's badge, plus every badge their groups carry, plus anything given
+ * to them directly — merged to the most generous answer, because holding two
+ * privileges must never be worse than holding one.
+ */
+export function accessMapFor(input: {
+  state: PrivilegeState;
+  role: string;
+  person: string;
+  groups: { id: string; head: string; members: string[] }[];
+}): Record<ModuleKey, Access> {
+  const held = new Set<string>(privilegesForPerson(input.state, input.person, input.groups));
+  const fromRole = ROLE_PRIVILEGE[input.role];
+  if (fromRole) held.add(fromRole);
+
+  const ids = [...held];
+  const out = {} as Record<ModuleKey, Access>;
+  for (const m of PRIVILEGE_MODULES) {
+    out[m.key] = accessForPrivileges(input.state, ids, m.key);
+  }
+  return out;
+}
+
+/** Which module row a path belongs to, longest match first. */
+export function moduleForPath(path: string): ModuleKey | null {
+  const clean = (path || "").split("?")[0];
+  let best: { key: ModuleKey; len: number } | null = null;
+  for (const m of PRIVILEGE_MODULES) {
+    const base = m.path.split("?")[0];
+    if (clean !== base && !clean.startsWith(`${base}/`)) continue;
+    if (!best || base.length > best.len) best = { key: m.key, len: base.length };
+  }
+  return best?.key ?? null;
+}

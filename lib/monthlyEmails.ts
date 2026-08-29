@@ -273,7 +273,7 @@ export async function buildRepUsageEmails(
 
   const ctx = await digestContext(nowMs, workspace);
   const reps = directory.members.filter(
-    (m) => m.active && m.email && m.role === "rep"
+    (m) => m.active && m.email && m.role === "bd_member"
   );
   return reps.map((rep) =>
     digestFor(rep as { id: string; name: string; email: string }, ctx)

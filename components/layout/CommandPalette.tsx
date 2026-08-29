@@ -259,7 +259,7 @@ export function CommandPalette({
         : NAV
       ).filter(
         (n) =>
-          // A Sales Rep must not be able to jump to a manager-only module
+          // A BD Member must not be able to jump to an Owner-only module
           // from search either (Freyr, Aug 12).
           // ONE ANSWER FOR "IS THIS RELEASED", the same one the sidebar asks.
           // This used to be a hand-rolled prefix test that knew only about

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   // unbounded transcript would grow every reply's cost for little benefit.
   const transcript = priorTurns
     .slice(-8)
-    .map((turn) => `${turn.role === "me" ? "Rep" : "Agent"}: ${turn.text}`)
+    .map((turn) => `${turn.role === "me" ? "You" : "Agent"}: ${turn.text}`)
     .join("\n");
 
   const [prefs, memberProfile] = await Promise.all([
