@@ -228,7 +228,11 @@ export function Sidebar({
   };
 
   /** An indented child of the item above it, quieter than a top-level row. */
-  const subNavLink = (item: { href: string; label: string; icon: LucideIcon }) => {
+  const subNavLink = (
+    item: { href: string; label: string; icon: LucideIcon },
+    _index?: number,
+    siblings?: { href: string; label: string; icon: LucideIcon }[]
+  ) => {
     /* Market Intel's rooms are query strings on one route, so comparing paths
        alone would light all three at once. Compare what is in the address bar:
        the path for a real sub-route, the path AND its ?tab= for a room. */
@@ -254,12 +258,26 @@ export function Sidebar({
     const hereTab = tabOf(search ?? "");
     const isChild = pathname.startsWith(itemPath + "/");
 
+    /* A PARENT ENTRY DOES NOT CLAIM A SIBLING'S OWN PAGE (Anir, Aug 29: "this
+       is so buggy, it says I'm on both"). Admin's sub-nav is Workspace
+       (/admin) and Goal Master (/admin/goal-master); on the master, Workspace
+       matched it as a child and lit up alongside it. Longest match wins, so a
+       sibling with a deeper path takes the highlight. */
+    const beatenBySibling = (siblings ?? []).some((o) => {
+      const otherPath = o.href.split("?")[0];
+      return (
+        otherPath !== itemPath &&
+        otherPath.startsWith(`${itemPath}/`) &&
+        (pathname === otherPath || pathname.startsWith(`${otherPath}/`))
+      );
+    });
+
     const active =
       itemPath === "/solutioning"
         ? (pathname === itemPath || isChild) && hereTab === itemTab
         : itemQuery || search
           ? pathname === itemPath && (search ?? "") === itemQuery
-          : pathname === itemPath || isChild;
+          : pathname === itemPath || (isChild && !beatenBySibling);
     const Icon = item.icon;
     return (
       <Link

@@ -359,6 +359,96 @@ export function GroupDetail({
         )}
       </section>
 
+      {/* --------------------------------------------- each person's number */}
+      {/*
+        THE OTHER HALF OF WHAT HE ASKED FOR (Suren, Aug 29: "set the target for
+        the goals for the group AND set the target for the people in the group,
+        and it should be inside one screen").
+
+        A grid rather than a fold under each goal. People down, this group's
+        goals across, one box per cell — the same shape as the privilege table
+        he approved ("that table is better, right?"), and it answers "what is
+        Suren carrying" by reading a row instead of opening seven goals. Folding
+        would also have put an expansion back on a screen where he had just
+        finished saying "I don't need expansion at all".
+      */}
+      {carried.length > 0 && people.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-border-light bg-white p-5">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+            <Target size={15} strokeWidth={2.2} className="text-[color:#0F766E]" />
+            Each person&rsquo;s target
+          </h2>
+          <p className="mb-3 mt-0.5 text-[12.5px] text-text-tertiary">
+            What each person in this group is carrying on each goal. Leave a box
+            empty and they are on the goal without a number of their own.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-border-light">
+            <table className="w-full border-collapse text-left">
+              <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <tr>
+                  <th className="sticky left-0 z-10 bg-surface px-4 py-3">
+                    Person
+                  </th>
+                  {carried.map((g) => (
+                    <th key={g.id} className="min-w-[130px] px-3 py-3">
+                      <span className="block truncate" title={g.name}>
+                        {g.name}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {people.map((person) => (
+                  <tr key={person}>
+                    <td className="sticky left-0 z-10 bg-white px-4 py-2.5">
+                      <span className="flex items-center gap-2.5">
+                        <Avatar name={person} className="h-7 w-7 shrink-0 text-[9px]" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                            {person}
+                          </span>
+                          {person === group.head && (
+                            <span className="block text-[10px] font-semibold uppercase tracking-[0.04em] text-[color:#7C3AED]">
+                              Group owner
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </td>
+                    {carried.map((g) => (
+                      <td key={g.id} className="px-3 py-2.5">
+                        <GroupTargetInput
+                          value={
+                            (g.assignments ?? []).find(
+                              (a) =>
+                                a.person.trim().toLowerCase() ===
+                                person.trim().toLowerCase()
+                            )?.target ?? 0
+                          }
+                          disabled={busy}
+                          onSave={(target) =>
+                            void run(
+                              {
+                                op: "assign-goal",
+                                goalId: g.id,
+                                person,
+                                target,
+                              },
+                              `${person}'s target set`
+                            )
+                          }
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* ------------------------------------------------------- pick a goal */}
       <Modal
         open={picking}

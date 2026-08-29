@@ -66,6 +66,7 @@ type Member = {
 export function MemberRoles({ canEdit }: { canEdit: boolean }) {
   const { toast } = useToast();
   const me = useCurrentUserOrNull();
+
   /* Email first because it is the one thing that is unique — two people can
      share a name, and this list has several Anirs on it. */
   const isMe = (m: Member) => {
@@ -234,6 +235,19 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                   {m.email}
                 </span>
               </span>
+              {/*
+                THE DROPDOWN STAYS (Anir, Aug 29: "you can keep the dropdown...
+                keep whatever dropdown you had before, it's fine").
+
+                I had replaced it with read-only chips on the reading that four
+                options could not express ten privileges. They are two different
+                facts, though: this is the ROLE somebody joined as — one value,
+                which is what an invite sets and what lib/privileges falls back
+                to for anyone nobody has ticked yet. The ten privileges are the
+                ticks table below, where a person can hold several.
+
+                So both, and each one editable where it belongs.
+              */}
               {canEdit ? (
                 <div className="w-[170px] shrink-0">
                   <ColorSelect
