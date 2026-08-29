@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Eye, X } from "lucide-react";
+import { roleLabel } from "@/components/ui/RoleTag";
 
 /**
  * A ROLE PREVIEW IS NEVER INVISIBLE AGAIN.
@@ -31,7 +32,11 @@ export function PreviewBanner({
     start(() => router.refresh());
   }
 
-  const label = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);
+  /* THE ROLE'S NAME, NOT ITS STORED ID. Title-casing the raw value printed
+     "Bd_member" the moment the stored values became bd_member/bd_owner
+     (found in the browser, Aug 29, previewing as a BD Member). roleLabel is
+     the one place the app names a role. */
+  const label = (r: string) => roleLabel(r);
 
   return (
     <div className="flex items-center justify-center gap-3 bg-blue-primary px-4 py-1.5 text-[12.5px] font-medium text-white">

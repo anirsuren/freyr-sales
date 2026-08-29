@@ -14,7 +14,7 @@ import { sampleDocPath } from "./sampleDocuments";
  * side... and against which context you have created those meetings."
  *
  * WHY IT IS NOT A FOURTH SOLUTIONING TAB. Solutioning is sales ASKING the
- * Solutions team for something and that team building it. A meeting is not
+ * Solutioning team for something and that team building it. A meeting is not
  * built and handed over; it is scheduled, attended and written up, usually by
  * the sales person themselves. "Meetings are basically customer meetings."
  * The solutioning "meeting" kind stays what it always was — a REQUEST for

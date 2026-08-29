@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * SOLUTIONING (Suren, Aug 24): the requests room. Sales asks for a
- * presentation, a submission or a meeting; the Solutions team picks it up,
+ * presentation, a submission or a meeting; the Solutioning team picks it up,
  * builds the documents, and the requester closes it. This page is the solution
  * team's front door — "the solutioning guy will not come to the customer
  * module, he'll come to the solutioning module and see all the requests."

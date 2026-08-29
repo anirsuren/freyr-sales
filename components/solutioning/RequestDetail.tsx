@@ -565,7 +565,7 @@ export function RequestDetail({
               <SectionHeading
                 icon={FileText}
                 title="What they asked for"
-                description="The brief the requester wrote for the Solutions team."
+                description="The brief the requester wrote for the Solutioning team."
               />
               <p className="mt-4 max-w-[680px] pl-11 text-[13.5px] leading-relaxed text-text-secondary">
                 {r.details || "No details written on the request."}
@@ -698,7 +698,7 @@ export function RequestDetail({
               ) : (
                 <p className="flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
                   <CircleDashed size={14} strokeWidth={2} />
-                  Waiting for the Solutions team to take it up
+                  Waiting for the Solutioning team to take it up
                 </p>
               )}
               {/* THE WAY BACK OUT (Anir, Aug 26: "I just picked this up, and I

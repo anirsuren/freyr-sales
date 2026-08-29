@@ -27,7 +27,7 @@ const TABS = [
     icon: Inbox,
     color: "#0071E3",
     subtitle:
-      "What sales has asked the Solutions team for: a submission, a presentation or a meeting.",
+      "What sales has asked the Solutioning team for: a submission, a presentation or a meeting.",
   },
   {
     key: "submissions",

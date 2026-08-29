@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
     if (op === "pick-up") {
       if (!fulfiller) {
         return NextResponse.json(
-          { error: "Picking up requests is the Solutions team's job." },
+          { error: "Picking up requests is the Solutioning team's job." },
           { status: 403 }
         );
       }

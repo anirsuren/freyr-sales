@@ -111,7 +111,7 @@ export async function buildCustomer360(
       ["solutionRequests", "Solution requests", "request", "#0071E3"],
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
-      /* Named for what it is — somebody ASKED the Solutions team for a
+      /* Named for what it is — somebody ASKED the Solutioning team for a
          meeting — so it cannot be mistaken for the meetings that were
          actually held, which have their own band below. */
       ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],

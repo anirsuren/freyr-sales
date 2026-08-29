@@ -67,7 +67,7 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/forecast", label: "Forecast", icon: Target },
   { href: "/opportunities", label: "Opportunities", icon: Briefcase },
   // Requests for presentations, submissions and meetings — sales asks, the
-  // Solutions role fulfils (Suren, Aug 24). Sits by Opportunities because
+  // Solutioning Member fulfils (Suren, Aug 24). Sits by Opportunities because
   // that is what most requests are against.
   { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
   /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes

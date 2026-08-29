@@ -58,7 +58,7 @@ export async function buildOpportunity360(
       ["submissions", "Submissions", "submission", "#7C3AED"],
       ["presentations", "Presentations", "presentation", "#0F766E"],
       /* Named as a REQUEST, the same correction the customer page needed:
-         a meeting asked of the Solutions team is not a meeting held. */
+         a meeting asked of the Solutioning team is not a meeting held. */
       ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
     ] as const) {
       const rows = mine.filter((r) => itemType(r) === kind);

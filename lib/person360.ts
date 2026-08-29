@@ -233,7 +233,7 @@ export async function buildPerson360(
             logo: r.customer || undefined,
             /* WHICH SIDE OF IT THEY WERE ON. His grid spells the roles out
                for a person: "requestor, Fulfilled" — one of these is somebody
-               asking the Solutions team for something and the other is
+               asking the Solutioning team for something and the other is
                somebody building it, and a person's page is where that
                distinction is the entire point. */
             sub: [

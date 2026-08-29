@@ -538,7 +538,7 @@ export async function writePrivileges(
  *   admin     -> Admin
  *   solutions -> Solutioning Member
  *
- * The last one is mine: he did not mention the Solutions role, and Solutioning
+ * The last one is mine: he did not mention that role, and Solutioning
  * Member is the badge whose modules match what that role already opens. An
  * admin can hand any of them a different privilege directly.
  */

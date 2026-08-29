@@ -2,7 +2,7 @@ import { getDataMode } from "./dataMode";
 
 /**
  * SOLUTIONING — presentations, submissions and meetings, requested by sales
- * and fulfilled by the Solutions team (Suren, Aug 24, from his walkthrough).
+ * and fulfilled by the Solutioning team (Suren, Aug 24, from his walkthrough).
  *
  * The shape, in his words:
  *
@@ -17,7 +17,7 @@ import { getDataMode } from "./dataMode";
  *   look at it."
  *
  * His follow-ups, verbatim, that decide the rules encoded here:
- *   - "It is a new role" — the Solutions role (see lib/moduleAccess).
+ *   - "It is a new role" — Solutioning Member (see lib/moduleAccess).
  *   - "The sales person says it is completed" — the REQUESTER closes a
  *     request, not the person who fulfilled it.
  *   - "Leads new list is not required" — targets are the contacts already on
