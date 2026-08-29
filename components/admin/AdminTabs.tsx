@@ -7,6 +7,7 @@ import { KeyRound, ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-reac
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { MemberRoles } from "./MemberRoles";
+import { PeoplePrivileges } from "./PeoplePrivileges";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
 import { PrivilegesAdmin } from "./PrivilegesAdmin";
 import { ActivityMasterCard } from "@/components/performance/ActivityMasterCard";
@@ -32,7 +33,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: ShieldCheck,
     color: "#0071E3",
     subtitle:
-      "Everyone in the workspace and what they are: BD Member, Owner, Solutioning Member or Admin. Only an admin can change a role, and the server enforces that too.",
+      "Everyone in the workspace, the role they joined as, and the privileges they hold. A person can hold several. Only an admin can change either, and the server enforces that too.",
   },
   {
     key: "groups",
@@ -40,7 +41,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: UsersRound,
     color: "#7C3AED",
     subtitle:
-      "The departments people belong to. A group has one head and its members' goals add up to it on Group performance.",
+      "The departments people belong to. A group has one owner and the people in it; open a group to set its goals and each person's target.",
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").
@@ -53,7 +54,7 @@ const TABS: (PageTab & { subtitle: string })[] = [
     icon: KeyRound,
     color: "#B45309",
     subtitle:
-      "What each privilege may do in each module. View looks, Edit changes what is already there, Create makes new ones and is the only one that can delete. It applies to records a person created or was assigned; View all is what lets them see everybody else's.",
+      "Module privileges: in which module each role may do what. View looks, Edit changes what is already there, Create makes new ones and is the only one that can delete. It applies to records a person created or was assigned; View all is what lets them see everybody else's. Who holds which role is on Team members.",
   },
   {
     key: "activity",
@@ -130,7 +131,24 @@ export function AdminTabs({
 
       <div key={current.key} className="tab-panel">
         {current.key === "members" ? (
-          <MemberRoles canEdit />
+          /* USERS AND THEIR PRIVILEGES, ON ONE TAB (Suren, Aug 29: "Team
+             members, that's where all the username and their privilege — but
+             the table should come for them"). The directory says who joined
+             and as what; the table under it says what each of them holds. The
+             Privileges tab is the other question entirely, module privileges,
+             and keeping them apart is what he was untangling. */
+          <>
+            <MemberRoles canEdit />
+            <div className="mt-8">
+              <h3 className="text-[15px] font-semibold text-text-primary">
+                Who holds which privilege
+              </h3>
+              <p className="mb-3 mt-0.5 text-[12.5px] text-text-tertiary">
+                Ticks, not a dropdown, so one look answers who can do what.
+              </p>
+              <PeoplePrivileges />
+            </div>
+          </>
         ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />
         ) : current.key === "privileges" ? (

@@ -1,48 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
   ACCESS_META,
   PRIVILEGE_MODULES,
-  VIEW_ALL,
-  privilegesForPerson,
   type Access,
   type PrivilegeState,
 } from "@/lib/privileges";
-
-type Person = {
-  id: string;
-  name: string;
-  email: string;
-  active?: boolean;
-};
-
-/** Reads the badges somebody holds, matching on name the way the store does. */
-const heldBy = (state: PrivilegeState, name: string) =>
-  privilegesForPerson(state, name);
-
-/* A colour per badge, so a person's row reads as a shape. Owner badges take
-   the deeper tone of the pair they belong to. */
-const PRIVILEGE_COLORS: Record<string, string> = {
-  bd_owner: "#0071E3",
-  bd_member: "#4DA3F0",
-  bo_owner: "#7C3AED",
-  bo_member: "#A78BFA",
-  sol_owner: "#DB2777",
-  sol_member: "#F472B6",
-  delivery_owner: "#C2410C",
-  delivery_member: "#FB923C",
-  admin: "#0F766E",
-  view_all: "#475569",
-};
 
 /**
  * PRIVILEGE MANAGEMENT — the grid off Suren's sheet, editable.
@@ -82,17 +53,6 @@ export function PrivilegesAdmin() {
     to: Access;
   } | null>(null);
 
-  /* WHO IS ABOUT TO GAIN OR LOSE A BADGE. Same rule as the grid above: asked
-     before, not recovered from after. */
-  const [pendingPerson, setPendingPerson] = useState<{
-    person: string;
-    privId: string;
-    privLabel: string;
-    to: boolean;
-  } | null>(null);
-  const [people, setPeople] = useState<Person[] | null>(null);
-  const [peopleFailed, setPeopleFailed] = useState(false);
-
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/privileges", { cache: "no-store" });
@@ -107,32 +67,9 @@ export function PrivilegesAdmin() {
     }
   }, []);
 
-  /* The same directory the Team members tab reads. Suspended people are left
-     out: a badge on somebody who cannot sign in is a row that explains
-     nothing and makes the table longer. */
-  const loadPeople = useCallback(async () => {
-    try {
-      const res = await fetch("/api/settings/access", { cache: "no-store" });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !Array.isArray(data?.members)) {
-        setPeopleFailed(true);
-        return;
-      }
-      setPeopleFailed(false);
-      setPeople(
-        (data.members as Person[])
-          .filter((m) => m.active !== false)
-          .sort((a, b) => a.name.localeCompare(b.name))
-      );
-    } catch {
-      setPeopleFailed(true);
-    }
-  }, []);
-
   useEffect(() => {
     void load();
-    void loadPeople();
-  }, [load, loadPeople]);
+  }, [load]);
 
   const save = useCallback(
     async (next: PrivilegeState) => {
@@ -189,30 +126,6 @@ export function PrivilegesAdmin() {
       },
     });
   };
-
-  const applyPendingPerson = () => {
-    if (!pendingPerson) return;
-    const { person, privId, to } = pendingPerson;
-    setPendingPerson(null);
-    /* Stored under the name the directory holds. heldBy() matches
-       case-insensitively on read, so an existing key that differs only in case
-       is reused rather than becoming a second row for the same person. */
-    const key =
-      Object.keys(state.peoplePrivileges).find(
-        (n) => n.trim().toLowerCase() === person.trim().toLowerCase()
-      ) ?? person;
-    const current = new Set(state.peoplePrivileges[key] ?? []);
-    if (to) current.add(privId);
-    else current.delete(privId);
-
-    const next = { ...state.peoplePrivileges };
-    if (current.size) next[key] = [...current];
-    else delete next[key];
-    void save({ ...state, peoplePrivileges: next });
-  };
-
-  const privColor = (id: string) =>
-    PRIVILEGE_COLORS[id] ?? "#0071E3";
 
   return (
     <div>
@@ -355,162 +268,6 @@ export function PrivilegesAdmin() {
           </tbody>
         </table>
       </div>
-
-      {/* ------------------------------------------- who holds which privilege */}
-      {/*
-        THE SECOND BLOCK ON HIS SHEET, and the one with no screen until now.
-        Suren wrote it as "User Privilege access": people down, the same ten
-        badges across, a Y in the cell. Without it `peoplePrivileges` was a
-        field in the model that nothing on earth could write, so nobody held
-        View all, nobody was a BO Owner, and the grid above described a world
-        that could not be entered.
-
-        A PERSON HOLDS AS MANY AS THEY LIKE (Anir, Aug 29: "user can play mult
-        roles"; Suren's own row is User 1 with BD Owner and BO Owner). So these
-        are checkboxes and not a picker — the answer is a set, not a choice, and
-        the module grid already merges them to the most generous answer.
-      */}
-      <div className="mt-8">
-        <div className="mb-3">
-          <h3 className="text-[15px] font-semibold text-text-primary">
-            Who holds which privilege
-          </h3>
-          <p className="mt-0.5 text-[12.5px] text-text-tertiary">
-            A person can hold more than one. What they may do in a module is the
-            most generous of everything they hold.
-          </p>
-        </div>
-
-        {peopleFailed ? (
-          <p className="rounded-xl bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
-            The people directory could not be loaded, so this is not a list of
-            who holds what.
-          </p>
-        ) : people === null ? (
-          <p className="flex items-center gap-2 rounded-xl bg-surface px-4 py-4 text-[12.5px] text-text-secondary">
-            <Loader2 size={13} className="animate-spin text-blue-primary" />
-            Loading the directory…
-          </p>
-        ) : people.length === 0 ? (
-          <p className="rounded-xl bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
-            Nobody in the workspace yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <table className="w-full min-w-[1100px] border-collapse text-left">
-              <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <tr>
-                  <th className="sticky left-0 z-10 bg-surface px-4 py-3 align-bottom">
-                    Person
-                  </th>
-                  {state.privileges.map((p) => (
-                    <th key={p.id} className="px-3 py-3 text-center align-bottom">
-                      <span className="whitespace-nowrap">{p.label}</span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light">
-                {people.map((person) => {
-                  const held = new Set(
-                    heldBy(state, person.name)
-                  );
-                  return (
-                    <tr key={person.id}>
-                      <td className="sticky left-0 z-10 bg-white px-4 py-2.5 align-middle">
-                        <span className="flex items-center gap-2.5">
-                          <Avatar
-                            name={person.name}
-                            className="h-7 w-7 shrink-0 text-[9px]"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-[13px] font-semibold text-text-primary">
-                              {person.name}
-                            </span>
-                            <span className="block truncate text-[11px] text-text-secondary">
-                              {person.email}
-                            </span>
-                          </span>
-                        </span>
-                      </td>
-                      {state.privileges.map((p) => {
-                        const on = held.has(p.id);
-                        return (
-                          <td
-                            key={p.id}
-                            className="px-3 py-2.5 text-center align-middle"
-                          >
-                            <button
-                              type="button"
-                              role="checkbox"
-                              aria-checked={on}
-                              aria-label={`${p.label} for ${person.name}`}
-                              onClick={() =>
-                                setPendingPerson({
-                                  person: person.name,
-                                  privId: p.id,
-                                  privLabel: p.label,
-                                  to: !on,
-                                })
-                              }
-                              /* The tick carries the privilege's own colour so
-                                 a row reads as a shape rather than as ten
-                                 identical ticks. */
-                              style={
-                                on
-                                  ? {
-                                      borderColor: `${privColor(p.id)}66`,
-                                      backgroundColor: `${privColor(p.id)}14`,
-                                      color: privColor(p.id),
-                                    }
-                                  : undefined
-                              }
-                              className={cn(
-                                "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border transition-colors",
-                                on
-                                  ? "font-bold"
-                                  : "border-border-light bg-white text-transparent hover:border-blue-primary"
-                              )}
-                            >
-                              <Check size={13} strokeWidth={3} />
-                            </button>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <ConfirmDialog
-        open={pendingPerson !== null}
-        onClose={() => setPendingPerson(null)}
-        onConfirm={applyPendingPerson}
-        title={
-          pendingPerson?.to ? "Give this privilege?" : "Take this privilege away?"
-        }
-        body={
-          pendingPerson && (
-            <>
-              <b>{pendingPerson.person}</b>{" "}
-              {pendingPerson.to ? "gets" : "loses"}{" "}
-              <b>{pendingPerson.privLabel}</b>.
-            </>
-          )
-        }
-        detail={
-          pendingPerson?.privId === VIEW_ALL && pendingPerson.to
-            ? "View all lets them see every record in a module, including ones nobody assigned them. It never lets them change one. The admins are emailed."
-            : "This changes what they can do as soon as you confirm. The admins are emailed."
-        }
-        confirmLabel={pendingPerson?.to ? "Give it" : "Take it away"}
-        tone="destructive"
-        busy={saving}
-      />
 
       <ConfirmDialog
         open={pending !== null}
