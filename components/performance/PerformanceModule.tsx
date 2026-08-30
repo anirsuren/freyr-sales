@@ -1156,6 +1156,9 @@ function MasterTab({
               {picked ? (
                 <GoalPopupBody
                   hostedInPopup
+                  /* A pane, not a dialog: anything opened from here is the
+                     only dialog on screen and must not stack. */
+                  inDialog={false}
                   assignablePeople={assignablePeople}
                   memberRoles={memberRoles}
                   isManager={isManager}
@@ -1605,6 +1608,7 @@ function GroupSplitPanel({
   isManager,
   busy,
   run,
+  inDialog,
 }: {
   goal: PrimaryGoal;
   state: PerformanceState;
@@ -1615,8 +1619,26 @@ function GroupSplitPanel({
   isManager: boolean;
   busy: boolean;
   run: RunOp;
+  /** Whether this panel is already inside the goal dialog, so the target
+   *  dialog knows to sit above it rather than behind it. */
+  inDialog: boolean;
 }) {
-  const [draft, setDraft] = useState<Record<string, string>>({});
+  /**
+   * SETTING A TARGET IS A POPUP (Anir, Aug 30, pointing at this row: "what did
+   * I tell you about the goal? It can't just be like that").
+   *
+   * He has now said it twice. First: "I do not like this UI where you just
+   * enter it. They're not going to know if it's saved." Then, after an inline
+   * tick-and-X: "I think editing should still be a pop-up, so just keep that
+   * part. I don't like just entering it in right here."
+   *
+   * The group screen already worked this way; this row is the same control in
+   * a second place and it still committed on blur, which is not a decision
+   * anybody makes on purpose. At rest it is now the number, or the Goal
+   * Master's own "Set the target" prompt when there is none.
+   */
+  const [editingPerson, setEditingPerson] = useState<string | null>(null);
+  const [targetDraft, setTargetDraft] = useState("");
   const [dropFor, setDropFor] = useState<string | null>(null);
 
   const roster = [
@@ -1644,16 +1666,22 @@ function GroupSplitPanel({
   const left = groupTarget - split;
   const pct = groupTarget > 0 ? Math.min(100, (split / groupTarget) * 100) : 0;
 
-  const saveTarget = async (person: string) => {
-    const raw = draft[person];
-    if (raw === undefined) return;
-    const parsed = parseAmountInput(raw);
+  function openTarget(person: string) {
+    const current = targetOf(person);
+    setTargetDraft(current > 0 ? String(current) : "");
+    setEditingPerson(person);
+  }
+
+  const saveTarget = async () => {
+    const person = editingPerson;
+    if (!person) return;
+    const parsed = parseAmountInput(targetDraft.trim() === "" ? "0" : targetDraft);
     if (parsed === null) return;
     const okDone = await run(
       { op: "assign-goal", goalId: goal.id, person, target: parsed },
       `${person} now carries ${fmtAmount(goal.unit, parsed)}`
     );
-    if (okDone) setDraft((d) => ({ ...d, [person]: undefined as unknown as string }));
+    if (okDone) setEditingPerson(null);
   };
 
   return (
@@ -1752,20 +1780,28 @@ function GroupSplitPanel({
               )}
             </span>
             {live ? (
-              <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-tertiary">
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-tertiary">
                 target
-                <input
-                  value={draft[m] ?? (targetOf(m) > 0 ? String(targetOf(m)) : "")}
-                  onChange={(e) => setDraft((d) => ({ ...d, [m]: e.target.value }))}
-                  onBlur={() => void saveTarget(m)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void saveTarget(m);
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTarget(m);
                   }}
-                  placeholder=", "
-                  aria-label={`${m}'s target on ${goal.name}`}
-                  className="h-[30px] w-[96px] rounded-lg border border-border-light bg-white px-2 text-right text-[12px] text-text-primary outline-none transition-colors focus:border-blue-primary tnum"
-                />
-              </label>
+                  title={`Set ${m}'s target on ${goal.name}`}
+                  aria-label={`Set ${m}'s target on ${goal.name}`}
+                  className={
+                    targetOf(m) > 0
+                      ? "cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-primary tnum transition-colors hover:border-blue-primary hover:text-blue-primary"
+                      : "cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
+                  }
+                >
+                  {targetOf(m) > 0
+                    ? fmtAmount(goal.unit, targetOf(m))
+                    : "Set the target →"}
+                </button>
+              </span>
             ) : (
               <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
                 {targetOf(m) > 0 ? fmtAmount(goal.unit, targetOf(m)) : "no target"}
@@ -1859,6 +1895,49 @@ function GroupSplitPanel({
           </div>
         </>
       )}
+
+      {/* ------------------------------------------------- set one target */}
+      {/* Stacked when this panel is already inside the goal dialog, so it
+          sits above its parent instead of behind it. */}
+      <Modal
+        open={editingPerson !== null}
+        onClose={() => setEditingPerson(null)}
+        title={editingPerson ? `Set ${editingPerson}'s target` : ""}
+        stacked={inDialog}
+      >
+        {editingPerson && (
+          <>
+            <p className="mb-3 text-[12.5px] text-text-secondary">
+              On <b className="text-text-primary">{goal.name}</b> for{" "}
+              {editingPerson}, in {group.name}.
+            </p>
+            <input
+              autoFocus
+              value={targetDraft}
+              onChange={(e) => setTargetDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveTarget();
+              }}
+              inputMode="numeric"
+              placeholder="0"
+              aria-label="Target"
+              className="w-full rounded-lg border border-border-light px-3 py-2 text-[14px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
+            />
+            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+              Leave it at 0 to take the number off and leave them on the goal
+              without one.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setEditingPerson(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void saveTarget()} loading={busy}>
+                Save
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -1886,7 +1965,7 @@ function promisedElsewhere(
 
 function AssignGroupModal({
   open,
-  inline,
+  stacked,
   goal,
   groups,
   allocations = [],
@@ -1895,7 +1974,8 @@ function AssignGroupModal({
   busy,
 }: {
   open: boolean;
-  inline: boolean;
+  /** True when the caller is itself a dialog, so this one sits above it. */
+  stacked: boolean;
   goal: PrimaryGoal;
   groups: PerfGroup[];
   /** What this goal has already promised elsewhere — feeds the target lane. */
@@ -1913,13 +1993,12 @@ function AssignGroupModal({
    * idiom as the drill-down's column 2: closed to one line, open to a roster.
    */
   const [openPeople, setOpenPeople] = useState<Set<string>>(new Set());
-  /** Roster columns inside a group card — his call, remembered (Anir, Aug 20:
-   *  "They can choose if they want the group to show up in rows of two or
-   *  rows of one, because right now it's super annoying"). */
-  const [rosterCols, setRosterCols] = useStickyValue<number>(
-    "freyr.performance.assigngroup.cols",
-    2
-  );
+  /* NO COLUMN PICKER. It offered 1 col / 2 cols over the roster inside a
+     group card and Anir could not see it doing anything (Aug 30: "pressing one
+     column and two columns doesn't do anything. We don't even need that. Just
+     have it on one column"). The second column only ever applied at sm and up
+     INSIDE a card that is itself narrow, so the two states looked identical
+     wherever he was standing. One column, always. */
   /** Whether the list is scrolled to its end — drives the fade-out below it
    *  (Anir, Aug 17: "if there's a hundred groups… a faded-out container"). */
   const [moreBelow, setMoreBelow] = useState(false);
@@ -1975,7 +2054,7 @@ function AssignGroupModal({
     });
 
   const body = (
-    <div className={cn("flex min-h-0 flex-col", !inline && "h-full")}>
+    <div className="flex h-full min-h-0 flex-col">
       <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-secondary">
         Giving
         <b className="text-text-primary">{goal.name}</b>
@@ -1995,38 +2074,18 @@ function AssignGroupModal({
             <Plus size={11} strokeWidth={2.6} /> New group
           </Link>
         )}
-        <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-border-light">
-          {[1, 2].map((n) => (
-            <button
-              key={n}
-              type="button"
-              title={n === 1 ? "People in one column" : "People in two columns"}
-              aria-pressed={rosterCols === n}
-              onClick={() => setRosterCols(n)}
-              className={cn(
-                "cursor-pointer px-2 py-1 text-[10.5px] font-bold transition-colors",
-                rosterCols === n
-                  ? "bg-blue-primary text-white"
-                  : "bg-white text-text-secondary hover:text-blue-primary"
-              )}
-            >
-              {n === 1 ? "1 col" : "2 cols"}
-            </button>
-          ))}
-        </span>
       </label>
 
       {/* THE LIST SCROLLS, THE DIALOG DOES NOT. A hundred groups stay inside
           this box, and the fade at its foot says there are more — it clears
           the moment the last row is reached. */}
-      <div className={cn("relative mt-1.5 min-h-0", !inline && "flex-1")}>
+      <div className="relative mt-1.5 min-h-0 flex-1">
         <div
           ref={listRef}
           onScroll={syncFade}
           className={cn(
             "flex flex-col gap-1.5 overflow-y-auto pr-1",
-            !inline && "h-full",
-            inline && "max-h-[300px]"
+            "h-full"
           )}
         >
           {groups.length === 0 ? (
@@ -2140,10 +2199,7 @@ function AssignGroupModal({
                         data-open={expanded ? "true" : "false"}
                       >
                         <span
-                          className={cn(
-                            "mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2",
-                            rosterCols === 2 && "sm:grid-cols-2"
-                          )}
+                          className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2"
                         >
                           {roster.map((name) => (
                             <span key={name} className="flex items-center gap-2">
@@ -2221,12 +2277,11 @@ function AssignGroupModal({
   );
 
   if (!open) return null;
-  if (inline)
-    return (
-      <div className="tab-panel mt-2 rounded-xl border border-border-light bg-white p-3.5">
-        {body}
-      </div>
-    );
+  /* ALWAYS A DIALOG (Anir, Aug 30: "when I click the plus, I need a pop-up.
+     It doesn't make any sense" — and, on the rule this used to follow, "he
+     said that he didn't like pop-ups. It wasn't me"). The form used to unfold
+     inside the section whenever its host was itself a dialog, which made the
+     plus do two different things depending on where you pressed it. */
   /**
    * ONE SIZE, ALWAYS (Anir, Aug 20: "the size should stay the same. You could
    * literally make it a proper pop-up, whatever the normal size is, and it
@@ -2242,6 +2297,7 @@ function AssignGroupModal({
       size="wide"
       tall
       dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
+      stacked={stacked}
     >
       {body}
     </Modal>
@@ -2250,7 +2306,7 @@ function AssignGroupModal({
 
 function AssignPersonModal({
   open,
-  inline,
+  stacked,
   goal,
   options,
   roles,
@@ -2262,9 +2318,8 @@ function AssignPersonModal({
   /** What this goal has already promised elsewhere — feeds the target lane. */
   allocations?: Allocation[];
   open: boolean;
-  /** Already inside a popup → unfold here instead of stacking a second one
-   *  (Anir, Aug 12, twice: no popup on a popup, ever). */
-  inline: boolean;
+  /** True when the caller is itself a dialog, so this one sits above it. */
+  stacked: boolean;
   goal: PrimaryGoal;
   options: string[];
   roles?: Record<string, string>;
@@ -2341,28 +2396,8 @@ function AssignPersonModal({
     </>
   );
 
-  if (inline) {
-    if (!open) return null;
-    return (
-      <div className="tab-panel mt-2 overflow-hidden rounded-xl border border-blue-subtle bg-white">
-        <div className="flex items-center justify-between gap-2 border-b border-border-light bg-[rgba(0,113,227,0.04)] px-3.5 py-2.5">
-          <span className="text-[12.5px] font-semibold text-text-primary">
-            Assign {goal.name}
-          </span>
-          <button
-            type="button"
-            aria-label="Close the assign form"
-            onClick={onClose}
-            className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
-          >
-            <X size={14} strokeWidth={2.2} />
-          </button>
-        </div>
-        <div className="p-3.5">{form}</div>
-      </div>
-    );
-  }
-
+  /* The same rule as the group form next door: the plus opens a dialog
+     wherever it is pressed, never an unfold inside the section. */
   return (
     <Modal
       open={open}
@@ -2370,7 +2405,7 @@ function AssignPersonModal({
       title={`Assign: ${goal.name}`}
       size="wide"
       tall
-      stacked
+      stacked={stacked}
     >
       {form}
     </Modal>
@@ -2445,6 +2480,7 @@ function GoalPopupBody({
   onRemoved,
   onEditGoal,
   hostedInPopup,
+  inDialog = hostedInPopup,
   memberRoles,
   assignablePeople,
   isManager,
@@ -2465,8 +2501,15 @@ function GoalPopupBody({
   onEditGoal: () => void;
   /** Where this body lives decides how deletes confirm (Anir, Aug 12: cards
    *  view opens a popup, so confirm in place; the table expands on the page,
-   *  so a proper popup is right there). */
+   *  so a proper popup is right there). It also draws the goal's header. */
   hostedInPopup: boolean;
+  /**
+   * Whether this body is REALLY inside a dialog, which is not the same
+   * question as whether it draws a header. The split view wants the header
+   * and is a plain pane, so a dialog opened from here must not stack itself
+   * above a parent that does not exist. Defaults to the old behaviour.
+   */
+  inDialog?: boolean;
 }) {
   /** Two-step guard: no goal or subgoal disappears on a single click
    *  (Anir, Aug 12: "it didn't even ask me for a confirmation"). */
@@ -3132,6 +3175,7 @@ function GoalPopupBody({
                 isManager={isManager}
                 busy={busy}
                 run={run}
+                inDialog={inDialog}
               />
             )}
             </div>
@@ -3141,7 +3185,7 @@ function GoalPopupBody({
 
       <AssignGroupModal
         open={groupAssignOpen}
-        inline={hostedInPopup}
+        stacked={inDialog}
         goal={goal}
         groups={state.groups.filter(
           (g) => !(goal.groupAssignments ?? []).some((a) => a.groupId === g.id)
@@ -3405,7 +3449,7 @@ function GoalPopupBody({
           section doing its job. */}
       <AssignPersonModal
         open={assignOpen}
-        inline={hostedInPopup}
+        stacked={inDialog}
         goal={goal}
         options={assignablePeople.filter(
           (name) => !(goal.assignments ?? []).some((a) => a.person === name)
