@@ -298,6 +298,37 @@ export function OpportunitySummary({
     return { total, byPeriod };
   }
 
+  /**
+   * WHAT YOU OPENED, AND EVERYTHING ELSE (Suren, Aug 30: "it's too complicated
+   * when I click on something. I think you should dim the other things").
+   *
+   * Opening a branch used to change nothing about the eighty rows around it —
+   * every line was the same weight, so the two or three rows you had just
+   * asked for were lost in the wall. The branch you are reading stays at full
+   * strength and the rest steps back.
+   *
+   * A row is part of what you opened if it IS an open row, sits under one, or
+   * is on the way down to one — the last of those matters, or the parents you
+   * clicked through would fade out from under you. With nothing open at all
+   * there is no focus, so nothing dims.
+   */
+  const focusKeys = useMemo(() => {
+    /* Only the DEEPEST open branches count as focus. Opening a parent puts
+       every one of its children on an "open path", so testing against all
+       open keys lit the entire table and dimmed nothing — measured, first
+       attempt. A branch you opened and then opened deeper is no longer the
+       thing you are reading; its deepest descendant is. */
+    const keys = [...open];
+    return keys.filter((k) => !keys.some((o) => o !== k && o.startsWith(`${k}/`)));
+  }, [open]);
+
+  const onOpenPath = (key: string) => {
+    if (focusKeys.length === 0) return true;
+    return focusKeys.some(
+      (k) => k === key || k.startsWith(`${key}/`) || key.startsWith(`${k}/`)
+    );
+  };
+
   const cellCls =
     "whitespace-nowrap px-3 py-2 text-right text-[12.5px] tabular-nums";
 
@@ -309,10 +340,27 @@ export function OpportunitySummary({
   function renderNode(node: Node, depth: number): React.ReactNode[] {
     const { total, byPeriod } = cellsOf(node.deals);
     const shown = open.has(node.key);
+    const faded = !onOpenPath(node.key);
     const out: React.ReactNode[] = [];
 
     out.push(
-      <tr key={node.key} className="border-b border-border-light hover:bg-surface/50">
+      <tr
+        key={node.key}
+        className={cn(
+          "border-b border-border-light hover:bg-surface/50",
+          /* Dimmed, not hidden: the totals still have to be readable, because
+             a row you are not reading is still a row you might glance at.
+
+             NO TRANSITION ON THIS. A `transition-opacity` here leaves a
+             CSSTransition stuck in the running state on the row, and a running
+             transition supplies the value — so opacity stayed at 1 no matter
+             what the class said, and even an inline 0.4 computed to 1
+             (measured, Aug 30). Table rows are inside an ancestor that is
+             already running its own entrance animation; this is not a fight
+             worth having for a 200ms fade. */
+          faded && "opacity-40 hover:opacity-100"
+        )}
+      >
         <th
           scope="row"
           className="sticky left-0 z-[1] bg-white px-3 py-2 text-left font-normal"
