@@ -42,6 +42,16 @@ type Props = {
   groupId: string;
   memberNames: string[];
   groupTypeLabel: string | null;
+  /**
+   * Rendered as the right-hand pane of the split view rather than as its own
+   * page (Anir, Aug 29: "when you click on the right side, the group details
+   * show up... the right-side pane keeps changing based on what I'm clicking
+   * here"). Drops the back link and the big title, because the list beside it
+   * already says which group this is and there is nothing to go back to.
+   */
+  embedded?: boolean;
+  /** Split view fetches its own state, so it needs telling when to re-read. */
+  onChanged?: () => void;
 };
 
 const money = (n: number) =>
@@ -56,6 +66,8 @@ export function GroupDetail({
   groupId,
   memberNames,
   groupTypeLabel,
+  embedded = false,
+  onChanged,
 }: Props) {
   const { toast } = useToast();
   const router = useRouter();
@@ -110,7 +122,8 @@ export function GroupDetail({
       }
       if (data?.warning) toast(data.warning, "error");
       else toast(ok);
-      router.refresh();
+      if (onChanged) onChanged();
+      else router.refresh();
       return true;
     } catch {
       toast("That didn't save.", "error");
@@ -154,18 +167,26 @@ export function GroupDetail({
 
   return (
     <div>
-      <SmartBack
-        fallback="/admin"
-        className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
-      >
-        <ArrowLeft size={15} strokeWidth={1.8} />
-        All groups
-      </SmartBack>
+      {!embedded && (
+        <SmartBack
+          fallback="/admin"
+          className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <ArrowLeft size={15} strokeWidth={1.8} />
+          All groups
+        </SmartBack>
+      )}
 
       {/* ---------------------------------------------------------- the group */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-text-primary">
+          <h1
+            className={
+              embedded
+                ? "text-[17px] font-semibold tracking-[-0.01em] text-text-primary"
+                : "text-[22px] font-semibold tracking-[-0.01em] text-text-primary"
+            }
+          >
             {group.name}
           </h1>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12.5px] text-text-secondary">

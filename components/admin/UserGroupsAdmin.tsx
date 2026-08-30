@@ -3,6 +3,8 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   ChevronRight,
+  PanelsTopLeft,
+  Rows3,
   Crown,
   Pencil,
   Plus,
@@ -16,6 +18,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
+import { GroupDetail } from "./GroupDetail";
 import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -42,6 +45,9 @@ import {
  * people — the Performance module only READS these: the owner sees their
  * group's numbers, members' goals roll up automatically.
  */
+/** Where the reader's choice of table-or-split is kept. */
+const VIEW_KEY = "freyr.userGroups.view";
+
 export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const { toast } = useToast();
   const [groups, setGroups] = useState<PerfGroup[] | null>(null);
@@ -67,6 +73,36 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   /** Which rows are peeked open. Several at once (Anir, Aug 17: "I should be
    *  able to open up multiple of these — it shouldn't close"). */
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  /**
+   * TABLE OR SPLIT (Anir, Aug 29: "on the left side, what do you want? Just a
+   * name. The right-side details... when I click on the right side the group
+   * details show up, the right-side pane keeps changing based on what I'm
+   * clicking here").
+   *
+   * The table answers "what have we got" in one shot. The split answers "what
+   * is IN this one" without the other groups' people and goals on screen at the
+   * same time: "this has too much information, it's just confusing." He asked
+   * for both — "some people will like this view and some people would like your
+   * view, you can have it set up that way" — so it is a choice, and it sticks.
+   */
+  const [view, setView] = useState<"table" | "split">("table");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "split" || saved === "table") setView(saved);
+    } catch {
+      /* storage off: the table is a fine answer */
+    }
+  }, []);
+  function pickView(next: "table" | "split") {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      /* the view still changes; only the memory of it is lost */
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -256,9 +292,43 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         {/* Always here. It used to unmount while the popup was open, so
             opening the editor made the button vanish from the page behind it
             (Anir, Aug 15: "it looks like you're disappearing the button"). */}
-        <Button onClick={openCreate}>
-          <Plus size={14} strokeWidth={2.2} /> New group
-        </Button>
+        <div className="flex items-center gap-2">
+          <div
+            role="group"
+            aria-label="How to show groups"
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+          >
+            {(
+              [
+                { key: "table", label: "Table", icon: Rows3 },
+                { key: "split", label: "Split", icon: PanelsTopLeft },
+              ] as const
+            ).map((o) => {
+              const Icon = o.icon;
+              const on = view === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => pickView(o.key)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                    on
+                      ? "bg-white text-text-primary shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+          <Button onClick={openCreate}>
+            <Plus size={14} strokeWidth={2.2} /> New group
+          </Button>
+        </div>
       </div>
 
       {/* Creating a group is its own popup (Anir, Aug 12: "when I create a
@@ -436,6 +506,71 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           <p className="rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
             No groups yet. Create the first department and pick who owns it.
           </p>
+        ) : view === "split" ? (
+          /* LEFT: JUST THE NAMES. RIGHT: EVERYTHING ABOUT THE ONE YOU PICKED
+             (Anir, Aug 29: "on the left side, what do you want on the left
+             side? Just a name. The right-side details, because in this view
+             I'm not going to get much here except for the owner and these
+             people... which is where I need more information").
+
+             The left column is a running, scrollable list — "this should be a
+             running list and should be a scrollable list" — and the right pane
+             is the same GroupDetail the group's own page renders, embedded. One
+             implementation, so the split and the page cannot drift. */
+          <div className="mt-3 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+            <div className="max-h-[640px] overflow-y-auto rounded-xl border border-border-light">
+              {groups.map((g) => {
+                const on = (selectedId ?? groups[0]?.id) === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSelectedId(g.id)}
+                    aria-current={on ? "true" : undefined}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
+                      on
+                        ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        : "hover:bg-surface"
+                    )}
+                  >
+                    <Avatar name={g.head} className="h-7 w-7 shrink-0 text-[9px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className={cn(
+                        "block truncate text-[13px] font-semibold",
+                        on ? "text-blue-primary" : "text-text-primary"
+                      )}>
+                        {g.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-text-tertiary">
+                        {[...new Set([g.head, ...g.members])].length} people
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="min-w-0 rounded-xl border border-border-light p-4">
+              {perf && (selectedId ?? groups[0]?.id) ? (
+                <GroupDetail
+                  key={selectedId ?? groups[0].id}
+                  state={perf}
+                  groupId={selectedId ?? groups[0].id}
+                  memberNames={memberNames}
+                  groupTypeLabel={
+                    groups.find((g) => g.id === (selectedId ?? groups[0].id))
+                      ?.groupType ?? null
+                  }
+                  embedded
+                  onChanged={() => void load()}
+                />
+              ) : (
+                <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
+                  Pick a group on the left.
+                </p>
+              )}
+            </div>
+          </div>
         ) : (
           /* THE SAME TABLE GOAL MASTER USES (Anir, Aug 29: "you need to fix
              this screen, make it look like goal master").
