@@ -810,12 +810,52 @@ export function EmailComposer() {
             busy={sending}
             tone="primary"
             title={live ? "Send this email?" : "Simulate this send?"}
+            /* NAME THEM (Anir, Aug 30: "when I do send it, it has to show
+               me who it's going to on this popup"). "It goes to 1 person" is
+               the one fact you already know when you press Send; who that
+               person is, is the thing worth confirming before something
+               leaves the building. */
             body={
-              <>
-                It goes to <b>{recipients}</b>{" "}
-                {recipients === 1 ? "person" : "people"}
-                {important ? ", marked important" : ""}.
-              </>
+              (() => {
+                const named = everyone({ to, cc: [cc], bcc: [bcc] }).map((a) => ({
+                  address: a,
+                  person: people.find(
+                    (p) => p.email.toLowerCase() === a.toLowerCase()
+                  ),
+                }));
+                const shown = named.slice(0, 8);
+                const rest = named.length - shown.length;
+                return (
+                  <>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {shown.map((n) => (
+                        <span
+                          key={n.address}
+                          title={n.address}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2.5 text-[12.5px] text-text-primary"
+                        >
+                          <Avatar
+                            name={n.person?.name ?? n.address}
+                            className="h-5 w-5 shrink-0 text-[7px]"
+                          />
+                          <span className="max-w-[220px] truncate">
+                            {n.person?.name ?? n.address}
+                          </span>
+                        </span>
+                      ))}
+                      {rest > 0 && (
+                        <span className="text-[12.5px] font-semibold text-text-secondary tnum">
+                          +{rest} more
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-2 block text-[12.5px] text-text-secondary">
+                      {recipients} {recipients === 1 ? "person" : "people"}
+                      {important ? ", marked important" : ""}.
+                    </span>
+                  </>
+                );
+              })()
             }
             detail={
               live
