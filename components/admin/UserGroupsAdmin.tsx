@@ -509,8 +509,18 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                             })
                           }
                           className={cn(
-                            "cursor-pointer transition-colors",
-                            open ? "bg-surface" : "hover:bg-surface"
+                            "cursor-pointer transition-all",
+                            open ? "bg-surface" : "hover:bg-surface",
+                            /* THE OTHER GROUPS STEP BACK (Anir, Aug 29: "I just
+                               clicked on a group, why are the rest not getting
+                               faded out"). The goals inside already do this;
+                               the row that opened them did not, so an expanded
+                               group sat in a list of equals and the eye had to
+                               find it again after every scroll. Same rule as
+                               Goal Master, one level up. */
+                            openIds.size > 0 &&
+                              !open &&
+                              "opacity-45 hover:opacity-100"
                           )}
                         >
                           <td className="px-4 py-3.5">

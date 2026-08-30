@@ -187,8 +187,15 @@ export function GroupGoalsDrilldown({
                   }}
                   className={cn(
                     "overflow-hidden rounded-xl border bg-white transition-all",
+                    /* THE RAIL, NOT A RAIL AND A BORDER (Anir, Aug 29: "what's
+                       wrong with the left line vertical on the left, you see
+                       that"). I had put the accent on the border AND kept the
+                       inset rail, so the open goal wore a coloured outline with
+                       a second thicker line inside it down the left edge —
+                       reading as a stray line rather than as one block. Goal
+                       Master uses the rail alone; so does this now. */
                     isOpen
-                      ? "border-[color:var(--goal-accent)] [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                      ? "border-border-light [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
                       : "border-border-light",
                     openGoal !== null && !isOpen && "opacity-45 hover:opacity-100"
                   )}

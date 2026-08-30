@@ -2113,11 +2113,10 @@ export function BarChart({
      is long enough to need them. */
   const labelTextHeight = wideLabels || longestLabel > 10 ? 28 : 16;
   const labelBlockHeight = labelTextHeight + (hasLogos ? 24 : 0);
-  /* + the label block's own top margin. 4px, not 8: the axis label belongs to
-     the column it names, and the extra gap only pushed the baseline up away
-     from the bottom of the card (Anir, Aug 26: "the bottom of the bar is so
-     far from the bottom edge"). */
-  const baselineOffset = labelBlockHeight + 4;
+  /* `baselineOffset` used to live here — labelBlockHeight + 4 — and its only
+     reader was the collapsed all-zero height, which is gone (Anir, Aug 29:
+     "why are you not taking the space up"). The 4px margin it described is
+     still on the label block itself. */
   const gridMinWidth =
     data.length * minColumn + Math.max(0, data.length - 1) * COL_GAP;
 
@@ -2163,15 +2162,21 @@ export function BarChart({
         // classic scrollbar — macOS overlay bars take no layout height, so
         // without it "always show scrollbars" draws straight across the
         // labels.
-        // With every bar at zero there is no tall column to leave room above
-        // and no column to give height to, so the plot is exactly its value
-        // labels, a stub band and the axis labels (Anir, Aug 15: "the bars are
-        // so high up").
-        height: allZero
-          ? labelRoom + 16 + baselineOffset + SCROLLBAR_STRIP
-          : fillCard
-            ? "100%"
-            : height,
+        // AN ALL-ZERO PLOT FILLS ITS BOX LIKE ANY OTHER (Anir, Aug 29: "how can
+        // 100% be that small, why are you not taking the space up, you see the
+        // problem?").
+        //
+        // It used to collapse to `labelRoom + a stub band + labels`, which was
+        // the Aug 15 fix for zero bars floating high — back when nothing
+        // bottom-anchored them and shrinking the box was the only way to get
+        // them down. `items-end` does that job properly now, so the collapse
+        // only survived as dead space: a 170px section holding a 60px plot with
+        // a band of nothing above it, which is the same complaint from the
+        // other side.
+        //
+        // Filling is safe because the stubs are anchored to the baseline
+        // either way.
+        height: fillCard ? "100%" : height,
         minHeight: undefined,
         paddingBottom: fillCard ? SCROLLBAR_STRIP : undefined,
         gridTemplateColumns: `repeat(${Math.max(
