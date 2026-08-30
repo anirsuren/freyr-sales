@@ -100,7 +100,7 @@ The optional `EMAIL_FROM` task environment variable may override the default
 `Freyr <sales@freyrsolutions.com>` sender. Whichever address is used must be
 verified with the email provider before inviting users.
 
-Feedback and bug reports are delivered to `anir@auctalai.com` by default. Set
+Feedback and bug reports are delivered to `anir.s@freyrsolutions.com` by default. Set
 `FEEDBACK_RECIPIENT_EMAIL` on the task to change the support recipient without
 changing application code.
 

@@ -155,7 +155,7 @@ echo "$TD" | jq \
   | set_env("DEFAULT_DATA_MODE"; "live")
   | set_env("DATA_MODE_LOCKED"; "0")
   | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
-  | set_env("FEEDBACK_RECIPIENT_EMAIL"; "anir@auctalai.com")
+  | set_env("FEEDBACK_RECIPIENT_EMAIL"; "anir.s@freyrsolutions.com")
   | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
         .compatibilities, .registeredAt, .registeredBy)
 ' > taskdef.json

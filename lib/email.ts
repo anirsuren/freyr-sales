@@ -15,8 +15,16 @@ export type EmailAttachment = {
   content: string;
 };
 
+/** Both providers take a list; callers may pass one address or many. */
+function toList(to: string | string[]): string[] {
+  return (Array.isArray(to) ? to : [to]).map((t) => t.trim()).filter(Boolean);
+}
+
 async function sendWithConfiguredProvider(input: {
-  to: string;
+  /** One address, or several — a report that belongs to a group of people
+   *  should not have to pick one of them (see the feedback route, which sends
+   *  to every admin). */
+  to: string | string[];
   /**
    * COPIED IN, INCLUDING PEOPLE WHO DO NOT USE THE APP (Anir, Aug 25: "if we
    * want to send that email to somebody who's a user of the app and then CC a
@@ -54,7 +62,7 @@ async function sendWithConfiguredProvider(input: {
    * behind it only as a fallback for a host with no AWS session at all.
    */
   const viaSes = await sendViaSes({
-    to: [input.to],
+    to: toList(input.to),
     ...(input.important
       ? {
           headers: {
@@ -96,7 +104,7 @@ async function sendWithConfiguredProvider(input: {
       },
       body: JSON.stringify({
         from: SES_FROM,
-        to: [input.to],
+        to: toList(input.to),
         ...(input.cc?.length ? { cc: input.cc } : {}),
         ...(input.bcc?.length ? { bcc: input.bcc } : {}),
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
@@ -159,7 +167,7 @@ export async function sendEmail(input: {
  * workspace is viewing mock data.
  */
 export async function sendTransactionalEmail(input: {
-  to: string;
+  to: string | string[];
   cc?: string[];
   bcc?: string[];
   replyTo?: string;

@@ -19,7 +19,7 @@
         { "name": "AUTH_MODE", "value": "supabase" },
         { "name": "AUTH_PUBLIC_ORIGIN", "value": "https://freyrsales.dev.freyrapps.com" },
         { "name": "ACCESS_CONTROL_MODE", "value": "approval" },
-        { "name": "FEEDBACK_RECIPIENT_EMAIL", "value": "anir@auctalai.com" },
+        { "name": "FEEDBACK_RECIPIENT_EMAIL", "value": "anir.s@freyrsolutions.com" },
         { "name": "DEFAULT_DATA_MODE", "value": "mock" },
         { "name": "DATA_MODE_LOCKED", "value": "1" }
       ],
