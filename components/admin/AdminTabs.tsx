@@ -3,12 +3,21 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { KeyRound, ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-react";
+import {
+  KeyRound,
+  ListChecks,
+  Mail,
+  PanelsTopLeft,
+  Rows3,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MemberRoles } from "./MemberRoles";
 import { PeoplePrivileges } from "./PeoplePrivileges";
+import { PeopleSplit } from "./PeopleSplit";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
 import { PrivilegesAdmin } from "./PrivilegesAdmin";
 import { ActivityMasterCard } from "@/components/performance/ActivityMasterCard";
@@ -111,6 +120,14 @@ export function AdminTabs({
   }[];
   live: boolean;
 }) {
+  /* Table or split on Team members, remembered like every other view choice
+     in this app (Anir, Aug 9: "you have to save my preferences and apply this
+     everywhere"). */
+  const [peopleView, pickPeopleView] = useStoredView<"table" | "split">(
+    "freyr.teamMembers.view",
+    "table",
+    ["table", "split"] as const
+  );
   const [tab, setTab] = useStoredView<(typeof KEYS)[number]>(
     "freyr.admin.tab",
     "members",
@@ -154,16 +171,59 @@ export function AdminTabs({
              Privileges tab is the other question entirely, module privileges,
              and keeping them apart is what he was untangling. */
           <>
-            <MemberRoles canEdit />
-            <div className="mt-8">
-              <h3 className="text-[15px] font-semibold text-text-primary">
-                Who holds which privilege
-              </h3>
-              <p className="mb-3 mt-0.5 text-[12.5px] text-text-tertiary">
-                Ticks, not a dropdown, so one look answers who can do what.
-              </p>
-              <PeoplePrivileges />
+            {/* SAME TWO VIEWS AS USER GROUPS (Anir, Aug 29: "here also, as I
+                said, I would like the same concept"). Table answers "who can do
+                what" across everybody; Split answers "what can THIS person do"
+                without forty rows of other people's ticks in the way. */}
+            <div className="mb-3 flex justify-end">
+              <div
+                role="group"
+                aria-label="How to show people"
+                className="flex items-center gap-0.5 rounded-full bg-surface p-0.5"
+              >
+                {(
+                  [
+                    { key: "table", label: "Table", icon: Rows3 },
+                    { key: "split", label: "Split", icon: PanelsTopLeft },
+                  ] as const
+                ).map((o) => {
+                  const Icon = o.icon;
+                  const on = peopleView === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => pickPeopleView(o.key)}
+                      aria-pressed={on}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all ${
+                        on
+                          ? "bg-white text-text-primary shadow-sm"
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+            {peopleView === "split" ? (
+              <PeopleSplit />
+            ) : (
+              <>
+                <MemberRoles canEdit />
+                <div className="mt-8">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Who holds which privilege
+                  </h3>
+                  <p className="mb-3 mt-0.5 text-[12.5px] text-text-tertiary">
+                    Ticks, not a dropdown, so one look answers who can do what.
+                  </p>
+                  <PeoplePrivileges />
+                </div>
+              </>
+            )}
           </>
         ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />

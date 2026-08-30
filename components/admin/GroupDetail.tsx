@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { SmartBack } from "@/components/ui/BackButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import { GROUP_TYPE_META } from "@/lib/privileges";
 import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
@@ -70,6 +71,7 @@ export function GroupDetail({
   onChanged,
 }: Props) {
   const { toast } = useToast();
+  const me = useCurrentUserOrNull();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -162,6 +164,13 @@ export function GroupDetail({
     if (ok) setEditingPeople(false);
   }
 
+  /* The signed-in person, for the owner check above. Null outside a provider,
+     which the admin page always has. */
+  const isOwner =
+    !!me &&
+    me.name.trim().toLowerCase() === group.head.trim().toLowerCase();
+  const canManagePeople = isOwner || me?.role === "admin";
+
   const targetFor = (g: PrimaryGoal) =>
     (g.groupAssignments ?? []).find((a) => a.groupId === groupId)?.target ?? 0;
 
@@ -228,16 +237,30 @@ export function GroupDetail({
             <UsersRound size={15} strokeWidth={2.2} className="text-[color:#7C3AED]" />
             In this group
           </h2>
-          <button
-            type="button"
-            onClick={() => {
-              setRoster(people);
-              setEditingPeople(true);
-            }}
-            className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
-          >
-            Add or remove people
-          </button>
+          {/* ONLY THE GROUP OWNER PUTS PEOPLE IN (Suren, Aug 29: "when you
+              see a group, the group owner is basically this box. Only the group
+              owner can add"). Admins keep it too — they are the ones who create
+              the group and crown its owner in the first place, and a group
+              whose owner has left would otherwise be unmaintainable.
+
+              The button going away is the courtesy; the API is the rule. This
+              is a client component and cannot be the gate. */}
+          {canManagePeople ? (
+            <button
+              type="button"
+              onClick={() => {
+                setRoster(people);
+                setEditingPeople(true);
+              }}
+              className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
+            >
+              Add or remove people
+            </button>
+          ) : (
+            <span className="text-[11.5px] text-text-tertiary">
+              Only {group.head} can change who is in this group.
+            </span>
+          )}
         </div>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
           {people.map((m) => (

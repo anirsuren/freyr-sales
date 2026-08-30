@@ -29,6 +29,7 @@ import { roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
+import { useStoredView } from "@/lib/useStoredView";
 import { GROUP_TYPES, GROUP_TYPE_META } from "@/lib/privileges";
 import Link from "next/link";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
@@ -85,24 +86,12 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
    * for both — "some people will like this view and some people would like your
    * view, you can have it set up that way" — so it is a choice, and it sticks.
    */
-  const [view, setView] = useState<"table" | "split">("table");
+  const [view, pickView] = useStoredView<"table" | "split">(
+    VIEW_KEY,
+    "table",
+    ["table", "split"] as const
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      if (saved === "split" || saved === "table") setView(saved);
-    } catch {
-      /* storage off: the table is a fine answer */
-    }
-  }, []);
-  function pickView(next: "table" | "split") {
-    setView(next);
-    try {
-      localStorage.setItem(VIEW_KEY, next);
-    } catch {
-      /* the view still changes; only the memory of it is lost */
-    }
-  }
 
   useEffect(() => {
     let alive = true;

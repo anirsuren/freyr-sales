@@ -162,10 +162,10 @@ export function RelatedOfferingsSection({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
               <colgroup>
-                <col style={{ width: "30%" }} />
+                <col style={{ width: "26%" }} />
                 <col style={{ width: "22%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "34%" }} />
+                <col style={{ width: "16%" }} />
+                <col style={{ width: "36%" }} />
               </colgroup>
               <thead className="bg-surface">
                 <tr>
@@ -187,7 +187,7 @@ export function RelatedOfferingsSection({
                     key={relatedOffering.id}
                     className="group align-middle transition-colors hover:bg-surface"
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle">
                       <Link
                         href={`/offerings/${relatedOffering.id}`}
                         className="flex items-center gap-2.5"
@@ -208,8 +208,16 @@ export function RelatedOfferingsSection({
                     </td>
                     <td className="px-4 py-3">
                       {relatedOffering.type ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-semibold text-blue-primary">
-                          <Package size={10} strokeWidth={2.3} aria-hidden="true" />
+                        /* THE CHIP STAYS IN ITS COLUMN. Without max-w-full the
+                           longest type — "Freya Fusion (Module + Module
+                           Agent/s)" — ran straight over the Availability pill
+                           beside it (seen in the browser). The full string is
+                           on the title. */
+                        <span
+                          title={relatedOffering.type}
+                          className="inline-flex max-w-full items-center gap-1 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-semibold text-blue-primary"
+                        >
+                          <Package size={10} strokeWidth={2.3} className="shrink-0" aria-hidden="true" />
                           <span className="truncate">{relatedOffering.type}</span>
                         </span>
                       ) : (
@@ -222,14 +230,22 @@ export function RelatedOfferingsSection({
                         size="sm"
                       />
                     </td>
+                    {/* ONE ROW PER OFFERING, and he meant one row (Anir, Aug
+                        29: "a table where each offering is in one row"). These
+                        notes run to five or six lines, which turned every row
+                        into a paragraph and the table back into the cards it
+                        was meant to replace. Clamped to two lines; the pencil
+                        still opens the whole thing. */}
                     <td className="px-4 py-3">
-                      <RelatedOfferingNote
-                        offeringId={offeringId}
-                        relatedId={relatedOffering.id}
-                        relatedName={relatedOffering.name}
-                        notes={notes}
-                        canEdit={canEdit}
-                      />
+                      <span className="block [&_p]:line-clamp-2 [&_span]:line-clamp-2">
+                        <RelatedOfferingNote
+                          offeringId={offeringId}
+                          relatedId={relatedOffering.id}
+                          relatedName={relatedOffering.name}
+                          notes={notes}
+                          canEdit={canEdit}
+                        />
+                      </span>
                     </td>
                   </tr>
                 ))}
