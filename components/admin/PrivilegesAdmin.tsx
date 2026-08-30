@@ -132,11 +132,13 @@ export function PrivilegesAdmin() {
       {/* The tab strip above already states what this page is; a second
           sentence saying it again is the thing he keeps cutting. Only the
           instruction the header does not carry stays. */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12.5px] text-text-tertiary">
-          Pick what each privilege may do. Every change takes effect straight
-          away, asks first, and emails the admins what changed.
-        </p>
+      {/* NO SECOND PARAGRAPH (Anir, Aug 29: "why so much text, tuck this
+          somewhere"). The tab already carries one line and a hint; a second
+          sentence under it explaining the same screen was the wall he was
+          pointing at. What it said — a change lands immediately, asks first,
+          emails the admins — the confirm dialog says at the moment it matters,
+          which is where it is actually read. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         {saving && (
           <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
             <Loader2 size={12} className="animate-spin" /> Saving…

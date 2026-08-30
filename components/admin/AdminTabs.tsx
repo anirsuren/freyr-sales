@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { KeyRound, ListChecks, Mail, ShieldCheck, UsersRound } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { MemberRoles } from "./MemberRoles";
 import { PeoplePrivileges } from "./PeoplePrivileges";
 import { UserGroupsAdmin } from "./UserGroupsAdmin";
@@ -26,22 +27,33 @@ import { EmailComposer } from "./EmailComposer";
  * The choice is remembered: an admin who lives in User groups lands there
  * next time instead of scrolling past the directory again.
  */
-const TABS: (PageTab & { subtitle: string })[] = [
+/**
+ * ONE LINE ON THE PAGE, THE REST ON HOVER (Anir, Aug 29: "why so much text,
+ * tuck this somewhere, figure it out").
+ *
+ * Privileges had grown to a four-sentence paragraph explaining View/Edit/Create,
+ * record scoping and View all — true, and a wall above the grid it describes.
+ * `subtitle` is now the sentence worth reading every time; `detail` is what you
+ * ask for, behind the same InfoHint the rest of the app uses.
+ */
+const TABS: (PageTab & { subtitle: string; detail?: string })[] = [
   {
     key: "members",
     label: "Team members",
     icon: ShieldCheck,
     color: "#0071E3",
-    subtitle:
-      "Everyone in the workspace, the role they joined as, and the privileges they hold. A person can hold several. Only an admin can change either, and the server enforces that too.",
+    subtitle: "Everyone in the workspace, and what each of them holds.",
+    detail:
+      "A person can hold several privileges at once. Only an admin can change a role or a privilege, and the server enforces that too, so this page being admin-only is the convenience rather than the security.",
   },
   {
     key: "groups",
     label: "User groups",
     icon: UsersRound,
     color: "#7C3AED",
-    subtitle:
-      "The departments people belong to. A group has one owner and the people in it; open a group to set its goals and each person's target.",
+    subtitle: "The departments people belong to.",
+    detail:
+      "A group has one owner and the people in it. Open a group to set the goals it carries and each person's target. A group's TYPE decides which module can hand it work: a business development group takes customers, contracts and opportunities; a solutioning group takes solution requests, submissions, presentations and meetings.",
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").
@@ -53,16 +65,18 @@ const TABS: (PageTab & { subtitle: string })[] = [
     label: "Privileges",
     icon: KeyRound,
     color: "#B45309",
-    subtitle:
-      "Module privileges: in which module each role may do what. View looks, Edit changes what is already there, Create makes new ones and is the only one that can delete. It applies to records a person created or was assigned; View all is what lets them see everybody else's. Who holds which role is on Team members.",
+    subtitle: "In which module each role may do what.",
+    detail:
+      "View looks. Edit changes what is already there. Create makes new ones and is the only one that can delete.\n\nAll of it applies only to records a person created or was assigned to. View all is the one privilege that shows them everybody else's, and it never lets them change one.\n\nEvery change takes effect straight away, asks first, and emails the admins. Who holds which role is on Team members.",
   },
   {
     key: "activity",
     label: "Activity master",
     icon: ListChecks,
     color: "#0F766E",
-    subtitle:
-      "When someone logs an activity. A pilot, a contract. These rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
+    subtitle: "What an activity is worth, and which goal it counts toward.",
+    detail:
+      "When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
   },
   // Sending mail out of the workspace is an admin job, so it lives with the
   // other admin controls (Anir, Aug 25: "build the email stuff out for
@@ -72,8 +86,9 @@ const TABS: (PageTab & { subtitle: string })[] = [
     label: "Email",
     icon: Mail,
     color: "#B45309",
-    subtitle:
-      "Write and send an email from the app. Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
+    subtitle: "Write and send an email from the app.",
+    detail:
+      "Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
   },
 ];
 
@@ -124,8 +139,9 @@ export function AdminTabs({
           active={current.key}
           onSelect={(key) => setTab(key as (typeof KEYS)[number])}
         />
-        <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
+        <p className="mt-1.5 flex max-w-[720px] items-center gap-1.5 text-[13.5px] leading-relaxed text-text-secondary">
           {current.subtitle}
+          {current.detail && <InfoHint text={current.detail} />}
         </p>
       </div>
 
