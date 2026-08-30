@@ -1486,12 +1486,24 @@ export function PersonGoalPanel({
               is no bar to give height to, so the section collapses to exactly
               its labels instead of reserving a plot for data that is not
               there. */}
-          <div
-            className={cn(
-              "-mx-4 -mb-1 mt-1.5",
-              months.some((m) => m.value) ? "h-[170px]" : undefined
-            )}
-          >
+          {/* THE HEIGHT IS ALWAYS DEFINITE (Anir, Aug 29: "the bar has to start
+              at the bottom and end near the top. The size of the rectangle is
+              fine. This is a repeating problem for you, this can't happen
+              again").
+
+              It used to be withheld when every month was zero, on the idea that
+              an empty section should collapse to its labels rather than reserve
+              a plot. But BarChart bottom-anchors an all-zero series with
+              `h-full` + `items-end`, and `h-full` needs a parent with a
+              definite height to resolve against. Withholding it in exactly the
+              all-zero case was therefore withholding it in the one case the
+              anchoring existed for: the stubs collapsed to their own size and
+              floated at the top of the row, which is the same complaint as
+              Aug 28 ("why are those bar charts so far up") one layer down.
+
+              Same failure mode both times — a chart told to fill its parent,
+              inside a parent with no height. */}
+          <div className="-mx-4 -mb-1 mt-1.5 h-[170px]">
             {/* `unit` here is the WORD printed after each value ("12 calls"),
                 not the goal's kind — passing goal.unit put the literal word
                 "count" after every bar, so a month read "80K count" while the
