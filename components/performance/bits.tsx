@@ -109,9 +109,14 @@ export function TypeIconTile({
 export function TypeChip({
   type,
   size = "md",
+  className,
 }: {
   type: string;
   size?: "sm" | "md";
+  /** For a caller with a narrow column to fill: pass `min-w-0` and the name
+   *  ellipses instead of wrapping onto a second line (Anir, Aug 29, on a
+   *  two-line label: "it just looks so ugly"). */
+  className?: string;
 }) {
   const meta = typeMeta(type);
   const Icon = meta.icon;
@@ -119,12 +124,13 @@ export function TypeChip({
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full font-semibold",
-        size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
+        size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]",
+        className
       )}
       style={{ color: meta.color, background: `${meta.color}14` }}
     >
-      <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.2} />
-      {type}
+      <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.2} className="shrink-0" />
+      <span className="truncate">{type}</span>
     </span>
   );
 }

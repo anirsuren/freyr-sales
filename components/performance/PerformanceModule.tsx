@@ -939,11 +939,11 @@ function MasterTab({
         }}
         display={
           /* THE SAME ONE BUTTON THE OTHER TABS HAVE (Anir, Aug 19: "i need
-             the open all close all here too").
-
-             TABLE ONLY: the split has no folded categories to open, so in
-             that view the button would do nothing visible. */
-          view === "table" && shownTypes.length > 0 ? (
+             the open all close all here too"). It shows in BOTH views now
+             that the split's categories fold as well, and it switches the one
+             shared fold state, so the two views cannot disagree about which
+             categories are shut. */
+          shownTypes.length > 0 ? (
             <button
               type="button"
               onClick={() => setShutList(anyTypeOpen ? shownTypes : [])}
@@ -1054,15 +1054,47 @@ function MasterTab({
              so switching views does not reshuffle the list under you. */
           <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light">
-              {sections.map(({ type, goals: groupGoals }) => (
+              {sections.map(({ type, goals: groupGoals }) => {
+                /* THE HEADING IS THE CONTROL HERE TOO (Anir, Aug 30: "on this
+                   side I also would like those drop-downs. If I want to close
+                   financial revenue performance, I should be able to do that").
+
+                   The same fold as the table, and the SAME memory of it —
+                   whether a category is shut is a way of looking at the goal
+                   master, not a fact about one of its two views, so closing
+                   Financial here leaves it closed over there. */
+                const shut = shutTypes.has(type);
+                return (
                 <Fragment key={type}>
-                  <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border-light bg-surface px-3 py-2">
-                    <TypeChip type={type} />
-                    <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShutList((current) =>
+                        current.includes(type)
+                          ? current.filter((t) => t !== type)
+                          : [...current, type]
+                      )
+                    }
+                    aria-expanded={!shut}
+                    title={type}
+                    className="sticky top-0 z-10 flex w-full cursor-pointer items-center gap-1.5 border-b border-border-light bg-surface px-2.5 py-2 text-left transition-colors hover:bg-blue-light/30"
+                  >
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={2.2}
+                      className={cn(
+                        "shrink-0 text-text-tertiary transition-transform duration-200",
+                        shut && "-rotate-90"
+                      )}
+                    />
+                    {/* One line, always: the column is 280px and two of these
+                        names do not fit at full length. */}
+                    <TypeChip type={type} size="sm" className="min-w-0" />
+                    <span className="ml-auto shrink-0 text-[11px] font-semibold text-text-tertiary tnum">
                       {groupGoals.length}
                     </span>
-                  </div>
-                  {groupGoals.map((g) => {
+                  </button>
+                  {!shut && groupGoals.map((g) => {
                     const on = picked?.id === g.id;
                     return (
                       <button
@@ -1112,7 +1144,8 @@ function MasterTab({
                     );
                   })}
                 </Fragment>
-              ))}
+                );
+              })}
             </div>
             {/* Keyed by the goal, so picking a different one replays the
                 entrance instead of silently redrawing in place. */}
