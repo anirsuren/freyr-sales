@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
   Crown,
   Loader2,
   Plus,
@@ -20,6 +21,11 @@ import { useToast } from "@/components/ui/Toast";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import { GROUP_TYPE_META } from "@/lib/privileges";
+import {
+  TypeChip,
+  TypeIconTile,
+  typeMeta,
+} from "@/components/performance/bits";
 import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
 
 /**
@@ -513,14 +519,27 @@ export function GroupDetail({
           ) : (
             available.map((g) => {
               const on = chosen.includes(g.id);
+              const accent = typeMeta(g.type).color;
               return (
+                /* COLOUR AND AN ICON, LIKE EVERY OTHER GOAL IN THE APP (Anir,
+                   Aug 29: "this is a bad UI, there are no colors, no icons,
+                   nothing"). It was a stack of grey rows with a system
+                   checkbox, which broke the standing rule that a category
+                   never appears plain — and made a picker of nineteen goals
+                   impossible to scan, because the only thing distinguishing
+                   them was the words.
+
+                   The row wears the goal type's tile and its own colour when
+                   ticked, so picking is a matter of recognising a shape rather
+                   than reading every line. */
                 <label
                   key={g.id}
+                  style={{ ["--goal-accent" as string]: accent }}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-colors",
+                    "flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all",
                     on
-                      ? "border-blue-primary bg-blue-light/40"
-                      : "border-border-light hover:border-blue-primary/50"
+                      ? "border-[color:var(--goal-accent)] bg-[color:var(--goal-accent)]/[0.07] [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                      : "border-border-light hover:border-[color:var(--goal-accent)]/50 hover:bg-surface"
                   )}
                 >
                   <input
@@ -533,15 +552,36 @@ export function GroupDetail({
                           : [...c, g.id]
                       )
                     }
-                    className="h-4 w-4 shrink-0 accent-[#0071E3]"
+                    className="sr-only"
                   />
+                  {/* The tick box is drawn rather than native, so it can take
+                      the goal's colour; the real input stays for the keyboard
+                      and for screen readers. */}
+                  <span
+                    aria-hidden="true"
+                    style={
+                      on
+                        ? { borderColor: accent, backgroundColor: accent }
+                        : undefined
+                    }
+                    className={cn(
+                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-colors",
+                      on ? "text-white" : "border-border-light text-transparent"
+                    )}
+                  >
+                    <Check size={12} strokeWidth={3.2} />
+                  </span>
+                  <TypeIconTile type={g.type} className="h-8 w-8 rounded-lg" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold text-text-primary">
                       {g.name}
                     </span>
-                    <span className="block text-[11px] text-text-tertiary tnum">
-                      {g.year}
-                      {g.target > 0 && ` · org target ${money(g.target)}`}
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <TypeChip type={g.type} size="sm" />
+                      <span className="text-[11px] text-text-tertiary tnum">
+                        {g.year}
+                        {g.target > 0 && ` · org target ${money(g.target)}`}
+                      </span>
                     </span>
                   </span>
                 </label>
@@ -605,8 +645,21 @@ export function GroupDetail({
                       r.includes(m) ? r.filter((x) => x !== m) : [...r, m]
                     )
                   }
-                  className="h-4 w-4 shrink-0 accent-[#0071E3]"
+                  className="sr-only"
                 />
+                {/* Drawn, not native, so it matches the goal picker beside it
+                    and can carry the app's blue rather than the OS accent. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-colors",
+                    on
+                      ? "border-blue-primary bg-blue-primary text-white"
+                      : "border-border-light text-transparent"
+                  )}
+                >
+                  <Check size={12} strokeWidth={3.2} />
+                </span>
                 <Avatar name={m} className="h-6 w-6 shrink-0 text-[8.5px]" />
                 <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                   {m}

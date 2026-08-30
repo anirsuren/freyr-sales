@@ -287,7 +287,17 @@ export function PrivilegesAdmin() {
         }
         detail="This changes what those people can do as soon as you confirm. The admins are emailed."
         confirmLabel="Change it"
-        tone="destructive"
+        /* RED ONLY WHEN SOMETHING IS BEING TAKEN AWAY (Anir, Aug 29: "when I'm
+           giving a privilege the red doesn't make sense, it feels like I'm
+           taking away privilege"). Widening a cell — View to Edit, Edit to
+           Create — is an ordinary affirmative change. Narrowing it removes
+           something somebody could do this morning, and that is what the
+           destructive treatment is for. */
+        tone={
+          pending && ACCESS_LEVELS.indexOf(pending.to) < ACCESS_LEVELS.indexOf(pending.from)
+            ? "destructive"
+            : "primary"
+        }
         busy={saving}
       />
     </div>

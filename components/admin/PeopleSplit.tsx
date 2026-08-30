@@ -43,6 +43,17 @@ const ROLE_OPTIONS: ColorOption[] = [
   { value: "admin", label: "Admin", color: "#0F766E" },
 ];
 
+/** Least power to most, so a demotion can be told from a promotion. */
+const ROLE_RANK: Record<string, number> = {
+  bd_member: 0,
+  sol_member: 0,
+  bd_owner: 1,
+  admin: 2,
+  rep: 0,
+  solutions: 0,
+  manager: 1,
+};
+
 /* Same colours as the wide table, so a privilege is one colour everywhere. */
 const PRIVILEGE_COLORS: Record<string, string> = {
   bd_owner: "#0071E3",
@@ -386,7 +397,13 @@ export function PeopleSplit() {
             : "This changes what they can do as soon as you confirm. The admins are emailed."
         }
         confirmLabel={pendingPriv?.to ? "Give it" : "Take it away"}
-        tone="destructive"
+        /* RED MEANS SOMETHING IS BEING TAKEN (Anir, Aug 29: "I don't like the
+           colors here, when I'm giving a privilege the red doesn't make sense,
+           it feels like I'm taking away privilege"). Handing somebody a
+           privilege is an ordinary affirmative action; only the removal earns
+           the destructive treatment. Same rule the app already keeps for
+           delete controls. */
+        tone={pendingPriv?.to ? "primary" : "destructive"}
         busy={saving}
       />
 
@@ -409,7 +426,13 @@ export function PeopleSplit() {
         }
         detail="The role is what they joined as, and what decides their access until somebody ticks a privilege for them."
         confirmLabel="Change it"
-        tone="destructive"
+        /* A role change is a change, not a removal — unless it demotes. */
+        tone={
+          pendingRole &&
+          ROLE_RANK[pendingRole.nextRole] < ROLE_RANK[pendingRole.member.role]
+            ? "destructive"
+            : "primary"
+        }
         busy={saving}
       />
     </div>

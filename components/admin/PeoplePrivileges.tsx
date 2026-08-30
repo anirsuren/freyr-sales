@@ -296,7 +296,9 @@ export function PeoplePrivileges() {
             : "This changes what they can do as soon as you confirm. The admins are emailed."
         }
         confirmLabel={pending?.to ? "Give it" : "Take it away"}
-        tone="destructive"
+        /* Giving is affirmative; only taking away is destructive (Anir, Aug
+           29: "when I'm giving a privilege the red doesn't make sense"). */
+        tone={pending?.to ? "primary" : "destructive"}
         busy={saving}
       />
     </div>
