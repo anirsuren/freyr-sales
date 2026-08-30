@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Flag,
@@ -20,6 +20,7 @@ import {
   PanelsTopLeft,
   Plus,
   Rows3,
+  Table2,
   Trash2,
   TrendingUp,
   Target,
@@ -56,6 +57,14 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
+import { useStickyValue } from "@/lib/useStickyValue";
+import {
+  OpportunitySummary,
+  DIMENSION_LABEL,
+  TIMELINES,
+  type SummaryDimension,
+  type Timeline,
+} from "./OpportunitySummary";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -80,6 +89,8 @@ import {
   resolveOfferingLabel,
   type Opportunity,
   type OpportunityLine,
+  sumEstimates,
+  type EstimateMeasure,
 } from "@/lib/opportunitiesShared";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import {
@@ -215,6 +226,10 @@ type Draft = {
    *  date, and then status"). */
   activities: DraftActivity[];
   owner: string;
+  /** The two summary numbers, as typed. Strings so a half-typed "1,20" is not
+   *  rounded to something the person did not mean; blank stays blank. */
+  estimatedAcv: string;
+  estimatedTcv: string;
   /** No longer shown in the form (Suren, Aug 18: "don't give this comment")
    *  but carried through saves so stored text is never silently erased. */
   nextSteps: string;
@@ -307,6 +322,8 @@ const BLANK: Draft = {
   rows: [],
   goalIds: [],
   goalRows: [],
+  estimatedAcv: "",
+  estimatedTcv: "",
   level: "Pipeline",
   status: "",
   activities: [],
@@ -397,6 +414,8 @@ function toDraft(
         })),
     level: o.level,
     status: o.status ?? "",
+    estimatedAcv: o.estimatedAcv === undefined ? "" : String(o.estimatedAcv),
+    estimatedTcv: o.estimatedTcv === undefined ? "" : String(o.estimatedTcv),
     activities: (o.activities ?? []).map((a, i) => {
       const label = masters.find((m) => m.id === a.activity)?.label ?? a.activity;
       return {
@@ -470,6 +489,7 @@ export type AccrualBadge = {
 
 export function OpportunitiesBrowser({
   opportunities,
+  customerGroups = [],
   meetingsByDeal = {},
   bandsByDeal = {},
   accrualPlans = {},
@@ -486,6 +506,9 @@ export function OpportunitiesBrowser({
   live,
 }: {
   opportunities: Opportunity[];
+  /** The circles drawn on the Customers page. A deal knows its account; the
+   *  group it belongs to lives here (Suren's Aug 30 summary leads with it). */
+  customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
   /** Meetings held against each deal, newest first (Suren, Aug 28:
    *  "similarly against opportunities"). */
   /** Everything connected to each deal — the same strip the customer page
@@ -551,10 +574,27 @@ export function OpportunitiesBrowser({
      The split reuses pipeTable() with a single row and that row forced open,
      so the right pane IS the table's own detail panel — no second rendering of
      a deal to drift from the first. */
-  const [dealView, setDealView] = useStoredView<"table" | "split">(
+  /* SUMMARY LEADS (Suren, Aug 30: "showing all of this really doesn't make
+     sense for me, I want it to be seen in a certain way"). The row-by-row
+     table and the split are still one click away — this changes what you
+     land on, not what you can reach. */
+  const [dealView, setDealView] = useStoredView<"summary" | "table" | "split">(
     "freyr.opportunities.view",
-    "table",
-    ["table", "split"] as const
+    "summary",
+    ["summary", "table", "split"] as const
+  );
+  /* His four, in his default order; drag on the summary rewrites it. */
+  const [dimOrder, setDimOrder] = useStickyValue<SummaryDimension[]>(
+    "freyr.opportunities.dims",
+    ["group", "customer", "offering", "revenue"]
+  );
+  const [measure, setMeasure] = useStickyValue<EstimateMeasure>(
+    "freyr.opportunities.measure",
+    "tcv"
+  );
+  const [timeline, setTimeline] = useStickyValue<Timeline>(
+    "freyr.opportunities.timeline",
+    "quarterly"
   );
   const [groupBy, setGroupBy] = useStoredView<"none" | "customer" | "offering">(
     "freyr.opportunities.groupBy",
@@ -578,6 +618,14 @@ export function OpportunitiesBrowser({
    *  customer… it's like how you do customers, and within the customers,
    *  certain opportunities are coming." */
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
+  /* The rest of Suren's Aug 30 filter list. Owner, offering and closure date
+     came off his sheet; the confidence band is Anir's addition on top of it
+     ("and one more filter called confidence percentage"). */
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [offeringFilter, setOfferingFilter] = useState<string[]>([]);
+  const [groupFilter, setGroupFilter] = useState<string[]>([]);
+  const [closureFilter, setClosureFilter] = useState<string[]>([]);
+  const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
   /** Drafts closed WITHOUT saving, by deal id ("new" for a fresh one) — X-ing
@@ -718,6 +766,48 @@ export function OpportunitiesBrowser({
           ? (offeringName.get(o.offeringIds[0]) ?? o.offeringIds[0])
           : o.offeringLabels[0]) ?? "No offering";
 
+  /* An account can sit in more than one circle; the summary needs ONE row to
+     put the deal under, so the first group that claims it wins and the rest
+     are still reachable through the filter. An account in no group is said
+     out loud rather than being dropped from the table. */
+  const groupNameFor = useCallback(
+    (deal: Opportunity) => {
+      const cid = deal.customerId;
+      const byId = cid
+        ? customerGroups.find((g) => g.customerIds.includes(cid))
+        : undefined;
+      return byId?.name ?? "No customer group";
+    },
+    [customerGroups]
+  );
+
+  const offeringNameFor = useCallback(
+    (deal: Opportunity) =>
+      (deal.offeringIds[0]
+        ? (offeringName.get(deal.offeringIds[0]) ?? deal.offeringIds[0])
+        : deal.offeringLabels[0]) ?? "No offering",
+    [offeringName]
+  );
+
+  /** Suren's bands, the same numbers the confidence bar already snaps to. */
+  const confidenceBandOf = useCallback((deal: Opportunity) => {
+    const c = opportunityConfidence(deal);
+    if (typeof c !== "number") return "Not set";
+    if (c >= 99) return "99-100%";
+    if (c >= 95) return "95-98%";
+    if (c >= 75) return "75-94%";
+    if (c >= 50) return "50-74%";
+    if (c >= 25) return "25-49%";
+    return "Under 25%";
+  }, []);
+
+  const closureBandOf = useCallback((deal: Opportunity) => {
+    if (!deal.estSignDate) return "No date";
+    const d = new Date(deal.estSignDate);
+    if (Number.isNaN(d.getTime())) return "No date";
+    return `${d.getUTCFullYear()} Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+  }, []);
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = currentList
@@ -731,6 +821,27 @@ export function OpportunitiesBrowser({
           customerFilter.some(
             (c) => o.customer.trim().toLowerCase() === c.toLowerCase()
           )
+      )
+      .filter(
+        (o) =>
+          ownerFilter.length === 0 || ownerFilter.includes(o.owner ?? "")
+      )
+      .filter(
+        (o) =>
+          offeringFilter.length === 0 ||
+          offeringFilter.includes(offeringNameFor(o))
+      )
+      .filter(
+        (o) => groupFilter.length === 0 || groupFilter.includes(groupNameFor(o))
+      )
+      .filter(
+        (o) =>
+          closureFilter.length === 0 || closureFilter.includes(closureBandOf(o))
+      )
+      .filter(
+        (o) =>
+          confidenceFilter.length === 0 ||
+          confidenceFilter.includes(confidenceBandOf(o))
       )
       .filter(
         (o) =>
@@ -781,7 +892,23 @@ export function OpportunitiesBrowser({
     return filtered.sort(
       (a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0)
     );
-  }, [currentList, query, levelFilter, statusFilter, customerFilter, offeringName]);
+  }, [
+    currentList,
+    query,
+    levelFilter,
+    statusFilter,
+    customerFilter,
+    ownerFilter,
+    offeringFilter,
+    groupFilter,
+    closureFilter,
+    confidenceFilter,
+    offeringName,
+    offeringNameFor,
+    groupNameFor,
+    closureBandOf,
+    confidenceBandOf,
+  ]);
 
   const groupedShown = useMemo(() => {
     if (groupBy === "none") return shown;
@@ -838,6 +965,8 @@ export function OpportunitiesBrowser({
     return {
       value,
       weighted,
+      acv: sumEstimates(shown, "acv"),
+      tcv: sumEstimates(shown, "tcv"),
       count: shown.length,
       avgConfidence: withConfidence.length
         ? Math.round(
@@ -950,6 +1079,12 @@ export function OpportunitiesBrowser({
         ),
         status: editing.status || undefined,
         owner: editing.owner || undefined,
+        /* Blank posts as null, never 0 — an empty box means "I have not
+           said", a 0 would read as "this deal is worth nothing", and
+           undefined would leave a wrong figure sitting there because the
+           update merge only overwrites what it is sent. */
+        estimatedAcv: moneyOrNull(editing.estimatedAcv),
+        estimatedTcv: moneyOrNull(editing.estimatedTcv),
         nextSteps: editing.nextSteps || undefined,
         // The form's list IS the record (Suren, Aug 18: "add as many
         // activities as possible"). Person, note and logged date ride along
@@ -1760,7 +1895,17 @@ export function OpportunitiesBrowser({
         />
       ) : (
       <>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* THREE VALUES, AND NOTHING ELSE (Suren, Aug 30: "I don't want any
+          other dashboard that you have. I want only those three values" —
+          # of opportunities, estimated ACV, estimated TCV). Total value,
+          weighted and average confidence came off the page with this change;
+          they are still on the deal itself, where a number that describes one
+          deal belongs.
+
+          EACH MONEY TILE SAYS WHAT IT STANDS ON. Neither figure exists on any
+          deal until somebody types it, so a tile that reads "$0" over 79 deals
+          would be describing the data entry, not the pipeline. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile
           icon={Briefcase}
           label="Opportunities"
@@ -1773,24 +1918,26 @@ export function OpportunitiesBrowser({
         />
         <StatTile
           icon={Target}
-          label="Total value"
-          value={money(totals.value)}
-          sub="contract value"
+          label="Estimated ACV"
+          value={totals.acv.entered === 0 ? "·" : money(totals.acv.total)}
+          sub={
+            totals.acv.entered === 0
+              ? "nobody has entered one yet"
+              : totals.acv.entered < totals.acv.of
+                ? `across ${totals.acv.entered} of ${totals.acv.of} deals`
+                : "annual contract value"
+          }
         />
         <StatTile
           icon={TrendingUp}
-          label="Weighted"
-          value={money(totals.weighted)}
-          sub="value × confidence"
-        />
-        <StatTile
-          icon={Percent}
-          label="Average confidence"
-          value={totals.avgConfidence === null ? "·" : `${totals.avgConfidence}%`}
+          label="Estimated TCV"
+          value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
           sub={
-            totals.avgConfidence === null
-              ? "none recorded yet"
-              : "across those that have one"
+            totals.tcv.entered === 0
+              ? "nobody has entered one yet"
+              : totals.tcv.entered < totals.tcv.of
+                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
+                : "total contract value"
           }
         />
       </div>
@@ -1821,8 +1968,30 @@ export function OpportunitiesBrowser({
               setCustomerFilter([]);
               setLevelFilter([]);
               setStatusFilter([]);
+              setOwnerFilter([]);
+              setOfferingFilter([]);
+              setGroupFilter([]);
+              setClosureFilter([]);
+              setConfidenceFilter([]);
             }}
             groups={[
+              {
+                /* THE CIRCLE BEFORE THE ACCOUNT (Suren's Aug 30 sheet leads
+                   its filter list with Customer Group, and the summary's
+                   default first dimension is the same). */
+                key: "group",
+                label: "Customer group",
+                values: groupFilter,
+                onChange: setGroupFilter,
+                options: [
+                  ...customerGroups.map((g) => ({
+                    value: g.name,
+                    label: g.name,
+                    color: g.color,
+                  })),
+                  { value: "No customer group", label: "No customer group", color: "#8E98A8" },
+                ],
+              },
               {
                 // THE ACCOUNT IS THE FIRST THING YOU NARROW BY (Suren, Aug 16:
                 // "it's like how you do customers, and within the customers,
@@ -1859,9 +2028,109 @@ export function OpportunitiesBrowser({
                   color: STATUS_COLOR[st],
                 })),
               },
+              {
+                key: "owner",
+                label: "Owner",
+                values: ownerFilter,
+                onChange: setOwnerFilter,
+                options: [
+                  ...[...new Set(currentList.map((o) => o.owner ?? ""))]
+                    .filter(Boolean)
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((n) => ({ value: n, label: n, avatarName: n })),
+                  { value: "", label: "Unassigned", color: "#8E98A8" },
+                ],
+              },
+              {
+                key: "offering",
+                label: "Offering",
+                values: offeringFilter,
+                onChange: setOfferingFilter,
+                options: [...new Set(currentList.map(offeringNameFor))]
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((n) => ({
+                    value: n,
+                    label: n,
+                    color: n === "No offering" ? "#8E98A8" : "#B4318F",
+                  })),
+              },
+              {
+                key: "closure",
+                label: "Closure date",
+                values: closureFilter,
+                onChange: setClosureFilter,
+                options: [...new Set(currentList.map(closureBandOf))]
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((n) => ({
+                    value: n,
+                    label: n,
+                    color: n === "No date" ? "#8E98A8" : "#0F766E",
+                  })),
+              },
+              {
+                /* Anir's addition on top of Suren's sheet, Aug 30: "and one
+                   more filter called confidence percentage". Bands, not a
+                   free number — they are the same thresholds the confidence
+                   bar already snaps to, so the filter and the bar agree. */
+                key: "confidence",
+                label: "Confidence",
+                values: confidenceFilter,
+                onChange: setConfidenceFilter,
+                options: [
+                  "99-100%",
+                  "95-98%",
+                  "75-94%",
+                  "50-74%",
+                  "25-49%",
+                  "Under 25%",
+                  "Not set",
+                ]
+                  .filter((band) =>
+                    currentList.some((o) => confidenceBandOf(o) === band)
+                  )
+                  .map((band) => ({
+                    value: band,
+                    label: band,
+                    color: band === "Not set" ? "#8E98A8" : "#7C3AED",
+                  })),
+              },
             ]}
-            sortLabel="Group"
+            sortLabel={dealView === "summary" ? "Show" : "Group"}
             sort={
+              dealView === "summary" ? (
+                /* IN SUMMARY THE GROUPING IS THE VIEW STACK, so this slot
+                   carries the two things his sheet puts beside it instead:
+                   which money, and over what period. */
+                <span className="flex shrink-0 items-center gap-2">
+                  <ColorSelect
+                    value={measure}
+                    ariaLabel="Which value to total"
+                    onChange={(v) => setMeasure(v as EstimateMeasure)}
+                    minWidth={150}
+                    dense
+                    collapsible={false}
+                    className="w-[150px] shrink-0"
+                    options={[
+                      { value: "tcv", label: "Estimated TCV", color: "#0071E3" },
+                      { value: "acv", label: "Estimated ACV", color: "#0F766E" },
+                    ]}
+                  />
+                  <ColorSelect
+                    value={timeline}
+                    ariaLabel="Timeline"
+                    onChange={(v) => setTimeline(v as Timeline)}
+                    minWidth={140}
+                    dense
+                    collapsible={false}
+                    className="w-[140px] shrink-0"
+                    options={TIMELINES.map((t) => ({
+                      value: t.key,
+                      label: t.label,
+                      color: "#7C3AED",
+                    }))}
+                  />
+                </span>
+              ) : (
               <ColorSelect
                 value={groupBy}
                 ariaLabel="Group rows"
@@ -1876,6 +2145,7 @@ export function OpportunitiesBrowser({
                   { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
                 ]}
               />
+              )
             }
             view={
               <span
@@ -1885,6 +2155,7 @@ export function OpportunitiesBrowser({
               >
                 {(
                   [
+                    { key: "summary", label: "Summary", icon: Table2 },
                     { key: "table", label: "Table", icon: Rows3 },
                     { key: "split", label: "Split", icon: PanelsTopLeft },
                   ] as const
@@ -1947,7 +2218,29 @@ export function OpportunitiesBrowser({
           visible — found in the browser, Aug 30. A left-hand running list and
           a grouped set of cards are two answers to the same question; the
           split wins while it is on. */}
-      {(shown.length === 0 || groupBy === "none" || dealView === "split") && (
+      {/* THE SUMMARY IS THE WHOLE BODY when it is on — his sheet has one table
+          under the three values, not a table beside a list. */}
+      {dealView === "summary" && (
+        <Card className="tab-panel mt-4 p-4">
+          <OpportunitySummary
+            deals={shown}
+            order={dimOrder}
+            onReorder={setDimOrder}
+            measure={measure}
+            timeline={timeline}
+            groupNameFor={groupNameFor}
+            offeringNameFor={offeringNameFor}
+            openDealId={openRow}
+            /* Unfolds the deal where it was clicked; clicking it again shuts
+               it. It no longer jumps to Table view, which used to discard the
+               whole path the person had drilled to get there. */
+            onOpenDeal={(id) => setOpenRow((cur) => (cur === id ? null : id))}
+            renderDeal={(d) => pipeTable([d])}
+          />
+        </Card>
+      )}
+
+      {dealView !== "summary" && (shown.length === 0 || groupBy === "none" || dealView === "split") && (
         shown.length === 0 ? (
           <Card className="overflow-hidden p-0">
             <EmptyState
@@ -2032,7 +2325,7 @@ export function OpportunitiesBrowser({
           tinted header that folds it away; what lies between the cards is
           the page itself. */}
       {/* …and the grouped cards stand down while it is (see above). */}
-      {shown.length > 0 && groupBy !== "none" && dealView !== "split" && (
+      {shown.length > 0 && groupBy !== "none" && dealView === "table" && (
         <div className="mt-5 space-y-6">
           {groupSections.map(({ key, rows: sectionRows }) => {
             const shut = shutGroups.includes(key);
@@ -2443,6 +2736,32 @@ export function OpportunitiesBrowser({
                         avatarName: n,
                       })),
                   ]}
+                />
+              </Field>
+              {/* THE TWO NUMBERS THE SUMMARY IS BUILT FROM (Suren's Aug 30
+                  sheet: "$ Estimated ACV" and "$ Estimated TCV"). They are
+                  typed, and blank until somebody types them — nothing here
+                  guesses one from the other or from the offering value,
+                  because a guessed contract length is a number that would go
+                  into a management summary as though a person had said it. */}
+              <Field
+                label="Estimated ACV"
+                hint="One year of this contract, in USD. Leave it empty until the number is known — an empty cell reads as 'not said yet' everywhere, a zero would read as 'worth nothing'."
+              >
+                <MoneyInput
+                  value={editing.estimatedAcv}
+                  ariaLabel="Estimated annual contract value"
+                  onChange={(v) => setEditing({ ...editing, estimatedAcv: v })}
+                />
+              </Field>
+              <Field
+                label="Estimated TCV"
+                hint="The whole contract, in USD, across every year of it."
+              >
+                <MoneyInput
+                  value={editing.estimatedTcv}
+                  ariaLabel="Estimated total contract value"
+                  onChange={(v) => setEditing({ ...editing, estimatedTcv: v })}
                 />
               </Field>
               <Field
@@ -2896,6 +3215,52 @@ function Fact({
 /** "1000000" reads as "1,000,000" while you type (Anir, Aug 18: "if I type
  *  1000, it should automatically add the comma"). Display only — the stored
  *  value stays bare digits. */
+/**
+ * A MONEY BOX THAT STAYS EMPTY UNTIL SOMEBODY FILLS IT.
+ *
+ * Commas as you type, digits only, and — the point of it — no coercion of an
+ * empty string to 0 on the way in or out. Every other money field in this form
+ * belongs to an offering row that must carry a value to save; these two are
+ * allowed to be unknown, which is a different control even though it looks
+ * the same.
+ */
+function MoneyInput({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <span className="relative flex items-center">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3 text-[13px] font-semibold text-text-tertiary"
+      >
+        $
+      </span>
+      <input
+        value={value ? withCommas(value.replace(/[^0-9]/g, "")) : ""}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ""))}
+        inputMode="numeric"
+        aria-label={ariaLabel}
+        placeholder="Not set"
+        className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-6 pr-3 text-[13px] font-semibold text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary"
+      />
+    </span>
+  );
+}
+
+/** A typed money box on the way to the server: blank clears the stored one. */
+function moneyOrNull(raw: string): number | null {
+  const t = raw.replace(/,/g, "").trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function withCommas(digits: string): string {
   // Letters never belong in a money box (Anir, Aug 19: "why am I able to
   // write jjj?") — strip anything that is not a digit before grouping.

@@ -28,6 +28,14 @@ export const dynamic = "force-dynamic";
  * like the performance route.
  */
 
+/** null survives as null (clear it); "" and absent mean "not mentioned". */
+function clearable(v: unknown): number | null | undefined {
+  if (v === null) return null;
+  if (v === undefined || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function body(raw: Record<string, unknown>): OpportunityInput {
   const s = (v: unknown) => (typeof v === "string" ? v : undefined);
   const n = (v: unknown) =>
@@ -50,6 +58,14 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     revenueType: s(raw.revenueType),
     value: n(raw.value),
     currency: s(raw.currency),
+    /* The summary's two numbers, and the ONE pair of fields that must be
+       able to travel as null. `n()` folds null into undefined, and the update
+       merge drops undefined so a form that posts three fields cannot blank
+       the other twelve — correct everywhere else, and wrong here: clearing a
+       figure somebody mistyped would silently keep the old one. null means
+       "clear this", undefined still means "not mentioned". */
+    estimatedAcv: clearable(raw.estimatedAcv),
+    estimatedTcv: clearable(raw.estimatedTcv),
     confidence: n(raw.confidence),
     estSignDate: s(raw.estSignDate),
     owner: s(raw.owner),

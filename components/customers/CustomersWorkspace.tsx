@@ -57,7 +57,12 @@ export function CustomersWorkspace({
 
   return (
     <div>
-      <div className="relative z-40 mb-4">
+      {/* THE TABS AND THEIR ACTIONS SHARE ONE ROW (Anir, Aug 30: "why is the
+          add button and then the import button on a separate line? Move it
+          up — same for all 3 of those"). Each tab renders its own buttons
+          into the slot on the right through TabActions, so the state stays
+          with the tab that uses it and the line under the pills disappears. */}
+      <div className="relative z-40 mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
           {pills.map((p) => {
             const active = view === p.key;
@@ -96,6 +101,10 @@ export function CustomersWorkspace({
             );
           })}
         </div>
+        <div
+          id="customers-tab-actions"
+          className="flex shrink-0 flex-wrap items-center justify-end gap-2"
+        />
       </div>
 
       {/* Same entrance the performance rooms play when the tab flips — keyed

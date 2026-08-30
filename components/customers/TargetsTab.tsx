@@ -1,5 +1,6 @@
 "use client";
 
+import { TabActions } from "./TabActions";
 import { useMemo, useState } from "react";
 import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -367,10 +368,17 @@ export function TargetsTab({
                 : []),
             ]}
           />
+          {/* UP ON THE TAB ROW with the other two tabs' buttons (Anir,
+              Aug 30: "same for all 3 of those"). It was the only one already
+              sharing a line rather than owning one, but three tabs whose
+              primary action sits in three different places is its own kind of
+              wrong. */}
           {live && canEdit && (
-            <Button className="ml-auto shrink-0" onClick={() => setAdding(true)}>
-              <Plus size={14} strokeWidth={2.2} /> Add target
-            </Button>
+            <TabActions>
+              <Button className="shrink-0" onClick={() => setAdding(true)}>
+                <Plus size={14} strokeWidth={2.2} /> Add target
+              </Button>
+            </TabActions>
           )}
           {!live && (
             <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">

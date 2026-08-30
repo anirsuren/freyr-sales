@@ -1,5 +1,6 @@
 "use client";
 
+import { TabActions } from "./TabActions";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -106,7 +107,7 @@ export function CustomerGroupsTab({
           tab; a sentence explaining what a group is belongs on the empty
           state, where it already is, and not over a list of groups somebody
           has already made. */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      <TabActions>
         {canEdit && (
           <button
             type="button"
@@ -116,7 +117,7 @@ export function CustomerGroupsTab({
             <Plus size={15} strokeWidth={2.4} /> New group
           </button>
         )}
-      </div>
+      </TabActions>
 
       {groups.length === 0 ? (
         <EmptyState

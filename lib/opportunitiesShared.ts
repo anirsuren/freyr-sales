@@ -245,6 +245,26 @@ export type Opportunity = {
   revenueType?: RevenueType;
   value: number;
   currency?: CurrencyCode;
+  /**
+   * WHAT THE DEAL IS WORTH, THE TWO WAYS SUREN READS IT (his Aug 30 sheet:
+   * the summary carries "# of Opportunities", "$ Estimated ACV" and
+   * "$ Estimated TCV", and nothing else).
+   *
+   * TCV is the whole signed number; ACV is one year of it. A three-year deal
+   * at 300k total is 300k TCV and 100k ACV, and which one you are looking at
+   * changes every total on the page — so they are two fields, not one number
+   * with a divisor guessed from a contract length nobody entered.
+   *
+   * BOTH ARE TYPED AND BOTH START EMPTY. Anir, Aug 30: "he'll add them, but
+   * add the ability to add it, we don't have it now." Nothing derives them
+   * from `value`: a deal whose ACV nobody has entered reads as blank
+   * everywhere, never as $0, because a zero is a claim that the deal is
+   * worth nothing and an empty cell is the truth (it has not been said yet).
+   *
+   * `value` is untouched and still drives goals, weighting and contracts.
+   */
+  estimatedAcv?: number;
+  estimatedTcv?: number;
   /** 0-100. */
   confidence?: number;
   /** ISO day. */
@@ -479,4 +499,59 @@ export function expectedByNow(
     basis: "pipeline",
     dueCount: due.length,
   };
+}
+
+
+/**
+ * THE TWO SUMMARY NUMBERS, OR NOTHING.
+ *
+ * Undefined is a real answer here and must survive all the way to the screen:
+ * "nobody has said yet" and "worth zero" are different facts, and only one of
+ * them is true of a deal Suren has not got to. Callers sum with `?? 0` but
+ * must count how many were present before they show a total (see
+ * `sumEstimates`).
+ */
+export function estimatedAcvOf(deal: Pick<Opportunity, "estimatedAcv">): number | undefined {
+  const n = deal.estimatedAcv;
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
+}
+
+export function estimatedTcvOf(deal: Pick<Opportunity, "estimatedTcv">): number | undefined {
+  const n = deal.estimatedTcv;
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
+}
+
+/** Which of the two a view is showing. One at a time — Suren, Aug 30: "he can
+ *  only select one, either ACV or TC." */
+export type EstimateMeasure = "acv" | "tcv";
+
+export function estimateOf(
+  deal: Pick<Opportunity, "estimatedAcv" | "estimatedTcv">,
+  measure: EstimateMeasure
+): number | undefined {
+  return measure === "acv" ? estimatedAcvOf(deal) : estimatedTcvOf(deal);
+}
+
+/**
+ * A TOTAL THAT KNOWS WHAT IT IS MISSING.
+ *
+ * Returns the sum AND how many deals actually carried the number, so a tile
+ * can say "across 4 of 79" rather than presenting the sum of four deals as
+ * though it were the pipeline. Until Suren fills these in, most of the book
+ * has neither, and a confident-looking total over three entered deals is the
+ * kind of number that gets repeated in a meeting.
+ */
+export function sumEstimates(
+  deals: Pick<Opportunity, "estimatedAcv" | "estimatedTcv">[],
+  measure: EstimateMeasure
+): { total: number; entered: number; of: number } {
+  let total = 0;
+  let entered = 0;
+  for (const d of deals) {
+    const n = estimateOf(d, measure);
+    if (n === undefined) continue;
+    total += n;
+    entered += 1;
+  }
+  return { total, entered, of: deals.length };
 }

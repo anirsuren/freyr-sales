@@ -1871,8 +1871,25 @@ export function BarChart({
    * Callers plotting a handful of points pass something tighter.
    */
   maxBarWidth = 88,
+  hideFullHeightGhost = false,
 }: {
   maxBarWidth?: number;
+  /**
+   * DROP THE 100% GHOST when the tallest bar is not a target.
+   *
+   * The ghost exists because Anir asked for it on the GOAL charts (Aug 23:
+   * "can you put a light 100% on these bar charts... that way I can see
+   * exactly where I need to get to"). There, full height means the target,
+   * and the gap above a bar is the work left.
+   *
+   * On a chart that plots one quantity across periods there IS no target:
+   * full height is only whichever period happened to be biggest. The ghost
+   * then says a $338K quarter is falling short of an $8.4M one, which is not
+   * a thing a quarter can do — and it reads as a pale box round every short
+   * bar (Anir, Aug 30: "why is it like a rectangle? What did you do to the
+   * bar chart?"). Charts whose max is arbitrary pass this.
+   */
+  hideFullHeightGhost?: boolean;
   /**
    * NO KEY BESIDE THE AXIS LABEL (Anir, Aug 25: "why is there a red dot next
    * to August?"). A dot beside a label is a SERIES key; on a chart plotting
@@ -2369,16 +2386,18 @@ export function BarChart({
                   Painted at 7% of the bar's own colour: enough to read the gap,
                   far too faint to mistake for progress that exists. It takes no
                   space of its own, so nothing above or below moves. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 left-1.5 right-1.5 flex justify-center"
-                style={{ top: labelRoom }}
-              >
+              {!hideFullHeightGhost && (
                 <span
-                  className="h-full w-[72%] min-w-[14px] rounded-t-md"
-                  style={{ maxWidth: maxBarWidth, background: d.color || VIZ.blue, opacity: 0.07 }}
-                />
-              </span>
+                  aria-hidden="true"
+                  className="pointer-events-none absolute bottom-0 left-1.5 right-1.5 flex justify-center"
+                  style={{ top: labelRoom }}
+                >
+                  <span
+                    className="h-full w-[72%] min-w-[14px] rounded-t-md"
+                    style={{ maxWidth: maxBarWidth, background: d.color || VIZ.blue, opacity: 0.07 }}
+                  />
+                </span>
+              )}
               {/* Label + bar are ONE object: the label is a child of the bar,
                   so when the bar lifts under the cursor the number rides up
                   with it, exactly as far, at exactly the same speed (Suren:

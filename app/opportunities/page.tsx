@@ -6,6 +6,7 @@ import { getRole } from "@/lib/role";
 import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { judgePlan } from "@/lib/revenueAccrualsShared";
 import { listOfferings } from "@/lib/offerings";
+import { readCustomerGroups } from "@/lib/customerGroups";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
 import { readActivityMaster } from "@/lib/activityMaster";
@@ -44,6 +45,11 @@ export default async function OpportunitiesPage() {
   ]);
   const db = getDb();
   const customers = await db.customers.list();
+  /* The summary's first dimension is the customer GROUP (Suren's Aug 30
+     sheet), which lives in its own store — the deal only knows its account. */
+  const { groups: customerGroups } = await readCustomerGroups().catch(() => ({
+    groups: [],
+  }));
 
   /* EVERYTHING ON EACH DEAL (Suren, Aug 28: "if I go to opportunities and
      click on opportunity, all the presentation and everything will come...
@@ -61,6 +67,12 @@ export default async function OpportunitiesPage() {
 
   return (
     <OpportunitiesBrowser
+      customerGroups={customerGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        customerIds: g.customerIds,
+      }))}
       bandsByDeal={bandsByDeal}
       opportunities={opportunities}
       /* Meetings held against each deal, keyed by deal id, newest first. */

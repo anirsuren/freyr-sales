@@ -1,5 +1,6 @@
 "use client";
 
+import { TabActions } from "./TabActions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
@@ -525,8 +526,8 @@ export function CustomersBrowser({
           its content; this does now too, with the two ways an account enters
           the system kept where they were (Anir, Jul 30: "people should want to
           either import or add a customer, so that should be there"). */}
-      <div className="rise-in mb-4 flex flex-wrap items-center justify-end gap-3">
-        {canAddCustomers && <div className="flex shrink-0 items-center gap-2">
+      <TabActions>
+        {canAddCustomers && <>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
@@ -555,8 +556,8 @@ export function CustomersBrowser({
               e.target.value = "";
             }}
           />
-        </div>}
-      </div>
+        </>}
+      </TabActions>
 
       {/* The toolbar is its own FULL-WIDTH bar, the same shape the offerings
           page uses. The search is `grow`: its left edge is pinned and focusing

@@ -60,6 +60,14 @@ function num(v: unknown): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** A money field that is allowed to be unset. Unlike `num`, an empty or
+ *  unparseable value stays undefined rather than becoming a claim of zero. */
+function money(v: unknown): number | undefined {
+  if (v === null || v === undefined || v === "") return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 function strList(v: unknown, max: number): string[] {
   if (!Array.isArray(v)) return [];
   const out: string[] = [];
@@ -235,6 +243,12 @@ function normalizeOne(raw: unknown): Opportunity | null {
     revenueType: normalizeRevenueType(r.revenueType),
     value: total,
     currency,
+    /* TYPED, AND ALLOWED TO BE ABSENT. `num()` turns anything unparseable
+       into 0, which is exactly the wrong answer for these two: an untouched
+       deal would start claiming an ACV of nothing. Only a real finite number
+       is kept, so "not entered yet" survives the round trip. */
+    estimatedAcv: money(r.estimatedAcv),
+    estimatedTcv: money(r.estimatedTcv),
     confidence: normalizeConfidence(r.confidence),
     estSignDate: day(r.estSignDate),
     owner: str(r.owner, 120) || undefined,
@@ -326,6 +340,27 @@ async function writeRow(state: OpportunitiesState): Promise<void> {
  * opportunity, one offering each ("if somebody writes a proposal against
  * multiple opportunities, they can do that").
  */
+/**
+ * MOCK CARRIES BOTH SUMMARY NUMBERS (standing rule: every mock page has to
+ * look worked-in, and Anir on Aug 30 seeing the summary empty in Mock).
+ *
+ * TCV is the deal's own value — that is what the sheet's "total contract
+ * value" column always was. ACV is that spread over a term derived from the
+ * row number, so the two are never equal across the board and a reader can
+ * tell them apart at a glance. Deterministic from `n`, like the rest of mock:
+ * two reads must never disagree.
+ */
+function sampleEstimates(n: number, value: number): {
+  estimatedTcv: number;
+  estimatedAcv: number;
+} {
+  const years = [1, 1, 2, 3, 2, 1, 4, 2][n % 8];
+  return {
+    estimatedTcv: value,
+    estimatedAcv: Math.round(value / years / 1000) * 1000,
+  };
+}
+
 function seededMock(): OpportunitiesState {
   const now = "2026-08-16T00:00:00.000Z";
   // ONE ROW = ONE OPPORTUNITY (Suren, Aug 17 call: "don't do multiple
@@ -368,6 +403,7 @@ function seededMock(): OpportunitiesState {
       status: normalizeStatus(r.status),
       revenueType: normalizeRevenueType(r.revenueType),
       value: r.value ?? 0,
+      ...sampleEstimates(n, r.value ?? 0),
       confidence: normalizeConfidence(r.confidence),
       estSignDate: r.estSignDate ?? undefined,
       owner: undefined,
@@ -464,6 +500,7 @@ function seededMock(): OpportunitiesState {
       status: normalizeStatus("Open"),
       revenueType: normalizeRevenueType("OTS"),
       value: d.value,
+      ...sampleEstimates(k, d.value),
       confidence: normalizeConfidence(d.confidence),
       estSignDate: d.signs,
       owner: d.owner,
@@ -546,6 +583,11 @@ export type OpportunityInput = {
   status?: string;
   revenueType?: string;
   value?: number;
+  /** The summary's two typed numbers. Absent means "not mentioned"; null
+   *  means "clear it" — the update merge drops undefined, so without null
+   *  an emptied box could never take a wrong figure back off a deal. */
+  estimatedAcv?: number | null;
+  estimatedTcv?: number | null;
   currency?: string;
   confidence?: number;
   estSignDate?: string;
