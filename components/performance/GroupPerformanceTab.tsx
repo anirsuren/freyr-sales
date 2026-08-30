@@ -18,6 +18,7 @@ import { GroupPill } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 
@@ -67,6 +68,9 @@ export function GroupPerformanceTab({
   const group = groups.find((g) => g.id === pickedId) ?? groups[0] ?? null;
   /** The goal whose GROUP share is being set — see scope.onSetTarget. */
   const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
+  /** The full roster, opened from under the group picker. */
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [rosterQuery, setRosterQuery] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
 
   /**
@@ -299,6 +303,27 @@ export function GroupPerformanceTab({
         );
       })}
       </div>
+      {/* WHO IS ACTUALLY IN IT (Anir, Aug 30: "if I click on a group, I would
+          probably want to see exactly who's in this group... there's literally
+          nowhere I can see everybody if there are like a hundred people in a
+          group").
+
+          The chip fans a handful of faces, which is a preview, not a roster —
+          at a hundred people it says nothing at all. This opens the list, with
+          a search box because a hundred names need one, and each person's own
+          numbers beside them so it answers "who is in here" and "how are they
+          doing" in one place. */}
+      {group && members.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setRosterOpen(true)}
+          className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+        >
+          <UsersRound size={13} strokeWidth={2.2} />
+          See all {members.length} {members.length === 1 ? "person" : "people"} in{" "}
+          {group.name}
+        </button>
+      )}
     </div>
   );
 
@@ -405,6 +430,77 @@ export function GroupPerformanceTab({
         />
       );
     })()}
+
+    {/* EVERYONE IN THE GROUP, SEARCHABLE. Each row carries what that person
+        carries and what they have signed off, so the list answers the question
+        that made him open it rather than being a wall of names. */}
+    <Modal
+      open={rosterOpen}
+      onClose={() => {
+        setRosterOpen(false);
+        setRosterQuery("");
+      }}
+      title={group ? `Who is in ${group.name}` : "Who is in this group"}
+      size="wide"
+      tall
+      dialogClassName="!h-[min(680px,calc(100vh-3rem))]"
+      bodyClassName="flex flex-col"
+    >
+      <div className="flex min-h-0 flex-1 flex-col">
+        <input
+          value={rosterQuery}
+          onChange={(e) => setRosterQuery(e.target.value)}
+          placeholder="Search this group…"
+          aria-label="Search the group"
+          className="h-10 w-full shrink-0 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+        />
+        <p className="mt-2 shrink-0 text-[12px] text-text-tertiary">
+          {(() => {
+            const n = members.filter((m) =>
+              m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
+            ).length;
+            return `${n} of ${members.length} ${members.length === 1 ? "person" : "people"}`;
+          })()}
+        </p>
+        <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+          {members
+            .filter((m) =>
+              m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
+            )
+            .map((m) => {
+              const theirs = (scoped.goals ?? []).filter((g) =>
+                (g.assignments ?? []).some(
+                  (a) => a.person.trim().toLowerCase() === m.trim().toLowerCase()
+                )
+              );
+              return (
+                <div
+                  key={m}
+                  className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-3 py-2"
+                >
+                  <Avatar name={m} className="h-7 w-7 shrink-0 text-[9px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold text-text-primary">
+                      {m}
+                    </span>
+                    <span className="block truncate text-[11.5px] text-text-tertiary">
+                      {theirs.length === 0
+                        ? "no goals in this group"
+                        : `${theirs.length} ${theirs.length === 1 ? "goal" : "goals"} here`}
+                    </span>
+                  </span>
+                  {group?.head === m && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
+                      <Crown size={9} strokeWidth={2.6} />
+                      Group owner
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </Modal>
     </>
   );
 }

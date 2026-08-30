@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  ArrowUpRight,
   AlertTriangle,
   CheckCircle2,
   Briefcase,
@@ -1035,12 +1036,20 @@ export function ContractsModule({
                             <FileText size={12} strokeWidth={2.2} /> No document yet
                           </span>
                         )}
+                        {/* THE ARROW, NOT THE SENTENCE (Anir, Aug 30: "stop
+                            with this fucking button, I don't want this button
+                            anywhere" — and, on the same shape elsewhere,
+                            "replace it with the arrow"). This one was missed in
+                            the first sweep and found by re-reading the chat
+                            against the code. */}
                         {c.opportunityId && (
                           <Link
                             href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                            title="Open the deal"
+                            aria-label="Open the deal behind this contract"
+                            className="inline-flex cursor-pointer items-center rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                           >
-                            <Briefcase size={12} strokeWidth={2.2} /> Open the deal
+                            <ArrowUpRight size={15} strokeWidth={2.2} />
                           </Link>
                         )}
                       </span>
