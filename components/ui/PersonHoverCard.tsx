@@ -121,10 +121,19 @@ export function PersonHoverCard({
                   {role}
                 </p>
               )}
+              {/* ONE LINE (Anir, Aug 29: "this is ugly too, the way the thing
+                  is on two lines it just looks so ugly"). break-words let a
+                  long name — "Booked Revenue (Contract Value Signed)" — wrap
+                  into a two-line block that dwarfed the person it was
+                  describing. It truncates now and carries the full string on
+                  hover, so the card stays a card whatever it is labelling. */}
               {context && (
-                <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary">
+                <span
+                  title={context}
+                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary"
+                >
                   <Package size={11} strokeWidth={2.1} className="shrink-0" />
-                  <span className="break-words">{context}</span>
+                  <span className="truncate">{context}</span>
                 </span>
               )}
             </div>

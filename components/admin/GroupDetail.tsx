@@ -18,6 +18,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { PersonFan } from "@/components/ui/PersonFan";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -439,27 +440,29 @@ export function GroupDetail({
                           }
                         />
                       </td>
+                      {/* FACES ONLY (Anir, Aug 29: "there are 100 people,
+                          right? This is not going to look good, so you got to
+                          show profile pictures. I don't need to see the names —
+                          obviously when I open it I'll see the names"). Name
+                          chips were fine at two people and unusable at fifty.
+                          PersonFan is the app's existing answer: overlapped
+                          avatars that fan apart on hover, each naming itself,
+                          and the fold below lists everyone properly. */}
                       <td className="px-4 py-3.5">
-                        <span className="flex flex-wrap items-center gap-1">
-                          {on.length === 0 ? (
-                            <span className="text-[12px] text-text-tertiary">
-                              Nobody
-                            </span>
-                          ) : (
-                            on.map((p) => (
-                              <span
-                                key={p}
-                                title={p}
-                                className="inline-flex items-center gap-1 rounded-full bg-surface px-1.5 py-0.5"
-                              >
-                                <Avatar name={p} className="h-4 w-4 text-[6.5px]" />
-                                <span className="text-[11px] font-medium text-text-secondary">
-                                  {p.split(" ")[0]}
-                                </span>
-                              </span>
-                            ))
-                          )}
-                        </span>
+                        {on.length === 0 ? (
+                          <span className="text-[12px] text-text-tertiary">
+                            Nobody
+                          </span>
+                        ) : (
+                          <PersonFan
+                            people={on.map((p) => ({
+                              name: p,
+                              role: p === group.head ? "Group owner" : "In this group",
+                              context: g.name,
+                            }))}
+                            avatarClassName="h-6 w-6 text-[9px]"
+                          />
+                        )}
                       </td>
                       {/* MORE THAN ONE THING TO DO (Anir, Aug 29: "why is
                           there only one action?"). A column headed Actions with
@@ -870,38 +873,105 @@ export function GroupDetail({
  * setting 1500000 does not fire six saves and leave the store on whichever one
  * happened to land last.
  */
+/**
+ * A TARGET YOU CAN SEE, AND A SAVE YOU CAN SEE HAPPEN.
+ *
+ * Anir, Aug 29: "I do not like this UI where you just enter it. It doesn't make
+ * sense to just enter it, bro, because they're not going to know if it's saved.
+ * You can't just do that — you got to do kind of like what you did on the goals
+ * page."
+ *
+ * It was a bare box that committed on blur. Clicking away is not a decision, so
+ * there was no moment where the number was obviously accepted, and no way to
+ * back out of a typo except by remembering the old figure.
+ *
+ * At rest it is the number, or the Goal Master's own "Set the target" prompt
+ * when there is none. Editing is deliberate: a tick to save, an X to abandon,
+ * Enter and Escape for the same two. The toast that follows is the receipt.
+ */
 function GroupTargetInput({
   value,
   disabled,
   onSave,
+  label = "target",
 }: {
   value: number;
   disabled: boolean;
   onSave: (target: number) => void;
+  label?: string;
 }) {
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value || ""));
-  const commit = () => {
+
+  function open() {
+    setDraft(String(value || ""));
+    setEditing(true);
+  }
+
+  function commit() {
     const n = Number(draft.replace(/[^0-9.]/g, ""));
-    if (!Number.isFinite(n) || n === value) {
-      setDraft(String(value || ""));
-      return;
-    }
+    setEditing(false);
+    if (!Number.isFinite(n) || n === value) return;
     onSave(n);
-  };
+  }
+
+  if (!editing)
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          open();
+        }}
+        title={`Set the ${label}`}
+        className={
+          value > 0
+            ? "cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-text-primary tnum transition-colors hover:border-blue-primary hover:text-blue-primary"
+            : "cursor-pointer text-left text-[11.5px] font-semibold text-blue-primary hover:underline"
+        }
+      >
+        {value > 0 ? value.toLocaleString() : "Set the target \u2192"}
+      </button>
+    );
+
   return (
-    <input
-      value={draft}
-      disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") setDraft(String(value || ""));
-      }}
-      inputMode="numeric"
-      placeholder="Set the target"
-      aria-label="Group target"
-      className="w-full rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-primary tnum transition-colors focus:border-blue-primary focus:outline-none"
-    />
+    <span
+      className="flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        autoFocus
+        value={draft}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setEditing(false);
+        }}
+        inputMode="numeric"
+        placeholder="0"
+        aria-label={`Set the ${label}`}
+        className="w-full min-w-0 rounded-lg border border-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-text-primary tnum outline-none"
+      />
+      <button
+        type="button"
+        onClick={commit}
+        title="Save"
+        aria-label="Save"
+        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#1A7A35] transition-colors hover:bg-[rgba(26,122,53,0.10)]"
+      >
+        <Check size={13} strokeWidth={2.6} />
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        title="Cancel"
+        aria-label="Cancel"
+        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+      >
+        <X size={13} strokeWidth={2.4} />
+      </button>
+    </span>
   );
 }
