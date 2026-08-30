@@ -172,6 +172,7 @@ function RecipientField({
   onChange,
   people,
   ariaLabel,
+  trailing,
 }: {
   label: string;
   hint?: string;
@@ -179,6 +180,12 @@ function RecipientField({
   onChange: (next: string) => void;
   people: WorkspacePerson[];
   ariaLabel: string;
+  /** Rendered at the right of the label row. The recipient count lives here
+   *  (Anir, Aug 30: "I don't like where the one recipient is either, that
+   *  doesn't make any sense, it should go up top") — it is a fact about this
+   *  field, so it belongs on this field rather than beside the Send button a
+   *  page below. */
+  trailing?: React.ReactNode;
 }) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
@@ -261,7 +268,14 @@ function RecipientField({
 
   return (
     <div ref={boxRef} className="relative">
-      <Label hint={hint}>{label}</Label>
+      {trailing ? (
+        <span className="flex items-center justify-between gap-2">
+          <Label hint={hint}>{label}</Label>
+          {trailing}
+        </span>
+      ) : (
+        <Label hint={hint}>{label}</Label>
+      )}
       <div
         onClick={() => {
           setOpen(true);
@@ -522,7 +536,14 @@ export function EmailComposer() {
             type="button"
             onClick={() => foldToggle("write")}
             aria-expanded={!shut.write}
-            className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+          /* THE WHOLE ROW IS THE TARGET (Anir, Aug 30: "on all these
+             dropdowns you keep making this mistake — I'm trying to hit it but
+             I can't, I don't wanna have to always hit the text exactly, I
+             should be able to hit the entire thing"). The button hugged its
+             own label, so the empty half of a full-width header row did
+             nothing. It stretches to whatever sits on its right — the
+             Templates picker and the hint keep their own hit areas. */
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[15px] font-semibold text-text-primary"
           >
             <ChevronDown
               size={15}
@@ -546,6 +567,12 @@ export function EmailComposer() {
                 setSubject(draft.subject);
                 setBody(draft.html);
                 setConfirming(false);
+                /* AND OPEN THE FORM (Anir, Aug 30: "if I click the draft and I
+                   click one of these people but I have the dropdown closed, it
+                   doesn't do anything — it should open it on command"). It
+                   loaded the draft into a form nobody could see, so a real
+                   action looked like a dead click. */
+                setShut((current) => ({ ...current, write: false }));
               }}
             />
             {from && (
@@ -584,6 +611,13 @@ export function EmailComposer() {
             onChange={setTo}
             people={people}
             ariaLabel="To"
+            trailing={
+              <span className="text-[11.5px] text-text-tertiary tnum">
+                {recipients === 0
+                  ? "No recipients yet"
+                  : `${recipients} ${recipients === 1 ? "recipient" : "recipients"}`}
+              </span>
+            }
           />
 
           <button
@@ -633,8 +667,30 @@ export function EmailComposer() {
             </div>
           )}
 
-          <label className="block">
-            <Label>Subject</Label>
+          <div className="block">
+            {/* MARK IT IMPORTANT, BESIDE THE SUBJECT (Anir, Aug 30: "I don't
+                like why the Mark as important is there, I don't think that's a
+                good place to have it — figure out a better place"). It was
+                down in the send bar among the things you do AFTER writing, but
+                it is a property of the message, and the subject line is where
+                Outlook's own "!" ends up. */}
+            <span className="flex items-center justify-between gap-2">
+              <Label>Subject</Label>
+              <button
+                type="button"
+                onClick={() => setImportant((v) => !v)}
+                aria-pressed={important}
+                title="Sets the headers Outlook reads to draw its red exclamation mark"
+                className={`mb-1 inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                  important
+                    ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                }`}
+              >
+                <AlertCircle size={12} strokeWidth={2.3} />
+                {important ? "Marked important" : "Mark as important"}
+              </button>
+            </span>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
@@ -642,7 +698,7 @@ export function EmailComposer() {
               aria-label="Subject"
               className={FIELD}
             />
-          </label>
+          </div>
 
           <div>
             {/* THE FORMAT BAR SARAS ASKED FOR (Aug 25: "a format bar for the
@@ -660,33 +716,12 @@ export function EmailComposer() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-light pt-4">
-          <span className="flex flex-wrap items-center gap-3">
-            <span className="text-[12.5px] text-text-secondary tnum">
-              {recipients === 0
-                ? "No recipients yet"
-                : `${recipients} ${recipients === 1 ? "recipient" : "recipients"}`}
-            </span>
-            {/* MARK IT IMPORTANT (Anir, Aug 26: "Is it possible to mark emails
-                as important? You know how that option's there in Outlook? That
-                red exclamation mark"). It sets the three headers mail clients
-                actually read — Importance, X-Priority and X-MSMail-Priority —
-                so Outlook draws its "!" and anything that understands none of
-                them shows an ordinary email. */}
-            <button
-              type="button"
-              onClick={() => setImportant((v) => !v)}
-              aria-pressed={important}
-              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                important
-                  ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
-                  : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-              }`}
-            >
-              <AlertCircle size={13} strokeWidth={2.3} />
-              {important ? "Marked important" : "Mark as important"}
-            </button>
-          </span>
+        {/* NO RULE ABOVE SEND (Anir, Aug 30: "you don't need that little
+            horizontal line above Send, that's kind of pointless — it's not
+            really separating much"). With the count and the important toggle
+            moved up to the fields they describe, this row is one button, and a
+            hairline above a single button separates nothing. */}
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
           {/* STILL TWO PRESSES, NOW AS A POP-UP (Anir, Aug 27: "make the
               send button, like the confirmation thing, a pop-up instead of
               whatever you have right now"). The inline swap made the whole
@@ -738,12 +773,12 @@ export function EmailComposer() {
           emails an admin composed here, so the box says what fires each one
           and who receives it rather than implying a history it does not have. */}
       <Card className="p-5">
-        <div className="flex items-center gap-1">
+        <div className="flex w-full items-center gap-1">
         <button
           type="button"
           onClick={() => foldToggle("auto")}
           aria-expanded={!shut.auto}
-          className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[15px] font-semibold text-text-primary"
         >
           <ChevronDown
             size={15}
@@ -801,12 +836,12 @@ export function EmailComposer() {
 
       {/* WHAT HAS ALREADY GONE OUT. */}
       <Card className="p-5">
-        <div className="flex items-center gap-1">
+        <div className="flex w-full items-center gap-1">
         <button
           type="button"
           onClick={() => foldToggle("log")}
           aria-expanded={!shut.log}
-          className="flex cursor-pointer items-center gap-2 text-[15px] font-semibold text-text-primary"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[15px] font-semibold text-text-primary"
         >
           <ChevronDown
             size={15}
