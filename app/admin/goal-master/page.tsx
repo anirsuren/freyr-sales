@@ -7,7 +7,6 @@ import { readPerformance } from "@/lib/performance";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { PerformanceModule } from "@/components/performance/PerformanceModule";
-import { AdminBack } from "@/components/admin/AdminBack";
 
 /**
  * THE GOAL MASTER IS AN ADMIN SCREEN.
@@ -61,8 +60,13 @@ export default async function AdminGoalMasterPage() {
   }
 
   return (
+    /* NO BACK ARROW (Anir, Aug 29: "what do you mean, all admin? Why is that
+       back arrow even there? I just feel like that back arrow should not even
+       be there"). He is right: the sidebar shows Admin with Goal Master under
+       it, so this is a sibling page in a section you are already standing in,
+       not somewhere you drilled into. The arrow implied a trail that does not
+       exist, and it was holding a whole row open above the content. */
     <div>
-      <AdminBack label="All admin" />
       <PerformanceModule
         initial={state}
         live={live}

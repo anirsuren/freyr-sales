@@ -430,7 +430,7 @@ export function PerformanceModule({
           wrapper replays on the pills. The strip must render already-settled;
           only the keyed tab-panel below animates. Do not put rise-in, page-in,
           stagger or any keyframe class on this header. */}
-      <div className="relative z-40 mb-6">
+      <div className={cn("relative z-40", chrome === "admin" ? "mb-4" : "mb-6")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {/* THE SELECTOR IS THE TITLE. It used to be a heading that named the
               room and a tab bar UNDER it naming the same room again, so the
@@ -440,7 +440,19 @@ export function PerformanceModule({
               The tabs sit where the title was and carry the name themselves;
               the h1 stays for screen readers and the document outline. */}
           <div className="relative">
-            <h1 className="sr-only">
+            {/* THE TOP IS JUST THE NAME (Anir, Aug 29: "the top should
+                literally just be like Goal Master"). On Performance the
+                selector carries the name, so the heading is for screen readers
+                only; in Admin there is no selector, so it has to be visible or
+                the page starts with a filter row and nothing saying what it
+                is. */}
+            <h1
+              className={
+                chrome === "admin"
+                  ? "text-[22px] font-semibold tracking-[-0.01em] text-text-primary"
+                  : "sr-only"
+              }
+            >
               {showMaster ? "Goal Master" : room.label}
             </h1>
             {/* The four tabs are ONE strip, always (Anir, Aug 23: "it's
@@ -499,14 +511,21 @@ export function PerformanceModule({
                 (Anir, Aug 15: "what a weird place to have the download icon,
                 put it next to How this works"). */}
             <span id="perf-header-actions" className="flex items-center gap-2" />
-            <button
-              type="button"
-              onClick={() => setHowOpen(true)}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-            >
-              <HelpCircle size={13} strokeWidth={2.2} />
-              How this works
-            </button>
+            {/* NOT IN ADMIN (Anir, Aug 29: "you don't need a How This Works
+                section, right? You could probably just move all that up"). On
+                Performance it explains four rooms and how they relate; the
+                master is one screen an admin already knows, and the button was
+                the only thing holding a row of its own open. */}
+            {chrome !== "admin" && (
+              <button
+                type="button"
+                onClick={() => setHowOpen(true)}
+                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <HelpCircle size={13} strokeWidth={2.2} />
+                How this works
+              </button>
+            )}
             {/* NO SECOND ANNOUNCEMENT OF THE SAME FACT (Anir, Aug 23: "it's
                 moving the 4 page toggles, it's already a message in the top
                 right"). A full-width blue bar across the top of the app
