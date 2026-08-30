@@ -28,6 +28,7 @@ import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import { GROUP_TYPE_META } from "@/lib/privileges";
 import {
+  PersonProgress,
   TypeChip,
   TypeIconTile,
   typeMeta,
@@ -594,15 +595,28 @@ export function GroupDetail({
                                         name={person}
                                         className="h-7 w-7 shrink-0 text-[9px]"
                                       />
-                                      <span className="min-w-0 flex-1">
+                                      <span className="min-w-[110px] flex-1">
                                         <span className="block truncate text-[12.5px] font-semibold text-text-primary">
                                           {person}
                                         </span>
-                                        <span className="block text-[10.5px] text-text-tertiary tnum">
-                                          {logged > 0
-                                            ? `${logged.toLocaleString()} logged`
-                                            : "Nothing logged yet"}
-                                        </span>
+                                      </span>
+                                      {/* WHERE THEY STAND, NOT JUST WHAT THEY
+                                          LOGGED (Anir, Aug 30: "why am I not
+                                          seeing a progress bar that says
+                                          100%? There can't be any holes
+                                          here"). The row said "4,567 logged"
+                                          beside a target of 450 and left the
+                                          arithmetic to the reader. Same block
+                                          the goal panel draws, so the two
+                                          screens cannot disagree. */}
+                                      <span className="block min-w-[150px] flex-[1.4]">
+                                        <PersonProgress
+                                          goal={g}
+                                          done={logged}
+                                          target={mine?.target ?? 0}
+                                          caption={false}
+                                          noTargetLabel="No target yet"
+                                        />
                                       </span>
                                       <span className="w-[120px] shrink-0">
                                         <GroupTargetInput

@@ -90,6 +90,7 @@ import {
   TrackSwitch,
   TypeChip,
   TypeIconTile,
+  PersonProgress,
   UnitChip,
   typeMeta,
   VerifiedPill,
@@ -1652,15 +1653,14 @@ function GroupSplitPanel({
   const targetOf = (person: string) =>
     (goal.assignments ?? []).find((a) => a.person === person)?.target ?? 0;
   /** What this person has actually logged against the goal, so the row says
-   *  something even before anybody sets a target. */
+   *  something even before anybody sets a target.
+   *
+   *  THE SAME HELPER THE ROWS BELOW USE. It summed raw amounts, which ignores
+   *  the FX table on a money goal and is simply wrong on a "latest value"
+   *  goal, so this fold and the individually-assigned rows underneath it could
+   *  print two different numbers for the same person. */
   const loggedBy = (person: string) =>
-    (state.actuals ?? [])
-      .filter(
-        (a) =>
-          a.person === person &&
-          (a.goalId === goal.id || (goal.componentGoalIds ?? []).includes(a.goalId))
-      )
-      .reduce((sum, a) => sum + a.amount, 0);
+    actualValue(state.actuals ?? [], goal, { person, rates: state.rates });
   const split = on.reduce((sum, m) => sum + targetOf(m), 0);
   const groupTarget = assignment.target;
   const left = groupTarget - split;
@@ -1769,15 +1769,19 @@ function GroupSplitPanel({
                 className="shrink-0 text-[color:#7C3AED]"
               />
             )}
-            <span className="shrink-0 text-[11.5px] text-text-secondary tnum">
-              {loggedBy(m) > 0 ? (
-                <>
-                  <b className="text-text-primary">{fmtAmount(goal.unit, loggedBy(m))}</b>{" "}
-                  logged
-                </>
-              ) : (
-                <span className="text-text-tertiary">nothing logged yet</span>
-              )}
+            {/* WHAT THEY HAVE AGAINST WHAT THEY CARRY, not a bare count
+                (Anir, Aug 30: "why am I not seeing a progress bar that says
+                100%... there can't be any holes here"). Same block as the
+                individually-assigned rows below, without the target caption —
+                the button next to it already is the target. */}
+            <span className="block min-w-[170px] flex-1">
+              <PersonProgress
+                goal={goal}
+                done={loggedBy(m)}
+                target={targetOf(m)}
+                caption={false}
+                noTargetLabel="No target yet"
+              />
             </span>
             {live ? (
               <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-tertiary">
@@ -3295,52 +3299,7 @@ function GoalPopupBody({
                 )}
               </span>
               <span className="block min-w-[200px] flex-1">
-                <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">
-                  {fmtAmount(goal.unit, done)}
-                  {a.target > 0 && (
-                    <>
-                      <span className="text-text-tertiary">·</span>
-                      <span
-                        style={{
-                          color:
-                            donePct >= 85
-                              ? "#15803D"
-                              : donePct >= 55
-                                ? "#0071E3"
-                                : "#DC2626",
-                        }}
-                      >
-                        {donePct}%
-                      </span>
-                    </>
-                  )}
-                </span>
-                {a.target > 0 ? (
-                  <>
-                    <span className="relative mt-1.5 block h-3">
-                      <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                        <span
-                          className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
-                          style={{ width: `${donePct}%` }}
-                        />
-                      </span>
-                      <span
-                        className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
-                        style={{ left: `clamp(6px, ${donePct}%, calc(100% - 6px))` }}
-                      />
-                    </span>
-                    <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
-                      <span>{fmtAmount(goal.unit, 0)}</span>
-                      <span className="font-semibold text-text-secondary">
-                        {fmtAmount(goal.unit, a.target)} target
-                      </span>
-                    </span>
-                  </>
-                ) : (
-                  <span className="mt-1 block text-[10.5px] text-text-tertiary">
-                    No personal target set
-                  </span>
-                )}
+                <PersonProgress goal={goal} done={done} target={a.target} />
               </span>
               <VerifiedPill
                 verified={a.verified}

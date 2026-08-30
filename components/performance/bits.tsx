@@ -1744,6 +1744,92 @@ export function SetShareModal({
  * fixed-width track with the percentage beside it, capped at 100, verified
  * green with the unverified overlay). One component, two tables, no drift.
  */
+/**
+ * ONE PERSON'S STANDING ON ONE GOAL, IN A ROW.
+ *
+ * Anir, Aug 30, on a fold that printed "4,567 logged" and nothing else: "why
+ * are you not showing me if it's 4,000 logged? Why am I not seeing a progress
+ * bar that says 100%? Again, there can't be any holes here — I should still be
+ * able to see this information even on the spot in split view."
+ *
+ * The individually-assigned rows in the goal panel already answered this
+ * exactly: what they have, what percent of their number that is, and a lane
+ * with the target at its end. Two lists of people on one screen were drawing
+ * that two different ways, so this is now one component and all of them use
+ * it — the group's fold, the group screen, and the solo rows it came from.
+ *
+ * The percentage counts EVERYTHING LOGGED, not only what has been signed off,
+ * because that is the question the row is being asked ("it's 4,000 logged, why
+ * is that not 100%"). Whether it is verified is what the pill beside it and
+ * the drill-down under it are for.
+ */
+export function PersonProgress({
+  goal,
+  done,
+  target,
+  /** The "$0 … $X target" line under the lane. Off where the row already
+   *  carries the target as its own control, so it is not said twice. */
+  caption = true,
+  noTargetLabel = "No personal target set",
+}: {
+  goal: PrimaryGoal;
+  done: number;
+  target: number;
+  caption?: boolean;
+  noTargetLabel?: string;
+}) {
+  const donePct =
+    target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+  return (
+    <>
+      <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">
+        {fmtAmount(goal.unit, done)}
+        {target > 0 && (
+          <>
+            <span className="text-text-tertiary">·</span>
+            <span
+              style={{
+                color:
+                  donePct >= 85 ? "#15803D" : donePct >= 55 ? "#0071E3" : "#DC2626",
+              }}
+            >
+              {donePct}%
+            </span>
+          </>
+        )}
+      </span>
+      {target > 0 ? (
+        <>
+          <span className="relative mt-1.5 block h-3">
+            <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+              <span
+                className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
+                style={{ width: `${donePct}%` }}
+              />
+            </span>
+            <span
+              className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+              style={{ left: `clamp(6px, ${donePct}%, calc(100% - 6px))` }}
+            />
+          </span>
+          {caption && (
+            <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
+              <span>{fmtAmount(goal.unit, 0)}</span>
+              <span className="font-semibold text-text-secondary">
+                {fmtAmount(goal.unit, target)} target
+              </span>
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="mt-1 block text-[10.5px] text-text-tertiary">
+          {noTargetLabel}
+        </span>
+      )}
+    </>
+  );
+}
+
 export function MiniBar({
   actual,
   claimed,
