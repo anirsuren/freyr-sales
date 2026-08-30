@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
+  ChevronRight,
   Crown,
+  X,
   Loader2,
   Plus,
   Target,
@@ -26,6 +28,7 @@ import {
   TypeIconTile,
   typeMeta,
 } from "@/components/performance/bits";
+import { actualValue } from "@/lib/performanceShared";
 import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
 
 /**
@@ -85,6 +88,10 @@ export function GroupDetail({
   const [editingPeople, setEditingPeople] = useState(false);
   const [roster, setRoster] = useState<string[]>([]);
   const [confirmDrop, setConfirmDrop] = useState<PrimaryGoal | null>(null);
+  /** Which goal is unfolded to show what each person carries on it. */
+  const [openGoal, setOpenGoal] = useState<string | null>(null);
+  /** The person about to be taken out of the group, held until confirmed. */
+  const [confirmDropPerson, setConfirmDropPerson] = useState<string | null>(null);
 
   const group = state.groups.find((g) => g.id === groupId);
 
@@ -251,16 +258,23 @@ export function GroupDetail({
 
               The button going away is the courtesy; the API is the rule. This
               is a client component and cannot be the gate. */}
+          {/* A BLUE PLUS, NOT A SENTENCE (Anir, Aug 29: "I don't like that
+              button that says Add or Remove People... it should bring up a
+              pop-up when I press the blue plus"). Adding and removing are two
+              different actions and the button named both, so it did neither
+              obviously. The plus adds; the X on each person removes. */}
           {canManagePeople ? (
             <button
               type="button"
+              title="Add people to this group"
+              aria-label="Add people to this group"
               onClick={() => {
                 setRoster(people);
                 setEditingPeople(true);
               }}
-              className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-blue-primary text-white transition-colors hover:bg-blue-hover"
             >
-              Add or remove people
+              <Plus size={16} strokeWidth={2.6} />
             </button>
           ) : (
             <span className="text-[11.5px] text-text-tertiary">
@@ -278,11 +292,28 @@ export function GroupDetail({
               <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
                 {m}
               </span>
-              {m === group.head && (
+              {m === group.head ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
                   <Crown size={9} strokeWidth={2.6} />
                   Group owner
                 </span>
+              ) : (
+                /* AN X PER PERSON (Anir, Aug 29: "there should be an X on each
+                   person"). It asks first, because taking somebody out of a
+                   group takes their goals in it with them and the standing rule
+                   is that a removal is red and confirmed. The owner has no X:
+                   a group with no owner is not a group. */
+                canManagePeople && (
+                  <button
+                    type="button"
+                    title={`Take ${m} out of ${group.name}`}
+                    aria-label={`Take ${m} out of ${group.name}`}
+                    onClick={() => setConfirmDropPerson(m)}
+                    className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                  >
+                    <X size={13} strokeWidth={2.4} />
+                  </button>
+                )
               )}
             </div>
           ))}
@@ -338,17 +369,52 @@ export function GroupDetail({
                   );
                   const excluded = new Set(assignment?.excludedPeople ?? []);
                   const on = people.filter((p) => !excluded.has(p));
+                  const isOpen = openGoal === g.id;
+                  const accent = typeMeta(g.type).color;
                   return (
-                    <tr key={g.id} className="align-middle">
+                    <Fragment key={g.id}>
+                    {/* EVERY GOAL IS A DROPDOWN (Anir, Aug 29: "I still want
+                        those dropdowns for each of those goals, it shouldn't
+                        just be this. When I hit the goal it should still be a
+                        dropdown"). The flat row said who was on it and stopped;
+                        opening it says what each of those people is actually
+                        carrying, and lets you set it there — in the context of
+                        the goal, rather than in a separate grid somewhere else
+                        on the page. */}
+                    <tr
+                      onClick={() => setOpenGoal(isOpen ? null : g.id)}
+                      style={{ ["--goal-accent" as string]: accent }}
+                      className={cn(
+                        "cursor-pointer align-middle transition-all",
+                        isOpen
+                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                          : "hover:bg-surface",
+                        openGoal !== null && !isOpen && "opacity-45 hover:opacity-100"
+                      )}
+                    >
                       <td className="px-4 py-3.5">
-                        <span className="block text-[13px] font-semibold text-text-primary">
-                          {g.name}
-                        </span>
-                        <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
-                          {g.year}
+                        <span className="flex items-center gap-2.5">
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={2.2}
+                            aria-hidden="true"
+                            className={cn(
+                              "shrink-0 text-text-tertiary transition-transform duration-200",
+                              isOpen && "rotate-90 text-[color:var(--goal-accent)]"
+                            )}
+                          />
+                          <TypeIconTile type={g.type} className="h-8 w-8 rounded-lg" />
+                          <span className="min-w-0">
+                            <span className="block truncate text-[13px] font-semibold text-text-primary">
+                              {g.name}
+                            </span>
+                            <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
+                              {g.year}
+                            </span>
+                          </span>
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <GroupTargetInput
                           value={targetFor(g)}
                           disabled={busy}
@@ -393,7 +459,10 @@ export function GroupDetail({
                             type="button"
                             title={`Take ${g.name} off this group`}
                             aria-label={`Take ${g.name} off this group`}
-                            onClick={() => setConfirmDrop(g)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDrop(g);
+                            }}
                             className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                           >
                             <Trash2 size={13} strokeWidth={2.2} />
@@ -401,6 +470,82 @@ export function GroupDetail({
                         </span>
                       </td>
                     </tr>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={4} className="bg-surface p-0">
+                          <div
+                            style={{ ["--goal-accent" as string]: accent }}
+                            className="tab-panel border-t border-border-light px-4 py-3 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                          >
+                            <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                              What each person carries on this goal
+                            </p>
+                            <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              {on.length === 0 ? (
+                                <p className="text-[12px] text-text-secondary">
+                                  Nobody in this group is on it.
+                                </p>
+                              ) : (
+                                on.map((person) => {
+                                  const mine = (g.assignments ?? []).find(
+                                    (a) =>
+                                      a.person.trim().toLowerCase() ===
+                                      person.trim().toLowerCase()
+                                  );
+                                  const logged = actualValue(
+                                    state.actuals.filter(
+                                      (a) =>
+                                        a.goalId === g.id && a.person === person
+                                    ),
+                                    g,
+                                    { rates: state.rates }
+                                  );
+                                  return (
+                                    <div
+                                      key={person}
+                                      className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
+                                    >
+                                      <Avatar
+                                        name={person}
+                                        className="h-7 w-7 shrink-0 text-[9px]"
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                          {person}
+                                        </span>
+                                        <span className="block text-[10.5px] text-text-tertiary tnum">
+                                          {logged > 0
+                                            ? `${logged.toLocaleString()} logged`
+                                            : "Nothing logged yet"}
+                                        </span>
+                                      </span>
+                                      <span className="w-[120px] shrink-0">
+                                        <GroupTargetInput
+                                          value={mine?.target ?? 0}
+                                          disabled={busy}
+                                          onSave={(target) =>
+                                            void run(
+                                              {
+                                                op: "assign-goal",
+                                                goalId: g.id,
+                                                person,
+                                                target,
+                                              },
+                                              `${person}'s target set`
+                                            )
+                                          }
+                                        />
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -409,95 +554,15 @@ export function GroupDetail({
         )}
       </section>
 
-      {/* --------------------------------------------- each person's number */}
-      {/*
-        THE OTHER HALF OF WHAT HE ASKED FOR (Suren, Aug 29: "set the target for
-        the goals for the group AND set the target for the people in the group,
-        and it should be inside one screen").
-
-        A grid rather than a fold under each goal. People down, this group's
-        goals across, one box per cell — the same shape as the privilege table
-        he approved ("that table is better, right?"), and it answers "what is
-        Suren carrying" by reading a row instead of opening seven goals. Folding
-        would also have put an expansion back on a screen where he had just
-        finished saying "I don't need expansion at all".
-      */}
-      {carried.length > 0 && people.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-border-light bg-white p-5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <Target size={15} strokeWidth={2.2} className="text-[color:#0F766E]" />
-            Each person&rsquo;s target
-          </h2>
-          <p className="mb-3 mt-0.5 text-[12.5px] text-text-tertiary">
-            What each person in this group is carrying on each goal. Leave a box
-            empty and they are on the goal without a number of their own.
-          </p>
-          <div className="overflow-x-auto rounded-xl border border-border-light">
-            <table className="w-full border-collapse text-left">
-              <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <tr>
-                  <th className="sticky left-0 z-10 bg-surface px-4 py-3">
-                    Person
-                  </th>
-                  {carried.map((g) => (
-                    <th key={g.id} className="min-w-[130px] px-3 py-3">
-                      <span className="block truncate" title={g.name}>
-                        {g.name}
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light">
-                {people.map((person) => (
-                  <tr key={person}>
-                    <td className="sticky left-0 z-10 bg-white px-4 py-2.5">
-                      <span className="flex items-center gap-2.5">
-                        <Avatar name={person} className="h-7 w-7 shrink-0 text-[9px]" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                            {person}
-                          </span>
-                          {person === group.head && (
-                            <span className="block text-[10px] font-semibold uppercase tracking-[0.04em] text-[color:#7C3AED]">
-                              Group owner
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                    </td>
-                    {carried.map((g) => (
-                      <td key={g.id} className="px-3 py-2.5">
-                        <GroupTargetInput
-                          value={
-                            (g.assignments ?? []).find(
-                              (a) =>
-                                a.person.trim().toLowerCase() ===
-                                person.trim().toLowerCase()
-                            )?.target ?? 0
-                          }
-                          disabled={busy}
-                          onSave={(target) =>
-                            void run(
-                              {
-                                op: "assign-goal",
-                                goalId: g.id,
-                                person,
-                                target,
-                              },
-                              `${person}'s target set`
-                            )
-                          }
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+      {/* THE PER-PERSON GRID IS GONE, because it moved INTO the goals above
+          (Anir, Aug 29: "when I hit the goal it should still be a dropdown").
+          It used to be a second table under this one — people down, goals
+          across — and once a goal's dropdown sets the same numbers, keeping
+          both means two editors for one value and a reader who cannot tell
+          which is authoritative. Suren's ask is still met: "set the target for
+          the goals for the group AND set the target for the people in the
+          group, and it should be inside one screen." It is, one fold deeper
+          and in the context of the goal it belongs to. */}
 
       {/* ------------------------------------------------------- pick a goal */}
       <Modal
@@ -682,6 +747,39 @@ export function GroupDetail({
           </Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDropPerson !== null}
+        onClose={() => setConfirmDropPerson(null)}
+        onConfirm={() => {
+          const who = confirmDropPerson;
+          setConfirmDropPerson(null);
+          if (!who) return;
+          void run(
+            {
+              op: "update-group",
+              groupId,
+              name: group.name,
+              head: group.head,
+              members: people.filter((m) => m !== who && m !== group.head),
+            },
+            `${who} taken out of ${group.name}`
+          );
+        }}
+        title="Take them out of this group?"
+        body={
+          confirmDropPerson ? (
+            <>
+              <b>{confirmDropPerson}</b> comes out of <b>{group.name}</b>.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail="Any target they carry on this group's goals goes with them. Their own account and everything outside this group is untouched."
+        confirmLabel="Take them out"
+        busy={busy}
+      />
 
       <ConfirmDialog
         open={confirmDrop !== null}
