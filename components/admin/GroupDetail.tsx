@@ -96,6 +96,25 @@ export function GroupDetail({
   const [openGoal, setOpenGoal] = useState<string | null>(null);
   /** The person about to be taken out of the group, held until confirmed. */
   const [confirmDropPerson, setConfirmDropPerson] = useState<string | null>(null);
+  /* WHICH TARGET IS BEING EDITED, and in a popup (Anir, Aug 29: "I think
+     editing should still be a pop-up, so just keep that part. I don't like just
+     entering it in right here"). One piece of state for both kinds, because the
+     dialog is the same question either way — a number, for this goal, for the
+     group or for one person. */
+  const [editingTarget, setEditingTarget] = useState<{
+    kind: "group" | "person";
+    goalId: string;
+    goalName: string;
+    person?: string;
+    current: number;
+  } | null>(null);
+  const [targetDraft, setTargetDraft] = useState("");
+
+  /** Seed the box from whatever the target is now, each time it opens. */
+  function openTarget(next: NonNullable<typeof editingTarget>) {
+    setTargetDraft(String(next.current || ""));
+    setEditingTarget(next);
+  }
 
   const group = state.groups.find((g) => g.id === groupId);
 
@@ -187,6 +206,21 @@ export function GroupDetail({
     !!me &&
     me.name.trim().toLowerCase() === group.head.trim().toLowerCase();
   const canManagePeople = isOwner || me?.role === "admin";
+
+  /* One save for both kinds. The op differs, the question does not. */
+  async function saveTarget() {
+    const t = editingTarget;
+    if (!t) return;
+    const n = Number(targetDraft.replace(/[^0-9.]/g, ""));
+    setEditingTarget(null);
+    if (!Number.isFinite(n) || n === t.current) return;
+    await run(
+      t.kind === "group"
+        ? { op: "assign-goal-group", goalId: t.goalId, groupId, target: n }
+        : { op: "assign-goal", goalId: t.goalId, person: t.person, target: n },
+      t.kind === "group" ? "Target set" : `${t.person}'s target set`
+    );
+  }
 
   const targetFor = (g: PrimaryGoal) =>
     (g.groupAssignments ?? []).find((a) => a.groupId === groupId)?.target ?? 0;
@@ -427,16 +461,13 @@ export function GroupDetail({
                         <GroupTargetInput
                           value={targetFor(g)}
                           disabled={busy}
-                          onSave={(target) =>
-                            void run(
-                              {
-                                op: "assign-goal-group",
-                                goalId: g.id,
-                                groupId,
-                                target,
-                              },
-                              "Target set"
-                            )
+                          onOpen={() =>
+                            openTarget({
+                              kind: "group",
+                              goalId: g.id,
+                              goalName: g.name,
+                              current: targetFor(g),
+                            })
                           }
                         />
                       </td>
@@ -577,16 +608,15 @@ export function GroupDetail({
                                         <GroupTargetInput
                                           value={mine?.target ?? 0}
                                           disabled={busy}
-                                          onSave={(target) =>
-                                            void run(
-                                              {
-                                                op: "assign-goal",
-                                                goalId: g.id,
-                                                person,
-                                                target,
-                                              },
-                                              `${person}'s target set`
-                                            )
+                                          label={`target for ${person}`}
+                                          onOpen={() =>
+                                            openTarget({
+                                              kind: "person",
+                                              goalId: g.id,
+                                              goalName: g.name,
+                                              person,
+                                              current: mine?.target ?? 0,
+                                            })
                                           }
                                         />
                                       </span>
@@ -728,6 +758,52 @@ export function GroupDetail({
               : `Assign ${chosen.length} goals`}
           </Button>
         </div>
+      </Modal>
+
+      {/* ------------------------------------------------------ set a target */}
+      <Modal
+        open={editingTarget !== null}
+        onClose={() => setEditingTarget(null)}
+        title={
+          editingTarget?.kind === "person"
+            ? `Set ${editingTarget.person}'s target`
+            : "Set the group's target"
+        }
+      >
+        {editingTarget && (
+          <>
+            <p className="mb-3 text-[12.5px] text-text-secondary">
+              On <b className="text-text-primary">{editingTarget.goalName}</b>
+              {editingTarget.kind === "group"
+                ? ` for ${group.name}.`
+                : ` for ${editingTarget.person}.`}
+            </p>
+            <input
+              autoFocus
+              value={targetDraft}
+              onChange={(e) => setTargetDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveTarget();
+              }}
+              inputMode="numeric"
+              placeholder="0"
+              aria-label="Target"
+              className="w-full rounded-lg border border-border-light px-3 py-2 text-[14px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
+            />
+            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+              Leave it at 0 to take the number off and leave them on the goal
+              without one.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setEditingTarget(null)}>
+                Cancel
+              </Button>
+              <Button onClick={saveTarget} loading={busy}>
+                Save
+              </Button>
+            </div>
+          </>
+        )}
       </Modal>
 
       {/* ---------------------------------------------------- edit the people */}
@@ -874,104 +950,45 @@ export function GroupDetail({
  * happened to land last.
  */
 /**
- * A TARGET YOU CAN SEE, AND A SAVE YOU CAN SEE HAPPEN.
+ * THE TARGET AT REST. Editing happens in a popup, not here.
  *
- * Anir, Aug 29: "I do not like this UI where you just enter it. It doesn't make
- * sense to just enter it, bro, because they're not going to know if it's saved.
- * You can't just do that — you got to do kind of like what you did on the goals
- * page."
- *
- * It was a bare box that committed on blur. Clicking away is not a decision, so
- * there was no moment where the number was obviously accepted, and no way to
- * back out of a typo except by remembering the old figure.
+ * Anir, Aug 29: "I think editing should still be a pop-up, bro, so just keep
+ * that part. I don't like just entering it in right here." The inline editor
+ * before it committed on blur, which he also rejected — "they're not going to
+ * know if it's saved" — so this is the third shape and the one that keeps both
+ * properties: nothing is typed into the table, and saving is an explicit act
+ * with its own dialog.
  *
  * At rest it is the number, or the Goal Master's own "Set the target" prompt
- * when there is none. Editing is deliberate: a tick to save, an X to abandon,
- * Enter and Escape for the same two. The toast that follows is the receipt.
+ * when there is none.
  */
 function GroupTargetInput({
   value,
   disabled,
-  onSave,
+  onOpen,
   label = "target",
 }: {
   value: number;
   disabled: boolean;
-  onSave: (target: number) => void;
+  onOpen: () => void;
   label?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value || ""));
-
-  function open() {
-    setDraft(String(value || ""));
-    setEditing(true);
-  }
-
-  function commit() {
-    const n = Number(draft.replace(/[^0-9.]/g, ""));
-    setEditing(false);
-    if (!Number.isFinite(n) || n === value) return;
-    onSave(n);
-  }
-
-  if (!editing)
-    return (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          open();
-        }}
-        title={`Set the ${label}`}
-        className={
-          value > 0
-            ? "cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-text-primary tnum transition-colors hover:border-blue-primary hover:text-blue-primary"
-            : "cursor-pointer text-left text-[11.5px] font-semibold text-blue-primary hover:underline"
-        }
-      >
-        {value > 0 ? value.toLocaleString() : "Set the target \u2192"}
-      </button>
-    );
-
   return (
-    <span
-      className="flex items-center gap-1"
-      onClick={(e) => e.stopPropagation()}
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+      title={`Set the ${label}`}
+      className={
+        value > 0
+          ? "cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-text-primary tnum transition-colors hover:border-blue-primary hover:text-blue-primary"
+          : "cursor-pointer text-left text-[11.5px] font-semibold text-blue-primary hover:underline"
+      }
     >
-      <input
-        autoFocus
-        value={draft}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") setEditing(false);
-        }}
-        inputMode="numeric"
-        placeholder="0"
-        aria-label={`Set the ${label}`}
-        className="w-full min-w-0 rounded-lg border border-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-text-primary tnum outline-none"
-      />
-      <button
-        type="button"
-        onClick={commit}
-        title="Save"
-        aria-label="Save"
-        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#1A7A35] transition-colors hover:bg-[rgba(26,122,53,0.10)]"
-      >
-        <Check size={13} strokeWidth={2.6} />
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        title="Cancel"
-        aria-label="Cancel"
-        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
-      >
-        <X size={13} strokeWidth={2.4} />
-      </button>
-    </span>
+      {value > 0 ? value.toLocaleString() : "Set the target \u2192"}
+    </button>
   );
 }
