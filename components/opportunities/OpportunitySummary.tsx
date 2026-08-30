@@ -5,8 +5,8 @@ import { ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { DimensionStack } from "./DimensionStack";
 import {
   estimateOf,
   sumEstimates,
@@ -417,62 +417,12 @@ export function OpportunitySummary({
 
   return (
     <div>
-      {/* THE VIEW STACK — four slots, each one picking which dimension sits
-          there. Suren, Aug 30: "I can bring the revenue status first, then the
-          customer group here, then the customer here. I can do whatever
-          arrangement of these four."
-
-          IT IS NOT A DRAG. Three passes at dragging went by — a fade, then a
-          tilt with a drop caret, then a pointer-driven sortable with FLIP —
-          and Anir's verdicts were "make it look like I'm actually
-          rearranging", "I should see them moving around", and finally "this is
-          too buggy", with two chips drawn on top of each other. He was right
-          every time: reordering four things does not justify pointer capture,
-          live hit-testing and transform bookkeeping, and every one of those is
-          a way for the strip to end up in a state nobody asked for.
-
-          Picking is exact, cannot half-happen, works with a finger and a
-          keyboard for free, and uses the dropdown the rest of this app already
-          uses. Choosing a dimension that is already in another slot SWAPS the
-          two, so the four are always all present and never duplicated —
-          which is the invariant the drag had to be careful about and this
-          gets by construction. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-          View
-        </span>
-        {order.map((dim, slot) => (
-          <span key={slot} className="flex items-center gap-1.5">
-            <span className="tnum text-[11px] font-bold text-text-tertiary">
-              {slot + 1}
-            </span>
-            <ColorSelect
-              value={dim}
-              ariaLabel={`Dimension in position ${slot + 1}`}
-              dense
-              collapsible={false}
-              minWidth={168}
-              className="w-[168px] shrink-0"
-              onChange={(picked) => {
-                const next = [...order];
-                const from = next.indexOf(picked as SummaryDimension);
-                if (from === -1 || from === slot) return;
-                /* Swap, never insert: four slots, four dimensions, always. */
-                next[from] = next[slot];
-                next[slot] = picked as SummaryDimension;
-                onReorder(next);
-              }}
-              options={(Object.keys(DIMENSION_LABEL) as SummaryDimension[]).map(
-                (d) => ({
-                  value: d,
-                  label: DIMENSION_LABEL[d],
-                  color: DIMENSION_COLOR[d],
-                })
-              )}
-            />
-          </span>
-        ))}
-      </div>
+      <DimensionStack
+        order={order}
+        onReorder={onReorder}
+        label={DIMENSION_LABEL}
+        color={DIMENSION_COLOR}
+      />
 
       {grand.entered === 0 ? (
         /* NOTHING TO DRAW YET, SAID IN A SENTENCE. Rendering a chart of zeros
