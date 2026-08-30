@@ -2246,9 +2246,30 @@ export function ClaimReviewDialog({
                     <b className="text-[13.5px] font-bold text-text-primary">
                       {goal.name}
                     </b>
-                    <span className="text-[11.5px] text-text-secondary tnum">
-                      {Math.min(100, Math.round(pctMet(verifiedTotal, goal.target)))}% there,
-                      counting what is signed off
+                    {/* THE PERCENT IS THE NUMBER (Anir, Aug 30: "I can't even
+                        see the percent here as well, so make sure I can see
+                        that"). It was set at 11.5px in secondary grey inside a
+                        sentence, so the one figure that says where this goal
+                        stands was the smallest thing in the card. The figure
+                        carries the goal's own verdict colour and the sentence
+                        steps back behind it. */}
+                    <span className="flex items-baseline gap-1.5 tnum">
+                      <b
+                        className="text-[16px] font-bold"
+                        style={{
+                          color:
+                            pctMet(verifiedTotal, goal.target) >= 85
+                              ? "#15803D"
+                              : pctMet(verifiedTotal, goal.target) >= 55
+                                ? "#0071E3"
+                                : "#B45309",
+                        }}
+                      >
+                        {Math.min(100, Math.round(pctMet(verifiedTotal, goal.target)))}%
+                      </b>
+                      <span className="text-[11.5px] text-text-tertiary">
+                        there, counting what is signed off
+                      </span>
                     </span>
                   </div>
                   {/* The two ends, labelled, exactly like the pace track. */}
