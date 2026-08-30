@@ -2655,12 +2655,20 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Estimated TCV"
-                hint="The whole contract, in USD, across every year of it."
+                hint="The whole contract, across every year of it. Left empty it follows the deal's value above, which is what that figure already means — fill this in only when the contract total is genuinely different."
               >
                 <MoneyInput
                   value={editing.estimatedTcv}
                   ariaLabel="Estimated total contract value"
                   onChange={(v) => setEditing({ ...editing, estimatedTcv: v })}
+                  /* SHOWS WHAT IT WILL USE (Anir, Aug 30: "this value is TCV,
+                     that's all"). An empty box that already has a real answer
+                     behind it should say the answer, not "Not set". */
+                  placeholder={
+                    editing.rows[0]?.value
+                      ? `${withCommas(String(editing.rows[0].value).replace(/[^0-9]/g, ""))} — the deal's value`
+                      : "Not set"
+                  }
                 />
               </Field>
               </div>
@@ -3278,10 +3286,12 @@ function MoneyInput({
   value,
   onChange,
   ariaLabel,
+  placeholder = "Not set",
 }: {
   value: string;
   onChange: (v: string) => void;
   ariaLabel: string;
+  placeholder?: string;
 }) {
   return (
     <span className="relative flex items-center">
@@ -3296,7 +3306,7 @@ function MoneyInput({
         onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ""))}
         inputMode="numeric"
         aria-label={ariaLabel}
-        placeholder="Not set"
+        placeholder={placeholder}
         className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-6 pr-3 text-[13px] font-semibold text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary"
       />
     </span>

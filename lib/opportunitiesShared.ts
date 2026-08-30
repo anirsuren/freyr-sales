@@ -516,9 +516,28 @@ export function estimatedAcvOf(deal: Pick<Opportunity, "estimatedAcv">): number 
   return typeof n === "number" && Number.isFinite(n) ? n : undefined;
 }
 
-export function estimatedTcvOf(deal: Pick<Opportunity, "estimatedTcv">): number | undefined {
-  const n = deal.estimatedTcv;
-  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
+/**
+ * THE DEAL'S VALUE IS ITS TCV (Anir, Aug 30: "that value existed for all the
+ * things... this value is TCV, that's all").
+ *
+ * It always was — the column this app imported from Suren's sheet is called
+ * total contract value, and every one of the 79 live deals carries one. Asking
+ * anybody to retype it into a second box was asking them to copy a number
+ * across the same screen, and until they did, a summary standing on 79 real
+ * deals read "nobody has entered one yet".
+ *
+ * So TCV falls back to the value, and the typed field stays as an override for
+ * a deal whose contract total genuinely differs from what the pipeline carries.
+ * ACV has no such source and is typed or absent, which is the honest state:
+ * nothing in the record says how many years a deal runs.
+ */
+export function estimatedTcvOf(
+  deal: Pick<Opportunity, "estimatedTcv" | "value" | "lines">
+): number | undefined {
+  const typed = deal.estimatedTcv;
+  if (typeof typed === "number" && Number.isFinite(typed)) return typed;
+  const fromValue = opportunityValue(deal as Opportunity);
+  return Number.isFinite(fromValue) && fromValue > 0 ? fromValue : undefined;
 }
 
 /** Which of the two a view is showing. One at a time — Suren, Aug 30: "he can
@@ -526,7 +545,7 @@ export function estimatedTcvOf(deal: Pick<Opportunity, "estimatedTcv">): number 
 export type EstimateMeasure = "acv" | "tcv";
 
 export function estimateOf(
-  deal: Pick<Opportunity, "estimatedAcv" | "estimatedTcv">,
+  deal: Pick<Opportunity, "estimatedAcv" | "estimatedTcv" | "value" | "lines">,
   measure: EstimateMeasure
 ): number | undefined {
   return measure === "acv" ? estimatedAcvOf(deal) : estimatedTcvOf(deal);
@@ -542,7 +561,7 @@ export function estimateOf(
  * kind of number that gets repeated in a meeting.
  */
 export function sumEstimates(
-  deals: Pick<Opportunity, "estimatedAcv" | "estimatedTcv">[],
+  deals: Pick<Opportunity, "estimatedAcv" | "estimatedTcv" | "value" | "lines">[],
   measure: EstimateMeasure
 ): { total: number; entered: number; of: number } {
   let total = 0;
