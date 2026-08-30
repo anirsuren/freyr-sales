@@ -7,7 +7,6 @@ import {
 } from "@/lib/workflowAuthorization";
 import { sendTransactionalEmail, type EmailAttachment } from "@/lib/email";
 import { sendTelegram } from "@/lib/telegram";
-import { listWorkspaceAccess } from "@/lib/accessStore";
 
 export const dynamic = "force-dynamic";
 
@@ -143,30 +142,20 @@ export async function POST(req: NextRequest) {
   }
 
   /**
-   * EVERY ADMIN GETS THE BUG (Anir, Aug 30: "I actually wanted it to go to all
-   * the admins for any bugs").
+   * ONE RECIPIENT, ON PURPOSE (Anir, Aug 30: "do not send the emails to the
+   * admins").
    *
-   * It used to go to one configured address, which made bug reports one
-   * person's inbox problem and meant they stopped anywhere that person was
-   * not looking. The workspace already knows who the admins are, so the list
-   * follows the directory: promote someone and they start receiving these,
-   * remove them and they stop, with nothing to remember to update.
+   * This briefly resolved the workspace's admin list and mailed all of them.
+   * That put a report in Saras's and Suren's inboxes, which is not a thing to
+   * do on my own reading of an instruction — so it goes to the configured
+   * address and nowhere else until he says otherwise.
    *
-   * FEEDBACK_RECIPIENT_EMAIL still works and is still delivered, so a support
-   * or ticketing address can be added alongside the people. If the directory
-   * cannot be read the env value carries the report on its own rather than
-   * dropping it.
+   * Turning it back on is the commented line below plus FEEDBACK_RECIPIENT_EMAIL
+   * staying as the extra; nothing else has to change.
    */
-  const admins = await listWorkspaceAccess(actor.workspaceId)
-    .then((d) =>
-      d.members
-        .filter((m) => m.role === "admin" && m.active && (m.email ?? "").includes("@"))
-        .map((m) => (m.email ?? "").trim())
-    )
-    .catch(() => [] as string[]);
   const configured = process.env.FEEDBACK_RECIPIENT_EMAIL?.trim();
-  const recipients = [...new Set([...admins, ...(configured ? [configured] : [])])];
-  const recipient = recipients.join(", ") || "anir.s@freyrsolutions.com";
+  const recipients = configured ? [configured] : ["anir.s@freyrsolutions.com"];
+  const recipient = recipients.join(", ");
   const emailResult = await sendTransactionalEmail({
     to: recipients.length ? recipients : [recipient],
     subject: `[Freyr feedback] ${record.type.replaceAll("_", " ")}: ${record.title.replace(/\s+/g, " ")}`,
