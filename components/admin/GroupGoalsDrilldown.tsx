@@ -200,14 +200,28 @@ export function GroupGoalsDrilldown({
                     openGoal !== null && !isOpen && "opacity-45 hover:opacity-100"
                   )}
                 >
+                  {/* THE LINK RIDES THE GOAL'S OWN ROW (Anir, Aug 30: "I
+                      don't want this button here, this button should be in the
+                      same row as the email prospecting campaign is launched").
+                      It used to sit under everything the fold contains, so on a
+                      goal with six people you scrolled past all of them to
+                      reach the one control that acts on the goal — and it read
+                      as belonging to the last person rather than to the goal.
+
+                      A row, not a button, because an anchor cannot live inside
+                      a button: the disclosure is its own button and takes the
+                      flexible width; the link is a sibling. */}
+                  <div
+                    className={cn(
+                      "flex w-full items-center gap-2.5 px-3 py-2.5 transition-colors",
+                      isOpen ? "bg-surface" : "hover:bg-surface"
+                    )}
+                  >
                   <button
                     type="button"
                     onClick={() => setOpenGoal(isOpen ? null : goal.id)}
                     aria-expanded={isOpen}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
-                      isOpen ? "bg-surface" : "hover:bg-surface"
-                    )}
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
                   >
                     <ChevronRight
                       size={13}
@@ -277,6 +291,24 @@ export function GroupGoalsDrilldown({
                       </span>
                     )}
                   </button>
+                  {/* THE WAY TO ACTUALLY DO SOMETHING ABOUT IT. Reading that a
+                      result is waiting and having nowhere to sign it off is
+                      what made "1 to verify" a dead number. */}
+                  <Link
+                    href={`/performance/groups?group=${encodeURIComponent(groupId)}&goal=${encodeURIComponent(goal.id)}`}
+                    className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                  >
+                    {goalWaiting > 0 ? (
+                      <>
+                        <ShieldCheck size={12} strokeWidth={2.3} />
+                        Verify {goalWaiting} on Group performance
+                      </>
+                    ) : (
+                      <>Open this goal on Group performance</>
+                    )}
+                    <ChevronRight size={12} strokeWidth={2.4} />
+                  </Link>
+                  </div>
 
                   {isOpen && (
                     <div className="tab-panel border-t border-border-light bg-surface/60 px-3 py-2.5 pl-5">
@@ -373,23 +405,6 @@ export function GroupGoalsDrilldown({
                           })}
                         </div>
                       )}
-                      {/* THE WAY TO ACTUALLY DO SOMETHING ABOUT IT. Reading
-                          that a result is waiting and having nowhere to sign
-                          it off is what made "1 to verify" a dead number. */}
-                      <Link
-                        href={`/performance/groups?group=${encodeURIComponent(groupId)}&goal=${encodeURIComponent(goal.id)}`}
-                        className="mt-2.5 inline-flex items-center gap-1 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                      >
-                        {goalWaiting > 0 ? (
-                          <>
-                            <ShieldCheck size={12} strokeWidth={2.3} />
-                            Verify {goalWaiting} on Group performance
-                          </>
-                        ) : (
-                          <>Open this goal on Group performance</>
-                        )}
-                        <ChevronRight size={12} strokeWidth={2.4} />
-                      </Link>
                     </div>
                   )}
                 </div>
