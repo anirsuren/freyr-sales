@@ -988,7 +988,15 @@ export function EmailComposer() {
           <Clock3 size={15} strokeWidth={2} className="text-blue-primary" />
           Sent from this workspace
         </button>
-        <InfoHint text="Every email an admin sent from here, newest first, including the ones the provider refused. Click one to read it exactly as it went out." />
+        {/* The sending address lives here now (Anir, Aug 30: "obviously we
+            know the email address, there's only one email address for the app
+            — you can put that somewhere else"). It was printed on every row of
+            the log, where it never once differed. */}
+        <InfoHint
+          text={`Every email an admin sent from here, newest first, including the ones the provider refused. Click one to read it exactly as it went out.${
+            from ? `\nEverything goes out from ${from}.` : ""
+          }`}
+        />
         </div>
         <div className="freyr-fold" data-open={shut.log ? "false" : "true"}>
           <div>
@@ -1040,13 +1048,12 @@ export function EmailComposer() {
                   className={cn(
                     "overflow-hidden rounded-xl border transition-colors",
                     /* THE OPEN EMAIL LOOKS OPEN (Anir, Aug 27: "I need to do
-                       a better job of highlighting the selected email").
-                       Blue border, blue rail, tinted header — the same
-                       open-block grammar as every other fold in the app,
-                       not a row you have to re-find by its chevron. */
-                    open
-                      ? "border-blue-primary [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                      : "border-border-light"
+                       a better job of highlighting the selected email") — but
+                       WITHOUT THE RAIL (Anir, Aug 30: "the animation is on the
+                       left side, the bar, I don't like that either"). The blue
+                       border and the tinted header say it is open; a third mark
+                       down the left edge was the one that read as a scar. */
+                    open ? "border-blue-primary" : "border-border-light"
                   )}
                 >
                   <button
@@ -1181,17 +1188,36 @@ export function EmailComposer() {
                       {inboxStamp(e.sentAt)}
                     </span>
                   </button>
-                  {open && (
+                  {/* IT SLIDES (Anir, Aug 30: "I have no idea why the
+                      dropdown is so ugly — just the way it moves"). The panel
+                      was mounted and unmounted outright, so a whole email
+                      appeared under the cursor in one frame and shoved the
+                      list down with it. Same grid-rows fold as every other
+                      dropdown in the app: it opens into its own height. */}
+                  <div className="freyr-fold" data-open={open ? "true" : "false"}>
+                    {/* A BARE WRAPPER, then the padded panel inside it (Anir,
+                        Aug 30: "why did you make the thing so thick?"). The
+                        fold collapses its child's HEIGHT to zero, and padding
+                        is not height — so a padded direct child left 25px of
+                        air under every closed row. Every other fold in this
+                        app wraps first for exactly this reason. */}
+                    <div>
                     <div className="border-t border-border-light bg-surface/50 px-3.5 py-3">
                       {e.error && (
                         <p className="mb-2 rounded-lg bg-[rgba(220,38,38,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[color:#dc2626]">
                           {e.error}
                         </p>
                       )}
-                      {/* EVERY RECIPIENT, BY NAME AND FACE (Anir, Aug 30:
-                          "obviously when I expand it, I should be able to see
-                          everything"). The row can only fan five; this is the
-                          whole room. */}
+                      {/* FROM, THEN TO — LIKE GMAIL (Anir, Aug 30: "just
+                          say From and then say To. Obviously we know the email
+                          address, there's only one email address for the app.
+                          I need the From person with the profile picture, with
+                          who it's from, and then I need a To list").
+                          It read "SENT BY ANIR SUREN TO 1 PERSON" over a chip
+                          list and then spelled out the same sending address on
+                          every single row. The address never changes, so it
+                          lives on the section's hint now; these two lines say
+                          the thing that does change. */}
                       {(() => {
                         const named = everyone(e).map((a) => ({
                           address: a,
@@ -1199,17 +1225,18 @@ export function EmailComposer() {
                             (p) => p.email.toLowerCase() === a.toLowerCase()
                           ),
                         }));
-                        if (named.length === 0) return null;
-                        return (
-                          <div className="mb-2.5">
-                            <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                              Sent by {e.sentBy} to {named.length}{" "}
-                              {named.length === 1 ? "person" : "people"}
+                        const line = (
+                          label: string,
+                          who: { address: string; person?: WorkspacePerson }[]
+                        ) => (
+                          <div className="flex items-baseline gap-2">
+                            <span className="w-[38px] shrink-0 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                              {label}
                             </span>
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {named.map((n) => (
+                            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                              {who.map((n) => (
                                 <span
-                                  key={n.address}
+                                  key={`${label}-${n.address}`}
                                   title={n.address}
                                   className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2.5 text-[12px] text-text-primary"
                                 >
@@ -1222,35 +1249,38 @@ export function EmailComposer() {
                                   </span>
                                 </span>
                               ))}
+                            </span>
+                          </div>
+                        );
+                        return (
+                          <div className="mb-3 space-y-1.5">
+                            {line("From", [
+                              {
+                                address: e.sentBy,
+                                person: people.find(
+                                  (p) =>
+                                    p.name.toLowerCase() ===
+                                    e.sentBy.trim().toLowerCase()
+                                ),
+                              },
+                            ])}
+                            {named.length > 0 && line("To", named)}
+                            <div className="flex items-baseline gap-2">
+                              <span className="w-[38px] shrink-0 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                Date
+                              </span>
+                              <span className="text-[12px] text-text-secondary tnum">
+                                {formatDate(e.sentAt)},{" "}
+                                {new Date(e.sentAt).toLocaleTimeString([], {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })}
+                                {e.replyTo ? ` · replies to ${e.replyTo}` : ""}
+                              </span>
                             </div>
                           </div>
                         );
                       })()}
-                      <dl className="mb-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] sm:grid-cols-2">
-                        {(
-                          [
-                            /* `from` already reads "Freyr Sales <noreply@…>"
-                               — wrapping it again nested the brackets. */
-                            ["From", from || e.sentBy],
-                            ["Reply to", e.replyTo ?? ""],
-                            [
-                              "Date",
-                              `${formatDate(e.sentAt)}, ${new Date(e.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
-                            ],
-                          ] as const
-                        )
-                          .filter(([, v]) => !!v)
-                          .map(([k, v]) => (
-                            <span key={k} className="flex gap-2">
-                              <dt className="shrink-0 font-semibold text-text-tertiary">
-                                {k}
-                              </dt>
-                              <dd className="min-w-0 break-words text-text-secondary">
-                                {v}
-                              </dd>
-                            </span>
-                          ))}
-                      </dl>
                       {/* AS IT LANDED, NOT AS THIS PAGE WOULD DRAW IT (Anir,
                           Aug 30: "you're not even showing me the emails"). The
                           stored HTML was being dropped into the page, where it
@@ -1271,7 +1301,8 @@ export function EmailComposer() {
                         </p>
                       )}
                     </div>
-                  )}
+                    </div>
+                  </div>
                 </div>
               );
               });
