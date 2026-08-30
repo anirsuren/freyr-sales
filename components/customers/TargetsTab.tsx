@@ -711,7 +711,18 @@ export function TargetsTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-2">
+          {/* NO BLUE BOX, AND NOT THICK (Anir, Aug 30: "fix this dropdown, it
+              looks so thick. I don't know why this is blue and that's white,
+              it just looks odd").
+
+              Every other section of this form is plain on white; this one sat
+              in a tinted, bordered card, so a fold read as a different KIND of
+              thing from its neighbours. And the fold's own child carried the
+              open-state padding, which a grid-rows fold cannot collapse — 12px
+              of blue air under a closed header, which is the thickness he was
+              looking at. Same fix as the sent-email log: wrap first, pad
+              inside. */}
+          <div className="border-t border-border-light pt-3">
             <button
               type="button"
               aria-expanded={openPursuit}
@@ -724,7 +735,7 @@ export function TargetsTab({
               <span className="text-[12.5px] font-bold text-text-primary">
                 The pursuit
               </span>
-              <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
+              <span className="h-px min-w-4 flex-1 bg-border-light" aria-hidden />
               <ChevronDown
                 size={15}
                 strokeWidth={2.2}
@@ -736,6 +747,7 @@ export function TargetsTab({
               />
             </button>
             <div className="freyr-fold" data-open={openPursuit ? "true" : "false"}>
+            <div>
             <div className="grid gap-3.5 pt-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
@@ -824,6 +836,7 @@ export function TargetsTab({
                   className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary tnum"
                 />
               </div>
+            </div>
             </div>
             </div>
           </div>

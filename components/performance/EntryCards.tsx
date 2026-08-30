@@ -683,26 +683,44 @@ export function SentBackWatchCard({
     )
     .sort((a, b) => ((a.sentBackAt ?? "") < (b.sentBackAt ?? "") ? 1 : -1));
   if (waiting.length === 0) return null;
+  /* WHOSE MOVE IT IS, IN THE COLOUR THAT MEANS IT (Anir, Aug 30: "is this the
+     person I chose, or is this me? If you're saying it's a call to action,
+     where's the button to fix it?").
+
+     Two things were wrong. It was drawn in alarm red with a red rail, which in
+     this app means something is broken and yours to fix — so he looked for a
+     button that cannot exist, because the fix belongs to the person you sent it
+     back to. And it says "You", which stays true while the page's person picker
+     moves under it, so on somebody else's goals it read as being about them.
+
+     Amber is this app's waiting colour, the same one the verification queue
+     uses, and the heading now names who it is with. Nothing for you to press,
+     and it no longer pretends otherwise. */
+  const withWhom = [...new Set(waiting.map((a) => a.person.split(" ")[0]))];
   return (
-    <Card className="relative overflow-hidden border-[rgba(220,38,38,0.4)] p-0">
+    <Card className="relative overflow-hidden border-[rgba(180,83,9,0.35)] p-0">
       <span
         aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
+        className="absolute inset-y-0 left-0 w-[5px] bg-[color:#B45309]"
       />
-      <div className="flex items-start gap-2 border-b border-[rgba(220,38,38,0.22)] bg-[rgba(220,38,38,0.05)] px-4 py-3">
+      <div className="flex items-start gap-2 border-b border-[rgba(180,83,9,0.2)] bg-[rgba(180,83,9,0.06)] px-4 py-3">
         <RotateCcw
           size={16}
           strokeWidth={2.4}
           aria-hidden="true"
-          className="mt-px shrink-0 text-[color:#B02020]"
+          className="mt-px shrink-0 text-[color:#B45309]"
         />
         <span className="min-w-0">
-          <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
-            You sent {waiting.length} {waiting.length === 1 ? "claim" : "claims"}{" "}
-            back. Waiting on a fix
+          <h3 className="text-[13.5px] font-bold text-[color:#B45309]">
+            {waiting.length} {waiting.length === 1 ? "claim you" : "claims you"}{" "}
+            sent back, waiting on{" "}
+            {withWhom.length === 1
+              ? withWhom[0]
+              : `${withWhom.length} people`}
           </h3>
           <span className="mt-0.5 block text-[12.5px] text-text-secondary">
-            None of it counts until they fix it and you sign it off.
+            Nothing for you to do until they re-submit. It counts once they fix
+            it and you sign it off.
           </span>
         </span>
       </div>

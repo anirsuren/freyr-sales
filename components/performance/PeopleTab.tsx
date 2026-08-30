@@ -77,6 +77,43 @@ export function PeopleTab({
   const canSwitch = names.length > 1;
 
   /**
+   * HOW MANY GOALS EACH NAME CARRIES (Anir, Aug 30: "when I'm looking at them,
+   * let me actually see the goals in this drop-down. Maybe underneath or
+   * something, you'll see how many goals there are for each person, so I don't
+   * have to click on them to see it").
+   *
+   * Counted the way this page counts them for the person you are already on:
+   * goals assigned to them directly, plus the goals they carry through a group
+   * they are in. Picking a name was a blind click before — the only way to know
+   * whether somebody had six goals or none was to go and look.
+   */
+  const goalsPerPerson = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const n of names) {
+      const key = n.trim().toLowerCase();
+      const groupsOfMine = (state.groups ?? []).filter((g) =>
+        [g.head, ...(g.members ?? [])].some(
+          (m) => (m ?? "").trim().toLowerCase() === key
+        )
+      );
+      const groupIds = new Set(groupsOfMine.map((g) => g.id));
+      const count = (state.goals ?? []).filter((g) => {
+        if ((g.assignments ?? []).some((a) => a.person.trim().toLowerCase() === key))
+          return true;
+        return (g.groupAssignments ?? []).some((a) => {
+          if (!groupIds.has(a.groupId)) return false;
+          /* Somebody taken off a group's goal does not carry it. */
+          return !(a.excludedPeople ?? []).some(
+            (p) => (p ?? "").trim().toLowerCase() === key
+          );
+        });
+      }).length;
+      out.set(n, count);
+    }
+    return out;
+  }, [names, state.goals, state.groups]);
+
+  /**
    * A NAME IN A LINK IS A REQUEST, NOT A FACT (found Aug 16, sweeping the
    * detail routes for ids that do not exist). `?person=` seeded the selection
    * with whatever the URL said, unchecked — so
@@ -195,16 +232,28 @@ export function PeopleTab({
                   )}
                 >
                   <Avatar name={n} className="h-7 w-7 shrink-0 text-[10px]" />
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[13px] font-medium text-text-primary">
-                      {n}
-                    </span>
-                    {n === meName && (
-                      <span className="rounded-full bg-blue-light px-1.5 py-0.5 text-[9px] font-bold text-blue-primary">
-                        YOU
+                  <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[13px] font-medium text-text-primary">
+                        {n}
                       </span>
-                    )}
-                    {memberRoles?.[n.trim()] && <RoleChip role={memberRoles[n.trim()]} />}
+                      {n === meName && (
+                        <span className="rounded-full bg-blue-light px-1.5 py-0.5 text-[9px] font-bold text-blue-primary">
+                          YOU
+                        </span>
+                      )}
+                      {memberRoles?.[n.trim()] && <RoleChip role={memberRoles[n.trim()]} />}
+                    </span>
+                    {/* The count, underneath, so picking a name is not a blind
+                        click (Anir, Aug 30). */}
+                    <span className="block text-[11px] text-text-tertiary tnum">
+                      {(() => {
+                        const c = goalsPerPerson.get(n) ?? 0;
+                        return c === 0
+                          ? "no goals yet"
+                          : `${c} ${c === 1 ? "goal" : "goals"}`;
+                      })()}
+                    </span>
                   </span>
                 </button>
               ))}
