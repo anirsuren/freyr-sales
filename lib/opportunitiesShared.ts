@@ -555,3 +555,25 @@ export function sumEstimates(
   }
   return { total, entered, of: deals.length };
 }
+
+/**
+ * WHEN THIS DEAL IS EXPECTED TO SIGN, wherever it happens to be stored.
+ *
+ * The form writes the date onto the OFFERING ROW; the sheet import wrote it
+ * onto the DEAL. Both are real records and both are current, so anything that
+ * buckets deals by time has to read both — the summary's period columns read
+ * only the deal-level field and every opportunity created inside the app fell
+ * out of them, counted in Total and shown under no quarter (found in the
+ * browser, Aug 30, by creating one).
+ *
+ * The row wins when it has one, matching what `effectiveRevenueType` and the
+ * confidence readers already do: one offering per opportunity since Aug 17, so
+ * the row is the deal.
+ */
+export function signDateOf(deal: {
+  estSignDate?: string;
+  lines?: { estSignDate?: string }[];
+}): string | undefined {
+  const fromRow = (deal.lines ?? []).find((l) => l.estSignDate)?.estSignDate;
+  return fromRow ?? deal.estSignDate;
+}

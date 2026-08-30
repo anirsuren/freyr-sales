@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { DimensionStack } from "./DimensionStack";
 import {
   estimateOf,
+  signDateOf,
   sumEstimates,
   type EstimateMeasure,
   type Opportunity,
@@ -118,7 +119,7 @@ function fiscalQuarterIndex(d: Date): number {
  * ones carry the FY and the index rather than a printable label.
  */
 function periodOf(deal: Opportunity, timeline: Timeline): string | null {
-  const iso = deal.estSignDate;
+  const iso = signDateOf(deal);
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -694,8 +695,8 @@ export function OpportunitySummary({
       {undated > 0 && (
         <p className="mt-3 text-[11.5px] text-text-tertiary">
           {undated} {undated === 1 ? "deal has" : "deals have"} no closure date, so
-          {undated === 1 ? " it counts" : " they count"} in Total but sits in no period
-          column.
+          {undated === 1 ? " it counts" : " they count"} in Total but
+          {undated === 1 ? " sits" : " sit"} in no period column.
         </p>
       )}
     </div>

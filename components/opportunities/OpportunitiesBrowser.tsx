@@ -91,6 +91,7 @@ import {
   type OpportunityLine,
   sumEstimates,
   type EstimateMeasure,
+  signDateOf,
 } from "@/lib/opportunitiesShared";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import {
@@ -819,8 +820,11 @@ export function OpportunitiesBrowser({
   }, []);
 
   const closureBandOf = useCallback((deal: Opportunity) => {
-    if (!deal.estSignDate) return "No date";
-    const d = new Date(deal.estSignDate);
+    /* Same both-places read as the summary: the form stores this on the
+       offering row, the sheet import stored it on the deal. */
+    const iso = signDateOf(deal);
+    if (!iso) return "No date";
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "No date";
     return `${d.getUTCFullYear()} Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
   }, []);
@@ -1455,7 +1459,7 @@ export function OpportunitiesBrowser({
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                          {o.estSignDate ?? "·"}
+                          {signDateOf(o) ?? "·"}
                         </td>
                         <td className="px-2 py-3.5">
                           <span className="flex items-center justify-start gap-0.5">
@@ -2607,6 +2611,61 @@ export function OpportunitiesBrowser({
               onChange={(line) => setEditing({ ...editing, rows: [line] })}
             />
 
+
+            {/* THE TWO SUMMARY NUMBERS LIVE WITH THE MONEY, AND OPEN.
+
+                They were tucked inside "Where it stands", which is a folded
+                section about status and ownership, so the two fields Suren
+                asked for by name were two clicks down under a heading that
+                does not mention money (found in the browser, Aug 30, opening
+                the form as a person would). The value of the deal is settled
+                right above this; these belong beside it and visible. */}
+            <FormRoom
+              icon={CircleDollarSign}
+              title="What it is worth over time"
+              hint="One year of the contract, and the whole of it. Both are typed and both may be left empty until the number is known."
+              summary={
+                editing.estimatedAcv || editing.estimatedTcv
+                  ? [
+                      editing.estimatedAcv ? `ACV ${withCommas(editing.estimatedAcv)}` : null,
+                      editing.estimatedTcv ? `TCV ${withCommas(editing.estimatedTcv)}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "Not set"
+              }
+              defaultOpen
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* THE TWO NUMBERS THE SUMMARY IS BUILT FROM (Suren's Aug 30
+                  sheet: "$ Estimated ACV" and "$ Estimated TCV"). They are
+                  typed, and blank until somebody types them — nothing here
+                  guesses one from the other or from the offering value,
+                  because a guessed contract length is a number that would go
+                  into a management summary as though a person had said it. */}
+              <Field
+                label="Estimated ACV"
+                hint="One year of this contract, in USD. Leave it empty until the number is known — an empty cell reads as 'not said yet' everywhere, a zero would read as 'worth nothing'."
+              >
+                <MoneyInput
+                  value={editing.estimatedAcv}
+                  ariaLabel="Estimated annual contract value"
+                  onChange={(v) => setEditing({ ...editing, estimatedAcv: v })}
+                />
+              </Field>
+              <Field
+                label="Estimated TCV"
+                hint="The whole contract, in USD, across every year of it."
+              >
+                <MoneyInput
+                  value={editing.estimatedTcv}
+                  ariaLabel="Estimated total contract value"
+                  onChange={(v) => setEditing({ ...editing, estimatedTcv: v })}
+                />
+              </Field>
+              </div>
+            </FormRoom>
+
             <FormRoom
               icon={Flag}
               title="Where it stands"
@@ -2752,32 +2811,6 @@ export function OpportunitiesBrowser({
                         avatarName: n,
                       })),
                   ]}
-                />
-              </Field>
-              {/* THE TWO NUMBERS THE SUMMARY IS BUILT FROM (Suren's Aug 30
-                  sheet: "$ Estimated ACV" and "$ Estimated TCV"). They are
-                  typed, and blank until somebody types them — nothing here
-                  guesses one from the other or from the offering value,
-                  because a guessed contract length is a number that would go
-                  into a management summary as though a person had said it. */}
-              <Field
-                label="Estimated ACV"
-                hint="One year of this contract, in USD. Leave it empty until the number is known — an empty cell reads as 'not said yet' everywhere, a zero would read as 'worth nothing'."
-              >
-                <MoneyInput
-                  value={editing.estimatedAcv}
-                  ariaLabel="Estimated annual contract value"
-                  onChange={(v) => setEditing({ ...editing, estimatedAcv: v })}
-                />
-              </Field>
-              <Field
-                label="Estimated TCV"
-                hint="The whole contract, in USD, across every year of it."
-              >
-                <MoneyInput
-                  value={editing.estimatedTcv}
-                  ariaLabel="Estimated total contract value"
-                  onChange={(v) => setEditing({ ...editing, estimatedTcv: v })}
                 />
               </Field>
               <Field
