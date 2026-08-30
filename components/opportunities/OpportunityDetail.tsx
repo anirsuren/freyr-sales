@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { useRouter } from "next/navigation";
+import { EditableFact } from "./EditableFact";
+import { OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -76,6 +79,32 @@ export function OpportunityDetail({
   const level = effectiveRevenueType(deal);
   const signs = signDateOf(deal);
   const [tab, setTab] = useState<string>("overview");
+  const router = useRouter();
+
+  /**
+   * ONE FIELD AT A TIME, THROUGH THE SAME API THE FORM USES.
+   *
+   * The update merges, so a single key leaves the rest of the record alone.
+   * The server re-checks the same verdict this page was rendered with — the
+   * badge is a courtesy, the route is the rule.
+   */
+  async function saveField(patch: Record<string, unknown>): Promise<string | null> {
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) return data?.error || "That didn't save.";
+      router.refresh();
+      return null;
+    } catch {
+      return "That didn't save.";
+    }
+  }
+
+  const num = (v: string) => (v.trim() === "" ? null : Number(v.replace(/[^0-9]/g, "")));
   const offeringNames = [
     ...deal.offeringIds
       .map((id) => offerings.find((o) => o.id === id)?.name)
@@ -274,16 +303,79 @@ export function OpportunityDetail({
                 <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                   The deal
                 </h2>
-                <dl className="mt-2.5 space-y-2.5 text-[13px]">
-                  <Row label="Owner" value={deal.owner || "Nobody yet"} />
-                  <Row label="Offering" value={offeringNames.join(", ") || "None"} />
-                  <Row label="Value" value={money(value)} />
-                  <Row
-                    label="Confidence"
-                    value={deal.confidence === undefined ? "Not set" : `${deal.confidence}%`}
+                {/* EVERY FACT IS A CONTROL when this person may write, and
+                    plain text when they may not (Suren, Aug 30: "all the
+                    fields have to be editable... this whole screen has to be
+                    editable or viewable, so it should follow this"). */}
+                <div className="mt-2.5 space-y-2.5 text-[13px]">
+                  <EditableFact
+                    label="Owner"
+                    value={deal.owner ?? ""}
+                    placeholder="Nobody yet"
+                    canEdit={verdict.mayEdit}
+                    onSave={(v) => saveField({ owner: v.trim() })}
                   />
-                  <Row label="Revenue type" value={deal.revenueType || "Not set"} />
-                  <Row label="Est. sign" value={signs || "Not set"} />
+                  <Row label="Offering" value={offeringNames.join(", ") || "None"} />
+                  <EditableFact
+                    label="Value"
+                    value={value ? String(value) : ""}
+                    kind="money"
+                    canEdit={verdict.mayEdit}
+                    format={(v) => money(Number(v))}
+                    onSave={(v) => saveField({ value: num(v) ?? 0 })}
+                  />
+                  <EditableFact
+                    label="Estimated ACV"
+                    value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
+                    kind="money"
+                    canEdit={verdict.mayEdit}
+                    format={(v) => money(Number(v))}
+                    onSave={(v) => saveField({ estimatedAcv: num(v) })}
+                  />
+                  <EditableFact
+                    label="Estimated TCV"
+                    value={deal.estimatedTcv === undefined ? "" : String(deal.estimatedTcv)}
+                    kind="money"
+                    canEdit={verdict.mayEdit}
+                    placeholder={tcv === undefined ? "Not set" : `${money(tcv)} — the deal's value`}
+                    format={(v) => money(Number(v))}
+                    onSave={(v) => saveField({ estimatedTcv: num(v) })}
+                  />
+                  <EditableFact
+                    label="Confidence"
+                    value={deal.confidence === undefined ? "" : String(deal.confidence)}
+                    kind="percent"
+                    canEdit={verdict.mayEdit}
+                    format={(v) => `${v}%`}
+                    onSave={(v) => saveField({ confidence: num(v) })}
+                  />
+                  <EditableFact
+                    label="Status"
+                    value={deal.status ?? ""}
+                    canEdit={verdict.mayEdit}
+                    options={[
+                      { value: "", label: "Not set" },
+                      ...OPPORTUNITY_STATUSES.map((x) => ({ value: x, label: x })),
+                    ]}
+                    onSave={(v) => saveField({ status: v })}
+                  />
+                  <EditableFact
+                    label="Revenue type"
+                    value={deal.revenueType ?? ""}
+                    canEdit={verdict.mayEdit}
+                    options={[
+                      { value: "", label: "Not set" },
+                      ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
+                    ]}
+                    onSave={(v) => saveField({ revenueType: v })}
+                  />
+                  <EditableFact
+                    label="Est. sign"
+                    value={signs ?? ""}
+                    kind="date"
+                    canEdit={verdict.mayEdit}
+                    onSave={(v) => saveField({ estSignDate: v })}
+                  />
                   <Row
                     label="Created"
                     value={new Date(deal.createdAt).toLocaleDateString(undefined, {
@@ -292,7 +384,7 @@ export function OpportunityDetail({
                       day: "numeric",
                     })}
                   />
-                </dl>
+                </div>
               </section>
             </aside>
           </div>
