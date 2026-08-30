@@ -1,10 +1,13 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowUpRight,
   Check,
+  ChevronDown,
   ChevronRight,
   Crown,
   X,
@@ -342,10 +345,15 @@ export function GroupDetail({
           <div className="overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full min-w-[720px] table-fixed">
               <colgroup>
-                <col style={{ width: "40%" }} />
+                {/* The gap before Actions was 32% of the table holding two
+                    avatars (Anir, Aug 29: "look how much space there is between
+                    the people column and the actions column"). Who-is-on-it
+                    only ever holds a handful of faces; the goal name is what
+                    wanted the room. */}
+                <col style={{ width: "44%" }} />
                 <col style={{ width: "18%" }} />
-                <col style={{ width: "32%" }} />
-                <col style={{ width: "10%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "16%" }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-border-light bg-surface">
@@ -453,8 +461,45 @@ export function GroupDetail({
                           )}
                         </span>
                       </td>
+                      {/* MORE THAN ONE THING TO DO (Anir, Aug 29: "why is
+                          there only one action?"). A column headed Actions with
+                          a single bin in it is a column pretending to be a set.
+                          Open the goal where it is edited, unfold it here, and
+                          take it off the group. */}
                       <td className="py-3.5 pl-2 pr-4">
-                        <span className="flex items-center justify-end">
+                        <span className="flex items-center justify-end gap-0.5">
+                          <Link
+                            href="/admin/goal-master"
+                            title={`Open ${g.name} on the Goal Master`}
+                            aria-label={`Open ${g.name} on the Goal Master`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <ArrowUpRight size={13} strokeWidth={2.2} />
+                          </Link>
+                          <button
+                            type="button"
+                            title={isOpen ? "Hide who carries it" : "Show who carries it"}
+                            aria-label={
+                              isOpen
+                                ? `Hide who carries ${g.name}`
+                                : `Show who carries ${g.name}`
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenGoal(isOpen ? null : g.id);
+                            }}
+                            className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <ChevronDown
+                              size={13}
+                              strokeWidth={2.2}
+                              className={cn(
+                                "transition-transform duration-200",
+                                isOpen && "rotate-180"
+                              )}
+                            />
+                          </button>
                           <button
                             type="button"
                             title={`Take ${g.name} off this group`}
@@ -480,7 +525,13 @@ export function GroupDetail({
                             <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                               What each person carries on this goal
                             </p>
-                            <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                            {/* ONE PERSON PER ROW (Anir, Aug 29: "when I click
+                                on the goal, I expect it to be like one person
+                                and then the next person on the next row"). Two
+                                across meant reading in a zig-zag to compare
+                                targets, which is the one thing you open this to
+                                do. */}
+                            <div className="mt-2 space-y-1.5">
                               {on.length === 0 ? (
                                 <p className="text-[12px] text-text-secondary">
                                   Nobody in this group is on it.
