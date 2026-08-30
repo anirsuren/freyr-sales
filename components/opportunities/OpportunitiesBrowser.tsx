@@ -17,7 +17,9 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   CircleDollarSign,
+  PanelsTopLeft,
   Plus,
+  Rows3,
   Trash2,
   TrendingUp,
   Target,
@@ -544,6 +546,16 @@ export function OpportunitiesBrowser({
   /** GROUPING IS A LENS, NOT A STRUCTURE (Suren, Aug 17 call: "bring all the
    *  opportunities together under one customer… it's just a grouping
    *  mechanism — every row is an opportunity, I'm not taking that out"). */
+  /* TABLE OR SPLIT, LIKE THE OTHER LIST PAGES (Anir, Aug 30: "so I probably
+     want the table and split view here too now that I think of it").
+     The split reuses pipeTable() with a single row and that row forced open,
+     so the right pane IS the table's own detail panel — no second rendering of
+     a deal to drift from the first. */
+  const [dealView, setDealView] = useStoredView<"table" | "split">(
+    "freyr.opportunities.view",
+    "table",
+    ["table", "split"] as const
+  );
   const [groupBy, setGroupBy] = useStoredView<"none" | "customer" | "offering">(
     "freyr.opportunities.groupBy",
     "customer",
@@ -1865,6 +1877,40 @@ export function OpportunitiesBrowser({
                 ]}
               />
             }
+            view={
+              <span
+                role="group"
+                aria-label="How to show the pipeline"
+                className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+              >
+                {(
+                  [
+                    { key: "table", label: "Table", icon: Rows3 },
+                    { key: "split", label: "Split", icon: PanelsTopLeft },
+                  ] as const
+                ).map((o) => {
+                  const Icon = o.icon;
+                  const on = dealView === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => setDealView(o.key)}
+                      aria-pressed={on}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                        on
+                          ? "bg-white text-text-primary shadow-sm"
+                          : "text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </span>
+            }
             display={
               /* ONE button that knows which way it goes (Anir, Aug 19: "It
                  should just be one button. It'll know if I close all or open
@@ -1896,9 +1942,14 @@ export function OpportunitiesBrowser({
       {/* The card now holds RESULTS ONLY, so when the rows have gone off into
           their own group cards below there is nothing left for it to draw and
           it does not render an empty frame. */}
-      {(shown.length === 0 || groupBy === "none") && (
-        <Card className="overflow-hidden p-0">
-          {shown.length === 0 ? (
+      {/* THE SPLIT IS ITS OWN GROUPING. Without this the split rendered only
+          when grouping was off, so turning it on while grouped did nothing
+          visible — found in the browser, Aug 30. A left-hand running list and
+          a grouped set of cards are two answers to the same question; the
+          split wins while it is on. */}
+      {(shown.length === 0 || groupBy === "none" || dealView === "split") && (
+        shown.length === 0 ? (
+          <Card className="overflow-hidden p-0">
             <EmptyState
               icon={Briefcase}
               title={list.length === 0 ? "No opportunities yet" : "Nothing matches"}
@@ -1908,10 +1959,71 @@ export function OpportunitiesBrowser({
                   : "Clear the search or the filters to see the rest of the pipeline."
               }
             />
-          ) : (
+          </Card>
+        ) : dealView === "split" ? (
+          (() => {
+            const picked =
+              groupedShown.find((d) => d.id === openRow) ?? groupedShown[0];
+            return (
+              <div
+                key="split"
+                className="tab-panel grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]"
+              >
+                <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light bg-white">
+                  {groupedShown.map((d) => {
+                    const on = picked?.id === d.id;
+                    const value = opportunityValue(d);
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setOpenRow(d.id)}
+                        aria-current={on ? "true" : undefined}
+                        title={d.name}
+                        className={cn(
+                          "flex w-full cursor-pointer items-start gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
+                          on
+                            ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                            : "hover:bg-surface"
+                        )}
+                      >
+                        <CompanyLogo
+                          name={d.customer}
+                          className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block truncate text-[12.5px] font-semibold",
+                              on ? "text-blue-primary" : "text-text-primary"
+                            )}
+                          >
+                            {d.name}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                            <span className="min-w-0 truncate">{d.customer}</span>
+                            <span className="shrink-0 tnum">
+                              · {money(value)}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <Card key={picked?.id ?? "none"} className="tab-panel overflow-hidden p-0">
+                  <div className="overflow-x-auto">
+                    {picked ? pipeTable([picked]) : null}
+                  </div>
+                </Card>
+              </div>
+            );
+          })()
+        ) : (
+          <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">{pipeTable(groupedShown)}</div>
-          )}
-        </Card>
+          </Card>
+        )
       )}
 
       {/* SEPARATE CARDS, NOT ONE LONG TABLE — the Goal Master idiom exactly
@@ -1919,7 +2031,8 @@ export function OpportunitiesBrowser({
           like that"): each customer or offering is its own card with a
           tinted header that folds it away; what lies between the cards is
           the page itself. */}
-      {shown.length > 0 && groupBy !== "none" && (
+      {/* …and the grouped cards stand down while it is (see above). */}
+      {shown.length > 0 && groupBy !== "none" && dealView !== "split" && (
         <div className="mt-5 space-y-6">
           {groupSections.map(({ key, rows: sectionRows }) => {
             const shut = shutGroups.includes(key);
