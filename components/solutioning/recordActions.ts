@@ -28,9 +28,19 @@ export const RECORD_ACTION_NEUTRAL =
 export const RECORD_ACTION_UNDO =
   "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50";
 
-/** Finish it — the green this app reserves for signed-off and complete. */
+/**
+ * Finish it.
+ *
+ * NOT FILLED (Anir, Aug 30: "this looks like I already marked it as complete,
+ * so it's kind of confusing, because it's green filled in"). A tinted green
+ * block beside a tick is how this app draws a state that HAS happened —
+ * Verified, Sent, Met — so an action wearing it read as a badge saying the work
+ * was already closed. Outlined on white, like Hand it back beside it: the
+ * colour still says which way the action goes, the fill no longer claims it has
+ * been taken.
+ */
 export const RECORD_ACTION_DONE =
-  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(26,122,53,0.4)] bg-[rgba(26,122,53,0.08)] px-4 py-2 text-[13px] font-semibold text-[color:#1A7A35] transition-colors hover:bg-[rgba(26,122,53,0.14)] disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(26,122,53,0.4)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#1A7A35] transition-colors hover:border-[color:#1A7A35] hover:bg-[rgba(26,122,53,0.07)] disabled:opacity-50";
 
 /** The icon square at the end of the row. */
 export const RECORD_ACTION_DELETE =

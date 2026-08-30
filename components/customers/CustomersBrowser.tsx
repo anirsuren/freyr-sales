@@ -514,23 +514,18 @@ export function CustomersBrowser({
 
   return (
     <div>
-      {/* Title left, the two ways an account ENTERS the system right (Anir,
-          Jul 30: "people should want to either import or add a customer, so
-          that should be there"). */}
-      {/* Same geometry and the same lift as the shared PageHeader that
-          Offerings and FDL Components use — this block predates it and had
-          drifted on subtitle size and bottom margin (Anir, Aug 9: "make sure
-          that the header, the subheader and the button are in the same place
-          so it's consistent"). */}
-      <div className="rise-in flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
-        <div className="min-w-0">
-          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
-            Customers
-          </h1>
-          <p className="text-[13px] text-text-secondary mt-1">
-            Every company in your pipeline.
-          </p>
-        </div>
+      {/* NO TITLE, NO SUBTITLE (Anir, Aug 30: "I don't think you need to say
+          customers. You don't need to say every company in your pipeline.
+          Whatever you do on the targets page, just copy this layout onto the
+          customers page").
+
+          The tab strip directly above already says which tab you are standing
+          in, so the h1 repeated it and the line under it described a page
+          nobody needed described. Targets has neither and starts straight into
+          its content; this does now too, with the two ways an account enters
+          the system kept where they were (Anir, Jul 30: "people should want to
+          either import or add a customer, so that should be there"). */}
+      <div className="rise-in mb-4 flex flex-wrap items-center justify-end gap-3">
         {canAddCustomers && <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => fileRef.current?.click()}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowUpRight,
   CalendarRange,
   Building2,
   ChevronDown,
@@ -1012,11 +1013,24 @@ export function RevenueAccrualsModule({
                         : undefined
                     }
                   >
+                    {/* EVERYTHING THAT ACTS ON THE PLAN IS ON THE TOP ROW
+                        (Anir, Aug 30: "the stuff at the bottom that you have
+                        when I open it should be on the top — the delete, the
+                        re-plan, the person, the close, the contract value,
+                        which is already on the top, so it's redundant. When I
+                        click on it, it's just the graphs").
+
+                        The card used to hide its own controls one click deep,
+                        under the chart, and repeat the contract value down
+                        there beside a total that was already in the header. A
+                        row, not a button, because the actions are siblings of
+                        the disclosure rather than nested inside it. */}
+                    <div className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-blue-light/25">
                     <button
                       type="button"
                       onClick={() => setOpenDeal(isOpen ? null : plan.id)}
                       aria-expanded={isOpen}
-                      className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-light/25"
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                     >
                       <CompanyLogo name={plan.customer} className="h-8 w-8 shrink-0" />
                       <span className="min-w-0 flex-1">
@@ -1061,15 +1075,80 @@ export function RevenueAccrualsModule({
                           {plan.lines.length === 1 ? "month" : "months"}
                         </span>
                       </span>
-                      <ChevronDown
-                        size={16}
-                        strokeWidth={2.2}
-                        className={cn(
-                          "shrink-0 text-text-tertiary transition-transform",
-                          !isOpen && "-rotate-90"
-                        )}
-                      />
                     </button>
+                      {/* The two facts worth carrying, and the three things
+                          you can do. Est. close and who last touched it used
+                          to live under the chart; the contract value that sat
+                          beside them was the same number as the total above. */}
+                      {deal?.estSignDate && (
+                        <span className="hidden shrink-0 text-right lg:block">
+                          <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Est. close
+                          </span>
+                          <b className="block text-[12.5px] tnum text-text-primary">
+                            {formatDate(deal.estSignDate)}
+                          </b>
+                        </span>
+                      )}
+                      <span
+                        className="hidden shrink-0 text-right xl:block"
+                        title={`Last updated by ${plan.updatedBy} on ${formatDate(plan.updatedAt)}`}
+                      >
+                        <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          Last updated
+                        </span>
+                        <span className="block text-[12px] text-text-secondary">
+                          {plan.updatedBy} · {formatDate(plan.updatedAt)}
+                        </span>
+                      </span>
+                      {/* THE ARROW, NOT A SENTENCE (Anir, Aug 30: "wherever
+                          you put 'Open the deal' or anything similar, replace
+                          it with the arrow, and it can just go at the top"). */}
+                      <Link
+                        href={`/opportunities?deal=${encodeURIComponent(plan.opportunityId)}`}
+                        title="Open the deal"
+                        aria-label={`Open ${plan.opportunityName}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                      >
+                        <ArrowUpRight size={15} strokeWidth={2.2} />
+                      </Link>
+                      {canWrite && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startPlan(plan.opportunityId, plan)}
+                            title="Re-plan this deal"
+                            aria-label={`Re-plan ${plan.opportunityName}`}
+                            className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <Pencil size={14} strokeWidth={2.2} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(plan)}
+                            title="Delete this plan"
+                            aria-label={`Delete the plan for ${plan.opportunityName}`}
+                            className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                          >
+                            <Trash2 size={14} strokeWidth={2.2} />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setOpenDeal(isOpen ? null : plan.id)}
+                        aria-expanded={isOpen}
+                        aria-label={isOpen ? "Hide the chart" : "Show the chart"}
+                        className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface"
+                      >
+                        <ChevronDown
+                          size={16}
+                          strokeWidth={2.2}
+                          className={cn("transition-transform", !isOpen && "-rotate-90")}
+                        />
+                      </button>
+                    </div>
 
                     {/* The panel is always mounted while a plan is open so the
                         fold can animate to its own height; .freyr-fold does
@@ -1206,69 +1285,12 @@ export function RevenueAccrualsModule({
                             </div>
                           );
                         })()}
-                        {/* FACTS IN COLUMNS, NOT A SENTENCE (Anir, Aug 27:
-                            "I don't like this part"). It ran four different
-                            things together on one line — a money figure, a
-                            date, an audit stamp and a link — so nothing had a
-                            label of its own and the eye had no column to
-                            follow. Each fact now sits under its own heading,
-                            the audit stamp steps back into the tertiary tone
-                            it deserves, and the actions keep the right edge. */}
-                        <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-t border-border-light pt-3">
-                          <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
-                            <span className="block">
-                              <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                Contract value
-                              </span>
-                              <b className="mt-0.5 block text-[13.5px] tnum text-text-primary">
-                                {formatMoney(plan.contractValue)}
-                              </b>
-                            </span>
-                            {deal?.estSignDate && (
-                              <span className="block">
-                                <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                  Est. close
-                                </span>
-                                <b className="mt-0.5 block text-[13.5px] tnum text-text-primary">
-                                  {formatDate(deal.estSignDate)}
-                                </b>
-                              </span>
-                            )}
-                            <span className="block">
-                              <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                Last updated
-                              </span>
-                              <span className="mt-0.5 block text-[12.5px] text-text-secondary">
-                                {plan.updatedBy} · {formatDate(plan.updatedAt)}
-                              </span>
-                            </span>
-                            <Link
-                              href={`/opportunities?deal=${encodeURIComponent(plan.opportunityId)}`}
-                              className="self-center text-[12.5px] font-semibold text-blue-primary hover:underline"
-                            >
-                              Open the deal
-                            </Link>
-                          </div>
-                          {canWrite && (
-                            <span className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => startPlan(plan.opportunityId, plan)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                              >
-                                <Pencil size={12} strokeWidth={2.2} /> Re-plan
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDelete(plan)}
-                                className="rounded-lg p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
-                                title="Delete this plan"
-                              >
-                                <Trash2 size={13} strokeWidth={2.2} />
-                              </button>
-                            </span>
-                          )}
-                        </div>
+                        {/* NOTHING UNDER THE CHART (Anir, Aug 30: "when I
+                            click on it, it's just the graphs. That's it").
+                            The block that lived here repeated the contract
+                            value the header already shows, and carried the
+                            actions one click away from where you decide to use
+                            them. Both moved up to the row. */}
                       </div>
                     )}
                       </div>

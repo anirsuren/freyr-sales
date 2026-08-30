@@ -68,7 +68,16 @@ export type OpportunityOption = {
  */
 function MeetingPanel({ m }: { m: Meeting }) {
   return (
-    <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
+    <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
+      {/* The arrow, at the top — same rule as everywhere else. */}
+      <Link
+        href={`/meetings/${m.id}`}
+        title="Open the meeting"
+        aria-label={`Open ${m.title}`}
+        className="absolute -top-1 right-0 z-10 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+      >
+        <ArrowUpRight size={15} strokeWidth={2.2} />
+      </Link>
                               <div className="min-w-0">
                                 <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                   What came out of it
@@ -95,12 +104,6 @@ function MeetingPanel({ m }: { m: Meeting }) {
                                     </b>{" "}
                                     {m.docs.length === 1 ? "document" : "documents"}
                                   </span>
-                                  <Link
-                                    href={`/meetings/${m.id}`}
-                                    className="font-semibold text-blue-primary hover:underline"
-                                  >
-                                    Open the meeting
-                                  </Link>
                                 </div>
                               </div>
                               <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">

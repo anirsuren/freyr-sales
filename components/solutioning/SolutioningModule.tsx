@@ -1017,7 +1017,19 @@ function RequestPanel({
   room: "requests" | "submissions" | "presentations";
 }) {
   return (
-    <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
+      {/* THE ARROW, AT THE TOP (Anir, Aug 30: "stop with this fucking button,
+          I don't want this button anywhere... replace it with the arrow, and it
+          can just go at the top"). A full-width sentence in a bordered pill at
+          the foot of a panel is the shape he has now rejected three times. */}
+      <Link
+        href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
+        title="Open the full request"
+        aria-label={`Open ${r.ref} in full`}
+        className="absolute right-3 top-3 z-10 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+      >
+        <ArrowUpRight size={15} strokeWidth={2.2} />
+      </Link>
               {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
                   needs. It is the only thing on this panel written by a
                   person; everything else is a count or a name. */}
@@ -1108,15 +1120,6 @@ function RequestPanel({
                   )}
                 </div>
                 </div>
-                <p className="mt-4">
-                  <Link
-                    href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                  >
-                    Open the full request
-                    <ChevronRight size={12} strokeWidth={2.4} />
-                  </Link>
-                </p>
               </div>
 
               {/* THE FACTS STACK ON THE LEFT, THE STORY OWNS THE RIGHT

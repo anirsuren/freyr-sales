@@ -101,11 +101,12 @@ export function CustomerGroupsTab({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-text-secondary">
-          Cut the same accounts into the lists your team actually manages. An
-          account can sit in as many groups as it needs to.
-        </p>
+      {/* NO DESCRIPTION EITHER (Anir, Aug 30, having just said it about
+          Customers: "same thing for groups"). The tab strip above names the
+          tab; a sentence explaining what a group is belongs on the empty
+          state, where it already is, and not over a list of groups somebody
+          has already made. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         {canEdit && (
           <button
             type="button"

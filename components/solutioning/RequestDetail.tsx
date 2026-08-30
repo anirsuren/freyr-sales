@@ -200,6 +200,11 @@ export function RequestDetail({
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /* CLOSING A REQUEST ASKS FIRST (Anir, Aug 30: "when I click it, it should ask
+     me for a pop-up just like hand it back, to confirm I want to mark it as
+     complete"). It is the one action here that ends the record for everybody
+     working it, and it was the only one that fired on a single click. */
+  const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmRemoveDoc, setConfirmRemoveDoc] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -414,7 +419,7 @@ export function RequestDetail({
                     ? "You asked for this, so you close it"
                     : `Closing on ${r.requestedBy}'s behalf`
                 }
-                onClick={() => post({ op: "complete" })}
+                onClick={() => setConfirmComplete(true)}
                 className={RECORD_ACTION_DONE}
               >
                 <Check size={RECORD_ACTION_ICON} strokeWidth={2.4} /> Mark it completed
@@ -1020,6 +1025,25 @@ export function RequestDetail({
           </button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmComplete}
+        onClose={() => setConfirmComplete(false)}
+        onConfirm={() => {
+          setConfirmComplete(false);
+          void post({ op: "complete" });
+        }}
+        busy={busy}
+        tone="primary"
+        title="Mark this completed?"
+        body={
+          <>
+            <b>{r.title}</b> closes for everyone working it.
+          </>
+        }
+        detail="It moves out of the open list. You can reopen it afterwards if something else comes up."
+        confirmLabel="Yes, mark it completed"
+      />
 
       <ConfirmDialog
         open={confirmRemoveDoc !== null}
