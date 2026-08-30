@@ -128,7 +128,9 @@ function withReason(v: { changes: string[]; reason?: string }): string[] {
   return v.reason ? [...v.changes, `Why: ${v.reason}`] : v.changes;
 }
 
-function linesFor(subject: DigestSubject, member: AccessMember): string[] {
+/* Exported so the admin preview can build a member's real copy rather than a
+   lookalike — the redaction below is part of what the email IS. */
+export function linesFor(subject: DigestSubject, member: AccessMember): string[] {
   if (subject.kind === "component") {
     return subject.versions.flatMap(withReason);
   }

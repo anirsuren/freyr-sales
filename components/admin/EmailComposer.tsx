@@ -11,12 +11,15 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  Eye,
   FlaskConical,
   Mail,
   Send,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
+import { emailShell } from "@/lib/emailShell";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
@@ -71,6 +74,8 @@ const AUTOMATED_EMAILS: {
   who: string;
   color: string;
   icon: typeof Mail;
+  /** What /api/admin/email-preview builds to show this one. */
+  kind: "release" | "monthly" | "roadmap";
 }[] = [
   {
     name: "Release announcement",
@@ -79,6 +84,7 @@ const AUTOMATED_EMAILS: {
     who: "every active member",
     color: "#0071E3",
     icon: Send,
+    kind: "release",
   },
   {
     name: "Monthly digest",
@@ -87,6 +93,7 @@ const AUTOMATED_EMAILS: {
     who: "offering owners and members",
     color: "#7C3AED",
     icon: CalendarClock,
+    kind: "monthly",
   },
   {
     name: "Roadmap digest",
@@ -95,6 +102,7 @@ const AUTOMATED_EMAILS: {
     who: "people subscribed to the roadmap",
     color: "#0891B2",
     icon: Clock3,
+    kind: "roadmap",
   },
 ];
 
@@ -123,6 +131,19 @@ function inboxStamp(iso: string): string {
 }
 
 /** The gray snippet after the subject, from the plain-text body. */
+/** Every address an email went to, To then CC then BCC, in that order. */
+function everyone(e: {
+  to: string;
+  cc: string[];
+  bcc: string[];
+}): string[] {
+  return [
+    ...splitAddresses(e.to).map(addressOf),
+    ...e.cc.flatMap((c) => splitAddresses(c).map(addressOf)),
+    ...e.bcc.flatMap((b) => splitAddresses(b).map(addressOf)),
+  ].filter(Boolean);
+}
+
 function snippetOf(body: string): string {
   return body.replace(/\s+/g, " ").trim().slice(0, 160);
 }
@@ -406,8 +427,36 @@ export function EmailComposer() {
    * rather than content blinking in and out.
    */
   const [shut, setShut] = useState<Record<string, boolean>>({});
+  /** Which automated email is being read, and what came back for it. */
+  const [preview, setPreview] = useState<{ kind: string; name: string } | null>(
+    null
+  );
+  const [previewMail, setPreviewMail] = useState<{
+    subject?: string;
+    html?: string;
+    note?: string;
+    empty?: string;
+    error?: string;
+  } | null>(null);
   const foldToggle = (key: string) =>
     setShut((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  /* Fetched when the dialog opens rather than up front: three emails nobody
+     may look at are three queries nobody asked for. */
+  useEffect(() => {
+    if (!preview) return;
+    let alive = true;
+    setPreviewMail(null);
+    fetch(`/api/admin/email-preview?kind=${encodeURIComponent(preview.kind)}`, {
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((data) => alive && setPreviewMail(data))
+      .catch(() => alive && setPreviewMail({ error: "That did not load." }));
+    return () => {
+      alive = false;
+    };
+  }, [preview]);
 
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
@@ -799,9 +848,18 @@ export function EmailComposer() {
           <div>
         <div className="mt-3 space-y-2">
           {AUTOMATED_EMAILS.map((mail) => (
-            <div
+            /* THE CARD IS THE CONTROL (Anir, Aug 30, twice in a row: "I need
+               to be able to SEE what these are", then "i mean i DONT want a
+               buton"). A button beside the thing you want to open is one more
+               target to aim at; the card itself is the target, which is the
+               same correction he made about the section headers a minute
+               earlier. */
+            <button
               key={mail.name}
-              className="rounded-xl border border-border-light bg-white p-3"
+              type="button"
+              onClick={() => setPreview({ kind: mail.kind, name: mail.name })}
+              title={`See what ${mail.name} looks like`}
+              className="w-full cursor-pointer rounded-xl border border-border-light bg-white p-3 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span
@@ -819,11 +877,23 @@ export function EmailComposer() {
                 >
                   {mail.when}
                 </span>
+                {/* SHOW IT, DO NOT DESCRIBE IT (Anir, Aug 30: "I should be
+                    able to SEE what they look like"). The mark says the card
+                    opens something; the card is what you press. Built by the
+                    same functions the cron routes send with, so the preview
+                    cannot drift from what lands in somebody's inbox. Nothing
+                    is sent by looking. */}
+                <Eye
+                  size={14}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className="ml-auto shrink-0 text-text-tertiary"
+                />
               </div>
               <p className="mt-1.5 text-[12.5px] leading-snug text-text-secondary">
                 {mail.what} Goes to {mail.who}.
               </p>
-            </div>
+            </button>
           ))}
         </div>
         <p className="mt-3 text-[11.5px] leading-snug text-text-tertiary">
@@ -833,6 +903,53 @@ export function EmailComposer() {
           </div>
         </div>
       </Card>
+
+      {/* THE EMAIL ITSELF. An iframe, because this is a whole document with
+          its own styles — dropping it into the page would let it inherit the
+          app's CSS and stop being what the recipient sees. Sandboxed with
+          nothing granted: it renders and does nothing else. */}
+      <Modal
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={preview ? preview.name : ""}
+        size="wide"
+        tall
+        dialogClassName="!h-[min(760px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          {!previewMail ? (
+            <p className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-primary border-t-transparent" />
+              Building it…
+            </p>
+          ) : previewMail.error || previewMail.empty ? (
+            <p className="rounded-xl bg-surface px-4 py-6 text-center text-[12.5px] text-text-secondary">
+              {previewMail.error || previewMail.empty}
+            </p>
+          ) : (
+            <>
+              <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                Subject
+              </p>
+              <p className="mt-0.5 text-[13.5px] font-semibold text-text-primary">
+                {previewMail.subject}
+              </p>
+              {previewMail.note && (
+                <p className="mt-1 text-[11.5px] text-text-tertiary">
+                  {previewMail.note} Nothing is sent by looking at it.
+                </p>
+              )}
+              <iframe
+                title={`${preview?.name} preview`}
+                sandbox=""
+                srcDoc={previewMail.html}
+                className="mt-3 min-h-0 w-full flex-1 rounded-xl border border-border-light bg-white"
+              />
+            </>
+          )}
+        </div>
+      </Modal>
 
       {/* WHAT HAS ALREADY GONE OUT. */}
       <Card className="p-5">
@@ -944,36 +1061,52 @@ export function EmailComposer() {
                         subject — gray snippet fills the middle the way an
                         inbox's does, and the stamp keeps the right edge. */}
                     {(() => {
-                      const addrs = splitAddresses(e.to).map(addressOf);
-                      const who = addrs[0]
-                        ? people.find(
-                            (person) =>
-                              person.email.toLowerCase() === addrs[0].toLowerCase()
-                          )
-                        : undefined;
-                      const toName = who?.name ?? addrs[0] ?? e.to;
+                      /* WHO SENT IT, THEN WHO GOT IT (Anir, Aug 30: "you're
+                         not even showing me who sent it. If there are 10
+                         people, it should show maybe five profile pictures and
+                         then put five more").
+                         The row named the FIRST recipient and left the sender
+                         as an unlabelled face, so a log of what you sent never
+                         said who sent it — and ten recipients read as one name
+                         and a bare "+9". Now: the sender by name, then the
+                         room as overlapped faces with the overflow counted. */
+                      const named = everyone(e).map((a) => ({
+                        address: a,
+                        person: people.find(
+                          (p) => p.email.toLowerCase() === a.toLowerCase()
+                        ),
+                      }));
+                      const faces = named.slice(0, 5);
+                      const rest = named.length - faces.length;
                       return (
-                        <span className="hidden w-[236px] shrink-0 items-center gap-1.5 sm:flex">
+                        <span className="hidden w-[300px] shrink-0 items-center gap-2 sm:flex">
                           <Avatar
                             name={e.sentBy}
+                            tooltip={`Sent by ${e.sentBy}`}
                             className="h-6 w-6 shrink-0 text-[8px]"
                           />
+                          <span className="min-w-0 max-w-[110px] truncate text-[13px] font-semibold text-text-primary">
+                            {e.sentBy}
+                          </span>
                           <ChevronRight
                             size={12}
                             strokeWidth={2.4}
                             className="shrink-0 text-text-tertiary"
                             aria-label="sent to"
                           />
-                          <Avatar
-                            name={toName}
-                            className="h-6 w-6 shrink-0 text-[8px]"
-                          />
-                          <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary">
-                            {toName}
+                          <span className="flex shrink-0 -space-x-1.5">
+                            {faces.map((f) => (
+                              <Avatar
+                                key={f.address}
+                                name={f.person?.name ?? f.address}
+                                tooltip={f.person?.name ?? f.address}
+                                className="h-6 w-6 shrink-0 border-2 border-white text-[8px]"
+                              />
+                            ))}
                           </span>
-                          {addrs.length > 1 && (
+                          {rest > 0 && (
                             <span className="shrink-0 text-[11.5px] font-semibold text-text-tertiary tnum">
-                              +{addrs.length - 1}
+                              +{rest}
                             </span>
                           )}
                         </span>
@@ -1011,15 +1144,50 @@ export function EmailComposer() {
                           {e.error}
                         </p>
                       )}
+                      {/* EVERY RECIPIENT, BY NAME AND FACE (Anir, Aug 30:
+                          "obviously when I expand it, I should be able to see
+                          everything"). The row can only fan five; this is the
+                          whole room. */}
+                      {(() => {
+                        const named = everyone(e).map((a) => ({
+                          address: a,
+                          person: people.find(
+                            (p) => p.email.toLowerCase() === a.toLowerCase()
+                          ),
+                        }));
+                        if (named.length === 0) return null;
+                        return (
+                          <div className="mb-2.5">
+                            <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                              Sent by {e.sentBy} to {named.length}{" "}
+                              {named.length === 1 ? "person" : "people"}
+                            </span>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {named.map((n) => (
+                                <span
+                                  key={n.address}
+                                  title={n.address}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2.5 text-[12px] text-text-primary"
+                                >
+                                  <Avatar
+                                    name={n.person?.name ?? n.address}
+                                    className="h-5 w-5 shrink-0 text-[7px]"
+                                  />
+                                  <span className="max-w-[220px] truncate">
+                                    {n.person?.name ?? n.address}
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <dl className="mb-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] sm:grid-cols-2">
                         {(
                           [
                             /* `from` already reads "Freyr Sales <noreply@…>"
                                — wrapping it again nested the brackets. */
                             ["From", from || e.sentBy],
-                            ["To", e.to],
-                            ["CC", e.cc.join(", ")],
-                            ["BCC", e.bcc.join(", ")],
                             ["Reply to", e.replyTo ?? ""],
                             [
                               "Date",
@@ -1039,14 +1207,19 @@ export function EmailComposer() {
                             </span>
                           ))}
                       </dl>
-                      {/* Shown as it was sent. The HTML came out of our own
-                          editor and is stored on our own row — not third-party
-                          input — and the log is the record of what left the
-                          building, so it must look like what left. */}
+                      {/* AS IT LANDED, NOT AS THIS PAGE WOULD DRAW IT (Anir,
+                          Aug 30: "you're not even showing me the emails"). The
+                          stored HTML was being dropped into the page, where it
+                          inherited the app's own type and colour — so the log
+                          showed the words but never the email. It goes back
+                          into the same shell it was sent in, in a sandboxed
+                          frame that cannot inherit anything. */}
                       {e.html ? (
-                        <div
-                          className="freyr-richtext rounded-lg border border-border-light bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
-                          dangerouslySetInnerHTML={{ __html: e.html }}
+                        <iframe
+                          title={`${e.subject} as it was sent`}
+                          sandbox=""
+                          srcDoc={emailShell(e.subject, e.html)}
+                          className="h-[420px] w-full rounded-lg border border-border-light bg-white"
                         />
                       ) : (
                         <p className="whitespace-pre-wrap rounded-lg border border-border-light bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary">
