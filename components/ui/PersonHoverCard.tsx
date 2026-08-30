@@ -1,11 +1,66 @@
 "use client";
 
-import { Mail, Package, Phone } from "lucide-react";
+import { Crown, Mail, Package, Phone } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { ROLE_META, RoleTag, type WorkspaceRoleKey } from "@/components/ui/RoleTag";
 import { repEmail, teamsChatUrl } from "@/lib/team";
+
+/**
+ * THE ROLE IS A TAG, NOT A WORD (Anir, Aug 30: "it says admin, shouldn't it be
+ * like the color tag thing?"). He is right and it is the app's oldest standing
+ * rule: a role or a category always carries its colour and its icon, never
+ * plain grey text.
+ *
+ * Callers hand this card a SENTENCE — "Group owner · Admin" — because the line
+ * is built where the person is listed. So it is taken apart here: the parts
+ * that name a workspace role become the same RoleTag the account menu and the
+ * directory draw, "Group owner" becomes the crown it wears everywhere else, and
+ * anything else (a job title, "In this group") stays the descriptive text it
+ * is.
+ */
+const ROLE_BY_LABEL = new Map<string, WorkspaceRoleKey>(
+  (Object.keys(ROLE_META) as WorkspaceRoleKey[]).map((k) => [
+    ROLE_META[k].label.toLowerCase(),
+    k,
+  ])
+);
+
+function RoleLine({ role }: { role: string }) {
+  const parts = role
+    .split("·")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+      {parts.map((part, i) => {
+        const key = ROLE_BY_LABEL.get(part.toLowerCase());
+        if (key) return <RoleTag key={i} role={key} size="sm" />;
+        if (part.toLowerCase() === "group owner")
+          return (
+            <span
+              key={i}
+              style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-[3px] text-[11px] font-semibold"
+            >
+              <Crown size={11} strokeWidth={2.4} aria-hidden="true" />
+              Group owner
+            </span>
+          );
+        return (
+          <span
+            key={i}
+            className="text-[11.5px] font-medium leading-snug text-text-secondary"
+          >
+            {part}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 /**
  * HOVER A FACE, GET THE PERSON.
@@ -116,11 +171,7 @@ export function PersonHoverCard({
                   Jul 29: "the role should always show up right under the name
                   of myself"). The offering follows as a proper tag, because it
                   is an ASSET, not a sentence fragment. */}
-              {role && (
-                <p className="mt-0.5 break-words text-[11.5px] font-medium leading-snug text-text-secondary">
-                  {role}
-                </p>
-              )}
+              {role && <RoleLine role={role} />}
               {/* ONE LINE (Anir, Aug 29: "this is ugly too, the way the thing
                   is on two lines it just looks so ugly"). break-words let a
                   long name — "Booked Revenue (Contract Value Signed)" — wrap
