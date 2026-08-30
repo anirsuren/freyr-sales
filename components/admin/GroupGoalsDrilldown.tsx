@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  ArrowUpRight,
   ChevronDown,
   ChevronRight,
   ClipboardList,
-  ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -293,20 +293,30 @@ export function GroupGoalsDrilldown({
                   </button>
                   {/* THE WAY TO ACTUALLY DO SOMETHING ABOUT IT. Reading that a
                       result is waiting and having nowhere to sign it off is
-                      what made "1 to verify" a dead number. */}
+                      what made "1 to verify" a dead number.
+
+                      JUST THE ICON (Anir, Aug 30: "I don't care about the text,
+                      I just needed an icon that just says the arrow coming out
+                      of the box"). Eight goals meant the same sentence eight
+                      times down the column, each one wider than the numbers it
+                      followed. This is the app's existing open-elsewhere
+                      control, identical to the one in the group row above it —
+                      the words live on the tooltip and the aria-label. */}
                   <Link
                     href={`/performance/groups?group=${encodeURIComponent(groupId)}&goal=${encodeURIComponent(goal.id)}`}
-                    className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                    title={
+                      goalWaiting > 0
+                        ? `Verify ${goalWaiting} on Group performance`
+                        : "Open this goal on Group performance"
+                    }
+                    aria-label={
+                      goalWaiting > 0
+                        ? `Verify ${goalWaiting} on ${goal.name} on Group performance`
+                        : `Open ${goal.name} on Group performance`
+                    }
+                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                   >
-                    {goalWaiting > 0 ? (
-                      <>
-                        <ShieldCheck size={12} strokeWidth={2.3} />
-                        Verify {goalWaiting} on Group performance
-                      </>
-                    ) : (
-                      <>Open this goal on Group performance</>
-                    )}
-                    <ChevronRight size={12} strokeWidth={2.4} />
+                    <ArrowUpRight size={13} strokeWidth={2.2} />
                   </Link>
                   </div>
 
