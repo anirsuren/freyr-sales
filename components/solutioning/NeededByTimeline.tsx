@@ -76,6 +76,15 @@ export function NeededByTimeline({
   const overdue = !done && daysLeft < 0;
   const soon = !done && daysLeft >= 0 && daysLeft <= 7;
 
+  /* THE FILL IS PROGRESS, NOT STATUS (Anir, Aug 30: "I don't know why you're
+     using that weird orange-brown color"). It was the status hue at 32% alpha,
+     and amber at a third strength over a grey rail is mud — the exact colour
+     he pulled out. Elapsed time is the same fact the person-progress lanes
+     draw, so it takes the same blue, at the same strength. The status colour
+     keeps the two places it means something: the words on the right, and the
+     flag at the deadline. */
+  const ELAPSED = "rgba(0,113,227,0.55)";
+
   const tone = done
     ? { hue: "#0071E3", text: "text-blue-primary" }
     : overdue
@@ -117,7 +126,14 @@ export function NeededByTimeline({
           collides with anything, so it never has to be suppressed: today is on
           this chart on every request, including the ones where today IS the
           day it was asked for. */}
+      {/* NOTHING OVERLAPS AT THE ENDS (Anir, Aug 30: "you gotta figure it out
+          and make sure nothing's overlapping"). The rail ran the full width and
+          the two markers are centred on its ends, so 11px of bar sat under each
+          circle. Everything is plotted inside an 11px inset — the marker's own
+          radius — so a dot at 0% or 100% ends flush with the card instead of
+          hanging over a bar that runs beneath it. */}
       <div className="relative mt-3 h-[64px]">
+        <div className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute left-0 right-0 h-[6px] rounded-full bg-border-light"
           style={{ top: RAIL_TOP }}
@@ -131,8 +147,7 @@ export function NeededByTimeline({
             top: RAIL_TOP,
             left: at(Math.min(asked, due)),
             width: `${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * 100}%`,
-            background: tone.hue,
-            opacity: 0.32,
+            background: ELAPSED,
           }}
         />
 
@@ -174,10 +189,13 @@ export function NeededByTimeline({
           <span className="block whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
             Today
           </span>
+          {/* No glow: it smeared into the rail underneath and was half of why
+              this read as smudged rather than drawn. */}
           <span
             className={cn("block w-px bg-blue-primary/70", atStart && "ml-[11px]", atEnd && "mr-[11px]")}
-            style={{ height: RAIL_TOP - 16, boxShadow: "0 0 8px rgba(0,113,227,0.35)" }}
+            style={{ height: RAIL_TOP - 17 }}
           />
+        </div>
         </div>
       </div>
     </div>
