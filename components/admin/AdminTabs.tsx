@@ -233,10 +233,14 @@ export function AdminTabs({
                 }
               />
             </AdminTabActions>
+            {/* Table and Split are two different screens, so each announces
+                itself when you land on it. */}
             {peopleView === "split" ? (
-              <PeopleSplit />
+              <div key="split" className="tab-panel">
+                <PeopleSplit />
+              </div>
             ) : (
-              <>
+              <div key="table" className="tab-panel">
                 <MemberRoles canEdit />
                 <div className="mt-8">
                   <h3 className="text-[15px] font-semibold text-text-primary">
@@ -247,7 +251,7 @@ export function AdminTabs({
                   </p>
                   <PeoplePrivileges />
                 </div>
-              </>
+              </div>
             )}
           </>
         ) : current.key === "groups" ? (

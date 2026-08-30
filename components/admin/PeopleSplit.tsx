@@ -253,8 +253,14 @@ export function PeopleSplit() {
           })}
         </div>
 
-        {/* RIGHT: everything about the one person picked. */}
-        <div className="min-w-0 rounded-xl border border-border-light p-4">
+        {/* RIGHT: everything about the one person picked. Keyed on them, so
+            clicking a different name replays the entrance instead of silently
+            rewriting the pane (Anir, Aug 29: "and of course when I click on
+            these things too"). */}
+        <div
+          key={selected.id}
+          className="tab-panel min-w-0 rounded-xl border border-border-light p-4"
+        >
           <div className="flex flex-wrap items-center gap-3">
             <Avatar name={selected.name} className="h-11 w-11 shrink-0 text-[13px]" />
             <div className="min-w-0 flex-1">

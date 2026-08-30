@@ -511,7 +511,15 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
              running list and should be a scrollable list" — and the right pane
              is the same GroupDetail the group's own page renders, embedded. One
              implementation, so the split and the page cannot drift. */
-          <div className="mt-3 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+          /* SWITCHING VIEW IS A TRANSITION, NOT A SWAP (Anir, Aug 29: "add
+             proper animations whenever I do anything... when I switch tabs,
+             pages, subpages, or between table and split"). Keyed on the view so
+             React remounts it and the entrance actually plays; without the key
+             it is the same node with different children and nothing animates. */
+          <div
+            key="split"
+            className="tab-panel mt-3 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]"
+          >
             <div className="max-h-[640px] overflow-y-auto rounded-xl border border-border-light">
               {groups.map((g) => {
                 const on = (selectedId ?? groups[0]?.id) === g.id;
@@ -544,7 +552,13 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 );
               })}
             </div>
-            <div className="min-w-0 rounded-xl border border-border-light p-4">
+            {/* The pane is keyed by the selected group below, so picking a
+                different one replays this entrance — the right side visibly
+                changes rather than silently redrawing. */}
+            <div
+              key={selectedId ?? groups[0]?.id}
+              className="tab-panel min-w-0 rounded-xl border border-border-light p-4"
+            >
               {perf && (selectedId ?? groups[0]?.id) ? (
                 <GroupDetail
                   key={selectedId ?? groups[0].id}
@@ -578,7 +592,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
 
              Same colgroup-and-thead structure, same row hover, same expand, and
              the same action buttons at the same sizes. */
-          <div className="overflow-hidden rounded-2xl border border-border-light bg-white">
+          <div key="table" className="tab-panel overflow-hidden rounded-2xl border border-border-light bg-white">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] table-fixed">
                 <colgroup>
