@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   ROLE_PRIVILEGE,
   VIEW_ALL,
+  privilegeColor,
   privilegesForPerson,
   type PrivilegeState,
 } from "@/lib/privileges";
@@ -43,6 +44,21 @@ const ROLE_OPTIONS: ColorOption[] = [
   { value: "admin", label: "Admin", color: "#0F766E" },
 ];
 
+/**
+ * SUSPENDED, IN THE COLOUR THIS APP RESERVES FOR IT.
+ *
+ * Red is a status colour here and this is exactly a status: the person cannot
+ * sign in. It rides the right edge of the row and the right of the name in the
+ * pane, so it is where the eye lands last on both.
+ */
+function SuspendedPill() {
+  return (
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#DC2626]">
+      Suspended
+    </span>
+  );
+}
+
 /** Least power to most, so a demotion can be told from a promotion. */
 const ROLE_RANK: Record<string, number> = {
   bd_member: 0,
@@ -52,20 +68,6 @@ const ROLE_RANK: Record<string, number> = {
   rep: 0,
   solutions: 0,
   manager: 1,
-};
-
-/* Same colours as the wide table, so a privilege is one colour everywhere. */
-const PRIVILEGE_COLORS: Record<string, string> = {
-  bd_owner: "#0071E3",
-  bd_member: "#4DA3F0",
-  bo_owner: "#7C3AED",
-  bo_member: "#A78BFA",
-  sol_owner: "#DB2777",
-  sol_member: "#F472B6",
-  delivery_owner: "#C2410C",
-  delivery_member: "#FB923C",
-  admin: "#0F766E",
-  view_all: "#475569",
 };
 
 export function PeopleSplit() {
@@ -253,12 +255,14 @@ export function PeopleSplit() {
                   >
                     {m.name}
                   </span>
-                  {!m.active && (
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                      Suspended
-                    </span>
-                  )}
                 </span>
+                {/* SAY IT IN RED, ON THE RIGHT (Anir, Aug 30: "if it's
+                    suspended it should be more clear that it's suspended, but
+                    like a red thing here, and it has to stay on the right side
+                    too"). It was grey uppercase text tucked under the name,
+                    which is how this app writes a subtitle, not a warning —
+                    and it sat where the eye had already moved on. */}
+                {!m.active && <SuspendedPill />}
               </button>
             );
           })}
@@ -275,27 +279,56 @@ export function PeopleSplit() {
           <div className="flex flex-wrap items-center gap-3">
             <Avatar name={selected.name} className="h-11 w-11 shrink-0 text-[13px]" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
+              <p className="flex items-center gap-2 truncate text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
                 {selected.name}
+                {/* The same pill as the list, so opening a suspended person
+                    does not lose the one fact that changes what you can do. */}
+                {!selected.active && <SuspendedPill />}
               </p>
               <p className="truncate text-[12.5px] text-text-secondary">
                 {selected.email}
               </p>
             </div>
             <div className="w-[190px] shrink-0">
-              <ColorSelect
-                value={
-                  ROLE_OPTIONS.some((o) => o.value === selected.role)
-                    ? selected.role
-                    : "bd_member"
-                }
-                onChange={(next) =>
-                  next !== selected.role &&
-                  setPendingRole({ member: selected, nextRole: next })
-                }
-                ariaLabel={`${selected.name}'s workspace role`}
-                options={ROLE_OPTIONS}
-              />
+              {/* A SUSPENDED PERSON'S ROLE IS NOT A DROPDOWN (Anir, Aug 30:
+                  "if he's suspended, why can I change this?"). They cannot sign
+                  in, so setting what they may do is a change with no subject.
+                  The role still SHOWS, because you need to know what they held
+                  when you decide whether to bring them back. */}
+              {selected.active ? (
+                <ColorSelect
+                  value={
+                    ROLE_OPTIONS.some((o) => o.value === selected.role)
+                      ? selected.role
+                      : "bd_member"
+                  }
+                  onChange={(next) =>
+                    next !== selected.role &&
+                    setPendingRole({ member: selected, nextRole: next })
+                  }
+                  ariaLabel={`${selected.name}'s workspace role`}
+                  options={ROLE_OPTIONS}
+                />
+              ) : (
+                (() => {
+                  const meta =
+                    ROLE_OPTIONS.find((o) => o.value === selected.role) ??
+                    ROLE_OPTIONS[0];
+                  return (
+                    <span
+                      title="Suspended: their role cannot be changed"
+                      className="flex h-[38px] items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-semibold text-text-tertiary"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: meta.color, opacity: 0.5 }}
+                      />
+                      <span className="truncate">{meta.label}</span>
+                    </span>
+                  );
+                })()
+              )}
             </div>
           </div>
 
@@ -304,8 +337,21 @@ export function PeopleSplit() {
               Privileges
             </p>
             <p className="mt-0.5 text-[12px] text-text-tertiary">
-              Tick as many as they need. What they may do in a module is the most
-              generous of everything they hold.
+              {selected.active ? (
+                <>
+                  Tick as many as they need. What they may do in a module is the
+                  most generous of everything they hold.
+                </>
+              ) : (
+                /* WHY IT IS LOCKED, not just that it is. */
+                <>
+                  <b className="font-semibold text-[color:#DC2626]">
+                    {selected.name} is suspended
+                  </b>{" "}
+                  and cannot sign in, so what they hold is frozen. Bring them
+                  back before changing it.
+                </>
+              )}
             </p>
             <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {state.privileges.map((p) => {
@@ -315,14 +361,23 @@ export function PeopleSplit() {
                    the role puts it back on every read. The role dropdown above
                    is where that one changes. */
                 const viaRole = fromRole === p.id;
-                const color = PRIVILEGE_COLORS[p.id] ?? "#0071E3";
+                /* Nothing on a suspended person is editable — a privilege you
+                   cannot exercise is not a privilege (Anir, Aug 30: "if he's
+                   suspended, why can I change this?"). */
+                const locked = viaRole || !selected.active;
+                const color = privilegeColor(p.id);
                 return (
                   <button
                     key={p.id}
                     type="button"
                     role="checkbox"
                     aria-checked={on || viaRole}
-                    disabled={viaRole}
+                    disabled={locked}
+                    title={
+                      selected.active
+                        ? undefined
+                        : `${selected.name} is suspended, so this cannot change`
+                    }
                     onClick={() =>
                       setPendingPriv({
                         person: selected.name,
@@ -331,23 +386,31 @@ export function PeopleSplit() {
                         to: !on,
                       })
                     }
+                    /* HELD IS NOT A HINT (Anir, Aug 30: "I don't like the
+                       selected thing, it looks so light, like such a light
+                       blue, it's bad"). The border is the colour itself rather
+                       than a third of it, and the tint is deep enough to see
+                       against white. */
                     style={
                       on || viaRole
-                        ? { borderColor: `${color}59`, backgroundColor: `${color}12` }
+                        ? { borderColor: color, backgroundColor: `${color}1A` }
                         : undefined
                     }
                     className={cn(
                       "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
-                      viaRole
+                      locked
                         ? "cursor-not-allowed"
                         : "cursor-pointer hover:border-blue-primary/50",
                       !on && !viaRole && "border-border-light bg-white"
                     )}
                   >
+                    {/* FILLED, NOT OUTLINED. A solid block of the colour is
+                        the strongest thing a small control can say, and it is
+                        what the app's other checkboxes already do. */}
                     <span
                       style={
                         on || viaRole
-                          ? { borderColor: `${color}66`, backgroundColor: `${color}1F`, color }
+                          ? { borderColor: color, backgroundColor: color, color: "#FFFFFF" }
                           : undefined
                       }
                       className={cn(

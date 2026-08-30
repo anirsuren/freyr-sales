@@ -248,6 +248,44 @@ export const BUILT_IN_PRIVILEGES: PrivilegeDef[] = [
 /** The privilege that widens what you can SEE rather than what you can do. */
 export const VIEW_ALL = "view_all";
 
+/**
+ * A COLOUR PER PRIVILEGE, so a person's row reads as a shape rather than as
+ * ten identical ticks. Owner badges take the deeper tone of their pair.
+ *
+ * One map, because two screens draw these and a privilege has to be the same
+ * colour on both — the ticks table and the split's cards each carried their
+ * own copy, which is a drift waiting to happen.
+ */
+export const PRIVILEGE_COLORS: Record<string, string> = {
+  bd_owner: "#0071E3",
+  bd_member: "#2C7FD0",
+  bo_owner: "#7C3AED",
+  bo_member: "#6D4BC4",
+  sol_owner: "#DB2777",
+  sol_member: "#B02066",
+  delivery_owner: "#C2410C",
+  delivery_member: "#9A4A16",
+  admin: "#0F766E",
+  view_all: "#475569",
+};
+
+/**
+ * The colour a HELD privilege is drawn in.
+ *
+ * Anir, Aug 30, on a ticked card: "I don't like the selected thing. It looks so
+ * light, like such a light blue. It's bad." He was right twice over — the tint
+ * was 12% alpha AND the member badges were pastels (#4DA3F0, #A78BFA), so a
+ * selected card was a pale wash of a pale hue and read as disabled rather than
+ * as chosen.
+ *
+ * The member tones are proper mid-weight colours now, still a step off their
+ * owner so the pair still reads as a pair, and the selected state is drawn with
+ * the colour at full strength: a solid tick, a real border, a tint you can see.
+ */
+export function privilegeColor(id: string): string {
+  return PRIVILEGE_COLORS[id] ?? "#0071E3";
+}
+
 export type PrivilegeState = {
   /** The badges that exist. */
   privileges: PrivilegeDef[];

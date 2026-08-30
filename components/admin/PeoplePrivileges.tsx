@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import {
   VIEW_ALL,
+  privilegeColor,
   privilegesForPerson,
   type PrivilegeState,
 } from "@/lib/privileges";
@@ -38,21 +39,6 @@ type Person = {
   name: string;
   email: string;
   active?: boolean;
-};
-
-/* A colour per badge, so a person's row reads as a shape rather than as ten
-   identical ticks. Owner badges take the deeper tone of their pair. */
-const PRIVILEGE_COLORS: Record<string, string> = {
-  bd_owner: "#0071E3",
-  bd_member: "#4DA3F0",
-  bo_owner: "#7C3AED",
-  bo_member: "#A78BFA",
-  sol_owner: "#DB2777",
-  sol_member: "#F472B6",
-  delivery_owner: "#C2410C",
-  delivery_member: "#FB923C",
-  admin: "#0F766E",
-  view_all: "#475569",
 };
 
 export function PeoplePrivileges() {
@@ -180,7 +166,7 @@ export function PeoplePrivileges() {
     void save({ ...state, peoplePrivileges: next });
   };
 
-  const privColor = (id: string) => PRIVILEGE_COLORS[id] ?? "#0071E3";
+  const privColor = (id: string) => privilegeColor(id);
 
   return (
     <div>
@@ -249,12 +235,14 @@ export function PeoplePrivileges() {
                               to: !on,
                             })
                           }
+                          /* Held is drawn solid here too, so the table and
+                             the split say "yes" the same way. */
                           style={
                             on
                               ? {
-                                  borderColor: `${privColor(p.id)}66`,
-                                  backgroundColor: `${privColor(p.id)}14`,
-                                  color: privColor(p.id),
+                                  borderColor: privColor(p.id),
+                                  backgroundColor: privColor(p.id),
+                                  color: "#FFFFFF",
                                 }
                               : undefined
                           }
