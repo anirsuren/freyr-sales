@@ -15,6 +15,9 @@ import {
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { InviteTeammate } from "@/components/team/InviteTeammate";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
+import { AdminTabActions } from "./AdminTabActions";
 import { MemberRoles } from "./MemberRoles";
 import { PeoplePrivileges } from "./PeoplePrivileges";
 import { PeopleSplit } from "./PeopleSplit";
@@ -42,27 +45,25 @@ import { EmailComposer } from "./EmailComposer";
  *
  * Privileges had grown to a four-sentence paragraph explaining View/Edit/Create,
  * record scoping and View all — true, and a wall above the grid it describes.
- * `subtitle` is now the sentence worth reading every time; `detail` is what you
- * ask for, behind the same InfoHint the rest of the app uses.
+ * Nothing is printed on the page at all now — `detail` is what you ask for,
+ * behind the same InfoHint the rest of the app uses.
  */
-const TABS: (PageTab & { subtitle: string; detail?: string })[] = [
+const TABS: (PageTab & { detail?: string })[] = [
   {
     key: "members",
     label: "Team members",
     icon: ShieldCheck,
     color: "#0071E3",
-    subtitle: "Everyone in the workspace, and what each of them holds.",
     detail:
-      "A person can hold several privileges at once. Only an admin can change a role or a privilege, and the server enforces that too, so this page being admin-only is the convenience rather than the security.",
+      "Everyone in the workspace, and what each of them holds. A person can hold several privileges at once. Only an admin can change a role or a privilege, and the server enforces that too, so this page being admin-only is the convenience rather than the security.",
   },
   {
     key: "groups",
     label: "User groups",
     icon: UsersRound,
     color: "#7C3AED",
-    subtitle: "The departments people belong to.",
     detail:
-      "A group has one owner and the people in it. Open a group to set the goals it carries and each person's target. A group's TYPE decides which module can hand it work: a business development group takes customers, contracts and opportunities; a solutioning group takes solution requests, submissions, presentations and meetings.",
+      "The departments people belong to. A group has one owner and the people in it. Open a group to set the goals it carries and each person's target. A group's TYPE decides which module can hand it work: a business development group takes customers, contracts and opportunities; a solutioning group takes solution requests, submissions, presentations and meetings.",
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").
@@ -74,18 +75,16 @@ const TABS: (PageTab & { subtitle: string; detail?: string })[] = [
     label: "Privileges",
     icon: KeyRound,
     color: "#B45309",
-    subtitle: "In which module each role may do what.",
     detail:
-      "View looks. Edit changes what is already there. Create makes new ones and is the only one that can delete.\n\nAll of it applies only to records a person created or was assigned to. View all is the one privilege that shows them everybody else's, and it never lets them change one.\n\nEvery change takes effect straight away, asks first, and emails the admins. Who holds which role is on Team members.",
+      "In which module each role may do what. View looks. Edit changes what is already there. Create makes new ones and is the only one that can delete.\n\nAll of it applies only to records a person created or was assigned to. View all is the one privilege that shows them everybody else's, and it never lets them change one.\n\nEvery change takes effect straight away, asks first, and emails the admins. Who holds which role is on Team members.",
   },
   {
     key: "activity",
     label: "Activity master",
     icon: ListChecks,
     color: "#0F766E",
-    subtitle: "What an activity is worth, and which goal it counts toward.",
     detail:
-      "When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
+      "What an activity is worth, and which goal it counts toward. When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
   },
   // Sending mail out of the workspace is an admin job, so it lives with the
   // other admin controls (Anir, Aug 25: "build the email stuff out for
@@ -95,9 +94,8 @@ const TABS: (PageTab & { subtitle: string; detail?: string })[] = [
     label: "Email",
     icon: Mail,
     color: "#B45309",
-    subtitle: "Write and send an email from the app.",
     detail:
-      "Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
+      "Write and send an email from the app. Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
   },
 ];
 
@@ -120,6 +118,7 @@ export function AdminTabs({
   }[];
   live: boolean;
 }) {
+  const me = useCurrentUserOrNull();
   /* Table or split on Team members, remembered like every other view choice
      in this app (Anir, Aug 9: "you have to save my preferences and apply this
      everywhere"). */
@@ -151,15 +150,29 @@ export function AdminTabs({
         {/* The pills carry the page name; a heading above them would say it
             twice. Kept for screen readers and the document outline. */}
         <h1 className="sr-only">Admin: {current.label}</h1>
-        <PageTabs
-          tabs={TABS}
-          active={current.key}
-          onSelect={(key) => setTab(key as (typeof KEYS)[number])}
-        />
-        <p className="mt-1.5 flex max-w-[720px] items-center gap-1.5 text-[13.5px] leading-relaxed text-text-secondary">
-          {current.subtitle}
-          {current.detail && <InfoHint text={current.detail} />}
-        </p>
+        {/* NO SUBTEXT LINE (Anir, Aug 29: "you don't need to say the subtext
+            underneath, you really never need to say"). The tab already names
+            the screen; a sentence restating it was a band of text above every
+            page in Admin. What the sentence explained lives on the hint beside
+            the tabs, which is one hover away and takes no vertical space.
+
+            THE PAGE'S OWN CONTROLS RIDE UP HERE (Anir, same message: "the new
+            group and the table and the split should go up to the top right, so
+            you can clear the space"). Each tab's panel portals its buttons into
+            this slot — the same mechanic the Performance header uses for its
+            export control — so the row is the tabs on the left and whatever
+            this screen can do on the right. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <PageTabs
+              tabs={TABS}
+              active={current.key}
+              onSelect={(key) => setTab(key as (typeof KEYS)[number])}
+            />
+            {current.detail && <InfoHint text={current.detail} />}
+          </span>
+          <span id="admin-tab-actions" className="flex items-center gap-2" />
+        </div>
       </div>
 
       <div key={current.key} className="tab-panel">
@@ -175,7 +188,7 @@ export function AdminTabs({
                 said, I would like the same concept"). Table answers "who can do
                 what" across everybody; Split answers "what can THIS person do"
                 without forty rows of other people's ticks in the way. */}
-            <div className="mb-3 flex justify-end">
+            <AdminTabActions active="members">
               <div
                 role="group"
                 aria-label="How to show people"
@@ -207,7 +220,19 @@ export function AdminTabs({
                   );
                 })}
               </div>
-            </div>
+              {/* INVITING SOMEBODY BELONGS ON THE PAGE THAT LISTS EVERYBODY
+                  (Anir, Aug 29: "also add an invite button, I don't know why
+                  that's not there here"). It only existed on /team, which is
+                  the roster people read — not the screen an admin opens to add
+                  someone. Same component, so the invitation email and the
+                  domain rule stay identical wherever it is pressed. */}
+              <InviteTeammate
+                canInvite
+                workspaceDomain={
+                  me?.email?.split("@")[1] || "freyrsolutions.com"
+                }
+              />
+            </AdminTabActions>
             {peopleView === "split" ? (
               <PeopleSplit />
             ) : (

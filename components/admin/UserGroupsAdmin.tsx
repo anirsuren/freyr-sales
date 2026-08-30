@@ -9,7 +9,6 @@ import {
   Pencil,
   Plus,
   Trash2,
-  UsersRound,
   X,
   ClipboardList,
   ArrowUpRight,
@@ -32,6 +31,7 @@ import { MultiPicker } from "@/components/ui/MultiPicker";
 import { useStoredView } from "@/lib/useStoredView";
 import { GROUP_TYPES, GROUP_TYPE_META } from "@/lib/privileges";
 import Link from "next/link";
+import { AdminTabActions } from "./AdminTabActions";
 import type { PerformanceState, PerfGroup } from "@/lib/performanceShared";
 import {
   actualValue,
@@ -271,17 +271,23 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
 
 
   return (
-    <div className="rounded-2xl border border-border-light bg-white p-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
-          <UsersRound size={16} strokeWidth={2} className="text-blue-primary" />
-          User groups
-          <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Goals; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
-        </p>
-        {/* Always here. It used to unmount while the popup was open, so
-            opening the editor made the button vanish from the page behind it
-            (Anir, Aug 15: "it looks like you're disappearing the button"). */}
-        <div className="flex items-center gap-2">
+    /* NO WRAPPER CARD, NO REPEATED TITLE (Anir, Aug 29: "you don't have to say
+       user groups, we already know we're on user groups because we selected it.
+       The new group and the table and the split should go up to the top right.
+       You don't need this rectangle at all — you just need two side-by-side
+       rectangles").
+
+       The panel used to be a card containing a heading that repeated the tab,
+       and inside it the two panes: three nested rectangles to say one thing.
+       Now the controls sit top-right on their own line and the content is the
+       rectangles themselves. */
+    <div>
+      {/* Always rendered. It used to unmount while the popup was open, so
+          opening the editor made the button vanish from the page behind it
+          (Anir, Aug 15: "it looks like you're disappearing the button"). */}
+      {/* THE CONTROLS RIDE THE TAB ROW (Anir, Aug 29: "the new group and the
+          table and the split should go up to the top right"). */}
+      <AdminTabActions active="groups">
           <div
             role="group"
             aria-label="How to show groups"
@@ -317,8 +323,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           <Button onClick={openCreate}>
             <Plus size={14} strokeWidth={2.2} /> New group
           </Button>
-        </div>
-      </div>
+      </AdminTabActions>
 
       {/* Creating a group is its own popup (Anir, Aug 12: "when I create a
           new group, it should be a pop-up"). */}

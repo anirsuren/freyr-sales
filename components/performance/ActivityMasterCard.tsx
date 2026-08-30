@@ -20,6 +20,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { AdminTabActions } from "@/components/admin/AdminTabActions";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -151,21 +152,23 @@ export function ActivityMasterCard({
   }
 
   return (
-    <Card className="mt-5 overflow-hidden p-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-4 py-3">
-        <b className="text-[13.5px] text-text-primary">Activity master</b>
-        <span className="ml-auto">
-          {writable ? (
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus size={14} strokeWidth={2.2} /> New activity
-            </Button>
-          ) : (
-            <span className="text-[11.5px] text-text-tertiary">
-              {live ? "Admins edit this list" : "Sample data. Switch to Real mode to change the master"}
-            </span>
-          )}
-        </span>
-      </div>
+    <Card className="overflow-hidden p-0">
+      {/* THE BUTTON RIDES THE TAB ROW, AND THE TITLE GOES (Anir, Aug 29: "move
+          the table in the split thing [to the top right]... apply this to all
+          the other pages too", and earlier "we already know we're on user
+          groups because we selected it"). The card headed itself with the same
+          word the tab already says, and hid its one action inside itself. */}
+      <AdminTabActions active="activity">
+        {writable ? (
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus size={14} strokeWidth={2.2} /> New activity
+          </Button>
+        ) : (
+          <span className="text-[11.5px] text-text-tertiary">
+            {live ? "Admins edit this list" : "Sample data. Switch to Real mode to change the master"}
+          </span>
+        )}
+      </AdminTabActions>
 
       {failed ? (
         <p className="px-4 py-5 text-[12.5px] text-text-secondary">
