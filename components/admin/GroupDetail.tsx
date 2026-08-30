@@ -239,8 +239,14 @@ export function GroupDetail({
       )}
 
       {/* ---------------------------------------------------------- the group */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+      {/* ONE LINE (Anir, Aug 30: "I want the group owner itself to be in line
+          with that name, where you say group owner and then my name, and then
+          two people can all be on the same line — that will help everything
+          move up"). The name sat alone on its own row with a second row of
+          facts under it, which cost 24px to say three short things that fit
+          beside each other. It wraps on a narrow screen and nowhere else. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
           <h1
             className={
               embedded
@@ -250,30 +256,28 @@ export function GroupDetail({
           >
             {group.name}
           </h1>
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12.5px] text-text-secondary">
-            {groupTypeLabel && (
-              <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
-                {GROUP_TYPE_META[
-                  groupTypeLabel as keyof typeof GROUP_TYPE_META
-                ]?.label ?? groupTypeLabel}
-              </span>
-            )}
-            {/* HIS WORD IS "GROUP OWNER" (Suren, Aug 29: "don't say admin, you
-                say owner for the group... no, he's a group owner"). The head
-                used to wear their workspace role here, so the person running
-                the group read as "Admin" — which is a different fact about a
-                different thing. */}
-            <span className="inline-flex items-center gap-1.5">
-              <Crown size={11} strokeWidth={2.6} className="text-[color:#7C3AED]" />
-              Group owner
-              <Avatar name={group.head} className="h-5 w-5 text-[7.5px]" />
-              <b className="font-semibold text-text-primary">{group.head}</b>
+          {groupTypeLabel && (
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+              {GROUP_TYPE_META[
+                groupTypeLabel as keyof typeof GROUP_TYPE_META
+              ]?.label ?? groupTypeLabel}
             </span>
-            <span>·</span>
-            <span>
-              {people.length} {people.length === 1 ? "person" : "people"}
-            </span>
-          </p>
+          )}
+          {/* HIS WORD IS "GROUP OWNER" (Suren, Aug 29: "don't say admin, you
+              say owner for the group... no, he's a group owner"). The head
+              used to wear their workspace role here, so the person running
+              the group read as "Admin" — which is a different fact about a
+              different thing. */}
+          <span className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary">
+            <Crown size={11} strokeWidth={2.6} className="text-[color:#7C3AED]" />
+            Group owner
+            <Avatar name={group.head} className="h-5 w-5 text-[7.5px]" />
+            <b className="font-semibold text-text-primary">{group.head}</b>
+          </span>
+          <span className="text-[12.5px] text-text-tertiary">·</span>
+          <span className="text-[12.5px] text-text-secondary">
+            {people.length} {people.length === 1 ? "person" : "people"}
+          </span>
         </div>
         {busy && (
           <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
@@ -283,7 +287,7 @@ export function GroupDetail({
       </div>
 
       {/* --------------------------------------------------------- the people */}
-      <section className="mb-6 rounded-2xl border border-border-light bg-white p-5">
+      <section className="mb-4 rounded-2xl border border-border-light bg-white px-5 pb-5 pt-3.5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <UsersRound size={15} strokeWidth={2.2} className="text-[color:#7C3AED]" />
@@ -360,7 +364,7 @@ export function GroupDetail({
       </section>
 
       {/* ---------------------------------------------------------- the goals */}
-      <section className="rounded-2xl border border-border-light bg-white p-5">
+      <section className="rounded-2xl border border-border-light bg-white px-5 pb-5 pt-3.5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <Target size={15} strokeWidth={2.2} className="text-blue-primary" />
