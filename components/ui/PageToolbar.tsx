@@ -41,6 +41,7 @@ export function PageToolbar({
   searchAriaLabel,
   groups,
   onClearAll,
+  filterAriaLabel,
   filtersBefore,
   filtersAfter,
   sortLabel = "Sort",
@@ -59,6 +60,8 @@ export function PageToolbar({
   /** Layered filter groups. Omit for a page with nothing to filter. */
   groups?: FilterGroup[];
   onClearAll?: () => void;
+  /** What the Filter button says it filters, for a screen reader. */
+  filterAriaLabel?: string;
   /** Controls that belong beside the Filter button rather than in it. */
   filtersBefore?: ReactNode;
   filtersAfter?: ReactNode;
@@ -111,7 +114,11 @@ export function PageToolbar({
         />
         {filtersBefore}
         {groups && groups.length > 0 && onClearAll && (
-          <FilterMenu groups={groups} onClearAll={onClearAll} />
+          <FilterMenu
+            groups={groups}
+            onClearAll={onClearAll}
+            ariaLabel={filterAriaLabel}
+          />
         )}
         {filtersAfter}
       </div>

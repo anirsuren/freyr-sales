@@ -27,6 +27,8 @@ import {
   Maximize2,
   CircleUserRound,
   UserRoundPlus,
+  Rows3,
+  PanelsTopLeft,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MultiPicker } from "@/components/ui/MultiPicker";
@@ -51,10 +53,6 @@ import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { roleLabel } from "@/components/ui/RoleTag";
 import { useToast } from "@/components/ui/Toast";
-import {
-  PrioritySearchInput,
-  SearchPriority,
-} from "@/components/ui/SearchPriority";
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import {
   BASE_CURRENCY,
@@ -64,7 +62,10 @@ import {
 } from "@/lib/currency";
 import { EvidencePicker } from "./EvidencePicker";
 import { cn } from "@/lib/utils";
+import { type FilterGroup } from "@/components/ui/FilterMenu";
+import { PageToolbar } from "@/components/ui/PageToolbar";
 import { useStickyValue } from "@/lib/useStickyValue";
+import { useStoredView } from "@/lib/useStoredView";
 import {
   fmtAmount,
   type PeriodKey,
@@ -777,11 +778,34 @@ function MasterTab({
   onEditGoal: (goal: PrimaryGoal) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useStickyValue("freyr.performance.master.f.type", "all");
-  const [trackFilter, setTrackFilter] = useStickyValue("freyr.performance.master.f.track", "all");
-  const [unitFilter, setUnitFilter] = useStickyValue("freyr.performance.master.f.unit", "all");
-  const [yearFilter, setYearFilter] = useStickyValue("freyr.performance.master.f.year", "all");
+  /* FOUR DROPDOWNS BECAME ONE FILTER BUTTON (Anir, Aug 30: "maybe you have to
+     just put the filter thing where it's just a filter button or something").
+     The row could not hold four coloured selects AND a Table/Split toggle AND
+     New goal, and this is the control the rest of the app already uses for
+     exactly this — Offerings, Customers, Opportunities, FDL, Team.
+
+     Empty now means "all", so each filter takes a LIST rather than the old
+     "all" sentinel — which also means ticking two goal types is possible for
+     the first time. New storage keys (f2), because the old ones hold the
+     string "all" and reading that back as a list would filter everything out
+     on the first paint after this ships. */
+  const [typeFilter, setTypeFilter] = useStickyValue<string[]>("freyr.performance.master.f2.type", []);
+  const [trackFilter, setTrackFilter] = useStickyValue<string[]>("freyr.performance.master.f2.track", []);
+  const [unitFilter, setUnitFilter] = useStickyValue<string[]>("freyr.performance.master.f2.unit", []);
+  const [yearFilter, setYearFilter] = useStickyValue<string[]>("freyr.performance.master.f2.year", []);
+  /* TABLE OR SPLIT, LIKE EVERY OTHER ADMIN SCREEN (Anir, Aug 30: "I need that
+     table and split on this page"). Table answers "what is on the master" down
+     a column; Split answers "everything about THIS goal" without folding a
+     table row open. Remembered like every other view choice. */
+  const [view, pickView] = useStoredView<"table" | "split">(
+    "freyr.performance.master.view",
+    "table",
+    ["table", "split"] as const
+  );
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Which goal the split view is standing on. Null means "the first one",
+   *  so the right pane is never empty while there is something to show. */
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const openGoal = state.goals.find((g) => g.id === openId) ?? null;
   /** Table rows expand IN PLACE like a dropdown — no popup over the list
    *  (Anir, Aug 12: "these should be drop-downs instead of pop-ups"). The
@@ -804,11 +828,14 @@ function MasterTab({
   const shutTypes = useMemo(() => new Set(shutList), [shutList]);
 
   const filtered = state.goals.filter((g) => {
-    if (typeFilter !== "all" && g.type !== typeFilter) return false;
-    if (trackFilter === "tracking" && !g.pickedForOrg) return false;
-    if (trackFilter === "master" && g.pickedForOrg) return false;
-    if (unitFilter !== "all" && g.unit !== unitFilter) return false;
-    if (yearFilter !== "all" && String(g.year) !== yearFilter) return false;
+    if (typeFilter.length > 0 && !typeFilter.includes(g.type)) return false;
+    /* Ticking both, or neither, is the same statement: show me everything. */
+    if (trackFilter.length === 1) {
+      if (trackFilter[0] === "tracking" && !g.pickedForOrg) return false;
+      if (trackFilter[0] === "master" && g.pickedForOrg) return false;
+    }
+    if (unitFilter.length > 0 && !unitFilter.includes(g.unit)) return false;
+    if (yearFilter.length > 0 && !yearFilter.includes(String(g.year))) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -832,92 +859,94 @@ function MasterTab({
 
   /** Every category on screen right now, and whether any of them is open —
    *  what the one Open all / Close all button switches on. */
-  const shownTypes = [...byType, ...strayTypes].map((s) => s.type);
+  const sections = [...byType, ...strayTypes].filter((s) => s.goals.length > 0);
+  const shownTypes = sections.map((s) => s.type);
   const anyTypeOpen = shownTypes.some((t) => !shutTypes.has(t));
+
+  /** The split's left column, in the table's order: category by category, so
+   *  the two views list the same goals in the same sequence. */
+  const running = sections.flatMap((s) => s.goals);
+  const picked = running.find((g) => g.id === pickedId) ?? running[0] ?? null;
+
+  /** WHAT THE ONE BUTTON HOLDS. Same four questions as the four selects it
+   *  replaced, in the same order. */
+  const filterGroups: FilterGroup[] = [
+    {
+      key: "type",
+      label: "Goal type",
+      values: typeFilter,
+      onChange: setTypeFilter,
+      options: state.types.map((t) => ({
+        value: t,
+        label: t,
+        color: typeMeta(t).color,
+      })),
+    },
+    {
+      key: "track",
+      label: "Tracking",
+      values: trackFilter,
+      onChange: setTrackFilter,
+      options: [
+        { value: "tracking", label: "Tracking", color: "#16A34A" },
+        { value: "master", label: "Not tracked", color: "#8AB4E8" },
+      ],
+    },
+    {
+      key: "unit",
+      label: "Counted in",
+      values: unitFilter,
+      onChange: setUnitFilter,
+      options: [
+        { value: "currency", label: "Money ($)", color: "#0F766E" },
+        { value: "count", label: "Count (#)", color: "#0071E3" },
+        { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
+      ],
+    },
+    {
+      key: "year",
+      label: "Year",
+      values: yearFilter,
+      onChange: setYearFilter,
+      options: [...new Set(state.goals.map((g) => g.year))]
+        .sort((x, y) => y - x)
+        .map((y) => ({ value: String(y), label: String(y), color: "#6D28D9" })),
+    },
+  ];
 
   return (
     <div>
 
-      <SearchPriority query={query} className="flex flex-wrap items-center gap-2">
-        <PrioritySearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Search goals, subgoals, owners…"
-          ariaLabel="Search the goal master"
-          grow
-          className="min-w-[200px] flex-1"
-        />
-        <span className="ml-auto flex flex-wrap items-center gap-2">
-          <ColorSelect
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Goal type"
-            dense
-            minWidth={180}
-            options={[
-              { value: "all", label: "All goal types", color: "#0071E3" },
-              ...state.types.map((t) => ({
-                value: t,
-                label: t,
-                color: typeMeta(t).color,
-                icon: typeMeta(t).icon,
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={trackFilter}
-            onChange={setTrackFilter}
-            ariaLabel="Tracking"
-            dense
-            minWidth={150}
-            options={[
-              { value: "all", label: "Tracked + master", color: "#0071E3" },
-              { value: "tracking", label: "Tracking", color: "#16A34A" },
-              { value: "master", label: "Not tracked", color: "#8AB4E8" },
-            ]}
-          />
-          <ColorSelect
-            value={unitFilter}
-            onChange={setUnitFilter}
-            ariaLabel="Counted in"
-            dense
-            minWidth={140}
-            options={[
-              { value: "all", label: "All units", color: "#0071E3" },
-              { value: "currency", label: "Money ($)", color: "#0F766E" },
-              { value: "count", label: "Count (#)", color: "#0071E3" },
-              { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
-            ]}
-          />
-          <ColorSelect
-            value={yearFilter}
-            onChange={setYearFilter}
-            ariaLabel="Year"
-            dense
-            minWidth={120}
-            options={[
-              { value: "all", label: "All years", color: "#0071E3" },
-              ...[...new Set(state.goals.map((g) => g.year))]
-                .sort((x, y) => y - x)
-                .map((y) => ({
-                  value: String(y),
-                  label: String(y),
-                  color: "#6D28D9",
-                  icon: CalendarDays,
-                })),
-            ]}
-          />
-          {/* THE SAME ONE BUTTON THE OTHER TABS HAVE (Anir, Aug 19: "i need
-              the open all close all here too"). It replaces the layout picker
-              that used to sit here: the tiles view is gone ("just remove the
-              tiles view, it doesn't look good"), so there is nothing left to
-              choose between and this is what the space is for. */}
-          {shownTypes.length > 0 && (
+      {/* THE ROW EVERY OTHER LIST PAGE HAS. It was a hand-rolled search plus
+          four permanently-open selects, which left no room for a view toggle
+          — so it becomes the shared toolbar: search, one Filter button, then
+          the display cluster behind its divider. Bare, because this page draws
+          no card of its own around it. */}
+      <PageToolbar
+        bare
+        className="mb-3"
+        query={query}
+        onQuery={setQuery}
+        placeholder="Search goals, subgoals, owners…"
+        searchAriaLabel="Search the goal master"
+        filterAriaLabel="Filter the goal master"
+        groups={filterGroups}
+        onClearAll={() => {
+          setTypeFilter([]);
+          setTrackFilter([]);
+          setUnitFilter([]);
+          setYearFilter([]);
+        }}
+        display={
+          /* THE SAME ONE BUTTON THE OTHER TABS HAVE (Anir, Aug 19: "i need
+             the open all close all here too").
+
+             TABLE ONLY: the split has no folded categories to open, so in
+             that view the button would do nothing visible. */
+          view === "table" && shownTypes.length > 0 ? (
             <button
               type="button"
-              onClick={() =>
-                setShutList(anyTypeOpen ? shownTypes : [])
-              }
+              onClick={() => setShutList(anyTypeOpen ? shownTypes : [])}
               className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
             >
               {anyTypeOpen ? (
@@ -927,26 +956,65 @@ function MasterTab({
               )}
               {anyTypeOpen ? "Close all" : "Open all"}
             </button>
-          )}
-          {/* SHAPING THE PLAN IS A MANAGER'S JOB (Anir, Aug 20: "I should
-              not be able to add people if I'm a sales rep. That's a huge
-              problem... they shouldn't be able to assign groups, assign
-              stuff, or delete goals").
-              The server has always refused a rep every one of these ops with
-              a 403 — the whole page used to be hidden from reps, so nobody
-              had looked at the buttons since it was opened up. A button that
-              can only fail is worse than no button. */}
-          {isManager && (
-            <button
-              type="button"
-              onClick={onNewGoal}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+          ) : null
+        }
+        view={
+          <>
+            {/* TABLE OR SPLIT, THE SAME CONTROL AS USER GROUPS AND TEAM
+                MEMBERS (Anir, Aug 30: "I need that table and split on this
+                page"). */}
+            <span
+              role="group"
+              aria-label="How to show the goal master"
+              className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
             >
-              <Plus size={14} strokeWidth={2.4} /> New goal
-            </button>
-          )}
-        </span>
-      </SearchPriority>
+              {(
+                [
+                  { key: "table", label: "Table", icon: Rows3 },
+                  { key: "split", label: "Split", icon: PanelsTopLeft },
+                ] as const
+              ).map((o) => {
+                const Icon = o.icon;
+                const on = view === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => pickView(o.key)}
+                    aria-pressed={on}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                      on
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </span>
+            {/* SHAPING THE PLAN IS A MANAGER'S JOB (Anir, Aug 20: "I should
+                not be able to add people if I'm a sales rep. That's a huge
+                problem... they shouldn't be able to assign groups, assign
+                stuff, or delete goals").
+                The server has always refused a rep every one of these ops with
+                a 403 — the whole page used to be hidden from reps, so nobody
+                had looked at the buttons since it was opened up. A button that
+                can only fail is worse than no button. */}
+            {isManager && (
+              <button
+                type="button"
+                onClick={onNewGoal}
+                className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+              >
+                <Plus size={14} strokeWidth={2.4} /> New goal
+              </button>
+            )}
+          </>
+        }
+      />
 
       {state.goals.length === 0 ? (
         <div className="mt-4">
@@ -971,8 +1039,111 @@ function MasterTab({
         </p>
       ) : null}
 
-      <div className="tab-panel">
+      {/* Keyed on the view so React remounts and the entrance actually plays
+          (Anir, Aug 29: "add proper animations whenever I do anything... when
+          I switch tabs, pages, subpages, or between table and split"). */}
+      <div key={view} className="tab-panel">
         {state.goals.length > 0 && filtered.length > 0 ? (
+          view === "split" ? (
+          /* LEFT: JUST THE GOALS. RIGHT: EVERYTHING ABOUT THE ONE YOU PICKED.
+             The same shape as User groups and Team members, and the right pane
+             is the same GoalPopupBody the popup and the table's unfold render,
+             so the three cannot drift apart.
+
+             The left column keeps the table's order and its category headings,
+             so switching views does not reshuffle the list under you. */
+          <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light">
+              {sections.map(({ type, goals: groupGoals }) => (
+                <Fragment key={type}>
+                  <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border-light bg-surface px-3 py-2">
+                    <TypeChip type={type} />
+                    <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                      {groupGoals.length}
+                    </span>
+                  </div>
+                  {groupGoals.map((g) => {
+                    const on = picked?.id === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setPickedId(g.id)}
+                        aria-current={on ? "true" : undefined}
+                        /* A 280px column truncates the long ones, so the full
+                           name is one hover away rather than lost. */
+                        title={g.name}
+                        /* The row wears its own category's colour when it is
+                           the subject — the rail and the tint are the same hue
+                           the icon and the chip already carry. */
+                        style={{
+                          ["--goal-accent" as string]: typeMeta(g.type).color,
+                          backgroundColor: on
+                            ? `${typeMeta(g.type).color}14`
+                            : undefined,
+                        }}
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
+                          on
+                            ? "[box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                            : "hover:bg-surface"
+                        )}
+                      >
+                        <TypeIconTile type={g.type} className="h-7 w-7 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block truncate text-[12.5px]",
+                              on
+                                ? "font-bold text-text-primary"
+                                : "font-semibold text-text-primary"
+                            )}
+                          >
+                            {g.name}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[10.5px] text-text-tertiary tnum">
+                            {g.year} ·{" "}
+                            {g.target > 0
+                              ? fmtAmount(g.unit, g.target)
+                              : "no target yet"}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
+            {/* Keyed by the goal, so picking a different one replays the
+                entrance instead of silently redrawing in place. */}
+            <div
+              key={picked?.id ?? "none"}
+              className="tab-panel min-w-0 rounded-xl border border-border-light p-4"
+            >
+              {picked ? (
+                <GoalPopupBody
+                  hostedInPopup
+                  assignablePeople={assignablePeople}
+                  memberRoles={memberRoles}
+                  isManager={isManager}
+                  key={picked.id}
+                  goal={picked}
+                  state={state}
+                  live={live}
+                  run={run}
+                  busy={busy}
+                  suggestions={suggestions}
+                  onRemoved={() => setPickedId(null)}
+                  onEditGoal={() => onEditGoal(picked)}
+                />
+              ) : (
+                <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
+                  Pick a goal on the left.
+                </p>
+              )}
+            </div>
+          </div>
+          ) : (
           /* SEPARATE TABLES, NOT ONE LONG ONE (Anir, Aug 13: "I told you it
              has to be kind of separate tables… This space in the middle should
              just be white. There shouldn't be another line there"). A gap row
@@ -986,8 +1157,7 @@ function MasterTab({
              it should let me do that"). A shared colgroup keeps every card's
              columns lined up, so they still read as one table. */
           <div className="mt-4 space-y-4">
-            {[...byType, ...strayTypes]
-              .filter(({ goals: groupGoals }) => groupGoals.length > 0)
+            {sections
               .map(({ type, goals: groupGoals }) => {
                 const shut = shutTypes.has(type);
                 return (
@@ -1271,6 +1441,7 @@ function MasterTab({
                 );
               })}
           </div>
+          )
         ) : null}
       </div>
 

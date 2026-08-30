@@ -61,9 +61,14 @@ const PANEL_H = 300;
 export function FilterMenu({
   groups,
   onClearAll,
+  ariaLabel = "Filter offerings",
 }: {
   groups: FilterGroup[];
   onClearAll: () => void;
+  /** What this particular button filters. The default is the page this
+   *  control started on; every other caller says its own noun, so a screen
+   *  reader on the Goal Master does not hear "offerings". */
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   /** The category whose options are showing on the right. Set by hover as
@@ -165,7 +170,7 @@ export function FilterMenu({
           });
         }}
         aria-expanded={open}
-        aria-label="Filter offerings"
+        aria-label={ariaLabel}
         className={cn(
           "inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[12.5px] font-semibold transition-colors",
           active > 0 || open
@@ -188,7 +193,7 @@ export function FilterMenu({
           <div
             ref={panelRef}
             role="dialog"
-            aria-label="Filter offerings"
+            aria-label={ariaLabel}
             style={{ top: box.top, left: box.left, width: PANEL_W }}
             className="menu-in fixed z-[130] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
