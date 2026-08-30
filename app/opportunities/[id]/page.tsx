@@ -7,6 +7,10 @@ import { listOfferings } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { requireServerMemberScope } from "@/lib/memberScope";
+import { getCurrentUser } from "@/lib/currentUser";
+import { readPrivileges } from "@/lib/privileges";
+import { readRecordTeams } from "@/lib/recordTeams";
+import { mayTouchOpportunity } from "@/lib/recordAccess";
 import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +43,16 @@ export default async function OpportunityPage({
   await requireServerMemberScope();
   const { id } = await params;
 
-  const [{ opportunities }, offerings, role, meetingState] = await Promise.all([
-    readOpportunities(),
-    listOfferings(),
-    getRole(),
-    readMeetings().catch(() => ({ meetings: [] })),
-  ]);
+  const [{ opportunities }, offerings, role, meetingState, me, privileges, teams] =
+    await Promise.all([
+      readOpportunities(),
+      listOfferings(),
+      getRole(),
+      readMeetings().catch(() => ({ meetings: [] })),
+      getCurrentUser(),
+      readPrivileges(),
+      readRecordTeams(),
+    ]);
   const deal = opportunities.find((o) => o.id === id);
   if (!deal) notFound();
 
@@ -52,8 +60,29 @@ export default async function OpportunityPage({
   const customers = await db.customers.list().catch(() => []);
   const bands = await buildOpportunity360(deal.id, role);
 
+  const customerId =
+    customers.find(
+      (c) =>
+        (c.company_name ?? "").trim().toLowerCase() ===
+        deal.customer.trim().toLowerCase()
+    )?.id ?? null;
+
+  /* WHAT THIS PERSON MAY DO TO THIS DEAL — the privilege map joined to who is
+     actually on the account and on the deal (Suren, Aug 30). Decided on the
+     server so a hidden control is not the only thing standing between somebody
+     and a write. */
+  const verdict = mayTouchOpportunity({
+    privileges,
+    teams,
+    person: me.name,
+    role,
+    opportunityId: deal.id,
+    ...(customerId ? { customerId } : {}),
+  });
+
   return (
     <OpportunityDetail
+      verdict={verdict}
       deal={deal}
       bands={bands}
       offerings={offerings.map((o) => ({
@@ -61,13 +90,7 @@ export default async function OpportunityPage({
         name: o.offering_name,
         type: o.offering_type,
       }))}
-      customerId={
-        customers.find(
-          (c) =>
-            (c.company_name ?? "").trim().toLowerCase() ===
-            deal.customer.trim().toLowerCase()
-        )?.id ?? null
-      }
+      customerId={customerId}
       meetings={meetingsForOpportunity(meetingState.meetings, deal.id)
         .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
         .map((m) => ({

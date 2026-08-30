@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -46,12 +47,16 @@ const LEVEL_TONE: Record<string, string> = {
 };
 
 export function OpportunityDetail({
+  verdict,
   deal,
   bands,
   offerings,
   customerId,
   meetings,
 }: {
+  /** What this person may do to THIS deal — the privilege map joined to who is
+   *  on the account and on the deal. Decided on the server. */
+  verdict: { mayEdit: boolean; mayCreate: boolean; why: string };
   deal: Opportunity;
   bands: Customer360Band[];
   offerings: { id: string; name: string; type?: string }[];
@@ -124,12 +129,29 @@ export function OpportunityDetail({
             </p>
           </div>
         </div>
-        <Link
-          href="/opportunities"
-          className="shrink-0 rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-        >
-          Open in the pipeline
-        </Link>
+        <span className="flex shrink-0 items-center gap-2">
+          {/* WHY THIS IS OR IS NOT EDITABLE, in the person's own case. A page
+              that simply refuses to save teaches nobody anything; the hint
+              names the rule that decided it, so a wrong answer here is
+              reportable rather than mysterious. */}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold",
+              verdict.mayEdit
+                ? "bg-[rgba(26,122,53,0.10)] text-[color:#1A7A35]"
+                : "bg-surface text-text-secondary"
+            )}
+          >
+            {verdict.mayEdit ? "You can edit this" : "View only"}
+            <InfoHint text={verdict.why} />
+          </span>
+          <Link
+            href="/opportunities"
+            className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+          >
+            Open in the pipeline
+          </Link>
+        </span>
       </div>
 
       {/* The money, in the three shapes the summary reads it in. */}
