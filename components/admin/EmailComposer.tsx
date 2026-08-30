@@ -131,6 +131,23 @@ function inboxStamp(iso: string): string {
 }
 
 /** The gray snippet after the subject, from the plain-text body. */
+/**
+ * A NAME THAT FITS A ROW (Anir, Aug 30: "if it's one-to-one, it should just be
+ * anir S. and then Saras V.").
+ *
+ * First name and a last initial, so both ends of a send fit side by side where
+ * two full names would not. An address that belongs to nobody in the directory
+ * keeps its local part rather than being cut into something unrecognisable.
+ */
+function shortName(who: string): string {
+  const name = (who || "").trim();
+  if (!name) return "";
+  if (name.includes("@")) return name.split("@")[0];
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? name;
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
 /** Every address an email went to, To then CC then BCC, in that order. */
 function everyone(e: {
   to: string;
@@ -1085,8 +1102,11 @@ export function EmailComposer() {
                             tooltip={`Sent by ${e.sentBy}`}
                             className="h-6 w-6 shrink-0 text-[8px]"
                           />
-                          <span className="min-w-0 max-w-[110px] truncate text-[13px] font-semibold text-text-primary">
-                            {e.sentBy}
+                          <span
+                            title={e.sentBy}
+                            className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-text-primary"
+                          >
+                            {shortName(e.sentBy)}
                           </span>
                           <ChevronRight
                             size={12}
@@ -1094,20 +1114,44 @@ export function EmailComposer() {
                             className="shrink-0 text-text-tertiary"
                             aria-label="sent to"
                           />
-                          <span className="flex shrink-0 -space-x-1.5">
-                            {faces.map((f) => (
+                          {/* ONE PERSON GETS A NAME; A ROOM GETS FACES (Anir,
+                              Aug 30: "if it's one-to-one it should just be anir
+                              S. and then Saras V. If there are multiple people
+                              ... still say my name, but then like five profile
+                              pictures, and then you say +5"). A single face
+                              beside a single sender told you somebody received
+                              it without saying who. */}
+                          {named.length === 1 ? (
+                            <>
                               <Avatar
-                                key={f.address}
-                                name={f.person?.name ?? f.address}
-                                tooltip={f.person?.name ?? f.address}
-                                className="h-6 w-6 shrink-0 border-2 border-white text-[8px]"
+                                name={named[0].person?.name ?? named[0].address}
+                                className="h-6 w-6 shrink-0 text-[8px]"
                               />
-                            ))}
-                          </span>
-                          {rest > 0 && (
-                            <span className="shrink-0 text-[11.5px] font-semibold text-text-tertiary tnum">
-                              +{rest}
-                            </span>
+                              <span
+                                title={named[0].person?.name ?? named[0].address}
+                                className="min-w-0 truncate text-[13px] font-semibold text-text-primary"
+                              >
+                                {shortName(named[0].person?.name ?? named[0].address)}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex shrink-0 -space-x-1.5">
+                                {faces.map((f) => (
+                                  <Avatar
+                                    key={f.address}
+                                    name={f.person?.name ?? f.address}
+                                    tooltip={f.person?.name ?? f.address}
+                                    className="h-6 w-6 shrink-0 border-2 border-white text-[8px]"
+                                  />
+                                ))}
+                              </span>
+                              {rest > 0 && (
+                                <span className="shrink-0 text-[11.5px] font-semibold text-text-tertiary tnum">
+                                  +{rest}
+                                </span>
+                              )}
+                            </>
                           )}
                         </span>
                       );
