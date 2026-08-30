@@ -1921,52 +1921,6 @@ export function OpportunitiesBrowser({
         />
       ) : (
       <>
-      {/* THREE VALUES, AND NOTHING ELSE (Suren, Aug 30: "I don't want any
-          other dashboard that you have. I want only those three values" —
-          # of opportunities, estimated ACV, estimated TCV). Total value,
-          weighted and average confidence came off the page with this change;
-          they are still on the deal itself, where a number that describes one
-          deal belongs.
-
-          EACH MONEY TILE SAYS WHAT IT STANDS ON. Neither figure exists on any
-          deal until somebody types it, so a tile that reads "$0" over 79 deals
-          would be describing the data entry, not the pipeline. */}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile
-          icon={Briefcase}
-          label="Opportunities"
-          value={String(totals.count)}
-          sub={
-            levelFilter.length === 0
-              ? "in the pipeline"
-              : levelFilter.map((l) => l.toLowerCase()).join(", ")
-          }
-        />
-        <StatTile
-          icon={Target}
-          label="Estimated ACV"
-          value={totals.acv.entered === 0 ? "·" : money(totals.acv.total)}
-          sub={
-            totals.acv.entered === 0
-              ? "nobody has entered one yet"
-              : totals.acv.entered < totals.acv.of
-                ? `across ${totals.acv.entered} of ${totals.acv.of} deals`
-                : "annual contract value"
-          }
-        />
-        <StatTile
-          icon={TrendingUp}
-          label="Estimated TCV"
-          value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
-          sub={
-            totals.tcv.entered === 0
-              ? "nobody has entered one yet"
-              : totals.tcv.entered < totals.tcv.of
-                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
-                : "total contract value"
-          }
-        />
-      </div>
 
       {/* THE TOOLBAR STANDS ON ITS OWN, exactly as it does on Offerings
           (Anir, Aug 21: "you have a big white rectangle, then a gray
@@ -2246,6 +2200,52 @@ export function OpportunitiesBrowser({
                 : null
           }
         />
+
+      {/* THE THREE VALUES SIT UNDER THE FILTERS THAT DRIVE THEM (Suren,
+          Aug 30, relayed by Anir: they belong below the search bar and the
+          filters, "because the filters should affect the three cards").
+
+          They always did — each one is summed from the filtered list, never
+          from the whole pipeline. But sitting ABOVE the filter bar they read
+          as page totals the controls underneath could not touch, so narrowing
+          to one owner and watching $14M change was a surprise rather than the
+          obvious consequence. Underneath, the cause is above the effect. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile
+          icon={Briefcase}
+          label="Opportunities"
+          value={String(totals.count)}
+          sub={
+            levelFilter.length === 0
+              ? "in the pipeline"
+              : levelFilter.map((l) => l.toLowerCase()).join(", ")
+          }
+        />
+        <StatTile
+          icon={Target}
+          label="Estimated ACV"
+          value={totals.acv.entered === 0 ? "·" : money(totals.acv.total)}
+          sub={
+            totals.acv.entered === 0
+              ? "nobody has entered one yet"
+              : totals.acv.entered < totals.acv.of
+                ? `across ${totals.acv.entered} of ${totals.acv.of} deals`
+                : "annual contract value"
+          }
+        />
+        <StatTile
+          icon={TrendingUp}
+          label="Estimated TCV"
+          value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
+          sub={
+            totals.tcv.entered === 0
+              ? "nobody has entered one yet"
+              : totals.tcv.entered < totals.tcv.of
+                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
+                : "total contract value"
+          }
+        />
+      </div>
 
       {/* The card now holds RESULTS ONLY, so when the rows have gone off into
           their own group cards below there is nothing left for it to draw and
@@ -3149,6 +3149,7 @@ export function OpportunitiesBrowser({
         detail="Results already logged against it stay; they simply stop naming a deal."
         confirmLabel="Remove opportunity"
       />
+
     </div>
   );
 }

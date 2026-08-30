@@ -338,6 +338,21 @@ export function OpportunitySummary({
   const cellCls =
     "whitespace-nowrap px-3 py-2 text-right text-[12.5px] tabular-nums";
 
+  /**
+   * THE NAME COLUMN DOES NOT MOVE (Anir, Aug 30: "when I click on Go Get, it
+   * looks like everything's shifting to the right — I don't like that, it's
+   * confusing me").
+   *
+   * A browser sizes table columns from their content, so unfolding a row put
+   * longer, more-indented labels into the first column, the column grew to fit
+   * them, and every money column slid right. The figures you were reading
+   * moved because you opened something underneath them.
+   *
+   * Pinned, so opening and closing changes what is listed and never where the
+   * numbers sit. Long names truncate, which they already did.
+   */
+  const nameCol = { width: 360, minWidth: 360, maxWidth: 360 } as const;
+
   function Money({ n, dim }: { n: number; dim?: boolean }) {
     if (n <= 0) return <span className="text-text-tertiary/50">·</span>;
     return <span className={dim ? "text-text-secondary" : undefined}>{money(n)}</span>;
@@ -370,7 +385,7 @@ export function OpportunitySummary({
         <th
           scope="row"
           className="sticky left-0 z-[1] bg-white px-3 py-2 text-left font-normal"
-          style={{ paddingLeft: `${12 + depth * 18}px` }}
+          style={{ ...nameCol, paddingLeft: `${12 + depth * 18}px` }}
         >
           <button
             type="button"
@@ -445,7 +460,7 @@ export function OpportunitySummary({
                 <th
                   scope="row"
                   className="sticky left-0 z-[1] bg-white px-3 py-1.5 text-left font-normal"
-                  style={{ paddingLeft: `${12 + (depth + 1) * 18}px` }}
+                  style={{ ...nameCol, paddingLeft: `${12 + (depth + 1) * 18}px` }}
                 >
                   <button
                     type="button"
@@ -579,7 +594,10 @@ export function OpportunitySummary({
             <table className="w-full border-collapse bg-white text-left">
               <thead>
                 <tr className="border-b border-border-light bg-surface">
-                  <th className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+                  <th
+                    style={nameCol}
+                    className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
+                  >
                     {order.length ? DIMENSION_LABEL[order[0]] : "Opportunity"}
                   </th>
                   <th className="whitespace-nowrap px-3 py-2 text-right text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
@@ -600,6 +618,7 @@ export function OpportunitySummary({
                 <tr className="border-b-2 border-border-light bg-blue-light/25">
                   <th
                     scope="row"
+                    style={nameCol}
                     className="sticky left-0 z-[1] whitespace-nowrap bg-[color:rgba(0,113,227,0.06)] px-3 py-2 text-left text-[12.5px] font-bold text-text-primary"
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
@@ -630,6 +649,7 @@ export function OpportunitySummary({
                         >
                           <th
                             scope="row"
+                            style={nameCol}
                             className="sticky left-0 z-[1] bg-white px-3 py-1.5 text-left font-normal"
                           >
                             <button
