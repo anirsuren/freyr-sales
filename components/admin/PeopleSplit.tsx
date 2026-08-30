@@ -397,10 +397,20 @@ export function PeopleSplit() {
                         : undefined
                     }
                     className={cn(
-                      "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                      /* IT HAS TO FEEL LIKE IT LANDED (Anir, Aug 30: "the
+                         privileges doesn't have a proper animation").
+                         `transition-colors` faded the tint and nothing else,
+                         so ticking a privilege — which is a real change to
+                         what a person can do, and one that fires a
+                         confirmation and an email — read as a static repaint.
+                         The whole tile eases now, and it presses under the
+                         cursor so the click has a physical answer. */
+                      "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left",
+                      "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out",
+                      "motion-reduce:transition-none",
                       locked
                         ? "cursor-not-allowed"
-                        : "cursor-pointer hover:border-blue-primary/50",
+                        : "cursor-pointer hover:border-blue-primary/50 active:scale-[0.985]",
                       !on && !viaRole && "border-border-light bg-white"
                     )}
                   >
@@ -415,10 +425,27 @@ export function PeopleSplit() {
                       }
                       className={cn(
                         "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                        !on && !viaRole && "border-border-light text-transparent"
+                        "transition-[background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+                        !on && !viaRole && "border-border-light"
                       )}
                     >
-                      <Check size={12} strokeWidth={3} />
+                      {/* THE TICK IS DRAWN, NOT SWAPPED. It used to be present
+                          at all times in a transparent colour, so turning a
+                          privilege on changed a hex value and nothing moved.
+                          Scaling it up out of nothing is the part that reads
+                          as "this just happened", and it is the same gesture
+                          every other checkbox in this app makes. */}
+                      <Check
+                        size={12}
+                        strokeWidth={3}
+                        aria-hidden="true"
+                        className={cn(
+                          "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
+                          on || viaRole
+                            ? "scale-100 opacity-100"
+                            : "scale-50 opacity-0"
+                        )}
+                      />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span

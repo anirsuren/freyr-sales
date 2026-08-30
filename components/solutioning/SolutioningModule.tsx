@@ -947,6 +947,7 @@ function RequestRow({
         <StatusPill status={r.status} size="sm" />
       </td>
       <td className="px-2 py-3.5">
+        <span className="flex items-center gap-0.5">
         {/* THE DROPDOWN EVERY OTHER TABLE HAS (Anir, Aug 24: "you have a
             table, it looks fine, but there should definitely be a dropdown,
             just like all the other things you do"). The name navigates; the
@@ -968,6 +969,19 @@ function RequestRow({
             className={cn("transition-transform duration-200", open && "rotate-180")}
           />
         </button>
+        {/* OPEN THE WHOLE REQUEST, ON THE ROW. Beside the chevron, because
+            these are the two things you can do to a request from a list: look
+            at it here, or go to it. */}
+        <Link
+          href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
+          title="Open the full request"
+          aria-label={`Open ${r.ref} in full`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+        >
+          <ArrowUpRight size={15} strokeWidth={2.2} />
+        </Link>
+        </span>
       </td>
     </tr>
     {open && (
@@ -1018,18 +1032,12 @@ function RequestPanel({
 }) {
   return (
     <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
-      {/* THE ARROW, AT THE TOP (Anir, Aug 30: "stop with this fucking button,
-          I don't want this button anywhere... replace it with the arrow, and it
-          can just go at the top"). A full-width sentence in a bordered pill at
-          the foot of a panel is the shape he has now rejected three times. */}
-      <Link
-        href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
-        title="Open the full request"
-        aria-label={`Open ${r.ref} in full`}
-        className="absolute right-3 top-3 z-10 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-      >
-        <ArrowUpRight size={15} strokeWidth={2.2} />
-      </Link>
+      {/* NO ARROW IN HERE. It used to hang off this panel's top-right
+          corner, which in a table row lands beside "Latest activity" and reads
+          as if it opens the activity list (Anir, Aug 30: "you keep putting the
+          arrow in the wrong spot, not on activities, should be on the ROW").
+          The row owns it now, next to the chevron that opens this panel — the
+          two controls that act on the request sit together. */}
               {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
                   needs. It is the only thing on this panel written by a
                   person; everything else is a count or a name. */}

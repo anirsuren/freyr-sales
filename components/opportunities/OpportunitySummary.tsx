@@ -291,11 +291,6 @@ export function OpportunitySummary({
     [periods, deals, timeline, measure, periodByDeal]
   );
 
-  const undated = useMemo(
-    () => deals.filter((d) => periodByDeal.get(d.id) === null).length,
-    [deals, periodByDeal]
-  );
-
   /** A row's money: the total, and one figure per period column. */
   function cellsOf(rows: Opportunity[]) {
     const total = sumEstimates(rows, measure);
@@ -692,13 +687,6 @@ export function OpportunitySummary({
         </>
       )}
 
-      {undated > 0 && (
-        <p className="mt-3 text-[11.5px] text-text-tertiary">
-          {undated} {undated === 1 ? "deal has" : "deals have"} no closure date, so
-          {undated === 1 ? " it counts" : " they count"} in Total but
-          {undated === 1 ? " sits" : " sit"} in no period column.
-        </p>
-      )}
     </div>
   );
 }
