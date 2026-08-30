@@ -985,3 +985,191 @@ export function maybeScheduleMarketIntelRefresh(
     )
   );
 }
+
+/**
+ * THE WEBSITE PASS, ON ITS OWN LEGS.
+ *
+ * Anir, Aug 30, setting it as a goal: "Why is the website always zero? You
+ * clearly did something wrong... it's impossible that they all have zero things
+ * on their website. Until you have a good way of scanning those things two
+ * times a day, that's not considered done."
+ *
+ * MEASURED, NOT GUESSED: 76 companies in the feed, zero with a website item,
+ * and `siteAt` unset on every single one — Pass 1b above had never run for
+ * anybody. Called straight at GSK the scraper returned six real press releases
+ * in seven seconds for $0.006, and a forced run did write four of them. So the
+ * scraper was never the problem.
+ *
+ * WHAT WAS: Pass 1b sits behind a same-day news pass that makes one Perplexity
+ * call for each of ~76 companies, and behind the Apify rotation's dollar
+ * bookkeeping. That is minutes of serial work before the first newsroom is
+ * visited, and the run does not survive long enough to reach it — news
+ * accumulates because it writes in batches of ten, and the website column never
+ * starts. A pass at the back of a queue that never finishes does not exist.
+ *
+ * So it is its own job, with its own entry point and its own schedule, and
+ * nothing upstream of it that can starve it.
+ *
+ * SHAPE: least-recently-scanned first, a wall-clock budget per invocation, and
+ * a write after every company. An invocation that runs out of time just stops;
+ * the next one starts with the companies it never reached, so the whole watch
+ * list is covered across runs without any single run needing to be long-lived.
+ */
+
+/** A newsroom moves in weeks, so twice in one day buys the same answer twice.
+ *  Twelve hours is what lets a twice-daily schedule actually land on a company
+ *  scanned in the previous window rather than skip it as fresh. */
+const SITE_RUN_FRESH_MS = 12 * 60 * 60 * 1000;
+/** How long one invocation may spend, under any request ceiling. */
+const SITE_RUN_BUDGET_MS = 4 * 60 * 1000;
+
+export type SiteRunSummary = {
+  ran: boolean;
+  reason?: string;
+  scanned: number;
+  withUpdates: number;
+  items: number;
+  failed: number;
+  skippedFresh: number;
+  remaining: number;
+  spendUsd: number;
+  seconds: number;
+};
+
+export async function runSiteUpdatesRefresh(options?: {
+  /** Ignore the freshness window. The ops hatch uses it; the cron never does. */
+  force?: boolean;
+  budgetMs?: number;
+  onlyCompanyIds?: string[];
+}): Promise<SiteRunSummary> {
+  const started = Date.now();
+  const budgetMs = options?.budgetMs ?? SITE_RUN_BUDGET_MS;
+  const nothing = (reason: string): SiteRunSummary => ({
+    ran: false,
+    reason,
+    scanned: 0,
+    withUpdates: 0,
+    items: 0,
+    failed: 0,
+    skippedFresh: 0,
+    remaining: 0,
+    spendUsd: 0,
+    seconds: Math.round((Date.now() - started) / 1000),
+  });
+
+  if (!hasEnv()) return nothing("missing env (database)");
+  const config = await readRow(CONFIG_ROW).catch(() => null);
+  const key = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
+  if (!key) return nothing("no PERPLEXITY key in config row or env");
+
+  const feed = await readRow(FEED_ROW).catch(() => null);
+  if (!feed || !feed.companies) return nothing("no feed row yet");
+
+  const tracking = (await readRow(TRACKING_ROW).catch(() => null)) ?? {};
+  const tracked: TrackedCompany[] = Array.isArray(tracking.companies)
+    ? tracking.companies
+    : [];
+
+  /* Every company on the watch that has a domain to read. One with no domain
+     costs nothing and simply has no website column — that is a data gap, not a
+     failure, and it is visible as such. */
+  const sources: CompanySource[] = [
+    ...COMPANY_SOURCES,
+    ...COMPETITOR_SOURCES,
+    ...tracked
+      .filter(
+        (c) =>
+          !COMPANY_SOURCES.some((s) => s.id === c.id) &&
+          !COMPETITOR_SOURCES.some((s) => s.id === c.id)
+      )
+      .map(trackedToSource),
+  ]
+    .filter((s) => !!s.site)
+    .filter(
+      (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
+    );
+
+  const lastAt = (id: string): number => {
+    const at = (feed.companies?.[id] as FeedCompany | undefined)?.siteAt;
+    return at ? Date.parse(at) || 0 : 0;
+  };
+  const queue = [...sources].sort((a, b) => lastAt(a.id) - lastAt(b.id));
+
+  let scanned = 0;
+  let withUpdates = 0;
+  let items = 0;
+  let failed = 0;
+  let skippedFresh = 0;
+  let spend = 0;
+  let reached = 0;
+
+  for (const source of queue) {
+    reached += 1;
+    if (Date.now() - started > budgetMs) {
+      reached -= 1;
+      break;
+    }
+
+    const existing: FeedCompany | undefined = feed.companies[source.id];
+    if (
+      !options?.force &&
+      existing?.siteAt &&
+      Date.now() - Date.parse(existing.siteAt) < SITE_RUN_FRESH_MS
+    ) {
+      skippedFresh += 1;
+      continue;
+    }
+
+    let result: Awaited<ReturnType<typeof scrapeSiteUpdates>>;
+    try {
+      result = await scrapeSiteUpdates(source, key);
+    } catch {
+      failed += 1;
+      continue;
+    }
+    spend += result.cost || 0;
+
+    const entry: FeedCompany = existing ?? {
+      id: source.id,
+      name: source.name,
+      slug: null,
+      author: null,
+      posts: [],
+      news: [],
+      tldr: null,
+      group: COMPETITOR_SOURCES.some((c) => c.id === source.id)
+        ? "competitor"
+        : "customer",
+      fetchedAt: new Date(0).toISOString(),
+    };
+    if (result.failed) failed += 1;
+    if (result.updates.length > 0) {
+      entry.site = mergeNews(entry.site ?? [], result.updates);
+      withUpdates += 1;
+      items += result.updates.length;
+    }
+    /* Stamped even on a failure, so one site that refuses to be read cannot
+       hold the front of the queue and starve everybody behind it. */
+    entry.siteAt = new Date().toISOString();
+    feed.companies[source.id] = entry;
+    feed.spendUsd =
+      Math.round(((feed.spendUsd ?? 0) + (result.cost || 0)) * 1000) / 1000;
+    scanned += 1;
+
+    /* Written after every company: this job is designed to be interrupted, and
+       an interrupted run must keep everything it actually learned. */
+    await writeRow(FEED_ROW, feed);
+  }
+
+  return {
+    ran: scanned > 0,
+    scanned,
+    withUpdates,
+    items,
+    failed,
+    skippedFresh,
+    remaining: Math.max(0, queue.length - reached),
+    spendUsd: Math.round(spend * 1000) / 1000,
+    seconds: Math.round((Date.now() - started) / 1000),
+  };
+}

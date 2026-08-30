@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { armMarketIntelSelfRefresh } from "@/lib/marketIntelCron";
+import { armMarketIntelSelfRefresh, armSiteUpdatesScan } from "@/lib/marketIntelCron";
 import { armMonthlyEmailSchedule } from "@/lib/monthlyEmailCron";
 import { claudeStatus } from "@/lib/claude";
 import { getDb } from "@/lib/db";
@@ -15,6 +15,7 @@ export async function GET() {
   // Health checks hit this constantly, so the self-refresh timer is armed
   // seconds after every boot without touching the edge-compiled boot hook.
   armMarketIntelSelfRefresh();
+  armSiteUpdatesScan();
   // Same reasoning, and the only scheduler available to us: the deploy PAT
   // cannot add a GitHub Actions workflow, so the monthly mailout rides the
   // health ping too. Both arm once per process and no-op thereafter.

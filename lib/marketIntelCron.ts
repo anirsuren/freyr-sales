@@ -44,3 +44,52 @@ export function armMarketIntelSelfRefresh(): void {
     "[market-intel] self-refresh armed: staleness checked every 30 minutes"
   );
 }
+
+/**
+ * THE WEBSITE SCAN RUNS ITSELF TOO.
+ *
+ * Anir, Aug 30: "until you have a good way of scanning those things every two
+ * times a day, that's not considered done."
+ *
+ * Same shape as the refresh above and for the same reason — there is no
+ * external scheduler in this deployment, the app arms its own timers on boot.
+ * A SECOND timer rather than more work inside the first, because that is the
+ * whole bug being fixed: the website pass used to be the last thing in a queue
+ * that never got that far, and every company in the feed had never once been
+ * scanned.
+ *
+ * TWICE A DAY FALLS OUT OF THE PARTS. Each company carries its own 12-hour
+ * stamp, so a tick only visits the ones that are due; each tick spends at most
+ * a few minutes and writes as it goes, so the list is covered across ticks
+ * rather than in one long run that can die halfway.
+ */
+const SITE_ARMED_KEY = "__MI_SITE_SCAN_ARMED__";
+const SITE_CHECK_MS = 20 * 60 * 1000;
+
+export function armSiteUpdatesScan(): void {
+  const g = globalThis as Record<string, unknown>;
+  if (g[SITE_ARMED_KEY]) return;
+  g[SITE_ARMED_KEY] = true;
+
+  const tick = async () => {
+    try {
+      const { runSiteUpdatesRefresh } = await import("./marketIntelRefresh");
+      const result = await runSiteUpdatesRefresh();
+      if (result.scanned > 0) {
+        console.log(
+          `[market-intel] website scan: ${JSON.stringify(result)}`
+        );
+      }
+    } catch (error) {
+      console.error("[market-intel] website scan failed:", error);
+    }
+  };
+
+  setInterval(tick, SITE_CHECK_MS);
+  /* Offset from the news refresh's 90s so a cold boot does not fire both at
+     once and have them queue behind each other on the same Perplexity key. */
+  setTimeout(tick, 150 * 1000);
+  console.log(
+    "[market-intel] website scan armed: due companies checked every 20 minutes"
+  );
+}
