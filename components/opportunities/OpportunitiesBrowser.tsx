@@ -2230,12 +2230,20 @@ export function OpportunitiesBrowser({
             timeline={timeline}
             groupNameFor={groupNameFor}
             offeringNameFor={offeringNameFor}
-            openDealId={openRow}
-            /* Unfolds the deal where it was clicked; clicking it again shuts
-               it. It no longer jumps to Table view, which used to discard the
-               whole path the person had drilled to get there. */
-            onOpenDeal={(id) => setOpenRow((cur) => (cur === id ? null : id))}
-            renderDeal={(d) => pipeTable([d])}
+            /* The summary shows the money and nothing else (Suren, Aug 30:
+               "at the lowest level, the value is enough... I don't want
+               anything further here"). The name still opens the deal, in the
+               row-by-row table where a deal is actually worked on. */
+            onOpenDeal={(id) => {
+              setDealView("table");
+              setOpenRow(id);
+              setFlashId(id);
+              window.setTimeout(() => {
+                document
+                  .querySelector(`[data-opp-row="${id}"]`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 400);
+            }}
           />
         </Card>
       )}

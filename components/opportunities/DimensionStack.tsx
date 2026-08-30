@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SummaryDimension } from "./OpportunitySummary";
 
@@ -55,6 +55,12 @@ export function DimensionStack({
   label: Record<SummaryDimension, string>;
   color: Record<SummaryDimension, string>;
 }) {
+  /* Anything not currently stacked can be put back. Suren, Aug 30: "you can
+     remove one of the four groupings, or all groupings — then it will be just
+     a list." So the stack is a SELECTION, not a fixed four, and an empty one
+     is a legitimate state that means "no grouping at all". */
+  const all = Object.keys(label) as SummaryDimension[];
+  const spare = all.filter((d) => !order.includes(d));
   const nodes = useRef(new Map<SummaryDimension, HTMLElement>());
   const [drag, setDrag] = useState<Drag | null>(null);
   /** One frame after a drop, with every transition off — see `end`. */
@@ -264,11 +270,42 @@ export function DimensionStack({
             <GripVertical size={12} strokeWidth={2.4} aria-hidden="true" />
             <span className="tnum text-[10px] opacity-60">{shown}</span>
             {label[dim]}
+            {/* Take this level out of the breakdown. The pointer handlers on
+                the chip would otherwise read the press as the start of a drag,
+                so this one stops the event before it gets there. */}
+            <button
+              type="button"
+              aria-label={`Remove ${label[dim]} from the breakdown`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onReorder(order.filter((d) => d !== dim));
+              }}
+              className="-mr-1 ml-0.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full opacity-50 transition-opacity hover:bg-black/5 hover:opacity-100"
+            >
+              <X size={11} strokeWidth={2.8} aria-hidden="true" />
+            </button>
           </span>
         );
       })}
+      {spare.map((dim) => (
+        <button
+          key={dim}
+          type="button"
+          onClick={() => onReorder([...order, dim])}
+          style={{ color: color[dim], borderColor: `${color[dim]}44` }}
+          className="flex cursor-pointer items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-[12px] font-semibold opacity-70 transition-opacity hover:opacity-100"
+        >
+          <Plus size={11} strokeWidth={2.8} aria-hidden="true" />
+          {label[dim]}
+        </button>
+      ))}
       <span className="ml-2 text-[11px] text-text-tertiary">
-        {drag ? "let go to place it" : "drag to rearrange"}
+        {drag
+          ? "let go to place it"
+          : order.length === 0
+            ? "no grouping — every deal on its own line"
+            : "drag to rearrange"}
       </span>
     </div>
   );
