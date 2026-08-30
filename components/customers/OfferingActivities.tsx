@@ -371,7 +371,7 @@ export function OfferingActivities({
                     this corner and the header had to dodge it; the button
                     lives above the table now, so the label lines up with the
                     pencils under it. */}
-                <th className="w-[88px] py-2 pr-1 text-right font-bold">Actions</th>
+                <th className="w-[88px] py-2 pr-1 text-left font-bold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -462,7 +462,7 @@ export function OfferingActivities({
                       )}
                     </td>
                     <td className="py-2.5">
-                      <span className="flex items-center justify-end gap-1">
+                      <span className="flex items-center justify-start gap-1">
                         <button
                           type="button"
                           aria-label="Edit this activity"

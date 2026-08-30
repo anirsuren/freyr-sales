@@ -228,7 +228,7 @@ export function ConnectedComponents({
                 <th className="w-[9%] px-3 py-2.5">Versions</th>
                 <th className="w-[9%] px-3 py-2.5">Features</th>
                 <th className="w-[18%] px-3 py-2.5">Version covered</th>
-                <th className="w-[13%] px-3 py-2.5 text-right">Actions</th>
+                <th className="w-[13%] px-3 py-2.5 text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
@@ -359,7 +359,7 @@ export function ConnectedComponents({
                           header aligned to the box edge reads as overhanging
                           (Anir, Aug 10: "why is the actions header aligned like
                           that"). This lines the glyph up with the heading. */}
-                      <span className="-mr-1.5 inline-flex items-center justify-end gap-1">
+                      <span className="-ml-1.5 inline-flex items-center justify-start gap-1">
                         <Tooltip label="Download the feature sheet">
                           <button
                             type="button"

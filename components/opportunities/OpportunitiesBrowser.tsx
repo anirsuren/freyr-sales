@@ -1055,7 +1055,7 @@ export function OpportunitiesBrowser({
                   <th className="w-[200px] px-4 py-2.5">Value · weighted</th>
                   <th className="w-[132px] px-4 py-2.5">Status</th>
                   <th className="w-[104px] px-4 py-2.5">Est. sign</th>
-                  <th className="w-[84px] px-4 py-2.5 text-right">Actions</th>
+                  <th className="w-[84px] px-4 py-2.5 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -1286,7 +1286,7 @@ export function OpportunitiesBrowser({
                           {o.estSignDate ?? "·"}
                         </td>
                         <td className="px-2 py-3.5">
-                          <span className="flex items-center justify-end gap-0.5">
+                          <span className="flex items-center justify-start gap-0.5">
                             {writable && mayTouch(o) && (
                               <>
                                 <button
@@ -3116,7 +3116,7 @@ function FutureSection({
                   <th className="w-[13%] px-2 py-2.5">Target pitch</th>
                   <th className="w-[12%] px-2 py-2.5">Target quarter</th>
                   <th className="px-2 py-2.5">Activities</th>
-                  {writable && <th className="w-[84px] px-2 py-2.5 pr-4 text-right">Actions</th>}
+                  {writable && <th className="w-[84px] px-2 py-2.5 pr-4 text-left">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -3195,7 +3195,7 @@ function FutureSection({
                         )}
                       </td>
                       {writable && (
-                        <td className="px-2 py-2.5 pr-4 text-right">
+                        <td className="px-2 py-2.5 pr-4 text-left">
                           {mayTouch(o) && (
                           <span className="inline-flex items-center gap-1">
                             <button

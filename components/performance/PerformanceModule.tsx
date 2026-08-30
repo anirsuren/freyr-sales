@@ -1258,7 +1258,7 @@ function MasterTab({
                                   delete used to be buried in a strip inside
                                   the unfolded panel, which repeated the
                                   Tracking toggle already on the row. */}
-                              <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                              <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                 Actions
                               </th>
                             </tr>
@@ -1371,7 +1371,7 @@ function MasterTab({
                         <PickedPill goal={g} live={live && isManager} run={run} />
                       </td>
                       <td className="py-4 pl-2 pr-4">
-                        <span className="flex items-center justify-end gap-0.5">
+                        <span className="flex items-center justify-start gap-0.5">
                           {live && isManager && (
                             <>
                               <button

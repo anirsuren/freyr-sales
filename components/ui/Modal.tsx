@@ -19,6 +19,7 @@ export function Modal({
   dialogClassName,
   stacked = false,
   dock = false,
+  bodyClassName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,6 +39,13 @@ export function Modal({
   /** Optional sizing for a specific workflow that should not resize as its
    *  internal panels open and close. */
   dialogClassName?: string;
+  /**
+   * Extra classes on the scrolling body. Pass "flex flex-col" when the content
+   * is a list that should FILL a fixed-height dialog: `h-full`/`flex-1` inside
+   * here otherwise resolves against an auto height and the list stops short,
+   * leaving dead space under the buttons.
+   */
+  bodyClassName?: string;
   /** A focused dialog opened from another dialog. It stays above the parent
    *  and owns keyboard handling until it closes. */
   stacked?: boolean;
@@ -202,7 +210,9 @@ export function Modal({
           </button>
           </div>
         </div>
-        <div className={`min-h-0 flex-1 overflow-y-auto ${size === "chart" || size === "viewer" ? "p-3" : "p-5"}`}>
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto ${size === "chart" || size === "viewer" ? "p-3" : "p-5"}${bodyClassName ? ` ${bodyClassName}` : ""}`}
+        >
           {children}
         </div>
       </div>

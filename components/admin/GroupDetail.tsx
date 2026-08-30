@@ -401,7 +401,7 @@ export function GroupDetail({
                       {h}
                     </th>
                   ))}
-                  <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     Actions
                   </th>
                 </tr>
@@ -502,7 +502,7 @@ export function GroupDetail({
                           Open the goal where it is edited, unfold it here, and
                           take it off the group. */}
                       <td className="py-3.5 pl-2 pr-4">
-                        <span className="flex items-center justify-end gap-0.5">
+                        <span className="flex items-center justify-start gap-0.5">
                           <Link
                             href="/admin/goal-master"
                             title={`Open ${g.name} on the Goal Master`}
@@ -670,11 +670,21 @@ export function GroupDetail({
           setChosen([]);
         }}
         title="Assign goals to this group"
+        /* NOT A SKINNY POPUP (Anir, Aug 30: "never do those skinny popups").
+           A 440px column with nineteen goals in it truncated every name that
+           mattered and made the list feel like a straw. Same frame as the Goal
+           Master's own group picker: wide, and a fixed height so ticking a row
+           does not resize the dialog under the cursor. */
+        size="wide"
+        tall
+        dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
       >
+        <div className="flex min-h-0 flex-1 flex-col">
         <p className="mb-3 text-[12.5px] text-text-secondary">
           Pick from the Goal Master. Tick as many as you need.
         </p>
-        <div className="max-h-[46vh] space-y-1.5 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
           {available.length === 0 ? (
             <p className="rounded-lg bg-surface px-4 py-6 text-center text-[12.5px] text-text-secondary">
               Every goal in the master is already on this group.
@@ -772,6 +782,7 @@ export function GroupDetail({
               : `Assign ${chosen.length} goals`}
           </Button>
         </div>
+        </div>
       </Modal>
 
       {/* ------------------------------------------------------ set a target */}
@@ -825,11 +836,16 @@ export function GroupDetail({
         open={editingPeople}
         onClose={() => setEditingPeople(false)}
         title="Who is in this group"
+        size="wide"
+        tall
+        dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
       >
+        <div className="flex min-h-0 flex-1 flex-col">
         <p className="mb-3 text-[12.5px] text-text-secondary">
           Tick everyone who belongs here. The group owner is always in.
         </p>
-        <div className="max-h-[46vh] space-y-1.5 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
           {memberNames.map((m) => {
             const isHead = m === group.head;
             const on = isHead || roster.includes(m);
@@ -889,6 +905,7 @@ export function GroupDetail({
           <Button onClick={() => void savePeople()} loading={busy}>
             Save
           </Button>
+        </div>
         </div>
       </Modal>
 

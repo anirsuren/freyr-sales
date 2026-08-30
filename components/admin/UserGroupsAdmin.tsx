@@ -613,7 +613,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         {h}
                       </th>
                     ))}
-                    <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                       Actions
                     </th>
                   </tr>
@@ -787,7 +787,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                             )}
                           </td>
                           <td className="py-3.5 pl-2 pr-4">
-                            <span className="flex items-center justify-end gap-0.5">
+                            <span className="flex items-center justify-start gap-0.5">
                               <Link
                                 /* The tab picks a group by ID, so linking the
                                    NAME landed on the page with the first group

@@ -555,8 +555,14 @@ export function OrgPerformanceTab({
                          "the 'actions' text should be on the left it looks
                          like its on the right aligned"). It was the only
                          right-aligned heading in the table, which read as a
-                         mistake even though the controls under it are right
-                         aligned. Label left, controls right, same as the rest. */
+                         mistake.
+
+                         THE CONTROLS UNDER IT ARE LEFT-ALIGNED TOO, which is
+                         the rule everywhere now (Anir, Aug 30: "you always
+                         make this mistake when you do the actions column, you
+                         always never make it left-aligned"). A left label over
+                         right-hugging icons is the same misalignment read from
+                         the other end. */
                       i === 6 && "w-[112px] !px-2"
                     )}
                   >

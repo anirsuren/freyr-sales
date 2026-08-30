@@ -1009,7 +1009,7 @@ export function MyEntriesCard({
                 <th className="px-4 py-2.5">Date</th>
                 <th className="px-4 py-2.5">Proof</th>
                 <th className="px-4 py-2.5">Status</th>
-                <th className="px-4 py-2.5 text-right">Actions</th>
+                <th className="px-4 py-2.5 text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1149,7 +1149,7 @@ export function MyEntriesCard({
                             last column instead of putting it here. Just icons
                             would be a lot better"). They still open the same
                             forms inside the row; only the way in moved. */}
-                        <span className="flex items-center justify-end gap-1">
+                        <span className="flex items-center justify-start gap-1">
                           {/* SEND BACK HAS ITS OWN ICON (Anir, Aug 19: "i need
                               another icon in the actions column (properly
                               aligned) for sending it back"). The status pill

@@ -393,7 +393,7 @@ export function LeadsModule({
                 <th className="w-[12%]">Status</th>
                 <th className="w-[14%]">Owner</th>
                 <th className="w-[10%]">Last moved</th>
-                <th className="w-[9%] text-right">Actions</th>
+                <th className="w-[9%] text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -494,7 +494,7 @@ export function LeadsModule({
                       <td className="px-4 py-2.5">
                         {/* Same cluster the pipeline row uses: the tools, then
                             the chevron that says the row opens. */}
-                        <span className="flex items-center justify-end gap-1">
+                        <span className="flex items-center justify-start gap-1">
                           {canWrite && (
                             <>
                               <button
