@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
+  ArrowUpRight,
   ChevronDown,
+  PanelsTopLeft,
+  Rows3,
   SearchX,
   Plus,
   Users,
@@ -55,6 +58,85 @@ export type OpportunityOption = {
  * there will be thousands of meetings". Completed answers "what happened",
  * newest first.
  */
+
+/**
+ * EVERYTHING ABOUT ONE MEETING, IN A PANEL.
+ *
+ * The row's fold and the split view's right pane are the same component rather
+ * than two drawings of it (Anir, Aug 30: "you probably want to have the table
+ * and the split view too on all the solutioning ones").
+ */
+function MeetingPanel({ m }: { m: Meeting }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
+                              <div className="min-w-0">
+                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  What came out of it
+                                </span>
+                                {m.notes.length === 0 ? (
+                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                                    Nothing written down yet.
+                                  </p>
+                                ) : (
+                                  <p className="mt-1.5 max-w-[68ch] whitespace-pre-wrap text-[13px] leading-relaxed text-text-primary">
+                                    {m.notes[m.notes.length - 1].text}
+                                  </p>
+                                )}
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-text-secondary">
+                                  <span>
+                                    <b className="tnum text-text-primary">
+                                      {m.notes.length}
+                                    </b>{" "}
+                                    {m.notes.length === 1 ? "note" : "notes"}
+                                  </span>
+                                  <span>
+                                    <b className="tnum text-text-primary">
+                                      {m.docs.length}
+                                    </b>{" "}
+                                    {m.docs.length === 1 ? "document" : "documents"}
+                                  </span>
+                                  <Link
+                                    href={`/meetings/${m.id}`}
+                                    className="font-semibold text-blue-primary hover:underline"
+                                  >
+                                    Open the meeting
+                                  </Link>
+                                </div>
+                              </div>
+                              <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
+                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Ran it
+                                </span>
+                                <span className="mt-1.5 flex items-center gap-1.5">
+                                  <Avatar name={m.owner} className="h-[20px] w-[20px] text-[7px]" />
+                                  <span className="truncate text-[12.5px] text-text-primary">
+                                    {m.owner}
+                                  </span>
+                                </span>
+                                <span className="mt-3 block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  From {m.customer}
+                                </span>
+                                {m.contactNames.length === 0 ? (
+                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+                                    Nobody recorded.
+                                  </p>
+                                ) : (
+                                  <ul className="mt-1.5 space-y-1">
+                                    {m.contactNames.map((n) => (
+                                      <li key={n} className="flex items-center gap-1.5">
+                                        <Avatar name={n} className="h-[20px] w-[20px] text-[7px]" />
+                                        <span className="truncate text-[12.5px] text-text-primary">
+                                          {n}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+    </div>
+  );
+}
+
 export function MeetingsModule({
   state: initial,
   meName,
@@ -94,6 +176,16 @@ export function MeetingsModule({
   );
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  /* THE SAME TWO WAYS TO READ A LIST AS EVERY OTHER MODULE (Anir, Aug 30:
+     "the table and the split view too on all the solutioning ones"). Meetings
+     is the fourth room in that strip, so it gets the toggle as well — the
+     grouping by week or month survives into the split's left column. */
+  const [view, pickView] = useStoredView<"table" | "split">(
+    `freyr.meetings.${room}.view`,
+    "table",
+    ["table", "split"] as const
+  );
+  const [pickedId, setPickedId] = useState<string | null>(null);
 
   const all = state.meetings;
   const planned = all.filter((m) => m.status === "planned");
@@ -117,6 +209,12 @@ export function MeetingsModule({
     const g = groupMeetingsByPeriod(shown, period);
     return room === "planned" ? g : [...g].reverse();
   }, [shown, period, room]);
+
+  /** What the split is standing on; the first meeting on screen by default. */
+  const picked =
+    shown.find((m) => m.id === pickedId) ??
+    groups[0]?.meetings?.[0] ??
+    null;
 
   const nextUp = useMemo(
     () =>
@@ -198,6 +296,40 @@ export function MeetingsModule({
         placeholder="Search meetings, customers, people…"
         searchAriaLabel="Search meetings"
         sortLabel="Group"
+        view={
+          <span
+            role="group"
+            aria-label="How to show meetings"
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+          >
+            {(
+              [
+                { key: "table", label: "Table", icon: Rows3 },
+                { key: "split", label: "Split", icon: PanelsTopLeft },
+              ] as const
+            ).map((o) => {
+              const Icon = o.icon;
+              const on = view === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => pickView(o.key)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                    on
+                      ? "bg-white text-text-primary shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                  {o.label}
+                </button>
+              );
+            })}
+          </span>
+        }
         sort={
           <ColorSelect
             value={period}
@@ -255,8 +387,110 @@ export function MeetingsModule({
             />
           )}
         </div>
+      ) : view === "split" ? (
+        /* THE GROUPING SURVIVES INTO THE LEFT COLUMN. A meeting is read by
+           when it is, so week and month headings stay; what changes is that
+           the one you pick opens beside the list instead of inside it. */
+        <div
+          key="split"
+          className="tab-panel mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]"
+        >
+          <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light bg-white">
+            {groups.map((g) => (
+              <Fragment key={g.key}>
+                <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border-light bg-surface px-3 py-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    {g.label}
+                  </span>
+                  <span className="tnum ml-auto text-[11px] font-semibold text-text-tertiary">
+                    {g.meetings.length}
+                  </span>
+                </div>
+                {[...g.meetings]
+                  .sort((a, b) => a.meetingAt.localeCompare(b.meetingAt))
+                  .map((m) => {
+                    const on = picked?.id === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setPickedId(m.id)}
+                        aria-current={on ? "true" : undefined}
+                        title={m.title}
+                        className={cn(
+                          "flex w-full cursor-pointer items-start gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
+                          on
+                            ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                            : "hover:bg-surface"
+                        )}
+                      >
+                        <CompanyLogo
+                          name={m.customer}
+                          className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block truncate text-[12.5px] font-semibold",
+                              on ? "text-blue-primary" : "text-text-primary"
+                            )}
+                          >
+                            {m.title}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                            <span className="min-w-0 truncate">{m.customer}</span>
+                            <span className="shrink-0 tnum">
+                              · {formatDate(m.meetingAt)}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+              </Fragment>
+            ))}
+          </div>
+          <div
+            key={picked?.id ?? "none"}
+            className="tab-panel min-w-0 overflow-hidden rounded-xl border border-border-light bg-white"
+          >
+            {picked ? (
+              <>
+                <div className="flex flex-wrap items-center gap-2.5 border-b border-border-light bg-surface px-4 py-3">
+                  <CompanyLogo
+                    name={picked.customer}
+                    className="h-8 w-8 shrink-0 text-[10px]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold text-text-primary">
+                      {picked.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11.5px] text-text-secondary tnum">
+                      {picked.customer} · {formatDate(picked.meetingAt)}
+                    </span>
+                  </span>
+                  <Link
+                    href={`/meetings/${picked.id}`}
+                    title="Open the meeting"
+                    aria-label={`Open ${picked.title}`}
+                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <ArrowUpRight size={15} strokeWidth={2.2} />
+                  </Link>
+                </div>
+                <div className="px-4 py-4">
+                  <MeetingPanel m={picked} />
+                </div>
+              </>
+            ) : (
+              <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
+                Pick a meeting on the left.
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
-        <div className="mt-4 space-y-5">
+        <div key="table" className="tab-panel mt-4 space-y-5">
           {groups.map((g) => (
             <section key={g.key}>
               {/* THE PERIOD IS THE HEADING, not a column (Suren: "month on
@@ -374,72 +608,7 @@ export function MeetingsModule({
                       {openIds.has(m.id) && (
                         <div className="bg-surface px-4 pb-4 pl-7 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]">
                           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white px-4 py-4">
-                            <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
-                              <div className="min-w-0">
-                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                                  What came out of it
-                                </span>
-                                {m.notes.length === 0 ? (
-                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                                    Nothing written down yet.
-                                  </p>
-                                ) : (
-                                  <p className="mt-1.5 max-w-[68ch] whitespace-pre-wrap text-[13px] leading-relaxed text-text-primary">
-                                    {m.notes[m.notes.length - 1].text}
-                                  </p>
-                                )}
-                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-text-secondary">
-                                  <span>
-                                    <b className="tnum text-text-primary">
-                                      {m.notes.length}
-                                    </b>{" "}
-                                    {m.notes.length === 1 ? "note" : "notes"}
-                                  </span>
-                                  <span>
-                                    <b className="tnum text-text-primary">
-                                      {m.docs.length}
-                                    </b>{" "}
-                                    {m.docs.length === 1 ? "document" : "documents"}
-                                  </span>
-                                  <Link
-                                    href={`/meetings/${m.id}`}
-                                    className="font-semibold text-blue-primary hover:underline"
-                                  >
-                                    Open the meeting
-                                  </Link>
-                                </div>
-                              </div>
-                              <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
-                                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                                  Ran it
-                                </span>
-                                <span className="mt-1.5 flex items-center gap-1.5">
-                                  <Avatar name={m.owner} className="h-[20px] w-[20px] text-[7px]" />
-                                  <span className="truncate text-[12.5px] text-text-primary">
-                                    {m.owner}
-                                  </span>
-                                </span>
-                                <span className="mt-3 block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                                  From {m.customer}
-                                </span>
-                                {m.contactNames.length === 0 ? (
-                                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                                    Nobody recorded.
-                                  </p>
-                                ) : (
-                                  <ul className="mt-1.5 space-y-1">
-                                    {m.contactNames.map((n) => (
-                                      <li key={n} className="flex items-center gap-1.5">
-                                        <Avatar name={n} className="h-[20px] w-[20px] text-[7px]" />
-                                        <span className="truncate text-[12.5px] text-text-primary">
-                                          {n}
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
+                            <MeetingPanel m={m} />
                           </div>
                         </div>
                       )}

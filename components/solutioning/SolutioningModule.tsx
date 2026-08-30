@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlarmClock,
+  ArrowUpRight,
   Briefcase,
   CalendarClock,
   CalendarDays,
@@ -14,7 +15,9 @@ import {
   ClipboardList,
   FileText,
   Inbox,
+  PanelsTopLeft,
   Plus,
+  Rows3,
   Sparkles,
   Timer,
 } from "lucide-react";
@@ -31,6 +34,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
+import { useStoredView } from "@/lib/useStoredView";
 import { stampedAt } from "@/lib/performanceShared";
 import {
   SUBMISSION_TYPES,
@@ -135,6 +139,19 @@ export function SolutioningModule({
   const [busy, setBusy] = useState<string | null>(null);
   /** Rows folded open. A Set, like every other expandable table here. */
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  /* TABLE OR SPLIT, THE SAME CONTROL AS ADMIN AND THE GOAL MASTER (Anir,
+     Aug 30: "you probably want to have the table and the split view too on all
+     the solutioning ones"). The table answers "what is in this room" across
+     everything; the split answers "everything about THIS request" without
+     folding a row open and losing the list. Remembered per room, because the
+     right way to read submissions is not necessarily the right way to read
+     meetings-in-waiting. */
+  const [view, pickView] = useStoredView<"table" | "split">(
+    `freyr.solutioning.${room}.view`,
+    "table",
+    ["table", "split"] as const
+  );
+  const [pickedId, setPickedId] = useState<string | null>(null);
 
   /** The fulfiller side of the flow: Solutions picks up; managers and admins
    *  can too, so a request is never stranded when the team is out. */
@@ -211,6 +228,11 @@ export function SolutioningModule({
       return a.requestedAt < b.requestedAt ? 1 : -1;
     });
   }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room]);
+
+  /** What the split is standing on. Null means the first row on screen, so
+   *  the right pane is never empty while the left has something in it — and a
+   *  filter that hides your pick moves you to the top rather than blanking. */
+  const picked = shown.find((r) => r.id === pickedId) ?? shown[0] ?? null;
 
   /* Every row on screen is the same kind, so the chip drops its word and keeps
      its mark. Computed from what is on screen, not from the tab, so a mixed
@@ -438,6 +460,40 @@ export function SolutioningModule({
               ].map((c) => ({ value: c, label: c, logoName: c })),
             },
           ]}
+          view={
+            <span
+              role="group"
+              aria-label="How to show this room"
+              className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+            >
+              {(
+                [
+                  { key: "table", label: "Table", icon: Rows3 },
+                  { key: "split", label: "Split", icon: PanelsTopLeft },
+                ] as const
+              ).map((o) => {
+                const Icon = o.icon;
+                const on = view === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => pickView(o.key)}
+                    aria-pressed={on}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                      on
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </span>
+          }
           sort={
             <ColorSelect
               value={sort}
@@ -496,8 +552,126 @@ export function SolutioningModule({
           title={`Nothing in ${ROOM_META[room].title.toLowerCase()} matches these filters.`}
           description="Try a different type, status or search term."
         />
+      ) : view === "split" ? (
+        /* LEFT: THE ROOM AS A RUNNING LIST. RIGHT: THE ONE YOU PICKED.
+           The same shape as User groups, Team members and the Goal Master, and
+           the right pane is the very panel the row's fold draws, so the two
+           readings of a request cannot drift apart. */
+        <div
+          key="split"
+          className="tab-panel grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]"
+        >
+          <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light bg-white">
+            {shown.map((r) => {
+              const on = picked?.id === r.id;
+              const meta = KIND_META[r.kind];
+              const overdue =
+                r.neededBy && r.status !== "completed"
+                  ? r.neededBy < new Date().toISOString().slice(0, 10)
+                  : false;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setPickedId(r.id)}
+                  aria-current={on ? "true" : undefined}
+                  title={r.title}
+                  style={{
+                    ["--kind-accent" as string]: meta.color,
+                    backgroundColor: on ? `${meta.color}14` : undefined,
+                  }}
+                  className={cn(
+                    "flex w-full cursor-pointer items-start gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
+                    on
+                      ? "[box-shadow:inset_3px_0_0_0_var(--kind-accent)]"
+                      : "hover:bg-surface"
+                  )}
+                >
+                  <CompanyLogo
+                    name={r.customer}
+                    className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary tnum">
+                        {r.ref}
+                      </span>
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold"
+                        style={{ color: meta.color, background: `${meta.color}1A` }}
+                      >
+                        {meta.label}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-[12.5px] font-semibold text-text-primary">
+                      {r.title}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                      <span className="min-w-0 truncate">{r.customer}</span>
+                      {overdue && (
+                        <span className="shrink-0 font-bold text-[color:#DC2626]">
+                          overdue
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div
+            key={picked?.id ?? "none"}
+            className="tab-panel min-w-0 overflow-hidden rounded-xl border border-border-light bg-white"
+          >
+            {picked ? (
+              <>
+                {/* The header the fold does not need, because in the table the
+                    row above it is the header. */}
+                <div className="flex flex-wrap items-center gap-2.5 border-b border-border-light bg-surface px-4 py-3">
+                  <CompanyLogo
+                    name={picked.customer}
+                    className="h-8 w-8 shrink-0 text-[10px]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary tnum">
+                        {picked.ref}
+                      </span>
+                      <span
+                        className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                        style={{
+                          color: KIND_META[picked.kind].color,
+                          background: `${KIND_META[picked.kind].color}1A`,
+                        }}
+                      >
+                        {KIND_META[picked.kind].label}
+                      </span>
+                      <StatusPill status={picked.status} />
+                    </span>
+                    <span className="mt-0.5 block truncate text-[14px] font-semibold text-text-primary">
+                      {picked.title}
+                    </span>
+                  </span>
+                  <Link
+                    href={`/solutioning/${picked.id}${room === "requests" ? "" : `?tab=${room}`}`}
+                    title="Open the full request"
+                    aria-label={`Open ${picked.ref} in full`}
+                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <ArrowUpRight size={15} strokeWidth={2.2} />
+                  </Link>
+                </div>
+                <RequestPanel r={picked} room={room} />
+              </>
+            ) : (
+              <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
+                Pick a request on the left.
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
-        <Card className="p-0 overflow-hidden">
+        <Card key="table" className="tab-panel p-0 overflow-hidden">
           <PinnableTable id="solutioning-requests">
             <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
               <thead>
@@ -818,7 +992,32 @@ function RequestRow({
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
-            <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
+            <RequestPanel r={r} room={room} />
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
+  );
+}
+
+
+/**
+ * EVERYTHING ABOUT ONE REQUEST, IN A PANEL.
+ *
+ * Extracted so the row's fold and the split view's right pane are the same
+ * thing rather than two drawings of it (Anir, Aug 30: "you probably want to
+ * have the table and the split view too on all the solutioning ones").
+ */
+function RequestPanel({
+  r,
+  room,
+}: {
+  r: SolutionRequest;
+  room: "requests" | "submissions" | "presentations";
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
               {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
                   needs. It is the only thing on this panel written by a
                   person; everything else is a count or a name. */}
@@ -1005,12 +1204,7 @@ function RequestRow({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </td>
-      </tr>
-    )}
-    </>
+    </div>
   );
 }
 
