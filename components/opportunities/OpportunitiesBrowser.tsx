@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -642,9 +643,8 @@ export function OpportunitiesBrowser({
      field on every deal and a column in his sheet; it just could not be
      narrowed by. */
   const [revenueTypeFilter, setRevenueTypeFilter] = useState<string[]>([]);
+  const router = useRouter();
   const [openRow, setOpenRow] = useState<string | null>(null);
-  /** A deal opened FROM the summary — shown over it, never by switching view. */
-  const [summaryDeal, setSummaryDeal] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
   /** Drafts closed WITHOUT saving, by deal id ("new" for a fresh one) — X-ing
    *  the form must never eat typed work (Anir, Aug 18: "if they exit this
@@ -2271,53 +2271,18 @@ export function OpportunitiesBrowser({
             timeline={timeline}
             groupNameFor={groupNameFor}
             offeringNameFor={offeringNameFor}
-            /* THE VIEW YOU PICKED IS THE VIEW YOU STAY IN (Anir, Aug 30:
-               "why does it take me back to the table view? If I'm on the
-               summary view, I'm on the summary view").
-
-               Two rules had to hold at once here, and the first two attempts
-               each kept one and broke the other: Suren wants the summary's
-               lowest level to be the value and nothing else ("I don't want
-               anything further here"), which ruled out unfolding the deal
-               panel inline; Anir wants the summary to stay the summary, which
-               rules out jumping to Table. So the deal opens OVER the summary
-               and closing it puts you back exactly where you were, with every
-               fold still open. */
-            onOpenDeal={(id) => {
-              /* Unfolded on arrival: the dialog exists to show the deal, and
-                 opening it onto a collapsed row asks for a second click to
-                 see the thing that was clicked for. `openRow` is the same
-                 flag the table uses, so switching to Table afterwards finds
-                 that deal already open too. */
-              setOpenRow(id);
-              setSummaryDeal(id);
-            }}
+            /* THE DEAL HAS ITS OWN PAGE NOW (Anir, Aug 30: "why can't it
+               be like when I click on it, the screen goes away, and I open
+               that screen"). A row panel, a split pane and a dialog were all
+               attempts to show a deal inside the list it came from; the dialog
+               was the worst of them, a pinned sheet with four lines in it. A
+               deal with meetings, submissions, presentations, contracts and
+               documents hanging off it is a page. */
+            onOpenDeal={(id) => router.push(`/opportunities/${id}`)}
           />
         </Card>
       )}
 
-      {/* THE DEAL, OVER THE SUMMARY. The same panel the table shows, so a deal
-          read here and a deal read there cannot say different things — it is
-          literally pipeTable() with one row. Wide and tall with a pinned
-          height, because a deal is a lot of content and a dialog that resizes
-          as its folds open is the thing that keeps getting flagged. */}
-      <Modal
-        open={summaryDeal !== null}
-        onClose={() => setSummaryDeal(null)}
-        title={list.find((d) => d.id === summaryDeal)?.name ?? "Opportunity"}
-        size="wide"
-        tall
-        dialogClassName="!max-w-[min(1100px,calc(100vw-3rem))] !h-[min(760px,calc(100vh-3rem))]"
-        bodyClassName="flex flex-col"
-      >
-        {(() => {
-          const deal = list.find((d) => d.id === summaryDeal);
-          if (!deal) return null;
-          return (
-            <div className="min-h-0 flex-1 overflow-auto">{pipeTable([deal])}</div>
-          );
-        })()}
-      </Modal>
 
       {dealView === "table" && (shown.length === 0 || groupBy === "none") && (
         shown.length === 0 ? (
