@@ -1669,6 +1669,16 @@ input {
    A ring of the bar's own colour bleeding outward, plus a sheen travelling
    across the filled part, so the eye lands on the QUANTITY being pointed at
    rather than on its container. */
+/* A BAR LIGHTS ITSELF WHEN YOU POINT AT IT (Anir, Aug 30: "when I hover over
+   the green thing, everything does the animation properly except the bar chart
+   at the top... same thing for the progress bar right underneath in the second
+   column under groups. That doesn't do it either").
+
+   .bar-lit is driven by a `lit` prop, which only some callers pass — the
+   subgoal rows under a group never did, so those bars were dead to the pointer.
+   Hovering the bar's own track lights it too, so a caller does not have to
+   remember. */
+.bar-hoverable:hover .bar-fill,
 .bar-lit {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.9),
@@ -1679,6 +1689,7 @@ input {
   overflow: hidden;
 }
 
+.bar-hoverable:hover .bar-fill::after,
 .bar-lit::after {
   content: "";
   position: absolute;

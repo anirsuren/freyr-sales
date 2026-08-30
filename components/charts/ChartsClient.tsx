@@ -2329,6 +2329,25 @@ export function BarChart({
                 /forecast's by-stage columns: a stretchy track, bar pinned to
                 the shared baseline. */}
             <div
+              /* THE WHOLE COLUMN IS THE HOVER TARGET (Anir, Aug 30: "when it's
+                 such a small bar, it glitches when I hover over it, it
+                 stutters"). The handlers used to sit on the BAR, which lifts
+                 by HOVER_LIFT the moment it is entered — so on a 4px stub the
+                 bar moved out from under the cursor, fired mouseleave, dropped
+                 back under it, fired mouseenter, and oscillated. The column is
+                 full height and never moves, so entering it is a decision the
+                 pointer cannot accidentally undo. */
+              onMouseEnter={(e) => {
+                showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
+                if (syncId) donutSyncBroadcast(syncId, i);
+              }}
+              onMouseMove={(e) =>
+                moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
+              }
+              onMouseLeave={() => {
+                closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
+                if (syncId) donutSyncBroadcast(syncId, null);
+              }}
               className="relative flex min-h-0 w-full flex-1 items-end justify-center px-1.5"
               style={{ paddingTop: labelRoom }}
             >
@@ -2364,20 +2383,18 @@ export function BarChart({
                   so when the bar lifts under the cursor the number rides up
                   with it, exactly as far, at exactly the same speed (Suren:
                   "the number does not go up when the bar chart goes up"). */}
+              {/* IT SHINES LIKE THE OTHERS (Anir, Aug 30: "when I hover over
+                  the green thing, everything does the animation properly
+                  except the bar chart at the top — the bar does not do it, it
+                  doesn't shine"). Every other bar in this app carries .bar-lit
+                  on hover; this one only lifted. */}
               <div
-                className="group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none"
-                onMouseEnter={(e) => {
-                  showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
-                  if (syncId) donutSyncBroadcast(syncId, i);
-                }}
-                onMouseMove={(e) =>
-                  moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
-                }
-                onMouseLeave={() => {
-                  closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
-                  if (syncId) donutSyncBroadcast(syncId, null);
-                }}
+                className={cn(
+                  "group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none",
+                  lit === i && "bar-lit"
+                )}
                 style={{
+                  ["--bar-glow" as string]: `${d.color || VIZ.blue}bf`,
                   maxWidth: maxBarWidth,
                   height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,

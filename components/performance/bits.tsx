@@ -1856,12 +1856,14 @@ export function MiniBar({
     <span className="flex items-center gap-2">
       <span
         className={cn(
-          "flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
+          /* bar-hoverable: pointing at the track lights the fill, so a caller
+             that passes no `lit` still animates (Anir, Aug 30). */
+          "bar-hoverable flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
           lit && "h-2 w-28"
         )}
       >
         <span
-          className={cn("block h-full", lit && "bar-lit")}
+          className={cn("bar-fill block h-full", lit && "bar-lit")}
           style={{
             width: `${target > 0 ? pct : 0}%`,
             background: ENTRY_COLOR.verified,
@@ -1869,7 +1871,7 @@ export function MiniBar({
           }}
         />
         <span
-          className={cn("unverified-fill block h-full", lit && "bar-lit")}
+          className={cn("unverified-fill bar-fill block h-full", lit && "bar-lit")}
           style={{
             width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
             ["--fill" as string]: unverifiedColor,

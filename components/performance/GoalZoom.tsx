@@ -2001,24 +2001,13 @@ export function GoalZoom({
                           2"). Open, every figure it holds is on screen
                           underneath, so the card was covering the thing you
                           had just asked to see. */}
-                      <ConditionalHover
-                        on={!openPeople.has(p.name)}
-                        side="left"
-                        content={
-                          <PaceTimeline
-                            title={`${p.name} · ${row?.label ?? ""}`}
-                            verified={p.verified}
-                            awaiting={p.awaiting}
-                            sentBack={p.sentBack}
-                            target={yearTarget}
-                            expectedPct={yearElapsed(goal.year) * 100}
-                            expected={pacing.expected}
-                                expectedDueLabel={pacing.dueLabel}
-                                onSetSchedule={onSetSchedule}
-                            unit={goal.unit}
-                          />
-                        }
-                      >
+                      {/* NO HOVER CARD ON A PERSON (Anir, Aug 30: "what is
+                          the point of this pop-up right here when I hover over
+                          the person? I would remove that because it's pointless
+                          on the right side"). A 420px card of the same numbers
+                          the row already shows, thrown out to one side, over
+                          the list you are reading. The row opens into the
+                          detail on click, which is the version you asked for. */}
                       <button
                         type="button"
                         aria-expanded={openPeople.has(p.name)}
@@ -2110,7 +2099,6 @@ export function GoalZoom({
                           </span>
                           ))}
                       </button>
-                      </ConditionalHover>
                       {openPeople.has(p.name) && (
                         <div className="tab-panel border-t border-border-light bg-white px-1 py-1">
                           {lineItems(
