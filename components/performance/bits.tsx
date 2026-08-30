@@ -1036,10 +1036,18 @@ export function PaceTimeline({
                 use it and put some text on top"). With a schedule the top lane
                 belongs to "must be at" and this stays underneath, so the two
                 can never collide. */}
+            {/* THE HEADLINE DOES NOT FLOAT (Anir, Aug 30: "and the percent is
+                in a weird spot too bro"). It was centred over the point the
+                bar reaches, so it drifted with the value — on a 23% bar it
+                hung in empty space in the middle of the card with nothing
+                under it, reading as a number somebody dropped there. Pinned to
+                the left of the top lane it sits over the 0 end where the bar
+                starts, in the same place on every card, and the eye reads
+                headline → track → target in one direction. */}
             {!hasSchedule && verified + awaiting > 0 && (
               <span
-                className="absolute flex flex-col items-center"
-                style={{ ...labelPos(aPct), top: 0 }}
+                className="absolute flex flex-col items-start"
+                style={{ left: 0, top: 0 }}
               >
                 {/* THE HEADLINE IS WHAT COUNTS (Anir, Aug 20: "also fix that
                     too", pointing at "$200K · 40%" in red).
