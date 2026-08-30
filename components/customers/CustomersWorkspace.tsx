@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Building2, Crosshair, Layers } from "lucide-react";
 import { CustomersBrowser } from "@/components/customers/CustomersBrowser";
 import { TargetsTab } from "@/components/customers/TargetsTab";
@@ -40,11 +41,12 @@ export function CustomersWorkspace({
   live: boolean;
   canEditTargets?: boolean;
 }) {
-  const [view, setView] = useStoredView<"customers" | "groups" | "targets">(
-    "freyr.customers.workspace",
-    "customers",
-    ["customers", "groups", "targets"]
-  );
+  /* CUSTOMERS IS WHERE YOU LAND (Anir, Aug 30: "when I go to customers make
+     sure I land up on the customers page not targets"). The tab was
+     remembered across visits, so anybody who had last looked at Targets
+     opened the Customers page onto 122 accounts they do not own yet. The tab
+     still switches freely; it just does not decide where you arrive. */
+  const [view, setView] = useState<"customers" | "groups" | "targets">("customers");
 
   const pills = [
     { key: "customers" as const, label: "Customers", icon: Building2, color: "#0071E3" },

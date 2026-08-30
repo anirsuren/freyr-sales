@@ -5,6 +5,7 @@ import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { readTargets } from "@/lib/targets";
 import { readCustomerGroups } from "@/lib/customerGroups";
 import { readOpportunities } from "@/lib/opportunities";
+import { listOfferings } from "@/lib/offerings";
 import { opportunityValue } from "@/lib/opportunitiesShared";
 import { meetingsForCustomer, readMeetings } from "@/lib/meetings";
 import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/pipeline";
@@ -134,12 +135,13 @@ export default async function CustomersPage() {
      computed here rather than stored (Suren, Aug 28: "for every group, you can
      actually put these statistics"). A stored total is a total that goes stale
      the first time somebody edits a deal. */
-  const [{ groups }, oppState, meetingState] = await Promise.all([
+  const [{ groups }, oppState, meetingState, offeringList] = await Promise.all([
     readCustomerGroups().catch(() => ({ groups: [] })),
     readOpportunities().catch(() => ({ opportunities: [] })),
     readMeetings()
       .then((st) => st.meetings)
       .catch(() => []),
+    Promise.resolve(listOfferings()).catch(() => []),
   ]);
   const groupCustomers = enriched.map((c) => {
     const mine = oppState.opportunities.filter(
@@ -180,6 +182,20 @@ export default async function CustomersPage() {
         customersProps={{
           customers: enriched,
           includeDemoTeam: getDataMode() === "mock",
+          /* THE SAME GROUPING THE PIPELINE HAS (Anir, Aug 30: "bring that
+             customer also, that kind of a grouping first — all the customers").
+             The deals are what carry the money, so the summary reads them and
+             counts the accounts. */
+          deals: oppState.opportunities.filter((o) => o.level !== "Future"),
+          customerGroups: groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            color: g.color,
+            customerIds: g.customerIds,
+          })),
+          offeringNames: Object.fromEntries(
+            offeringList.map((o) => [o.id, o.offering_name])
+          ),
         }}
         targets={targets}
         groups={groups}

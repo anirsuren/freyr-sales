@@ -1,5 +1,18 @@
 "use client";
 
+import { StatTile } from "@/components/ui/StatTile";
+import { Card } from "@/components/ui/Card";
+import { useStickyValue } from "@/lib/useStickyValue";
+import {
+  sumEstimates,
+  type EstimateMeasure,
+  type Opportunity,
+} from "@/lib/opportunitiesShared";
+import {
+  OpportunitySummary,
+  type SummaryDimension,
+  type Timeline,
+} from "@/components/opportunities/OpportunitySummary";
 import { TabActions } from "./TabActions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageToolbar } from "@/components/ui/PageToolbar";
@@ -8,7 +21,7 @@ import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload } from "lucide-react";
+import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2 } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -146,12 +159,26 @@ function HealthBar({ health }: { health: AccountHealth }) {
   );
 }
 
+/** Same shorthand the pipeline tiles use. */
+function moneyShort(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+  return `$${Math.round(n)}`;
+}
+
 export function CustomersBrowser({
   customers,
   includeDemoTeam,
+  deals = [],
+  customerGroups = [],
+  offeringNames = {},
 }: {
   customers: EnrichedCustomer[];
   includeDemoTeam: boolean;
+  /** The pipeline, so the summary can total each account's money. */
+  deals?: Opportunity[];
+  customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
+  offeringNames?: Record<string, string>;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -165,6 +192,26 @@ export function CustomersBrowser({
   const [query, setQuery] = useState("");
   const [healthFilter, setHealthFilter] = useState("all");
   const [sort, setSort] = useState("recent");
+  /* THE SAME GROUPING THE PIPELINE HAS (Anir, Aug 30: "bring that customer
+     also, that kind of a grouping first"). Summary leads, because the question
+     people arrive with is what the book is worth, not what row 14 says. */
+  const [shape, setShape] = useStoredView<"summary" | "list">(
+    "freyr.customers.shape",
+    "summary",
+    ["summary", "list"] as const
+  );
+  const [custDims, setCustDims] = useStickyValue<SummaryDimension[]>(
+    "freyr.customers.dims",
+    ["group", "customer", "offering", "revenue"]
+  );
+  const [custMeasure, setCustMeasure] = useStickyValue<EstimateMeasure>(
+    "freyr.customers.measure",
+    "tcv"
+  );
+  const [custTimeline, setCustTimeline] = useStickyValue<Timeline>(
+    "freyr.customers.timeline",
+    "quarterly"
+  );
   const [view, setView] = useStoredView<"grid" | "table">(
     "freyr.customers.view",
     "grid",
@@ -565,6 +612,8 @@ export function CustomersBrowser({
           release (Anir, Jul 30: "the search bar shouldn't move like that — it
           should only expand to the right"). The old layout right-aligned a
           width-animated input, so its left edge jumped left on focus. */}
+
+
       <PageToolbar
         query={query}
         onQuery={setQuery}
@@ -690,9 +739,127 @@ export function CustomersBrowser({
           </>
         }
         view={
-          <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
+          <span className="flex shrink-0 items-center gap-2">
+            {/* SUMMARY OR THE LIST — the same choice Opportunities offers, so
+                the two pages answer "what is this worth" and "show me the
+                rows" the same way. */}
+            <span
+              role="group"
+              aria-label="How to show the customers"
+              className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+            >
+              {(
+                [
+                  { key: "summary", label: "Summary", icon: Table2 },
+                  { key: "list", label: "List", icon: LayoutList },
+                ] as const
+              ).map((o) => {
+                const Icon = o.icon;
+                const on = shape === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setShape(o.key)}
+                    aria-pressed={on}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                      on
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </span>
+            {shape === "list" && (
+              <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
+            )}
+          </span>
         }
       />
+
+      {/* THE BOOK, GROUPED (Anir, Aug 30: "bring that customer also, that
+          kind of a grouping first — all the customers"). It is the pipeline
+          summary pointed at the same deals: the money is each account's TCV,
+          the four levels stack in any order, and the count says accounts
+          rather than deals because this is the customer page. */}
+      {shape === "summary" && (() => {
+        /* THE SUMMARY READS WHAT THE PAGE IS SHOWING (Anir, Aug 30: "that
+           list and then the filtering and all that should be based on whatever
+           I show"). Scoped to the accounts left after the search and filters,
+           by id where a deal has one and by name where it does not — the
+           imported pipeline predates customer ids on every row. */
+        const shown = new Set(filtered.map((c) => c.id));
+        const shownNames = new Set(
+          filtered.map((c) => c.company_name.trim().toLowerCase())
+        );
+        const scoped = deals.filter(
+          (d) =>
+            (d.customerId && shown.has(d.customerId)) ||
+            shownNames.has(d.customer.trim().toLowerCase())
+        );
+        const live = new Set(
+          scoped
+            .filter((d) => d.status !== "Won" && d.status !== "Lost")
+            .map((d) => d.customer.trim().toLowerCase())
+        );
+        return (
+        <div className="mb-4">
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatTile
+              icon={Building2}
+              label="Customers"
+              value={String(filtered.length)}
+              sub={`${scoped.length} ${scoped.length === 1 ? "deal" : "deals"} against them`}
+            />
+            <StatTile
+              icon={Target}
+              label="Estimated TCV"
+              value={(() => {
+                const t = sumEstimates(scoped, "tcv");
+                return t.entered === 0 ? "·" : moneyShort(t.total);
+              })()}
+              sub="across the accounts on screen"
+            />
+            <StatTile
+              icon={Users}
+              label="With open deals"
+              value={String(
+                filtered.filter((c) =>
+                  live.has(c.company_name.trim().toLowerCase())
+                ).length
+              )}
+              sub="accounts with something live"
+            />
+          </div>
+          <Card className="p-4">
+            <OpportunitySummary
+              deals={scoped}
+              order={custDims}
+              onReorder={setCustDims}
+              measure={custMeasure}
+              timeline={custTimeline}
+              groupNameFor={(d) => {
+                const g = d.customerId
+                  ? customerGroups.find((x) => x.customerIds.includes(d.customerId!))
+                  : undefined;
+                return g?.name ?? "No customer group";
+              }}
+              offeringNameFor={(d) =>
+                (d.offeringIds[0]
+                  ? (offeringNames[d.offeringIds[0]] ?? d.offeringIds[0])
+                  : d.offeringLabels[0]) ?? "No offering"
+              }
+              onOpenDeal={(id) => router.push(`/opportunities/${id}`)}
+            />
+          </Card>
+        </div>
+        );
+      })()}
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">
@@ -745,7 +912,9 @@ export function CustomersBrowser({
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {/* Everything below is the LIST — the summary above is its own answer
+          and does not want a row count or a pin under it. */}
+      {shape === "list" && filtered.length > 0 && (
         /* The pin sits on the right of this line in table view, for the same
            reason as Offerings: in the table's corner it permanently covered
            the last column header (Anir, Aug 14). */
@@ -764,7 +933,8 @@ export function CustomersBrowser({
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {shape === "list" && (
+filtered.length === 0 ? (
         customers.length === 0 ? (
           // A truly empty workspace is an invitation, not a failed search
           // (Anir, Jul 30). Same two doors as the header.
@@ -992,6 +1162,7 @@ export function CustomersBrowser({
             </table>
           </PinnableTable>
         </div>
+      )
       )}
 
       {filtered.length > PER_PAGE && (
