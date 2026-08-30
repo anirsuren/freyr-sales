@@ -578,7 +578,11 @@ export function OpportunitiesBrowser({
      sense for me, I want it to be seen in a certain way"). The row-by-row
      table and the split are still one click away — this changes what you
      land on, not what you can reach. */
-  const [dealView, setDealView] = useStoredView<"summary" | "table" | "split">(
+  /* NO SPLIT HERE (Suren, Aug 30: "can you take this off? I don't like the
+     split on this page... no split, table and summary are okay"). The summary
+     answers what the money is doing and the table is where a deal is worked
+     on; a third way to look at the same rows was one too many. */
+  const [dealView, setDealView] = useStoredView<"summary" | "table">(
     /* ITS OWN KEY. This shared "freyr.opportunities.view" with the
        Current-pipeline/Future tab above, so the two wrote over each other:
        picking Future stored "future" where the view toggle looks, and the next
@@ -587,7 +591,7 @@ export function OpportunitiesBrowser({
        partly this. */
     "freyr.opportunities.dealView",
     "summary",
-    ["summary", "table", "split"] as const
+    ["summary", "table"] as const
   );
   /* His four, in his default order; drag on the summary rewrites it. */
   const [dimOrder, setDimOrder] = useStickyValue<SummaryDimension[]>(
@@ -632,6 +636,11 @@ export function OpportunitiesBrowser({
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [closureFilter, setClosureFilter] = useState<string[]>([]);
   const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
+  /* Recurring licence money vs one-time services (Suren, Aug 30: "it's ARR
+     and OTS — this also you have to put it in the filter"). It is already a
+     field on every deal and a column in his sheet; it just could not be
+     narrowed by. */
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   /** A deal opened FROM the summary — shown over it, never by switching view. */
   const [summaryDeal, setSummaryDeal] = useState<string | null>(null);
@@ -836,6 +845,13 @@ export function OpportunitiesBrowser({
       )
       .filter(
         (o) =>
+          revenueTypeFilter.length === 0 ||
+          revenueTypeFilter.includes(
+            o.revenueType ?? linesOf(o).find((l) => l.revenueType)?.revenueType ?? ""
+          )
+      )
+      .filter(
+        (o) =>
           offeringFilter.length === 0 ||
           offeringFilter.includes(offeringNameFor(o))
       )
@@ -907,6 +923,7 @@ export function OpportunitiesBrowser({
     statusFilter,
     customerFilter,
     ownerFilter,
+    revenueTypeFilter,
     offeringFilter,
     groupFilter,
     closureFilter,
@@ -1776,17 +1793,18 @@ export function OpportunitiesBrowser({
                                   />
                                 </div>
                               )}
-                              <div className="border-t border-border-light pt-3.5 sm:col-span-2">
-                                <OpportunityActivities
-                                  opportunity={o}
-                                  canEdit={canEdit && live}
-                                  onSaved={(saved) =>
-                                    setList((prev) =>
-                                      prev.map((x) => (x.id === saved.id ? saved : x))
-                                    )
-                                  }
-                                />
-                              </div>
+                              {/* NO ACTIVITIES ON THE DEAL PANEL (Suren,
+                                  Aug 30, four times over: "I don't want these
+                                  activities... take that damn activity off...
+                                  I'm getting confused on that thing... remove
+                                  this activity, I don't want to see this").
+
+                                  What he wants when a deal opens is the deal
+                                  as it was entered plus the things connected
+                                  to it — the strip above — and nothing that
+                                  invites logging work here. The activity data
+                                  is untouched on the record and the master
+                                  still owns it; this is only the panel. */}
                             </div>
                             </div>
                           </td>
@@ -1981,6 +1999,7 @@ export function OpportunitiesBrowser({
               setGroupFilter([]);
               setClosureFilter([]);
               setConfidenceFilter([]);
+              setRevenueTypeFilter([]);
             }}
             groups={[
               {
@@ -2076,6 +2095,17 @@ export function OpportunitiesBrowser({
                   })),
               },
               {
+                key: "revenueType",
+                label: "ARR / OTS",
+                values: revenueTypeFilter,
+                onChange: setRevenueTypeFilter,
+                options: [
+                  { value: "ARR", label: "ARR — recurring", color: "#0F766E" },
+                  { value: "OTS", label: "OTS — one-time", color: "#B4318F" },
+                  { value: "", label: "Not set", color: "#8E98A8" },
+                ],
+              },
+              {
                 /* Anir's addition on top of Suren's sheet, Aug 30: "and one
                    more filter called confidence percentage". Bands, not a
                    free number — they are the same thresholds the confidence
@@ -2165,7 +2195,6 @@ export function OpportunitiesBrowser({
                   [
                     { key: "summary", label: "Summary", icon: Table2 },
                     { key: "table", label: "Table", icon: Rows3 },
-                    { key: "split", label: "Split", icon: PanelsTopLeft },
                   ] as const
                 ).map((o) => {
                   const Icon = o.icon;
@@ -2286,7 +2315,7 @@ export function OpportunitiesBrowser({
         })()}
       </Modal>
 
-      {dealView !== "summary" && (shown.length === 0 || groupBy === "none" || dealView === "split") && (
+      {dealView === "table" && (shown.length === 0 || groupBy === "none") && (
         shown.length === 0 ? (
           <Card className="overflow-hidden p-0">
             <EmptyState
@@ -2299,65 +2328,6 @@ export function OpportunitiesBrowser({
               }
             />
           </Card>
-        ) : dealView === "split" ? (
-          (() => {
-            const picked =
-              groupedShown.find((d) => d.id === openRow) ?? groupedShown[0];
-            return (
-              <div
-                key="split"
-                className="tab-panel grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]"
-              >
-                <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light bg-white">
-                  {groupedShown.map((d) => {
-                    const on = picked?.id === d.id;
-                    const value = opportunityValue(d);
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => setOpenRow(d.id)}
-                        aria-current={on ? "true" : undefined}
-                        title={d.name}
-                        className={cn(
-                          "flex w-full cursor-pointer items-start gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
-                          on
-                            ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                            : "hover:bg-surface"
-                        )}
-                      >
-                        <CompanyLogo
-                          name={d.customer}
-                          className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span
-                            className={cn(
-                              "block truncate text-[12.5px] font-semibold",
-                              on ? "text-blue-primary" : "text-text-primary"
-                            )}
-                          >
-                            {d.name}
-                          </span>
-                          <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
-                            <span className="min-w-0 truncate">{d.customer}</span>
-                            <span className="shrink-0 tnum">
-                              · {money(value)}
-                            </span>
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <Card key={picked?.id ?? "none"} className="tab-panel overflow-hidden p-0">
-                  <div className="overflow-x-auto">
-                    {picked ? pipeTable([picked]) : null}
-                  </div>
-                </Card>
-              </div>
-            );
-          })()
         ) : (
           <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">{pipeTable(groupedShown)}</div>

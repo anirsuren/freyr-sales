@@ -234,10 +234,16 @@ export function OpportunitySummary({
   /** Only rows that have been OPENED live here: four dimensions over 88 deals
    *  is 290 rows if everything starts unfolded, which is the wall this replaced. */
   const [open, setOpen] = useState<Set<string>>(new Set());
-  /** Suren, Aug 30, on the chart: "can you make this a closeable thing? I
-   *  don't want this to be seen. Whenever I need it, I want to close it and
-   *  open it." */
-  const [chartOpen, setChartOpen] = useState(true);
+  /**
+   * THE GRAPH STARTS CLOSED (Suren, Aug 30: "can you make this a closeable
+   * thing? I don't want this to be seen"... "I don't want to see this there by
+   * default").
+   *
+   * The table is what he reads; the graph is what he opens when he wants the
+   * shape of it. Landing on the numbers rather than on a picture also puts the
+   * first rows above the fold instead of below a 180px chart.
+   */
+  const [chartOpen, setChartOpen] = useState(false);
 
   const measureLabel = measure === "acv" ? "Estimated ACV" : "Estimated TCV";
 
