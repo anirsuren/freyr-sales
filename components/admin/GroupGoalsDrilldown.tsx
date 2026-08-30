@@ -11,7 +11,6 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import {
   PersonGoalPanel,
-  TypeChip,
   TypeIconTile,
   typeMeta,
 } from "@/components/performance/bits";
@@ -224,21 +223,32 @@ export function GroupGoalsDrilldown({
                         {goal.year}
                       </span>
                     </span>
-                    {/* WHAT IT IS COUNTED IN, in the type's own colour. The
-                        master's "Counted in" column, carried over so a money
-                        goal reads as money without doing the sum. */}
-                    <span className="hidden shrink-0 sm:inline-flex">
-                      <TypeChip type={goal.type} size="sm" />
-                    </span>
+                    {/* NO CATEGORY CHIP (Anir, Aug 29: "why are the categories
+                        there"). The master needs it because that table has no
+                        icon column; here the coloured icon already says which
+                        type this is, so the chip was the same fact twice and it
+                        was eating the width the progress bar needed. */}
                     {target > 0 && (
                       <>
-                        {/* THE BAR TAKES THE GOAL'S COLOUR TOO, so a row is one
-                            colour end to end rather than a coloured icon in
-                            front of a blue bar. */}
-                        <span className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-[color:var(--goal-accent)]/15 sm:flex">
+                        {/* THE BAR TAKES THE GOAL'S COLOUR, painted inline.
+
+                            It was `bg-[color:var(--goal-accent)]/15`, and
+                            Tailwind cannot apply an opacity modifier to a CSS
+                            variable — it compiles to nothing, so the track had
+                            no background at all and the bar vanished (Anir:
+                            "don't even see progress bar bro"). The hex-alpha
+                            suffix is what TypeIconTile already does for the
+                            same reason. */}
+                        <span
+                          className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full sm:flex"
+                          style={{ background: `${typeMeta(goal.type).color}24` }}
+                        >
                           <span
-                            className="block h-full rounded-full bg-[color:var(--goal-accent)]"
-                            style={{ width: `${pct}%` }}
+                            className="block h-full rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              background: typeMeta(goal.type).color,
+                            }}
                           />
                         </span>
                         {/* THE PERCENTAGE, ON EVERY GOAL (Anir, Aug 25: "for
