@@ -579,7 +579,13 @@ export function OpportunitiesBrowser({
      table and the split are still one click away — this changes what you
      land on, not what you can reach. */
   const [dealView, setDealView] = useStoredView<"summary" | "table" | "split">(
-    "freyr.opportunities.view",
+    /* ITS OWN KEY. This shared "freyr.opportunities.view" with the
+       Current-pipeline/Future tab above, so the two wrote over each other:
+       picking Future stored "future" where the view toggle looks, and the next
+       load came back on a view nobody chose. Found while chasing "why does it
+       take me back to the table view" (Anir, Aug 30) — that complaint was
+       partly this. */
+    "freyr.opportunities.dealView",
     "summary",
     ["summary", "table", "split"] as const
   );
@@ -627,6 +633,8 @@ export function OpportunitiesBrowser({
   const [closureFilter, setClosureFilter] = useState<string[]>([]);
   const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  /** A deal opened FROM the summary — shown over it, never by switching view. */
+  const [summaryDeal, setSummaryDeal] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
   /** Drafts closed WITHOUT saving, by deal id ("new" for a fresh one) — X-ing
    *  the form must never eat typed work (Anir, Aug 18: "if they exit this
@@ -2230,23 +2238,53 @@ export function OpportunitiesBrowser({
             timeline={timeline}
             groupNameFor={groupNameFor}
             offeringNameFor={offeringNameFor}
-            /* The summary shows the money and nothing else (Suren, Aug 30:
-               "at the lowest level, the value is enough... I don't want
-               anything further here"). The name still opens the deal, in the
-               row-by-row table where a deal is actually worked on. */
+            /* THE VIEW YOU PICKED IS THE VIEW YOU STAY IN (Anir, Aug 30:
+               "why does it take me back to the table view? If I'm on the
+               summary view, I'm on the summary view").
+
+               Two rules had to hold at once here, and the first two attempts
+               each kept one and broke the other: Suren wants the summary's
+               lowest level to be the value and nothing else ("I don't want
+               anything further here"), which ruled out unfolding the deal
+               panel inline; Anir wants the summary to stay the summary, which
+               rules out jumping to Table. So the deal opens OVER the summary
+               and closing it puts you back exactly where you were, with every
+               fold still open. */
             onOpenDeal={(id) => {
-              setDealView("table");
+              /* Unfolded on arrival: the dialog exists to show the deal, and
+                 opening it onto a collapsed row asks for a second click to
+                 see the thing that was clicked for. `openRow` is the same
+                 flag the table uses, so switching to Table afterwards finds
+                 that deal already open too. */
               setOpenRow(id);
-              setFlashId(id);
-              window.setTimeout(() => {
-                document
-                  .querySelector(`[data-opp-row="${id}"]`)
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-              }, 400);
+              setSummaryDeal(id);
             }}
           />
         </Card>
       )}
+
+      {/* THE DEAL, OVER THE SUMMARY. The same panel the table shows, so a deal
+          read here and a deal read there cannot say different things — it is
+          literally pipeTable() with one row. Wide and tall with a pinned
+          height, because a deal is a lot of content and a dialog that resizes
+          as its folds open is the thing that keeps getting flagged. */}
+      <Modal
+        open={summaryDeal !== null}
+        onClose={() => setSummaryDeal(null)}
+        title={list.find((d) => d.id === summaryDeal)?.name ?? "Opportunity"}
+        size="wide"
+        tall
+        dialogClassName="!max-w-[min(1100px,calc(100vw-3rem))] !h-[min(760px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
+      >
+        {(() => {
+          const deal = list.find((d) => d.id === summaryDeal);
+          if (!deal) return null;
+          return (
+            <div className="min-h-0 flex-1 overflow-auto">{pipeTable([deal])}</div>
+          );
+        })()}
+      </Modal>
 
       {dealView !== "summary" && (shown.length === 0 || groupBy === "none" || dealView === "split") && (
         shown.length === 0 ? (

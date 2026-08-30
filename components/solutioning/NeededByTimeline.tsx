@@ -126,16 +126,19 @@ export function NeededByTimeline({
           collides with anything, so it never has to be suppressed: today is on
           this chart on every request, including the ones where today IS the
           day it was asked for. */}
-      {/* NOTHING OVERLAPS AT THE ENDS (Anir, Aug 30: "you gotta figure it out
-          and make sure nothing's overlapping"). The rail ran the full width and
-          the two markers are centred on its ends, so 11px of bar sat under each
-          circle. Everything is plotted inside an 11px inset — the marker's own
-          radius — so a dot at 0% or 100% ends flush with the card instead of
-          hanging over a bar that runs beneath it. */}
+      {/* THE MARKERS SIT ON TOP OF THE RAIL (Anir, Aug 30: "make sure the
+          icons at the ends are on top of the bar").
+
+          Everything is PLOTTED inside an 11px inset — one marker radius — so a
+          dot at 0% or 100% stays inside the card instead of hanging half off
+          it. But the rail itself reaches back out over that inset, so the bar
+          runs the full width and the two circles are laid over it rather than
+          bookending it. They carry a white ring, which is what makes them read
+          as on top rather than as a break in the line. */}
       <div className="relative mt-3 h-[64px]">
         <div className="absolute inset-x-[11px] top-0 h-full">
         <div
-          className="absolute left-0 right-0 h-[6px] rounded-full bg-border-light"
+          className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
           style={{ top: RAIL_TOP }}
         />
         {/* HOW MUCH OF THE RUN IS GONE. Drawn from the request to today (or to
@@ -145,8 +148,12 @@ export function NeededByTimeline({
           className="absolute h-[6px] rounded-full transition-[width] duration-500"
           style={{
             top: RAIL_TOP,
-            left: at(Math.min(asked, due)),
-            width: `${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * 100}%`,
+            /* Reaches out under the first marker the same 11px the track
+               does, so the elapsed run starts beneath its own icon rather
+               than beside it. Only the left edge moves; the right end still
+               lands exactly on today. */
+            left: `calc(${at(Math.min(asked, due))} - 11px)`,
+            width: `calc(${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * 100}% + 11px)`,
             background: ELAPSED,
           }}
         />
