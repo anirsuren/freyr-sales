@@ -113,10 +113,32 @@ export async function POST(req: NextRequest) {
 
   try {
     if (op === "create") {
-      /* Only an owner starts a new one (Suren, Aug 29: "owner can create,
-         member can edit"). The gate above only asks whether the pen is in the
-         room, and a member's row says edit. */
-      const refusal = await moduleCreateRefusal("/solutioning");
+      /**
+       * ASKING IS NOT THE SAME AS BUILDING.
+       *
+       * Two of Suren's rules meet here and look like they contradict:
+       *
+       *   Aug 29 — "owner can create, member can edit."
+       *   Aug 24 — the reps raise the requests; this module was built for it.
+       *
+       * They only contradict if "create" means one thing. It does not. A
+       * REQUEST is somebody asking the Solutioning team for a deck: it is the
+       * module's inbound, and gating it on create left it with none, because
+       * every role that would ever raise one — BD Member, Solutioning Member —
+       * has *edit*. A SUBMISSION or a PRESENTATION is the work itself, the
+       * record the team owns and answers for, and that is the thing Aug 29 is
+       * about.
+       *
+       * So: raising a request asks the write question, producing the work asks
+       * the create question. Nobody's row changes (found Aug 31: a Solutioning
+       * Member was shown "Request solutioning" and refused on submit).
+       */
+      const rawTypeForGate = String(body.type ?? "request");
+      const isDeliverable =
+        rawTypeForGate === "submission" || rawTypeForGate === "presentation";
+      const refusal = isDeliverable
+        ? await moduleCreateRefusal("/solutioning")
+        : await moduleWriteRefusal("/solutioning");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const kind = body.kind as SolutioningKind;
       if (!["submission", "presentation", "meeting"].includes(kind)) {

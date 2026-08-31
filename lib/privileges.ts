@@ -282,6 +282,35 @@ export const PRIVILEGE_COLORS: Record<string, string> = {
  * owner so the pair still reads as a pair, and the selected state is drawn with
  * the colour at full strength: a solid tick, a real border, a tint you can see.
  */
+/**
+ * A SHORT MARK PER PRIVILEGE, FOR THE ROW BADGES.
+ *
+ * Not derived from the label. Taking the first letter of each word turns both
+ * "BD Owner" and "BO Owner" into "BO", so somebody holding both wore the same
+ * badge twice and it read as a duplicate rather than two privileges (Anir,
+ * Aug 31, on Antara Pal showing "BO BO").
+ *
+ * Three characters: the group, then o for owner and m for member. Written out
+ * so a rename cannot silently collide again.
+ */
+export const PRIVILEGE_SHORT: Record<string, string> = {
+  bd_owner: "BDo",
+  bd_member: "BDm",
+  bo_owner: "BOo",
+  bo_member: "BOm",
+  sol_owner: "SOo",
+  sol_member: "SOm",
+  delivery_owner: "DLo",
+  delivery_member: "DLm",
+  admin: "ADM",
+  view_all: "ALL",
+};
+
+/** The mark, falling back to the first three letters of an unknown id. */
+export function privilegeShort(id: string): string {
+  return PRIVILEGE_SHORT[id] ?? id.slice(0, 3).toUpperCase();
+}
+
 export function privilegeColor(id: string): string {
   return PRIVILEGE_COLORS[id] ?? "#0071E3";
 }

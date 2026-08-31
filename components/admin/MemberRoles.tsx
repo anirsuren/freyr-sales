@@ -12,7 +12,12 @@ import { Modal } from "@/components/ui/Modal";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PrivilegeCards } from "./PrivilegeCards";
-import { privilegeColor, ROLE_PRIVILEGE, type PrivilegeState } from "@/lib/privileges";
+import {
+  privilegeColor,
+  privilegeShort,
+  ROLE_PRIVILEGE,
+  type PrivilegeState,
+} from "@/lib/privileges";
 import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -245,7 +250,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
       .map((p) => ({
         id: p.id,
         label: p.label,
-        short: p.label.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase(),
+        short: privilegeShort(p.id),
       }));
   }
 
@@ -274,7 +279,14 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
           <ShieldCheck size={16} strokeWidth={2} className="text-blue-primary" />
-          Member roles
+          {/* "BASE ROLE", NOT "MEMBER ROLES" (Anir, Aug 31: "yes rename it").
+              Two controls on this row decide what somebody can do and both were
+              called roles, so an Offering Owner carrying "Owner" looked fully
+              configured while the privilege table refused her every write. This
+              one is the base a person joins on — the four values the database
+              allows, and the only way to make somebody a real Admin. The ticks
+              beside it add to it. */}
+          Base role
           {/* THE GUIDE SITS WHERE THE ROLES ARE SET (Anir, Aug 30: "I need a
               guide for these roles... when I click it, it should have a pop-up
               that explains the roles"). Beside the heading, so the question
@@ -282,7 +294,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           <RolesGuide />
           <InfoHint
             text={
-              "BD Member, Owner, Solutioning Member or Admin. What each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
+              "The role somebody joins on: BD Member, BD Owner, Solutioning Member or Admin. It is the base — privileges tick on top of it and only ever add.\nAdmin is the one thing only this can grant: much of the app checks it directly.\nOnly an admin can change it, and the server refuses it from anyone else."
             }
           />
         </p>
@@ -402,7 +414,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                       ROLE_OPTIONS.some((o) => o.value === m.role) ? m.role : "bd_member"
                     }
                     onChange={(next) => setPending({ member: m, nextRole: next })}
-                    ariaLabel={`${m.name}'s workspace role`}
+                    ariaLabel={`${m.name}'s base role`}
                     options={ROLE_OPTIONS}
                   />
                 </div>

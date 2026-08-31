@@ -8,6 +8,7 @@ import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   moduleCreateRefusal,
+  moduleWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 
@@ -69,7 +70,15 @@ export default async function SolutioningPage({
       state={state}
       room={tab === "submissions" || tab === "presentations" ? tab : "requests"}
       meRole={me.role}
-      canCreate={!(await moduleCreateRefusal("/solutioning"))}
+      /* THE ROOM DECIDES WHICH QUESTION (see the note in the API route).
+         Requests is the module's inbound — anybody who may write it may raise
+         one. Submissions and presentations are the work itself, and starting
+         one is the owner's. */
+      canCreate={
+        tab === "submissions" || tab === "presentations"
+          ? !(await moduleCreateRefusal("/solutioning"))
+          : !(await moduleWriteRefusal("/solutioning"))
+      }
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

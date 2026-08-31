@@ -12,6 +12,7 @@ import {
   ROLE_PRIVILEGE,
   VIEW_ALL,
   privilegeColor,
+  privilegeShort,
   privilegesForPerson,
   type PrivilegeState,
 } from "@/lib/privileges";
@@ -200,12 +201,7 @@ export function PeopleSplit() {
       .map((p) => ({
         id: p.id,
         label: p.label,
-        short: p.label
-          .split(/\s+/)
-          .map((w) => w[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase(),
+        short: privilegeShort(p.id),
       }));
   }
 
@@ -282,7 +278,7 @@ export function PeopleSplit() {
               size={14}
               strokeWidth={2}
               aria-hidden="true"
-              className="pointer-events-none absolute left-4.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+              className="pointer-events-none absolute left-[18px] top-1/2 -translate-y-1/2 text-text-tertiary"
             />
             <input
               value={listQuery}
@@ -332,39 +328,34 @@ export function PeopleSplit() {
                       {m.email}
                     </span>
                   )}
+                  {/* A THIRD LINE, NOT A THIRD COLUMN (Anir, Aug 31: "just put
+                      the roles in a third line... you can't be doing this where
+                      you're cutting off stuff"). Beside the name they fought the
+                      email for width and truncated it mid-address. */}
+                  {(() => {
+                    const theirs = privilegesOf(m.name);
+                    if (!theirs.length) return null;
+                    return (
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        {theirs.map((p) => (
+                          <span
+                            key={p.id}
+                            title={p.label}
+                            aria-label={p.label}
+                            style={{
+                              backgroundColor: `${privilegeColor(p.id)}1F`,
+                              color: privilegeColor(p.id),
+                            }}
+                            className="rounded px-1.5 py-[1px] text-[9.5px] font-bold"
+                          >
+                            {p.short}
+                          </span>
+                        ))}
+                      </span>
+                    );
+                  })()}
                 </span>
-                {/* WHAT THEY HOLD, BEFORE YOU CLICK (Anir, Aug 31: "without
-                    even clicking on it, I want icons... for these 10 roles we
-                    have icons for each"). Each privilege has a colour already;
-                    this is that colour as a dot-sized badge, in the table's
-                    own order, so a person's shape reads at a glance and the
-                    full names are one click away in the panel. Capped, because
-                    somebody holding six should not push the name out. */}
-                {(() => {
-                  const theirs = privilegesOf(m.name);
-                  if (!theirs.length) return null;
-                  const shown = theirs.slice(0, 4);
-                  return (
-                    <span className="flex shrink-0 items-center gap-1">
-                      {shown.map((p) => (
-                        <span
-                          key={p.id}
-                          title={p.label}
-                          aria-label={p.label}
-                          style={{ backgroundColor: `${privilegeColor(p.id)}1F`, color: privilegeColor(p.id) }}
-                          className="flex h-5 w-5 items-center justify-center rounded-md text-[9px] font-bold"
-                        >
-                          {p.short}
-                        </span>
-                      ))}
-                      {theirs.length > shown.length && (
-                        <span className="text-[10px] font-semibold text-text-tertiary">
-                          +{theirs.length - shown.length}
-                        </span>
-                      )}
-                    </span>
-                  );
-                })()}
+
                 {/* SAY IT IN RED, ON THE RIGHT (Anir, Aug 30: "if it's
                     suspended it should be more clear that it's suspended, but
                     like a red thing here, and it has to stay on the right side
@@ -416,7 +407,7 @@ export function PeopleSplit() {
                     next !== selected.role &&
                     setPendingRole({ member: selected, nextRole: next })
                   }
-                  ariaLabel={`${selected.name}'s workspace role`}
+                  ariaLabel={`${selected.name}'s base role`}
                   options={ROLE_OPTIONS}
                 />
               ) : (

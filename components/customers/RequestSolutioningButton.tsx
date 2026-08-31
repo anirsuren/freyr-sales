@@ -20,12 +20,20 @@ import { useToast } from "@/components/ui/Toast";
  * so the request is findable. Only the journey changes.
  */
 export function RequestSolutioningButton({
+  canRequest = true,
   customerId,
   companyName,
   customers,
   opportunities,
   members,
 }: {
+  /**
+   * MAY THEY RAISE ONE. Asking is a write on Solutioning, not a create — see
+   * the note in app/api/solutioning/route.ts. The button had no gate at all,
+   * so if a role's row ever drops to view it would render and fail on submit,
+   * which is the exact shape of the bug this was found next to.
+   */
+  canRequest?: boolean;
   customerId: string;
   companyName: string;
   customers: { id: string; name: string }[];
@@ -40,6 +48,9 @@ export function RequestSolutioningButton({
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  /* Every hook above has run, so bailing here is safe. */
+  if (!canRequest) return null;
+
 
   return (
     <>

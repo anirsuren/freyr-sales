@@ -288,6 +288,7 @@ export default async function CustomerDetailPage({
               page (Anir, Aug 28: "when I press 'Request Solutioning', why does
               it take me to another page?"). Same dialog the leads page uses. */}
           <RequestSolutioningButton
+            canRequest={!(await moduleWriteRefusal("/solutioning"))}
             customerId={customer.id}
             companyName={customer.company_name}
             customers={solutioningCustomers}
