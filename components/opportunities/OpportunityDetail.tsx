@@ -307,15 +307,8 @@ export function OpportunityDetail({
                     plain text when they may not (Suren, Aug 30: "all the
                     fields have to be editable... this whole screen has to be
                     editable or viewable, so it should follow this"). */}
-                <div className="mt-2.5 space-y-2.5 text-[13px]">
-                  <EditableFact
-                    label="Owner"
-                    value={deal.owner ?? ""}
-                    placeholder="Nobody yet"
-                    canEdit={verdict.mayEdit}
-                    onSave={(v) => saveField({ owner: v.trim() })}
-                  />
-                  <Row label="Offering" value={offeringNames.join(", ") || "None"} />
+                <div className="mt-3 space-y-4 text-[13px]">
+                  <Group label="Money">
                   <EditableFact
                     label="Value"
                     value={value ? String(value) : ""}
@@ -334,13 +327,25 @@ export function OpportunityDetail({
                   />
                   <EditableFact
                     label="Estimated TCV"
-                    value={deal.estimatedTcv === undefined ? "" : String(deal.estimatedTcv)}
+                    value={
+                      deal.estimatedTcv === undefined
+                        ? tcv === undefined
+                          ? ""
+                          : String(tcv)
+                        : String(deal.estimatedTcv)
+                    }
                     kind="money"
                     canEdit={verdict.mayEdit}
-                    placeholder={tcv === undefined ? "Not set" : `${money(tcv)} — the deal's value`}
+                    hint={
+                      deal.estimatedTcv === undefined && tcv !== undefined
+                        ? "follows the deal's value"
+                        : undefined
+                    }
                     format={(v) => money(Number(v))}
                     onSave={(v) => saveField({ estimatedTcv: num(v) })}
                   />
+                  </Group>
+                  <Group label="Where it stands">
                   <EditableFact
                     label="Confidence"
                     value={deal.confidence === undefined ? "" : String(deal.confidence)}
@@ -376,14 +381,25 @@ export function OpportunityDetail({
                     canEdit={verdict.mayEdit}
                     onSave={(v) => saveField({ estSignDate: v })}
                   />
-                  <Row
-                    label="Created"
-                    value={new Date(deal.createdAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  />
+                  </Group>
+                  <Group label="On the record">
+                    <EditableFact
+                      label="Owner"
+                      value={deal.owner ?? ""}
+                      placeholder="Nobody yet"
+                      canEdit={verdict.mayEdit}
+                      onSave={(v) => saveField({ owner: v.trim() })}
+                    />
+                    <Row label="Offering" value={offeringNames.join(", ") || "None"} />
+                    <Row
+                      label="Created"
+                      value={new Date(deal.createdAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    />
+                  </Group>
                 </div>
               </section>
             </aside>
@@ -402,13 +418,29 @@ export function OpportunityDetail({
   );
 }
 
+/** A titled run of facts. Money, state and provenance are different questions
+ *  and were reading as one undifferentiated list. */
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+        {label}
+      </p>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-[12px] text-text-tertiary">{label}</dt>
-      <dd className={cn("min-w-0 truncate text-right font-semibold text-text-primary")}>
+    <div className="flex items-baseline justify-between gap-3 py-0.5">
+      <span className="shrink-0 text-[12px] text-text-tertiary">{label}</span>
+      <span
+        className="min-w-0 truncate text-right font-semibold text-text-primary"
+        title={value}
+      >
         {value}
-      </dd>
+      </span>
     </div>
   );
 }

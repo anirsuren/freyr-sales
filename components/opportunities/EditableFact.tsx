@@ -31,6 +31,7 @@ export function EditableFact({
   value,
   kind = "text",
   placeholder = "Not set",
+  hint,
   canEdit,
   options,
   onSave,
@@ -48,6 +49,14 @@ export function EditableFact({
   onSave: (next: string) => Promise<string | null>;
   /** How to draw the value at rest. */
   format?: (v: string) => string;
+  /**
+   * A quiet second line under the value — where a number comes from, what a
+   * blank one will fall back to. It used to be crammed into the placeholder,
+   * so an unset TCV rendered as "$298K — the deal's val…" in the value column:
+   * truncated, indistinguishable from a typed figure, and wider than the
+   * column it sat in (Anir, Aug 30: "there's so many things wrong with this").
+   */
+  hint?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -86,22 +95,30 @@ export function EditableFact({
 
   if (!canEdit)
     return (
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-baseline justify-between gap-3 py-0.5">
         <span className="shrink-0 text-[12px] text-text-tertiary">{label}</span>
-        <span
-          className={cn(
-            "min-w-0 truncate text-right font-semibold",
-            value ? "text-text-primary" : "text-text-tertiary"
+        <span className="min-w-0 text-right">
+          <span
+            className={cn(
+              "block truncate",
+              value ? "font-semibold text-text-primary" : "text-text-tertiary"
+            )}
+            title={shown}
+          >
+            {shown}
+          </span>
+          {hint && (
+            <span className="block truncate text-[11px] text-text-tertiary">
+              {hint}
+            </span>
           )}
-        >
-          {shown}
         </span>
       </div>
     );
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-baseline justify-between gap-3 py-0.5">
         <span className="shrink-0 text-[12px] text-text-tertiary">{label}</span>
         {editing ? (
           <span className="flex min-w-0 flex-1 items-center justify-end gap-1">
@@ -177,13 +194,21 @@ export function EditableFact({
             aria-label={`Edit ${label}`}
             className="group flex min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-right transition-colors hover:bg-surface"
           >
-            <span
-              className={cn(
-                "min-w-0 truncate font-semibold",
-                value ? "text-text-primary" : "text-text-tertiary"
+            <span className="min-w-0 text-right">
+              <span
+                className={cn(
+                  "block truncate",
+                  value ? "font-semibold text-text-primary" : "text-text-tertiary"
+                )}
+                title={shown}
+              >
+                {shown}
+              </span>
+              {hint && (
+                <span className="block truncate text-[11px] text-text-tertiary">
+                  {hint}
+                </span>
               )}
-            >
-              {shown}
             </span>
             <Pencil
               size={11}
