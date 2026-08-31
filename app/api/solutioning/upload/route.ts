@@ -30,15 +30,31 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
 
-  const requestId = new URL(req.url).searchParams.get("requestId") ?? "";
-  if (!requestId)
-    return NextResponse.json({ error: "Which request?" }, { status: 400 });
+  const params = new URL(req.url).searchParams;
+  const requestId = params.get("requestId") ?? "";
 
-  /* The request must exist before anything is stored, so a typo cannot leave
-     an orphan file in the bucket that nothing will ever point at. */
-  const state = await readSolutioning();
-  if (!state.requests.some((r) => r.id === requestId))
-    return NextResponse.json({ error: "That request is gone." }, { status: 404 });
+  /* THE FILE ARRIVES BEFORE THE REQUEST DOES (Suren, Aug 31: "I will get the
+     RFP template... I should have the option to upload documents related to
+     this request"). He is describing the NEW-request dialog, where nothing has
+     an id yet, so a draft upload parks the bytes under their own namespace and
+     hands back a docsPath. The create call then attaches that path to the
+     request it just made.
+
+     The access gate above already ran, and a path nobody ends up attaching is
+     simply never read: every download resolves through the document ON a
+     request, never through a raw path in a query string. */
+  const draft = params.get("draft") === "1";
+
+  if (!draft) {
+    if (!requestId)
+      return NextResponse.json({ error: "Which request?" }, { status: 400 });
+
+    /* The request must exist before anything is stored, so a typo cannot leave
+       an orphan file in the bucket that nothing will ever point at. */
+    const state = await readSolutioning();
+    if (!state.requests.some((r) => r.id === requestId))
+      return NextResponse.json({ error: "That request is gone." }, { status: 404 });
+  }
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
@@ -48,7 +64,7 @@ export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   try {
     const stored = await uploadMaterialFile(
-      solutioningNamespace(requestId),
+      solutioningNamespace(draft ? "drafts" : requestId),
       file,
       me.name
     );

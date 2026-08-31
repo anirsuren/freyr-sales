@@ -41,7 +41,7 @@ import { CopyMaterialLinkButton } from "@/components/offerings/CopyMaterialLinkB
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
 import {
   ACCESS_LEVELS,
@@ -1478,13 +1478,18 @@ export function MaterialsSection({
                               </span>
                             )}
                           </span>
-                          <span className="mt-0.5 block text-[10.5px] text-text-tertiary">
+                          <span className="mt-0.5 block whitespace-nowrap text-[10.5px] text-text-tertiary">
                             {uploadDate ? (
+                              /* THE TIME, NOT JUST THE DAY (Anir, Aug 31: "I
+                                 want the time here too, I want the time when I
+                                 uploaded it"). Several versions of one deck
+                                 land in an afternoon and the date alone cannot
+                                 say which is the one you just replaced. */
                               <time
                                 dateTime={uploadDate}
                                 title={new Date(uploadDate).toLocaleString()}
                               >
-                                {formatDate(uploadDate)}
+                                {formatDateTime(uploadDate)}
                               </time>
                             ) : (
                               "Date not recorded"
@@ -1739,7 +1744,7 @@ export function MaterialsSection({
                         className="shrink-0 tnum"
                       >
                         {material.addedBy ? "· Uploaded " : "Uploaded "}
-                        {formatDate(uploadDate)}
+                        {formatDateTime(uploadDate)}
                       </time>
                     ) : (
                       <span className="shrink-0">Upload date not recorded</span>

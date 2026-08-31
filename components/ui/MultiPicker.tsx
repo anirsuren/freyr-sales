@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon, Plus } from "lucide-react";
 import {
   floatingMenuStyle,
   menuMotionVars,
@@ -130,6 +130,7 @@ function DropdownPicker({
   selected,
   onToggle,
   placeholder,
+  onCreate,
   emptyLabel,
   ariaLabel,
   single = false,
@@ -140,6 +141,18 @@ function DropdownPicker({
   selected: string[];
   onToggle: (id: string) => void;
   placeholder: string;
+  /**
+   * ADDING SOMEBODY WHO IS NOT ON THE LIST.
+   *
+   * Anir, Aug 31: "the head of RA might bring in a couple of members from his
+   * team into the meeting" — people you have never met and who are on nobody's
+   * contact list. Without this the picker is a dead end for exactly the case
+   * that happens most, and its empty state told you to go and create contact
+   * records for two strangers before you could record a meeting.
+   *
+   * Given, a typed name that matches nothing offers itself as a row.
+   */
+  onCreate?: (label: string) => void;
   emptyLabel: string;
   ariaLabel?: string;
   /** One pick closes the menu; the trigger shows the pick, not chips. */
@@ -441,7 +454,25 @@ function DropdownPicker({
               </div>
             </div>
 
-            {options.length === 0 ? (
+            {/* The typed name, when it is nobody already on the list. Sits
+                above the hits so it is reachable on an empty list too. */}
+            {onCreate && query.trim().length > 1 &&
+              !options.some(
+                (o) => o.label.trim().toLowerCase() === query.trim().toLowerCase()
+              ) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCreate(query.trim());
+                    setQuery("");
+                  }}
+                  className="mb-0.5 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
+                >
+                  <Plus size={14} strokeWidth={2.4} className="shrink-0" />
+                  Add “{query.trim()}”
+                </button>
+              )}
+            {options.length === 0 && !(onCreate && query.trim()) ? (
               <p className="px-2.5 py-2 text-[12px] text-text-tertiary">{emptyLabel}</p>
             ) : searching || !grouped ? (
               // Typing shows every matching option at once, flat — search
@@ -547,6 +578,7 @@ export function MultiPicker({
   selected,
   onToggle,
   placeholder,
+  onCreate,
   emptyLabel,
   variant = "inline",
   ariaLabel,
@@ -558,6 +590,8 @@ export function MultiPicker({
   selected: string[];
   onToggle: (id: string) => void;
   placeholder: string;
+  /** Dropdown variant only: offer a typed name that matches nothing. */
+  onCreate?: (label: string) => void;
   emptyLabel: string;
   /** "dropdown" = closed ColorSelect-style trigger + floating grouped menu. */
   variant?: "inline" | "dropdown";
@@ -594,6 +628,7 @@ export function MultiPicker({
         selected={selected}
         onToggle={onToggle}
         placeholder={placeholder}
+        onCreate={onCreate}
         emptyLabel={emptyLabel}
         ariaLabel={ariaLabel}
         single={single}

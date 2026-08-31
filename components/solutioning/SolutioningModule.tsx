@@ -9,17 +9,25 @@ import {
   Briefcase,
   CalendarClock,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronRight,
   CircleDashed,
   ClipboardList,
+  File,
+  FileSpreadsheet,
   FileText,
   Inbox,
+  Loader2,
   PanelsTopLeft,
   Plus,
+  Presentation,
   Rows3,
   Sparkles,
   Timer,
+  Trash2,
+  UploadCloud,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
@@ -1237,6 +1245,56 @@ const DOC_TAB_WORDS: [import("@/lib/solutioning").DocCategory, string][] = [
 
 /* ------------------------------------------------------------- creation */
 
+/**
+ * WHAT KIND OF FILE THIS IS, AT A GLANCE.
+ *
+ * Suren, Aug 31: "An RFP template is nothing but a list of questions. That
+ * could be a Word document, a PDF, Excel, PowerPoint. It could be anything."
+ * Four formats landing on one request is the normal case here, not the edge
+ * one, so each carries its own colour and its own icon rather than four
+ * identical rows somebody has to read filenames to tell apart.
+ */
+const DOC_KINDS: { match: RegExp; color: string; icon: LucideIcon }[] = [
+  { match: /\.pdf$/i, color: "#C4342B", icon: FileText },
+  { match: /\.(docx?|rtf|txt)$/i, color: "#2B579A", icon: FileText },
+  { match: /\.(xlsx?|csv)$/i, color: "#1D6F42", icon: FileSpreadsheet },
+  { match: /\.(pptx?|key)$/i, color: "#D24726", icon: Presentation },
+];
+
+function docKind(name: string): { color: string; icon: LucideIcon } {
+  /* Blue, not grey, for anything else: grey reads as disabled, and a zip he
+     just attached is not disabled. */
+  return (
+    DOC_KINDS.find((k) => k.match.test(name)) ?? {
+      color: "#0071E3",
+      icon: File,
+    }
+  );
+}
+
+/** What the picker will take, said in the file dialog itself so the OS greys
+ *  out anything that would only fail on the way up. */
+const DOC_ACCEPT =
+  ".pdf,.doc,.docx,.rtf,.txt,.xls,.xlsx,.csv,.ppt,.pptx,.key,.zip";
+
+/** A file the requester has picked, on its way up or already there. */
+type StagedDoc = {
+  /** Local only: the React key, and the handle for taking a row back off. */
+  key: string;
+  name: string;
+  size: number;
+  status: "uploading" | "done" | "error";
+  docsPath?: string;
+  fileName?: string;
+  error?: string;
+};
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 /** Exported so the Leads page can raise a request IN PLACE (Anir, Aug 27:
  *  "it takes me to another place... just leave me there and just give me
  *  the pop-up"). */
@@ -1312,8 +1370,70 @@ export function NewRequestDialog({
       : ""
   );
   const [saving, setSaving] = useState(false);
+  const [docs, setDocs] = useState<StagedDoc[]>([]);
+  const [dragging, setDragging] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId) ?? null;
+
+  /**
+   * THE FILE GOES UP WHILE HE IS STILL TYPING.
+   *
+   * Uploading on pick rather than on submit means a 40MB RFP is already in
+   * storage by the time he reaches the Create button, and a file that will not
+   * upload says so while there is still something to be done about it — rather
+   * than failing at the end, on the click that was supposed to be the easy one.
+   *
+   * Nothing is attached to anything yet: these come back as draft paths, and
+   * the create call points the new request at them. Close the dialog instead
+   * and they are simply never referenced.
+   */
+  async function stageFiles(list: FileList | null) {
+    const picked = Array.from(list ?? []);
+    if (!picked.length) return;
+    for (const file of picked) {
+      const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
+      setDocs((cur) => [
+        ...cur,
+        { key, name: file.name, size: file.size, status: "uploading" },
+      ]);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/solutioning/upload?draft=1", {
+          method: "POST",
+          body: form,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.docsPath)
+          throw new Error(data?.error || "That file did not upload.");
+        setDocs((cur) =>
+          cur.map((d) =>
+            d.key === key
+              ? {
+                  ...d,
+                  status: "done",
+                  docsPath: data.docsPath as string,
+                  fileName: (data.fileName as string) ?? d.name,
+                }
+              : d
+          )
+        );
+      } catch (e) {
+        setDocs((cur) =>
+          cur.map((d) =>
+            d.key === key
+              ? {
+                  ...d,
+                  status: "error",
+                  error:
+                    e instanceof Error ? e.message : "That file did not upload.",
+                }
+              : d
+          )
+        );
+      }
+    }
+  }
 
   /* Contacts belong to the chosen account, so they load when it is chosen —
      "leads new list is not required" (Suren): these ARE the leads. */
@@ -1339,11 +1459,12 @@ export function NewRequestDialog({
       (customer && o.customer === customer.name)
   );
 
+  /* A file still on its way up has no path yet, so creating now would drop it.
+     Wait the two seconds rather than lose the document he just chose. */
+  const uploading = docs.some((d) => d.status === "uploading");
+
   const canSave =
-    !!kind &&
-    title.trim().length > 0 &&
-    !!customer &&
-    (kind !== "meeting" || true);
+    !!kind && title.trim().length > 0 && !!customer && !uploading;
 
   return (
     <Modal
@@ -1713,6 +1834,149 @@ export function NewRequestDialog({
             />
           </label>
 
+          {/* THE DOCUMENTS THAT COME WITH IT.
+              
+              Suren, Aug 31: "If someone is putting a request, I am putting a
+              request for, let's say, an RFP. If they upload, where will that
+              RFP be saved?" — and then, plainly: "I should have the option to
+              upload documents related to this request."
+
+              It used to have no answer here. The request was created empty and
+              the file had to be added afterwards from the detail page, which
+              meant the one document the whole request is ABOUT arrived last.
+              Now it goes on at the same moment as the title, and lands on the
+              record as a Customer document. */}
+          <div>
+            <span className="text-[12px] font-semibold text-text-primary">
+              Documents
+              <span className="ml-1.5 font-normal text-text-secondary">
+                The RFP, the questionnaire, whatever they sent you.
+              </span>
+            </span>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                void stageFiles(e.dataTransfer.files);
+              }}
+              className={cn(
+                "mt-1.5 rounded-lg border border-dashed transition-colors",
+                dragging
+                  ? "border-blue-primary bg-blue-light/50"
+                  : "border-border-light bg-surface/40"
+              )}
+            >
+              <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                  <UploadCloud size={16} strokeWidth={2} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12.5px] font-semibold text-text-primary">
+                    Choose files, or drop them here
+                  </span>
+                  {/* His four formats, named. "It could be anything" is true of
+                      the storage, but a requester still wants to know before
+                      he drags. */}
+                  <span className="block text-[11.5px] text-text-secondary">
+                    Word, PDF, Excel, PowerPoint — as many as you need.
+                  </span>
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept={DOC_ACCEPT}
+                  className="sr-only"
+                  onChange={(e) => {
+                    void stageFiles(e.target.files);
+                    /* Clear it, or picking the same file twice in a row does
+                       nothing at all. */
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
+              {docs.length > 0 && (
+                /* A FIXED SHELF THAT FILLS UP, rather than one that grows. A
+                   list that stretches the dialog with every file walks the
+                   Create button down the screen under his cursor. */
+                <div className="max-h-[126px] overflow-y-auto border-t border-border-light/70 px-2 py-1">
+                  {docs.map((d) => {
+                    const meta = docKind(d.name);
+                    const Icon = meta.icon;
+                    return (
+                      <div
+                        key={d.key}
+                        className="flex items-center gap-2.5 px-1.5 py-1.5"
+                      >
+                        <span
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
+                          style={{
+                            background: `${meta.color}14`,
+                            color: meta.color,
+                          }}
+                        >
+                          <Icon size={13} strokeWidth={2} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                            {d.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "block text-[11px]",
+                              d.status === "error"
+                                ? "text-error"
+                                : "text-text-tertiary"
+                            )}
+                          >
+                            {d.status === "error"
+                              ? d.error
+                              : d.status === "uploading"
+                                ? "Uploading…"
+                                : fileSize(d.size)}
+                          </span>
+                        </span>
+                        {d.status === "uploading" && (
+                          <Loader2
+                            size={14}
+                            aria-label="Uploading"
+                            className="shrink-0 animate-spin text-blue-primary"
+                          />
+                        )}
+                        {d.status === "done" && (
+                          <Check
+                            size={14}
+                            strokeWidth={2.6}
+                            aria-label="Uploaded"
+                            className="shrink-0 text-success"
+                          />
+                        )}
+                        {/* Acts directly, and only ever on a file that is not
+                            attached to anything yet: there is no record to
+                            confirm against until he presses Create. */}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${d.name}`}
+                          onClick={() =>
+                            setDocs((cur) => cur.filter((x) => x.key !== d.key))
+                          }
+                          className="shrink-0 cursor-pointer rounded p-1 text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                        >
+                          <Trash2 size={13} strokeWidth={2} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex items-center justify-between gap-2 pt-1">
             <button
               type="button"
@@ -1752,13 +2016,25 @@ export function NewRequestDialog({
                   neededBy: neededBy || undefined,
                   meetingAt: meetingAt || undefined,
                   attendees: attendees.length ? attendees : undefined,
+                  /* Only the ones that actually landed. A row that failed is
+                     still on screen saying so, and carrying it here would put
+                     a document on the request with nothing behind it. */
+                  documents: docs
+                    .filter((d) => d.status === "done" && d.docsPath)
+                    .map((d) => ({
+                      name: d.name,
+                      docsPath: d.docsPath,
+                      fileName: d.fileName ?? d.name,
+                    })),
                 });
                 if (!ok) setSaving(false);
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus size={14} strokeWidth={2.4} />
-              {saving
+              {uploading
+                ? "Uploading…"
+                : saving
                 ? "Creating…"
                 : directKind
                   ? `Create the ${KIND_META[directKind].label.toLowerCase()}`

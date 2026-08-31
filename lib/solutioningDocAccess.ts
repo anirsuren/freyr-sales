@@ -1,7 +1,6 @@
 import "server-only";
 
-import { getCurrentUser } from "@/lib/currentUser";
-import { canAccessModule } from "@/lib/moduleAccess";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { readSolutioning, type SolutionDoc } from "@/lib/solutioning";
 
 /**
@@ -24,8 +23,12 @@ export async function reachableSolutioningDoc(
   requestId: string,
   docId: string
 ): Promise<DocAccess> {
-  const me = await getCurrentUser();
-  if (!canAccessModule("/solutioning", me.role))
+  /* THE PRIVILEGE TABLE, NOT THE ROLE ALONE. canOpenModule's own note names
+     this exact failure: "a BD Member the table grants Meetings write was told
+     'Not available on this account' by the route's own guard." This file was
+     never moved over, so a Sales user could raise a request and then be
+     refused the file on it. One question, one answer. */
+  if (!(await canOpenModule("/solutioning")))
     return { ok: false, error: "Not available on this account.", status: 403 };
 
   const state = await readSolutioning();
@@ -57,8 +60,16 @@ export function solutioningNamespace(requestId: string): string {
   return `solutioning/${requestId}`;
 }
 
-/** May this person add or remove files on this request? */
+/**
+ * MAY THIS PERSON ADD OR REMOVE FILES ON THIS REQUEST?
+ *
+ * The SAME question the record itself asks. Attaching the RFP to a request is
+ * part of making the request (Suren, Aug 31: "I should have the option to
+ * upload documents related to this request"), so whoever may write a
+ * solutioning record may write a file onto it — asking a stricter question
+ * here produced a user who could create a request and then not put the one
+ * document it is about anywhere.
+ */
 export async function canWriteSolutioning(): Promise<boolean> {
-  const me = await getCurrentUser();
-  return canAccessModule("/solutioning", me.role);
+  return (await moduleWriteRefusal("/solutioning")) === null;
 }

@@ -178,6 +178,41 @@ export async function POST(req: NextRequest) {
            doing the work). */
         ...(type !== "request" ? { owner: me.name } : {}),
       });
+
+      /* THE DOCUMENTS HE PICKED ON THE FORM, ATTACHED THE MOMENT THE RECORD
+         EXISTS (Suren, Aug 31: "If they upload, where will that RFP be
+         saved?"). The bytes went up as drafts while he was still filling the
+         form, so all that is left here is to point the new request at them.
+
+         They land as CUSTOMER documents: what a requester attaches at this
+         moment is the thing the customer sent him — an RFP template, a
+         questionnaire, a list of questions — never something Solutioning has
+         produced, which is what the other three shelves are for.
+
+         A bad entry must not cost him the request he just created, so a failed
+         attach is skipped rather than thrown: the record survives with the
+         files that did work, and anything missing can be added on it. */
+      const staged = Array.isArray(body.documents) ? body.documents : [];
+      for (const entry of staged.slice(0, 20)) {
+        const d = (entry ?? {}) as {
+          name?: unknown;
+          docsPath?: unknown;
+          fileName?: unknown;
+        };
+        const docsPath = typeof d.docsPath === "string" ? d.docsPath : "";
+        const fileName = typeof d.fileName === "string" ? d.fileName : undefined;
+        const name = String(d.name ?? fileName ?? "").trim();
+        if (!docsPath || !name) continue;
+        await addDocument({
+          requestId: request.id,
+          category: "customer",
+          name,
+          docsPath,
+          fileName,
+          by: me.name,
+        }).catch(() => undefined);
+      }
+
       return NextResponse.json({ ok: true, request, state: await readSolutioning() });
     }
 

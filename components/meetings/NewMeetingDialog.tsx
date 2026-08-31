@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { FormRoom } from "@/components/ui/FormRoom";
 import { Field, Input } from "@/components/ui/Input";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { useToast } from "@/components/ui/Toast";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { MEETING_TYPES, type Meeting } from "@/lib/meetings";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
@@ -56,6 +57,7 @@ export function NewMeetingDialog({
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
 }) {
+  const { toast } = useToast();
   const editing = !!meeting;
   const [title, setTitle] = useState(meeting?.title ?? "");
   const [type, setType] = useState<string>(
@@ -70,6 +72,73 @@ export function NewMeetingDialog({
   const [contactIds, setContactIds] = useState<string[]>(
     meeting?.contactIds ?? []
   );
+  /**
+   * PEOPLE WHO ARE NOT ON FILE (Anir, Aug 31: "the head of RA might bring in a
+   * couple of members from his team into the meeting").
+   *
+   * The picker only offered contacts already recorded on the account, so the
+   * most ordinary case — somebody brings two colleagues you have never met —
+   * had no answer but "go and create two contact records first", and on an
+   * account with nobody on file the field was a dead end entirely.
+   *
+   * These are guests on THIS meeting, not contacts on the account: the person
+   * who came once should not quietly become a permanent contact record nobody
+   * chose to create. They ride along in contactNames, which is where the
+   * meeting already keeps the names it displays.
+   */
+  /** Contacts created from inside this dialog, appended to the picker. */
+  const [addedContacts, setAddedContacts] = useState<
+    { id: string; name: string; title?: string }[]
+  >([]);
+  const [addingContact, setAddingContact] = useState(false);
+
+  /**
+   * ADD THE PERSON WITHOUT LEAVING (Anir, Aug 31: "instead of making the user
+   * go back to Contacts, add a contact, and then come back here to add a
+   * meeting, there should be a quicker way to add it directly").
+   *
+   * The name goes to the account as a real contact, so the person is on file
+   * for next time rather than being a label that only this meeting remembers.
+   * Everything else about them — title, email, LinkedIn — can be filled in on
+   * the customer page later; a name is the only thing the endpoint requires,
+   * and the only thing somebody has to hand mid-meeting.
+   */
+  async function addContact(name: string) {
+    if (!customerId || addingContact) return;
+    setAddingContact(true);
+    try {
+      const res = await fetch(`/api/customers/${customerId}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: name }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.contact?.id) {
+        toast(data?.error || "Could not add that contact.", "error");
+        return;
+      }
+      const c = data.contact;
+      setAddedContacts((cur) => [
+        ...cur,
+        { id: c.id, name: c.full_name ?? name, title: c.job_title ?? undefined },
+      ]);
+      setContactIds((cur) => [...cur, c.id]);
+      toast(`${c.full_name ?? name} added to this account.`);
+    } catch {
+      toast("Could not add that contact.", "error");
+    } finally {
+      setAddingContact(false);
+    }
+  }
+
+  const [guestNames, setGuestNames] = useState<string[]>(() => {
+    const known = new Set(
+      (meeting?.contactIds ?? [])
+        .map((id) => contacts.find((c) => c.id === id)?.name)
+        .filter(Boolean) as string[]
+    );
+    return (meeting?.contactNames ?? []).filter((n) => !known.has(n));
+  });
   const [attendees, setAttendees] = useState<string[]>(
     meeting?.attendees ?? [meName]
   );
@@ -250,30 +319,56 @@ export function NewMeetingDialog({
           </Field>
           <div className="mt-3">
             <Field label="Their people in the room">
-              {theirContacts.length === 0 ? (
+              {!customerId ? (
                 <p className="text-[12.5px] text-text-secondary">
-                  {customerId
-                    ? "Nobody is on file at this account yet. Add contacts on the customer page."
-                    : "Pick the account first."}
+                  Pick the account first.
                 </p>
               ) : (
-                <MultiPicker
-                  variant="dropdown"
-                  options={theirContacts.map((c) => ({
-                    id: c.id,
-                    label: c.name,
-                    sub: c.title,
-                    avatarName: c.name,
-                  }))}
-                  selected={contactIds}
-                  onToggle={(id) =>
-                    setContactIds((cur) =>
-                      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-                    )
-                  }
-                  placeholder="Pick their attendees…"
-                  emptyLabel="Nobody on file."
-                />
+                <>
+                  <MultiPicker
+                    variant="dropdown"
+                    options={[
+                      ...[...theirContacts, ...addedContacts].map((c) => ({
+                        id: c.id,
+                        label: c.name,
+                        sub: c.title,
+                        avatarName: c.name,
+                      })),
+                      /* Guests sit in the same list so the field reads as one
+                         set of people, not contacts-plus-an-afterthought. */
+                      ...guestNames.map((n) => ({
+                        id: `guest:${n}`,
+                        label: n,
+                        sub: "Not on file",
+                        avatarName: n,
+                      })),
+                    ]}
+                    selected={[
+                      ...contactIds,
+                      ...guestNames.map((n) => `guest:${n}`),
+                    ]}
+                    onToggle={(id) => {
+                      if (id.startsWith("guest:")) {
+                        const name = id.slice(6);
+                        setGuestNames((cur) => cur.filter((n) => n !== name));
+                        return;
+                      }
+                      setContactIds((cur) =>
+                        cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+                      );
+                    }}
+                    onCreate={(name) => void addContact(name)}
+                    placeholder="Pick or type their attendees…"
+                    
+                    emptyLabel="Nobody on file yet — type a name to add them."
+                  />
+                  {theirContacts.length === 0 && (
+                    <p className="mt-1 text-[11.5px] text-text-tertiary">
+                      Nobody is on file at this account. Type a name to add them
+                      to this meeting.
+                    </p>
+                  )}
+                </>
               )}
             </Field>
           </div>
@@ -394,9 +489,12 @@ export function NewMeetingDialog({
                 customerId,
                 customer: customer?.name ?? "",
                 contactIds,
-                contactNames: contactIds
-                  .map((id) => contacts.find((c) => c.id === id)?.name)
-                  .filter(Boolean),
+                contactNames: [
+                  ...contactIds
+                    .map((id) => contacts.find((c) => c.id === id)?.name)
+                    .filter(Boolean),
+                  ...guestNames,
+                ],
                 opportunityIds,
                 opportunityLabels: opportunityIds
                   .map((id) => opportunities.find((o) => o.id === id)?.label)
