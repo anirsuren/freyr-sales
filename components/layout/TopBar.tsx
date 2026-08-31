@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { AccessHint } from "@/components/layout/AccessHint";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -369,6 +370,11 @@ export function TopBar({
           the button next to my name doesn't even work, remove that one").
           Each page owns its own create button, where the context is. */}
       <div className="flex items-center gap-1.5">
+        {/* WHAT YOU MAY DO ON THIS PAGE. First in the row because it is about
+            the page you are on rather than about the app — and it is the one
+            thing here that answers a question people otherwise have to guess
+            at from which buttons happen to be missing. */}
+        <AccessHint />
         {onAgentToggle && (
           <button
             data-tour="agent-assistant"

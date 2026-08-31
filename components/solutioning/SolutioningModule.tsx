@@ -39,6 +39,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
@@ -143,6 +144,10 @@ export function SolutioningModule({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: string;
+    ref: string;
+  } | null>(null);
   const search = useSearchParams();
   const [state, setState] = useState(initial);
   const [query, setQuery] = useState("");
@@ -707,9 +712,16 @@ export function SolutioningModule({
                   <th className="w-[10%] px-4 py-2.5">Needed by</th>
                   <th className="w-[12%] px-4 py-2.5">Owner</th>
                   <th className="w-[10%] px-4 py-2.5">Status</th>
-                  {/* The fold column. Unlabelled, like every other table whose
-                      last column is the chevron. */}
-                  <th className="w-[44px] px-2 py-2.5" aria-label="Expand" />
+                  {/* AN ACTIONS COLUMN, NAMED AND LEFT-ALIGNED (Anir, Aug 31:
+                      "you need an actions column at the end... and make sure
+                      it's aligned properly since you always fuck that up").
+
+                      It was an unlabelled 44px sliver, so the two controls in
+                      it read as icons floating off the end of Status rather
+                      than as a column with a job. Header and cells both start
+                      at the left edge, which is the standing rule for this
+                      column everywhere in the app. */}
+                  <th className="w-[110px] px-4 py-2.5 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -731,6 +743,15 @@ export function SolutioningModule({
                       })
                     }
                     onPickUp={() => post({ op: "pick-up", requestId: r.id }, r.id)}
+                    /* THE SAME RULE THE ROUTE APPLIES: an admin, or the person
+                       who raised it while nothing has started. Anyone else has
+                       Cancel on the record instead — cancelling keeps the
+                       history, deleting does not. */
+                    onDelete={
+                      meRole === "admin" || r.status === "initiated"
+                        ? () => setConfirmDelete({ id: r.id, ref: r.ref })
+                        : undefined
+                    }
                   />
                 ))}
               </tbody>
@@ -744,6 +765,24 @@ export function SolutioningModule({
           rollups still exist on each person's own profile page. */}
       </SolutioningTabs>
 
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete)
+            void post({ op: "delete", requestId: confirmDelete.id }, confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+        title={`Delete ${confirmDelete?.ref}?`}
+        body={
+          <>
+            This removes <b>{confirmDelete?.ref}</b> and its documents for
+            everyone. If the work simply stopped, cancel it instead — a
+            cancelled record stays in history.
+          </>
+        }
+        confirmLabel="Delete it"
+      />
       {creating && (
         <NewRequestDialog
           room={room}
@@ -794,6 +833,7 @@ function RequestRow({
   open,
   onToggle,
   onPickUp,
+  onDelete,
   hideKindLabel = false,
   room,
 }: {
@@ -808,6 +848,8 @@ function RequestRow({
   open: boolean;
   onToggle: () => void;
   onPickUp: () => void;
+  /** Absent when this person may not delete this row — see the note above. */
+  onDelete?: () => void;
 }) {
   const overdue =
     r.neededBy && r.status !== "completed"
@@ -962,8 +1004,8 @@ function RequestRow({
       <td className="px-4 py-3.5">
         <StatusPill status={r.status} size="sm" />
       </td>
-      <td className="px-2 py-3.5">
-        <span className="flex items-center gap-0.5">
+      <td className="px-4 py-3.5">
+        <span className="flex items-center justify-start gap-0.5">
         {/* THE DROPDOWN EVERY OTHER TABLE HAS (Anir, Aug 24: "you have a
             table, it looks fine, but there should definitely be a dropdown,
             just like all the other things you do"). The name navigates; the
@@ -997,6 +1039,24 @@ function RequestRow({
         >
           <ArrowUpRight size={15} strokeWidth={2.2} />
         </Link>
+        {/* RED, AND IT ASKS FIRST — the standing rule for every delete in the
+            app. Only drawn for the people the route would actually let
+            through, so it is never a button whose only output is an error. */}
+        {onDelete && (
+          <button
+            type="button"
+            disabled={busy}
+            title={`Delete ${r.ref}`}
+            aria-label={`Delete ${r.ref}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+          >
+            <Trash2 size={15} strokeWidth={2.2} />
+          </button>
+        )}
         </span>
       </td>
     </tr>

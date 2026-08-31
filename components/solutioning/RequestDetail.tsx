@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ClipboardList,
   FilePlus2,
+  Flag,
   Hand,
   CircleDashed,
   ExternalLink,
@@ -49,6 +50,25 @@ import {
   DELIVERABLE_STATUSES,
   REQUEST_PRIORITIES,
 } from "@/lib/solutioning";
+
+/* Priority is the one place a red/amber/green scale IS the meaning — it is a
+   ranking of urgency, not an identity. */
+const PRIORITY_TONE: Record<string, string> = {
+  High: "#B42318",
+  Medium: "#B54708",
+  Low: "#0F766E",
+};
+
+/* The deliverable's own six states, walking from not-started to out-the-door.
+   Cancelled is the only red: it is the one that ends the work. */
+const DELIVERABLE_TONE: Record<string, string> = {
+  Draft: "#64748B",
+  "In progress": "#6D28D9",
+  "Ready for review": "#0071E3",
+  Finalized: "#1A7A35",
+  "Submitted to customer": "#0F766E",
+  Cancelled: "#B42318",
+};
 import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
@@ -555,38 +575,45 @@ export function RequestDetail({
             the parent Request status or another deliverable's status." So it
             sits beside the request pill rather than replacing it, and only on
             the things that have one. */}
-        {r.type !== "request" && (
-          <select
-            aria-label="Deliverable status"
+        {r.type !== "request" && canWrite && (
+          /* The app's own picker, not a browser select. A native dropdown
+             renders as the operating system's grey list — which is how the
+             priority control ended up looking nothing like the coloured pills
+             either side of it (Anir, Aug 31: "that definitely has to look
+             better"). */
+          <ColorSelect
             value={r.deliverableStatus ?? "Draft"}
-            disabled={busy || !canWrite}
-            onChange={(e) => post({ op: "set-deliverable-status", status: e.target.value })}
-            className="h-7 cursor-pointer rounded-full border border-border-light bg-white px-2 text-[12px] font-medium text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {DELIVERABLE_STATUSES.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => void post({ op: "set-deliverable-status", status: v })}
+            ariaLabel="Deliverable status"
+            minWidth={186}
+            options={DELIVERABLE_STATUSES.map((x) => ({
+              value: x,
+              label: x,
+              color: DELIVERABLE_TONE[x],
+              icon: FileText,
+            }))}
+          />
         )}
 
         {/* SOL-012 lists Priority as mandatory metadata, and it is the one field
             a queue is actually sorted by. */}
-        <select
-          aria-label="Priority"
+        {canWrite && (
+        <ColorSelect
           value={r.priority ?? ""}
-          disabled={busy || !canWrite}
-          onChange={(e) => post({ op: "set-priority", priority: e.target.value })}
-          className="h-7 cursor-pointer rounded-full border border-border-light bg-white px-2 text-[12px] font-medium text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <option value="">Priority not set</option>
-          {REQUEST_PRIORITIES.map((x) => (
-            <option key={x} value={x}>
-              {x} priority
-            </option>
-          ))}
-        </select>
+          onChange={(v) => void post({ op: "set-priority", priority: v })}
+          ariaLabel="Priority"
+          minWidth={168}
+          options={[
+            { value: "", label: "Priority not set", color: "#64748B", icon: Flag },
+            ...REQUEST_PRIORITIES.map((x) => ({
+              value: x,
+              label: `${x} priority`,
+              color: PRIORITY_TONE[x],
+              icon: Flag,
+            })),
+          ]}
+        />
+        )}
 
         {/* WHERE THIS CAME FROM (Suren, Aug 26: "you can say the submission is
             related to a request, but even without a request, a submission can
