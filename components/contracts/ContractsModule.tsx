@@ -135,6 +135,7 @@ export function ContractsModule({
   goals,
   meName,
   canWrite,
+  live = true,
 }: {
   state: ContractsState;
   deals: DealOption[];
@@ -143,6 +144,8 @@ export function ContractsModule({
   goals: { id: string; name: string; year: number; type?: string }[];
   meName: string;
   canWrite: boolean;
+  /** Real workspace data, or the demo set. The pill above says which. */
+  live?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -448,7 +451,15 @@ export function ContractsModule({
             </button>
           ) : (
             <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              Sample contracts. Switch to Real mode to work the live list
+{/* SAY THE REAL REASON (Anir, Aug 30: "why does it say sample
+                  leads switch to real mode, but I'm on real mode?"). These
+                  pills were gated on canWrite alone, so every non-admin in
+                  REAL mode was told to switch to the mode they were already
+                  in — an instruction that cannot be followed. Mock and
+                  view-only are two different states. */}
+              {live
+                ? "You can see the contracts here, but not change them"
+                : "Sample contracts. Switch to Real mode to work the live list"}
             </span>
           )
         }

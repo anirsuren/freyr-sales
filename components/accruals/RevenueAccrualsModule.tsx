@@ -150,6 +150,7 @@ export function RevenueAccrualsModule({
   state: initial,
   deals,
   canWrite,
+  live = true,
   opportunities = [],
   customerGroups = [],
   offeringNames = {},
@@ -157,6 +158,8 @@ export function RevenueAccrualsModule({
   state: RevenueAccrualsState;
   deals: DealOption[];
   canWrite: boolean;
+  /** Real workspace data, or the demo set. The pill above says which. */
+  live?: boolean;
   /** The pipeline itself, for the summary. `deals` above is the flat picker
    *  the planner uses and stays as it is. */
   opportunities?: Opportunity[];
@@ -674,7 +677,15 @@ export function RevenueAccrualsModule({
             </div>
           ) : (
             <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              Sample plan. Switch to Real mode to work the live numbers
+{/* SAY THE REAL REASON (Anir, Aug 30: "why does it say sample
+                  leads switch to real mode, but I'm on real mode?"). These
+                  pills were gated on canWrite alone, so every non-admin in
+                  REAL mode was told to switch to the mode they were already
+                  in — an instruction that cannot be followed. Mock and
+                  view-only are two different states. */}
+              {live
+                ? "You can see the plans here, but not change them"
+                : "Sample plan. Switch to Real mode to work the live numbers"}
             </span>
           )
         }
@@ -714,21 +725,13 @@ export function RevenueAccrualsModule({
           warn={missing.length > 0}
           sub="open deals with nothing planned"
         />
-        <StatTile
-          icon={deviation.totalDelta < 0 ? TrendingDown : TrendingUp}
-          label="Moved since last sheet"
-          value={
-            deviation.againstMonth
-              ? `${deviation.totalDelta >= 0 ? "+" : "-"}${formatMoney(Math.abs(deviation.totalDelta))}`
-              : "—"
-          }
-          color={deviation.totalDelta < 0 ? AMBER : "#16A34A"}
-          sub={
-            deviation.againstMonth
-              ? `against ${monthLabel(deviation.againstMonth)}`
-              : "freeze a month to start comparing"
-          }
-        />
+        {/* NO FIFTH CARD. Four fit the row; the fifth wrapped onto a line
+            of its own with three empty columns beside it (Anir, Aug 30: "why
+            the fuck is there a fifth card... it says the fifth card is on its
+            own line"). It was also the emptiest of them — "freeze a month to
+            start comparing" until somebody does — and the Month-on-month gap
+            tab below already answers what moved, with the deals named. */}
+
       </div>
 
       {/* Two views, not two pages: the plans, and the gap. */}

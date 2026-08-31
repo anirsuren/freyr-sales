@@ -56,6 +56,7 @@ export default async function ContractsPage() {
     <ContractsModule
       state={state}
       canWrite={me.role === "admin"}
+      live={getDataMode() === "live"}
       members={members}
       meName={me.name}
       goals={(perf?.goals ?? []).map((g) => ({

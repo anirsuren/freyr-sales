@@ -40,6 +40,7 @@ export default async function RevenueAccrualsPage() {
     <RevenueAccrualsModule
       state={state}
       canWrite={me.role === "admin"}
+      live={getDataMode() === "live"}
       /* THE PIPELINE ITSELF, so the accrual summary can group and total the
          same way Opportunities does (Suren, Aug 30). The DealOption list below
          stays as it is — it feeds the planner, which wants a flat picker. */
