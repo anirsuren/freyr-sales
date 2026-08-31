@@ -178,6 +178,7 @@ function GeographyValue({ value }: { value: string }) {
 }
 
 export function CustomerTabs({
+  canEditFacts,
   customer,
   contacts,
   sessions,
@@ -189,6 +190,17 @@ export function CustomerTabs({
   bands = [],
   bandActions,
 }: {
+  /**
+   * MAY THEY CHANGE THE ACCOUNT'S OWN FACTS.
+   *
+   * The Overview's editable fields were hardcoded on, so "Click a value to
+   * change it" rendered for every role — including Solutioning Member and View
+   * all, whose Customers row is *view*, and whose every save the API refuses.
+   * The same shape as Priyanka's upload button: a control that cannot work
+   * (found Aug 31 walking the detail pages, which the first sweep never
+   * opened).
+   */
+  canEditFacts: boolean;
   customer: Customer;
   contacts: Contact[];
   sessions: PitchSession[];
@@ -850,7 +862,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Company name"
                   value={customer.company_name ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   onSave={async (v) =>
                     (await patchCustomer({ company_name: v })) ? null : "That didn't save."
                   }
@@ -858,7 +870,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Industry"
                   value={customer.industry ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   renderValue={(v) => (
                     <AttributeTag
                       value={v}
@@ -875,7 +887,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Size"
                   value={customer.size_tier ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   /* THE STORED WORDS, NOT INVENTED ONES. Every account holds
                      "small" / "mid" / "large" (lib/utils SIZE_TIER_LABEL), and
                      this picker shipped offering Small / Medium / Large /
@@ -898,7 +910,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Geography"
                   value={customer.geography ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   renderValue={(v) => <GeographyValue value={v} />}
                   onSave={async (v) =>
                     (await patchCustomer({ geography: v })) ? null : "That didn't save."
@@ -907,7 +919,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Website"
                   value={customer.website_url ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   format={(v) => v.replace(/^https?:\/\//, "")}
                   onSave={async (v) =>
                     (await patchCustomer({ website_url: v })) ? null : "That didn't save."
@@ -916,7 +928,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Customer type"
                   value={customer.customer_type ?? ""}
-                  canEdit
+                  canEdit={canEditFacts}
                   onSave={async (v) =>
                     (await patchCustomer({ customer_type: v })) ? null : "That didn't save."
                   }

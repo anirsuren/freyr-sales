@@ -32,7 +32,7 @@ import {
 } from "@/lib/offerings";
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 /** The account's own name in the tab, the way every offering already does it.
  *  A static "Customer" made three open accounts indistinguishable in the tab
@@ -308,6 +308,9 @@ export default async function CustomerDetailPage({
           above it (Suren, Aug 28: "there's no point having two tabs — the
           entire thing should be just one big page"). See CustomerTabs. */}
       <CustomerTabs
+        /* The same question PATCH /api/customers/[id] asks, so the identity
+           fields are editable exactly when a save would land. */
+        canEditFacts={!(await moduleWriteRefusal("/customers"))}
         bands={bands360}
         bandActions={{
           team: (

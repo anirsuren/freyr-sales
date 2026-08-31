@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, FileQuestion, Sparkles } from "lucide-react";
+import { FileQuestion, Sparkles } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
 /**
@@ -104,6 +104,19 @@ export function MaterialReadState({
    * So: a badge that says READ at a glance, the word count behind it on hover,
    * and the size as the only text — which is the fact people actually scan
    * for, and it is short enough never to wrap.
+   *
+   * A SPARKLE, NOT A GREEN TICK (Anir, Aug 31: "this check mark doesn't
+   * instantly portray the fact that it has anything to do with the AI... it
+   * has to look more like something related to AI"). A tick in a green circle
+   * is the universal "done/valid" mark, so it read as "this file uploaded
+   * fine" rather than "Freyr AI has read this". The sparkle in the app's blue
+   * is what already says AI everywhere else — the AI-generated chip on a
+   * customer, the assistant, the agent dock — so the badge now belongs to that
+   * family at a glance.
+   *
+   * It also stops spending a status colour on something that is not a status:
+   * green, red and amber mean met, failed and at-risk in this app, and using
+   * green for "the AI read it" quietly borrowed one of them.
    */
   if (state === "read") {
     return (
@@ -114,9 +127,9 @@ export function MaterialReadState({
         >
           <span
             aria-label={`Freyr AI read this file, ${words.toLocaleString()} words`}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[rgba(22,163,74,0.12)] text-success"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary"
           >
-            <Check size={10} strokeWidth={3.2} aria-hidden="true" />
+            <Sparkles size={10} strokeWidth={2.4} aria-hidden="true" />
           </span>
         </Tooltip>
         {bytes !== null && (

@@ -10,6 +10,10 @@ import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PrivilegeCards } from "./PrivilegeCards";
+import { privilegeColor, ROLE_PRIVILEGE, type PrivilegeState } from "@/lib/privileges";
+import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -28,7 +32,12 @@ import { useToast } from "@/components/ui/Toast";
 
 const ROLE_OPTIONS: ColorOption[] = [
   { value: "bd_member", label: "BD Member", color: "#0071E3", icon: UserRound },
-  { value: "bd_owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
+    /* "BD OWNER", NOT "OWNER" (Anir, Aug 31: "it says she's an owner, I don't
+     understand"). A bare "Owner" reads as "owns things" — so an Offering Owner
+     who held it looked correctly configured while the privilege table was
+     refusing her every write. It is the Business DEVELOPMENT owner; the one
+     that owns an offering is BO Owner, and lives in the privileges below. */
+  { value: "bd_owner", label: "BD Owner", color: "#7C3AED", icon: UsersRound },
   /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"): fulfils solutioning
      requests, sees the Solutioning module, and nothing an Owner-only module. */
   {
@@ -77,6 +86,21 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     return !mine && m.name.trim().toLowerCase() === me.name.trim().toLowerCase();
   };
   const [members, setMembers] = useState<Member[] | null>(null);
+  /* A SEARCH BOX, BECAUSE THIS IS A DIRECTORY (Anir, Aug 31: "why is there no
+     search bar here to search for users"). Forty-one people today and every
+     new hire adds one; finding somebody by scrolling stops working long before
+     anybody decides to fix it. */
+  const [query, setQuery] = useState("");
+  /* THE PRIVILEGES, EDITABLE FROM HERE TOO. Table view could only set the
+     four-value role, so the ten privileges were reachable only from Split. */
+  const [privState, setPrivState] = useState<PrivilegeState | null>(null);
+  const [privFor, setPrivFor] = useState<Member | null>(null);
+  const [pendingPriv, setPendingPriv] = useState<{
+    person: string;
+    privId: string;
+    privLabel: string;
+    to: boolean;
+  } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   /** The role change waiting on a yes. Nothing is sent until it gets one. */
   const [pending, setPending] = useState<{
@@ -153,7 +177,97 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     }
   }
 
-  const people = (members ?? []).filter((m) => m.accountType !== "demo");
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/privileges", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive && d?.state) setPrivState(d.state as PrivilegeState);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /** Write the whole table back, the way the Privileges screen does. */
+  async function savePrivileges(next: PrivilegeState) {
+    const before = privState;
+    setPrivState(next);
+    try {
+      const res = await fetch("/api/privileges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: next }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "That did not save.");
+      if (data.state) setPrivState(data.state as PrivilegeState);
+    } catch (error) {
+      setPrivState(before);
+      toast(
+        error instanceof Error ? error.message : "Could not change the privilege",
+        "error"
+      );
+    }
+  }
+
+  function applyPendingPriv() {
+    if (!pendingPriv || !privState) return;
+    const { person, privId, to } = pendingPriv;
+    setPendingPriv(null);
+    const key =
+      Object.keys(privState.peoplePrivileges).find(
+        (n) => n.trim().toLowerCase() === person.trim().toLowerCase()
+      ) ?? person;
+    const held = new Set(privState.peoplePrivileges[key] ?? []);
+    if (to) held.add(privId);
+    else held.delete(privId);
+    const nextMap = { ...privState.peoplePrivileges };
+    if (held.size) nextMap[key] = [...held];
+    else delete nextMap[key];
+    void savePrivileges({ ...privState, peoplePrivileges: nextMap });
+  }
+
+  /**
+   * EVERY PRIVILEGE A PERSON HOLDS, FOR THE ROW BADGES (Anir, Aug 31: "without
+   * even clicking on it, I want icons... for these 10 roles"). Their role's
+   * badge counts — it is held, it simply cannot be unticked here. The mark is
+   * the initials of the label, so a rename carries through on its own.
+   */
+  function badgesFor(m: Member) {
+    if (!privState) return [];
+    const direct = heldFor(m.name);
+    const viaRole = ROLE_PRIVILEGE[m.role];
+    if (viaRole) direct.add(viaRole);
+    return privState.privileges
+      .filter((p) => direct.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        label: p.label,
+        short: p.label.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase(),
+      }));
+  }
+
+  /** What one person holds by direct grant. */
+  function heldFor(name: string): Set<string> {
+    const key = Object.keys(privState?.peoplePrivileges ?? {}).find(
+      (n) => n.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    return new Set(key ? privState!.peoplePrivileges[key] : []);
+  }
+
+  const all = (members ?? []).filter((m) => m.accountType !== "demo");
+  /* Name or email, because an admin looking for somebody has one or the other
+     and rarely both. */
+  const q = query.trim().toLowerCase();
+  const people = q
+    ? all.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          (m.email ?? "").toLowerCase().includes(q)
+      )
+    : all;
 
   return (
     <div className="rounded-2xl border border-border-light bg-white p-5">
@@ -207,7 +321,34 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           Nobody in the workspace yet.
         </p>
       ) : (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3">
+          {/* SEARCH, BECAUSE THIS IS A DIRECTORY (Anir, Aug 31). */}
+          <div className="relative mb-2.5">
+            <Search
+              size={15}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search people by name or email…"
+              aria-label="Search people"
+              className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] outline-none focus:border-blue-primary"
+            />
+          </div>
+          {q && (
+            <p className="mb-2 text-[12px] text-text-tertiary">
+              {people.length} of {all.length} people
+            </p>
+          )}
+          {people.length === 0 ? (
+            <p className="rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
+              Nobody matches “{query}”.
+            </p>
+          ) : (
+          <div className="space-y-2">
           {people.map((m) => (
             <div
               key={m.id}
@@ -268,10 +409,106 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
               ) : (
                 <RoleTag role={m.role} size="sm" className="w-fit shrink-0" />
               )}
+              {/* WHAT THEY HOLD, AT A GLANCE. Same badges the split roster
+                  draws, so a person reads the same on both screens. Capped so
+                  somebody with six does not push the controls off the row. */}
+              {(() => {
+                const b = badgesFor(m);
+                if (!b.length) return null;
+                const shown = b.slice(0, 4);
+                return (
+                  <span className="flex shrink-0 items-center gap-1">
+                    {shown.map((p) => (
+                      <span
+                        key={p.id}
+                        title={p.label}
+                        aria-label={p.label}
+                        style={{
+                          backgroundColor: `${privilegeColor(p.id)}1F`,
+                          color: privilegeColor(p.id),
+                        }}
+                        className="flex h-5 w-5 items-center justify-center rounded-md text-[9px] font-bold"
+                      >
+                        {p.short}
+                      </span>
+                    ))}
+                    {b.length > shown.length && (
+                      <span className="text-[10px] font-semibold text-text-tertiary">
+                        +{b.length - shown.length}
+                      </span>
+                    )}
+                  </span>
+                );
+              })()}
+              {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in split
+                  view is it different from the table view? That's a huge
+                  problem"). The role dropdown sets the one value the database
+                  allows; this opens the ten privileges, which is where BO
+                  Owner — the one an offering owner actually needs — lives. */}
+              <button
+                type="button"
+                onClick={() => setPrivFor(m)}
+                aria-label={`Privileges for ${m.name}`}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+              >
+                <KeyRound size={13} strokeWidth={2.2} />
+                {(() => {
+                  const n = heldFor(m.name).size;
+                  return n ? `${n} privilege${n === 1 ? "" : "s"}` : "Privileges";
+                })()}
+              </button>
             </div>
           ))}
+          </div>
+          )}
         </div>
       )}
+
+      {/* ONE PERSON'S PRIVILEGES, THE SAME GRID SPLIT VIEW DRAWS. */}
+      <Modal
+        open={privFor !== null}
+        onClose={() => setPrivFor(null)}
+        title={privFor ? `Privileges for ${privFor.name}` : "Privileges"}
+        size="wide"
+        tall
+        dialogClassName="!h-[min(560px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
+      >
+        {privFor && privState && (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <p className="mb-3 text-[12.5px] text-text-secondary">
+              Tick as many as they need. What they may do in a module is the most
+              generous of everything they hold.
+            </p>
+            <PrivilegeCards
+              privileges={privState.privileges}
+              held={heldFor(privFor.name)}
+              fromRole={ROLE_PRIVILEGE[privFor.role] ?? null}
+              active={privFor.active}
+              personName={privFor.name}
+              onToggle={({ privId, privLabel, to }) =>
+                setPendingPriv({ person: privFor.name, privId, privLabel, to })
+              }
+            />
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={pendingPriv !== null}
+        onClose={() => setPendingPriv(null)}
+        onConfirm={applyPendingPriv}
+        title={pendingPriv?.to ? "Give this privilege?" : "Take this privilege away?"}
+        body={
+          pendingPriv && (
+            <>
+              <b>{pendingPriv.person}</b> {pendingPriv.to ? "gets" : "loses"}{" "}
+              <b>{pendingPriv.privLabel}</b>. It changes what they can do the next
+              time they load a page.
+            </>
+          )
+        }
+      />
 
       {/* A ROLE CHANGE ASKS FIRST (Anir, Aug 15: "whenever I'm changing
           someone from rep to admin, or maybe from admin to rep... it should

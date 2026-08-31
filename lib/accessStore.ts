@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AuthenticatedUser } from "./auth";
+import { isTestAccountEmail } from "./testAccounts";
 import {
   isBootstrapOwner,
   normalizedEmail,
@@ -409,7 +410,10 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
         email,
         display_name: canonicalName,
         app_role: role,
-        account_type: "real",
+        /* A reserved claude-check- address is a testing account, and every
+           people-picker that filters on account_type keeps those out of the
+           lists real colleagues belong in. */
+        account_type: isTestAccountEmail(email) ? "test" : "real",
         auth_provider: provider,
         // Keep a newly invited member inactive until this request atomically
         // wins the pending-invitation update below. Concurrent requests cannot
@@ -476,12 +480,27 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
      * that succeeded. The person is in either way; the admins simply were not
      * told, which adminNotify logs.
      */
-    void notifyMemberJoined({
-      name: (activated.display_name || user.name || email || "Somebody").trim(),
-      email: email || "",
-      role,
-      viaInvitation: !!invitationId,
-    });
+    /**
+     * A TESTING ACCOUNT DOES NOT ANNOUNCE ITSELF.
+     *
+     * Anir, Aug 31: "stop spamming us." Every @freyrsolutions.com address
+     * auto-joins, and joining mails every admin — so an account created to
+     * check what a BD Member sees put a "joined the workspace" notice in
+     * Saras's and Suren's inbox, three times before anybody said so. Right for
+     * a new hire, wrong for something that lives for ten minutes.
+     *
+     * The reserved prefix is the whole difference, and it is checked HERE
+     * rather than inside notifyMemberJoined so the intent is visible at the
+     * one place that decides to tell people.
+     */
+    if (!isTestAccountEmail(email)) {
+      void notifyMemberJoined({
+        name: (activated.display_name || user.name || email || "Somebody").trim(),
+        email: email || "",
+        role,
+        viaInvitation: !!invitationId,
+      });
+    }
     return {
       status: "approved",
       workspaceId: workspace,
@@ -961,7 +980,10 @@ export async function updateWorkspaceMember(
    * happened and must stand whatever the mail does.
    */
   const who = before.data;
-  if (who) {
+  /* SAME RULE AS JOINING: a reserved claude-check- account is a testing
+     account, and cycling its role through ten privileges to see what each one
+     sees must not put ten emails in an admin's inbox. */
+  if (who && !isTestAccountEmail(who.email)) {
     const name = (who.display_name || who.email || "Somebody").trim();
     if (patch.role && patch.role !== who.app_role) {
       void notifyRoleChanged({

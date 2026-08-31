@@ -28,13 +28,22 @@ const ROLE_BY_LABEL = new Map<string, WorkspaceRoleKey>(
   ])
 );
 
+/**
+ * THE ROLE'S CHIPS, WITHOUT A ROW OF THEIR OWN.
+ *
+ * This used to be its own flex row with its own top margin, so the context tag
+ * beside it was forced onto a second line: "In this group" and then the group
+ * name under it (Anir, Aug 31: "why is it on the next line? It should be in
+ * line with it"). The caller owns one wrapping row now and drops both into it,
+ * so they sit together and only wrap when there is genuinely no room.
+ */
 function RoleLine({ role }: { role: string }) {
   const parts = role
     .split("·")
     .map((p) => p.trim())
     .filter(Boolean);
   return (
-    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+    <>
       {parts.map((part, i) => {
         const key = ROLE_BY_LABEL.get(part.toLowerCase());
         if (key) return <RoleTag key={i} role={key} size="sm" />;
@@ -58,7 +67,7 @@ function RoleLine({ role }: { role: string }) {
           </span>
         );
       })}
-    </span>
+    </>
   );
 }
 
@@ -171,20 +180,29 @@ export function PersonHoverCard({
                   Jul 29: "the role should always show up right under the name
                   of myself"). The offering follows as a proper tag, because it
                   is an ASSET, not a sentence fragment. */}
-              {role && <RoleLine role={role} />}
-              {/* ONE LINE (Anir, Aug 29: "this is ugly too, the way the thing
-                  is on two lines it just looks so ugly"). break-words let a
-                  long name — "Booked Revenue (Contract Value Signed)" — wrap
-                  into a two-line block that dwarfed the person it was
-                  describing. It truncates now and carries the full string on
-                  hover, so the card stays a card whatever it is labelling. */}
-              {context && (
-                <span
-                  title={context}
-                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary"
-                >
-                  <Package size={11} strokeWidth={2.1} className="shrink-0" />
-                  <span className="truncate">{context}</span>
+              {/* ROLE AND CONTEXT SHARE ONE ROW (Anir, Aug 31: "why is it on
+                  the next line? It should be in line with it"). Each used to
+                  bring its own margin and its own row, so "In this group" and
+                  the group tag always stacked even with half the card empty
+                  beside them. One wrapping flex row: they sit together, and a
+                  genuinely long pair still wraps rather than overflowing.
+
+                  The tag still truncates and carries the full string on hover,
+                  because a long one — "Booked Revenue (Contract Value Signed)"
+                  — otherwise wrapped into a block that dwarfed the person it
+                  was describing (Anir, Aug 29). */}
+              {(role || context) && (
+                <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {role && <RoleLine role={role} />}
+                  {context && (
+                    <span
+                      title={context}
+                      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary"
+                    >
+                      <Package size={11} strokeWidth={2.1} className="shrink-0" />
+                      <span className="truncate">{context}</span>
+                    </span>
+                  )}
                 </span>
               )}
             </div>

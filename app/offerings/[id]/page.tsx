@@ -34,6 +34,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { canManageOfferings, getRole, isAdmin } from "@/lib/role";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import {
   customerFamiliesPresent,
   customerFamilyColor,
@@ -97,7 +98,23 @@ export default async function OfferingDetailPage({
     redactUnverifiedOfferingPeople(raw, people)
   );
   const me = await getCurrentUser();
-  const admin = await canEditOffering(raw);
+  /**
+   * BOTH GATES THE API ASKS, IN THE API'S ORDER.
+   *
+   * This was canEditOffering alone, which asks only "are you an owner of this
+   * offering". PATCH /api/offerings/[id] asks the privilege table FIRST, and
+   * Suren's map gives BD Owner *view* on Offerings — so Priyanka, an assigned
+   * owner of Freya.Label and a BD Owner, was shown the full upload UI, watched
+   * three files reach 100%, and had the save refused (Saras, Aug 31: "the file
+   * upload bar reaches 100% but none of the new files show up").
+   *
+   * The upload genuinely succeeds; it is the step that attaches the file to
+   * the offering that is refused, so the file lands in storage with nothing
+   * pointing at it. Asking the same question the server asks means the control
+   * is only ever on screen when the save will land.
+   */
+  const admin =
+    !(await moduleWriteRefusal("/offerings")) && (await canEditOffering(raw));
   // Agent-only rows must never be serialized into a non-owner's client tree.
   // Filtering only inside MaterialsSection would hide pixels while leaving the
   // full metadata in the RSC payload.

@@ -10,6 +10,7 @@ import {
   type PrivilegeState,
 } from "@/lib/privileges";
 import { notifyPrivilegesChanged } from "@/lib/adminNotify";
+import { isTestAccountName } from "@/lib/testAccounts";
 
 /**
  * THE PRIVILEGE TABLE.
@@ -60,10 +61,16 @@ export async function POST(req: NextRequest) {
        store and cannot be shaped by whatever the page thought it was doing.
        Never awaited into the response path in a way that could fail the save —
        notifyPrivilegesChanged swallows its own errors. */
-    void notifyPrivilegesChanged({
-      changedBy: me.name,
-      lines: diffLines(before, state),
-    });
+    /* Lines about a reserved testing account are dropped: assigning BO Owner
+       to claude-check-1 to see what an offering owner sees is not a change any
+       admin needs told about (Anir, Aug 31: "stop spamming us"). A save that
+       only touched test accounts sends nothing at all. */
+    const lines = diffLines(before, state).filter(
+      (line) => !isTestAccountName(line.split(":")[0])
+    );
+    if (lines.length) {
+      void notifyPrivilegesChanged({ changedBy: me.name, lines });
+    }
 
     return NextResponse.json({ ok: true, state });
   } catch (error) {

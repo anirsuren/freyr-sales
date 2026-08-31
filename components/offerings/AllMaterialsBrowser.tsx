@@ -47,7 +47,7 @@ import {
 } from "@/lib/offeringMaterials";
 import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
 
 export type MaterialRow = {
@@ -481,7 +481,12 @@ const TABLE_CLASS =
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 align-middle text-[12px] tnum text-text-secondary">
                     {row.material.addedAt ? (
-                      formatDate(row.material.addedAt)
+                      /* THE TIME, NOT JUST THE DAY (Anir, Aug 31: "I want the
+                         time here too, I want the time when I uploaded it").
+                         Several versions of the same deck land on one
+                         afternoon, and the date alone cannot tell you which is
+                         the one you just replaced. */
+                      formatDateTime(row.material.addedAt)
                     ) : (
                       <span className="text-text-tertiary">-</span>
                     )}

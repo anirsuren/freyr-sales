@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { PrivilegeCards } from "./PrivilegeCards";
 import {
   ROLE_PRIVILEGE,
   VIEW_ALL,
@@ -77,6 +78,9 @@ export function PeopleSplit() {
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* Search over the roster. Declared with the other hooks: this component has
+     early returns below, and a hook after one of them runs conditionally. */
+  const [listQuery, setListQuery] = useState("");
   const [pendingPriv, setPendingPriv] = useState<{
     person: string;
     privId: string;
@@ -164,6 +168,47 @@ export function PeopleSplit() {
     }
   }
 
+  /**
+   * EVERY PRIVILEGE A PERSON HOLDS, IN THE TABLE'S OWN ORDER.
+   *
+   * Their role's badge counts: it is a privilege they hold, it is simply not
+   * one you can untick here. The two-letter mark is built from the label so a
+   * renamed privilege renames its badge with it — "BD Owner" reads BO... no:
+   * initials of the words, so BD Owner is "BD" and Solutioning Member is "SM".
+   */
+  /* Name or email: an admin looking for somebody has one or the other. */
+  const lq = listQuery.trim().toLowerCase();
+  const shownMembers = lq
+    ? (members ?? []).filter(
+        (m) =>
+          m.name.toLowerCase().includes(lq) ||
+          (m.email ?? "").toLowerCase().includes(lq)
+      )
+    : (members ?? []);
+
+  function privilegesOf(name: string) {
+    if (!state) return [];
+    const key = Object.keys(state.peoplePrivileges).find(
+      (n) => n.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    const direct = new Set(key ? state.peoplePrivileges[key] : []);
+    const member = (members ?? []).find((x) => x.name === name);
+    const viaRole = member ? ROLE_PRIVILEGE[member.role] : undefined;
+    if (viaRole) direct.add(viaRole);
+    return state.privileges
+      .filter((p) => direct.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        label: p.label,
+        short: p.label
+          .split(/\s+/)
+          .map((w) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+      }));
+  }
+
   function applyPendingPriv() {
     if (!pendingPriv || !state) return;
     const { person, privId, to } = pendingPriv;
@@ -228,9 +273,32 @@ export function PeopleSplit() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        {/* LEFT: JUST THE NAME (his words). A running, scrollable list. */}
-        <div className="max-h-[640px] overflow-y-auto rounded-xl border border-border-light">
-          {members.map((m) => {
+        {/* LEFT: the roster. A search box on top, because forty-one people is
+            already past the point of scrolling to find somebody (Anir, Aug 31:
+            "why is there no search bar here to search for users"). */}
+        <div className="flex max-h-[640px] flex-col rounded-xl border border-border-light">
+          <div className="relative shrink-0 border-b border-border-light p-2">
+            <Search
+              size={14}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-4.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+            <input
+              value={listQuery}
+              onChange={(e) => setListQuery(e.target.value)}
+              placeholder="Search people…"
+              aria-label="Search people"
+              className="h-9 w-full rounded-lg border border-border-light bg-white pl-8 pr-2.5 text-[12.5px] outline-none focus:border-blue-primary"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+          {shownMembers.length === 0 && (
+            <p className="px-3.5 py-6 text-center text-[12.5px] text-text-secondary">
+              Nobody matches “{listQuery}”.
+            </p>
+          )}
+          {shownMembers.map((m) => {
             const on = m.id === selected.id;
             return (
               <button
@@ -255,7 +323,48 @@ export function PeopleSplit() {
                   >
                     {m.name}
                   </span>
+                  {/* THE EMAIL, UNDER THE NAME (Anir, Aug 31: "I probably want
+                      the email to show up here as well"). Two people share a
+                      first name long before a workspace gets large, and the
+                      address is the only thing that never collides. */}
+                  {m.email && (
+                    <span className="block truncate text-[11px] text-text-tertiary">
+                      {m.email}
+                    </span>
+                  )}
                 </span>
+                {/* WHAT THEY HOLD, BEFORE YOU CLICK (Anir, Aug 31: "without
+                    even clicking on it, I want icons... for these 10 roles we
+                    have icons for each"). Each privilege has a colour already;
+                    this is that colour as a dot-sized badge, in the table's
+                    own order, so a person's shape reads at a glance and the
+                    full names are one click away in the panel. Capped, because
+                    somebody holding six should not push the name out. */}
+                {(() => {
+                  const theirs = privilegesOf(m.name);
+                  if (!theirs.length) return null;
+                  const shown = theirs.slice(0, 4);
+                  return (
+                    <span className="flex shrink-0 items-center gap-1">
+                      {shown.map((p) => (
+                        <span
+                          key={p.id}
+                          title={p.label}
+                          aria-label={p.label}
+                          style={{ backgroundColor: `${privilegeColor(p.id)}1F`, color: privilegeColor(p.id) }}
+                          className="flex h-5 w-5 items-center justify-center rounded-md text-[9px] font-bold"
+                        >
+                          {p.short}
+                        </span>
+                      ))}
+                      {theirs.length > shown.length && (
+                        <span className="text-[10px] font-semibold text-text-tertiary">
+                          +{theirs.length - shown.length}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
                 {/* SAY IT IN RED, ON THE RIGHT (Anir, Aug 30: "if it's
                     suspended it should be more clear that it's suspended, but
                     like a red thing here, and it has to stay on the right side
@@ -266,6 +375,7 @@ export function PeopleSplit() {
               </button>
             );
           })}
+          </div>
         </div>
 
         {/* RIGHT: everything about the one person picked. Keyed on them, so
@@ -353,117 +463,17 @@ export function PeopleSplit() {
                 </>
               )}
             </p>
-            <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              {state.privileges.map((p) => {
-                const on = held.has(p.id);
-                /* The badge their ROLE already stands for is shown as held and
-                   locked: taking it away here would not take it away, because
-                   the role puts it back on every read. The role dropdown above
-                   is where that one changes. */
-                const viaRole = fromRole === p.id;
-                /* Nothing on a suspended person is editable — a privilege you
-                   cannot exercise is not a privilege (Anir, Aug 30: "if he's
-                   suspended, why can I change this?"). */
-                const locked = viaRole || !selected.active;
-                const color = privilegeColor(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={on || viaRole}
-                    disabled={locked}
-                    title={
-                      selected.active
-                        ? undefined
-                        : `${selected.name} is suspended, so this cannot change`
-                    }
-                    onClick={() =>
-                      setPendingPriv({
-                        person: selected.name,
-                        privId: p.id,
-                        privLabel: p.label,
-                        to: !on,
-                      })
-                    }
-                    /* HELD IS NOT A HINT (Anir, Aug 30: "I don't like the
-                       selected thing, it looks so light, like such a light
-                       blue, it's bad"). The border is the colour itself rather
-                       than a third of it, and the tint is deep enough to see
-                       against white. */
-                    style={
-                      on || viaRole
-                        ? { borderColor: color, backgroundColor: `${color}1A` }
-                        : undefined
-                    }
-                    className={cn(
-                      /* IT HAS TO FEEL LIKE IT LANDED (Anir, Aug 30: "the
-                         privileges doesn't have a proper animation").
-                         `transition-colors` faded the tint and nothing else,
-                         so ticking a privilege — which is a real change to
-                         what a person can do, and one that fires a
-                         confirmation and an email — read as a static repaint.
-                         The whole tile eases now, and it presses under the
-                         cursor so the click has a physical answer. */
-                      "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left",
-                      "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out",
-                      "motion-reduce:transition-none",
-                      locked
-                        ? "cursor-not-allowed"
-                        : "cursor-pointer hover:border-blue-primary/50 active:scale-[0.985]",
-                      !on && !viaRole && "border-border-light bg-white"
-                    )}
-                  >
-                    {/* FILLED, NOT OUTLINED. A solid block of the colour is
-                        the strongest thing a small control can say, and it is
-                        what the app's other checkboxes already do. */}
-                    <span
-                      style={
-                        on || viaRole
-                          ? { borderColor: color, backgroundColor: color, color: "#FFFFFF" }
-                          : undefined
-                      }
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                        "transition-[background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-                        !on && !viaRole && "border-border-light"
-                      )}
-                    >
-                      {/* THE TICK IS DRAWN, NOT SWAPPED. It used to be present
-                          at all times in a transparent colour, so turning a
-                          privilege on changed a hex value and nothing moved.
-                          Scaling it up out of nothing is the part that reads
-                          as "this just happened", and it is the same gesture
-                          every other checkbox in this app makes. */}
-                      <Check
-                        size={12}
-                        strokeWidth={3}
-                        aria-hidden="true"
-                        className={cn(
-                          "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
-                          on || viaRole
-                            ? "scale-100 opacity-100"
-                            : "scale-50 opacity-0"
-                        )}
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className="block truncate text-[12.5px] font-semibold"
-                        style={{ color: on || viaRole ? color : undefined }}
-                      >
-                        {p.label}
-                      </span>
-                      {viaRole && (
-                        <span className="block text-[10px] text-text-tertiary">
-                          From their role
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <PrivilegeCards
+              className="mt-2.5"
+              privileges={state.privileges}
+              held={held}
+              fromRole={fromRole}
+              active={selected.active}
+              personName={selected.name}
+              onToggle={({ privId, privLabel, to }) =>
+                setPendingPriv({ person: selected.name, privId, privLabel, to })
+              }
+            />
           </div>
         </div>
       </div>

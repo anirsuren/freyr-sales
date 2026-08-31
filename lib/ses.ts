@@ -42,11 +42,26 @@ export type SesResult = {
   unavailable?: boolean;
 };
 
-/** The verified identity. Overridable, but this is the one that is set up. */
+/**
+ * The verified identity. Overridable, but this is the one that is set up.
+ *
+ * THE DISPLAY NAME SAYS IT IS THE APP (Saras, Aug 31: "is it possible for the
+ * email sender name to say 'Freyr Sales Intel App' instead of 'Freyr Sales'?").
+ * Her inbox showed a plain "Freyr Sales" beside real people and real Freyr
+ * distribution lists, so an automated notification read like a person wrote it.
+ *
+ * ONLY THE NAME CHANGES. The address is untouched, so nothing about the SES
+ * verified identity, SPF or DKIM moves.
+ *
+ * NOTE FOR WHOEVER CHANGES THIS NEXT: dev and prod both set MAIL_FROM in the
+ * ECS task definition, and that wins over this line. Editing here fixes local
+ * and any environment that has not overridden it; changing what Freyr actually
+ * receives means updating the task-definition env in both accounts.
+ */
 export const SES_FROM =
   process.env.SES_FROM ||
   process.env.MAIL_FROM ||
-  "Freyr Sales <noreply@notifications.freyrsolutions.com>";
+  "Freyr Sales Intel App <noreply@notifications.freyrsolutions.com>";
 
 export const SES_REGION = process.env.SES_REGION || "us-east-1";
 

@@ -2020,13 +2020,25 @@ function GoalRows({
                            read as another goal. Indigo says "a person inside
                            this goal", and it runs the full height of the card
                            so the header and everything it opened are visibly
-                           one block. */
+                           one block.
+
+                           A REAL BORDER, NOT AN INSET SHADOW. The rail was
+                           box-shadow: inset, which paints on the card but
+                           UNDER its children — so the open header's tinted
+                           background sat on top of the rail's first 3px and
+                           the indigo visibly stepped to a lighter tone at the
+                           divider, then went solid below it (Anir, Aug 31:
+                           "the purple on the left is like a space where it
+                           changes. Can't do that"). A left border lives
+                           outside the padding box, so nothing inside can
+                           paint over it and the colour is one unbroken run
+                           top to bottom. Same idiom the entry cards use. */
                         <div
                           key={a.person}
                           className={cn(
                             "overflow-hidden rounded-xl border bg-white transition-colors",
                             open
-                              ? "border-blue-subtle [box-shadow:inset_3px_0_0_0_#4338CA]"
+                              ? "border-blue-subtle border-l-[3px] border-l-[color:#4338CA]"
                               : "border-border-light"
                           )}
                         >

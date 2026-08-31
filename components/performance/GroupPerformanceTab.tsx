@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crown, Settings2, UsersRound } from "lucide-react";
+import {
+  Columns2,
+  Crown,
+  LayoutGrid,
+  Rows3,
+  Settings2,
+  Table2,
+  UsersRound,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +21,7 @@ import {
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
+import { useStoredView } from "@/lib/useStoredView";
 import { SetShareModal } from "./bits";
 import { GroupPill } from "./bits";
 import { Avatar } from "@/components/ui/Avatar";
@@ -73,6 +82,12 @@ export function GroupPerformanceTab({
   const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
   /** The full roster, opened from under the group picker. */
   const [rosterOpen, setRosterOpen] = useState(false);
+  /* HOW THE ROSTER IS LAID OUT (Anir, Aug 31: "you can view it in different
+     ways, like one-column, two-column, tiles, table, whatever you want").
+     Remembered like every other view choice in the app. */
+  const [rosterView, setRosterView] = useStoredView<
+    "list" | "two" | "tiles" | "table"
+  >("freyr.groupRoster.view", "list", ["list", "two", "tiles", "table"] as const);
   const [rosterQuery, setRosterQuery] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
 
@@ -215,14 +230,17 @@ export function GroupPerformanceTab({
           [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
         ).size;
         return (
-          <button
+          /* THE CARD IS A ROW OF TWO CONTROLS, not one button wrapping
+             everything (Anir, Aug 31: "when I click on the people here...
+             maybe you can show me a pop-up"). The faces open the roster and
+             the rest of the card picks the group, and a button cannot legally
+             live inside another button — so the card is a plain container and
+             each half is its own control. */
+          <div
             key={g.id}
-            type="button"
             data-picked={isOpen ? "true" : undefined}
-            onClick={() => setPickedId(g.id)}
-            aria-pressed={isOpen}
             className={cn(
-              "flex shrink-0 cursor-pointer items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
+              "flex shrink-0 items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
               isOpen
                 ? "border-blue-primary bg-blue-light"
                 : "border-border-light bg-white hover:bg-surface"
@@ -232,7 +250,21 @@ export function GroupPerformanceTab({
                 no way here I can see the people in my group... just include the
                 profile pictures of each one and when I hover over the profile
                 picture it'll show me the expanded view"). The owner's face
-                alone told you who runs it, never who is in it. */}
+                alone told you who runs it, never who is in it.
+
+                CLICKING THEM OPENS THE ROSTER. The fan is a preview and says
+                nothing at a hundred people; this is the way into the full
+                list, from the thing you would naturally click. */}
+            <button
+              type="button"
+              onClick={() => {
+                setPickedId(g.id);
+                setRosterOpen(true);
+              }}
+              aria-label={`See everyone in ${g.name}`}
+              title={`See everyone in ${g.name}`}
+              className="flex shrink-0 cursor-pointer items-center rounded-lg transition-opacity hover:opacity-80"
+            >
             <PersonFan
               people={[
                 ...new Set(
@@ -245,6 +277,13 @@ export function GroupPerformanceTab({
               }))}
               avatarClassName="h-6 w-6 text-[8px]"
             />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickedId(g.id)}
+              aria-pressed={isOpen}
+              className="flex min-w-0 flex-1 cursor-pointer items-stretch gap-2 text-left"
+            >
             <span className="min-w-0">
               {/* The name IS the pill here too, so a group reads the same on
                   the picker as it does in the headings below it. */}
@@ -302,7 +341,8 @@ export function GroupPerformanceTab({
                 {goalCountFor(g) === 1 ? "goal" : "goals"}
               </span>
             </span>
-          </button>
+            </button>
+          </div>
         );
       })}
       </div>
@@ -458,15 +498,67 @@ export function GroupPerformanceTab({
           aria-label="Search the group"
           className="h-10 w-full shrink-0 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
         />
-        <p className="mt-2 shrink-0 text-[12px] text-text-tertiary">
-          {(() => {
-            const n = members.filter((m) =>
-              m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
-            ).length;
-            return `${n} of ${members.length} ${members.length === 1 ? "person" : "people"}`;
-          })()}
-        </p>
-        <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+        {/* The count and the layout picker share one line, so neither costs a
+            row of its own above a list that wants the height. */}
+        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <p className="text-[12px] text-text-tertiary">
+            {(() => {
+              const n = members.filter((m) =>
+                m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
+              ).length;
+              return `${n} of ${members.length} ${members.length === 1 ? "person" : "people"}`;
+            })()}
+          </p>
+          <span className="inline-flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
+            {(
+              [
+                { key: "list", label: "List", icon: Rows3 },
+                { key: "two", label: "Two columns", icon: Columns2 },
+                { key: "tiles", label: "Tiles", icon: LayoutGrid },
+                { key: "table", label: "Table", icon: Table2 },
+              ] as const
+            ).map((v) => {
+              const Icon = v.icon;
+              const on = rosterView === v.key;
+              return (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => setRosterView(v.key)}
+                  aria-pressed={on}
+                  title={v.label}
+                  aria-label={v.label}
+                  className={cn(
+                    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors",
+                    on
+                      ? "bg-white text-blue-primary shadow-sm"
+                      : "text-text-tertiary hover:text-text-primary"
+                  )}
+                >
+                  <Icon size={14} strokeWidth={2.2} />
+                </button>
+              );
+            })}
+          </span>
+        </div>
+        <div
+          className={cn(
+            "mt-2 min-h-0 flex-1 overflow-y-auto pr-0.5",
+            rosterView === "list" && "space-y-1.5",
+            rosterView === "two" && "grid grid-cols-1 gap-1.5 sm:grid-cols-2 content-start",
+            rosterView === "tiles" &&
+              "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 content-start",
+            rosterView === "table" && "space-y-0"
+          )}
+        >
+          {rosterView === "table" && (
+            /* A header row, once, above the rows — the list layouts do not
+               need one because each row carries its own labels. */
+            <div className="sticky top-0 z-[1] grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border-light bg-white px-3 py-2 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              <span>Person</span>
+              <span>Goals here</span>
+            </div>
+          )}
           {members
             .filter((m) =>
               m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
@@ -477,6 +569,66 @@ export function GroupPerformanceTab({
                   (a) => a.person.trim().toLowerCase() === m.trim().toLowerCase()
                 )
               );
+              const owner = group?.head === m;
+              const goalsLine =
+                theirs.length === 0
+                  ? "no goals in this group"
+                  : `${theirs.length} ${theirs.length === 1 ? "goal" : "goals"} here`;
+
+              /* TILES stack the face over the name, so a hundred people fit in
+                 a few rows and you scan for a face rather than reading down. */
+              if (rosterView === "tiles") {
+                return (
+                  <div
+                    key={m}
+                    className="flex flex-col items-center gap-1.5 rounded-lg border border-border-light bg-white px-2 py-3 text-center"
+                  >
+                    <Avatar name={m} className="h-9 w-9 text-[11px]" />
+                    <span className="w-full truncate text-[12px] font-semibold text-text-primary">
+                      {m}
+                    </span>
+                    <span className="w-full truncate text-[10.5px] text-text-tertiary">
+                      {goalsLine}
+                    </span>
+                    {owner && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[9.5px] font-semibold text-[color:#7C3AED]">
+                        <Crown size={9} strokeWidth={2.6} />
+                        Owner
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              /* TABLE is rows under one header, hairlines instead of cards. */
+              if (rosterView === "table") {
+                return (
+                  <div
+                    key={m}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light px-3 py-2 last:border-b-0"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <Avatar name={m} className="h-6 w-6 shrink-0 text-[8px]" />
+                      <span className="truncate text-[13px] font-semibold text-text-primary">
+                        {m}
+                      </span>
+                      {owner && (
+                        <Crown
+                          size={11}
+                          strokeWidth={2.6}
+                          className="shrink-0 text-[color:#7C3AED]"
+                          aria-label="Group owner"
+                        />
+                      )}
+                    </span>
+                    <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
+                      {theirs.length}
+                    </span>
+                  </div>
+                );
+              }
+
+              /* LIST and TWO share the card row; only the container differs. */
               return (
                 <div
                   key={m}
@@ -488,12 +640,10 @@ export function GroupPerformanceTab({
                       {m}
                     </span>
                     <span className="block truncate text-[11.5px] text-text-tertiary">
-                      {theirs.length === 0
-                        ? "no goals in this group"
-                        : `${theirs.length} ${theirs.length === 1 ? "goal" : "goals"} here`}
+                      {goalsLine}
                     </span>
                   </span>
-                  {group?.head === m && (
+                  {owner && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
                       <Crown size={9} strokeWidth={2.6} />
                       Group owner
