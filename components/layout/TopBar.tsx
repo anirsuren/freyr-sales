@@ -619,62 +619,17 @@ export function TopBar({
                     </p>
                   </div>
                 )}
-                {/* SEE WHAT SOMEBODY ELSE SEES (Anir, Aug 29: "how do I view
-                    as someone else? As some other role?").
+                {/* NO "VIEW AS" HERE ANY MORE (Anir, Aug 30: "I clicked View as
+                    BD member, but now it doesn't let me switch"... "I don't
+                    even want that, I can create other accounts, bro, it's
+                    gonna be too confusing").
 
-                    Every account already has its own rules — this does not
-                    change them. It downgrades YOUR session for this browser so
-                    an admin can check what a BD Member actually gets before
-                    shipping something to them, without needing that person's
-                    password. lib/role applyViewAs refuses anything at or above
-                    your real role, so this can only ever take access away.
+                    It was a one-way door by construction: the control only
+                    rendered for admins, so the moment it downgraded you the
+                    control that would put you back was gone, and the only
+                    remedy was deleting a cookie by hand. Real accounts test
+                    roles honestly and cannot strand anybody. */}
 
-                    Admins only: for anybody else every option would be their
-                    own role or higher, which is a menu that does nothing.
-
-                    The mechanism existed and had no control — the switcher
-                    that used to set it was orphaned, so the only way to turn it
-                    on was editing a cookie by hand. This is the control. */}
-                {currentUser.role === "admin" && (
-                  <div className="border-b border-border-light px-3 py-2.5">
-                    <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      View as
-                    </p>
-                    <div className="grid grid-cols-3 gap-1 rounded-lg bg-surface p-1">
-                      {(
-                        [
-                          { role: "bd_member", label: "BD Member" },
-                          { role: "bd_owner", label: "Owner" },
-                          { role: "sol_member", label: "Solutioning" },
-                        ] as const
-                      ).map((option) => (
-                        <button
-                          key={option.role}
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            /* Both cookies, one intent — freyr_as_role drives
-                               the unauthenticated demo harness and
-                               freyr_preview_role the signed-in preview. No
-                               max-age: it dies with the browser, so nobody
-                               stays silently downgraded for a year the way the
-                               old switcher managed. */
-                            document.cookie = `freyr_as_role=${option.role}; path=/`;
-                            document.cookie = `freyr_preview_role=${option.role}; path=/`;
-                            window.location.reload();
-                          }}
-                          className="flex items-center justify-center whitespace-nowrap rounded-md px-1.5 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-white hover:text-text-primary"
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-text-secondary">
-                      Look at the app as that role. A banner stays up until you
-                      exit, and it can never give you more than you have.
-                    </p>
-                  </div>
-                )}
                 <div className="border-b border-border-light px-3 py-2.5">
                   <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     Appearance

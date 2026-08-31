@@ -27,11 +27,25 @@ const ROLE_RANK: Record<Role, number> = {
  * itself carries, so a sales user writing `freyr_view_role=admin` by hand
  * still gets sales.
  */
-function applyViewAs(base: Role, viewCookie: string | undefined): Role {
-  // Session cookies written before the rename may still say "editor"/"sales".
-  const wanted = normalizeWorkspaceRole(viewCookie);
-  if (!wanted) return base;
-  return ROLE_RANK[wanted] < ROLE_RANK[base] ? wanted : base;
+function applyViewAs(base: Role, _viewCookie: string | undefined): Role {
+  /**
+   * ROLE PREVIEW IS OFF, AND THE COOKIE IS IGNORED (Anir, Aug 30: "I clicked
+   * View as BD member, but now it doesn't let me switch"... "I don't even want
+   * that, I can create other accounts").
+   *
+   * It was a one-way door by construction. The control that set it rendered
+   * only for admins, so the first click removed the control that would undo
+   * it, and the only remedy was deleting a cookie by hand — the exact failure
+   * this file's own history describes happening once already with the older
+   * `freyr_view_role`, fixed then by renaming the cookie rather than by
+   * removing the mechanism.
+   *
+   * Renaming it again would buy the same year of quiet. Ignoring it here means
+   * a stale cookie in anybody's browser — from this build or the last one —
+   * stops mattering the moment they load a page, with nothing for them to
+   * clear. Real accounts test roles honestly and cannot strand anyone.
+   */
+  return base;
 }
 
 /**
