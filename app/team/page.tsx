@@ -1,3 +1,4 @@
+import { RolesGuide } from "@/components/admin/RolesGuide";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import {
   Users,
@@ -148,12 +149,17 @@ export default async function TeamPage() {
             title="Team"
             subtitle="Everyone in the workspace."
             action={
+              <span className="flex items-center gap-2">
+              {/* The same guide as Admin, on the page where everybody meets
+                  the roles (Anir, Aug 30: "maybe the team page"). */}
+              <RolesGuide />
               <InviteTeammate
                 canInvite={currentUser?.role === "admin"}
                 workspaceDomain={
                   currentUser?.email?.split("@")[1] || "freyrsolutions.com"
                 }
               />
+              </span>
             }
           />
           <EmptyState
@@ -314,12 +320,17 @@ export default async function TeamPage() {
           title="Team"
           subtitle="Everyone in the workspace. Pipeline numbers fill in as deals are logged."
           action={
-            <InviteTeammate
-              canInvite={currentUser?.role === "admin"}
-              workspaceDomain={
-                currentUser?.email?.split("@")[1] || "freyrsolutions.com"
-              }
-            />
+            <span className="flex items-center gap-2">
+              {/* The same guide as Admin, on the page where everybody meets
+                  the roles (Anir, Aug 30: "maybe the team page"). */}
+              <RolesGuide />
+              <InviteTeammate
+                canInvite={currentUser?.role === "admin"}
+                workspaceDomain={
+                  currentUser?.email?.split("@")[1] || "freyrsolutions.com"
+                }
+              />
+            </span>
           }
         />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">

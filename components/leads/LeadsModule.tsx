@@ -238,14 +238,12 @@ export function LeadsModule({
               <Plus size={15} strokeWidth={2.4} /> New lead
             </button>
           ) : (
+            /* THE PILL HAS TO SAY THE REAL REASON (Anir, Aug 30: "why does it
+               say sample leads switch to real mode, but I'm on real mode?").
+               It was gated on canWrite alone, so every non-admin in REAL mode
+               was told to switch to the mode they were already in. Mock and
+               view-only are two different states. */
             <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              /* THE PILL HAS TO SAY THE REAL REASON (Anir, Aug 30: "why does it say
-                 sample leads switch to real mode, but I'm on real mode?").
-                 It was gated on canWrite alone, so every non-admin in REAL
-                 mode was told to switch to the mode they were already in —
-                 twenty-one BD Members reading an instruction that could not
-                 be followed. Mock and view-only are two different states and
-                 now say so. */
               {live
                 ? "You can see the leads here, but not change them"
                 : "Sample leads. Switch to Real mode to work the live list"}

@@ -1,5 +1,6 @@
 "use client";
 
+import { RolesGuide } from "@/components/admin/RolesGuide";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ShieldCheck, UserRound, UsersRound, PencilRuler } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -160,6 +161,11 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
         <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
           <ShieldCheck size={16} strokeWidth={2} className="text-blue-primary" />
           Member roles
+          {/* THE GUIDE SITS WHERE THE ROLES ARE SET (Anir, Aug 30: "I need a
+              guide for these roles... when I click it, it should have a pop-up
+              that explains the roles"). Beside the heading, so the question
+              gets answered at the moment somebody is about to change one. */}
+          <RolesGuide />
           <InfoHint
             text={
               "BD Member, Owner, Solutioning Member or Admin. What each person may open and change.\nOnly an admin can change a role, and the server refuses it from anyone else."
