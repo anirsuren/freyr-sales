@@ -299,118 +299,125 @@ export function OpportunityDetail({
             </div>
 
             <aside className="min-w-0">
-              <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  The deal
-                </h2>
-                {/* EVERY FACT IS A CONTROL when this person may write, and
-                    plain text when they may not (Suren, Aug 30: "all the
-                    fields have to be editable... this whole screen has to be
-                    editable or viewable, so it should follow this"). */}
-                <div className="mt-3 space-y-5 text-[13px]">
-                  <Group label="Money">
-                  <EditableFact
-                    label="Value"
-                    value={value ? String(value) : ""}
-                    kind="money"
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    format={(v) => money(Number(v))}
-                    onSave={(v) => saveField({ value: num(v) ?? 0 })}
-                  />
-                  <EditableFact
-                    label="Estimated ACV"
-                    value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
-                    kind="money"
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    format={(v) => money(Number(v))}
-                    onSave={(v) => saveField({ estimatedAcv: num(v) })}
-                  />
-                  <EditableFact
-                    label="Estimated TCV"
-                    value={
-                      deal.estimatedTcv === undefined
-                        ? tcv === undefined
-                          ? ""
-                          : String(tcv)
-                        : String(deal.estimatedTcv)
-                    }
-                    kind="money"
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    hint={
-                      deal.estimatedTcv === undefined && tcv !== undefined
-                        ? "follows the deal's value"
-                        : undefined
-                    }
-                    format={(v) => money(Number(v))}
-                    onSave={(v) => saveField({ estimatedTcv: num(v) })}
-                  />
-                  </Group>
-                  <Group label="Where it stands">
-                  <EditableFact
-                    label="Confidence"
-                    value={deal.confidence === undefined ? "" : String(deal.confidence)}
-                    kind="percent"
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    format={(v) => `${v}%`}
-                    onSave={(v) => saveField({ confidence: num(v) })}
-                  />
-                  <EditableFact
-                    label="Status"
-                    value={deal.status ?? ""}
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    options={[
-                      { value: "", label: "Not set" },
-                      ...OPPORTUNITY_STATUSES.map((x) => ({ value: x, label: x })),
-                    ]}
-                    onSave={(v) => saveField({ status: v })}
-                  />
-                  <EditableFact
-                    label="Revenue type"
-                    value={deal.revenueType ?? ""}
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    options={[
-                      { value: "", label: "Not set" },
-                      ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
-                    ]}
-                    onSave={(v) => saveField({ revenueType: v })}
-                  />
-                  <EditableFact
-                    label="Est. sign"
-                    value={signs ?? ""}
-                    kind="date"
-                    stacked
-                    canEdit={verdict.mayEdit}
-                    onSave={(v) => saveField({ estSignDate: v })}
-                  />
-                  </Group>
-                  <Group label="On the record">
-                    <EditableFact
-                      label="Owner"
-                      value={deal.owner ?? ""}
-                      placeholder="Nobody yet"
-                      stacked
-                    canEdit={verdict.mayEdit}
-                      onSave={(v) => saveField({ owner: v.trim() })}
-                    />
-                    <Row label="Offering" value={offeringNames.join(", ") || "None"} />
-                    <Row
-                      label="Created"
-                      value={new Date(deal.createdAt).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    />
-                  </Group>
-                </div>
-              </section>
-            </aside>
+            {/* ONE QUIET BLOCK. It had four levels of uppercase grey — a card
+                title, three section headings, and a label over every value —
+                which is a lot of shouting for ten short facts, and the pairs
+                left a hole in the right column wherever a group had an odd
+                number ("I hate the way that looks. Still.").
+
+                No section headings now: the pairing already groups them and a
+                hairline says where one group ends. Labels are sentence case at
+                reading size rather than tracked-out capitals. The order fills
+                both columns so the right side never sits empty. */}
+            <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
+                <EditableFact
+                  label="Value"
+                  value={value ? String(value) : ""}
+                  kind="money"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  format={(v) => money(Number(v))}
+                  onSave={(v) => saveField({ value: num(v) ?? 0 })}
+                />
+                <EditableFact
+                  label="Estimated ACV"
+                  value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
+                  kind="money"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  format={(v) => money(Number(v))}
+                  onSave={(v) => saveField({ estimatedAcv: num(v) })}
+                />
+                <EditableFact
+                  label="Estimated TCV"
+                  value={
+                    deal.estimatedTcv === undefined
+                      ? tcv === undefined
+                        ? ""
+                        : String(tcv)
+                      : String(deal.estimatedTcv)
+                  }
+                  kind="money"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  hint={
+                    deal.estimatedTcv === undefined && tcv !== undefined
+                      ? "follows the deal's value"
+                      : undefined
+                  }
+                  format={(v) => money(Number(v))}
+                  onSave={(v) => saveField({ estimatedTcv: num(v) })}
+                />
+                <EditableFact
+                  label="Confidence"
+                  value={deal.confidence === undefined ? "" : String(deal.confidence)}
+                  kind="percent"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  format={(v) => `${v}%`}
+                  onSave={(v) => saveField({ confidence: num(v) })}
+                />
+              </div>
+
+              <div className="my-4 h-px bg-border-light" />
+
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
+                <EditableFact
+                  label="Status"
+                  value={deal.status ?? ""}
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  options={[
+                    { value: "", label: "Not set" },
+                    ...OPPORTUNITY_STATUSES.map((x) => ({ value: x, label: x })),
+                  ]}
+                  onSave={(v) => saveField({ status: v })}
+                />
+                <EditableFact
+                  label="Revenue type"
+                  value={deal.revenueType ?? ""}
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  options={[
+                    { value: "", label: "Not set" },
+                    ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
+                  ]}
+                  onSave={(v) => saveField({ revenueType: v })}
+                />
+                <EditableFact
+                  label="Expected to sign"
+                  value={signs ?? ""}
+                  kind="date"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  onSave={(v) => saveField({ estSignDate: v })}
+                />
+                <EditableFact
+                  label="Owner"
+                  value={deal.owner ?? ""}
+                  placeholder="Nobody yet"
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  onSave={(v) => saveField({ owner: v.trim() })}
+                />
+              </div>
+
+              <div className="my-4 h-px bg-border-light" />
+
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
+                <Row label="Offering" value={offeringNames.join(", ") || "None"} />
+                <Row
+                  label="Added"
+                  value={new Date(deal.createdAt).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                />
+              </div>
+            </section>
+          </aside>
           </div>
         ) : (
           <Customer360
@@ -426,29 +433,14 @@ export function OpportunityDetail({
   );
 }
 
-/** A titled run of facts. Money, state and provenance are different questions
- *  and were reading as one undifferentiated list. */
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-        {label}
-      </p>
-      {/* TWO COLUMNS, ONE LEFT EDGE. A single tall column of label-over-value
-          in a 320px rail is a lot of vertical travel for ten short facts;
-          paired up they read as a block. */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>
-    </div>
-  );
-}
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
-        {label}
-      </p>
-      <p className="truncate text-[13.5px] font-semibold text-text-primary" title={value}>
+      <p className="text-[11.5px] leading-4 text-text-tertiary">{label}</p>
+      <p
+        className="truncate text-[13.5px] leading-5 font-semibold text-text-primary"
+        title={value}
+      >
         {value}
       </p>
     </div>

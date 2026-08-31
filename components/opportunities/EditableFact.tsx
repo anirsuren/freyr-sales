@@ -107,12 +107,10 @@ export function EditableFact({
   if (!canEdit && stacked)
     return (
       <div className="min-w-0">
-        <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
-          {label}
-        </p>
+        <p className="text-[11.5px] leading-4 text-text-tertiary">{label}</p>
         <p
           className={cn(
-            "truncate text-[13.5px]",
+            "truncate text-[13.5px] leading-5",
             value ? "font-semibold text-text-primary" : "text-text-tertiary"
           )}
           title={shown}
@@ -151,9 +149,7 @@ export function EditableFact({
   if (stacked && !editing)
     return (
       <div className="min-w-0">
-        <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
-          {label}
-        </p>
+        <p className="text-[11.5px] leading-4 text-text-tertiary">{label}</p>
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -162,7 +158,7 @@ export function EditableFact({
         >
           <span
             className={cn(
-              "min-w-0 truncate text-[13.5px]",
+              "min-w-0 truncate text-[13.5px] leading-5",
               value ? "font-semibold text-text-primary" : "text-text-tertiary"
             )}
             title={shown}
@@ -176,7 +172,9 @@ export function EditableFact({
             className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
           />
         </button>
-        {hint && <p className="truncate text-[11px] text-text-tertiary">{hint}</p>}
+        {hint && (
+          <p className="truncate text-[11px] leading-4 text-text-tertiary">{hint}</p>
+        )}
         {error && (
           <p className="text-[11px] font-semibold text-[color:#DC2626]">{error}</p>
         )}
@@ -195,7 +193,7 @@ export function EditableFact({
           className={cn(
             "shrink-0 text-text-tertiary",
             stacked
-              ? "block text-[10.5px] uppercase tracking-[0.04em]"
+              ? "block text-[11.5px] leading-4"
               : "text-[12px]"
           )}
         >
