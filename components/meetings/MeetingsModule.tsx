@@ -23,6 +23,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useStoredView } from "@/lib/useStoredView";
+import { MEETING_ROOM_PATH, type MeetingRoom } from "@/lib/meetingRooms";
 import { cn, formatDate } from "@/lib/utils";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
@@ -148,6 +149,7 @@ export function MeetingsModule({
   contacts,
   opportunities,
   canCreate,
+  routeRoom,
 }: {
   state: MeetingsState;
   meName: string;
@@ -162,15 +164,16 @@ export function MeetingsModule({
    * create on.
    */
   canCreate: boolean;
+  /** Which room, from the URL. */
+  routeRoom: MeetingRoom;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [state, setState] = useState(initial);
-  const [room, setRoom] = useStoredView<"planned" | "completed">(
-    "freyr.meetings.room",
-    "planned",
-    ["planned", "completed"] as const
-  );
+  /* THE ROOM IS THE ADDRESS (Anir, Aug 31: "can u create different pages for
+     these tabs"). It was remembered state, so switching rooms never moved the
+     URL and Back left the module. */
+  const room = routeRoom;
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const toggleRow = (id: string) =>
     setOpenIds((cur) => {
@@ -288,7 +291,7 @@ export function MeetingsModule({
             type="button"
             role="tab"
             aria-selected={room === key}
-            onClick={() => setRoom(key)}
+            onClick={() => router.push(MEETING_ROOM_PATH[key])}
             className={cn(
               "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-2.5 text-[13.5px] transition-colors",
               room === key

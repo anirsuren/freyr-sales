@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   KeyRound,
   ListChecks,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
+import { ADMIN_TABS } from "@/lib/adminTabs";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { InviteTeammate } from "@/components/team/InviteTeammate";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
@@ -99,13 +99,23 @@ const TABS: (PageTab & { detail?: string })[] = [
   },
 ];
 
-const KEYS = ["members", "groups", "privileges", "activity", "email"] as const;
+
 
 export function AdminTabs({
+  routeTab,
   memberNames,
   activityGoals,
   live,
 }: {
+  /**
+   * WHICH ROOM, FROM THE URL — not from remembered state.
+   *
+   * This used to be a useStoredView, so clicking a tab changed the screen and
+   * left the address bar saying /admin. Nothing was linkable and Back left the
+   * page. Each room has its own address now and this is simply which one you
+   * are on.
+   */
+  routeTab: (typeof ADMIN_TABS)[number];
   memberNames: string[];
   /** Each goal with its overall progress, for the Activity Master's chips. */
   activityGoals: {
@@ -127,21 +137,8 @@ export function AdminTabs({
     "table",
     ["table", "split"] as const
   );
-  const [tab, setTab] = useStoredView<(typeof KEYS)[number]>(
-    "freyr.admin.tab",
-    "members",
-    KEYS
-  );
-  // A link can land you on a specific screen (?tab=activity) — the redirect
-  // from the old /performance/activity-master address uses this.
-  const searchParams = useSearchParams();
-  const wanted = searchParams.get("tab");
-  useEffect(() => {
-    if (wanted && (KEYS as readonly string[]).includes(wanted)) {
-      setTab(wanted as (typeof KEYS)[number]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wanted]);
+  const router = useRouter();
+  const tab = routeTab;
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   return (
@@ -167,7 +164,7 @@ export function AdminTabs({
             <PageTabs
               tabs={TABS}
               active={current.key}
-              onSelect={(key) => setTab(key as (typeof KEYS)[number])}
+              onSelect={(key) => router.push(`/admin/${key}`)}
             />
             {current.detail && <InfoHint text={current.detail} />}
           </span>

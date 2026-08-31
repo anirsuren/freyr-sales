@@ -2078,7 +2078,7 @@ function AssignGroupModal({
         </span>
         {canMakeGroups && (
           <Link
-            href="/admin?tab=groups"
+            href="/admin/groups"
             className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
           >
             <Plus size={11} strokeWidth={2.6} /> New group

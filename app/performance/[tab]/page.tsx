@@ -41,7 +41,7 @@ export default async function PerformanceTabPage({
   // The Activity Master lives on the Admin page now (Suren, Aug 18: "you
   // should have admin module where all these are configured"). The old
   // address keeps working for anyone who bookmarked it.
-  if (raw === "activity-master") redirect("/admin?tab=activity");
+  if (raw === "activity-master") redirect("/admin/activity");
   if (!master && !ROUTE_TABS.includes(raw as RouteTab)) notFound();
   await requireModuleAccess("/performance");
   await requireServerMemberScope();

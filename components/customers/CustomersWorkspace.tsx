@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, Crosshair, Layers } from "lucide-react";
 import { CustomersBrowser } from "@/components/customers/CustomersBrowser";
 import { TargetsTab } from "@/components/customers/TargetsTab";
@@ -10,6 +10,7 @@ import {
 } from "@/components/customers/CustomerGroupsTab";
 import type { CustomerGroup } from "@/lib/customerGroups";
 import { useStoredView } from "@/lib/useStoredView";
+import { CUSTOMER_TAB_PATH, type CustomerRouteTab } from "@/lib/customerTabs";
 import { cn } from "@/lib/utils";
 import type { TargetAccount } from "@/lib/targetsShared";
 import type { ComponentProps } from "react";
@@ -22,6 +23,7 @@ import type { ComponentProps } from "react";
  * lesson — NO entrance animation anywhere near the pills.
  */
 export function CustomersWorkspace({
+  routeTab,
   customersProps,
   targets,
   groups = [],
@@ -30,6 +32,8 @@ export function CustomersWorkspace({
   live,
   canEditTargets = false,
 }: {
+  /** Which room, from the URL — not from remembered state. */
+  routeTab: CustomerRouteTab;
   customersProps: ComponentProps<typeof CustomersBrowser>;
   targets: TargetAccount[];
   /** Named sets over the same accounts (Suren, Aug 28: "call it customer
@@ -42,11 +46,16 @@ export function CustomersWorkspace({
   canEditTargets?: boolean;
 }) {
   /* CUSTOMERS IS WHERE YOU LAND (Anir, Aug 30: "when I go to customers make
-     sure I land up on the customers page not targets"). The tab was
-     remembered across visits, so anybody who had last looked at Targets
-     opened the Customers page onto 122 accounts they do not own yet. The tab
-     still switches freely; it just does not decide where you arrive. */
-  const [view, setView] = useState<"customers" | "groups" | "targets">("customers");
+     sure I land up on the customers page not targets"). /customers sends you
+     to /customers/accounts, so nobody arrives on 122 targets they do not own
+     yet because that is where they last were.
+   
+     EACH ROOM IS AN ADDRESS NOW (Anir, Aug 31: "can u create different pages
+     for these tabs... i thought i already told u to do that"). It was local
+     state, so the URL never moved off /customers: nothing linkable, and Back
+     left the module instead of returning to the room you came from. */
+  const router = useRouter();
+  const view = routeTab;
 
   const pills = [
     { key: "customers" as const, label: "Customers", icon: Building2, color: "#0071E3" },
@@ -74,7 +83,7 @@ export function CustomersWorkspace({
                 key={p.key}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setView(p.key)}
+                onClick={() => router.push(CUSTOMER_TAB_PATH[p.key])}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
                   active
