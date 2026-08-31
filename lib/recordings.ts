@@ -43,6 +43,126 @@ export interface Recording {
   quality: QualityScore[];
 }
 
+/**
+ * A CALL LIBRARY, NOT A HANDFUL OF SAMPLES.
+ *
+ * Anir, Aug 31: "every rabbit hole needs to have a shit ton of data."
+ *
+ * The hand-written recordings above stay: they carry real coaching notes and
+ * quoted key moments, and they are what the analytics pages read when they
+ * want something with substance in it. These fill the list out behind them so
+ * a rep's recordings page looks like a quarter of calls rather than four.
+ *
+ * Deterministic from the index — no randomness, no clock — so two reads agree
+ * and a screenshot stays true. Invented accounts and invented people only.
+ */
+function generatedRecordings(): Recording[] {
+  const COMPANIES = [
+    "Cortexa Biopharma", "Helix Biologics", "Aether Medical Devices",
+    "Quantum Oncology", "Northwind Biosciences", "NovaGene Therapeutics",
+    "Meridian Pharmaceuticals", "Orion Vaccines", "BioNex Therapeutics",
+    "Solvance Pharma", "Solara Consumer Health", "Baltic Bio",
+    "Ventura Health", "Adriatic Pharma", "Sakura Therapeutics",
+    "Altamira Labs", "Verdant Biosciences", "Kestrel Therapeutics",
+  ];
+  const PEOPLE: [string, string][] = [
+    ["Lena Vogt", "SVP Global Regulatory"],
+    ["Owen Bradley", "VP Regulatory Affairs"],
+    ["Priya Nair", "Director, RIM"],
+    ["Tomas Lindqvist", "Regulatory Manager"],
+    ["Ana Sousa", "Head of Submissions"],
+    ["Marco Bianchi", "Chief Medical Officer"],
+    ["Yuki Tanaka", "Regulatory Lead"],
+    ["Ruth Okafor", "Head of Labelling"],
+    ["Diego Moreno", "Programme Director"],
+  ];
+  const REPS = [
+    "Walter Hensley", "Elena Rossi", "Marcus Chen", "Nina Kowalski",
+    "Omar Haddad", "Grace Liu",
+  ];
+  const KINDS = [
+    "Discovery", "Capability demo", "Technical deep dive",
+    "RFP defense", "Pricing", "Follow-up",
+  ];
+  const OUTCOMES = [
+    "Meeting Booked", "Interested", "Follow-up Needed",
+    "No Response", "Not Interested",
+  ];
+  const at = <T,>(list: T[], n: number): T => list[n % list.length]!;
+
+  const out: Recording[] = [];
+  for (let i = 0; i < 96; i += 1) {
+    const company = at(COMPANIES, i);
+    const [contact, contactTitle] = at(PEOPLE, i * 3 + 1);
+    const kind = at(KINDS, i);
+    /* Scores spread across the band a real team lands in — a library where
+       every call scores 88 teaches a coach nothing. */
+    const score = 54 + ((i * 7) % 42);
+    const mins = 12 + ((i * 5) % 34);
+    out.push({
+      id: `rec-gen-${String(i + 1).padStart(3, "0")}`,
+      company,
+      contact,
+      contactTitle,
+      rep: at(REPS, i),
+      title: `${kind}. ${company}`,
+      date: daysAgo(2 + ((i * 3) % 88)),
+      duration: `${String(mins).padStart(2, "0")}:${String((i * 11) % 60).padStart(2, "0")}`,
+      score,
+      outcome: at(OUTCOMES, i),
+      summary: `${at(REPS, i)} ran a ${kind.toLowerCase()} with ${contact} at ${company}. The conversation centred on submission throughput and where their current process slows down. ${score >= 75 ? "A clear next step was agreed before the call ended." : "The next step was left open, which is the thing to fix."}`,
+      didWell: [
+        "Opened on something researched rather than a generic introduction.",
+        "Asked what the current process actually costs them in weeks.",
+      ],
+      needsImprovement:
+        score >= 75
+          ? ["Talk-to-listen ratio drifted past 60% in the middle third."]
+          : [
+              "No specific next step was agreed before the call ended.",
+              "Moved to price before the value was established.",
+            ],
+      coaching: [
+        "Ask one more layer of why before proposing anything.",
+        "Close every call with a named person and a named day.",
+      ],
+      keyMoments: [
+        {
+          at: "01:20",
+          label: "Opener",
+          quote: `I read that ${company} is filing in two regions this year.`,
+          tone: "good",
+        },
+        {
+          at: "09:05",
+          label: score >= 75 ? "Pain identified" : "Vague answer",
+          quote:
+            score >= 75
+              ? "Our publishing queue is running about three weeks behind."
+              : "It is fine at the moment, I think.",
+          tone: score >= 75 ? "good" : "warn",
+        },
+        {
+          at: `${String(mins - 2).padStart(2, "0")}:40`,
+          label: score >= 75 ? "Next step secured" : "No next step",
+          quote:
+            score >= 75
+              ? "Put thirty minutes with our submissions lead in for Tuesday."
+              : "Send something over and we will take a look.",
+          tone: score >= 75 ? "good" : "warn",
+        },
+      ],
+      quality: [
+        { label: "Discovery", score: Math.min(100, score + 4) },
+        { label: "Rapport", score: Math.min(100, score + 8) },
+        { label: "Objection Handling", score: Math.max(30, score - 6) },
+        { label: "Next Steps", score: score >= 75 ? score : Math.max(25, score - 20) },
+      ],
+    });
+  }
+  return out;
+}
+
 export const RECORDINGS: Recording[] = [
   {
     id: "rec-001",
@@ -277,6 +397,7 @@ export const RECORDINGS: Recording[] = [
       { label: "Next Steps", score: 70 },
     ],
   },
+  ...generatedRecordings(),
 ];
 
 export interface TranscriptLine {

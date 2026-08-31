@@ -7,6 +7,7 @@
 
 import { hasElevenLabs } from "./env";
 import { getDataMode } from "./dataMode";
+import { mockFillContact } from "./mock-db";
 import type { Contact, Customer } from "./types";
 import type { Offering } from "./offerings";
 import agentIds from "./voiceAgents.json";
@@ -192,25 +193,16 @@ function seedCalls(): VoiceCall[] {
    * Both are fixed here against the generated contact book, deterministically,
    * with the same shape as the calls above.
    */
-  const FILL_COMPANIES = [
-    "Aventis Therapeutics", "Belmara Biosciences", "Calyx Labs",
-    "Dornier Pharma", "Eryx Medical", "Fennec Health", "Girona Diagnostics",
-    "Halcyon Bio", "Ionis Sciences", "Kestrel Biopharma",
-  ];
-  const FILL_NAMES = [
-    "Lena Vogt", "Owen Bradley", "Priya Nair", "Tomas Lindqvist",
-    "Ana Sousa", "Marco Bianchi", "Yuki Tanaka", "Ruth Okafor",
-    "Hannah Weiss", "Diego Moreno", "Farida Jensen", "Karl Iyer",
-  ];
   const tail: VoiceCall[] = [];
   for (let i = 0; i < 96; i += 1) {
-    /* Contact ids the generated book actually mints, so every row on
-       /voice opens a contact page that exists. */
-    const account = (i % 140) + 1;
+    /* Identity comes from the store's own derivation, not a parallel name
+       list: the queue row prints contact_name but links to contact_id, so a
+       guessed name would open a page showing somebody else. */
+    const person = mockFillContact((i % 140) + 1, i % 5);
     const contact: [string, string, string] = [
-      `cont-fill-${String(account).padStart(3, "0")}-${(i % 5) + 1}`,
-      FILL_NAMES[i % FILL_NAMES.length]!,
-      FILL_COMPANIES[i % FILL_COMPANIES.length]!,
+      person.id,
+      person.name,
+      person.company,
     ];
     const cat = CATS[i % CATS.length]!;
     const id = `vc-tail-${String(i + 1).padStart(3, "0")}`;

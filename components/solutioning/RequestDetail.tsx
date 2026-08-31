@@ -185,6 +185,8 @@ export function RequestDetail({
   meRole,
   members,
   linkables,
+  may,
+  children_ = [],
 }: {
   request: SolutionRequest;
   /** The request this work came out of, when it came out of one. */
@@ -193,6 +195,18 @@ export function RequestDetail({
   meRole: string;
   members: string[];
   linkables: Linkable[];
+  /** What the SERVER says this person may do here (SOL-026). */
+  may: { create: boolean; remove: boolean };
+  /** The submissions and presentations raised off this request (SOL-028). */
+  children_?: {
+    id: string;
+    ref: string;
+    title: string;
+    type?: string;
+    status: string;
+    deliverableStatus?: string;
+    owner?: string;
+  }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -218,6 +232,15 @@ export function RequestDetail({
   /* A cancelled record is history: it stays readable and stops being editable,
      which is the whole point of cancelling rather than deleting (SOL-033). */
   const canWrite = r.status !== "cancelled";
+  /* SOL-014: a deliverable counts as open until it is finalized, submitted or
+     cancelled — "Finalized and Cancelled remain distinct outcomes", and both
+     of them are outcomes. */
+  const openChildren = children_.filter(
+    (c) =>
+      !["Finalized", "Submitted to customer", "Cancelled"].includes(
+        c.deliverableStatus ?? ""
+      ) && c.status !== "completed" && c.status !== "cancelled"
+  );
   const fulfiller = managerial || meRole === "sol_member";
   const iRequested =
     r.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
@@ -361,6 +384,11 @@ export function RequestDetail({
                 this. */}
             {r.type === "request" &&
               r.status !== "completed" &&
+              r.status !== "cancelled" &&
+              /* SOL-026: creating the work is an owner's write, and the route
+                 refuses anyone else. Rendering it for them made a button whose
+                 only output was an error. */
+              may.create &&
               (r.kind === "submission" || r.kind === "presentation") && (
                 <button
                   type="button"
@@ -417,7 +445,9 @@ export function RequestDetail({
                 <Undo2 size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Hand it back
               </button>
             )}
-            {r.status !== "completed" && (iRequested || managerial) && (
+            {r.status !== "completed" &&
+              r.status !== "cancelled" &&
+              (iRequested || managerial) && (
               /* "The sales person says it is completed" — the requester's
                  button, honest about whose it is. */
               <button
@@ -474,7 +504,10 @@ export function RequestDetail({
                 <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
               </button>
             )}
-            {(meRole === "admin" || (iRequested && r.status === "initiated")) && (
+            {/* Same rule the route applies: the privilege table first, then who
+                this is. Admins keep the escape hatch for erroneous rows. */}
+            {may.remove &&
+              (meRole === "admin" || (iRequested && r.status === "initiated")) && (
               <button
                 type="button"
                 disabled={busy}
@@ -698,6 +731,43 @@ export function RequestDetail({
                 )}
               </div>
             </section>
+
+            {/* WHAT CAME OUT OF THIS REQUEST (SOL-028).
+                "Opening a Solutioning Request shows... child deliverables...
+                in one connected view." A request that has spawned three
+                submissions said so nowhere: you had to go back to the list and
+                notice the parent reference on each one. */}
+            {children_.length > 0 && (
+              <section className="border-b border-border-light py-7">
+                <SectionHeading
+                  icon={FilePlus2}
+                  title={`Work raised off this (${children_.length})`}
+                  description="Each one has its own owner, status and documents."
+                />
+                <div className="mt-4 space-y-2 pl-11">
+                  {children_.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/solutioning/${c.id}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border-light bg-white px-3.5 py-2.5 transition-colors hover:border-blue-primary"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                          {c.title}
+                        </span>
+                        <span className="tnum block text-[11.5px] text-text-tertiary">
+                          {c.ref}
+                          {c.owner ? ` · ${c.owner}` : " · nobody on it yet"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
+                        {c.deliverableStatus ?? c.status.replace(/_/g, " ")}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* WHO IS ACCOUNTABLE, DIVISION BY DIVISION.
                 Manoj's Pack 1, SOL-010: "Within a multi-Division Solutioning
@@ -1231,6 +1301,22 @@ export function RequestDetail({
         body={
           <>
             <b>{r.title}</b> closes for everyone working it.
+            {/* SOL-014: "If one of several required deliverables is still open,
+                the request does not auto-complete... An authorized user can
+                explicitly close the request where appropriate." So this warns
+                and still lets them through — it is their call, made knowing
+                what is unfinished, rather than a refusal on click. */}
+            {openChildren.length > 0 && (
+              <span className="mt-3 block rounded-lg border border-border-light bg-surface px-3 py-2.5 text-[12.5px] text-text-secondary">
+                {openChildren.length === 1
+                  ? "One deliverable is still open:"
+                  : `${openChildren.length} deliverables are still open:`}{" "}
+                <b className="text-text-primary">
+                  {openChildren.map((c) => c.ref).join(", ")}
+                </b>
+                . Closing this does not close them.
+              </span>
+            )}
           </>
         }
         detail="It moves out of the open list. You can reopen it afterwards if something else comes up."

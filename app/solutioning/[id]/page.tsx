@@ -5,7 +5,11 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +83,32 @@ export default async function SolutioningRequestPage({
       meRole={me.role}
       members={members}
       linkables={linkables}
+      /**
+       * WHAT THIS PERSON MAY ACTUALLY DO, ASKED OF THE SERVER (SOL-026).
+       *
+       * The page used to decide from role and ownership alone while the route
+       * asked the privilege table, so "Create submission" and the delete icon
+       * rendered for people the server then refused — a control that exists to
+       * produce an error message. Same question, same answer, one place.
+       */
+      may={{
+        create: (await moduleCreateRefusal("/solutioning")) === null,
+        remove: (await moduleDeleteRefusal("/solutioning")) === null,
+      }}
+      /* SOL-014/SOL-028: the deliverables raised off this request. The request
+         cannot close while one is still open, and it should say so rather than
+         refusing on click. */
+      children_={state.requests
+        .filter((x) => x.requestId === request.id)
+        .map((x) => ({
+          id: x.id,
+          ref: x.ref,
+          title: x.title,
+          type: x.type,
+          status: x.status,
+          deliverableStatus: x.deliverableStatus,
+          owner: x.owner,
+        }))}
     />
   );
 }

@@ -25,9 +25,13 @@ import {
   type SolutioningKind,
   commentOnRequest,
 } from "@/lib/solutioning";
-import { listOfferings } from "@/lib/offerings";
+import { listOfferingCategories, listOfferings } from "@/lib/offerings";
 import { readOpportunities } from "@/lib/opportunities";
-import { divisionsFor, recommendedLead } from "@/lib/solutioningDivisions";
+import {
+  divisionFromLabel,
+  divisionsFor,
+  recommendedLead,
+} from "@/lib/solutioningDivisions";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -183,9 +187,7 @@ export async function POST(req: NextRequest) {
         }));
         const offerings = await listOfferings();
         const byId = new Map(offerings.map((o) => [o.id, o]));
-        const byName = new Map(
-          offerings.map((o) => [o.offering_name.trim().toLowerCase(), o])
-        );
+        const categoryNames = listOfferingCategories().map((c) => c.name);
         const categories: (string | undefined)[] = [];
         for (const id of linkedOppIds) {
           const deal = opportunities.find((o) => o.id === id);
@@ -193,11 +195,13 @@ export async function POST(req: NextRequest) {
           for (const oid of deal.offeringIds) {
             categories.push(byId.get(oid)?.offering_category);
           }
-          /* A deal imported from the sheet names its offering in words rather
-             than by id, so the label is matched too — otherwise every imported
-             deal would derive no division at all. */
+          /* A deal imported from the sheet names its offering in the
+             workbook's shorthand rather than by id, so the label goes through
+             the resolver — exact-name matching never lands on those. */
           for (const label of deal.offeringLabels) {
-            categories.push(byName.get(label.trim().toLowerCase())?.offering_category);
+            categories.push(
+              divisionFromLabel(label, offerings, categoryNames)
+            );
           }
         }
         divisions = divisionsFor(categories);

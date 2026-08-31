@@ -36,6 +36,48 @@ export function divisionOfOffering(offeringCategory: string | undefined): string
 }
 
 /**
+ * THE SHEET'S SHORTHAND, RESOLVED TO A DIVISION.
+ *
+ * An imported deal names its offering the way the pipeline workbook does —
+ * "GRI", "Agent-VIA", "RTQ" — while the catalogue names products
+ * ("Freya.intelligence + Agents", "Freya.RTQ"). Matching those two by exact
+ * name never lands, so every one of the 76 imported deals derived no division
+ * at all and SOL-007 quietly did nothing on the deals that matter most.
+ *
+ * Three passes, cheapest and most certain first: the catalogue's own category
+ * names, then the workbook's shorthand, then a substring of a product name.
+ * A label nothing recognises returns undefined rather than a guess.
+ */
+const LABEL_ALIASES: Record<string, string> = {
+  gri: "Global Regulatory Intelligence",
+  "ri report": "Global Regulatory Intelligence",
+  "dashboards (market, competitive intel)": "Global Regulatory Intelligence",
+  "agent-via": "Freya Fusion Platform & Agents",
+  "agent - via": "Freya Fusion Platform & Agents",
+  "ai agents": "Freya Fusion Platform & Agents",
+  rtq: "Regulatory Affairs",
+};
+
+export function divisionFromLabel(
+  label: string,
+  offerings: { offering_name: string; offering_category?: string }[],
+  categoryNames: string[]
+): string | undefined {
+  const key = label.trim().toLowerCase();
+  if (!key) return undefined;
+  const byCategory = categoryNames.find((c) => c.trim().toLowerCase() === key);
+  if (byCategory) return byCategory;
+  const alias = LABEL_ALIASES[key];
+  if (alias) return alias;
+  const byName = offerings.find(
+    (o) =>
+      o.offering_name.trim().toLowerCase() === key ||
+      o.offering_name.trim().toLowerCase().includes(key)
+  );
+  return byName?.offering_category?.trim() || undefined;
+}
+
+/**
  * EVERY DIVISION REPRESENTED IN A SET OF OFFERINGS, ONCE.
  *
  * SOL-007's acceptance criteria in one function: "Selecting multiple

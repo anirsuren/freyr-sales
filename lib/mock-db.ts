@@ -92,6 +92,52 @@ function demoComponentLinks(accountId: string) {
   }));
 }
 
+/**
+ * THE IDENTITY OF A GENERATED CONTACT, DERIVED IN ONE PLACE.
+ *
+ * The long-tail accounts, their people and their company names are built from
+ * these lists. lib/voice seeds calls against the same contacts and has to
+ * print the same names on them: a call row reading "Lena Vogt" that links to
+ * a contact page showing somebody else is worse than no call at all. Hoisted
+ * out of seed() and exported so there is one derivation, not two that drift.
+ */
+const FILL_STEMS = [
+    "Aventis", "Belmara", "Calyx", "Dornier", "Eryx", "Fennec", "Girona",
+    "Halcyon", "Ionis", "Juniper", "Kestrel", "Lumen", "Marisol", "Nyxis",
+    "Orbis", "Pallas", "Quarry", "Rivenna", "Sable", "Tessera", "Umbra",
+    "Verdant", "Wexford", "Xantha", "Ymir", "Zephyra", "Altamira", "Borealis",
+    "Cinder", "Delphi", "Ember", "Fjord", "Granite", "Harrow", "Isolde",
+  ];
+const FILL_SUFFIX = [
+    "Biopharma", "Therapeutics", "Biosciences", "Labs", "Pharma",
+    "Medical", "Health", "Diagnostics", "Bio", "Sciences",
+  ];
+const FILL_FIRST = [
+    "Lena", "Owen", "Priya", "Tomas", "Ana", "Marco", "Yuki", "Ruth", "Hannah",
+    "Diego", "Farida", "Karl", "Meera", "Jonas", "Chiara", "Samuel", "Aisha",
+    "Viktor", "Noor", "Erik", "Camila", "Ibrahim", "Sofia", "Liam", "Nadia",
+    "Pavel", "Zara", "Mateo", "Ingrid", "Rohan",
+  ];
+const FILL_LAST = [
+    "Vogt", "Bradley", "Nair", "Lindqvist", "Sousa", "Bianchi", "Tanaka",
+    "Okafor", "Weiss", "Moreno", "Jensen", "Iyer", "Berg", "Ricci", "Adeyemi",
+    "Khan", "Petrov", "Rahman", "Larsen", "Duarte", "Cisse", "Marchetti",
+    "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
+  ];
+
+const fillAt = <T,>(list: T[], n: number): T => list[n % list.length]!;
+
+/** `account` is 1-based (cust-fill-001 is account 1); `slot` is 0-4. */
+export function mockFillContact(account: number, slot: number) {
+  const i = account - 1;
+  const company = `${fillAt(FILL_STEMS, i)} ${fillAt(FILL_SUFFIX, i * 3 + 1)}`;
+  return {
+    id: `cont-fill-${String(account).padStart(3, "0")}-${slot + 1}`,
+    name: `${fillAt(FILL_FIRST, i * 5 + slot)} ${fillAt(FILL_LAST, i * 7 + slot * 3)}`,
+    company,
+  };
+}
+
 function seed(): MockStore {
   const customers: Customer[] = [
     {
@@ -731,17 +777,6 @@ function seed(): MockStore {
    * carries real Freyr accounts; putting a made-up VP with a made-up phone
    * number on one of those is the line the house rule draws.
    */
-  const FILL_STEMS = [
-    "Aventis", "Belmara", "Calyx", "Dornier", "Eryx", "Fennec", "Girona",
-    "Halcyon", "Ionis", "Juniperа", "Kestrel", "Lumen", "Marisol", "Nyxis",
-    "Orbis", "Pallas", "Quarry", "Rivenna", "Sable", "Tessera", "Umbra",
-    "Verdant", "Wexford", "Xantha", "Ymir", "Zephyra", "Altamira", "Borealis",
-    "Cinder", "Delphi", "Ember", "Fjord", "Granite", "Harrow", "Isolde",
-  ];
-  const FILL_SUFFIX = [
-    "Biopharma", "Therapeutics", "Biosciences", "Labs", "Pharma",
-    "Medical", "Health", "Diagnostics", "Bio", "Sciences",
-  ];
   const FILL_INDUSTRY = [
     "Pharmaceutical", "Biotechnology", "Medical Devices", "Consumer Health",
     "Generics", "Animal Health", "Diagnostics", "Nutraceuticals",
@@ -755,18 +790,6 @@ function seed(): MockStore {
   ];
   const FILL_SIZE = ["small", "mid", "large"];
   const FILL_OWNERSHIP = ["Private", "Public", "PE-backed", "Family owned"];
-  const FILL_FIRST = [
-    "Lena", "Owen", "Priya", "Tomas", "Ana", "Marco", "Yuki", "Ruth", "Hannah",
-    "Diego", "Farida", "Karl", "Meera", "Jonas", "Chiara", "Samuel", "Aisha",
-    "Viktor", "Noor", "Erik", "Camila", "Ibrahim", "Sofia", "Liam", "Nadia",
-    "Pavel", "Zara", "Mateo", "Ingrid", "Rohan",
-  ];
-  const FILL_LAST = [
-    "Vogt", "Bradley", "Nair", "Lindqvist", "Sousa", "Bianchi", "Tanaka",
-    "Okafor", "Weiss", "Moreno", "Jensen", "Iyer", "Berg", "Ricci", "Adeyemi",
-    "Khan", "Petrov", "Rahman", "Larsen", "Duarte", "Cisse", "Marchetti",
-    "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
-  ];
   const FILL_TITLES: [string, string][] = [
     ["VP Regulatory Affairs", "Regulatory Affairs"],
     ["Head of Submissions", "Regulatory Affairs"],
@@ -1071,7 +1094,7 @@ function seed(): MockStore {
 /* 7: the generated accounts now log activity, carry a review state on their
    drafts and have a run history behind them. Without a bump the cached store
    keeps its silent 140 accounts and none of that reaches a page either. */
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 
