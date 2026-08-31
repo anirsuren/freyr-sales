@@ -76,7 +76,10 @@ export default async function SolutioningPage({
          one is the owner's. */
       canCreate={
         tab === "submissions" || tab === "presentations"
-          ? !(await moduleCreateRefusal("/solutioning"))
+          ? /* Ask about THIS room's privilege, not the module's. Submissions
+               and Presentations each have their own, and asking "/solutioning"
+               asked about Solution requests for all three. */
+            !(await moduleCreateRefusal(`/solutioning?tab=${tab}`))
           : !(await moduleWriteRefusal("/solutioning"))
       }
       members={members}

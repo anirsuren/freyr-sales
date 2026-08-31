@@ -835,7 +835,27 @@ export function hasViewAll(
 
 /** Which module row a path belongs to, longest match first. */
 export function moduleForPath(path: string): ModuleKey | null {
-  const clean = (path || "").split("?")[0];
+  const raw = (path || "").trim();
+  /**
+   * THE QUERY IS PART OF THE ADDRESS FOR THREE OF THESE.
+   *
+   * Solution requests, Submissions and Presentations are three separate
+   * privileges that share one route and are told apart by `?tab=`. This
+   * function threw the query away before comparing, so all three resolved to
+   * whichever sat first in the table — Solution requests — and the other two
+   * were unreachable. They appeared in the matrix, they were editable in
+   * Admin's privilege grid, and they decided nothing: granting somebody
+   * Submissions create changed no button anywhere.
+   *
+   * Found Aug 31, giving Solutioning Members create on Submissions and
+   * watching the button stay hidden. Exact match first, so a tabbed address
+   * finds its own privilege; the base-path walk below is unchanged for every
+   * other module, none of which carries a query.
+   */
+  const exact = PRIVILEGE_MODULES.find((m) => m.path === raw);
+  if (exact) return exact.key;
+
+  const clean = raw.split("?")[0];
   let best: { key: ModuleKey; len: number } | null = null;
   for (const m of PRIVILEGE_MODULES) {
     const base = m.path.split("?")[0];

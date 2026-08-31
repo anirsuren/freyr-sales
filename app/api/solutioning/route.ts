@@ -149,8 +149,12 @@ export async function POST(req: NextRequest) {
       const rawTypeForGate = String(body.type ?? "request");
       const isDeliverable =
         rawTypeForGate === "submission" || rawTypeForGate === "presentation";
+      /* And the create question is asked of the THING being made. Submissions
+         and Presentations each carry their own privilege; asking the bare
+         "/solutioning" asked about Solution requests for all three, so a role
+         granted Submissions create was still refused here. */
       const refusal = isDeliverable
-        ? await moduleCreateRefusal("/solutioning")
+        ? await moduleCreateRefusal(`/solutioning?tab=${rawTypeForGate}s`)
         : await moduleWriteRefusal("/solutioning");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const kind = body.kind as SolutioningKind;
