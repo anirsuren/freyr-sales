@@ -32,6 +32,7 @@ export function EditableFact({
   kind = "text",
   placeholder = "Not set",
   hint,
+  stacked = false,
   canEdit,
   options,
   onSave,
@@ -57,6 +58,16 @@ export function EditableFact({
    * column it sat in (Anir, Aug 30: "there's so many things wrong with this").
    */
   hint?: string;
+  /**
+   * STACKED puts the label above the value, both flush left.
+   *
+   * The rail was label-left / value-right in a 320px column, which leaves a
+   * void of dead space between the two halves of every row and gives the eye
+   * a different distance to travel on each one — "it's all over the place, it
+   * just looks weird" (Anir, Aug 30). Stacked, the column has ONE left edge
+   * and the rows read as a block instead of ten separate journeys.
+   */
+  stacked?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -93,6 +104,27 @@ export function EditableFact({
 
   const shown = value ? (format ? format(value) : value) : placeholder;
 
+  if (!canEdit && stacked)
+    return (
+      <div className="min-w-0">
+        <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
+          {label}
+        </p>
+        <p
+          className={cn(
+            "truncate text-[13.5px]",
+            value ? "font-semibold text-text-primary" : "text-text-tertiary"
+          )}
+          title={shown}
+        >
+          {shown}
+        </p>
+        {hint && (
+          <p className="truncate text-[11px] text-text-tertiary">{hint}</p>
+        )}
+      </div>
+    );
+
   if (!canEdit)
     return (
       <div className="flex items-baseline justify-between gap-3 py-0.5">
@@ -116,10 +148,59 @@ export function EditableFact({
       </div>
     );
 
+  if (stacked && !editing)
+    return (
+      <div className="min-w-0">
+        <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
+          {label}
+        </p>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          aria-label={`Edit ${label}`}
+          className="group -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1 text-left transition-colors hover:bg-surface"
+        >
+          <span
+            className={cn(
+              "min-w-0 truncate text-[13.5px]",
+              value ? "font-semibold text-text-primary" : "text-text-tertiary"
+            )}
+            title={shown}
+          >
+            {shown}
+          </span>
+          <Pencil
+            size={11}
+            strokeWidth={2.2}
+            aria-hidden="true"
+            className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+          />
+        </button>
+        {hint && <p className="truncate text-[11px] text-text-tertiary">{hint}</p>}
+        {error && (
+          <p className="text-[11px] font-semibold text-[color:#DC2626]">{error}</p>
+        )}
+      </div>
+    );
+
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 py-0.5">
-        <span className="shrink-0 text-[12px] text-text-tertiary">{label}</span>
+      <div
+        className={cn(
+          "gap-3 py-0.5",
+          stacked ? "" : "flex items-baseline justify-between"
+        )}
+      >
+        <span
+          className={cn(
+            "shrink-0 text-text-tertiary",
+            stacked
+              ? "block text-[10.5px] uppercase tracking-[0.04em]"
+              : "text-[12px]"
+          )}
+        >
+          {label}
+        </span>
         {editing ? (
           <span className="flex min-w-0 flex-1 items-center justify-end gap-1">
             {options ? (

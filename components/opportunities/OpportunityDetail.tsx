@@ -307,12 +307,13 @@ export function OpportunityDetail({
                     plain text when they may not (Suren, Aug 30: "all the
                     fields have to be editable... this whole screen has to be
                     editable or viewable, so it should follow this"). */}
-                <div className="mt-3 space-y-4 text-[13px]">
+                <div className="mt-3 space-y-5 text-[13px]">
                   <Group label="Money">
                   <EditableFact
                     label="Value"
                     value={value ? String(value) : ""}
                     kind="money"
+                    stacked
                     canEdit={verdict.mayEdit}
                     format={(v) => money(Number(v))}
                     onSave={(v) => saveField({ value: num(v) ?? 0 })}
@@ -321,6 +322,7 @@ export function OpportunityDetail({
                     label="Estimated ACV"
                     value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
                     kind="money"
+                    stacked
                     canEdit={verdict.mayEdit}
                     format={(v) => money(Number(v))}
                     onSave={(v) => saveField({ estimatedAcv: num(v) })}
@@ -335,6 +337,7 @@ export function OpportunityDetail({
                         : String(deal.estimatedTcv)
                     }
                     kind="money"
+                    stacked
                     canEdit={verdict.mayEdit}
                     hint={
                       deal.estimatedTcv === undefined && tcv !== undefined
@@ -350,6 +353,7 @@ export function OpportunityDetail({
                     label="Confidence"
                     value={deal.confidence === undefined ? "" : String(deal.confidence)}
                     kind="percent"
+                    stacked
                     canEdit={verdict.mayEdit}
                     format={(v) => `${v}%`}
                     onSave={(v) => saveField({ confidence: num(v) })}
@@ -357,6 +361,7 @@ export function OpportunityDetail({
                   <EditableFact
                     label="Status"
                     value={deal.status ?? ""}
+                    stacked
                     canEdit={verdict.mayEdit}
                     options={[
                       { value: "", label: "Not set" },
@@ -367,6 +372,7 @@ export function OpportunityDetail({
                   <EditableFact
                     label="Revenue type"
                     value={deal.revenueType ?? ""}
+                    stacked
                     canEdit={verdict.mayEdit}
                     options={[
                       { value: "", label: "Not set" },
@@ -378,6 +384,7 @@ export function OpportunityDetail({
                     label="Est. sign"
                     value={signs ?? ""}
                     kind="date"
+                    stacked
                     canEdit={verdict.mayEdit}
                     onSave={(v) => saveField({ estSignDate: v })}
                   />
@@ -387,7 +394,8 @@ export function OpportunityDetail({
                       label="Owner"
                       value={deal.owner ?? ""}
                       placeholder="Nobody yet"
-                      canEdit={verdict.mayEdit}
+                      stacked
+                    canEdit={verdict.mayEdit}
                       onSave={(v) => saveField({ owner: v.trim() })}
                     />
                     <Row label="Offering" value={offeringNames.join(", ") || "None"} />
@@ -423,24 +431,26 @@ export function OpportunityDetail({
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
         {label}
       </p>
-      <div className="space-y-1">{children}</div>
+      {/* TWO COLUMNS, ONE LEFT EDGE. A single tall column of label-over-value
+          in a 320px rail is a lot of vertical travel for ten short facts;
+          paired up they read as a block. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>
     </div>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-0.5">
-      <span className="shrink-0 text-[12px] text-text-tertiary">{label}</span>
-      <span
-        className="min-w-0 truncate text-right font-semibold text-text-primary"
-        title={value}
-      >
+    <div className="min-w-0">
+      <p className="text-[10.5px] uppercase tracking-[0.04em] text-text-tertiary">
+        {label}
+      </p>
+      <p className="truncate text-[13.5px] font-semibold text-text-primary" title={value}>
         {value}
-      </span>
+      </p>
     </div>
   );
 }
