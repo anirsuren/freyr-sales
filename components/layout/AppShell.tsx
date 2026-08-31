@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { ModeUrlSync } from "./ModeUrlSync";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
@@ -280,6 +281,9 @@ export function AppShell({
   if (isEmbeddedMaterial) {
     return (
       <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+      {/* Keeps /mock-mode in the address bar in step with the workspace you
+          are actually looking at, on every route. */}
+      <ModeUrlSync mode={dataMode === "mock" ? "mock" : "live"} />
         <MyPhotoProvider>
           <TimeZoneProvider>
             <ToastProvider>
@@ -304,6 +308,9 @@ export function AppShell({
   ) {
     return (
       <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+      {/* Keeps /mock-mode in the address bar in step with the workspace you
+          are actually looking at, on every route. */}
+      <ModeUrlSync mode={dataMode === "mock" ? "mock" : "live"} />
         <MyPhotoProvider>
           <TimeZoneProvider>{children}</TimeZoneProvider>
         </MyPhotoProvider>
@@ -319,6 +326,9 @@ export function AppShell({
   if (isDocumentPage) {
     return (
       <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+      {/* Keeps /mock-mode in the address bar in step with the workspace you
+          are actually looking at, on every route. */}
+      <ModeUrlSync mode={dataMode === "mock" ? "mock" : "live"} />
         <MyPhotoProvider>
           <TimeZoneProvider>
             <ToastProvider>
@@ -389,6 +399,9 @@ export function AppShell({
 
   return (
     <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+      {/* Keeps /mock-mode in the address bar in step with the workspace you
+          are actually looking at, on every route. */}
+      <ModeUrlSync mode={dataMode === "mock" ? "mock" : "live"} />
       <MyPhotoProvider>
       <TimeZoneProvider>
       <ToastProvider>

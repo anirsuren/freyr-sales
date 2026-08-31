@@ -45,6 +45,24 @@ const nextConfig = {
   // Without this, saving on one page and navigating to another (e.g. submit
   // a pitch for review → open the Sessions list) showed a STALE cached copy
   // of the list — reads exactly like "my save disappeared" (Anir, Jul 5).
+  /**
+   * MOCK MODE LIVES IN THE ADDRESS BAR (Anir, Aug 31: "the second I switch
+   * between real mode and mock mode, that slash mock mode has to appear right
+   * after the 3006").
+   *
+   * NOT a duplicate set of pages — nineteen routes copied twice would drift
+   * apart inside a week. One rewrite, so /mock-mode/anything serves exactly
+   * the page /anything serves, and the prefix is free to be what it should be:
+   * a label on the window, and a URL somebody can paste to a colleague.
+   *
+   * Middleware runs BEFORE this, and it sees the prefixed path. That is
+   * deliberate and it is what keeps the door locked: /mock-mode/admin is not
+   * in the public list, so it needs a session exactly as /admin does. The
+   * prefix cannot be used to walk around authentication.
+   */
+  async rewrites() {
+    return [{ source: "/mock-mode/:path*", destination: "/:path*" }];
+  },
   experimental: {
     staleTimes: { dynamic: 0 },
     // Belt and braces for the Aug 20 upload outage: even when middleware has
