@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getDataMode } from "./dataMode";
+import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { hasSupabase } from "./env";
 import { sampleDocPath } from "./sampleDocuments";
 
@@ -632,7 +633,7 @@ export function groupMeetingsByPeriod(
  * of the originals — the moment somebody makes or edits a meeting of their
  * own, this stops touching anything.
  */
-const SAMPLE_VERSION = 4;
+const SAMPLE_VERSION = 5;
 
 function isStaleSeed(raw: unknown): boolean {
   const row = raw as { meetings?: unknown[]; sampleVersion?: number } | null;
@@ -871,6 +872,95 @@ function sampleMeetings(): MeetingsState {
       docs: [],
     },
   ];
+
+  /**
+   * AND ONE MEETING HISTORY PER DEAL.
+   *
+   * Anir, Aug 31: "every rabbit hole needs to have a shit ton of data... do u
+   * realize how much fucking data is about to be in this app with 200 people
+   * using it?"
+   *
+   * The five above are hand-written and stay: they carry real briefs and
+   * outcomes, and they are what the demo customer pages join against. But they
+   * only touch five deals, so every other opportunity read "Meetings 0" — the
+   * one empty shelf again, just further down.
+   *
+   * These are generated straight off the mock pipeline, so every deal has been
+   * met about: three held with an outcome and a comment, one still coming up.
+   * Deterministic from the row index, like everything else in mock, so two
+   * reads never disagree and a screenshot stays true.
+   */
+  const TYPES: MeetingType[] = [
+    "Discovery",
+    "Capability / demo",
+    "Technical deep dive",
+    "RFP defence",
+    "Commercial / pricing",
+    "QBR / review",
+    "Executive briefing",
+  ];
+  const SELLERS = ["Elena Rossi", "Marcus Chen", "Nina Kowalski", "Omar Haddad"];
+  const SOLVERS = ["Grace Liu", "Daniel Foster", "Omar Haddad", "Nina Kowalski"];
+  const at = <T,>(list: T[], n: number): T => list[n % list.length]!;
+
+  let ref = meetings.length;
+  SEED_OPPORTUNITIES.forEach((row, i) => {
+    const dealId = `seed-opp-${i + 1}`;
+    const offering = row.offering || "Regulatory services";
+    for (let k = 0; k < 4; k += 1) {
+      const held = k < 3;
+      const owner = at(SELLERS, i + k);
+      const solver = at(SOLVERS, i + k);
+      ref += 1;
+      meetings.push({
+        id: `mtg-deal-${i + 1}-${k + 1}`,
+        ref: `MTG-${String(ref).padStart(4, "0")}`,
+        title: `${at(TYPES, i + k)} — ${row.customer}`,
+        type: at(TYPES, i + k),
+        status: held ? "completed" : "planned",
+        meetingAt: held ? d(-40 + k * 11 + (i % 7)) : d(7 + (i % 21)),
+        customer: row.customer,
+        opportunityIds: [dealId],
+        opportunityLabels: [`${offering}. ${row.customer}`],
+        contactIds: [],
+        contactNames: [],
+        attendees: [owner, solver],
+        presenters: [solver],
+        owner,
+        createdAt: day(-50 + k * 10 + (i % 6)),
+        ...(held
+          ? { completedAt: day(-39 + k * 11 + (i % 7)), completedBy: owner }
+          : {}),
+        notes: held
+          ? [
+              {
+                id: `mn-deal-${i + 1}-${k + 1}a`,
+                kind: "outcome",
+                by: owner,
+                at: day(-39 + k * 11 + (i % 7)),
+                text: `Walked ${row.customer} through ${offering}. They asked for pricing and a reference in the same therapeutic area.`,
+              },
+              {
+                id: `mn-deal-${i + 1}-${k + 1}b`,
+                kind: "comment",
+                by: solver,
+                at: day(-38 + k * 11 + (i % 7)),
+                text: "Sending the technical annex across this week.",
+              },
+            ]
+          : [
+              {
+                id: `mn-deal-${i + 1}-${k + 1}a`,
+                kind: "brief",
+                by: owner,
+                at: day(-1 + (i % 3)),
+                text: `Cover ${offering} scope, timelines and the commercial model.`,
+              },
+            ],
+        docs: [],
+      });
+    }
+  });
 
   return { meetings };
 }

@@ -3,7 +3,7 @@ import { orderBands } from "./connectionOrder";
 import "server-only";
 
 import { readOpportunities } from "./opportunities";
-import { readSolutioning } from "./solutioning";
+import { readSolutioning, solutioningShelf } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
 import { meetingsForCustomer, readMeetings } from "./meetings";
@@ -102,21 +102,24 @@ export async function buildCustomer360(
     /* Submissions, presentations and meetings are three separate questions he
        asked separately ("how many presentations are happening, how many
        submissions have I done"), so they are three bands, not one. */
-    const byKind = (kind: string) => myRequests.filter((r) => r.kind === kind);
-    for (const [key, label, kind, color] of [
+    /* Classified by the store's own rule (solutioningShelf) rather than by
+       `kind` alone. `kind` never holds "request", so the Solution requests
+       band below counted zero on every account, while Submissions counted the
+       ASKS as if they were finished submissions. */
+    for (const [key, label, color] of [
       /* SOLUTION REQUESTS ARE THEIR OWN COLUMN on his grid, separate from
          the submissions and presentations they turn into — and no page
          carried them at all. "Now you should call it as solution request, not
          request; they call it solution request." */
-      ["solutionRequests", "Solution requests", "request", "#0071E3"],
-      ["submissions", "Submissions", "submission", "#7C3AED"],
-      ["presentations", "Presentations", "presentation", "#0F766E"],
+      ["solutionRequests", "Solution requests", "#0071E3"],
+      ["submissions", "Submissions", "#7C3AED"],
+      ["presentations", "Presentations", "#0F766E"],
       /* Named for what it is — somebody ASKED the Solutioning team for a
          meeting — so it cannot be mistaken for the meetings that were
          actually held, which have their own band below. */
-      ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
+      ["meetingRequests", "Meeting requests", "#B4318F"],
     ] as const) {
-      const rows = byKind(kind);
+      const rows = myRequests.filter((r) => solutioningShelf(r) === key);
       bands.push({
         key,
         label,

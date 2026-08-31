@@ -142,6 +142,31 @@ export const REVENUE_TYPES = ["ARR", "OTS"] as const;
 export type RevenueType = (typeof REVENUE_TYPES)[number];
 
 /**
+ * WHERE THE MONEY COMES FROM, WHICH IS NOT THE SAME AS HOW IT RECURS.
+ *
+ * Suren, Aug 31, reading an opportunity: "opportunity is missing one thing,
+ * what type of opportunity... is it an ARR thing, it also says that new
+ * business, existing business, renewal, all of that comes along."
+ *
+ * ARR/OTS is the SHAPE of the revenue — does it repeat or is it one shot.
+ * This is its ORIGIN — is this a name we have never sold to, more work on an
+ * account we already have, or the same work signed again. A renewal can be
+ * ARR and so can new business, so folding them into one list would have made
+ * both unanswerable.
+ */
+export const DEAL_TYPES = [
+  "New business",
+  "Existing business",
+  "Renewal",
+] as const;
+export type DealType = (typeof DEAL_TYPES)[number];
+
+export function normalizeDealType(raw: unknown): DealType | undefined {
+  const s = String(raw ?? "").trim().toLowerCase();
+  return DEAL_TYPES.find((x) => x.toLowerCase() === s);
+}
+
+/**
  * ONE OFFERING INSIDE AN OPPORTUNITY.
  *
  * Suren, Aug 16: "for one opportunity, that could be multiple offerings…
@@ -243,6 +268,8 @@ export type Opportunity = {
   level: OpportunityLevel;
   status?: OpportunityStatus;
   revenueType?: RevenueType;
+  /** New business / Existing business / Renewal. Suren, Aug 31. */
+  dealType?: DealType;
   value: number;
   currency?: CurrencyCode;
   /**

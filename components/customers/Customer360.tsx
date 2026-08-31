@@ -75,7 +75,10 @@ import { cn, formatDate } from "@/lib/utils";
  * data failed to load.
  */
 
-const BAND_ICON_MAP = {
+/* Exported so a band strip drawn somewhere else (the opportunity overview's
+   dashboard boxes) wears the same glyph as the band it opens — two maps would
+   drift and the same word would carry two icons. */
+export const BAND_ICON_MAP = {
   opportunities: Target,
   /* Goals wore the meetings calendar and offerings wore the contracts pen —
      each area gets its own glyph. */

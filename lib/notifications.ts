@@ -31,7 +31,17 @@ export type NotificationType =
    * so a date sliding without anyone saying so is how a client gets told the
    * wrong thing.
    */
-  | "roadmap";
+  | "roadmap"
+  /**
+   * SOLUTIONING WORK THAT NEEDS YOU (Manoj's Pack 1, SOL-031).
+   *
+   * Deliberately narrow: "Keep notifications limited to events that require
+   * awareness or action. Do not notify users for every minor edit." So this
+   * fires when responsibility lands on you, when something you are
+   * responsible for needs reviewing, and when work you were assigned is
+   * cancelled — and for nothing else.
+   */
+  | "solutioning";
 
 /**
  * How pressing an alert is. Five rows that all say "Follow-up due" read as five
@@ -170,6 +180,28 @@ function dayStamp(days: number, ahead: boolean): string {
 }
 
 /** One offering's roadmap history, as much of it as the reader may see. */
+/** Only the fields SOL-031's triggers actually look at. */
+export type SolutioningNotifyInput = {
+  id: string;
+  ref: string;
+  title: string;
+  customer: string;
+  type?: string;
+  status: string;
+  deliverableStatus?: string;
+  neededBy?: string;
+  requestedBy: string;
+  owner?: string;
+  updatedAt?: string;
+  requestedAt: string;
+  workstreams?: {
+    division: string;
+    lead?: string;
+    primaryAssignee?: string;
+    contributors: string[];
+  }[];
+};
+
 export type RoadmapChangeInput = {
   offeringId: string;
   offeringName: string;
@@ -219,6 +251,12 @@ export function buildNotifications(input: {
    * history IS the record of what changed and when.
    */
   roadmaps?: RoadmapChangeInput[];
+  /**
+   * SOLUTIONING RECORDS AND WHO IS READING THEM (SOL-031). Passed in already
+   * filtered to the workspace, because this module derives alerts and never
+   * reads a store itself.
+   */
+  solutioning?: { requests: SolutioningNotifyInput[]; me: string } | null;
 }): AppNotification[] {
   const {
     sessions,
@@ -607,7 +645,86 @@ export function buildNotifications(input: {
     });
   }
 
-  return perfRows.concat(securityRows).concat(roadmapShown).concat(out)
+  /**
+   * SOLUTIONING (SOL-031), derived rather than logged.
+   *
+   * The six triggers Manoj listed reduce to three questions this state can
+   * answer honestly without an event log: is something now MINE, is something
+   * I am responsible for waiting on ME, and has work I was on been stopped.
+   *
+   * "A user does not receive duplicate notifications for the same action" —
+   * every row's id is the record plus the reason, so the same fact can only
+   * ever produce one row however many times this runs.
+   */
+  const solutioningRows: AppNotification[] = [];
+  if (input.solutioning) {
+    const me = input.solutioning.me.trim().toLowerCase();
+    const isMe = (v?: string) => !!v && v.trim().toLowerCase() === me;
+    for (const r of input.solutioning.requests) {
+      const when = r.updatedAt || r.requestedAt;
+      const mine = (r.workstreams ?? []).filter(
+        (w) => isMe(w.lead) || isMe(w.primaryAssignee) || w.contributors.some(isMe)
+      );
+
+      /* Cancelled work you were on. First, because it is the one that stops
+         somebody wasting an afternoon. */
+      if (r.status === "cancelled" && (mine.length > 0 || isMe(r.owner))) {
+        solutioningRows.push({
+          id: `sol-cancelled-${r.id}`,
+          type: "solutioning",
+          title: `${r.ref} was cancelled`,
+          body: `${r.title} for ${r.customer} has stopped. It stays in history.`,
+          href: `/solutioning/${r.id}`,
+          ts: when,
+          company: r.customer,
+          chip: "Cancelled",
+          urgency: "today",
+        });
+        continue;
+      }
+
+      /* Something is waiting on your review. */
+      if (r.deliverableStatus === "Ready for review" && (isMe(r.owner) || mine.some((w) => isMe(w.lead)))) {
+        solutioningRows.push({
+          id: `sol-review-${r.id}`,
+          type: "solutioning",
+          title: `${r.ref} is ready for your review`,
+          body: `${r.title} for ${r.customer} is finished and waiting on you.`,
+          href: `/solutioning/${r.id}`,
+          ts: when,
+          company: r.customer,
+          chip: "Ready for review",
+          urgency: "today",
+        });
+        continue;
+      }
+
+      /* Responsibility landed on you: lead, primary assignee or contributor.
+         One row per record even when you hold two of the three, because it is
+         one piece of news. */
+      for (const w of mine) {
+        const role = isMe(w.lead)
+          ? "Solutioning lead"
+          : isMe(w.primaryAssignee)
+            ? "Primary assignee"
+            : "Contributor";
+        solutioningRows.push({
+          id: `sol-assigned-${r.id}-${w.division}`,
+          type: "solutioning",
+          title: `You are ${role} on ${r.ref}`,
+          body: `${w.division} — ${r.title} for ${r.customer}${r.neededBy ? `, needed by ${r.neededBy}` : ""}.`,
+          href: `/solutioning/${r.id}`,
+          ts: when,
+          company: r.customer,
+          chip: w.division,
+          urgency: r.neededBy ? "week" : "later",
+        });
+        break;
+      }
+    }
+  }
+
+  return perfRows.concat(securityRows).concat(roadmapShown).concat(solutioningRows).concat(out)
     .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
     .sort((a, b) => {
       // Your own account first: a rep can't be nagged about a customer while

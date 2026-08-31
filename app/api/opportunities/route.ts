@@ -60,6 +60,7 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     level: s(raw.level),
     status: s(raw.status),
     revenueType: s(raw.revenueType),
+    dealType: s(raw.dealType),
     value: n(raw.value),
     currency: s(raw.currency),
     /* The summary's two numbers, and the ONE pair of fields that must be

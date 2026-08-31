@@ -1438,13 +1438,86 @@ function demoFeatureDescription(
   ].join(" ");
 }
 
+/** The shape a showroom component is written in before it is expanded into
+ *  releases, features and a roadmap history. */
+type FdlBlueprint = {
+  name: string;
+  type: FdlComponentType;
+  versions: [string, string, "released" | "next"][];
+  features: string[];
+};
+
+/**
+ * Expand blueprints into full components. Extracted from seedFdlComponents so
+ * the showroom-only catalogue below builds identically rather than growing a
+ * second, slightly different generator that could drift from this one.
+ *
+ * `idPrefix` and `fidPrefix` keep the two sets from colliding on ids.
+ */
+function buildFdlComponents(
+  blueprints: FdlBlueprint[],
+  idPrefix: string,
+  fidPrefix: string
+): FdlComponent[] {
+  return blueprints.map((blueprint, index) => {
+    const id = `${idPrefix}${String(index + 1).padStart(3, "0")}`;
+    const releases: FdlRelease[] = blueprint.versions.map(
+      ([version, date, status], position) => ({
+        id: `${id}-r${position + 1}`,
+        version,
+        date,
+        status,
+        // The newest RELEASED version is what a seller quotes.
+        current:
+          status === "released" &&
+          !blueprint.versions
+            .slice(position + 1)
+            .some(([, , later]) => later === "released"),
+      })
+    );
+    const releasedIds = releases
+      .filter((release) => release.status === "released")
+      .map((release) => release.id);
+    const allIds = releases.map((release) => release.id);
+    const version1 = releases[0]?.version ?? "V1.0";
+    const features: FdlFeature[] = blueprint.features.map((name, position) => {
+      // Older features exist everywhere; later ones arrive with later
+      // versions, so the comparison matrix has something real to show.
+      const introducedAt = Math.min(
+        Math.floor(position / 2),
+        Math.max(0, allIds.length - 1)
+      );
+      return {
+        id: `${id}-f${position + 1}`,
+        fid: `${fidPrefix}-${String(index + 1).padStart(2, "0")}${String(position + 1).padStart(2, "0")}`,
+        name,
+        // EVERY SHOWROOM FEATURE READS LIKE A REAL ONE. Left undefined, the
+        // feature sheet and the drill-in were blank, so the demo could not show
+        // what the module is for (Anir, Aug 9: "everything in mock mode needs
+        // to have data so they see what it looks like eventually — obviously in
+        // real mode they fill it in themselves"). Composed from the feature and
+        // its component so it stays plausible, never copied onto a real record.
+        description: demoFeatureDescription(name, blueprint.name, version1),
+        versionIds: allIds.slice(introducedAt),
+      };
+    });
+    // A component with no released version yet would read as broken.
+    if (!releasedIds.length && releases[0]) releases[0].status = "released";
+    return {
+      id,
+      name: blueprint.name,
+      type: blueprint.type,
+      releases,
+      features,
+      /* The showroom needs a history to show; real mode starts empty and
+         fills itself as owners edit. */
+      roadmap_versions: seedRoadmapHistory(releases, index),
+    };
+  });
+}
+
 function seedFdlComponents(): FdlComponent[] {
-  const BLUEPRINTS: {
-    name: string;
-    type: FdlComponentType;
-    versions: [string, string, "released" | "next"][];
-    features: string[];
-  }[] = [
+  const BLUEPRINTS: FdlBlueprint[] = [
     {
       name: "Register Module",
       type: "Module",
@@ -1660,61 +1733,1087 @@ function seedFdlComponents(): FdlComponent[] {
     },
   ];
 
-  return BLUEPRINTS.map((blueprint, index) => {
-    const id = `fdl-demo-${String(index + 1).padStart(3, "0")}`;
-    const releases: FdlRelease[] = blueprint.versions.map(
-      ([version, date, status], position) => ({
-        id: `${id}-r${position + 1}`,
-        version,
-        date,
-        status,
-        // The newest RELEASED version is what a seller quotes.
-        current:
-          status === "released" &&
-          !blueprint.versions
-            .slice(position + 1)
-            .some(([, , later]) => later === "released"),
-      })
-    );
-    const releasedIds = releases
-      .filter((release) => release.status === "released")
-      .map((release) => release.id);
-    const allIds = releases.map((release) => release.id);
-    const version1 = releases[0]?.version ?? "V1.0";
-    const features: FdlFeature[] = blueprint.features.map((name, position) => {
-      // Older features exist everywhere; later ones arrive with later
-      // versions, so the comparison matrix has something real to show.
-      const introducedAt = Math.min(
-        Math.floor(position / 2),
-        Math.max(0, allIds.length - 1)
-      );
-      return {
-        id: `${id}-f${position + 1}`,
-        fid: `F-${String(index + 1).padStart(2, "0")}${String(position + 1).padStart(2, "0")}`,
-        name,
-        // EVERY SHOWROOM FEATURE READS LIKE A REAL ONE. Left undefined, the
-        // feature sheet and the drill-in were blank, so the demo could not show
-        // what the module is for (Anir, Aug 9: "everything in mock mode needs
-        // to have data so they see what it looks like eventually — obviously in
-        // real mode they fill it in themselves"). Composed from the feature and
-        // its component so it stays plausible, never copied onto a real record.
-        description: demoFeatureDescription(name, blueprint.name, version1),
-        versionIds: allIds.slice(introducedAt),
-      };
-    });
-    // A component with no released version yet would read as broken.
-    if (!releasedIds.length && releases[0]) releases[0].status = "released";
-    return {
-      id,
-      name: blueprint.name,
-      type: blueprint.type,
-      releases,
-      features,
-      /* The showroom needs a history to show; real mode starts empty and
-         fills itself as owners edit. */
-      roadmap_versions: seedRoadmapHistory(releases, index),
-    };
-  });
+  return buildFdlComponents(BLUEPRINTS, "fdl-demo-", "F");
+}
+
+/**
+ * THE REST OF THE SHOWROOM'S COMPONENT CATALOGUE — MOCK ONLY.
+ *
+ * The fourteen above predate the real catalogue. Real mode now carries 64
+ * components covering the whole Freya product line, so a showroom with
+ * fourteen reads as the emptier of the two modes — the exact inversion of
+ * what mock is for (Anir, Aug 8: "in the fake mode it has to be as if there's
+ * a ton of shit for every single thing"). These bring the demo past the real
+ * catalogue's size so the component list, release calendar, feature matrix and
+ * every offering's Components tab all read full.
+ *
+ * Product names only. Nothing here names a person, so the house rule about
+ * inventing people on real accounts cannot be reached from this list.
+ */
+function showroomFdlBlueprints(): FdlBlueprint[] {
+  return [
+    {
+      name: "Products",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-07-10", "released"],
+        ["V2.0", "2026-02-18", "released"],
+        ["V2.5", "2026-08-12", "released"],
+        ["V3.0", "2026-12-08", "next"],
+      ],
+      features: [
+        "Product master record across pharma, device, consumer and cosmetic",
+        "Formulation and composition modelling with unit conversion",
+        "Packaging and presentation hierarchy per market",
+        "Therapeutic classification with ATC coding",
+        "Manufacturing site linkage down to the batch-release step",
+        "xEVMPD and IDMP field coverage on the same record",
+        "Bulk correction with a single approval for the whole set",
+      ],
+    },
+    {
+      name: "Registrations",
+      type: "Module",
+      versions: [
+        ["V1.2", "2025-08-22", "released"],
+        ["V2.1", "2026-03-05", "released"],
+        ["V2.5", "2026-09-19", "released"],
+      ],
+      features: [
+        "Guided registration wizard covering MRP, DCP, CP and national routes",
+        "Country-by-country approval status with evidence attached",
+        "Renewal calendar driven by each market's own clock",
+        "Registration-to-product traceability in both directions",
+        "UDI data capture for device registrations",
+        "Withdrawal and transfer handling with a reason code",
+      ],
+    },
+    {
+      name: "Applications",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-10-30", "released"],
+        ["V2.2", "2026-05-27", "released"],
+        ["V2.6", "2026-11-12", "next"],
+      ],
+      features: [
+        "Marketable and investigational applications in one queue",
+        "CTA and IND tracking with milestone dates",
+        "Procedure selection that pre-fills the market's required fields",
+        "Health-authority correspondence attached to the application",
+        "Fee and timetable tracking per procedure",
+        "Handover to Registrations on approval, with no re-keying",
+      ],
+    },
+    {
+      name: "LCM (Lifecycle Management)",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-09-08", "released"],
+        ["V2.0", "2026-01-29", "released"],
+        ["V3.0", "2026-07-23", "released"],
+        ["V3.4", "2026-12-02", "next"],
+      ],
+      features: [
+        "Change request intake with a regulatory impact question set",
+        "Variation classification against each market's own rules",
+        "Grouping and worksharing across affected registrations",
+        "Implementation tracking through to market execution",
+        "Commitment register with owners and due dates",
+        "Post-approval change history for inspection readiness",
+      ],
+    },
+    {
+      name: "RTQ (Regulatory Queries)",
+      type: "Module",
+      versions: [
+        ["V1.1", "2025-11-19", "released"],
+        ["V2.0", "2026-06-04", "released"],
+        ["V2.5", "2026-10-28", "next"],
+      ],
+      features: [
+        "Health-authority question intake with a response clock",
+        "Question routing to the accountable subject-matter owner",
+        "Draft response assembly from previously approved answers",
+        "Response quality review before the submission goes back",
+        "Question bank searchable across markets and products",
+      ],
+    },
+    {
+      name: "GRR-PAC",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-01-14", "released"],
+        ["V2.0", "2026-08-26", "released"],
+      ],
+      features: [
+        "Global regulatory requirements library by market and dossier section",
+        "Post-approval change requirement lookup before a variation is filed",
+        "Requirement deltas highlighted when a market updates its rules",
+        "Source citation on every requirement row",
+        "Export of a market comparison for a strategy paper",
+      ],
+    },
+    {
+      name: "Plan & Track",
+      type: "Module",
+      versions: [
+        ["V2.0", "2025-08-05", "released"],
+        ["V3.0", "2026-02-11", "released"],
+        ["V4.0", "2026-09-02", "released"],
+        ["V4.2", "2026-12-16", "next"],
+      ],
+      features: [
+        "Regulatory project plans built from reusable market templates",
+        "Dependency-aware timelines that reflow when a date moves",
+        "Resource load by person and by market",
+        "Milestone health with an explanation for every red",
+        "Portfolio roll-up across programmes",
+        "Baseline versus actual variance on every plan",
+      ],
+    },
+    {
+      name: "URF (Universal Request Form)",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-12-11", "released"],
+        ["V2.0", "2026-06-17", "released"],
+        ["V2.3", "2026-11-04", "next"],
+      ],
+      features: [
+        "One intake form for every regulatory service request",
+        "Conditional questions so a requester only sees what applies",
+        "Automatic routing to the delivery team that owns the work",
+        "Service-level clock started at submission, not at pick-up",
+        "Requester self-service status without an email chase",
+      ],
+    },
+    {
+      name: "Archive",
+      type: "Module",
+      versions: [
+        ["V3.0", "2025-10-16", "released"],
+        ["V4.0", "2026-04-09", "released"],
+        ["V4.5", "2026-10-07", "released"],
+      ],
+      features: [
+        "Immutable archive of every submitted sequence",
+        "Retention policy applied by document class and market",
+        "Legal-hold override that survives a retention run",
+        "Point-in-time reconstruction of a dossier as submitted",
+        "Inspection export with an auditable manifest",
+      ],
+    },
+    {
+      name: "xEVMPD",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-03-19", "released"],
+        ["V1.4", "2026-09-24", "next"],
+      ],
+      features: [
+        "Article 57 data maintenance against the current EMA schema",
+        "Validation before transmission, with the rule that failed named",
+        "Bulk resubmission after a schema change",
+        "Acknowledgement reconciliation back onto the product record",
+      ],
+    },
+    {
+      name: "Knowledge Manager",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-09-25", "released"],
+        ["V2.0", "2026-04-15", "released"],
+        ["V3.0", "2026-10-21", "released"],
+        ["V3.2", "2026-12-22", "next"],
+      ],
+      features: [
+        "Curated library of laws, guidances and health-authority updates",
+        "Verification workflow so nothing unreviewed becomes an answer",
+        "Market and topic taxonomy applied at ingestion",
+        "Change alerts scoped to a team's own portfolio",
+        "Full provenance from an answer back to the source document",
+      ],
+    },
+    {
+      name: "Regulations Next",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-02-04", "released"],
+        ["V2.0", "2026-08-19", "released"],
+      ],
+      features: [
+        "Horizon scan of draft and consultation-stage regulation",
+        "Expected-in-force dating so planning can start early",
+        "Comment-period tracking with an internal response owner",
+        "Impact pre-assessment against the registered portfolio",
+        "Quarterly outlook pack generated from the watchlist",
+      ],
+    },
+    {
+      name: "Reporting",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-11-06", "released"],
+        ["V2.0", "2026-05-13", "released"],
+        ["V2.4", "2026-11-26", "next"],
+      ],
+      features: [
+        "Standard regulatory reports across every Freya module",
+        "Report builder with saved definitions per role",
+        "Scheduled delivery to a distribution list",
+        "Drill-through from any figure to the underlying records",
+        "Export to Excel with the filter set preserved",
+      ],
+    },
+    {
+      name: "Notifications",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-01-08", "released"],
+        ["V2.0", "2026-07-08", "released"],
+      ],
+      features: [
+        "One notification centre across every module",
+        "Per-person digest rules instead of per-system email",
+        "Escalation when an action passes its due date",
+        "Quiet hours honoured per user time zone",
+      ],
+    },
+    {
+      name: "PAT (Project Activity Tracker)",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-02-26", "released"],
+        ["V2.0", "2026-09-16", "next"],
+      ],
+      features: [
+        "Activity logging against a regulatory project",
+        "Effort capture that feeds the delivery cost model",
+        "Utilisation view by team and by market",
+        "Weekly activity summary for the account lead",
+      ],
+    },
+    {
+      name: "Content (SCCM)",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-12-18", "released"],
+        ["V2.0", "2026-06-24", "released"],
+        ["V2.2", "2026-12-09", "next"],
+      ],
+      features: [
+        "Structured content components reused across dossiers",
+        "Single-source authoring with market-specific variants",
+        "Component-level approval so reuse stays compliant",
+        "Impact list showing every dossier a component sits in",
+        "Publishing to the submission package without reformatting",
+      ],
+    },
+    {
+      name: "Project Requests",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-03-12", "released"],
+        ["V2.0", "2026-10-14", "next"],
+      ],
+      features: [
+        "Request intake with scope, market and deadline captured up front",
+        "Feasibility check before a request becomes a project",
+        "Estimate and approval trail attached to the request",
+        "Conversion to a tracked project with no re-entry",
+      ],
+    },
+    {
+      name: "Insights",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-10-08", "released"],
+        ["V2.0", "2026-05-06", "released"],
+        ["V3.0", "2026-11-19", "next"],
+      ],
+      features: [
+        "Portfolio dashboards for regulatory leadership",
+        "Cycle-time analytics from submission to approval",
+        "Backlog and ageing views per market",
+        "Benchmarking across therapeutic areas",
+        "Narrative summary generated alongside every dashboard",
+      ],
+    },
+    {
+      name: "Insights.Label",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-04-22", "released"],
+        ["V1.3", "2026-10-30", "next"],
+      ],
+      features: [
+        "Label change volume and turnaround by market",
+        "Deviation hot spots across the registered portfolio",
+        "Translation cycle-time breakdown by language",
+        "Artwork rework rate traced to its root cause",
+      ],
+    },
+    {
+      name: "Automate",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-01-22", "released"],
+        ["V2.0", "2026-08-06", "released"],
+      ],
+      features: [
+        "No-code rules for repetitive regulatory steps",
+        "Trigger library covering every module event",
+        "Dry-run mode that shows what a rule would have done",
+        "Run history with the record each action touched",
+        "Rule ownership and change approval",
+      ],
+    },
+    {
+      name: "Newsletters",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-05-20", "released"],
+        ["V1.2", "2026-11-11", "next"],
+      ],
+      features: [
+        "Regulatory digest assembled from the intelligence feed",
+        "Audience segments by market and therapeutic area",
+        "Editorial review before anything is sent",
+        "Open and follow-through reporting per issue",
+      ],
+    },
+    {
+      name: "Freya.Chatbot",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-09-03", "released"],
+        ["V2.0", "2026-03-26", "released"],
+        ["V3.0", "2026-09-11", "released"],
+        ["V3.3", "2026-12-19", "next"],
+      ],
+      features: [
+        "In-product answers grounded in the customer's own records",
+        "Handover to a named regulatory owner when it cannot answer",
+        "Conversation history retained against the account",
+        "Answer feedback loop that improves the grounding set",
+        "Configurable scope so it never reads outside a user's permissions",
+      ],
+    },
+    {
+      name: "Data Submissions",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-11-27", "released"],
+        ["V2.0", "2026-07-15", "released"],
+      ],
+      features: [
+        "Structured data submissions alongside document dossiers",
+        "Schema validation against the receiving authority's version",
+        "Gateway transmission with acknowledgement tracking",
+        "Resubmission workflow that keeps the original linkage",
+      ],
+    },
+    {
+      name: "AI Workbench",
+      type: "Platform",
+      versions: [
+        ["V1.0", "2026-04-01", "released"],
+        ["V2.0", "2026-10-06", "next"],
+      ],
+      features: [
+        "Sandbox for building and testing regulatory agents",
+        "Prompt and grounding-set versioning",
+        "Evaluation runs against a labelled question set",
+        "Promotion path from sandbox to production agent",
+      ],
+    },
+    {
+      name: "AI Hub",
+      type: "Platform",
+      versions: [
+        ["V1.0", "2026-05-29", "released"],
+        ["V1.4", "2026-12-11", "next"],
+      ],
+      features: [
+        "Central register of every agent running for a customer",
+        "Usage, cost and accuracy per agent",
+        "Guardrail configuration applied across all agents",
+        "Human-review queue for anything an agent flags",
+      ],
+    },
+    {
+      name: "RIA.List and RIA.Assess",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-02-17", "released"],
+        ["V2.0", "2026-09-04", "released"],
+      ],
+      features: [
+        "Lists the regulatory changes relevant to a portfolio",
+        "Assesses each change for applicability before a human reads it",
+        "Ranks the queue so the highest exposure is read first",
+        "Writes the first draft of the assessment note",
+      ],
+    },
+    {
+      name: "RIA.Process Impact",
+      type: "Agent",
+      versions: [["V1.0", "2026-06-11", "released"]],
+      features: [
+        "Maps a regulatory change onto the affected internal processes",
+        "Names the SOPs that need revision",
+        "Estimates the implementation effort",
+      ],
+    },
+    {
+      name: "RIA.Registration Impact",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-05-14", "released"],
+        ["V1.2", "2026-11-20", "next"],
+      ],
+      features: [
+        "Finds the registrations a change touches, market by market",
+        "Flags renewals that fall inside the implementation window",
+        "Drafts the variation scope for review",
+      ],
+    },
+    {
+      name: "RIA.Dossier Impact",
+      type: "Agent",
+      versions: [["V1.0", "2026-07-02", "released"]],
+      features: [
+        "Identifies the dossier sections a change rewrites",
+        "Points to the exact documents that need reauthoring",
+        "Estimates the publishing effort that follows",
+      ],
+    },
+    {
+      name: "RIA.Label Impact",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-04-08", "released"],
+        ["V1.3", "2026-10-23", "next"],
+      ],
+      features: [
+        "Detects label changes implied by a regulatory update",
+        "Highlights the affected core data sheet sections",
+        "Lists the markets whose local label diverges",
+        "Drafts the change rationale for the label committee",
+      ],
+    },
+    {
+      name: "RIA.Application Impact",
+      type: "Agent",
+      versions: [["V1.0", "2026-08-13", "released"]],
+      features: [
+        "Flags in-flight applications a change would invalidate",
+        "Suggests whether to amend now or refile later",
+        "Estimates the delay either route introduces",
+      ],
+    },
+    {
+      name: "RIA.Clinical Trial Impact",
+      type: "Agent",
+      versions: [["V1.0", "2026-06-25", "released"]],
+      features: [
+        "Maps a change onto active trial authorisations",
+        "Flags protocol amendments the change forces",
+        "Names the ethics committees that must be notified",
+      ],
+    },
+    {
+      name: "RIA.Sites Impact",
+      type: "Agent",
+      versions: [["V1.0", "2026-07-29", "released"]],
+      features: [
+        "Identifies manufacturing sites a change affects",
+        "Lists the registrations each site appears on",
+        "Drafts the site-change notification set",
+      ],
+    },
+    {
+      name: "RIA.Trend",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-03-04", "released"],
+        ["V1.5", "2026-10-01", "next"],
+      ],
+      features: [
+        "Trends regulatory change volume by market over time",
+        "Surfaces emerging themes before they become guidance",
+        "Compares a market's pace against its regional peers",
+        "Feeds the quarterly regulatory outlook",
+      ],
+    },
+    {
+      name: "RIA.Compare",
+      type: "Agent",
+      versions: [["V1.0", "2026-05-21", "released"]],
+      features: [
+        "Compares requirements across two or more markets",
+        "Explains why the markets differ, not just that they do",
+        "Produces the comparison table for a strategy paper",
+      ],
+    },
+    {
+      name: "RIA.Version Compare",
+      type: "Agent",
+      versions: [["V1.0", "2026-08-27", "released"]],
+      features: [
+        "Diffs two versions of a guidance or a dossier document",
+        "Classifies each difference as editorial or substantive",
+        "Writes the change summary a reviewer can sign",
+      ],
+    },
+    {
+      name: "MIA",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-02-12", "released"],
+        ["V2.0", "2026-09-23", "released"],
+      ],
+      features: [
+        "Reads a registration dossier and checks it against the market's rules",
+        "Flags missing modules before submission, not after rejection",
+        "Suggests the correct form and fee for the procedure",
+        "Tracks the submission through to acknowledgement",
+      ],
+    },
+    {
+      name: "CIA",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-04-16", "released"],
+        ["V1.4", "2026-11-06", "next"],
+      ],
+      features: [
+        "Checks a compliance obligation against the evidence on file",
+        "Names the gap and the owner who can close it",
+        "Builds the inspection-readiness pack on demand",
+      ],
+    },
+    {
+      name: "FIA",
+      type: "Agent",
+      versions: [["V1.0", "2026-07-09", "released"]],
+      features: [
+        "Reads a health-authority fee schedule and prices a filing plan",
+        "Flags fee changes that affect an approved budget",
+        "Reconciles invoiced fees against the plan",
+      ],
+    },
+    {
+      name: "CTA Agent",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-03-25", "released"],
+        ["V1.2", "2026-10-16", "next"],
+      ],
+      features: [
+        "Assembles a clinical trial application from the study package",
+        "Checks country-specific annexes before submission",
+        "Tracks the assessment clock per member state",
+      ],
+    },
+    {
+      name: "PV Agent",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-05-07", "released"],
+        ["V2.0", "2026-11-27", "next"],
+      ],
+      features: [
+        "Triages incoming safety reports by seriousness and expectedness",
+        "Drafts the narrative for a human safety reviewer",
+        "Flags signals that cross a reporting threshold",
+        "Reconciles case counts against the safety database",
+      ],
+    },
+    {
+      name: "HAQ-Analyse",
+      type: "Agent",
+      versions: [["V1.0", "2026-06-18", "released"]],
+      features: [
+        "Parses a health-authority question set into discrete asks",
+        "Routes each ask to the function that can answer it",
+        "Finds a previously approved answer to start from",
+      ],
+    },
+    {
+      name: "R2-HAQ",
+      type: "Agent",
+      versions: [["V1.0", "2026-08-20", "released"]],
+      features: [
+        "Assembles the response package for a question set",
+        "Checks every ask has been answered before release",
+        "Formats the response to the authority's own template",
+      ],
+    },
+    {
+      name: "Generic Labeling",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-08-13", "released"],
+        ["V2.0", "2026-01-07", "released"],
+        ["V3.0", "2026-06-10", "released"],
+        ["V4.0", "2026-12-04", "next"],
+      ],
+      features: [
+        "Reference-listed drug comparison for generic labelling",
+        "Automatic carry-over of innovator label updates",
+        "Market deviation register with a justification per entry",
+        "Text-level diff against the reference label",
+        "Ready-to-file label output per market",
+      ],
+    },
+    {
+      name: "Report.Insight",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-04-29", "released"],
+        ["V1.2", "2026-11-13", "next"],
+      ],
+      features: [
+        "Regulatory intelligence reporting on a schedule",
+        "Coverage view showing which markets are being watched",
+        "Source mix reporting so gaps are visible",
+      ],
+    },
+    {
+      name: "Report.PNT",
+      type: "Module",
+      versions: [["V1.0", "2026-07-22", "released"]],
+      features: [
+        "Product and territory reporting across the registered book",
+        "Territory coverage gaps against the commercial plan",
+        "Export sized for a board pack",
+      ],
+    },
+    {
+      name: "Inhouse Insights",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-02-19", "released"],
+        ["V2.0", "2026-09-30", "next"],
+      ],
+      features: [
+        "Operational reporting for Freyr's own delivery teams",
+        "Throughput and quality by service line",
+        "Capacity forecast against the signed order book",
+      ],
+    },
+    {
+      name: "ContentPartner",
+      type: "Module",
+      versions: [
+        ["V1.0", "2026-01-30", "released"],
+        ["V2.0", "2026-08-04", "released"],
+      ],
+      features: [
+        "Managed hand-off of content work to a delivery partner",
+        "Partner scorecard on turnaround and rework",
+        "Controlled access so a partner sees only its own scope",
+        "Deliverable acceptance with a documented sign-off",
+      ],
+    },
+    {
+      name: "Freya Docs",
+      type: "Module",
+      versions: [
+        ["V5.0", "2025-09-18", "released"],
+        ["V6.0", "2026-02-24", "released"],
+        ["V7.0", "2026-08-18", "released"],
+        ["V7.4", "2026-12-29", "next"],
+      ],
+      features: [
+        "Controlled document storage shared by every Freya module",
+        "Check-out, check-in and version pinning",
+        "Electronic signature meeting 21 CFR Part 11",
+        "Renditions generated on upload for submission-ready output",
+        "Read-and-understood tracking per document class",
+        "Full-text search across the whole archive",
+      ],
+    },
+    {
+      name: "Projects",
+      type: "Module",
+      versions: [
+        ["V1.0", "2025-10-23", "released"],
+        ["V2.0", "2026-06-02", "released"],
+      ],
+      features: [
+        "Regulatory project workspace with scope and team",
+        "Budget against actual across the project life",
+        "Document and deliverable register per project",
+        "Closure checklist before a project can be archived",
+      ],
+    },
+    {
+      name: "Data Governance",
+      type: "Platform",
+      versions: [
+        ["V1.0", "2026-03-18", "released"],
+        ["V2.0", "2026-10-09", "next"],
+      ],
+      features: [
+        "Reference data ownership and approval workflow",
+        "Data quality rules with an exception queue per owner",
+        "Lineage from a report figure back to the source field",
+        "Retention and residency policy applied per region",
+      ],
+    },
+    {
+      name: "Integration Gateway",
+      type: "Platform",
+      versions: [
+        ["V1.0", "2025-12-03", "released"],
+        ["V2.0", "2026-05-19", "released"],
+        ["V2.6", "2026-11-24", "next"],
+      ],
+      features: [
+        "Connectors to ERP, quality and safety systems",
+        "Field mapping maintained without a code release",
+        "Replay of any failed message with its original payload",
+        "Throughput and error dashboards per connection",
+        "Sandbox endpoint for customer integration testing",
+      ],
+    },
+    {
+      name: "Identity and Access",
+      type: "Platform",
+      versions: [
+        ["V2.0", "2025-11-13", "released"],
+        ["V3.0", "2026-04-23", "released"],
+        ["V3.5", "2026-10-13", "released"],
+      ],
+      features: [
+        "Single sign-on with the customer's own identity provider",
+        "Role-based access down to the market and product level",
+        "Delegated administration for affiliate teams",
+        "Access review campaigns with an evidence trail",
+        "Session and device policy per role",
+      ],
+    },
+    {
+      name: "Audit and Compliance Core",
+      type: "Platform",
+      versions: [
+        ["V1.0", "2026-01-21", "released"],
+        ["V2.0", "2026-07-28", "released"],
+      ],
+      features: [
+        "Immutable audit trail across every module",
+        "Inspection view that reconstructs any record at a date",
+        "Validation documentation generated per release",
+        "Change control on configuration, not just on data",
+      ],
+    },
+  ];
+}
+
+/** Showroom components carry their own id prefix so they can never be mistaken
+ *  for, or collide with, the demo fourteen or a real catalogue entry. */
+function seedShowroomFdlComponents(): FdlComponent[] {
+  return buildFdlComponents(showroomFdlBlueprints(), "fdl-show-", "S");
+}
+
+/**
+ * SHOWROOM OFFERING POCs — invented people, deliberately.
+ *
+ * The 31 seeded offerings carry the real service-delivery POCs from Suren's
+ * master sheet. These extra rows exist only for the demo, so they get demo
+ * names instead: the house rule is that nothing invented is ever attached to a
+ * real colleague, and an offering POC is a named human. Same four surnames the
+ * roadmap history already uses, so the showroom reads as one small team.
+ */
+const SHOWROOM_POCS = [
+  "Audrey Kingsley",
+  "Daniel Foster",
+  "Grace Lockwood",
+  "Hannah Schmidt",
+  "Marcus Ellery / Priya Nandakumar",
+  "Tobias Reinhart",
+  "Nadia Bellamy / Owen Fairweather",
+  "Rosalind Achebe",
+];
+
+/**
+ * THE REST OF THE SHOWROOM'S OFFERINGS — MOCK ONLY.
+ *
+ * seedOfferings() is Suren's approved master sheet and stays exactly as it is.
+ * A 31-row catalogue is enough to browse but not enough to exercise the page:
+ * the category chips, the type filter, the market and customer-type facets and
+ * the pagination all need more rows before a reviewer can see what any of them
+ * do. These 24 spread across all seven categories, all seven types, every
+ * market set and every customer-size band so no filter combination lands on an
+ * empty result.
+ */
+function showroomOfferings(): Offering[] {
+  const rows: {
+    name: string;
+    type: string;
+    category: string;
+    description: string;
+    availability?: string;
+    customerTypes?: string[];
+    markets?: string[];
+  }[] = [
+    {
+      name: "Freya.Register for Devices",
+      type: MODULE,
+      category: CAT_RIM,
+      description:
+        "The registration system of record configured for medical devices: UDI data, notified-body correspondence and technical-documentation linkage on the same record as the registration itself.",
+      customerTypes: ["ct-meddev-s", "ct-meddev-m", "ct-meddev-l"],
+      markets: ALL_MKT,
+    },
+    {
+      name: "Freya.Register for Consumer Products",
+      type: MODULE,
+      category: CAT_RIM,
+      description:
+        "Notification and registration tracking for cosmetics, food supplements and household products, with the ingredient and claim data each market asks for held against the product.",
+      customerTypes: ["ct-consumer-s", "ct-consumer-m", "ct-consumer-l"],
+      markets: ["mkt-usa", "mkt-europe", "mkt-china"],
+    },
+    {
+      name: "Freya.Portfolio",
+      type: MODULE,
+      category: CAT_RIM,
+      description:
+        "One view of every product, application and registration across the group, with renewal exposure and market coverage answered without an export.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Freya.Register + Mia + Cia",
+      type: MODULE_AGENT,
+      category: CAT_RIM,
+      description:
+        "The registration module with the dossier-check and compliance agents running alongside it, so a gap is found before a filing goes out rather than after it comes back.",
+      markets: ALL_MKT,
+    },
+    {
+      name: "Freya.Submit for Small Filers",
+      type: MODULE,
+      category: CAT_SUBMISSIONS,
+      description:
+        "Submission publishing sized for a first-time filer: guided sequence assembly, validation before send, and gateway tracking, without the configuration overhead of a global rollout.",
+      customerTypes: ["ct-pharma-s", "ct-bio-s", "ct-biopharma-s"],
+      markets: ["mkt-usa", "mkt-europe"],
+    },
+    {
+      name: "Freya.Publish",
+      type: MODULE,
+      category: CAT_SUBMISSIONS,
+      description:
+        "eCTD and NeeS publishing with the validation profile of the receiving authority applied as documents are added, not at the end.",
+      markets: ALL_MKT,
+    },
+    {
+      name: "Freya.Archive",
+      type: MODULE,
+      category: CAT_SUBMISSIONS,
+      description:
+        "The submitted record, kept: every sequence as it was sent, retention applied by document class, and a point-in-time reconstruction for any inspection date.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Dossier Remediation",
+      type: AI_NATIVE,
+      category: CAT_SUBMISSIONS,
+      description:
+        "Freyr rebuilds a legacy or inherited dossier into a compliant, publishable baseline. Software finds the gaps and the deviations; regulatory writers close them.",
+      customerTypes: NO_LARGE_CT,
+      markets: ALL_MKT,
+    },
+    {
+      name: "Freya.Intelligence for Devices",
+      type: MODULE,
+      category: CAT_GRI,
+      description:
+        "Regulatory monitoring tuned to the device world: MDR and IVDR change tracking, notified-body guidance and standards updates, scored against the registered portfolio.",
+      customerTypes: ["ct-meddev-m", "ct-meddev-l"],
+      markets: ["mkt-usa", "mkt-europe", "mkt-japan"],
+    },
+    {
+      name: "Freya.Horizon",
+      type: MODULE,
+      category: CAT_GRI,
+      description:
+        "Draft and consultation-stage regulation tracked before it is in force, with expected dates and a response owner, so planning starts a year earlier than the guidance does.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Regulatory Intelligence Managed Service",
+      type: SERVICE,
+      category: CAT_GRI,
+      description:
+        "Freyr analysts run the monitoring, write the impact assessments and present the monthly briefing. The customer gets the conclusions, not the reading list.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Freya.Label for Generics",
+      type: MODULE,
+      category: CAT_LABELING,
+      description:
+        "Reference-listed-drug comparison, automatic carry-over of innovator changes and a market deviation register, built for a generics portfolio rather than a single innovator label.",
+      customerTypes: NO_SMALL_CT,
+      markets: ALL_MKT,
+    },
+    {
+      name: "Freya.Artwork + Via",
+      type: MODULE_AGENT,
+      category: CAT_LABELING,
+      description:
+        "Artwork proofing with the variation agent attached, so an artwork change that triggers a regulatory filing is caught while it is still a proof.",
+      customerTypes: NO_SMALL_CT,
+      markets: ALL_MKT,
+    },
+    {
+      name: "ePI and Structured Content",
+      type: AI_NATIVE,
+      category: CAT_LABELING,
+      description:
+        "Conversion of an existing label estate into structured electronic product information, with the reuse map that makes the next change a fraction of the work.",
+      markets: ["mkt-europe", "mkt-usa"],
+    },
+    {
+      name: "Artwork Studio Managed Service",
+      type: SERVICE,
+      category: CAT_LABELING,
+      description:
+        "Freyr's studio takes the approved label and produces print-ready artwork per market, with the proofing rounds and the supplier hand-off run end to end.",
+      customerTypes: NO_SMALL_CT,
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Freya Fusion Enterprise",
+      type: PLATFORM_TYPE,
+      category: CAT_PLATFORM,
+      description:
+        "The whole platform on one contract: every module, every agent, shared identity and one audit trail, with regional data residency and an open API for the customer's own systems.",
+      customerTypes: LARGE_ONLY_CT,
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Freya Fusion Starter",
+      type: PLATFORM_TYPE,
+      category: CAT_PLATFORM,
+      description:
+        "The platform sized for a first regulatory team: registrations, documents and submissions on one record, with room to add modules as the portfolio grows.",
+      customerTypes: ["ct-pharma-s", "ct-bio-s", "ct-biopharma-s", "ct-meddev-s"],
+      markets: ["mkt-usa", "mkt-europe"],
+    },
+    {
+      name: "Agent.Cia",
+      type: AGENTS_TYPE,
+      category: CAT_PLATFORM,
+      description:
+        "The compliance agent, offered on its own so it can read a customer's existing system rather than requiring them to move into ours.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Agent.Fia",
+      type: AGENTS_TYPE,
+      category: CAT_PLATFORM,
+      description:
+        "The fee and filing-plan agent: prices a filing programme from the current health-authority schedules and flags every change against an approved budget.",
+      markets: GLOBAL_MKT,
+    },
+    {
+      name: "Freya Fusion + Add-on Agent Pack",
+      type: MODULE_AGENT_ADDON,
+      category: CAT_PLATFORM,
+      description:
+        "A module with its own agents plus a chosen set of add-on agents that are not native to it, bundled as one package for a customer whose work crosses module boundaries.",
+      markets: ALL_MKT,
+    },
+    {
+      name: "Market Entry Strategy",
+      type: SERVICE,
+      category: CAT_RA,
+      description:
+        "Pathway selection, gap analysis and a filing plan for a new market, produced by the regulatory team that files there every week.",
+      markets: ALL_MKT,
+    },
+    {
+      name: "Clinical Trial Applications",
+      type: AI_NATIVE,
+      category: CAT_RA,
+      description:
+        "CTA and IND preparation with the assembly agent doing the package build and country annexes, and Freyr's regulatory leads owning the strategy and the responses.",
+      customerTypes: NO_LARGE_CT,
+      markets: ALL_MKT,
+    },
+    {
+      name: "Pharmacovigilance Operations",
+      type: SERVICE,
+      category: CAT_OTHERS,
+      description:
+        "Case processing, signal management and the QPPV function, run as a managed service with the safety database reconciled every period.",
+      customerTypes: NO_LARGE_CT,
+      markets: ["mkt-europe", "mkt-usa", "mkt-japan"],
+    },
+    {
+      name: "Compliance and Audit Readiness",
+      type: SERVICE,
+      category: CAT_OTHERS,
+      description:
+        "Mock inspections, gap remediation and the evidence pack, so an inspection is a rehearsal of something the team has already done.",
+      markets: GLOBAL_MKT,
+    },
+  ];
+
+  return rows.map((row, index) =>
+    off(
+      `of-show-${String(index + 1).padStart(3, "0")}`,
+      row.type,
+      row.name,
+      row.description,
+      {
+        offering_category: row.category,
+        current_availability: row.availability ?? "Currently available",
+        // Deterministic from the row's position, so the demo shows the same
+        // POC on the same offering on every load.
+        poc: SHOWROOM_POCS[index % SHOWROOM_POCS.length],
+        customer_type_ids: row.customerTypes ?? ALL_CT,
+        market_ids: row.markets ?? ALL_MKT,
+      }
+    )
+  );
+}
+
+/**
+ * TOP THE SHOWROOM UP, WHATEVER IT LOADED WITH.
+ *
+ * Mock's catalogue lives in its own persisted row, so a demo addition written
+ * only into the code seed would be invisible the moment that row loads over
+ * it. Adding by id instead of replacing means this is safe to run at every
+ * point mockStore's contents can change, it never overwrites an edit somebody
+ * made in the demo, and a catalogue persisted before this existed is filled in
+ * on the next boot rather than staying short forever.
+ *
+ * Never call this on liveStore. Real mode shows only what an offering owner
+ * actually entered.
+ */
+function fillShowroomCatalog(s: OfferingsStore): boolean {
+  let changed = false;
+  s.fdlComponents = s.fdlComponents ?? [];
+  const componentIds = new Set(s.fdlComponents.map((c) => c.id));
+  for (const component of seedShowroomFdlComponents()) {
+    if (componentIds.has(component.id)) continue;
+    s.fdlComponents.push(component);
+    changed = true;
+  }
+  const offeringIds = new Set(s.offerings.map((o) => o.id));
+  for (const offering of showroomOfferings()) {
+    if (offeringIds.has(offering.id)) continue;
+    s.offerings.push(offering);
+    changed = true;
+  }
+  return changed;
 }
 
 const store: OfferingsStore = globalThis.__FREYR_OFFERINGS_STORE__ ?? seed();
@@ -1904,15 +3003,25 @@ const DEFAULT_DEMO_ROADMAP_THEME: DemoRoadmapTheme = {
  * and derived from the offering's own index so every offering gets a
  * plausible bundle rather than a handful of lucky ones.
  */
-const DEMO_COMPONENT_IDS = [
-  "fdl-demo-001", "fdl-demo-002", "fdl-demo-003", "fdl-demo-004",
-  "fdl-demo-005", "fdl-demo-006", "fdl-demo-007", "fdl-demo-008",
-  "fdl-demo-009", "fdl-demo-010", "fdl-demo-011", "fdl-demo-012",
-  "fdl-demo-013", "fdl-demo-014",
+/** Every showroom component an offering may be packaged from. Built from the
+ *  two blueprint lists rather than typed out, so a component added to either
+ *  one is immediately reachable from an offering's Components tab instead of
+ *  sitting in the catalogue unreferenced. */
+const DEMO_COMPONENT_IDS: string[] = [
+  ...Array.from(
+    { length: 14 },
+    (_, i) => `fdl-demo-${String(i + 1).padStart(3, "0")}`
+  ),
+  ...showroomFdlBlueprints().map(
+    (_, i) => `fdl-show-${String(i + 1).padStart(3, "0")}`
+  ),
 ];
 
 function demoComponentsForOffering(offeringId: string): string[] {
-  const number = Number(offeringId.match(/\d+/)?.[0] || 1);
+  // The whole id, not just its digits: `of-001` and `of-show-001` both end in
+  // 1, so digits alone handed the two offerings an identical package.
+  let number = 0;
+  for (const ch of offeringId) number = (number * 31 + ch.charCodeAt(0)) >>> 0;
   // Two or three components each: the platform, one module, sometimes an
   // agent — the shape Suren described for a real package.
   const first = DEMO_COMPONENT_IDS[number % DEMO_COMPONENT_IDS.length];
@@ -2294,6 +3403,7 @@ healOfferings(liveStore);
 // healed on a Supabase restore, which is why a field added after the mock row
 // was written stayed empty until something happened to re-hydrate it.
 healOfferings(mockStore);
+fillShowroomCatalog(mockStore);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -2411,8 +3521,22 @@ export async function initializeLiveOfferings(): Promise<void> {
         if (isOfferingsStore(mockRow.data?.catalog)) {
           replaceStore(mockStore, mockRow.data.catalog);
           healOfferings(mockStore);
+          // The stored showroom predates the components and offerings added
+          // since it was written, so top it back up before anything renders
+          // from it and persist the result — otherwise every boot would fill
+          // the same gap again and the row would never catch up.
+          const filled = fillShowroomCatalog(mockStore);
           globalThis.__FREYR_OFFERINGS_MOCK_REV__ =
             mockRow.data.updated_at ?? undefined;
+          if (filled) {
+            const stamp = new Date().toISOString();
+            await catalogClient().from("offering_catalog_state").upsert({
+              id: "mock",
+              catalog: structuredClone(mockStore),
+              updated_at: stamp,
+            });
+            globalThis.__FREYR_OFFERINGS_MOCK_REV__ = stamp;
+          }
         } else {
           const stamp = new Date().toISOString();
           await catalogClient().from("offering_catalog_state").upsert({
@@ -2518,6 +3642,9 @@ async function refreshStaleCatalog(): Promise<void> {
       ) {
         replaceStore(mockStore, mockRow.data.catalog);
         healOfferings(mockStore);
+        // Same reason as the boot path: a revision written by an older build
+        // is short, and the showroom must never render thinner than real mode.
+        fillShowroomCatalog(mockStore);
         globalThis.__FREYR_OFFERINGS_MOCK_REV__ = mockRev;
       }
     })().catch(() => undefined);

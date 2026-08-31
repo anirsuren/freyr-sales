@@ -177,7 +177,62 @@ function seedCalls(): VoiceCall[] {
       );
     }
   });
-  return [...explicit, ...generated];
+
+  /**
+   * THE LONG TAIL, AND A QUEUE THAT IS NOT EMPTY.
+   *
+   * Two gaps the seed above leaves. First, every call belongs to one of nine
+   * hand-written contacts, so /voice/contact/[id] was an empty page for the
+   * other seven hundred — including contacts that appear as campaign
+   * recipients, which reads as a broken link rather than a quiet account.
+   * Second, every seeded call is already `called`, so the "Calls queued" tile
+   * was a hard zero and the part of the product that shows work waiting had
+   * nothing to show.
+   *
+   * Both are fixed here against the generated contact book, deterministically,
+   * with the same shape as the calls above.
+   */
+  const FILL_COMPANIES = [
+    "Aventis Therapeutics", "Belmara Biosciences", "Calyx Labs",
+    "Dornier Pharma", "Eryx Medical", "Fennec Health", "Girona Diagnostics",
+    "Halcyon Bio", "Ionis Sciences", "Kestrel Biopharma",
+  ];
+  const FILL_NAMES = [
+    "Lena Vogt", "Owen Bradley", "Priya Nair", "Tomas Lindqvist",
+    "Ana Sousa", "Marco Bianchi", "Yuki Tanaka", "Ruth Okafor",
+    "Hannah Weiss", "Diego Moreno", "Farida Jensen", "Karl Iyer",
+  ];
+  const tail: VoiceCall[] = [];
+  for (let i = 0; i < 96; i += 1) {
+    /* Contact ids the generated book actually mints, so every row on
+       /voice opens a contact page that exists. */
+    const account = (i % 140) + 1;
+    const contact: [string, string, string] = [
+      `cont-fill-${String(account).padStart(3, "0")}-${(i % 5) + 1}`,
+      FILL_NAMES[i % FILL_NAMES.length]!,
+      FILL_COMPANIES[i % FILL_COMPANIES.length]!,
+    ];
+    const cat = CATS[i % CATS.length]!;
+    const id = `vc-tail-${String(i + 1).padStart(3, "0")}`;
+    const h = hash(id + cat);
+    /* One in eight is still waiting: the number is bought and wired, so the
+       honest status for an unplaced call is queued, not failed. */
+    const queued = i % 8 === 3;
+    const outcome = PATTERN[i % PATTERN.length]!;
+    tail.push(
+      call(
+        id,
+        contact,
+        cat,
+        cat,
+        queued ? "waiting_for_number" : "called",
+        queued ? null : outcome,
+        queued ? null : durFor(outcome, h),
+        queued ? (h % 3) / 10 : 1 + ((i * 3 + (h % 7)) % 44) + (h % 10) / 10
+      )
+    );
+  }
+  return [...explicit, ...generated, ...tail];
 }
 
 function store(): VoiceStore {

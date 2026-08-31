@@ -2,6 +2,8 @@ import { roadmapChangesForReader } from "@/lib/roadmapNotices";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buildNotifications } from "@/lib/notifications";
+import { readSolutioning } from "@/lib/solutioning";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { NotificationsCenter } from "@/components/notifications/NotificationsCenter";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
@@ -104,7 +106,32 @@ export default async function NotificationsPage() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
-  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, performance, roadmaps, ...nudges });
+  /* SOL-031, the same shape the bell's API uses — one derivation, so the page
+     and the badge can never disagree about what is waiting on you. */
+  const me = await getCurrentUser();
+  const solutioning = (await canOpenModule("/solutioning"))
+    ? {
+        me: me.name,
+        requests: (await readSolutioning().catch(() => ({ requests: [] }))).requests.map(
+          (r) => ({
+            id: r.id,
+            ref: r.ref,
+            title: r.title,
+            customer: r.customer,
+            type: r.type,
+            status: r.status,
+            deliverableStatus: r.deliverableStatus,
+            neededBy: r.neededBy,
+            requestedBy: r.requestedBy,
+            owner: r.owner,
+            updatedAt: r.updatedAt,
+            requestedAt: r.requestedAt,
+            workstreams: r.workstreams,
+          })
+        ),
+      }
+    : null;
+  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, performance, roadmaps, solutioning, ...nudges });
 
   return (
     <div>

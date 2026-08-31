@@ -5,6 +5,12 @@ import { canAccessModule } from "@/lib/moduleAccess";
 import { getDb } from "@/lib/db";
 import {
   addDocument,
+  cancelRequest,
+  setDeliverableStatus,
+  setPriority,
+  setWorkstream,
+  type DeliverableStatus,
+  type RequestPriority,
   assignDocument,
   completeRequest,
   createRequest,
@@ -19,6 +25,9 @@ import {
   type SolutioningKind,
   commentOnRequest,
 } from "@/lib/solutioning";
+import { listOfferings } from "@/lib/offerings";
+import { readOpportunities } from "@/lib/opportunities";
+import { divisionsFor, recommendedLead } from "@/lib/solutioningDivisions";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -154,8 +163,62 @@ export async function POST(req: NextRequest) {
         rawType === "submission" || rawType === "presentation"
           ? rawType
           : ("request" as const);
+      /**
+       * DIVISIONS, DERIVED (SOL-007) — "Do not ask the Sales user to re-enter
+       * Division information already available from the system."
+       *
+       * The chain is opportunity -> its offerings -> their category, and only
+       * this layer can see the catalogue, so it is resolved here and handed to
+       * the store as a fact rather than recomputed on every read.
+       */
+      const linkedOppIds = Array.isArray(body.opportunityIds)
+        ? body.opportunityIds.map((x: unknown) => String(x))
+        : [];
+      let divisions: string[] = [];
+      let workstreams: { division: string; lead?: string; contributors: string[] }[] =
+        [];
+      if (linkedOppIds.length) {
+        const { opportunities } = await readOpportunities().catch(() => ({
+          opportunities: [],
+        }));
+        const offerings = await listOfferings();
+        const byId = new Map(offerings.map((o) => [o.id, o]));
+        const byName = new Map(
+          offerings.map((o) => [o.offering_name.trim().toLowerCase(), o])
+        );
+        const categories: (string | undefined)[] = [];
+        for (const id of linkedOppIds) {
+          const deal = opportunities.find((o) => o.id === id);
+          if (!deal) continue;
+          for (const oid of deal.offeringIds) {
+            categories.push(byId.get(oid)?.offering_category);
+          }
+          /* A deal imported from the sheet names its offering in words rather
+             than by id, so the label is matched too — otherwise every imported
+             deal would derive no division at all. */
+          for (const label of deal.offeringLabels) {
+            categories.push(byName.get(label.trim().toLowerCase())?.offering_category);
+          }
+        }
+        divisions = divisionsFor(categories);
+        /* SOL-008: a recommendation per division, advisory only. The map lives
+           on the privileges row until Freyr configures a real one, so an
+           unmapped division simply arrives with no suggestion. */
+        const leadMap = {};
+        workstreams = divisions.map((d) => ({
+          division: d,
+          ...(recommendedLead(d, leadMap) ? { lead: recommendedLead(d, leadMap) } : {}),
+          contributors: [],
+        }));
+      }
+
       const request = await createRequest({
         type,
+        priority: (["High", "Medium", "Low"] as const).find(
+          (x) => x === body.priority
+        ) as RequestPriority | undefined,
+        divisions,
+        workstreams,
         requestId: body.requestId,
         kind,
         subtype: body.subtype,
@@ -294,6 +357,52 @@ export async function POST(req: NextRequest) {
           body.refRequestId && body.refDocId
             ? { requestId: String(body.refRequestId), docId: String(body.refDocId) }
             : undefined,
+      });
+    } else if (op === "set-priority") {
+      const refusal = await moduleWriteRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      await setPriority({
+        requestId,
+        priority:
+          (["High", "Medium", "Low"] as const).find((x) => x === body.priority) ??
+          null,
+        by: me.name,
+      });
+    } else if (op === "set-workstream") {
+      /* Choosing the lead for a division is the requester's call (SOL-009:
+         "Sales retains final selection authority"), and the lead who holds a
+         workstream assigns inside it (SOL-011). Both are writes on this
+         record, so both ask the module's write question. */
+      const refusal = await moduleWriteRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      await setWorkstream({
+        requestId,
+        division: String(body.division ?? ""),
+        ...(body.lead !== undefined ? { lead: body.lead as string | null } : {}),
+        ...(body.primaryAssignee !== undefined
+          ? { primaryAssignee: body.primaryAssignee as string | null }
+          : {}),
+        ...(Array.isArray(body.contributors)
+          ? { contributors: body.contributors as string[] }
+          : {}),
+        by: me.name,
+      });
+    } else if (op === "set-deliverable-status") {
+      const refusal = await moduleWriteRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      const next = body.status as DeliverableStatus;
+      await setDeliverableStatus({ requestId, status: next, by: me.name });
+    } else if (op === "cancel") {
+      /* SOL-033. Cancelling is not deleting: it is a WRITE, so it is open to
+         the people who can change the record — its requester, whoever owns it,
+         and a manager — rather than to owners only. */
+      const refusal = await moduleWriteRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      await cancelRequest({
+        requestId,
+        by: me.name,
+        reason: typeof body.reason === "string" ? body.reason : undefined,
+        allowed: iRequested || iOwn || managerial,
       });
     } else if (op === "assign-doc") {
       await assignDocument({

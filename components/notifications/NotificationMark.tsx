@@ -8,6 +8,7 @@ import {
   Target,
   Map,
   Bell,
+  ClipboardList,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -24,6 +25,9 @@ const ICON: Record<NotificationType, typeof Bell> = {
   security: Fingerprint,
   performance: Target,
   roadmap: Map,
+  /* The Solutioning module's own glyph, so an alert about a submission looks
+     like the room it came from. */
+  solutioning: ClipboardList,
 };
 
 // The badge says what kind of alert it is; the mark underneath says who it is
@@ -42,6 +46,8 @@ const BADGE: Record<NotificationType, string> = {
   /* Identity purple, like ownership and the No-schedule chip: a roadmap change
      is news about a thing, not a verdict, so it must not wear a status hue. */
   roadmap: "bg-[color:#A855F7] text-white",
+  /* Waiting on you, like every other "this needs you" state. */
+  solutioning: "bg-blue-primary text-white",
 };
 
 /**

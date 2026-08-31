@@ -47,8 +47,15 @@ export const STATUS_META: Record<
   { label: string; color: string }
 > = {
   initiated: { label: "Request initiated", color: "#0071E3" },
+  /* SOL-013's Assigned: leads are chosen, work has not started. Its own state
+     because "leads picked" and "somebody is writing" are different answers to
+     "where is this?". */
+  assigned: { label: "Assigned", color: "#0891B2" },
   in_progress: { label: "Work in progress", color: "#6D28D9" },
   completed: { label: "Completed", color: "#1A7A35" },
+  /* Discontinued, and kept (SOL-033: cancelled records stay in history rather
+     than being deleted). Red is a status colour here, which is what it is for. */
+  cancelled: { label: "Cancelled", color: "#B42318" },
 };
 
 export function KindChip({

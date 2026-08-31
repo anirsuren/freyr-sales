@@ -10,6 +10,7 @@ import {
   normalizeConfidence,
   effectiveRevenueType,
   normalizeLevel,
+  normalizeDealType,
   normalizeRevenueType,
   normalizeStatus,
   type Opportunity,
@@ -241,6 +242,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
     level: derivedLevel,
     status: normalizeStatus(r.status),
     revenueType: normalizeRevenueType(r.revenueType),
+    dealType: normalizeDealType(r.dealType),
     value: total,
     currency,
     /* TYPED, AND ALLOWED TO BE ABSENT. `num()` turns anything unparseable
@@ -582,6 +584,7 @@ export type OpportunityInput = {
   level?: string;
   status?: string;
   revenueType?: string;
+  dealType?: string;
   value?: number;
   /** The summary's two typed numbers. Absent means "not mentioned"; null
    *  means "clear it" — the update merge drops undefined, so without null

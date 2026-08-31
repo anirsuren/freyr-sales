@@ -45,6 +45,10 @@ import type {
   SolutionRequest,
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, StatusPill } from "./bits";
+import {
+  DELIVERABLE_STATUSES,
+  REQUEST_PRIORITIES,
+} from "@/lib/solutioning";
 import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
@@ -200,15 +204,20 @@ export function RequestDetail({
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   /* CLOSING A REQUEST ASKS FIRST (Anir, Aug 30: "when I click it, it should ask
      me for a pop-up just like hand it back, to confirm I want to mark it as
      complete"). It is the one action here that ends the record for everybody
      working it, and it was the only one that fired on a single click. */
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmRemoveDoc, setConfirmRemoveDoc] = useState<{ id: string; name: string } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const managerial = meRole === "admin" || meRole === "bd_owner";
+  /* A cancelled record is history: it stays readable and stops being editable,
+     which is the whole point of cancelling rather than deleting (SOL-033). */
+  const canWrite = r.status !== "cancelled";
   const fulfiller = managerial || meRole === "sol_member";
   const iRequested =
     r.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
@@ -435,6 +444,36 @@ export function RequestDetail({
                 <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
               </button>
             )}
+            {/* CANCELLED, NOT DELETED (SOL-033: "Use Cancelled status when work
+                is discontinued... Cancelled records remain available in history
+                and related views with a clear Cancelled status").
+
+                This is the control a normal user is meant to reach for. The
+                delete beside it stays admin-only and is for erroneous rows, not
+                for work that simply stopped. */}
+            {r.status !== "cancelled" &&
+              r.status !== "completed" &&
+              (iRequested || iOwn || managerial) && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setConfirmCancel(true)}
+                  title="Stop this work and keep it in history"
+                  className={RECORD_ACTION_NEUTRAL}
+                >
+                  <Undo2 size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Cancel it
+                </button>
+              )}
+            {r.status === "cancelled" && (iRequested || iOwn || managerial) && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => post({ op: "reopen" })}
+                className={RECORD_ACTION_NEUTRAL}
+              >
+                <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
+              </button>
+            )}
             {(meRole === "admin" || (iRequested && r.status === "initiated")) && (
               <button
                 type="button"
@@ -477,6 +516,44 @@ export function RequestDetail({
         <span aria-hidden="true" className="h-4 w-px bg-border-light" />
 
         <StatusPill status={r.status} />
+
+        {/* THE DELIVERABLE'S OWN STATUS (SOL-019 and SOL-021), which is not the
+            request's. "Changing Submission status does not automatically change
+            the parent Request status or another deliverable's status." So it
+            sits beside the request pill rather than replacing it, and only on
+            the things that have one. */}
+        {r.type !== "request" && (
+          <select
+            aria-label="Deliverable status"
+            value={r.deliverableStatus ?? "Draft"}
+            disabled={busy || !canWrite}
+            onChange={(e) => post({ op: "set-deliverable-status", status: e.target.value })}
+            className="h-7 cursor-pointer rounded-full border border-border-light bg-white px-2 text-[12px] font-medium text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {DELIVERABLE_STATUSES.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* SOL-012 lists Priority as mandatory metadata, and it is the one field
+            a queue is actually sorted by. */}
+        <select
+          aria-label="Priority"
+          value={r.priority ?? ""}
+          disabled={busy || !canWrite}
+          onChange={(e) => post({ op: "set-priority", priority: e.target.value })}
+          className="h-7 cursor-pointer rounded-full border border-border-light bg-white px-2 text-[12px] font-medium text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="">Priority not set</option>
+          {REQUEST_PRIORITIES.map((x) => (
+            <option key={x} value={x}>
+              {x} priority
+            </option>
+          ))}
+        </select>
 
         {/* WHERE THIS CAME FROM (Suren, Aug 26: "you can say the submission is
             related to a request, but even without a request, a submission can
@@ -621,6 +698,121 @@ export function RequestDetail({
                 )}
               </div>
             </section>
+
+            {/* WHO IS ACCOUNTABLE, DIVISION BY DIVISION.
+                Manoj's Pack 1, SOL-010: "Within a multi-Division Solutioning
+                Request, create one internal accountability workstream for each
+                represented Division... The customer-facing request remains a
+                single Solutioning Request."
+
+                The divisions themselves are derived from the linked
+                opportunities and their offerings (SOL-007) — nobody types
+                them. Each carries an accountable lead (SOL-009), the one
+                person doing the work, and everyone supporting it (SOL-011). */}
+            {(r.divisions ?? []).length > 0 && (
+              <section className="border-b border-border-light py-7">
+                <SectionHeading
+                  icon={ListChecks}
+                  title={`Divisions and who owns them (${(r.divisions ?? []).length})`}
+                  description="Derived from the opportunities on this request. One accountable lead each."
+                />
+                <div className="mt-4 space-y-2.5 pl-11">
+                  {(r.divisions ?? []).map((division) => {
+                    const w = (r.workstreams ?? []).find(
+                      (x) => x.division === division
+                    );
+                    return (
+                      <div
+                        key={division}
+                        className="rounded-xl border border-border-light bg-white p-4"
+                      >
+                        <p className="text-[13.5px] font-semibold text-text-primary">
+                          {division}
+                        </p>
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <PersonPick
+                            label="Solutioning lead"
+                            hint="Accountable for this division"
+                            value={w?.lead ?? ""}
+                            members={members}
+                            disabled={busy || !canWrite}
+                            onPick={(v) =>
+                              post({ op: "set-workstream", division, lead: v })
+                            }
+                          />
+                          <PersonPick
+                            label="Primary assignee"
+                            hint="Doing the work"
+                            value={w?.primaryAssignee ?? ""}
+                            members={members}
+                            disabled={busy || !canWrite}
+                            onPick={(v) =>
+                              post({
+                                op: "set-workstream",
+                                division,
+                                primaryAssignee: v,
+                              })
+                            }
+                          />
+                          <PersonPick
+                            label="Add a contributor"
+                            hint="Supporting the work"
+                            value=""
+                            members={members.filter(
+                              (m) =>
+                                m !== w?.primaryAssignee &&
+                                !(w?.contributors ?? []).includes(m)
+                            )}
+                            disabled={busy || !canWrite}
+                            onPick={(v) =>
+                              v
+                                ? post({
+                                    op: "set-workstream",
+                                    division,
+                                    contributors: [...(w?.contributors ?? []), v],
+                                  })
+                                : Promise.resolve(false)
+                            }
+                          />
+                        </div>
+                        {(w?.contributors ?? []).length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {(w?.contributors ?? []).map((c) => (
+                              <span
+                                key={c}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-1 text-[12px] font-medium text-text-primary"
+                              >
+                                <Avatar name={c} className="h-[16px] w-[16px] text-[6px]" />
+                                {c}
+                                {canWrite && (
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${c}`}
+                                    disabled={busy}
+                                    onClick={() =>
+                                      post({
+                                        op: "set-workstream",
+                                        division,
+                                        contributors: (w?.contributors ?? []).filter(
+                                          (x) => x !== c
+                                        ),
+                                      })
+                                    }
+                                    className="cursor-pointer rounded-full p-0.5 text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                                  >
+                                    <Trash2 size={11} strokeWidth={2} />
+                                  </button>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {r.kind === "meeting" && (
               <section className="border-b border-border-light py-7">
@@ -1045,6 +1237,31 @@ export function RequestDetail({
         confirmLabel="Yes, mark it completed"
       />
 
+      <ConfirmDialog
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={() => {
+          void post({ op: "cancel", reason: cancelReason.trim() || undefined });
+          setCancelReason("");
+          setConfirmCancel(false);
+        }}
+        title={`Cancel ${r.ref}?`}
+        body={
+          <>
+            The work stops and <b>{r.ref}</b> stays in history, marked
+            Cancelled, so anyone looking later can see what happened to it.
+            Nothing is deleted.
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={2}
+              placeholder="Why is it stopping? (optional, goes on the timeline)"
+              className="mt-3 w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            />
+          </>
+        }
+        confirmLabel="Cancel it"
+      />
       <ConfirmDialog
         open={confirmRemoveDoc !== null}
         onClose={() => setConfirmRemoveDoc(null)}
@@ -1656,5 +1873,50 @@ function AddDocForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * ONE PERSON, PICKED FROM THE WORKSPACE.
+ *
+ * A plain select rather than a search box: a division has one lead and one
+ * primary assignee, the list is the workspace, and a control that needs typing
+ * before it shows you anything hides how few choices there really are.
+ */
+function PersonPick({
+  label,
+  hint,
+  value,
+  members,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  members: string[];
+  disabled: boolean;
+  onPick: (v: string) => Promise<boolean> | void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-[11.5px] font-semibold text-text-primary">
+        {label}
+      </span>
+      <span className="block text-[11px] text-text-tertiary">{hint}</span>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onPick(e.target.value)}
+        className="mt-1.5 h-9 w-full cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <option value="">Nobody yet</option>
+        {members.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

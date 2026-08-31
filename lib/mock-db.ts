@@ -16,6 +16,7 @@ import type {
   AgentPrefs,
   DraftSnippet,
   AgentChatMessage,
+  Outcome,
   WorkspaceMemberScope,
 } from "./types";
 
@@ -54,17 +55,39 @@ declare global {
  * Deterministic from the account number so the demo never shuffles, and
  * pinned to the demo component/release ids seeded in lib/offerings.
  */
+/** Every showroom component an account can be running. The demo fourteen plus
+ *  the showroom catalogue in lib/offerings — without the second set, 140
+ *  accounts shared fourteen components between them and every Digital
+ *  components tab looked like the last one. */
+const DEMO_ESTATE_IDS = [
+  ...Array.from(
+    { length: 14 },
+    (_, i) => `fdl-demo-${String(i + 1).padStart(3, "0")}`
+  ),
+  /* 54 = showroomFdlBlueprints() in lib/offerings. Kept as a literal because
+     importing that module here would drag the whole offerings catalogue into
+     the store; an id that ever fell out of step simply renders no row, since
+     the components tab skips a link whose component it cannot find. */
+  ...Array.from(
+    { length: 54 },
+    (_, i) => `fdl-show-${String(i + 1).padStart(3, "0")}`
+  ),
+];
+
 function demoComponentLinks(accountId: string) {
   const n = Number(accountId.replace(/\D/g, "")) || 1;
   const pick = (offset: number) =>
-    `fdl-demo-${String(((n * 3 + offset) % 14) + 1).padStart(3, "0")}`;
+    DEMO_ESTATE_IDS[(n * 3 + offset) % DEMO_ESTATE_IDS.length]!;
   const ids = Array.from(new Set([pick(0), pick(5), pick(9), ...(n % 2 ? [pick(11)] : [])]));
   return ids.map((component_id, index) => ({
     component_id,
-    // Most accounts sit on the version before the current one — which is what
-    // makes the "a newer version is out" nudge worth having.
-    release_id: `${component_id}-r${(n + index) % 2 === 0 ? 1 : 2}`,
-    next_release_id: (n + index) % 3 === 0 ? `${component_id}-r3` : null,
+    /* -r1 always exists; a computed -r2/-r3 did not on the many showroom
+       components that ship a single release, and those rows rendered "None
+       yet" against a component that plainly has a version. Sitting on the
+       first release also keeps the "a newer version is out" nudge, because
+       anything with more than one release is now behind by definition. */
+    release_id: `${component_id}-r1`,
+    next_release_id: (n + index) % 2 === 0 ? `${component_id}-r2` : null,
     notes: null,
   }));
 }
@@ -647,6 +670,366 @@ function seed(): MockStore {
       created_at: iso(1),
     },
   ];
+  /**
+   * ACCOUNTS ACTUALLY RUNNING A CADENCE.
+   *
+   * The sequences page derives an enrolment for every active deal, but it
+   * pins all of them to the FIRST sequence in the library — so with one
+   * persisted row, eleven of the twelve cadences had an empty timeline and
+   * "accounts enrolled" read as a rounding error against 152 accounts. These
+   * are spread deterministically across the whole library, at varying step
+   * depths, so every cadence has a live enrolment and a due count behind it.
+   *
+   * Ids must match lib/sequences.ts. A cadence that is removed there simply
+   * loses its rows here — the page reads enrolments by sequence id.
+   */
+  const CADENCES = [
+    "reg-exec", "reengage", "post-meeting", "device-mdr", "first-filer",
+    "renewal-expansion", "generics-variation", "labeling-artwork",
+    "intelligence-pilot", "platform-eval", "conference-followup",
+    "dormant-winback",
+  ];
+  const ENROLLERS = [
+    "Freyr Agent", "Walter Hensley", "Gordon Ashby", "Margaret Whitfield",
+    "Eleanor Rutherford", "Marcus Bramwell",
+  ];
+  for (let i = 0; i < 72; i += 1) {
+    /* Every other generated account, so an enrolled account is a minority of
+       the book rather than all of it — which is what makes the "candidates
+       to enrol" count on the same page mean anything. */
+    const n = i * 2 + 1;
+    sequenceEnrollments.push({
+      id: `enr-fill-${String(i + 1).padStart(3, "0")}`,
+      customer_id: `cust-fill-${String(n).padStart(3, "0")}`,
+      sequence_id: CADENCES[i % CADENCES.length]!,
+      /* Shallow more often than deep: most enrolments are still early, which
+         is what keeps the due-now count high enough to be worth looking at. */
+      step_index: i % 4,
+      enrolled_by: ENROLLERS[i % ENROLLERS.length]!,
+      created_at: iso(1 + (i % 30)),
+    } as (typeof sequenceEnrollments)[number]);
+  }
+
+  /**
+   * AND THEN THE VOLUME.
+   *
+   * Anir, Aug 31: "do u understand how much fucking data i need? i need
+   * thousands of data points in mock mode."
+   *
+   * Sixteen accounts and three contacts is a showroom, not a workspace. Every
+   * page that counts, groups, charts or paginates looked the same at sixteen
+   * rows as it would at one — you cannot see whether a table scrolls, whether
+   * a group total means anything, or whether search is worth having.
+   *
+   * So the hand-written cast above stays exactly as it is (it carries the rich
+   * enrichment text, the revenue lines and the offering joins the showroom
+   * pages need), and a deterministic long tail is generated behind it. Index
+   * arithmetic, no randomness: two reads never disagree and a screenshot stays
+   * true.
+   *
+   * INVENTED COMPANIES ONLY, and invented people at them. The pipeline sheet
+   * carries real Freyr accounts; putting a made-up VP with a made-up phone
+   * number on one of those is the line the house rule draws.
+   */
+  const FILL_STEMS = [
+    "Aventis", "Belmara", "Calyx", "Dornier", "Eryx", "Fennec", "Girona",
+    "Halcyon", "Ionis", "Juniperа", "Kestrel", "Lumen", "Marisol", "Nyxis",
+    "Orbis", "Pallas", "Quarry", "Rivenna", "Sable", "Tessera", "Umbra",
+    "Verdant", "Wexford", "Xantha", "Ymir", "Zephyra", "Altamira", "Borealis",
+    "Cinder", "Delphi", "Ember", "Fjord", "Granite", "Harrow", "Isolde",
+  ];
+  const FILL_SUFFIX = [
+    "Biopharma", "Therapeutics", "Biosciences", "Labs", "Pharma",
+    "Medical", "Health", "Diagnostics", "Bio", "Sciences",
+  ];
+  const FILL_INDUSTRY = [
+    "Pharmaceutical", "Biotechnology", "Medical Devices", "Consumer Health",
+    "Generics", "Animal Health", "Diagnostics", "Nutraceuticals",
+  ];
+  const FILL_GEO = [
+    "United States (Boston, MA)", "United Kingdom (Cambridge)",
+    "Germany (Munich)", "India (Hyderabad)", "Japan (Tokyo)",
+    "Switzerland (Basel)", "Brazil (São Paulo)", "Singapore",
+    "Canada (Toronto)", "France (Lyon)", "Ireland (Dublin)",
+    "South Korea (Seoul)",
+  ];
+  const FILL_SIZE = ["small", "mid", "large"];
+  const FILL_OWNERSHIP = ["Private", "Public", "PE-backed", "Family owned"];
+  const FILL_FIRST = [
+    "Lena", "Owen", "Priya", "Tomas", "Ana", "Marco", "Yuki", "Ruth", "Hannah",
+    "Diego", "Farida", "Karl", "Meera", "Jonas", "Chiara", "Samuel", "Aisha",
+    "Viktor", "Noor", "Erik", "Camila", "Ibrahim", "Sofia", "Liam", "Nadia",
+    "Pavel", "Zara", "Mateo", "Ingrid", "Rohan",
+  ];
+  const FILL_LAST = [
+    "Vogt", "Bradley", "Nair", "Lindqvist", "Sousa", "Bianchi", "Tanaka",
+    "Okafor", "Weiss", "Moreno", "Jensen", "Iyer", "Berg", "Ricci", "Adeyemi",
+    "Khan", "Petrov", "Rahman", "Larsen", "Duarte", "Cisse", "Marchetti",
+    "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
+  ];
+  const FILL_TITLES: [string, string][] = [
+    ["VP Regulatory Affairs", "Regulatory Affairs"],
+    ["Head of Submissions", "Regulatory Affairs"],
+    ["Director, RIM", "Regulatory Operations"],
+    ["Head of Labelling", "Regulatory Affairs"],
+    ["Regulatory Operations Manager", "Regulatory Operations"],
+    ["Chief Medical Officer", "Executive"],
+    ["Head of Quality", "Quality Assurance"],
+    ["Programme Director", "Executive"],
+    ["Head of Pharmacovigilance", "Safety"],
+    ["Regulatory Affairs Associate", "Regulatory Affairs"],
+  ];
+  const at = <T,>(list: T[], n: number): T => list[n % list.length]!;
+  const fillSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  /* 140 accounts is roughly what a regional team carries, and it is enough for
+     a table to page, a group total to mean something and search to matter. */
+  const FILL_ACCOUNTS = 140;
+  for (let i = 0; i < FILL_ACCOUNTS; i += 1) {
+    const n = i + 1;
+    const company = `${at(FILL_STEMS, i)} ${at(FILL_SUFFIX, i * 3 + 1)}`;
+    const cid = `cust-fill-${String(n).padStart(3, "0")}`;
+    const size = at(FILL_SIZE, i);
+    const industry = at(FILL_INDUSTRY, i);
+    const created = new Date(
+      Date.UTC(2025, 10, 1) + i * 3 * 86400000
+    ).toISOString();
+    customers.push({
+      id: cid,
+      company_name: company,
+      website_url: `https://${fillSlug(company)}.example`,
+      size_tier: size,
+      industry,
+      geography: at(FILL_GEO, i),
+      enrichment_summary: `${size === "large" ? "Global" : size === "mid" ? "Mid-size" : "Emerging"} ${industry.toLowerCase()} company headquartered in ${at(FILL_GEO, i)}. Active across ${1 + (i % 4)} regions with submissions planned through ${2026 + (i % 3)}.`,
+      created_at: created,
+      last_enriched_at: created,
+      customer_type: `${industry} - ${size === "large" ? "Large" : size === "mid" ? "Mid size" : "Small"}`,
+      ownership: at(FILL_OWNERSHIP, i),
+      revenue:
+        size === "large"
+          ? `$${2 + (i % 9)}.${i % 10}B`
+          : size === "mid"
+            ? `$${300 + ((i * 37) % 700)}M`
+            : `$${40 + ((i * 13) % 160)}M`,
+      analyzed_at: created,
+    } as (typeof customers)[number]);
+
+    /* FIVE PEOPLE PER ACCOUNT. A contact list with one name on it cannot show
+       who else is in the room, which is the whole point of the tab. */
+    for (let k = 0; k < 5; k += 1) {
+      const first = at(FILL_FIRST, i * 5 + k);
+      const last = at(FILL_LAST, i * 7 + k * 3);
+      const [title, bucket] = at(FILL_TITLES, i + k);
+      contacts.push({
+        id: `cont-fill-${String(n).padStart(3, "0")}-${k + 1}`,
+        customer_id: cid,
+        full_name: `${first} ${last}`,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}@${fillSlug(company)}.example`,
+        linkedin_url: null,
+        phone: null,
+        job_title: title,
+        role_bucket: bucket,
+        career_summary: `${8 + ((i + k) % 20)} years in ${bucket.toLowerCase()}, most recently at ${company}.`,
+        enrichment_summary: `${bucket} contact at ${company}. Responds best to specifics on timelines and scope.`,
+        raw_linkedin_data: null,
+        created_at: created,
+        last_enriched_at: created,
+      } as (typeof contacts)[number]);
+    }
+  }
+
+  /* A PITCH SESSION ON MOST OF THEM. Sessions shipped with two, so the page
+     was a pair of cards — you could not tell it was a list. One per account
+     across most of the long tail, against a real contact at that account so
+     the joins land. */
+  /* A RUNNING ORDINAL, NOT `i`. The loop skips every third account, so any
+     cycle indexed by `i` only ever lands on two of every three positions —
+     `changes_requested` sat at one of the skipped ones and never appeared, so
+     the rework queue stayed empty however long the cycle got. */
+  let fillSession = -1;
+  for (let i = 0; i < FILL_ACCOUNTS; i += 1) {
+    if (i % 3 === 2) continue;
+    fillSession += 1;
+    const n = i + 1;
+    const cid = `cust-fill-${String(n).padStart(3, "0")}`;
+    const contactId = `cont-fill-${String(n).padStart(3, "0")}-${(i % 5) + 1}`;
+    pitchSessions.push({
+      id: `sess-fill-${String(n).padStart(3, "0")}`,
+      customer_id: cid,
+      contact_id: contactId,
+      kb_version: 1,
+      recommended_services: MOCK_MATCHING_OUTPUT.recommended_services,
+      pitch_email: MOCK_PITCHES.pitch_email,
+      pitch_5min_script: MOCK_PITCHES.pitch_5min_script,
+      pitch_call_script: MOCK_PITCHES.pitch_call_script,
+      additional_context: at(
+        [
+          "Met at DIA. Timeline is tight on their next filing.",
+          "Inbound from the website, wants a capability overview.",
+          "Referred by a delivery partner.",
+          "Following up after the conference booth conversation.",
+          "Renewal conversation, they asked what else we do.",
+        ],
+        i
+      ),
+      created_at: new Date(
+        Date.UTC(2026, 5, 1) + i * 2 * 86400000
+      ).toISOString(),
+      /* A REVIEW STATE ON EVERY GENERATED DRAFT. Left off, all 94 fill
+         sessions were `undefined`, so the compliance queue on /tasks was one
+         card and the "needs your approval" bucket on /agent and
+         /notifications was one row — in a workspace with 105 drafts. The
+         cycle is weighted toward approved, which is what a working team's
+         queue actually looks like. */
+      review_status: at(
+        [
+          "approved", "approved", "in_review", "draft", "approved",
+          "changes_requested", "approved", "in_review", "draft",
+          "approved", "in_review", "approved",
+        ] as const,
+        fillSession
+      ),
+      /* Only the approved ones carry a review date; the rest have not been
+         signed off yet, and a timestamp on an unreviewed draft is a lie. */
+      reviewed_at: [0, 1, 4, 6, 9, 11].includes(fillSession % 12)
+        ? new Date(Date.UTC(2026, 5, 2) + i * 2 * 86400000).toISOString()
+        : null,
+    } as (typeof pitchSessions)[number]);
+  }
+
+  /**
+   * AND ACTIVITY AGAINST THEM.
+   *
+   * The fill loop created 140 accounts and 94 drafts but logged NOTHING, so
+   * every generated deal sat in Prospect with no last-activity date and the
+   * whole workspace ran on the ten hand-written interactions. That is what
+   * made the dashboard's outcome mix a five-slice donut, the activity feed
+   * five rows deep, the follow-up queue eight items and every agent analytic
+   * a single account.
+   *
+   * One to three logged touches per generated draft, cycled deterministically
+   * so the stage mix, the outcome mix and the rotting-deal count all come out
+   * of real records rather than a hardcoded curve.
+   */
+  /* Deliberately a local copy of the mock sales roster rather than an import
+     from lib/pipeline: that module pulls in lucide-react for its stage icons,
+     and the store has no business dragging an icon library into the server. */
+  const FILL_LOGGERS = [
+    "Walter Hensley", "Gordon Ashby", "Margaret Whitfield", "Mark Miller",
+    "Eleanor Rutherford", "Marcus Bramwell", "Sylvia Ashcroft",
+    "James O'Brien", "Audrey Kingsley", "Thomas Beckett", "Nancy Caldwell",
+    "Russell Pemberton", "Grace Lockwood", "Daniel Foster",
+  ];
+  /* Weighted the way a book actually sits: mostly working deals, a few
+     qualified, a handful gone quiet and the occasional loss. */
+  const FILL_OUTCOMES: Outcome[] = [
+    "in_progress", "interested", "no_response", "meeting_booked",
+    "in_progress", "interested", "not_interested", "in_progress",
+    "ai_call_completed", "no_response", "interested", "in_progress",
+  ];
+  const FILL_NOTES = [
+    "Intro call done. Walked through the registration book and where the gaps are.",
+    "Sent the capability deck. They asked for pricing on a two-market pilot.",
+    "Left a voicemail and followed up by email. Nothing back yet.",
+    "Demo booked with their regulatory ops lead and two of her team.",
+    "They are mid-budget cycle. Revisit once the new financial year opens.",
+    "Asked for references in the same therapeutic area before going further.",
+    "Went with the incumbent this round. Asked to be kept on the list.",
+    "Good conversation on submissions. The blocker is publishing capacity.",
+    "AI call completed. Interested in the intelligence feed specifically.",
+    "Forwarded internally to their head of quality. Waiting on a reply.",
+    "Wants a scoping call on labelling across their EU portfolio.",
+    "Discussed the artwork workflow. They have a recall they are still paying for.",
+  ];
+  let fillTouch = 0;
+  for (let i = 0; i < FILL_ACCOUNTS; i += 1) {
+    if (i % 3 === 2) continue;
+    const n = i + 1;
+    const cid = `cust-fill-${String(n).padStart(3, "0")}`;
+    const contactId = `cont-fill-${String(n).padStart(3, "0")}-${(i % 5) + 1}`;
+    const sid = `sess-fill-${String(n).padStart(3, "0")}`;
+    /* One, two or three touches. buildDeals reads the LAST outcome per
+       contact, so the final entry in each run is what sets the stage. */
+    const touches = 1 + (i % 3);
+    for (let t = 0; t < touches; t += 1) {
+      fillTouch += 1;
+      /* Newest touch last, and spread from ~70 days ago up to yesterday so
+         the rotting-deal cutoff (14 days) catches a believable slice rather
+         than all of them or none. */
+      const daysAgo = 1 + ((i * 7 + 3) % 70) - t * 6;
+      /* Same reason as the review cycle above: `i * 3 + t` could never reach
+         the positions that need a third touch, so `ai_call_completed` was
+         unreachable and the voice outcome never appeared anywhere. */
+      const outcome = at(FILL_OUTCOMES, fillTouch);
+      interactions.push({
+        id: `int-fill-${String(n).padStart(3, "0")}-${t + 1}`,
+        pitch_session_id: sid,
+        customer_id: cid,
+        contact_id: contactId,
+        outcome,
+        notes: at(FILL_NOTES, fillTouch),
+        /* Only open outcomes carry a follow-up: chasing a closed-lost deal is
+           not a task, and a queue full of them would be noise. */
+        follow_up_date:
+          outcome === "not_interested" || fillTouch % 5 === 0
+            ? null
+            : iso(-(3 + (fillTouch % 25))).slice(0, 10),
+        logged_by: at(FILL_LOGGERS, i + t),
+        created_at: isoAt(Math.max(0, daysAgo), `int-fill-${n}-${t}`),
+      } as (typeof interactions)[number]);
+    }
+  }
+
+  /**
+   * A RUN HISTORY WORTH READING.
+   *
+   * Two seeded runs meant /agent/impact showed a one-row leaderboard, the
+   * plan page a two-line history and the weekly review a single account —
+   * the three pages whose entire job is to show the agent has been working.
+   * These are generated against the long tail so the leaderboard, the run
+   * chart and the accounts-touched count all have a spread behind them.
+   */
+  const RUN_PLAYS: [AgentRun["kind"], AgentRun["outcome"], string, string][] = [
+    ["play", "sent", "Ran a full outreach play", "Researched, matched offerings and drafted: you reviewed, approved and sent it."],
+    ["act", "handled", "Drafted a follow-up", "Picked up the thread from the last call and drafted the follow-up for review."],
+    ["act", "handled", "Logged the call outcome", "Wrote the timeline entry from the call notes and set the next follow-up date."],
+    ["play", "escalated", "Prepared a re-engagement", "Draft is ready, but the account needs your approval before anything goes out."],
+    ["autopilot", "mixed", "Autopilot cleared the queue", "Drafted the overnight queue and escalated the one that needed a decision."],
+    ["plan", "handled", "Built the account plan", "Pulled the history, the offerings in play and the open risks into one plan."],
+  ];
+  for (let i = 0; i < 46; i += 1) {
+    /* Every third fill account, so the leaderboard spans a couple of dozen
+       companies instead of one. */
+    const n = i * 3 + 1;
+    const cid = `cust-fill-${String(n).padStart(3, "0")}`;
+    const customer = customers.find((c) => c.id === cid);
+    if (!customer) continue;
+    const [kind, outcome, title, summary] = at(RUN_PLAYS, i);
+    agentRuns.push({
+      id: `run-fill-${String(i + 1).padStart(3, "0")}`,
+      kind,
+      title: `${title} for ${customer.company_name}`,
+      customer_id: cid,
+      company: customer.company_name,
+      outcome,
+      summary,
+      steps: [
+        { label: "Researched the account", detail: `Read ${customer.company_name}'s profile, signals and history`, status: "done" },
+        { label: "Matched Freyr offerings", detail: "Ranked the catalogue against their stated regulatory milestones", status: "done" },
+        { label: "Drafted the outreach", detail: "Tailored the email and the call angle to the contact's role", status: "done" },
+        {
+          label: outcome === "escalated" ? "Waiting on your approval" : "Saved to the timeline",
+          detail:
+            outcome === "escalated"
+              ? "Nothing goes out until you approve it"
+              : "Ready for you to review and send. The agent never sends on its own",
+          status: outcome === "escalated" ? "escalated" : "done",
+        },
+      ],
+      created_at: isoAt(1 + (i % 28), `run-fill-${i}`),
+    } as (typeof agentRuns)[number]);
+  }
 
   // Every showroom account — hand-written or generated — runs a software
   // estate, so the Digital components tab is never empty in Mock.
@@ -681,7 +1064,14 @@ function seed(): MockStore {
 // seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
 // Bumped Aug 8: showroom accounts now carry a digital_components estate, so
 // a snapshot written before that must be reseeded rather than loaded.
-const SCHEMA_VERSION = 5;
+/* Bumped when the seed changes shape or volume — the store is cached to disk
+   under node_modules/.cache, so without this a new seed never runs and the
+   workspace stays at whatever it was first built as. Anir, Aug 31: the 140
+   generated accounts landed in the code and not one of them reached a page. */
+/* 7: the generated accounts now log activity, carry a review state on their
+   drafts and have a run history behind them. Without a bump the cached store
+   keeps its silent 140 accounts and none of that reaches a page either. */
+const SCHEMA_VERSION = 7;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

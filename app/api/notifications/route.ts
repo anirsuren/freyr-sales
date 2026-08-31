@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { buildNotifications } from "@/lib/notifications";
+import { readSolutioning } from "@/lib/solutioning";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
@@ -68,6 +70,32 @@ export async function GET() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
+  /* SOL-031: only records this person can actually open, and only the fields
+     the triggers read. Solutioning being unreachable for a rep must never
+     break their bell, so a refusal here is an empty list, not an error. */
+  const solutioningFor = async (me: string) => {
+    if (!(await canOpenModule("/solutioning"))) return null;
+    const state = await readSolutioning().catch(() => ({ requests: [] }));
+    return {
+      me,
+      requests: state.requests.map((r) => ({
+        id: r.id,
+        ref: r.ref,
+        title: r.title,
+        customer: r.customer,
+        type: r.type,
+        status: r.status,
+        deliverableStatus: r.deliverableStatus,
+        neededBy: r.neededBy,
+        requestedBy: r.requestedBy,
+        owner: r.owner,
+        updatedAt: r.updatedAt,
+        requestedAt: r.requestedAt,
+        workstreams: r.workstreams,
+      })),
+    };
+  };
+
   const notifications = buildNotifications({
     sessions,
     customers,
@@ -76,6 +104,7 @@ export async function GET() {
     voiceConversations,
     performance,
     roadmaps: await roadmapChangesForReader(),
+    solutioning: await solutioningFor((await getCurrentUser()).name),
     ...nudges,
   });
   return NextResponse.json({ notifications });

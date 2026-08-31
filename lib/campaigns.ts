@@ -125,7 +125,96 @@ function seedCampaigns(): Campaign[] {
       sent_at: null,
       created_at: d(0.4),
     },
+    ...generatedCampaigns(d),
   ];
+}
+
+/**
+ * THE REST OF THE CAMPAIGN HISTORY.
+ *
+ * Three campaigns is a screenshot, not a workspace: the list was three cards,
+ * the objective filter had one row per bucket at best, and the performance
+ * comparison had nothing to compare (Anir, Aug 31: "every rabbit hole needs to
+ * have a shit ton of data"). A year of sends against the generated book of
+ * accounts, so the list pages, the objective mix and the open/reply
+ * distributions all have a real spread behind them.
+ *
+ * Deterministic: index arithmetic against the same seeded contacts the rest of
+ * mock uses, so two reads never disagree and every recipient link resolves.
+ */
+function generatedCampaigns(d: (days: number) => string): Campaign[] {
+  const DEFS: [string, string, CampaignObjective, string, string][] = [
+    ["Freya.Submit publishing webinar", "of-004", "awareness", "Publishing checks before the sequence goes out", "Heads of submissions and publishing"],
+    ["Label change readiness check", "of-005", "pipeline", "Six markets, one label change, one source of truth", "Labeling leads across mid and large pharma"],
+    ["DIA follow-up: booth conversations", "of-001", "event_follow_up", "Good to meet you at DIA", "Everyone we spoke to at the booth"],
+    ["Artwork rework cost teardown", "of-006", "pipeline", "What an artwork error actually costs you", "Packaging and artwork owners"],
+    ["Freya.Intelligence quarterly digest", "of-003", "awareness", "This quarter's regulatory changes, by market", "Regulatory intelligence subscribers"],
+    ["Renewals coming due in Q1", "of-001", "expansion", "Twelve renewals on your book close inside 90 days", "Existing Freya.Register accounts"],
+    ["Device makers: MDR technical files", "of-show-001", "pipeline", "Your technical file is not a folder", "Device regulatory and quality leads"],
+    ["RIM Summit follow-up", "of-002", "event_follow_up", "The slides from our RIM Summit session", "RIM Summit attendee list"],
+    ["Add the intelligence feed", "of-003", "expansion", "You have the registrations. Add the early warning.", "Register customers without Intelligence"],
+    ["First-time filers: where teams lose months", "of-show-005", "pipeline", "The three things that delay a first submission", "Small biotech, pre-first-filing"],
+    ["Freya Fusion platform overview", "of-show-016", "awareness", "One platform, every regulatory workflow", "Large pharma platform evaluators"],
+    ["Pharmacovigilance capacity check", "of-show-023", "pipeline", "Case volume up, headcount flat. Now what?", "Safety and PV leads"],
+    ["Generics: variation volume", "of-show-012", "pipeline", "340 variations a year is a tooling problem", "Generics regulatory affairs"],
+    ["Agent pack for existing platforms", "of-show-020", "expansion", "Add our agents to the system you already run", "Accounts on a competitor platform"],
+    ["Consumer health claims review", "of-show-002", "pipeline", "Claims that survive both the lawyer and the regulator", "Consumer health regulatory"],
+    ["APAC registration expansion", "of-show-003", "expansion", "Eight markets, one registration book", "Accounts expanding into APAC"],
+    ["Freya Docs migration offer", "of-007", "pipeline", "Move your controlled documents without a two-year project", "Document management owners"],
+    ["Year-end regulatory outlook", "of-show-010", "awareness", "What is coming in regulation next year", "Full intelligence list"],
+    ["Submission publishing health check", "of-show-006", "pipeline", "A free read of your last five sequences", "Publishing teams at mid-size filers"],
+    ["Cell and gene: comparability", "of-show-022", "pipeline", "Three authorities, three views, one package", "Advanced therapy developers"],
+    ["Post-inspection remediation support", "of-show-024", "pipeline", "After the observations, before the deadline", "Accounts with recent inspection findings"],
+    ["IDMP readiness", "of-show-051", "awareness", "IDMP is a master data project wearing a compliance hat", "EU market authorisation holders"],
+    ["Customer advisory board invite", "of-002", "expansion", "Join the customer advisory board", "Top accounts by revenue"],
+    ["Re-engage: quiet since spring", "of-001", "pipeline", "Picking this back up where we left it", "Accounts with no activity in 90 days"],
+  ];
+  /* Recipients come from the generated contact book, so every name on a
+     campaign opens a contact page that exists. */
+  const contactAt = (k: number) =>
+    `cont-fill-${String((k % 140) + 1).padStart(3, "0")}-${(k % 5) + 1}`;
+  const OWNERS = [
+    "Walter Hensley", "Gordon Ashby", "Margaret Whitfield", "Mark Miller",
+    "Eleanor Rutherford", "Marcus Bramwell", "Sylvia Ashcroft",
+  ];
+  return DEFS.map(([name, offeringId, objective, subject, audience], i) => {
+    /* Two thirds sent, then queued, then drafts — the shape of a real list,
+       where most of the history is behind you. */
+    const status: CampaignStatus =
+      i % 9 === 7 ? "queued" : i % 9 === 8 ? "draft" : "sent";
+    const size = 18 + ((i * 13) % 62);
+    const recipients = Array.from({ length: size }, (_, k) =>
+      contactAt(i * 37 + k * 3)
+    );
+    const sent = status === "sent" ? size : status === "queued" ? Math.floor(size / 3) : 0;
+    /* Open and reply rates in the band a real B2B list produces — 28-46% and
+       3-9% — rather than a flat percentage on every row. */
+    const opens = Math.round(sent * (0.28 + ((i * 7) % 19) / 100));
+    const replies = Math.round(sent * (0.03 + ((i * 5) % 7) / 100));
+    const age = 6 + i * 14;
+    return {
+      id: `camp-fill-${String(i + 1).padStart(3, "0")}`,
+      name,
+      offering_id: offeringId,
+      offering_name: "",
+      subject,
+      body: `Hi {{first_name}},\n\n${subject}. We put together a short read on how teams in your position are handling it, and what it changes about the way the work gets planned.\n\nWorth twenty minutes to walk through where it would sit against what you run today?\n\nBest,\nFreyr team`,
+      recipient_contact_ids: recipients,
+      objective,
+      owner: OWNERS[i % OWNERS.length]!,
+      owner_user_id: null,
+      workspace_id: null,
+      audience_summary: audience,
+      scheduled_at: null,
+      status,
+      sent_count: sent,
+      opens,
+      replies,
+      queued_at: status === "draft" ? null : d(age + 1),
+      sent_at: status === "sent" ? d(age) : null,
+      created_at: d(age + 3),
+    };
+  });
 }
 
 function store(): CampaignStore {

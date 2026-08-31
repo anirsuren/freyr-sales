@@ -75,7 +75,70 @@ export type SolutionItemType = "request" | "submission" | "presentation";
  */
 export const SUBMISSION_TYPES = ["RFI", "RFP", "Proposal"] as const;
 
-export type RequestStatus = "initiated" | "in_progress" | "completed";
+/**
+ * THE REQUEST'S OWN LIFECYCLE (Manoj, Pack 1 SOL-013):
+ * New -> Assigned -> In Progress -> Completed, with Cancelled available.
+ *
+ * `initiated` is New under its original name — renaming the stored value would
+ * silently reclassify every request already written. `assigned` is the state
+ * SOL-009 needs ("cannot move to Assigned until a Lead has been selected for
+ * each represented Division") and `cancelled` is what SOL-033 wants instead of
+ * letting somebody delete business history.
+ */
+export type RequestStatus =
+  | "initiated"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+export const REQUEST_STATUS_ORDER: RequestStatus[] = [
+  "initiated",
+  "assigned",
+  "in_progress",
+  "completed",
+  "cancelled",
+];
+
+/**
+ * A DELIVERABLE'S OWN LIFECYCLE (SOL-019 and SOL-021), which is deliberately
+ * NOT the request's.
+ *
+ * "Submission status is independent of the parent Solutioning Request and of
+ * other Submissions/Presentations." A request that contains three submissions
+ * has three of these running at once, and finishing one says nothing about the
+ * other two or about the request.
+ */
+export const DELIVERABLE_STATUSES = [
+  "Draft",
+  "In progress",
+  "Ready for review",
+  "Finalized",
+  "Submitted to customer",
+  "Cancelled",
+] as const;
+export type DeliverableStatus = (typeof DELIVERABLE_STATUSES)[number];
+
+/** SOL-012 lists Priority as mandatory metadata on a request. */
+export const REQUEST_PRIORITIES = ["High", "Medium", "Low"] as const;
+export type RequestPriority = (typeof REQUEST_PRIORITIES)[number];
+
+/**
+ * ONE DIVISION'S SHARE OF A REQUEST (SOL-010).
+ *
+ * "A workstream is not a separate Solutioning Request. It is an internal
+ * responsibility grouping within the same request." A request covering three
+ * divisions carries three of these and stays ONE customer-facing request.
+ *
+ * The lead is accountable, the primary assignee does the work, contributors
+ * support it (SOL-011) — three different questions, so three fields.
+ */
+export type SolutionWorkstream = {
+  division: string;
+  lead?: string;
+  primaryAssignee?: string;
+  contributors: string[];
+};
 
 /** The four tabs, exactly as he named them. */
 export type DocCategory = "customer" | "working" | "final" | "analysis";
@@ -183,6 +246,21 @@ export type SolutionRequest = {
   contactIds: string[];
   contactNames: string[];
   status: RequestStatus;
+  /**
+   * The deliverable's own status, independent of the request (SOL-019/021).
+   * Only meaningful on a submission or presentation; a request has none.
+   */
+  deliverableStatus?: DeliverableStatus;
+  /** SOL-012. */
+  priority?: RequestPriority;
+  /**
+   * The divisions this request represents, derived from the linked
+   * opportunities and their offerings (SOL-007) and stored so the answer
+   * survives an offering being recategorised later.
+   */
+  divisions?: string[];
+  /** One per represented division (SOL-010). */
+  workstreams?: SolutionWorkstream[];
   requestedBy: string;
   requestedAt: string;
   /** Optional deadline. Open question with Suren; the field is harmless and
@@ -198,6 +276,8 @@ export type SolutionRequest = {
   attendees?: string[];
   docs: SolutionDoc[];
   activity: RequestActivity[];
+  /** SOL-012 asks for a system-maintained Last Updated. Every write sets it. */
+  updatedAt?: string;
 };
 
 export type SolutioningState = {
@@ -205,6 +285,38 @@ export type SolutioningState = {
 };
 
 export const EMPTY_SOLUTIONING: SolutioningState = { requests: [] };
+
+/**
+ * WHICH SHELF A SOLUTIONING RECORD BELONGS ON.
+ *
+ * `type` says whether this is the WORK or the ASK for the work; `kind` says
+ * what the work is. You need both, and every page that tried to use one alone
+ * got it wrong in a different direction:
+ *
+ *   - the deal page read `type ?? kind`, which answers "request" for every
+ *     ask, so Meeting requests could never match and neither could a solution
+ *     request;
+ *   - the customer page read `kind` alone, so its Solution requests band
+ *     filtered on a value `kind` never holds (always zero) while Submissions
+ *     counted the asks as if they were finished work.
+ *
+ * One function, so a third page cannot invent a fourth answer.
+ */
+export type SolutioningShelf =
+  | "submissions"
+  | "presentations"
+  | "meetingRequests"
+  | "solutionRequests";
+
+export function solutioningShelf(r: {
+  type?: string;
+  kind: SolutioningKind;
+}): SolutioningShelf {
+  const type = r.type ?? "request";
+  if (type === "submission") return "submissions";
+  if (type === "presentation") return "presentations";
+  return r.kind === "meeting" ? "meetingRequests" : "solutionRequests";
+}
 
 /* ------------------------------------------------------------------ store */
 
@@ -251,7 +363,42 @@ function kind(v: unknown): SolutioningKind | null {
 }
 
 function status(v: unknown): RequestStatus {
-  return v === "in_progress" || v === "completed" ? v : "initiated";
+  return v === "assigned" ||
+    v === "in_progress" ||
+    v === "completed" ||
+    v === "cancelled"
+    ? v
+    : "initiated";
+}
+
+function deliverableStatus(v: unknown): DeliverableStatus | undefined {
+  return DELIVERABLE_STATUSES.find((x) => x === v);
+}
+
+function priority(v: unknown): RequestPriority | undefined {
+  return REQUEST_PRIORITIES.find((x) => x === v);
+}
+
+/** Every field named, or dropped by the next write — the store's own law. */
+function normalizeWorkstream(v: unknown): SolutionWorkstream | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Partial<SolutionWorkstream>;
+  const division = str(r.division, 120);
+  if (!division) return null;
+  const lead = str(r.lead, 80);
+  const primary = str(r.primaryAssignee, 80);
+  /* THE SAME PERSON CANNOT APPEAR TWICE IN THE SAME ROLE LIST (SOL-011), and
+     the primary assignee is not also a contributor — they are the one doing
+     it, not one of the people helping. */
+  const contributors = [
+    ...new Set(strList(r.contributors, 80).filter((n) => n !== primary)),
+  ];
+  return {
+    division,
+    ...(lead ? { lead } : {}),
+    ...(primary ? { primaryAssignee: primary } : {}),
+    contributors,
+  };
 }
 
 function category(v: unknown): DocCategory | null {
@@ -349,6 +496,19 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
     contactIds: strList(r.contactIds, 60),
     contactNames: strList(r.contactNames, 120),
     status: status(r.status),
+    /* Pack 1's new facts. Absent on every row written before them, which is
+       why each one is optional rather than defaulted to a guess. */
+    ...(deliverableStatus(r.deliverableStatus)
+      ? { deliverableStatus: deliverableStatus(r.deliverableStatus) }
+      : {}),
+    ...(priority(r.priority) ? { priority: priority(r.priority) } : {}),
+    divisions: [...new Set(strList(r.divisions, 120))].sort((a, b) =>
+      a.localeCompare(b)
+    ),
+    workstreams: (Array.isArray(r.workstreams) ? r.workstreams : [])
+      .map(normalizeWorkstream)
+      .filter((w): w is SolutionWorkstream => w !== null),
+    ...(str(r.updatedAt, 40) ? { updatedAt: str(r.updatedAt, 40) } : {}),
     requestedBy: str(r.requestedBy, 80) || "Unknown",
     requestedAt: str(r.requestedAt, 40) || new Date().toISOString(),
     neededBy: str(r.neededBy, 20) || undefined,
@@ -829,6 +989,13 @@ export async function createRequest(input: {
   /** Direct work made in the Submissions/Presentations room starts owned by
    *  its maker — nobody "takes up" their own submission. */
   owner?: string;
+  /** SOL-012. */
+  priority?: RequestPriority;
+  /** Derived by the caller from the linked opportunities' offerings (SOL-007),
+   *  because only the API layer can see the offering catalogue. */
+  divisions?: string[];
+  /** One per division, pre-filled with the configured lead (SOL-008). */
+  workstreams?: SolutionWorkstream[];
 }): Promise<SolutionRequest> {
   return withWrite(async () => buildRecord(await readRow(), input, true));
 }
@@ -876,6 +1043,22 @@ async function buildRecord(
         input.kind === "meeting" && strList(input.attendees, 80).length
           ? strList(input.attendees, 80)
           : undefined,
+      priority: input.priority,
+      /* SOL-007: derived, never typed. An empty list is the honest answer for
+         a request raised with no opportunity — "A request with no Opportunity
+         can still be saved without a Division." */
+      divisions: [...new Set(strList(input.divisions, 120))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+      /* SOL-010: one workstream per represented division, carrying whatever
+         lead the mapping recommended. Sales can change every one of them. */
+      workstreams: (input.workstreams ?? [])
+        .map(normalizeWorkstream)
+        .filter((w): w is SolutionWorkstream => w !== null),
+      /* A deliverable starts as a Draft; a request has no deliverable status
+         at all (SOL-019 is about submissions and presentations). */
+      deliverableStatus: type === "request" ? undefined : "Draft",
+      updatedAt: new Date().toISOString(),
       docs: [],
       activity: [],
     };
@@ -951,6 +1134,150 @@ function mustFind(state: SolutioningState, requestId: string): SolutionRequest {
   const r = state.requests.find((x) => x.id === requestId);
   if (!r) throw new Error("That request is gone. Refresh and retry.");
   return r;
+}
+
+/**
+ * EVERY WRITE STAMPS THE CLOCK (SOL-012: "Created and Last Updated timestamps
+ * are system-maintained"). One helper rather than a line in twelve ops, so a
+ * new op cannot forget.
+ */
+function touch(r: SolutionRequest, by: string, what: string): void {
+  const at = new Date().toISOString();
+  r.updatedAt = at;
+  r.activity.push({ at, by, what });
+}
+
+/** SOL-012. */
+export async function setPriority(input: {
+  requestId: string;
+  priority: RequestPriority | null;
+  by: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    r.priority = input.priority ?? undefined;
+    touch(
+      r,
+      input.by,
+      input.priority ? `Priority set to ${input.priority}` : "Priority cleared"
+    );
+    await writeRow(state);
+  });
+}
+
+/**
+ * WHO IS ACCOUNTABLE FOR ONE DIVISION'S SHARE (SOL-009 and SOL-011).
+ *
+ * Lead, primary assignee and contributors are three different questions, so
+ * this sets whichever was named and leaves the rest alone. A division that has
+ * no workstream yet gets one — a request can gain a division later, when an
+ * opportunity is linked after the fact.
+ */
+export async function setWorkstream(input: {
+  requestId: string;
+  division: string;
+  lead?: string | null;
+  primaryAssignee?: string | null;
+  contributors?: string[];
+  by: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    const division = str(input.division, 120);
+    if (!division) throw new Error("Which division?");
+    const list = r.workstreams ?? (r.workstreams = []);
+    let w = list.find((x) => x.division === division);
+    if (!w) {
+      w = { division, contributors: [] };
+      list.push(w);
+    }
+    const said: string[] = [];
+    if (input.lead !== undefined) {
+      w.lead = str(input.lead ?? "", 80) || undefined;
+      said.push(w.lead ? `lead ${w.lead}` : "lead cleared");
+    }
+    if (input.primaryAssignee !== undefined) {
+      w.primaryAssignee = str(input.primaryAssignee ?? "", 80) || undefined;
+      said.push(
+        w.primaryAssignee ? `assignee ${w.primaryAssignee}` : "assignee cleared"
+      );
+    }
+    if (input.contributors !== undefined) {
+      /* SOL-011: nobody twice in the same list, and the primary assignee is
+         not also a contributor. */
+      w.contributors = [
+        ...new Set(
+          strList(input.contributors, 80).filter((n) => n !== w!.primaryAssignee)
+        ),
+      ];
+      said.push(`${w.contributors.length} contributor(s)`);
+    }
+    /* SOL-013: "Once all required Solutioning Leads are selected, it can move
+       to Assigned." Only ever forward out of New, and never over the top of
+       work that has already started or finished. */
+    if (
+      r.status === "initiated" &&
+      (r.divisions ?? []).length > 0 &&
+      (r.divisions ?? []).every((d) =>
+        list.some((x) => x.division === d && x.lead)
+      )
+    ) {
+      r.status = "assigned";
+      said.push("every division now has a lead, so this is Assigned");
+    }
+    touch(r, input.by, `${division}: ${said.join(", ")}`);
+    await writeRow(state);
+  });
+}
+
+/** SOL-019 and SOL-021 — the deliverable's own status, independent of its
+ *  parent and of every other deliverable. */
+export async function setDeliverableStatus(input: {
+  requestId: string;
+  status: DeliverableStatus;
+  by: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    if (r.type === "request")
+      throw new Error("A request does not carry a deliverable status.");
+    r.deliverableStatus = input.status;
+    touch(r, input.by, `Moved to ${input.status}`);
+    await writeRow(state);
+  });
+}
+
+/**
+ * DISCONTINUED, NOT DELETED (SOL-033).
+ *
+ * "Do not allow normal users to permanently delete... Use Cancelled status
+ * when work is discontinued. Cancelled records remain available in history and
+ * related views with a clear Cancelled status."
+ */
+export async function cancelRequest(input: {
+  requestId: string;
+  by: string;
+  reason?: string;
+  allowed: boolean;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    if (!input.allowed)
+      throw new Error("Only the requester, its owner or a manager can cancel this.");
+    if (r.status === "cancelled") return;
+    r.status = "cancelled";
+    if (r.type !== "request") r.deliverableStatus = "Cancelled";
+    touch(
+      r,
+      input.by,
+      input.reason ? `Cancelled — ${str(input.reason, 300)}` : "Cancelled"
+    );
+    await writeRow(state);
+  });
 }
 
 export async function pickUpRequest(input: {
@@ -1360,6 +1687,21 @@ export async function deleteRequest(input: {
       throw new Error(
         "Only the requester (while nothing has started) or an admin can delete a request."
       );
+    /* A DELETED PARENT MUST NOT ORPHAN ITS CHILDREN.
+       Found Aug 31 while testing Pack 1: deleting REQ-0005 left SUB-0003
+       pointing at a request that no longer existed, so the submission showed a
+       parent nobody could open. The work itself is still real — it keeps every
+       document and its own status — so it is set free rather than destroyed,
+       and its timeline says where it came from. */
+    for (const child of state.requests) {
+      if (child.requestId !== r.id) continue;
+      child.requestId = undefined;
+      touch(
+        child,
+        "System",
+        `${r.ref} was deleted; this is no longer attached to a request`
+      );
+    }
     // Other requests may reference this one's documents. A deleted home would
     // leave dangling links, so the references die with it — visibly, in the
     // referencing request's activity.

@@ -188,7 +188,7 @@ export function EditableFact({
             size={11}
             strokeWidth={2.2}
             aria-hidden="true"
-            className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+            className="shrink-0 text-text-tertiary opacity-40 transition-opacity group-hover:opacity-100"
           />
         </button>
         {hint && (
@@ -312,7 +312,7 @@ export function EditableFact({
               size={11}
               strokeWidth={2.2}
               aria-hidden="true"
-              className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+              className="shrink-0 text-text-tertiary opacity-40 transition-opacity group-hover:opacity-100"
             />
           </button>
         )}

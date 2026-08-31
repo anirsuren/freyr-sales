@@ -1,7 +1,7 @@
 import { orderBands } from "./connectionOrder";
 import { canAccessModule } from "./moduleAccess";
 import type { UserIdentityRole } from "./userIdentity";
-import { readSolutioning } from "./solutioning";
+import { readSolutioning, solutioningShelf } from "./solutioning";
 import { readMeetings } from "./meetings";
 import { readContracts } from "./contracts";
 import { BAND_ICONS, type Customer360Band, type Customer360Item } from "./customer360Shared";
@@ -51,17 +51,31 @@ export async function buildOpportunity360(
 
   if (may("/solutioning")) {
     const mine = solutioning.filter((r) => against(r.opportunityIds));
-    const itemType = (r: (typeof solutioning)[number]) =>
-      (r as { type?: string }).type ?? r.kind;
+    /**
+     * WHICH SHELF A RECORD BELONGS ON.
+     *
+     * This used to read `type ?? kind`, which put every REQUEST on no shelf at
+     * all: a meeting request is stored as `type: "request", kind: "meeting"`,
+     * so `type ?? kind` answered "request" and the Meeting requests band —
+     * which was looking for "meeting" — could never match one. Same for a
+     * submission request. Found Aug 31 with the data sitting right there in
+     * the store: Submissions 3, Meeting requests 0, on a deal carrying two.
+     *
+     * `type` says whether it is the work or the ASK for the work; `kind` says
+     * what the work is. The shelf needs both.
+     */
 
-    for (const [key, label, kind, color] of [
-      ["submissions", "Submissions", "submission", "#7C3AED"],
-      ["presentations", "Presentations", "presentation", "#0F766E"],
+    for (const [key, label, color] of [
+      ["submissions", "Submissions", "#7C3AED"],
+      ["presentations", "Presentations", "#0F766E"],
       /* Named as a REQUEST, the same correction the customer page needed:
          a meeting asked of the Solutioning team is not a meeting held. */
-      ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
+      ["meetingRequests", "Meeting requests", "#B4318F"],
+      /* What sales has asked for on this deal and nobody has turned into work
+         yet — the half of Solutioning that was invisible from the deal. */
+      ["solutionRequests", "Solution requests", "#C2410C"],
     ] as const) {
-      const rows = mine.filter((r) => itemType(r) === kind);
+      const rows = mine.filter((r) => solutioningShelf(r) === key);
       bands.push({
         key,
         label,
@@ -118,9 +132,16 @@ export async function buildOpportunity360(
   }
 
   if (may("/contracts")) {
-    const mine = contracts.filter((c) =>
-      against((c as { opportunityIds?: string[] }).opportunityIds)
-    );
+    /* A CONTRACT HOLDS ONE DEAL, NOT A LIST. This filtered `opportunityIds`,
+       a field a contract has never had (the store writes `opportunityId`), so
+       `against()` read undefined and the band counted zero on every deal in
+       every mode — a tab that could not have worked. The array form is still
+       accepted in case one is ever written that way. */
+    const mine = contracts.filter((c) => {
+      const one = (c as { opportunityId?: string }).opportunityId;
+      if (one && one === opportunityId) return true;
+      return against((c as { opportunityIds?: string[] }).opportunityIds);
+    });
     bands.push({
       key: "contracts",
       label: "Contracts",

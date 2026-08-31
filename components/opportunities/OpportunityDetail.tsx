@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Target } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Pencil, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
 import { EditableFact } from "./EditableFact";
-import { OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
-import { Customer360 } from "@/components/customers/Customer360";
+import { EditDealDialog } from "./EditDealDialog";
+import { DEAL_TYPES, OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
+import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { StatTile } from "@/components/ui/StatTile";
@@ -79,6 +80,7 @@ export function OpportunityDetail({
   const level = effectiveRevenueType(deal);
   const signs = signDateOf(deal);
   const [tab, setTab] = useState<string>("overview");
+  const [editing, setEditing] = useState(false);
   const router = useRouter();
 
   /**
@@ -114,6 +116,13 @@ export function OpportunityDetail({
 
   return (
     <div>
+      {editing && (
+        <EditDealDialog
+          deal={deal}
+          onClose={() => setEditing(false)}
+          onSave={saveField}
+        />
+      )}
       {/* Back to wherever you actually came from — the summary, the table, a
           customer page — with the pipeline as the fallback for a deep link. */}
       <SmartBack
@@ -159,21 +168,33 @@ export function OpportunityDetail({
           </div>
         </div>
         <span className="flex shrink-0 items-center gap-2">
-          {/* WHY THIS IS OR IS NOT EDITABLE, in the person's own case. A page
-              that simply refuses to save teaches nobody anything; the hint
-              names the rule that decided it, so a wrong answer here is
-              reportable rather than mysterious. */}
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold",
-              verdict.mayEdit
-                ? "bg-[rgba(26,122,53,0.10)] text-[color:#1A7A35]"
-                : "bg-surface text-text-secondary"
-            )}
-          >
-            {verdict.mayEdit ? "You can edit this" : "View only"}
-            <InfoHint text={verdict.why} />
-          </span>
+          {/* A BUTTON WHEN YOU MAY PRESS ONE, A BADGE WHEN YOU MAY NOT.
+              Anir, Aug 31: "saying i can edit this doesnt help me at all...
+              if i can edit it show me the fucking button."
+
+              It used to say "You can edit this" and stop there. Every fact WAS
+              editable, but the pencil only appeared once you hovered the exact
+              line, so the page announced a capability and then showed nothing
+              to press. Telling somebody they have permission is not the same
+              as giving them the control.
+
+              View-only still gets the badge and the reason, because there the
+              sentence IS the whole answer. */}
+          {verdict.mayEdit ? (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              <Pencil size={14} strokeWidth={2.2} />
+              Edit deal
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
+              View only
+              <InfoHint text={verdict.why} />
+            </span>
+          )}
           <Link
             href="/opportunities"
             className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
@@ -259,6 +280,57 @@ export function OpportunityDetail({
         {tab === "overview" ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0 space-y-4">
+              {/* THE OVERVIEW IS THE DASHBOARD.
+                  Suren, Aug 31: "I need a dashboard which says... total
+                  contract value, estimated annual contract value, that's fine.
+                  And then... dashboard wise, should we have all these small
+                  boxes, contract 0, submission 0, presentation 0 and below
+                  that, give a link so that... here also you can go to the
+                  submission."
+
+                  The counts were only in the tab strip, which reads as
+                  navigation rather than as a figure — you had to notice a
+                  small number beside a word to learn there were three decks on
+                  this deal. Here they are the thing itself, and each one opens
+                  the list behind it, so the overview answers "what is on this
+                  deal" without a click and gets you there with one. */}
+              {/* A rep whose role opens none of these modules gets no bands at
+                  all, and a heading over an empty grid is worse than no
+                  section — so it only exists when there is something in it. */}
+              {bands.length > 0 && (
+              <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  What is on this deal
+                </h2>
+                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                  {bands.map((b) => {
+                    const Icon =
+                      BAND_ICON_MAP[b.icon as keyof typeof BAND_ICON_MAP] ?? Target;
+                    return (
+                      <button
+                        key={b.key}
+                        type="button"
+                        onClick={() => setTab(b.key)}
+                        className="group flex cursor-pointer flex-col items-start gap-1.5 rounded-lg border border-border-light bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-primary hover:shadow-card"
+                      >
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-md"
+                          style={{ background: `${b.color}14`, color: b.color }}
+                        >
+                          <Icon size={15} strokeWidth={1.9} />
+                        </span>
+                        <span className="tnum text-[20px] font-semibold leading-none text-text-primary">
+                          {b.count}
+                        </span>
+                        <span className="text-[11.5px] leading-snug text-text-secondary group-hover:text-blue-primary">
+                          {b.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+              )}
               {deal.nextSteps ? (
                 <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
                   <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -384,6 +456,22 @@ export function OpportunityDetail({
                     ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
                   ]}
                   onSave={(v) => saveField({ revenueType: v })}
+                />
+                {/* Suren, Aug 31: "opportunity is missing one thing, what
+                    type of opportunity... new business, existing business,
+                    renewal, all of that comes along, so it's all part of the
+                    overview." Sits beside Revenue type because the two get
+                    read together and answer different questions. */}
+                <EditableFact
+                  label="Type of opportunity"
+                  value={deal.dealType ?? ""}
+                  stacked
+                  canEdit={verdict.mayEdit}
+                  options={[
+                    { value: "", label: "Not set" },
+                    ...DEAL_TYPES.map((x) => ({ value: x, label: x })),
+                  ]}
+                  onSave={(v) => saveField({ dealType: v })}
                 />
                 <EditableFact
                   label="Expected to sign"
