@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-react";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -581,44 +581,49 @@ export function OpportunitySummary({
         <>
           {chart.length > 0 && (
             <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
+                  show the graph thing, just make it a drop-down like you do
+                  this somewhere else"). A labelled button beside the heading
+                  was a second control saying what a chevron already says, and
+                  it is not how anything else in this app folds — the goal
+                  categories, the deal form and the summary rows are all a
+                  heading you press with a chevron that turns. */}
+              <button
+                type="button"
+                onClick={() => setChartOpen((v) => !v)}
+                aria-expanded={chartOpen}
+                className="group flex w-full cursor-pointer items-start justify-between gap-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                     <TrendingUp size={15} strokeWidth={2} className="text-blue-primary" />
                     Where this money lands
-                    <InfoHint text="Every deal on screen, summed into the period its closure date falls in. Freyr's year runs April to March, so Q1 is April to June." />
-                  </h2>
-                  <p className="mt-0.5 text-[12.5px] text-text-secondary">
-                    {money(grand.total)} of {measureLabel} across {chart.length}{" "}
-                    {chart.length === 1 ? "period" : "periods"}
+                  </span>
+                  <span className="mt-0.5 block text-[12.5px] text-text-secondary">
+                    {money(grand.total)}{" "}
+                    {spread ? "accruing" : `of ${measureLabel}`} across{" "}
+                    {chart.length} {chart.length === 1 ? "period" : "periods"}
                     {grand.entered < grand.of && (
                       <>
                         {" · "}
                         <b className="font-semibold">
-                          {grand.entered} of {grand.of} deals carry a figure
+                          {grand.entered} of {grand.of} deals{" "}
+                          {spread ? "are planned" : "carry a figure"}
                         </b>
                       </>
                     )}
-                  </p>
-                </div>
-                {/* CLOSE IT WHEN IT IS IN THE WAY, open it when it is not
-                    (Suren, Aug 30). The table below is the thing he reads; the
-                    chart is the thing he glances at. */}
-                <button
-                  type="button"
-                  onClick={() => setChartOpen((v) => !v)}
-                  aria-expanded={chartOpen}
-                  className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                >
-                  <ChevronRight
-                    size={13}
-                    strokeWidth={2.4}
-                    aria-hidden="true"
-                    className={cn("transition-transform", chartOpen && "rotate-90")}
-                  />
-                  {chartOpen ? "Hide the graph" : "Show the graph"}
-                </button>
-              </div>
+                  </span>
+                </span>
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-0.5 shrink-0 text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary",
+                    chartOpen && "rotate-180"
+                  )}
+                />
+              </button>
               {chartOpen && (
                 <div className="mt-3">
                   <BarChart

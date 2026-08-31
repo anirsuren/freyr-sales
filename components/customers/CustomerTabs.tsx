@@ -9,9 +9,6 @@ import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
 import {
-  Globe,
-  MapPin,
-  Building2,
   Pin,
   Newspaper,
   FileText,
@@ -53,7 +50,7 @@ import {
 } from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR, SIZE_TIER_LABEL, titleCase } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import {
@@ -862,6 +859,15 @@ export function CustomerTabs({
                   label="Industry"
                   value={customer.industry ?? ""}
                   canEdit
+                  renderValue={(v) => (
+                    <AttributeTag
+                      value={v}
+                      icon={industryMeta(v).icon}
+                      label="Industry"
+                      className="max-w-full"
+                      color={industryMeta(v).color}
+                    />
+                  )}
                   onSave={async (v) =>
                     (await patchCustomer({ industry: v })) ? null : "That didn't save."
                   }
@@ -870,13 +876,21 @@ export function CustomerTabs({
                   label="Size"
                   value={customer.size_tier ?? ""}
                   canEdit
+                  /* THE STORED WORDS, NOT INVENTED ONES. Every account holds
+                     "small" / "mid" / "large" (lib/utils SIZE_TIER_LABEL), and
+                     this picker shipped offering Small / Medium / Large /
+                     Enterprise. None of those matched, so a select on an
+                     account sized "large" fell back to its first option and
+                     saving would have quietly rewritten a correct value to
+                     blank (found Aug 30 on Opella). */
                   options={[
                     { value: "", label: "Not set" },
-                    { value: "Small", label: "Small" },
-                    { value: "Medium", label: "Medium" },
-                    { value: "Large", label: "Large" },
-                    { value: "Enterprise", label: "Enterprise" },
+                    ...Object.entries(SIZE_TIER_LABEL).map(([value, label]) => ({
+                      value,
+                      label,
+                    })),
                   ]}
+                  format={(v) => SIZE_TIER_LABEL[v.toLowerCase()] ?? titleCase(v)}
                   onSave={async (v) =>
                     (await patchCustomer({ size_tier: v })) ? null : "That didn't save."
                   }
@@ -885,6 +899,7 @@ export function CustomerTabs({
                   label="Geography"
                   value={customer.geography ?? ""}
                   canEdit
+                  renderValue={(v) => <GeographyValue value={v} />}
                   onSave={async (v) =>
                     (await patchCustomer({ geography: v })) ? null : "That didn't save."
                   }
@@ -893,6 +908,7 @@ export function CustomerTabs({
                   label="Website"
                   value={customer.website_url ?? ""}
                   canEdit
+                  format={(v) => v.replace(/^https?:\/\//, "")}
                   onSave={async (v) =>
                     (await patchCustomer({ website_url: v })) ? null : "That didn't save."
                   }
@@ -906,60 +922,13 @@ export function CustomerTabs({
                   }
                 />
               </div>
-              {/* Auto-fitting columns, not a fixed three: each field keeps a
-                  220px floor and the row drops to two columns, then one, rather
-                  than squeezing values into each other. Every cell is min-w-0 so
-                  a long value shrinks its own column instead of overflowing into
-                  its neighbour, which is exactly how Geography ended up sitting
-                  on top of Website. */}
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-6 gap-y-4 mb-4">
-                <div className="flex items-start gap-2 min-w-0">
-                  <Building2 size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Industry</p>
-                    {customer.industry ? (
-                      <AttributeTag
-                        value={customer.industry}
-                        icon={industryMeta(customer.industry).icon}
-                        label="Industry"
-                        className="mt-0.5 max-w-full"
-                        color={industryMeta(customer.industry).color}
-                      />
-                    ) : (
-                      <p className="text-[14px] text-text-primary">-</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2 min-w-0">
-                  <MapPin size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Geography</p>
-                    {customer.geography ? (
-                      <GeographyValue value={customer.geography} />
-                    ) : (
-                      <p className="text-[14px] text-text-primary">-</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2 min-w-0">
-                  <Globe size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Website</p>
-                    {customer.website_url ? (
-                      <a
-                        href={customer.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block max-w-full text-[14px] text-blue-primary hover:underline whitespace-normal break-words"
-                      >
-                        {customer.website_url.replace(/^https?:\/\//, "")}
-                      </a>
-                    ) : (
-                      <p className="text-[14px] text-text-primary">-</p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* THE CHIPS MOVED UP, ONTO THE FACTS THEMSELVES.
+                  Industry, Geography and Website used to be printed twice:
+                  once as an editable line and again as a chip block right
+                  underneath, so an account showed its industry two rows apart
+                  (found Aug 30 walking this page as a BD Member). EditableFact
+                  takes a renderValue now, so the colour + icon chip IS the
+                  value you click to change — one row, still a chip. */}
               {/* No customer-type chip here. Its family half is the SAME word
                   as the Industry chip directly above it, so a classified pharma
                   account showed "Pharmaceutical" twice, one under the other

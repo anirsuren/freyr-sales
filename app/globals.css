@@ -1701,7 +1701,14 @@ input {
     transparent 80%
   );
   transform: translateX(-100%);
-  animation: barSheen 1.15s ease-in-out infinite;
+  /* IT PASSES, IT DOES NOT LOOP (Anir, Aug 30: "I don't know what this
+     animation is, this is not the same animation that I had on the other
+     part"). It is the same class the goal bars use — but those bars are four
+     to nine pixels tall, so the sheen reads as a glint, while on a full-height
+     column it swept across forever and became the loudest thing on the page.
+     Two passes and it settles, which looks the same on a small bar and stops
+     competing on a large one. */
+  animation: barSheen 1.15s ease-in-out 2;
 }
 
 @keyframes barSheen {

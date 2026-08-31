@@ -974,9 +974,13 @@ export function RevenueAccrualsModule({
                 onOpenDeal={(id) =>
                   /* Straight into planning it — "when you click on it again,
                      you need to go and update the accruals on the revenue".
-                     startPlan already handles both cases: an existing plan
-                     opens filled in, a deal without one opens spread. */
-                  startPlan(id, state.plans.find((p) => p.opportunityId === id))
+                     A PAGE, not a sheet: the planner grows a row per month, so
+                     a twelve-month spread was scrolling inside a fixed dialog
+                     on top of the table it was editing (Anir, Aug 30: "I'm
+                     pretty sure he wants it to be a page instead of a popup").
+                     The dialog stays for "Plan a deal", where choosing the deal
+                     is the first step. */
+                  router.push(`/revenue-accruals/${id}`)
                 }
                 spread={{
                   periodsOf: (d, tl) => {

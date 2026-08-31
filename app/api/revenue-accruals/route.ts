@@ -9,7 +9,7 @@ import {
   removeAccrualSnapshot,
   saveAccrualPlan,
 } from "@/lib/revenueAccruals";
-import { canOpenModule } from "@/lib/moduleAccessServer";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +26,29 @@ export const dynamic = "force-dynamic";
  * against, and it should exist because somebody closed the month.
  */
 async function closed(): Promise<NextResponse | null> {
-  const me = await getCurrentUser();
   return (await canOpenModule("/revenue-accruals"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
+}
+
+/**
+ * WRITING IS ITS OWN PERMISSION, and this route was asking the READ question
+ * for both.
+ *
+ * `closed()` is canOpenModule, which answers "may you see this page". POST used
+ * it too, so anybody whose row says *view* could save, delete, freeze and
+ * unfreeze. Signed in as a Solutioning Member -- whose row on Revenue Accruals
+ * is view -- an accrual plan saved against somebody else's deal (found Aug 30
+ * walking every role). The same account was correctly refused by Opportunities,
+ * Customers and Leads, which all ask moduleWriteRefusal.
+ *
+ * This does not decide who may write; the privilege table does, exactly as it
+ * does for every other module. It only stops this one route answering a
+ * different question from the rest of them.
+ */
+async function readOnly(): Promise<NextResponse | null> {
+  const refusal = await moduleWriteRefusal("/revenue-accruals");
+  return refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -45,6 +64,8 @@ export async function POST(req: NextRequest) {
   if (!scope) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   const shut = await closed();
   if (shut) return shut;
+  const pen = await readOnly();
+  if (pen) return pen;
   /* Mock writes go to the mock row and can never reach real data, so there is
      nothing to refuse (Anir, Aug 26: "all the same functionality (add, edit
      etc.) should be on mock mode, but it shouldn't affect real data"). */
@@ -61,7 +82,20 @@ export async function POST(req: NextRequest) {
       });
     }
     if (op === "delete") {
-      await removeAccrualPlan(String(body.opportunityId ?? ""));
+      /* SAY SO WHEN THERE WAS NOTHING TO DELETE. This answered ok:true for any
+         id, including a missing one, so a caller that named the plan by the
+         wrong key got a success and left the plan sitting there (I did exactly
+         that testing on Aug 30 and only caught it because the number was still
+         on the page). */
+      const opportunityId = String(body.opportunityId ?? "");
+      const before = await readRevenueAccruals();
+      if (!before.plans.some((p) => p.opportunityId === opportunityId)) {
+        return NextResponse.json(
+          { error: "There is no accrual plan on that deal." },
+          { status: 404 }
+        );
+      }
+      await removeAccrualPlan(opportunityId);
       return NextResponse.json({ ok: true, state: await readRevenueAccruals() });
     }
     if (op === "freeze") {

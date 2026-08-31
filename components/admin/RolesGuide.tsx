@@ -136,10 +136,16 @@ export function RolesGuide({ className }: { className?: string }) {
                     <th className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                       Module
                     </th>
+                    {/* THE HEADERS WRAP, so all ten columns fit the dialog.
+                        On one line "Solutioning Owner" and "Delivery Member"
+                        pushed the grid past 1100px and View all — the one
+                        privilege Suren singled out, "he cannot write" — fell
+                        off the right edge with nothing to say it was there
+                        (found Aug 30 opening the guide). */}
                     {privileges.map((p) => (
                       <th
                         key={p.id}
-                        className="whitespace-nowrap px-3 py-2 text-center text-[11px] font-bold"
+                        className="px-2 py-2 text-center align-bottom text-[11px] font-bold leading-tight"
                         style={{ color: privilegeColor(p.id) }}
                         title={p.blurb}
                       >
@@ -165,7 +171,7 @@ export function RolesGuide({ className }: { className?: string }) {
                           "none") as Access;
                         const meta = ACCESS_META[level];
                         return (
-                          <td key={p.id} className="px-3 py-2 text-center">
+                          <td key={p.id} className="px-2 py-2 text-center">
                             {level === "none" ? (
                               <span className="text-[12px] text-text-tertiary/60">
                                 ·

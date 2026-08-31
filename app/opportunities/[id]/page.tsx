@@ -15,6 +15,20 @@ import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail"
 
 export const dynamic = "force-dynamic";
 
+/* The tab says which deal it is. Without this, every open opportunity read
+   "Freyr Sales Intelligence" and two of them were indistinguishable in the tab
+   strip (found Aug 30 in the browser). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { opportunities } = await readOpportunities();
+  const deal = opportunities.find((o) => o.id === id);
+  return { title: deal ? deal.name || deal.customer : "Opportunity" };
+}
+
 /**
  * ONE OPPORTUNITY, ON ITS OWN PAGE.
  *

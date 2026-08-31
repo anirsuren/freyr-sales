@@ -5,7 +5,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { FdlComponentsBrowser } from "@/components/fdl/FdlComponentsBrowser";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "FDL Components" };
 export const dynamic = "force-dynamic";
@@ -26,7 +26,13 @@ export default async function FdlComponentsPage() {
       (usedIn[id] ??= []).push(offering.offering_name);
     }
   }
-  const canEdit = await canManageOfferings();
+  /* Both of the API's gates, in its order, so "New FDL component" is on screen
+     exactly when the save would land — see the same note on the Offerings page.
+     app/api/fdl-components/route.ts checks moduleWriteRefusal("/components")
+     and then canManageOfferings; this asked only the second, so a BD Owner got
+     a button the server refuses. */
+  const canEdit =
+    !(await moduleWriteRefusal("/components")) && (await canManageOfferings());
   return (
     <div>
       {/* No page-level padding: the app shell already wraps every page in p-8,

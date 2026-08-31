@@ -37,6 +37,7 @@ export function EditableFact({
   options,
   onSave,
   format,
+  renderValue,
 }: {
   label: string;
   /** The stored value, as a string. Empty means unset. */
@@ -50,6 +51,20 @@ export function EditableFact({
   onSave: (next: string) => Promise<string | null>;
   /** How to draw the value at rest. */
   format?: (v: string) => string;
+  /**
+   * A RICHER VALUE AT REST — a coloured chip, a flag — while the field is still
+   * edited here.
+   *
+   * Industry and Geography carry a colour and an icon by standing rule, and
+   * `format` can only return a string. Without this the Customers Overview had
+   * to print the fact twice: once as an editable line and once as the chip
+   * block underneath, so the same industry appeared two rows apart (found
+   * Aug 30 walking the page as a BD Member). One row now does both.
+   *
+   * Only used when a value is actually set; a blank field still shows the
+   * placeholder, and editing still shows the input.
+   */
+  renderValue?: (v: string) => React.ReactNode;
   /**
    * A quiet second line under the value — where a number comes from, what a
    * blank one will fall back to. It used to be crammed into the placeholder,
@@ -103,6 +118,10 @@ export function EditableFact({
   }
 
   const shown = value ? (format ? format(value) : value) : placeholder;
+  /* The chip when there is one, the words otherwise. Kept as one expression so
+     every branch below draws the same thing. */
+  const body =
+    value && renderValue ? renderValue(value) : shown;
 
   if (!canEdit && stacked)
     return (
@@ -115,7 +134,7 @@ export function EditableFact({
           )}
           title={shown}
         >
-          {shown}
+          {body}
         </p>
         {hint && (
           <p className="truncate text-[11px] text-text-tertiary">{hint}</p>
@@ -135,7 +154,7 @@ export function EditableFact({
             )}
             title={shown}
           >
-            {shown}
+            {body}
           </span>
           {hint && (
             <span className="block truncate text-[11px] text-text-tertiary">
@@ -163,7 +182,7 @@ export function EditableFact({
             )}
             title={shown}
           >
-            {shown}
+            {body}
           </span>
           <Pencil
             size={11}
@@ -281,7 +300,7 @@ export function EditableFact({
                 )}
                 title={shown}
               >
-                {shown}
+                {body}
               </span>
               {hint && (
                 <span className="block truncate text-[11px] text-text-tertiary">

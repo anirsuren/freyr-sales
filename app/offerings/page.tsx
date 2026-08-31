@@ -21,7 +21,8 @@ import {
   listAssignablePeople,
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
-import { getRole } from "@/lib/role";
+import { canManageOfferings, getRole } from "@/lib/role";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import { getDataMode } from "@/lib/dataMode";
@@ -179,7 +180,23 @@ export default async function OfferingsPage() {
   const offeringCategories = listOfferingCategories();
   const me = await getCurrentUser();
   const role = await getRole();
-  const canEdit = role === "admin" || role === "bd_owner";
+  /**
+   * SHOW THE BUTTON ONLY WHEN THE SAVE WOULD LAND.
+   *
+   * This asked "are you an admin or an owner". The API asks the privilege
+   * table first (app/api/offerings/route.ts: moduleWriteRefusal), and the
+   * table's Offerings row gives a BD Owner *view*. So a BD Owner was handed
+   * "New offering" and "Import" and got 403 "You can look at this, but not
+   * change it" on submit, while a BO Owner — whose row says create, and whose
+   * whole job this is — was shown neither (proven both ways, Aug 30, signing
+   * in as each).
+   *
+   * Both of the API's gates, in the API's order, so the control is on screen
+   * exactly when it works. This changes nothing about who MAY write; it stops
+   * the page promising something the server refuses.
+   */
+  const canEdit =
+    !(await moduleWriteRefusal("/offerings")) && (await canManageOfferings());
   /* The heat map reads across every customer and every deal, so it follows the
      report page's own gate rather than the offering-edit one. */
   const canSeeHeatMap = canAccessModule("/reports", role);

@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { setRecordTeam, type TeamedRecord } from "@/lib/recordTeams";
-import { canOpenModule } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,15 @@ const MODULE_OF: Record<TeamedRecord, string> = {
 /**
  * SET WHO OWNS A RECORD AND WHO ELSE IS ON IT.
  *
- * Gated on the module the record lives in — if you can open the customer you
- * can say who is on the customer — and nothing more. This stores who is on a
- * thing; it is not a permission and nothing reads it to decide what somebody
- * may open.
+ * Gated on being able to CHANGE the module the record lives in. It used to be
+ * gated on being able to OPEN it, with the note that this "is not a permission
+ * and nothing reads it to decide what somebody may open" — which stopped being
+ * true when lib/recordAccess started reading these teams to answer mayView and
+ * mayEdit on a record. Signed in as a BD Member I made myself the owner of
+ * somebody else's deal in one call (found Aug 30 walking every role).
+ *
+ * The privilege table still decides, the same as everywhere else. This only
+ * stops a read-level answer standing in for a write.
  */
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -37,11 +42,8 @@ export async function POST(req: NextRequest) {
   if (!owningModule || !id)
     return NextResponse.json({ error: "Which record?" }, { status: 400 });
 
-  if (!(await canOpenModule(owningModule)))
-    return NextResponse.json(
-      { error: "Not available on this account." },
-      { status: 403 }
-    );
+  const refusal = await moduleWriteRefusal(owningModule);
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
 
   try {
     const me = await getCurrentUser();

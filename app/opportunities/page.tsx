@@ -10,7 +10,7 @@ import { readCustomerGroups } from "@/lib/customerGroups";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
 import { readActivityMaster } from "@/lib/activityMaster";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 
 import { visiblePeople } from "@/lib/performanceShared";
@@ -148,7 +148,13 @@ export default async function OpportunitiesPage() {
        * the button being here does not widen what anyone may actually do,
        * it just stops hiding it from the person whose deal it is.
        */
-      canEdit
+      /* ...but only when a write would actually land. Hard-coded true, this
+         handed "New opportunity" to a Solutioning Member, whose row on this
+         module is *view*, and the server answered "You can look at this, but
+         not change it" on submit (found Aug 30 signing in as each role). The
+         same question the API asks, so nothing changes for a BD Member, whose
+         row is edit. */
+      canEdit={!(await moduleWriteRefusal("/opportunities"))}
       privileged={me.role !== "bd_member"}
       live={getDataMode() === "live"}
     />
