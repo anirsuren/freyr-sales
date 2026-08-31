@@ -1,3 +1,4 @@
+import { readCustomerGroups } from "@/lib/customerGroups";
 import { RevenueAccrualsModule } from "@/components/accruals/RevenueAccrualsModule";
 import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { readOpportunities } from "@/lib/opportunities";
@@ -23,12 +24,13 @@ export default async function RevenueAccrualsPage() {
   await requireModuleAccess("/revenue-accruals");
   await requireServerMemberScope();
   await initializeLiveOfferings().catch(() => undefined);
-  const [state, me, opportunities] = await Promise.all([
+  const [state, me, opportunities, groupState] = await Promise.all([
     readRevenueAccruals(),
     getCurrentUser(),
     readOpportunities()
       .then((s) => s.opportunities)
       .catch(() => []),
+      readCustomerGroups().catch(() => ({ groups: [] })),
   ]);
   const offeringName = new Map(
     listOfferings().map((o) => [o.id, o.offering_name])
@@ -38,6 +40,17 @@ export default async function RevenueAccrualsPage() {
     <RevenueAccrualsModule
       state={state}
       canWrite={me.role === "admin"}
+      /* THE PIPELINE ITSELF, so the accrual summary can group and total the
+         same way Opportunities does (Suren, Aug 30). The DealOption list below
+         stays as it is — it feeds the planner, which wants a flat picker. */
+      opportunities={opportunities.filter((o) => o.level !== "Future")}
+      customerGroups={groupState.groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        customerIds: g.customerIds,
+      }))}
+      offeringNames={Object.fromEntries(offeringName)}
       deals={opportunities.map((o) => {
         const line = (o.lines ?? [])[0];
         const offeringId = line?.offeringId ?? o.offeringIds[0];

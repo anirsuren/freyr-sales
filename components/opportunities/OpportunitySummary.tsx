@@ -118,8 +118,17 @@ function fiscalQuarterIndex(d: Date): number {
  * The key sorts lexically into chronological order, which is why the fiscal
  * ones carry the FY and the index rather than a printable label.
  */
+/** The period one ISO date falls in — exported so anything that buckets money
+ *  by time uses the same fiscal calendar the summary draws. */
+export function periodKeyOf(iso: string | undefined, timeline: Timeline): string | null {
+  return fromDate(iso, timeline);
+}
+
 function periodOf(deal: Opportunity, timeline: Timeline): string | null {
-  const iso = signDateOf(deal);
+  return fromDate(signDateOf(deal), timeline);
+}
+
+function fromDate(iso: string | undefined, timeline: Timeline): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -221,6 +230,7 @@ export function OpportunitySummary({
   groupNameFor,
   offeringNameFor,
   onOpenDeal,
+  spread,
 }: {
   deals: Opportunity[];
   order: SummaryDimension[];
@@ -231,6 +241,21 @@ export function OpportunitySummary({
   offeringNameFor: (deal: Opportunity) => string;
   /** The deal's own page. The summary itself never unfolds one — see below. */
   onOpenDeal: (id: string) => void;
+  /**
+   * HOW ONE DEAL'S MONEY LANDS ACROSS PERIODS, when it does not all land at
+   * once. The pipeline puts a deal's whole figure in the period its closure
+   * date falls in; Revenue Accruals spreads it over the months of its plan
+   * (Suren, Aug 30: "whatever is the total contract value, they are accruing
+   * across monthly"). Same table, two different answers to where money is.
+   *
+   * Omitted keeps the closure-date behaviour.
+   */
+  spread?: {
+    /** Which period keys this deal touches at this timeline. */
+    periodsOf: (deal: Opportunity, timeline: Timeline) => string[];
+    /** How much of the measure lands in one of them. */
+    amountIn: (deal: Opportunity, period: string, measure: EstimateMeasure) => number;
+  };
 }) {
   /** Only rows that have been OPENED live here: four dimensions over 88 deals
    *  is 290 rows if everything starts unfolded, which is the wall this replaced. */
@@ -263,11 +288,14 @@ export function OpportunitySummary({
   const periods = useMemo(() => {
     const seen = new Set<string>();
     for (const d of deals) {
-      const p = periodOf(d, timeline);
-      if (p) seen.add(p);
+      if (spread) for (const k of spread.periodsOf(d, timeline)) seen.add(k);
+      else {
+        const p = periodOf(d, timeline);
+        if (p) seen.add(p);
+      }
     }
     return [...seen].sort();
-  }, [deals, timeline]);
+  }, [deals, timeline, spread]);
 
   /** Every deal's period, worked out once — the cell maths asks for this a lot. */
   const periodByDeal = useMemo(() => {
@@ -294,8 +322,13 @@ export function OpportunitySummary({
   /** A row's money: the total, and one figure per period column. */
   function cellsOf(rows: Opportunity[]) {
     const total = sumEstimates(rows, measure);
-    const byPeriod = periods.map(
-      (p) => sumEstimates(rows.filter((d) => periodByDeal.get(d.id) === p), measure).total
+    const byPeriod = periods.map((p) =>
+      spread
+        ? rows.reduce((sum, d) => sum + spread.amountIn(d, p, measure), 0)
+        : sumEstimates(
+            rows.filter((d) => periodByDeal.get(d.id) === p),
+            measure
+          ).total
     );
     return { total, byPeriod };
   }

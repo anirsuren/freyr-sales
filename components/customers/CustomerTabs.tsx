@@ -1,5 +1,6 @@
 "use client";
 
+import { EditableFact } from "@/components/opportunities/EditableFact";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
@@ -113,7 +114,13 @@ const TABS = [
  * from him (Anir, Aug 9: "if he says remove, it's still gonna be on Mock-mode").
  * These come back in real mode as each one earns its place.
  */
-const REAL_MODE_TABS = new Set(["components", "activity"]);
+/* OVERVIEW IS ALWAYS THERE (Anir, Aug 30: "where is overview", and "there has
+   to be an overview tab on all of them, literally everything that has those
+   tabs"). Real mode used to hide every tab whose content was invented for the
+   demo, and Overview went with them — so a real account opened onto its Team
+   band with nowhere to read who the account IS. Its content is the customer's
+   own record, which is as real as anything on the page. */
+const REAL_MODE_TABS = new Set(["overview", "components", "activity"]);
 
 const NOTE_KINDS = [
   { key: "call" as const, label: "Call", icon: Phone },
@@ -220,9 +227,10 @@ export function CustomerTabs({
   const defaultDealOwner = includeDemoTeam
     ? customer.owner || currentUser.name
     : currentUser.name;
-  // Real mode opens on Digital components — Overview is not rendered there, so
-  // seeding the state with it would flash an empty panel before the effect runs.
-  const [tab, setTabState] = useState(includeDemoTeam ? "overview" : "components");
+  /* OVERVIEW OPENS THE PAGE, in both modes. It used to be skipped in real
+     mode because it was not rendered there at all; now that it is, landing
+     anywhere else means arriving at a band instead of at the account. */
+  const [tab, setTabState] = useState("overview");
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
   // Overview (Suren, Jul 8). replaceState keeps tab-switches out of history.
@@ -321,9 +329,11 @@ export function CustomerTabs({
         ? bands.some((b) => `band:${b.key}` === key)
         : TABS.some((t) => t.key === key) &&
           (includeDemoTeam || REAL_MODE_TABS.has(key)));
-    setTabState(
-      visible(wanted) ? (wanted as string) : includeDemoTeam ? "overview" : "components"
-    );
+    /* OVERVIEW IS THE FALLBACK IN BOTH MODES. This reset ran on every
+       customer change and sent real-mode visitors to Digital components,
+       which is why the landing tab kept coming back after the state default
+       was fixed — two places decided it and only one had been changed. */
+    setTabState(visible(wanted) ? (wanted as string) : "overview");
     setOwner(customer.owner || ownerFor(customer));
     setCompetitor(customer.competitor || "");
     setEditingComp(false);
@@ -499,6 +509,12 @@ export function CustomerTabs({
         setAtts(data.customer.attachments || []);
         setAccountDeals(data.customer.account_deals || []);
       }
+      /* THE PAGE HAS TO RE-READ. `customer` is a server prop, so the fields on
+         the Overview kept showing the value they were rendered with even after
+         the write landed — the API returned the new record and the screen
+         showed the old one, which is the same failure as a save that silently
+         does nothing (found by editing Geography, Aug 30). */
+      router.refresh();
       return data?.customer;
     } catch {
       toast("Could not save: try again");
@@ -739,6 +755,28 @@ export function CustomerTabs({
              left and right to click on it"); this makes the scroll shorter. */
           className="mb-6 flex flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
+          {/* OVERVIEW LEADS THE ROW (Anir, Aug 30: "where is overview").
+              It was rendered after every band, so on an account with eleven
+              of them it sat past the right edge of a scrolling row — present,
+              and findable only by scrolling to the end of a list that looks
+              like it is all there is. Who the account IS comes before what is
+              attached to it. */}
+          {(includeDemoTeam || REAL_MODE_TABS.has("overview")) && (
+            <button
+              key="overview"
+              role="tab"
+              aria-selected={tab === "overview"}
+              onClick={() => setTab("overview")}
+              className={cn(
+                "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+                tab === "overview"
+                  ? "border-blue-primary font-semibold text-blue-primary"
+                  : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+              )}
+            >
+              Overview
+            </button>
+          )}
           {bands.map((b) => (
             <button
               key={`band:${b.key}`}
@@ -762,7 +800,7 @@ export function CustomerTabs({
             </button>
           ))}
           {TABS.filter(
-            (t) => includeDemoTeam || REAL_MODE_TABS.has(t.key)
+            (t) => t.key !== "overview" && (includeDemoTeam || REAL_MODE_TABS.has(t.key))
           ).map((t) => (
             <button
               key={t.key}
@@ -797,9 +835,77 @@ export function CustomerTabs({
             {/* Identity FIRST (Anir's audit): who this account IS leads the
                 page; the agent's read follows right after, kept, not cut. */}
             <Card>
-              <h3 className="text-[15px] font-semibold text-text-primary mb-3">
-                About this account
-              </h3>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-[15px] font-semibold text-text-primary">
+                  About this account
+                </h3>
+                {/* THE ACCOUNT'S OWN FACTS, CHANGED WHERE THEY ARE READ (Anir,
+                    Aug 30: "why can't I edit"). Every other thing on this page
+                    was writable and the five that say who the account IS were
+                    not, so the Overview could show them and offer no way to
+                    correct one. Same owner-or-manager rule the route already
+                    enforced. */}
+                <span className="text-[11.5px] text-text-tertiary">
+                  Click a value to change it
+                </span>
+              </div>
+              <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-x-6 gap-y-2.5">
+                <EditableFact
+                  label="Company name"
+                  value={customer.company_name ?? ""}
+                  canEdit
+                  onSave={async (v) =>
+                    (await patchCustomer({ company_name: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Industry"
+                  value={customer.industry ?? ""}
+                  canEdit
+                  onSave={async (v) =>
+                    (await patchCustomer({ industry: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Size"
+                  value={customer.size_tier ?? ""}
+                  canEdit
+                  options={[
+                    { value: "", label: "Not set" },
+                    { value: "Small", label: "Small" },
+                    { value: "Medium", label: "Medium" },
+                    { value: "Large", label: "Large" },
+                    { value: "Enterprise", label: "Enterprise" },
+                  ]}
+                  onSave={async (v) =>
+                    (await patchCustomer({ size_tier: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Geography"
+                  value={customer.geography ?? ""}
+                  canEdit
+                  onSave={async (v) =>
+                    (await patchCustomer({ geography: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Website"
+                  value={customer.website_url ?? ""}
+                  canEdit
+                  onSave={async (v) =>
+                    (await patchCustomer({ website_url: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Customer type"
+                  value={customer.customer_type ?? ""}
+                  canEdit
+                  onSave={async (v) =>
+                    (await patchCustomer({ customer_type: v })) ? null : "That didn't save."
+                  }
+                />
+              </div>
               {/* Auto-fitting columns, not a fixed three: each field keeps a
                   220px floor and the row drops to two columns, then one, rather
                   than squeezing values into each other. Every cell is min-w-0 so

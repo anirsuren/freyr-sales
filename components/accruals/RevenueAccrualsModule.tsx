@@ -1,5 +1,6 @@
 "use client";
 
+import type { Opportunity } from "@/lib/opportunitiesShared";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -140,10 +141,18 @@ export function RevenueAccrualsModule({
   state: initial,
   deals,
   canWrite,
+  opportunities = [],
+  customerGroups = [],
+  offeringNames = {},
 }: {
   state: RevenueAccrualsState;
   deals: DealOption[];
   canWrite: boolean;
+  /** The pipeline itself, for the summary. `deals` above is the flat picker
+   *  the planner uses and stays as it is. */
+  opportunities?: Opportunity[];
+  customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
+  offeringNames?: Record<string, string>;
 }) {
   const router = useRouter();
   const { toast } = useToast();

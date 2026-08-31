@@ -202,6 +202,22 @@ export async function PATCH(
       );
     }
   }
+  /* THE ACCOUNT'S OWN IDENTITY (Anir, Aug 30, on the customer page: "why
+     can't I edit"). Everything else about a customer was patchable and these
+     five were not, so the Overview could show who an account IS and offer no
+     way to correct it. Same owner-or-manager check above guards them; nothing
+     about who may write has changed, only what they may write. */
+  if (typeof body.company_name === "string" && body.company_name.trim())
+    patch.company_name = body.company_name.trim();
+  if (typeof body.industry === "string")
+    patch.industry = body.industry.trim() || null;
+  if (typeof body.size_tier === "string")
+    patch.size_tier = (body.size_tier.trim() || null) as Customer["size_tier"];
+  if (typeof body.geography === "string")
+    patch.geography = body.geography.trim() || null;
+  if (typeof body.website_url === "string")
+    patch.website_url = body.website_url.trim() || null;
+
   if (typeof body.competitor === "string")
     patch.competitor = body.competitor.trim() || null;
   // Customer analysis fields — set on approval.
