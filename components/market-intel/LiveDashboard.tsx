@@ -35,11 +35,14 @@ export function LiveMarketIntelDashboard({
   feed,
   tracking,
   group = "customer",
+  canTrack = true,
 }: {
   feed: MarketIntelFeed;
   tracking: MarketIntelTracking;
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
+  /** Passed straight to the button: the Market Intel row decides. */
+  canTrack?: boolean;
 }) {
   const names = allTrackedNames(feed, tracking.companies);
   const briefings = Object.values(feed.companies)
@@ -83,7 +86,7 @@ export function LiveMarketIntelDashboard({
         action={
           <span className="flex flex-wrap items-center gap-2.5">
             <RefreshChip updatedAt={feed.updatedAt} />
-            <TrackCompanyButton group={group} />
+            <TrackCompanyButton group={group} canTrack={canTrack} />
           </span>
         }
       >

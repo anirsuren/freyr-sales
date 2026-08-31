@@ -8,7 +8,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,8 @@ export async function POST(req: Request) {
      change it. Falls through to the old role rules while the privilege
      table is not being enforced. */
   {
-    const refusal = await moduleWriteRefusal("/components");
+    /* Only ever makes a NEW component, so it asks the create question. */
+    const refusal = await moduleCreateRefusal("/components");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 

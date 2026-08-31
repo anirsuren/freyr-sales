@@ -27,7 +27,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { getDataMode } from "@/lib/dataMode";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +60,10 @@ export async function POST(req: Request) {
      change it. Falls through to the old role rules while the privilege
      table is not being enforced. */
   {
-    const refusal = await moduleWriteRefusal("/offerings");
+    /* This POST only ever makes a NEW offering, so it asks the create question
+       rather than the write one (Suren, Aug 29: "owner can create, member can
+       edit"). Editing an existing offering is the [id] route. */
+    const refusal = await moduleCreateRefusal("/offerings");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 

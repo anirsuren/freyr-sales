@@ -6,7 +6,12 @@ import { readContracts, removeContract, saveContract } from "@/lib/contracts";
 import { contractCounts, type Contract } from "@/lib/contractsShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
 import { withPerformanceWrite } from "@/lib/performanceQueue";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -170,6 +175,11 @@ export async function POST(req: NextRequest) {
   try {
     if (op === "save") {
       const wasId = String(body.contract?.id ?? "");
+      /* No id means a new contract, and only an owner starts one. */
+      if (!wasId) {
+        const refusal = await moduleCreateRefusal("/contracts");
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      }
       const before = wasId
         ? (await readContracts()).contracts.find((c) => c.id === wasId) ?? null
         : null;
@@ -194,6 +204,8 @@ export async function POST(req: NextRequest) {
       /* A deleted contract takes its unverified booked-revenue entry with it,
          the same rule deals follow. A verified one stays: it is the group
          owner's sign-off, not this contract's, that holds it up. */
+      const refusal = await moduleDeleteRefusal("/contracts");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const id = String(body.id ?? "");
       const doomed = (await readContracts()).contracts.find((c) => c.id === id);
       if (doomed) await settleGoal(doomed, { ...doomed, goalLink: undefined }, me.name);

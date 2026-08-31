@@ -7,7 +7,7 @@ import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { visibleNamesFor } from "@/lib/performanceShared";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { listWorkspaceAccess } from "@/lib/accessStore";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "Goals" };
@@ -120,6 +120,7 @@ export default async function PerformanceTabPage({
       routeMaster={master}
       initial={scoped}
       live={live}
+      canLog={!(await moduleWriteRefusal("/performance"))}
       meName={me.name}
       isManager={manager}
       isAdmin={role === "admin"}

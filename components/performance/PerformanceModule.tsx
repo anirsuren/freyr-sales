@@ -160,6 +160,7 @@ const ROOMS: Record<
 export function PerformanceModule({
   initial,
   live,
+  canLog,
   meName,
   isManager,
   isAdmin = false,
@@ -171,6 +172,8 @@ export function PerformanceModule({
 }: {
   initial: PerformanceState;
   live: boolean;
+  /** Whether Log a result is offered at all. The Goals row decides. */
+  canLog: boolean;
   meName: string;
   /** Admins and editors run the whole plan; everyone else is scoped
    *  (Suren, Aug 12: org head / group owner / individual). */
@@ -565,6 +568,7 @@ export function PerformanceModule({
             state={state}
             meName={meName}
             live={live}
+            canLog={canLog}
             run={run}
             onLogActual={(prefill) => {
               setLogPrefill(prefill ?? null);
@@ -581,6 +585,7 @@ export function PerformanceModule({
             state={state}
             meName={meName}
             live={live}
+            canLog={canLog}
             run={run}
             onLogActual={(prefill) => {
               setLogPrefill(prefill ?? null);
@@ -594,6 +599,7 @@ export function PerformanceModule({
             initialPerson={jumpPerson}
             state={state}
             live={live}
+            canLog={canLog}
             run={run}
             meName={meName}
             memberRoles={memberRoles}

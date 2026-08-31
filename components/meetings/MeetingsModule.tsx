@@ -147,6 +147,7 @@ export function MeetingsModule({
   customers,
   contacts,
   opportunities,
+  canCreate,
 }: {
   state: MeetingsState;
   meName: string;
@@ -154,6 +155,13 @@ export function MeetingsModule({
   customers: CustomerOption[];
   contacts: ContactOption[];
   opportunities: OpportunityOption[];
+  /**
+   * MAY THEY START ONE (Suren, Aug 29: "owner can create, member can edit").
+   * The button used to render for anybody who could open the page, and the
+   * server took it, so a BD Member could book meetings the map gives them no
+   * create on.
+   */
+  canCreate: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -236,13 +244,15 @@ export function MeetingsModule({
       <SolutioningTabs
         active="meetings"
         action={
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            <Plus size={15} strokeWidth={2.4} /> New meeting
-          </button>
+          canCreate ? (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              <Plus size={15} strokeWidth={2.4} /> New meeting
+            </button>
+          ) : null
         }
       >
 

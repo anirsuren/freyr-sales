@@ -10,7 +10,11 @@ import { readCustomerGroups } from "@/lib/customerGroups";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
 import { readActivityMaster } from "@/lib/activityMaster";
-import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  moduleCreateRefusal,
+  moduleWriteRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 
 import { visiblePeople } from "@/lib/performanceShared";
@@ -155,6 +159,8 @@ export default async function OpportunitiesPage() {
          same question the API asks, so nothing changes for a BD Member, whose
          row is edit. */
       canEdit={!(await moduleWriteRefusal("/opportunities"))}
+      /* Starting a deal and removing one are the owner's, not the member's. */
+      canCreate={!(await moduleCreateRefusal("/opportunities"))}
       privileged={me.role !== "bd_member"}
       live={getDataMode() === "live"}
     />

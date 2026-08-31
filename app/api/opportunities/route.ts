@@ -14,7 +14,11 @@ import {
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
 import { withPerformanceWrite } from "@/lib/performanceQueue";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -269,6 +273,12 @@ export async function POST(req: NextRequest) {
   return commitOpportunitiesChange(async () => {
   try {
     if (op === "add") {
+      /* MAKING A NEW ONE IS THE OWNER'S RIGHT, not the member's (Suren, Aug 29:
+         "owner can create, member can edit"). The gate at the top of this
+         handler asks whether the pen is in the room at all, and a BD Member's
+         row says edit, so it let them start deals as well as correct them. */
+      const refusal = await moduleCreateRefusal("/opportunities");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const created = await addOpportunity({
         ...body(raw),
         // An opportunity nobody owns is an opportunity nobody chases.
@@ -302,6 +312,10 @@ export async function POST(req: NextRequest) {
         );
       }
       if (op === "remove") {
+        /* "The person who can create only can delete. The edit person can only
+           edit, cannot delete." Deleting is the one thing editing cannot undo. */
+        const refusal = await moduleDeleteRefusal("/opportunities");
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
         // A deleted deal takes its unverified met entries with it, same as a
         // deleted goal row; verified entries are locked and stay. Queued for
         // the same reason settleMetGoals is.

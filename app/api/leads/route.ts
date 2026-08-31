@@ -8,7 +8,12 @@ import {
   removeLead,
   saveLead,
 } from "@/lib/leads";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +62,19 @@ export async function POST(req: NextRequest) {
 
   try {
     if (op === "save") {
+      /* SAVE IS BOTH VERBS. A lead with no id is a new one, and starting one is
+         the owner's right; correcting an existing one is the member's (Suren,
+         Aug 29: "owner can create, member can edit"). */
+      if (!String((body.lead as { id?: string } | undefined)?.id ?? "")) {
+        const refusal = await moduleCreateRefusal("/leads");
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      }
       const lead = await saveLead(body.lead ?? {}, me.name);
       return NextResponse.json({ ok: true, lead, state: await readLeads() });
     }
     if (op === "delete") {
+      const refusal = await moduleDeleteRefusal("/leads");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       await removeLead(String(body.id ?? ""));
       return NextResponse.json({ ok: true, state: await readLeads() });
     }

@@ -9,7 +9,12 @@ import {
   removeAccrualSnapshot,
   saveAccrualPlan,
 } from "@/lib/revenueAccruals";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +79,17 @@ export async function POST(req: NextRequest) {
   const op = String(body.op ?? "");
   try {
     if (op === "save") {
+      /* A deal with no plan yet is a new one, and starting one is the owner's
+         right (Suren, Aug 29: "owner can create, member can edit"). Editing the
+         months on a plan that already exists stays with the member. */
+      const dealId = String(
+        (body.plan as { opportunityId?: string } | undefined)?.opportunityId ?? ""
+      );
+      const existing = await readRevenueAccruals();
+      if (!existing.plans.some((p) => p.opportunityId === dealId)) {
+        const refusal = await moduleCreateRefusal("/revenue-accruals");
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      }
       const plan = await saveAccrualPlan(body.plan ?? {}, me.name);
       return NextResponse.json({
         ok: true,
@@ -87,6 +103,9 @@ export async function POST(req: NextRequest) {
          wrong key got a success and left the plan sitting there (I did exactly
          that testing on Aug 30 and only caught it because the number was still
          on the page). */
+      /* "The person who can create only can delete." */
+      const gone = await moduleDeleteRefusal("/revenue-accruals");
+      if (gone) return NextResponse.json({ error: gone }, { status: 403 });
       const opportunityId = String(body.opportunityId ?? "");
       const before = await readRevenueAccruals();
       if (!before.plans.some((p) => p.opportunityId === opportunityId)) {

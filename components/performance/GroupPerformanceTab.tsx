@@ -41,6 +41,7 @@ export function GroupPerformanceTab({
   state,
   meName,
   live,
+  canLog,
   run,
   onLogActual,
   onEditGoal,
@@ -51,6 +52,8 @@ export function GroupPerformanceTab({
   state: PerformanceState;
   meName: string;
   live: boolean;
+  /** Passed straight down: the Goals row decides, not the tab. */
+  canLog: boolean;
   run: RunOp;
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onEditGoal: (g: PrimaryGoal) => void;
@@ -335,6 +338,7 @@ export function GroupPerformanceTab({
       allGoals={state.goals}
       meName={meName}
       live={live}
+      canLog={canLog}
       run={run}
       onLogActual={onLogActual}
       /* This button read "Open the Goal Master" and did nothing (Aug 23

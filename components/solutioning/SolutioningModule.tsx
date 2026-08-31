@@ -112,6 +112,7 @@ export function SolutioningModule({
   members,
   customers,
   opportunities,
+  canCreate,
 }: {
   state: SolutioningState;
   /**
@@ -121,6 +122,13 @@ export function SolutioningModule({
    */
   room?: "requests" | "submissions" | "presentations";
   meRole: string;
+  /**
+   * MAY THEY RAISE ONE (Suren, Aug 29: "owner can create, member can edit").
+   * Both of these buttons rendered for anybody who could open the room, and
+   * the server accepted, so a member could start requests the map gives them
+   * no create on.
+   */
+  canCreate: boolean;
   members: string[];
   customers: CustomerOption[];
   opportunities: OpportunityOption[];
@@ -335,7 +343,7 @@ export function SolutioningModule({
              and Real are separate rows in the store, so nothing written here
              can reach the live workspace, and the banner across the top
              already says which mode you are in. */
-          (
+          canCreate ? (
             <button
               type="button"
               onClick={() => setCreating(true)}
@@ -343,7 +351,7 @@ export function SolutioningModule({
             >
               <Plus size={15} strokeWidth={2.4} /> {ROOM_META[room].newLabel}
             </button>
-          )
+          ) : null
         }
       >
 
@@ -535,7 +543,7 @@ export function SolutioningModule({
           title={ROOM_META[room].empty}
           description="Ask for a presentation, a submission or a meeting. The Solutioning team picks it up from here, and you close it when it's delivered."
           action={
-            (
+            canCreate ? (
               <button
                 type="button"
                 onClick={() => setCreating(true)}
@@ -543,7 +551,7 @@ export function SolutioningModule({
               >
                 <Plus size={14} strokeWidth={2.4} /> {ROOM_META[room].newLabel}
               </button>
-            )
+            ) : null
           }
         />
       ) : shown.length === 0 ? (

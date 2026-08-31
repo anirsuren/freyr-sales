@@ -11,6 +11,7 @@ import {
   type FdlRelease,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { moduleDeleteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
 
@@ -161,6 +162,9 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  /* "The person who can create only can delete." */
+  const gone = await moduleDeleteRefusal("/components");
+  if (gone) return NextResponse.json({ error: gone }, { status: 403 });
   if (!(await canManageOfferings())) {
     return NextResponse.json(
       { error: "Only admins and editors can delete components." },

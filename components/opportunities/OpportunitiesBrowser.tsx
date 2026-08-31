@@ -504,6 +504,7 @@ export function OpportunitiesBrowser({
   people = [],
   meName,
   canEdit,
+  canCreate,
   privileged = true,
   live,
 }: {
@@ -549,6 +550,16 @@ export function OpportunitiesBrowser({
   people?: string[];
   meName: string;
   canEdit: boolean;
+  /**
+   * MAY THEY START ONE, AND MAY THEY REMOVE ONE?
+   *
+   * Suren, Aug 29: "owner can create, member can edit... the person who can
+   * create only can delete." Editing and creating used to be the same bit
+   * here, so a BD Member, whose row says edit, was handed New opportunity and
+   * Remove this opportunity and the server took both (Anir, Aug 31: "I'm a BD
+   * member... I can create one. Is this wrong or not?").
+   */
+  canCreate: boolean;
   /** Managers and admins touch every deal; a rep only their own. Drives
    *  which rows draw the pencil at all (Anir, Aug 22, hitting the refusal
    *  toast as a rep: "if I can't edit I shouldn't be able to edit it in the
@@ -1883,7 +1894,7 @@ export function OpportunitiesBrowser({
           })}
         </div>
         <div className="shrink-0">{
-          writable ? (
+          canCreate && live ? (
             <Button
               onClick={() =>
                 // Opens on one empty offering row, because that is the first
@@ -3103,7 +3114,7 @@ export function OpportunitiesBrowser({
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
             <div className="sticky bottom-[-20px] -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 pb-5 pt-3">
-              {editing.id && canEdit && live && (
+              {editing.id && canCreate && live && (
                 <button
                   type="button"
                   onClick={() => {

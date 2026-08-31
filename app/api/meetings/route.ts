@@ -15,7 +15,12 @@ import {
   type MeetingNoteKind,
   type MeetingStatus,
 } from "@/lib/meetings";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +72,11 @@ export async function POST(req: Request) {
 
   try {
     if (op === "create") {
+      /* Only an owner starts a new one (Suren, Aug 29: "owner can create,
+         member can edit"). The gate above only asks whether the pen is in the
+         room, and a member's row says edit. */
+      const refusal = await moduleCreateRefusal("/meetings");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const meeting = await createMeeting({
         title: String(body.title ?? ""),
         type: String(body.type ?? ""),
@@ -121,6 +131,9 @@ export async function POST(req: Request) {
     } else if (op === "remove-doc") {
       await removeMeetingDoc({ id, docId: String(body.docId ?? "") });
     } else if (op === "delete") {
+      /* "The person who can create only can delete." */
+      const refusal = await moduleDeleteRefusal("/meetings");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const state = await readMeetings();
       const target = state.meetings.find((m) => m.id === id);
       const mine =

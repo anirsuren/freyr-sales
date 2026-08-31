@@ -186,6 +186,7 @@ export function OrgPerformanceTab({
   state,
   meName,
   live,
+  canLog,
   run,
   onLogActual,
   onGoToMaster,
@@ -197,6 +198,13 @@ export function OrgPerformanceTab({
   state: PerformanceState;
   meName: string;
   live: boolean;
+  /**
+   * MAY THEY LOG ONE (Suren, Aug 29's split). The button was gated on live
+   * mode alone, so a BD Member — whose Goals row is *view* — was shown it and
+   * the server answered "You can look at this, but not change it" on submit
+   * (found Aug 31, walking every role in the browser).
+   */
+  canLog: boolean;
   run: RunOp;
   onLogActual: (prefill?: { goalId: string; subgoalId: string | null; person: string }) => void;
   onGoToMaster: () => void;
@@ -625,6 +633,7 @@ export function OrgPerformanceTab({
                   open={openIds.has(g.id)}
                   onToggle={() => toggleOpen(g.id)}
                   live={live}
+                  canLog={canLog}
                   run={run}
                   period={period}
                   periodLabel={periodLabel}
@@ -1286,7 +1295,7 @@ export function OrgPerformanceTab({
               </button>
             );
           })()}
-          {live && (
+          {live && canLog && (
             <button
               type="button"
               onClick={() => onLogActual()}
@@ -1403,6 +1412,7 @@ function GoalRows({
   open,
   onToggle,
   live,
+  canLog,
   run,
   period,
   periodLabel,
@@ -1426,6 +1436,8 @@ function GoalRows({
   open: boolean;
   onToggle: () => void;
   live: boolean;
+  /** Whether logging is allowed at all — see the note on the tab. */
+  canLog: boolean;
   run: RunOp;
   period: PeriodKey;
   periodLabel: string;
@@ -1945,7 +1957,7 @@ function GoalRows({
                 onSetSchedule={live ? () => onEditGoal(goal) : undefined}
                 embedded
                 headerAction={
-                  live ? (
+                  live && canLog ? (
                     <button
                       type="button"
                       onClick={() =>

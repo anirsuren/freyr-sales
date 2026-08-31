@@ -6,7 +6,10 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  moduleCreateRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Solutioning" };
 export const dynamic = "force-dynamic";
@@ -66,6 +69,7 @@ export default async function SolutioningPage({
       state={state}
       room={tab === "submissions" || tab === "presentations" ? tab : "requests"}
       meRole={me.role}
+      canCreate={!(await moduleCreateRefusal("/solutioning"))}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

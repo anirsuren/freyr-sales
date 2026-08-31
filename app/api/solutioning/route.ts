@@ -19,7 +19,12 @@ import {
   type SolutioningKind,
   commentOnRequest,
 } from "@/lib/solutioning";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +113,11 @@ export async function POST(req: NextRequest) {
 
   try {
     if (op === "create") {
+      /* Only an owner starts a new one (Suren, Aug 29: "owner can create,
+         member can edit"). The gate above only asks whether the pen is in the
+         room, and a member's row says edit. */
+      const refusal = await moduleCreateRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const kind = body.kind as SolutioningKind;
       if (!["submission", "presentation", "meeting"].includes(kind)) {
         return NextResponse.json(
@@ -254,6 +264,9 @@ export async function POST(req: NextRequest) {
       }
       await updateRequest({ requestId, by: me.name, patch: body.patch ?? {} });
     } else if (op === "delete") {
+      /* "The person who can create only can delete." */
+      const refusal = await moduleDeleteRefusal("/solutioning");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       await deleteRequest({
         requestId,
         allowed:

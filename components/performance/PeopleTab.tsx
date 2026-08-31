@@ -41,6 +41,7 @@ export function PeopleTab({
   focusGoalId = null,
   state,
   live,
+  canLog,
   run,
   meName,
   memberRoles,
@@ -53,6 +54,8 @@ export function PeopleTab({
   focusGoalId?: string | null;
   state: PerformanceState;
   live: boolean;
+  /** Passed straight down: the Goals row decides, not the tab. */
+  canLog: boolean;
   run: RunOp;
   meName: string;
   memberRoles?: Record<string, string>;
@@ -331,6 +334,7 @@ export function PeopleTab({
         state={scoped}
         meName={meName}
         live={live}
+        canLog={canLog}
         run={run}
         onLogActual={onLogActual}
         /* This button read "Open the Goal Master" and did nothing (Aug 23

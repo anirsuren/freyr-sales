@@ -31,7 +31,10 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { getDataMode } from "@/lib/dataMode";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -279,12 +282,11 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
-     handler reads a body, so a person who may READ this module cannot
-     change it. Falls through to the old role rules while the privilege
-     table is not being enforced. */
+  /* DELETING IS THE CREATOR'S RIGHT (Suren, Aug 29: "the person who can create
+     only can delete. The edit person can only edit, cannot delete"). This asked
+     the write question, which a member passes. */
   {
-    const refusal = await moduleWriteRefusal("/offerings");
+    const refusal = await moduleDeleteRefusal("/offerings");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 

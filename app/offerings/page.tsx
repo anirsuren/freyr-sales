@@ -22,7 +22,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { canManageOfferings, getRole } from "@/lib/role";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import { getDataMode } from "@/lib/dataMode";
@@ -184,7 +184,7 @@ export default async function OfferingsPage() {
    * SHOW THE BUTTON ONLY WHEN THE SAVE WOULD LAND.
    *
    * This asked "are you an admin or an owner". The API asks the privilege
-   * table first (app/api/offerings/route.ts: moduleWriteRefusal), and the
+   * table first (app/api/offerings/route.ts: moduleCreateRefusal), and the
    * table's Offerings row gives a BD Owner *view*. So a BD Owner was handed
    * "New offering" and "Import" and got 403 "You can look at this, but not
    * change it" on submit, while a BO Owner — whose row says create, and whose
@@ -196,7 +196,7 @@ export default async function OfferingsPage() {
    * the page promising something the server refuses.
    */
   const canEdit =
-    !(await moduleWriteRefusal("/offerings")) && (await canManageOfferings());
+    !(await moduleCreateRefusal("/offerings")) && (await canManageOfferings());
   /* The heat map reads across every customer and every deal, so it follows the
      report page's own gate rather than the offering-edit one. */
   const canSeeHeatMap = canAccessModule("/reports", role);

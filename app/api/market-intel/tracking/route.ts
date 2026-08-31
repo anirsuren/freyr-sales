@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import {
@@ -40,14 +41,32 @@ async function acquireTrackingWrite(): Promise<() => void> {
   return release;
 }
 
-// Tracking is every rep's tool, not an admin surface: anyone signed in can put
-// a company or a person on the watch list, same as anyone can log an activity.
+/**
+ * WHO MAY CHANGE THE WATCH LIST — the privilege table, like every other module.
+ *
+ * This used to be open to anybody signed in ("tracking is every rep's tool,
+ * not an admin surface"), which predates the map. The Market Intel row gives
+ * everyone *view* and only Admin *create*, so a BD Member adding companies was
+ * writing to a module they can only read (found Aug 31, walking every role in
+ * the browser: "Track a company" was on a BD Member's screen and worked).
+ *
+ * It is not only a permission question. Each company added fires a paid scrape
+ * within seconds of the response, so an open write endpoint here spends money.
+ *
+ * Reopening it to reps is one cell in Admin, not a deploy.
+ */
+async function readOnly(): Promise<NextResponse | null> {
+  const refusal = await moduleWriteRefusal("/market-intel");
+  return refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
+}
 
 export async function POST(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
+  const shut = await readOnly();
+  if (shut) return shut;
   const body = (await req.json().catch(() => ({}))) ?? {};
   const releaseWrite = await acquireTrackingWrite();
   try {
@@ -103,6 +122,8 @@ export async function DELETE(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
+  const shut = await readOnly();
+  if (shut) return shut;
   const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body?.id ?? "").trim();
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });

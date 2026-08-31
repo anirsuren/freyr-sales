@@ -37,7 +37,7 @@ import {
   miTotals,
 } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 /**
  * MARKET INTELLIGENCE - DESIGN MOCKUP (Anir, Aug 10, from Anant's ask): one
@@ -66,6 +66,8 @@ export default async function MarketIntelPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   await requireModuleAccess("/market-intel");
+  /* Adding to the watch list is a write, and each add fires a paid scrape. */
+  const canTrack = !(await moduleWriteRefusal("/market-intel"));
   const { tab } = await searchParams;
   const tracking = await readMarketIntelTracking().catch(() => ({
     companies: [],
@@ -99,7 +101,12 @@ export default async function MarketIntelPage({
       }
       const group = tab === "competitors" ? "competitor" : "customer";
       return (
-        <LiveMarketIntelDashboard feed={feed} tracking={tracking} group={group} />
+        <LiveMarketIntelDashboard
+          feed={feed}
+          tracking={tracking}
+          group={group}
+          canTrack={canTrack}
+        />
       );
     }
   }
@@ -120,7 +127,7 @@ export default async function MarketIntelPage({
               </span>
               Auto-refreshing. Sample data preview.
             </span>
-            <TrackCompanyButton />
+            <TrackCompanyButton canTrack={canTrack} />
           </span>
         }
       />

@@ -16,8 +16,17 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
  */
 export function TrackCompanyButton({
   group = "customer",
+  canTrack = true,
 }: {
   group?: "customer" | "competitor";
+  /**
+   * MAY THEY ADD ONE (Suren's map: Market Intel is *view* for everyone except
+   * Admin). This button used to render for anybody who could open the page,
+   * and the endpoint behind it had no module guard at all, so a BD Member
+   * could put companies on the watch list — each one firing a paid scrape
+   * (found Aug 31, walking every role in the browser).
+   */
+  canTrack?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -51,6 +60,9 @@ export function TrackCompanyButton({
       setBusy(false);
     }
   }
+
+  /* Every hook above has already run, so bailing here is safe. */
+  if (!canTrack) return null;
 
   return (
     <>

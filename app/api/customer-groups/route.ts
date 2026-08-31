@@ -9,7 +9,12 @@ import {
   toggleMember,
   updateGroup,
 } from "@/lib/customerGroups";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +51,11 @@ export async function POST(req: NextRequest) {
 
   try {
     if (op === "create") {
+      /* Only an owner starts a new one (Suren, Aug 29: "owner can create,
+         member can edit"). The gate above only asks whether the pen is in the
+         room, and a member's row says edit. */
+      const refusal = await moduleCreateRefusal("/customers");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       await createGroup({
         name: String(body.name ?? ""),
         description: body.description ? String(body.description) : undefined,
@@ -63,6 +73,9 @@ export async function POST(req: NextRequest) {
       if (!id) return NextResponse.json({ error: "Which group?" }, { status: 400 });
       await toggleMember({ id, customerId: String(body.customerId ?? "") });
     } else if (op === "delete") {
+      /* "The person who can create only can delete." */
+      const refusal = await moduleDeleteRefusal("/customers");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       if (!id) return NextResponse.json({ error: "Which group?" }, { status: 400 });
       await deleteGroup(id);
     } else {

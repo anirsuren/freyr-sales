@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { readPerformance } from "@/lib/performance";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
@@ -70,6 +70,7 @@ export default async function AdminGoalMasterPage() {
       <PerformanceModule
         initial={state}
         live={live}
+        canLog={!(await moduleWriteRefusal("/performance"))}
         meName={meFirst.name}
         isManager={isManagerOrAdmin(role)}
         isAdmin
