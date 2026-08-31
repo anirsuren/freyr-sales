@@ -2212,7 +2212,16 @@ export function FdlComponentDetail({
                   className="shrink-0 text-text-tertiary transition-transform duration-200 group-open:rotate-180"
                 />
               </summary>
-              <div className="mt-3">
+              {/* ITS OWN ROOM, NOT THE SAME FLOOR AS THE VERSIONS.
+                  The history opened straight into the page, so its entries and
+                  the release cards below shared one background and one width
+                  and read as a single list of nine things. An inset panel with
+                  its own tint and its own sentence says plainly: this is what
+                  CHANGED, and the cards under it are what EXISTS. */}
+              <div className="mt-3 rounded-xl border border-border-light bg-surface/50 p-4">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  What changed on this roadmap
+                </p>
                 <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
               </div>
             </details>
@@ -2225,8 +2234,13 @@ export function FdlComponentDetail({
           // status-coloured rail, the number as the headline, and its facts as
           // chips — so you can tell the released one from the planned one
           // without reading.
-          <div className="mt-3.5 space-y-2.5">
-            {releases.map(releaseCard)}
+          <div className="mt-3.5">
+            {/* And a heading over the cards, so the two blocks are named
+                rather than merely spaced apart. */}
+            <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              {releases.length} {releases.length === 1 ? "version" : "versions"}
+            </p>
+            <div className="space-y-2.5">{releases.map(releaseCard)}</div>
           </div>
           )}
           </div>

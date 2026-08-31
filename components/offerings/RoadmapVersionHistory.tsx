@@ -42,22 +42,49 @@ export function RoadmapVersionHistory({
   }
 
   return (
-    <div className="space-y-2">
+    /**
+     * A LOG, DRAWN LIKE A LOG.
+     *
+     * Anir, Aug 31: "you're gonna do a much better job at separating the
+     * roadmap version history. I don't know what you're doing here."
+     *
+     * Every entry was a white bordered card — the SAME card the releases
+     * underneath use — so an audit trail of edits and the actual list of
+     * versions stacked into one continuous run of identical boxes, and there
+     * was no way to see where one ended and the other began.
+     *
+     * These are not records you act on; they are things that happened. So they
+     * hang off a timeline rail as light rows, and the release cards below keep
+     * the card treatment to themselves.
+     */
+    <div className="relative space-y-0.5 pl-5">
+      <span
+        aria-hidden="true"
+        className="absolute bottom-2 left-[7px] top-2 w-px bg-border-light"
+      />
       {versions.map((v, i) => {
         const open = openVersion === v.version;
         /* The newest version IS what the page above shows, so it is named as
            such rather than leaving the reader to work out that v7 is current. */
         const current = i === 0;
         return (
-          <div
-            key={v.version}
-            className="overflow-hidden rounded-xl border border-border-light bg-white"
-          >
+          <div key={v.version} className="relative">
+            {/* The dot on the rail. Filled on the newest, hollow on the rest,
+                so "where we are now" is visible without reading a label. */}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute -left-[17px] top-[15px] h-[7px] w-[7px] rounded-full border-2",
+                current
+                  ? "border-[#7E22CE] bg-[#7E22CE]"
+                  : "border-border-light bg-white"
+              )}
+            />
             <button
               type="button"
               onClick={() => setOpenVersion(open ? null : v.version)}
               aria-expanded={open}
-              className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface/60"
+              className="flex w-full cursor-pointer items-start gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface/70"
             >
               <span
                 className={cn(
