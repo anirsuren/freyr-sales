@@ -305,23 +305,35 @@ export function OpportunitySummary({
   }, [deals, timeline]);
 
   const tree = useMemo(() => buildTree(deals, order, valueFor), [deals, order, valueFor]);
-  const grand = useMemo(() => sumEstimates(deals, measure), [deals, measure]);
+  const grand = useMemo(() => {
+    if (!spread) return sumEstimates(deals, measure);
+    let total = 0;
+    let entered = 0;
+    for (const d of deals) {
+      const keys = spread.periodsOf(d, timeline);
+      if (!keys.length) continue;
+      entered += 1;
+      for (const k of keys) total += spread.amountIn(d, k, measure);
+    }
+    return { total, entered, of: deals.length };
+  }, [deals, measure, spread, timeline]);
 
   const chart = useMemo(
     () =>
       periods.map((p) => ({
         label: periodLabel(p, timeline),
-        value: sumEstimates(
-          deals.filter((d) => periodByDeal.get(d.id) === p),
-          measure
-        ).total,
+        value: spread
+          ? deals.reduce((sum, d) => sum + spread.amountIn(d, p, measure), 0)
+          : sumEstimates(
+              deals.filter((d) => periodByDeal.get(d.id) === p),
+              measure
+            ).total,
       })),
     [periods, deals, timeline, measure, periodByDeal]
   );
 
   /** A row's money: the total, and one figure per period column. */
   function cellsOf(rows: Opportunity[]) {
-    const total = sumEstimates(rows, measure);
     const byPeriod = periods.map((p) =>
       spread
         ? rows.reduce((sum, d) => sum + spread.amountIn(d, p, measure), 0)
@@ -330,6 +342,18 @@ export function OpportunitySummary({
             measure
           ).total
     );
+    /* WITH A SPREAD, TOTAL IS THE SUM OF THE COLUMNS. On the pipeline a deal is
+       worth its whole figure on the day it closes and Total is that figure; on
+       an accrual page the row IS its months, and a Total that disagreed with
+       them ($12M of TCV over $1.0M of planned months, seen on screen) is a
+       table that does not reconcile — worse than no table on a money page. */
+    const total = spread
+      ? {
+          total: byPeriod.reduce((a, b) => a + b, 0),
+          entered: rows.filter((d) => spread.periodsOf(d, timeline).length > 0).length,
+          of: rows.length,
+        }
+      : sumEstimates(rows, measure);
     return { total, byPeriod };
   }
 

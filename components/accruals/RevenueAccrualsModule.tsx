@@ -1,5 +1,13 @@
 "use client";
 
+import { useStickyValue } from "@/lib/useStickyValue";
+import {
+  OpportunitySummary,
+  periodKeyOf,
+  TIMELINES,
+  type SummaryDimension,
+  type Timeline,
+} from "@/components/opportunities/OpportunitySummary";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,6 +28,7 @@ import {
   TrendingUp,
   Trash2,
   Unlock,
+  Briefcase,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
@@ -160,6 +169,16 @@ export function RevenueAccrualsModule({
   const [query, setQuery] = useState("");
   const [only, setOnly] = useState<"all" | "flagged" | "missing">("all");
   const [tab, setTab] = useState<"plans" | "deviation">("plans");
+  /* THE SUMMARY'S OWN CONTROLS. No measure picker: this page is TCV and only
+     TCV (Suren, Aug 30: "it's only TCV on the revenue page"). */
+  const [accrDims, setAccrDims] = useStickyValue<SummaryDimension[]>(
+    "freyr.accruals.dims",
+    ["group", "customer", "offering", "revenue"]
+  );
+  const [accrTimeline, setAccrTimeline] = useStickyValue<Timeline>(
+    "freyr.accruals.timeline",
+    "monthly"
+  );
   const [kindFor, setKindFor] = useAccrualChartKinds();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -661,12 +680,23 @@ export function RevenueAccrualsModule({
         }
       />
 
+      {/* THREE VALUES, THE ACCRUAL ONES (Suren, Aug 30: "which ones you take
+          off, TCV, ACV, all goes away. Opportunities are fine... just say 79
+          opportunities here, total all 79 deals" — plus the accrued total).
+          No ACV anywhere on this page: when they sell, the rule takes the
+          total contract value and splits it, so ACV has nothing to do here. */}
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
+          icon={Briefcase}
+          label="Opportunities"
+          value={String(opportunities.length)}
+          sub={`${state.plans.length} of them planned`}
+        />
+        <StatTile
           icon={Coins}
-          label="Planned revenue"
+          label="Total accrued revenue"
           value={formatMoney(plannedTotal)}
-          sub={`${state.plans.length} ${state.plans.length === 1 ? "deal" : "deals"} planned`}
+          sub={`${state.plans.length} ${state.plans.length === 1 ? "plan" : "plans"} across the months`}
         />
         <StatTile
           icon={AlertTriangle}
@@ -885,6 +915,92 @@ export function RevenueAccrualsModule({
             />
           ) : (
             <>
+            {/* HOW REVENUE IS ACCRUING ACROSS, in the same grouped table
+                the pipeline uses (Suren, Aug 30: "revenue accruals mean how
+                revenue is accruing across... when you say monthly, monthly,
+                monthly, all the way to yearly, this has to be a scrollable
+                thing").
+
+                THE MONEY IS EACH PLAN'S MONTHS, not the deal's closure date.
+                That is the whole difference between this page and the
+                pipeline: a deal there is worth its TCV on the day it signs,
+                and here that TCV is spread over the months somebody planned it
+                into. Total is the sum of those months, so the row always adds
+                up across — an accrual table that does not reconcile is worse
+                than no table.
+
+                Deals with no plan contribute nothing and are counted in the
+                tile above, rather than padding a total nobody has planned. */}
+            <section className="mt-4 rounded-xl border border-border-light bg-white p-4 shadow-card">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-[15px] font-semibold text-text-primary">
+                  How the revenue accrues
+                </h2>
+                <ColorSelect
+                  value={accrTimeline}
+                  ariaLabel="Accrual timeline"
+                  onChange={(v) => setAccrTimeline(v as Timeline)}
+                  minWidth={150}
+                  dense
+                  collapsible={false}
+                  className="w-[150px] shrink-0"
+                  options={TIMELINES.map((t) => ({
+                    value: t.key,
+                    label: t.label,
+                    color: "#7C3AED",
+                  }))}
+                />
+              </div>
+              <OpportunitySummary
+                deals={opportunities}
+                order={accrDims}
+                onReorder={setAccrDims}
+                measure="tcv"
+                timeline={accrTimeline}
+                groupNameFor={(d) => {
+                  const g = d.customerId
+                    ? customerGroups.find((x) => x.customerIds.includes(d.customerId!))
+                    : undefined;
+                  return g?.name ?? "No customer group";
+                }}
+                offeringNameFor={(d) =>
+                  (d.offeringIds[0]
+                    ? (offeringNames[d.offeringIds[0]] ?? d.offeringIds[0])
+                    : d.offeringLabels[0]) ?? "No offering"
+                }
+                onOpenDeal={(id) =>
+                  /* Straight into planning it — "when you click on it again,
+                     you need to go and update the accruals on the revenue".
+                     startPlan already handles both cases: an existing plan
+                     opens filled in, a deal without one opens spread. */
+                  startPlan(id, state.plans.find((p) => p.opportunityId === id))
+                }
+                spread={{
+                  periodsOf: (d, tl) => {
+                    const plan = state.plans.find((p) => p.opportunityId === d.id);
+                    if (!plan) return [];
+                    const keys = new Set<string>();
+                    for (const l of plan.lines) {
+                      const k = periodKeyOf(`${l.month}-01`, tl);
+                      if (k) keys.add(k);
+                    }
+                    return [...keys];
+                  },
+                  amountIn: (d, period, _measure) => {
+                    const plan = state.plans.find((p) => p.opportunityId === d.id);
+                    if (!plan) return 0;
+                    return plan.lines.reduce(
+                      (sum, l) =>
+                        periodKeyOf(`${l.month}-01`, accrTimeline) === period
+                          ? sum + (l.amount || 0)
+                          : sum,
+                      0
+                    );
+                  },
+                }}
+              />
+            </section>
+
             {/* WHEN THE MONEY IS PLANNED TO LAND, drawn. A column per month
                 across everything on screen, so the filters and the grouping
                 change the picture rather than only the list. */}
