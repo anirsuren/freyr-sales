@@ -119,7 +119,21 @@ const TABS = [
    demo, and Overview went with them — so a real account opened onto its Team
    band with nowhere to read who the account IS. Its content is the customer's
    own record, which is as real as anything on the page. */
-const REAL_MODE_TABS = new Set(["overview", "components", "activity"]);
+const REAL_MODE_TABS = new Set([
+  "overview",
+  "components",
+  "activity",
+  /* CONTACTS IS REAL DATA, AND WAS BEING HIDDEN WITH THE DEMO TABS.
+     Found in the loop, Sep 1: in REAL mode `?tab=contacts` fell through this
+     gate and landed on Overview, so the Contacts tab — the only place with
+     "Add contact", and the only place with the contact DELETE added earlier
+     today — could not be reached at all on a live account.
+
+     The set exists to hide tabs whose content was invented for the demo. A
+     customer's contacts come from the contacts table and are as real as the
+     account itself, so they never belonged in that group. */
+  "contacts",
+]);
 
 const NOTE_KINDS = [
   { key: "call" as const, label: "Call", icon: Phone },
