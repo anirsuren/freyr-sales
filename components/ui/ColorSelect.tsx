@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Crown, Search, type LucideIcon } from "lucide-react";
+import { ChevronDown, Check, Crown, Plus, Search, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
   PriorityTooltip,
@@ -870,6 +870,8 @@ export function MultiColorSelect({
   maxWidth,
   dense = false,
   fluid = false,
+  createLabel,
+  onCreate,
 }: {
   values: string[];
   options: ColorOption[];
@@ -901,6 +903,21 @@ export function MultiColorSelect({
   dense?: boolean;
   /** Fill the caller's grid column instead of sizing from the label. */
   fluid?: boolean;
+  /**
+   * MAKE ONE, FROM INSIDE THE PICKER.
+   *
+   * Anir, Sep 1, on a request whose account has neither: "if there are no
+   * opportunities and no contacts, I want to be able to create one... When I
+   * click on that dropdown under 'No Opportunities', it should give me the
+   * option to go create one below that."
+   *
+   * A picker whose only row says the list is empty is a dead end — it names
+   * the thing standing between you and finishing, and offers nothing. This row
+   * sits under the options, always, because the moment you need a new one is
+   * not only when there are none.
+   */
+  createLabel?: string;
+  onCreate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   // Long lists get a search box here too, same 10-row line the single select
@@ -1331,6 +1348,26 @@ export function MultiColorSelect({
             <p className="px-2.5 py-3 text-[12.5px] text-text-secondary">
               Nothing matches &quot;{query.trim()}&quot;.
             </p>
+          )}
+          {onCreate && createLabel && (
+            <>
+              {options.length > 0 && (
+                <span className="my-1 block border-t border-border-light" />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onCreate();
+                }}
+                className="menu-row-in flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/50"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-primary text-white">
+                  <Plus size={12} strokeWidth={2.6} />
+                </span>
+                {createLabel}
+              </button>
+            </>
           )}
         </div>,
         document.body

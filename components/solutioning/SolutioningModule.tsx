@@ -1481,6 +1481,30 @@ export function NewRequestDialog({
   const [docs, setDocs] = useState<StagedDoc[]>([]);
   const [dragging, setDragging] = useState(false);
 
+  /**
+   * MAKING THE MISSING THING WITHOUT LEAVING THE FORM.
+   *
+   * Anir, Sep 1: "I don't even want to change anything. I don't want to leave
+   * this page at all. I literally want to create the opportunity within this
+   * popup... same-size popup... and then the second I press Create Contact —
+   * or even if I just go back — I'll be on the same exact screen with all my
+   * data saved."
+   *
+   * So this is a second PAGE of this dialog, not a second dialog and not a
+   * navigation. Everything typed so far lives in the state above, and that
+   * state belongs to THIS component — which keeps rendering the whole time.
+   * Swapping what is drawn inside it cannot touch it, so Back is free and
+   * Create returns you to a form that never emptied.
+   */
+  const [sub, setSub] = useState<null | "opportunity" | "contact">(null);
+  /* Made here, so it can be picked here — the fresh record is merged into the
+     list the picker reads rather than waiting for the page to refetch. */
+  const [newOpps, setNewOpps] = useState<OpportunityOption[]>([]);
+  const [subName, setSubName] = useState("");
+  const [subExtra, setSubExtra] = useState("");
+  const [subBusy, setSubBusy] = useState(false);
+  const [subError, setSubError] = useState<string | null>(null);
+
   const customer = customers.find((c) => c.id === customerId) ?? null;
 
   /**
@@ -1561,11 +1585,87 @@ export function NewRequestDialog({
     };
   }, [customerId]);
 
-  const customerOpps = opportunities.filter(
+  const customerOpps = [...opportunities, ...newOpps].filter(
     (o) =>
       (o.customerId && o.customerId === customerId) ||
       (customer && o.customer === customer.name)
   );
+
+  /** Create the opportunity or the contact, select it, and come straight back. */
+  async function createSub() {
+    if (!subName.trim() || !customer) return;
+    setSubBusy(true);
+    setSubError(null);
+    try {
+      if (sub === "opportunity") {
+        const res = await fetch("/api/opportunities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            op: "add",
+            name: subName.trim(),
+            customer: customer.name,
+            ...(customerId ? { customerId } : {}),
+            ...(subExtra.trim()
+              ? { value: Number(subExtra.replace(/[^0-9.]/g, "")) || 0 }
+              : {}),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.opportunity) {
+          setSubError(data?.error || "That did not save.");
+          setSubBusy(false);
+          return;
+        }
+        const made = data.opportunity as { id: string; name?: string };
+        setNewOpps((cur) => [
+          ...cur,
+          {
+            id: made.id,
+            label: made.name || subName.trim(),
+            customer: customer.name,
+            customerId: customerId || null,
+          },
+        ]);
+        setOppIds((cur) => [...cur, made.id]);
+      } else {
+        const res = await fetch(
+          `/api/customers/${encodeURIComponent(customerId)}/contacts`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              full_name: subName.trim(),
+              ...(subExtra.trim() ? { job_title: subExtra.trim() } : {}),
+            }),
+          }
+        );
+        const data = await res.json().catch(() => ({}));
+        const made = data?.contact ?? data;
+        if (!res.ok || !made?.id) {
+          setSubError(data?.error || "That did not save.");
+          setSubBusy(false);
+          return;
+        }
+        setContacts((cur) => [
+          ...cur,
+          {
+            id: made.id,
+            name: made.full_name || subName.trim(),
+            title: made.job_title ?? subExtra.trim() ?? null,
+          },
+        ]);
+        setContactIds((cur) => [...cur, made.id]);
+      }
+      setSubBusy(false);
+      setSubName("");
+      setSubExtra("");
+      setSub(null);
+    } catch {
+      setSubError("That did not save.");
+      setSubBusy(false);
+    }
+  }
 
   /* A file still on its way up has no path yet, so creating now would drop it.
      Wait the two seconds rather than lose the document he just chose. */
@@ -1605,7 +1705,81 @@ export function NewRequestDialog({
           as you go deeper, which is what a dialog is supposed to do, and it no
           longer snaps from a strip to a page. */}
       <div className="flex min-h-[380px] flex-col">
-      {!kind ? (
+      {sub ? (
+        /* A PAGE OF THIS DIALOG. Same frame, same width, a back arrow where
+           the form was — and the form itself is still mounted behind this,
+           holding every word already typed. */
+        <div className="flex flex-1 flex-col">
+          <button
+            type="button"
+            onClick={() => {
+              setSub(null);
+              setSubError(null);
+            }}
+            className="mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          >
+            <ArrowLeft size={15} strokeWidth={2.2} />
+            Back to the request
+          </button>
+          <p className="mb-1 text-[14px] font-semibold text-text-primary">
+            {sub === "opportunity"
+              ? "New opportunity"
+              : "New contact"}
+          </p>
+          <p className="mb-4 text-[12.5px] text-text-secondary">
+            For <b>{customer?.name}</b>. It is picked for you the moment it
+            exists, and nothing you have typed is lost.
+          </p>
+          <label className="block">
+            <span className="text-[12px] font-semibold text-text-primary">
+              {sub === "opportunity" ? "What is the deal called?" : "Their name"}
+            </span>
+            <input
+              autoFocus
+              value={subName}
+              onChange={(e) => setSubName(e.target.value)}
+              placeholder={
+                sub === "opportunity"
+                  ? `e.g. GRI — ${customer?.name ?? ""}`
+                  : "First and last name"
+              }
+              className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            />
+          </label>
+          <label className="mt-3 block">
+            <span className="text-[12px] font-semibold text-text-primary">
+              {sub === "opportunity" ? "Value" : "Job title"}
+              <span className="ml-1.5 font-normal text-text-secondary">
+                optional
+              </span>
+            </span>
+            <input
+              value={subExtra}
+              onChange={(e) => setSubExtra(e.target.value)}
+              placeholder={
+                sub === "opportunity" ? "What it is worth" : "What they do there"
+              }
+              className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            />
+          </label>
+          <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+            <span className="min-w-0 text-[12.5px] text-error">{subError}</span>
+            <button
+              type="button"
+              disabled={!subName.trim() || subBusy}
+              onClick={createSub}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={14} strokeWidth={2.4} />
+              {subBusy
+                ? "Creating…"
+                : sub === "opportunity"
+                  ? "Create the opportunity"
+                  : "Create the contact"}
+            </button>
+          </div>
+        </div>
+      ) : !kind ? (
         /* THE FIRST QUESTION IS THE ONLY QUESTION ON SCREEN. Three big tiles,
            because the kind decides every field that follows. */
         <div className="flex flex-1 flex-col">
@@ -1873,6 +2047,10 @@ export function NewRequestDialog({
                     label: o.label,
                     color: "#0071E3",
                   }))}
+                  /* Only once an account is chosen: an opportunity has to
+                     belong to somebody. */
+                  createLabel={customer ? "Create a new opportunity" : undefined}
+                  onCreate={customer ? () => setSub("opportunity") : undefined}
                 />
               </div>
             </label>
@@ -1900,6 +2078,8 @@ export function NewRequestDialog({
                     label: c.title ? `${c.name} · ${c.title}` : c.name,
                     avatarName: c.name,
                   }))}
+                  createLabel={customer ? "Create a new contact" : undefined}
+                  onCreate={customer ? () => setSub("contact") : undefined}
                 />
               </div>
             </label>
