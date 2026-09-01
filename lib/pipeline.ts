@@ -93,10 +93,49 @@ export function dealValue(tier: string | null, seed?: string): number {
   return Math.round((base * (1 + spread)) / 5000) * 5000;
 }
 
+/**
+ * MONEY, AT WHATEVER SIZE IT ARRIVES.
+ *
+ * This stopped at M, so anything past a billion came out as a wall of digits
+ * with an M stuck on the end — $999,999,999 rendered "$1000.0M" rather than
+ * "$1.0B", and a fat-fingered deal value turned the pipeline header into
+ * "$1000000000012M". Forty-five files print money through here, so one of them
+ * getting a number bigger than expected should not produce something nobody
+ * can read.
+ *
+ * The tiers below are only about DISPLAY. Nothing here bounds what may be
+ * stored: lib/opportunities already floors a negative or unparseable value at
+ * zero, but has no ceiling, so a deal with three extra zeros is accepted and
+ * swamps every rollup it touches. What the ceiling should be is a question
+ * about Freyr's deals rather than about formatting, so it is not decided here.
+ */
+const MONEY_UNITS: { at: number; suffix: string; digits: number }[] = [
+  { at: 1_000, suffix: "K", digits: 0 },
+  { at: 1_000_000, suffix: "M", digits: 1 },
+  { at: 1_000_000_000, suffix: "B", digits: 1 },
+  { at: 1_000_000_000_000, suffix: "T", digits: 1 },
+];
+
 export function formatMoney(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1000)}K`;
-  return `$${n}`;
+  /* The sign belongs in front of the currency, not between it and the digits
+     ("-$500", never "$-500"). */
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  if (abs < 1_000) return `${sign}$${Math.round(abs)}`;
+
+  let i = 0;
+  while (i < MONEY_UNITS.length - 1 && abs >= MONEY_UNITS[i + 1].at) i++;
+  /* Rounding can carry a number into the tier above: 999,999,999 is under a
+     billion, so it lands on M, and one decimal place turns 999.999999 into
+     "1000.0M". Whenever that happens, print it in the next unit up. */
+  if (
+    Number((abs / MONEY_UNITS[i].at).toFixed(MONEY_UNITS[i].digits)) >= 1000 &&
+    i < MONEY_UNITS.length - 1
+  ) {
+    i++;
+  }
+  const { at, suffix, digits } = MONEY_UNITS[i];
+  return `${sign}$${(abs / at).toFixed(digits)}${suffix}`;
 }
 
 export interface Deal {
