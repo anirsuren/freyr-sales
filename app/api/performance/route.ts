@@ -514,6 +514,17 @@ export async function POST(req: NextRequest) {
         });
         break;
       case "log-actual":
+        /* THE SAME QUESTION assign-goal ASKS. The Aug 19 note above says a
+           typo'd name becomes "a phantom assignee: someone who can never log
+           in, never log a result, never be verified" — but only assign-goal
+           was made to ask it, and this op is the one that carries a NUMBER.
+           Proved it on Sep 1 with the very name from that note: assign-goal
+           refused "Nobody McGhost", log-actual booked 77,000 against them and
+           it landed in the totals.
+           unassign-goal and set-verified stay unchecked on purpose — both act
+           on a row that already exists, and one of them is how you clear a
+           phantom out. */
+        await assertRealPerson(String(body.person ?? ""));
         await logActual({
           goalId: String(body.goalId ?? ""),
           subgoalId: body.subgoalId ? String(body.subgoalId) : null,
