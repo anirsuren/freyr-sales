@@ -203,7 +203,12 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "That didn't save.");
+      /* THE WHOLE STATE, not just the list. The split view's detail pane
+         reads `perf`, so refreshing only `groups` left a group you had just
+         created sitting in the list with a blank panel beside it until you
+         reloaded the page. The response already carries both. */
       setGroups(data.state?.groups ?? []);
+      if (data.state) setPerf(data.state as PerformanceState);
       toast(ok);
       return true;
     } catch (error) {
@@ -545,7 +550,10 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         {g.name}
                       </span>
                       <span className="block truncate text-[11px] text-text-tertiary">
-                        {[...new Set([g.head, ...g.members])].length} people
+                        {(() => {
+                          const n = [...new Set([g.head, ...g.members])].length;
+                          return `${n} ${n === 1 ? "person" : "people"}`;
+                        })()}
                       </span>
                     </span>
                   </button>
