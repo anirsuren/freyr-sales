@@ -347,7 +347,17 @@ export function AccrualPlanPage({
                 where the app already puts every other explanation. */}
             <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
               Save this month split
-              <InfoHint text="Records how this deal's money is expected to land, month by month. It moves no money, tells nobody, and counts towards no goal. It feeds the month columns on the accruals table, and it is the baseline a frozen month is later compared against, so a month that comes up short is flagged rather than quietly shifted. Change it whenever the deal changes." />
+              {/* SAY WHAT IT IS FOR, NOT HOW IT WORKS (Anir, Sep 1: "I still
+                  don't understand what that does. You're not doing a good job
+                  explaining").
+
+                  The first version of this said it "feeds the month columns"
+                  and was "the baseline a frozen month is compared against" —
+                  true, and useless, because that is the plumbing rather than
+                  the reason. The reason is that a deal's value and the month
+                  it is earned in are two different facts, and only one of them
+                  was written down anywhere. */}
+              <InfoHint text="A deal signs on one date but is earned over several months. This is where you say which: a $500K deal over four months is $125K a month. It matters because close dates answer the wrong question — they say a four-month deal signed in November earns nothing in January, when it earns a quarter of itself. Saving moves no money and tells nobody. Freeze a month later and anything that shifts out of it is flagged, so revenue cannot slide quietly into next quarter." />
             </p>
 
             <label className="mt-3 block">
