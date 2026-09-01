@@ -407,6 +407,13 @@ export function RevenueAccrualsModule({
    * make the sheet unreachable. One row per month per deal, which is the shape
    * anybody would pivot.
    */
+  /* NOTHING ON SCREEN, NOTHING TO EXPORT (Anir, Aug 14, on the Reports
+     button doing exactly this): it stayed live on an empty page and handed
+     back a spreadsheet holding one row of headings. Reports learned that;
+     this did not. `shown` is the FILTERED list, so this also covers having
+     filtered everything away. */
+  const nothingToExport = shown.length === 0;
+
   function exportCsv() {
     const rows: (string | number)[][] = [];
     for (const { plan, verdict } of shown) {
@@ -849,7 +856,13 @@ export function RevenueAccrualsModule({
                   type="button"
                   onClick={exportCsv}
                   aria-label="Export CSV"
-                  className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+                  disabled={nothingToExport}
+                  title={
+                    nothingToExport
+                      ? "Nothing to export yet: no plans are showing."
+                      : undefined
+                  }
+                  className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download size={16} strokeWidth={1.5} />
                   <PriorityLabel>Export CSV</PriorityLabel>

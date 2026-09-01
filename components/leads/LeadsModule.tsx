@@ -156,6 +156,13 @@ export function LeadsModule({
 
   /** The list as it is filtered and sorted right now, not the whole store —
    *  exporting something other than what is on screen is a lie. */
+  /* NOTHING ON SCREEN, NOTHING TO EXPORT (Anir, Aug 14, on the Reports
+     button doing exactly this): it stayed live on an empty page and handed
+     back a spreadsheet holding one row of headings. Reports learned that;
+     this did not. `shown` is the FILTERED list, so this also covers having
+     filtered everything away. */
+  const nothingToExport = shown.length === 0;
+
   function exportCsv() {
     downloadCSV(
       `freyr-leads-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -362,7 +369,13 @@ export function LeadsModule({
               type="button"
               onClick={exportCsv}
               aria-label="Export CSV"
-              className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+              disabled={nothingToExport}
+              title={
+                nothingToExport
+                  ? "Nothing to export yet: no leads are showing."
+                  : undefined
+              }
+              className="flex items-center rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download size={16} strokeWidth={1.5} />
               <PriorityLabel>Export CSV</PriorityLabel>
