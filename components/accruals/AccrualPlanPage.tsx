@@ -337,9 +337,60 @@ export function AccrualPlanPage({
 
         <aside className="min-w-0">
           <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-            <label className="block">
+            {/* SAY WHAT THE BUTTON DOES BEFORE SOMEBODY PRESSES IT.
+                Anir, Sep 1: "What the hell does 'create the plan' mean? I
+                don't know what this button does on the right side... I just
+                pressed it. I don't even know what I did."
+
+                Fair. A blue button called "Create the plan" sat under a Note
+                box with nothing on the page saying what a plan IS, so it read
+                as "save the note" and gave no clue whether pressing it moved
+                money, told anyone, or counted towards a target. The answer —
+                it records the schedule and moves nothing — was written down in
+                lib/revenueAccruals and never said out loud to the person
+                deciding whether to click.
+
+                The negative is the important half: Suren's rule is that
+                nothing auto-pushes, and a person cannot rely on that unless
+                they are told it. */}
+            <p className="text-[13px] font-semibold text-text-primary">
+              What this saves
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
+              The month-by-month split on the left: how this deal&apos;s{" "}
+              <b>{money(target)}</b> is expected to land. It is a plan, not a
+              payment.
+            </p>
+            <ul className="mt-2.5 space-y-1.5 text-[12.5px] text-text-secondary">
+              <li className="flex gap-2">
+                <span className="text-text-tertiary">·</span>
+                <span>
+                  It does <b>not</b> move any money, and it does not count
+                  towards anyone&apos;s goal.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-text-tertiary">·</span>
+                <span>
+                  Nobody is notified. You can come back and change it whenever
+                  the deal changes.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-text-tertiary">·</span>
+                <span>
+                  If a month later comes up short, it gets flagged here rather
+                  than quietly shifted.
+                </span>
+              </li>
+            </ul>
+
+            <label className="mt-4 block border-t border-border-light pt-4">
               <span className="mb-1 block text-[11.5px] text-text-tertiary">
                 Note
+                <span className="ml-1.5 text-text-tertiary">
+                  optional, for whoever reads this next
+                </span>
               </span>
               <textarea
                 value={note}
@@ -358,7 +409,10 @@ export function AccrualPlanPage({
                 className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2.5 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {busy && <Loader2 size={14} className="animate-spin" />}
-                {plan ? "Save the plan" : "Create the plan"}
+                {/* The button names the thing it acts on, not an abstraction:
+                    "the plan" meant nothing until the card above it said so,
+                    and even now the months are what you are saving. */}
+                {plan ? "Save this month split" : "Save this month split"}
               </button>
             )}
           </section>

@@ -124,6 +124,15 @@ function planRows(d: Draft): { month: string; amount: string; pinned?: boolean }
 const AMBER = "#B45309";
 
 /**
+ * ONE COLUMN TEMPLATE FOR THE LIST HEADER AND EVERY ROW IN IT.
+ *
+ * Shared rather than written twice, because a header whose widths drift from
+ * its rows is worse than no header at all — it labels the wrong column.
+ */
+const ACCRUAL_ROW_GRID =
+  "grid grid-cols-[minmax(0,1fr)_120px_120px_128px_180px_150px] items-center gap-5";
+
+/**
  * EACH COMPANY WEARS ITS OWN COLOUR (Anir, Aug 27: "I meant for each
  * company"). Every card on this page was the same blue, so two flat $500K
  * plans were literally the same picture twice. A stable accent per customer
@@ -1073,7 +1082,33 @@ export function RevenueAccrualsModule({
               </section>
             )}
 
-            <div className="mt-4 space-y-2.5">
+            {/* COLUMNS, NOT A CRUSH (Anir, Sep 1: "Why is everything so
+                fucking close together? Just make it a nice table... Why is it
+                so squished together? You have so much space").
+
+                The row was one flex line: the name was flex-1 so it ate every
+                spare pixel and pushed the sparkline, the total, the close
+                date, the author and four icons into the right edge, shoulder
+                to shoulder. And because nothing lined up between rows, each
+                row had to caption its own values — a tiny EST. CLOSE and
+                LAST UPDATED over every single one — which is the noise he is
+                reading as squashed.
+
+                One grid template, shared by the header and every row, so the
+                values line up in real columns and the captions are said once
+                at the top instead of 79 times down the page. */}
+            <div className={cn(ACCRUAL_ROW_GRID, "mt-4 px-4 pb-1 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary")}>
+              <span>Deal</span>
+              <span>Shape</span>
+              <span className="text-right">Planned</span>
+              <span className="text-right">Est. close</span>
+              <span className="text-right">Last updated</span>
+              {/* Left-aligned, header and icons both — the standing rule for
+                  an actions column everywhere in this app. */}
+              <span className="text-left">Actions</span>
+            </div>
+
+            <div className="space-y-2.5">
               {(groups
                 ? groups.flatMap((g) => [
                     /* A GROUP HEADER, then its plans — the same shape the
@@ -1157,12 +1192,12 @@ export function RevenueAccrualsModule({
                         there beside a total that was already in the header. A
                         row, not a button, because the actions are siblings of
                         the disclosure rather than nested inside it. */}
-                    <div className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-blue-light/25">
+                    <div className={cn(ACCRUAL_ROW_GRID, "w-full px-4 py-3 transition-colors hover:bg-blue-light/25")}>
                     <button
                       type="button"
                       onClick={() => setOpenDeal(isOpen ? null : plan.id)}
                       aria-expanded={isOpen}
-                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                      className="flex min-w-0 cursor-pointer items-center gap-3 text-left"
                     >
                       <CompanyLogo name={plan.customer} className="h-8 w-8 shrink-0" />
                       <span className="min-w-0 flex-1">
@@ -1182,14 +1217,19 @@ export function RevenueAccrualsModule({
                           Needs re-planning
                         </span>
                       )}
+                    </button>
+                    {/* SHAPE. Flat, front-loaded or ramping, before you commit
+                        to a click. Its own column now, so it stops being the
+                        thing wedged between a name and a number. */}
+                    <span className="min-w-0">
                       {/* THE SHAPE WITHOUT OPENING ANYTHING (Anir, Aug 27:
                           "I need it completely revamped"). A closed row used
                           to say only a total; the sparkline shows whether the
                           money is flat, front-loaded or ramping before you
                           commit to a click. Decorative here — the real chart
                           is one click away — so it takes no hover of its own. */}
-                      {plan.lines.length > 1 && (
-                        <span aria-hidden="true" className="hidden shrink-0 md:block">
+                      {plan.lines.length > 1 ? (
+                        <span aria-hidden="true" className="block">
                           <Sparkline
                             points={plan.lines.map((l) => l.amount)}
                             color={accent}
@@ -1197,42 +1237,55 @@ export function RevenueAccrualsModule({
                             interactive={false}
                           />
                         </span>
+                      ) : (
+                        <span className="block text-[12px] text-text-tertiary">
+                          one month
+                        </span>
                       )}
-                      <span className="shrink-0 text-right">
-                        <span className="block text-[14px] font-bold tnum text-text-primary">
-                          {formatMoney(planTotal(plan))}
-                        </span>
-                        <span className="block text-[11.5px] tnum text-text-secondary">
-                          over {plan.lines.length}{" "}
-                          {plan.lines.length === 1 ? "month" : "months"}
-                        </span>
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-[14px] font-bold tnum text-text-primary">
+                        {formatMoney(planTotal(plan))}
                       </span>
-                    </button>
+                      <span className="block text-[11.5px] tnum text-text-secondary">
+                        over {plan.lines.length}{" "}
+                        {plan.lines.length === 1 ? "month" : "months"}
+                      </span>
+                    </span>
                       {/* The two facts worth carrying, and the three things
                           you can do. Est. close and who last touched it used
                           to live under the chart; the contract value that sat
                           beside them was the same number as the total above. */}
-                      {deal?.estSignDate && (
-                        <span className="hidden shrink-0 text-right lg:block">
-                          <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                            Est. close
-                          </span>
+                      {/* The captions moved to the header, so a row prints a
+                          value and nothing else. A cell with no value keeps
+                          its place rather than collapsing and shunting every
+                          column after it out of line. */}
+                      <span className="text-right">
+                        {deal?.estSignDate ? (
                           <b className="block text-[12.5px] tnum text-text-primary">
                             {formatDate(deal.estSignDate)}
                           </b>
-                        </span>
-                      )}
+                        ) : (
+                          <span className="block text-[12.5px] text-text-tertiary">
+                            &mdash;
+                          </span>
+                        )}
+                      </span>
                       <span
-                        className="hidden shrink-0 text-right xl:block"
+                        className="min-w-0 text-right"
                         title={`Last updated by ${plan.updatedBy} on ${formatDate(plan.updatedAt)}`}
                       >
-                        <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          Last updated
+                        <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                          {plan.updatedBy}
                         </span>
-                        <span className="block text-[12px] text-text-secondary">
-                          {plan.updatedBy} · {formatDate(plan.updatedAt)}
+                        <span className="block text-[11.5px] tnum text-text-secondary">
+                          {formatDate(plan.updatedAt)}
                         </span>
                       </span>
+                      {/* Every control on the row, in the column the header
+                          names, left-aligned like every other actions column
+                          in the app. */}
+                      <span className="flex items-center gap-1">
                       {/* THE ARROW, NOT A SENTENCE (Anir, Aug 30: "wherever
                           you put 'Open the deal' or anything similar, replace
                           it with the arrow, and it can just go at the top"). */}
@@ -1280,6 +1333,7 @@ export function RevenueAccrualsModule({
                           className={cn("transition-transform", !isOpen && "-rotate-90")}
                         />
                       </button>
+                      </span>
                     </div>
 
                     {/* The panel is always mounted while a plan is open so the
