@@ -233,7 +233,7 @@ export default async function RepPage({
           </div>
           {member.email && (
             <a
-              href={teamsChatUrl(member.email)}
+              href={teamsChatUrl(member.name, member.email)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-subtle hover:text-blue-primary"

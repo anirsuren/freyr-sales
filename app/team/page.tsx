@@ -222,7 +222,12 @@ export default async function TeamPage() {
         email: member.email || "",
         phone: "",
         linkedin: "",
-        teamsUrl: member.email ? teamsChatUrl(member.email) : "",
+        /* The email goes in the EMAIL slot. Passed as the first argument it
+           was read as a display name, and repEmail() turned
+           suren@freyrsolutions.com into surenfreyrsolutionscom@freyrsolutions.com
+           — so every real member's Teams chip opened a chat with an address
+           that does not exist. */
+        teamsUrl: member.email ? teamsChatUrl(member.name, member.email) : "",
         openValue: mine?.openValue ?? 0,
         weighted: mine?.weighted ?? 0,
         openCount: mine?.openCount ?? 0,

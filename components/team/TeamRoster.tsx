@@ -143,6 +143,11 @@ const CONTACT_CHIP =
   "rounded-lg border border-border-light bg-white px-2 py-1.5 text-text-secondary cursor-pointer hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors";
 
 function TeamsButton({ url, name }: { url: string; name: string }) {
+  /* No address, no chip. An invited teammate has no Teams account yet, and an
+     anchor with href="" is a button that reloads the page — the same rule the
+     roster already keeps for LinkedIn: a link that goes nowhere is worse than
+     no link. */
+  if (!url) return null;
   const label = `Message ${name.split(" ")[0]} on Teams`;
   return (
     <a
