@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Sparkles,
   Tag,
+  ArrowUpRight,
   Pencil,
   Play,
   Loader,
@@ -3660,7 +3661,11 @@ function FutureSection({
                   <th className="w-[13%] px-2 py-2.5">Target pitch</th>
                   <th className="w-[12%] px-2 py-2.5">Target quarter</th>
                   <th className="px-2 py-2.5">Activities</th>
-                  {writable && <th className="w-[84px] px-2 py-2.5 pr-4 text-left">Actions</th>}
+                  {/* ALWAYS DRAWN NOW. Opening a deal is a READ, and it was
+                      locked inside a column that only appeared for people who
+                      could write — so a view-only account had no way out of
+                      this table at all. */}
+                  <th className="w-[112px] px-2 py-2.5 pr-4 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -3738,10 +3743,34 @@ function FutureSection({
                           <span className="text-text-tertiary">nothing logged yet</span>
                         )}
                       </td>
-                      {writable && (
-                        <td className="px-2 py-2.5 pr-4 text-left">
-                          {mayTouch(o) && (
+                      <td className="px-2 py-2.5 pr-4 text-left">
                           <span className="inline-flex items-center gap-1">
+                            {/* THE WAY INTO THE DEAL (Anir, Sep 1: "I thought
+                                I said I need the same functionality on all the
+                                different views. On opportunities, how do I go
+                                to this specific opportunity? On the summary
+                                page it's pretty simple: I just click on it,
+                                but here there's no way to go there").
+
+                                Quite right — Summary opened a deal by its
+                                name, and Table had edit, delete and a fold and
+                                no door at all. The arrow, because that is this
+                                app's standing answer for "open the thing"
+                                (Anir, Aug 30: "wherever you put 'Open the
+                                deal' or anything similar, replace it with the
+                                arrow"). Outside the writable gate: reading a
+                                deal is not a write. */}
+                            <Link
+                              href={`/opportunities/${o.id}`}
+                              title={`Open ${o.name}`}
+                              aria-label={`Open ${o.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                            >
+                              <ArrowUpRight size={13} strokeWidth={2.2} />
+                            </Link>
+                          {writable && mayTouch(o) && (
+                          <>
                             <button
                               type="button"
                               title={`Edit ${o.name}. Flip its revenue type to Pipeline when it is pitched`}
@@ -3758,10 +3787,10 @@ function FutureSection({
                             >
                               <Trash2 size={13} strokeWidth={2.2} />
                             </button>
-                          </span>
+                          </>
                           )}
+                          </span>
                         </td>
-                      )}
                     </tr>
                   );
                 })}
