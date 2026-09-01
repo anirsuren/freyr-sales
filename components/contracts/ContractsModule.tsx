@@ -35,6 +35,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DocumentDrop, landedDocs, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -152,6 +153,16 @@ export function ContractsModule({
   const [statuses, setStatuses] = useState<string[]>([]);
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * ALL OF THEM NEED ATTACHMENTS (Anir, Aug 31), AND THIS ONE DID NOT HAVE IT.
+   *
+   * Found in the loop, Sep 1: the New contract dialog opened FROM A DEAL has a
+   * document uploader, and the one on the Contracts page — the same record,
+   * the more obvious door — had none. A contract's whole point is the signed
+   * paper, so the page that exists to create contracts was the one place you
+   * could not attach it.
+   */
+  const [docs, setDocs] = useState<StagedDoc[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
   const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
@@ -275,6 +286,9 @@ export function ContractsModule({
   }
 
   function openEditor(contract?: Contract, fromDeal?: DealOption) {
+    /* A fresh shelf per editor session: files staged for one contract must
+       never ride along onto the next one opened. */
+    setDocs([]);
     if (contract) {
       setEditing({
         ...BLANK,
@@ -420,6 +434,24 @@ export function ContractsModule({
             ? { goalId: editing.goalId, person: editing.goalPerson || undefined }
             : undefined,
           note: editing.note || undefined,
+          /* Only the ones that landed; a failed row is still on screen saying
+             so, and carrying it would attach a document with nothing behind
+             it. Editing keeps whatever is already on the record. */
+          /* MERGED HERE, BECAUSE THE SERVER REPLACES.
+             saveContract writes `docs` straight over whatever was on the
+             record, so sending only this session's files would silently strip
+             the ones already attached when you edit an existing contract.
+             Checked in lib/contracts rather than assumed. */
+          ...(docs.length
+            ? {
+                docs: [
+                  ...(editing.id
+                    ? (contracts.find((c) => c.id === editing.id)?.docs ?? [])
+                    : []),
+                  ...landedDocs(docs, "cd"),
+                ],
+              }
+            : {}),
           schedule: scheduleRowsOf(editing)
             .map((l) => ({
               month: l.month,
@@ -1487,6 +1519,13 @@ export function ContractsModule({
             </Field>
           </div>
           </FormRoom>
+
+          <DocumentDrop
+            docs={docs}
+            setDocs={setDocs}
+            uploadUrl="/api/contracts/upload"
+            hint="The signed contract, the SOW, anything that belongs with it."
+          />
           </div>
 
           <div className="mt-4 flex items-center justify-end gap-2">
