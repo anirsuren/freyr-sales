@@ -27,6 +27,7 @@ import {
   UserRound,
   type LucideIcon,
   MessageSquare,
+  ArrowUpRight,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
@@ -417,7 +418,17 @@ export function RequestDetail({
             /* SOL-026: creating the work is an owner's write, and the route
                refuses anyone else. */
             may.create &&
-            (r.kind === "submission" || r.kind === "presentation");
+            (r.kind === "submission" || r.kind === "presentation") &&
+            /* ONE ASK, ONE PIECE OF WORK. Taking a request up CREATES the
+               submission — that is what Suren asked for on Aug 28 ("when I say
+               'pick it up,' it has to create a submission") and lib/solutioning
+               does it. This header did not know that, so the moment you took a
+               request up it offered to create the very thing the pick-up had
+               just made, and pressing it produced a second one against the same
+               ask. Two clicks anyone would make in order, one after the other,
+               and a duplicate deliverable at the end of them.
+               openChildren is the live work already raised off this request. */
+            openChildren.length === 0;
           const mayTakeUp = !r.owner && r.status !== "completed" && fulfiller;
           const mayHandBack = !!r.owner && r.status !== "completed" && iOwn;
           const mayComplete =
@@ -462,8 +473,18 @@ export function RequestDetail({
           /* THE PRIMARY IS WHATEVER THIS RECORD IS WAITING ON. Nobody has it
              yet, so taking it up comes before building the thing; once
              somebody owns it, building the thing is the job. */
+          /* Whatever the pick-up made, or somebody made earlier: the header
+             sends you to it rather than pretending it is not there. */
+          const existingWork =
+            r.type === "request" && openChildren.length > 0 ? openChildren[0] : null;
           const primary = mayTakeUp
             ? { label: "Take this up", icon: Hand, run: () => post({ op: "pick-up" }) }
+            : existingWork
+              ? {
+                  label: `Open ${existingWork.ref}`,
+                  icon: ArrowUpRight,
+                  run: async () => router.push(`/solutioning/${existingWork.id}`),
+                }
             : mayCreateWork
               ? {
                   label: `Create ${r.kind === "submission" ? "submission" : "presentation"}`,
