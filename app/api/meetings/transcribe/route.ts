@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getRole } from "@/lib/role";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { speechToText, isTranscribableFile } from "@/lib/videoTranscribe";
 import { extractFileText, isReadableFile } from "@/lib/fileText";
 import { canOpenModule } from "@/lib/moduleAccessServer";

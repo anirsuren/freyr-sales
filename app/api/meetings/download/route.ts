@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { streamStoredFile } from "@/lib/storedFileResponse";
 import { getRole } from "@/lib/role";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { readMeetings } from "@/lib/meetings";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
 import { canOpenModule } from "@/lib/moduleAccessServer";

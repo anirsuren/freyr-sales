@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { readContracts, removeContract, saveContract } from "@/lib/contracts";
 import { contractCounts, type Contract } from "@/lib/contractsShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
@@ -23,7 +22,6 @@ export const dynamic = "force-dynamic";
  * Admin-only for now, enforced here as well as in the nav.
  */
 async function closed(): Promise<NextResponse | null> {
-  const me = await getCurrentUser();
   return (await canOpenModule("/contracts"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });

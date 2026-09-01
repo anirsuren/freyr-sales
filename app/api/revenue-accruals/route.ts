@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { canAccessModule } from "@/lib/moduleAccess";
 import {
   freezeAccrualSnapshot,
   readRevenueAccruals,

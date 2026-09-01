@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
-import { canAccessModule } from "@/lib/moduleAccess";
 import {
   addMeetingDoc,
   addMeetingNote,

@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { uploadMaterialFile } from "@/lib/materialStorage";
 import { readMeetings } from "@/lib/meetings";
 import { canOpenModule } from "@/lib/moduleAccessServer";

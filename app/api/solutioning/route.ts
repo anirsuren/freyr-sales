@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { getDb } from "@/lib/db";
 import {
   addDocument,
@@ -68,7 +67,6 @@ export const dynamic = "force-dynamic";
  * not allowed to see them.
  */
 async function moduleClosed(): Promise<NextResponse | null> {
-  const me = await getCurrentUser();
   return (await canOpenModule("/solutioning"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
@@ -218,6 +216,37 @@ export async function POST(req: NextRequest) {
           ...(recommendedLead(d, leadMap) ? { lead: recommendedLead(d, leadMap) } : {}),
           contributors: [],
         }));
+      }
+
+      /**
+       * ONE ASK, ONE PIECE OF WORK — on the route, not only in the header.
+       *
+       * pickUpRequest has always refused to spawn a second deliverable for a
+       * request that already has one. This endpoint never asked, so the
+       * "Create submission" button could raise a duplicate against an ask that
+       * the pick-up had already built work for, and so could any other caller.
+       * The header no longer offers it; this is the lock behind that curtain.
+       *
+       * Open work only: a finished or cancelled deliverable does not stop the
+       * team raising the next one against the same ask.
+       */
+      if (isDeliverable && body.requestId) {
+        const current = await readSolutioning();
+        const existing = current.requests.find(
+          (x) =>
+            x.requestId === body.requestId &&
+            x.type === type &&
+            x.status !== "completed" &&
+            x.status !== "cancelled"
+        );
+        if (existing) {
+          return NextResponse.json(
+            {
+              error: `${existing.ref} is already open against this request.`,
+            },
+            { status: 409 }
+          );
+        }
       }
 
       const request = await createRequest({

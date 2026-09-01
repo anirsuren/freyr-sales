@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildMaterialPreview, extensionOf } from "@/lib/materialPreview";
 import { hasDocsStorage } from "@/lib/docsStorage";
 import { getRole } from "@/lib/role";
-import { canAccessModule } from "@/lib/moduleAccess";
 import { readMeetings } from "@/lib/meetings";
 import { readPublicFile } from "@/lib/publicFile";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
