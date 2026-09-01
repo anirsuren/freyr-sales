@@ -6,7 +6,6 @@ import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { StatTile } from "@/components/ui/StatTile";
 import { useToast } from "@/components/ui/Toast";
 import {
   monthKey,
@@ -317,49 +316,86 @@ export function AccrualPlanPage({
             Type an amount to hold that month. The rest share what is left.
           </p>
 
+          {/* THE SHAPE, WHERE THE DEAD SPACE WAS.
+              Anir, Sep 1: "I think you can just significantly make this UI
+              look a lot better, to be honest. I don't know what this is."
+
+              Six numbers were taking 400px of a two-column table whose middle
+              was empty: the month sat at the far left, its amount box at the
+              far right, and a hand-span of nothing in between. On a screen
+              whose entire subject is HOW the money is distributed, that empty
+              middle is exactly where the distribution belongs.
+
+              So each row draws its own share as a bar. Flat, front-loaded or
+              tailing off is now visible while you type rather than only after
+              you save and look at the list. Rows are tighter too — the bar
+              carries the reading, so the row does not need the height. */}
           <div className="mt-4 overflow-hidden rounded-xl border border-border-light">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-light bg-surface">
-                  <th className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-                    Month
-                  </th>
-                  <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-                    Amount (USD)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((l, i) => (
-                  <tr key={l.month} className="border-b border-border-light last:border-b-0">
-                    <td className="px-3 py-2 text-[13px] font-semibold text-text-primary">
-                      {monthLabel(l.month)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        value={l.amount}
-                        disabled={!canWrite}
-                        inputMode="numeric"
-                        onChange={(e) => {
-                          const next = [...lines];
-                          next[i] = {
-                            ...next[i],
-                            amount: e.target.value.replace(/[^0-9]/g, ""),
-                            pinned: true,
-                          };
-                          setLines(next);
-                          reshape({ lines: next });
+            <div className="flex items-center gap-4 border-b border-border-light bg-surface px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+              <span className="w-[96px] shrink-0">Month</span>
+              <span className="min-w-0 flex-1">Share</span>
+              <span className="w-[150px] shrink-0">Amount (USD)</span>
+            </div>
+            {lines.map((l, i) => {
+              const amount = Number(l.amount) || 0;
+              /* Against the BIGGEST month, not the contract: with an even
+                 spread every bar would otherwise sit at a sixth of the width
+                 and the row would look empty on a plan that is perfectly
+                 fine. Measured against the peak, an even split reads as six
+                 full bars, which is what "even" should look like. */
+              const peak = Math.max(
+                ...lines.map((x) => Number(x.amount) || 0),
+                1
+              );
+              const share = planned > 0 ? (amount / planned) * 100 : 0;
+              return (
+                <div
+                  key={l.month}
+                  className="flex items-center gap-4 border-b border-border-light px-3 py-2 last:border-b-0"
+                >
+                  <span className="w-[96px] shrink-0 text-[13px] font-semibold text-text-primary">
+                    {monthLabel(l.month)}
+                  </span>
+                  <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-surface"
+                    >
+                      <span
+                        className="block h-full rounded-full transition-[width] duration-200"
+                        style={{
+                          width: `${Math.max((amount / peak) * 100, amount > 0 ? 2 : 0)}%`,
+                          background: l.pinned ? "#0071E3" : "#7C3AED",
                         }}
-                        className={cn(
-                          "h-[34px] w-[160px] rounded-lg border px-3 text-right text-[13px] font-semibold text-text-primary outline-none focus:border-blue-primary disabled:bg-surface",
-                          l.pinned ? "border-blue-primary" : "border-border-light"
-                        )}
                       />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                    <span className="w-[42px] shrink-0 text-[11.5px] tnum text-text-tertiary">
+                      {share > 0 ? `${Math.round(share)}%` : ""}
+                    </span>
+                  </span>
+                  <input
+                    value={l.amount}
+                    disabled={!canWrite}
+                    inputMode="numeric"
+                    aria-label={`Amount for ${monthLabel(l.month)}`}
+                    onChange={(e) => {
+                      const next = [...lines];
+                      next[i] = {
+                        ...next[i],
+                        amount: e.target.value.replace(/[^0-9]/g, ""),
+                        pinned: true,
+                      };
+                      setLines(next);
+                      reshape({ lines: next });
+                    }}
+                    className={cn(
+                      "h-[34px] w-[150px] shrink-0 rounded-lg border px-3 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-primary disabled:bg-surface",
+                      l.pinned ? "border-blue-primary" : "border-border-light"
+                    )}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* THE BUTTON LIVES WITH THE THING IT SAVES (Anir, Sep 1: "are you
