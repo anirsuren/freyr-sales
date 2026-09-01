@@ -26,6 +26,7 @@ export function RequestSolutioningButton({
   customers,
   opportunities,
   members,
+  prefillOpportunityId = null,
 }: {
   /**
    * MAY THEY RAISE ONE. Asking is a write on Solutioning, not a create — see
@@ -44,6 +45,10 @@ export function RequestSolutioningButton({
     customerId: string | null;
   }[];
   members: string[];
+  /** The deal this is being raised from, when it is raised from one — the
+   *  opportunity page pre-fills it; the customer page has no single deal to
+   *  name and passes nothing. */
+  prefillOpportunityId?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -70,12 +75,19 @@ export function RequestSolutioningButton({
           /* Only this account's deals: the picker exists to attach the
              request to the deal it is for, and every other account's deals
              are noise on a page about this one. */
-          opportunities={opportunities.filter(
-            (o) => o.customerId === customerId
-          )}
+          opportunities={
+            /* Raised FROM a deal: that deal has to be pickable even when the
+               account link is missing, which is true of every imported row
+               (they carry a customer name, not an id). */
+            prefillOpportunityId
+              ? opportunities.filter(
+                  (o) => o.customerId === customerId || o.id === prefillOpportunityId
+                )
+              : opportunities.filter((o) => o.customerId === customerId)
+          }
           members={members}
           prefillCustomerId={customerId}
-          prefillOpportunityId={null}
+          prefillOpportunityId={prefillOpportunityId}
           prefillCompany={companyName}
           prefillLead={null}
           onClose={() => setOpen(false)}

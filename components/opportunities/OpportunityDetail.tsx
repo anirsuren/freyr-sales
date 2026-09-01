@@ -52,6 +52,7 @@ const LEVEL_TONE: Record<string, string> = {
 
 export function OpportunityDetail({
   verdict,
+  requestSolutioning = null,
   deal,
   bands,
   offerings,
@@ -61,6 +62,9 @@ export function OpportunityDetail({
   /** What this person may do to THIS deal — the privilege map joined to who is
    *  on the account and on the deal. Decided on the server. */
   verdict: { mayEdit: boolean; mayCreate: boolean; why: string };
+  /** Server-rendered so the page can ask the privilege table before drawing
+   *  it. Null when this person may not raise one. */
+  requestSolutioning?: React.ReactNode;
   deal: Opportunity;
   bands: Customer360Band[];
   offerings: { id: string; name: string; type?: string }[];
@@ -180,6 +184,10 @@ export function OpportunityDetail({
 
               View-only still gets the badge and the reason, because there the
               sentence IS the whole answer. */}
+          {/* Ask the Solutioning team for work on THIS deal. Sits before Edit
+              because it is the thing you came here wanting to do when the
+              Submissions and Presentations tabs read zero. */}
+          {requestSolutioning}
           {verdict.mayEdit ? (
             <button
               type="button"

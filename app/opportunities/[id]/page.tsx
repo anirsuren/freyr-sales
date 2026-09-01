@@ -12,6 +12,10 @@ import { readPrivileges } from "@/lib/privileges";
 import { readRecordTeams } from "@/lib/recordTeams";
 import { mayTouchOpportunity } from "@/lib/recordAccess";
 import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail";
+import { RequestSolutioningButton } from "@/components/customers/RequestSolutioningButton";
+import { listWorkspaceAccess } from "@/lib/accessStore";
+import { getDataMode } from "@/lib/dataMode";
+import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -94,9 +98,73 @@ export default async function OpportunityPage({
     ...(customerId ? { customerId } : {}),
   });
 
+  /**
+   * ASK FOR SOLUTIONING FROM THE DEAL IT IS FOR.
+   *
+   * Anir, Aug 31, looking at a deal's empty Presentations tab: "am I supposed
+   * to be able to add anything here? How do I add a presentation to this
+   * opportunity?"
+   *
+   * The customer page has raised requests in place since Aug 28, and the deal
+   * page — the one that lists submissions, presentations and meeting requests
+   * against this exact deal — had no way to start one. You could see that
+   * there were none and do nothing about it.
+   *
+   * Same dialog, same endpoint, and the deal is pre-filled, which the customer
+   * page cannot do: there, the request is for the account and the deal is a
+   * question. Here it is the answer.
+   */
+  const live = getDataMode() === "live";
+  const workspace = process.env.FREYR_WORKSPACE_ID;
+  const directory =
+    live && workspace ? await listWorkspaceAccess(workspace).catch(() => null) : null;
+  const members = live
+    ? [
+        ...new Set(
+          (directory?.members ?? [])
+            .filter((m) => m.active && m.accountType === "real")
+            .map((m) => m.name.trim())
+            .filter(Boolean)
+        ),
+      ].sort((a, b) => a.localeCompare(b))
+    : [
+        "Elena Rossi",
+        "Omar Haddad",
+        "Nina Kowalski",
+        "Marcus Chen",
+        "Grace Liu",
+        "Daniel Foster",
+      ];
+  /* Raising one is a WRITE on Solutioning, not a create — the same question
+     the route asks. Somebody who cannot open the module gets no button at
+     all rather than one that fails on submit. */
+  const mayRequestSolutioning =
+    (await canOpenModule("/solutioning")) &&
+    !(await moduleWriteRefusal("/solutioning"));
+
   return (
     <OpportunityDetail
       verdict={verdict}
+      requestSolutioning={
+        mayRequestSolutioning ? (
+          <RequestSolutioningButton
+            customerId={customerId ?? ""}
+            companyName={deal.customer}
+            customers={customers.map((c) => ({
+              id: c.id,
+              name: c.company_name ?? "",
+            }))}
+            opportunities={opportunities.map((o) => ({
+              id: o.id,
+              label: o.name || `${o.customer} deal`,
+              customer: o.customer,
+              customerId: o.customerId ?? null,
+            }))}
+            members={members}
+            prefillOpportunityId={deal.id}
+          />
+        ) : null
+      }
       deal={deal}
       bands={bands}
       offerings={offerings.map((o) => ({
