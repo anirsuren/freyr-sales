@@ -2462,8 +2462,22 @@ export function BarChart({
                       d.value > 0
                         ? d.color || VIZ.blue
                         : "var(--border-light)",
+                    /* GLOW, NOT AN OUTLINE (Anir, Sep 1: "I hate those
+                       fucking lines. The shine is fine, but that hard line
+                       rectangle is so bad").
+
+                       It was two hard rings — a 2px white one and a 4px
+                       coloured one — which drew a literal rectangle around the
+                       hovered bar, squared corners and all, right over the
+                       bar's own rounded top. `0 0 0 Npx` has no blur by
+                       definition, so it can only ever be an outline.
+
+                       One blurred shadow in the bar's own colour instead: the
+                       bar lifts and glows, nothing is drawn around it. */
                     boxShadow:
-                      lit === i ? `0 0 0 2px #fff, 0 0 0 4px ${ringColor}` : undefined,
+                      lit === i
+                        ? `0 0 16px 2px ${ringColor}80, 0 4px 14px ${ringColor}4D`
+                        : undefined,
                   }}
                 >
                   {/* The unverified slice: the same colour washed out, sitting

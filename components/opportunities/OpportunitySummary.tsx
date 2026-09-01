@@ -629,21 +629,22 @@ export function OpportunitySummary({
         </section>
       ) : (
         <>
-          {/* THINNER WHEN IT IS CLOSED (Anir, Sep 1: "can you make sure it's
-              a lot thinner? It does not need to be that thick").
+          {/* THIN, AND STILL WHEN IT OPENS.
 
-              Closed, this is a one-line summary and a chevron, and it was
-              wearing 20px of padding top and bottom plus a two-line stack — a
-              90px band whose whole job is to say "the chart is down here if
-              you want it". Open, the padding earns its keep, so it comes back
-              only then. */}
+              Anir, Sep 1: "can you make sure it's a lot thinner? It does not
+              need to be that thick" — and then, on the first attempt at that:
+              "I don't like how the text moves. It's kind of annoying."
+
+              Both were right. It was a 90px band whose whole job was to say
+              the chart is below. But making it thin by shrinking the padding
+              AND the type AND the line arrangement on toggle meant the title
+              jumped left and changed size every time you pressed it.
+
+              One line, one size, one padding, open or closed. Opening adds the
+              chart underneath and moves nothing above it — the one-line header
+              is what made it thin, and the shrinking never was. */}
           {chart.length > 0 && (
-            <section
-              className={cn(
-                "rounded-xl border border-border-light bg-white shadow-card transition-[padding]",
-                chartOpen ? "p-5" : "px-4 py-2.5"
-              )}
-            >
+            <section className="rounded-xl border border-border-light bg-white px-4 py-3 shadow-card">
               {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
                   show the graph thing, just make it a drop-down like you do
                   this somewhere else"). A labelled button beside the heading
@@ -657,33 +658,13 @@ export function OpportunitySummary({
                 aria-expanded={chartOpen}
                 className="group flex w-full cursor-pointer items-start justify-between gap-3 text-left"
               >
-                <span
-                  className={cn(
-                    "min-w-0",
-                    /* Closed, the title and its figure sit on ONE line; the
-                       stacked version is what made the strip tall. */
-                    !chartOpen && "flex flex-wrap items-baseline gap-x-2.5"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex items-center gap-2 font-semibold text-text-primary",
-                      chartOpen ? "text-[15px]" : "text-[13.5px]"
-                    )}
-                  >
-                    <TrendingUp
-                      size={chartOpen ? 15 : 14}
-                      strokeWidth={2}
-                      className="text-blue-primary"
-                    />
+                {/* One line, one size, open or closed. */}
+                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
+                  <span className="flex items-center gap-2 text-[14px] font-semibold text-text-primary">
+                    <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
                     Where this money lands
                   </span>
-                  <span
-                    className={cn(
-                      "text-[12.5px] text-text-secondary",
-                      chartOpen ? "mt-0.5 block" : "inline"
-                    )}
-                  >
+                  <span className="text-[12.5px] text-text-secondary">
                     {money(grand.total)}{" "}
                     {spread ? "accruing" : `of ${measureLabel}`} across{" "}
                     {chart.length} {chart.length === 1 ? "period" : "periods"}
