@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Check, File, FileSpreadsheet, FileText, Loader2, Plus, Presentation, Trash2, UploadCloud, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { Opportunity } from "@/lib/opportunitiesShared";
@@ -26,6 +26,37 @@ import type { Opportunity } from "@/lib/opportunitiesShared";
  * them. This creates a real contract through the same endpoint and leaves the
  * rest to be filled in there.
  */
+
+/** Colour and icon by file type — the standing rule that a chip is never a
+ *  plain grey row you have to read the filename to identify. */
+const KINDS: { match: RegExp; color: string; icon: LucideIcon }[] = [
+  { match: /\.pdf$/i, color: "#C4342B", icon: FileText },
+  { match: /\.(docx?|rtf|txt)$/i, color: "#2B579A", icon: FileText },
+  { match: /\.(xlsx?|csv)$/i, color: "#1D6F42", icon: FileSpreadsheet },
+  { match: /\.(pptx?|key)$/i, color: "#D24726", icon: Presentation },
+];
+function kindOf(name: string) {
+  return (
+    KINDS.find((k) => k.match.test(name)) ?? { color: "#0071E3", icon: File }
+  );
+}
+const ACCEPT = ".pdf,.doc,.docx,.rtf,.txt,.xls,.xlsx,.csv,.ppt,.pptx,.key,.zip";
+
+type Staged = {
+  key: string;
+  name: string;
+  size: number;
+  status: "uploading" | "done" | "error";
+  docsPath?: string;
+  fileName?: string;
+  error?: string;
+};
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const INPUT =
   "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus";
@@ -63,6 +94,51 @@ export function NewContractDialog({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [docs, setDocs] = useState<Staged[]>([]);
+  const [dragging, setDragging] = useState(false);
+
+  /* Uploaded as you pick them, so the signed PDF is already stored by the time
+     you press Create and a file that will not upload says so while there is
+     still something to do about it. */
+  async function stageFiles(list: FileList | null) {
+    const picked = Array.from(list ?? []);
+    for (const file of picked) {
+      const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
+      setDocs((cur) => [
+        ...cur,
+        { key, name: file.name, size: file.size, status: "uploading" },
+      ]);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/contracts/upload", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.docsPath)
+          throw new Error(data?.error || "That file did not upload.");
+        setDocs((cur) =>
+          cur.map((d) =>
+            d.key === key
+              ? { ...d, status: "done", docsPath: data.docsPath, fileName: data.fileName }
+              : d
+          )
+        );
+      } catch (e) {
+        setDocs((cur) =>
+          cur.map((d) =>
+            d.key === key
+              ? {
+                  ...d,
+                  status: "error",
+                  error: e instanceof Error ? e.message : "That file did not upload.",
+                }
+              : d
+          )
+        );
+      }
+    }
+  }
+
+  const uploading = docs.some((d) => d.status === "uploading");
 
   async function create() {
     if (!name.trim()) {
@@ -92,6 +168,19 @@ export function NewContractDialog({
             ...(owner.trim() ? { owner: owner.trim() } : {}),
             ...(note.trim() ? { note: note.trim() } : {}),
             schedule: [],
+            /* Only the ones that landed. A row that failed is still on screen
+               saying so, and carrying it would attach a document with nothing
+               behind it. */
+            docs: docs
+              .filter((d) => d.status === "done" && d.docsPath)
+              .map((d) => ({
+                id: `cd-${d.key}`,
+                name: d.name,
+                docsPath: d.docsPath,
+                fileName: d.fileName ?? d.name,
+                addedBy: "",
+                addedAt: new Date().toISOString(),
+              })),
           },
         }),
       });
@@ -191,6 +280,109 @@ export function NewContractDialog({
           />
         </Field>
 
+        {/* ATTACHMENTS. A contract is the signed PDF, the statement of work,
+            the amendment that came after it — not a single pasted link, which
+            is all this record could hold before. */}
+        <div>
+          <span className="text-[12px] font-semibold text-text-primary">
+            Documents
+            <span className="ml-1.5 font-normal text-text-secondary">
+              The signed contract, the SOW, anything that belongs with it.
+            </span>
+          </span>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              void stageFiles(e.dataTransfer.files);
+            }}
+            className={`mt-1.5 rounded-lg border border-dashed transition-colors ${
+              dragging
+                ? "border-blue-primary bg-blue-light/50"
+                : "border-border-light bg-surface/40"
+            }`}
+          >
+            <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                <UploadCloud size={16} strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12.5px] font-semibold text-text-primary">
+                  Choose files, or drop them here
+                </span>
+                <span className="block text-[11.5px] text-text-secondary">
+                  Word, PDF, Excel, PowerPoint — as many as you need.
+                </span>
+              </span>
+              <input
+                type="file"
+                multiple
+                accept={ACCEPT}
+                className="sr-only"
+                onChange={(e) => {
+                  void stageFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {docs.length > 0 && (
+              /* Fixed height, scrolls inside itself: a shelf that grows with
+                 every file walks the Create button down under the cursor. */
+              <div className="max-h-[126px] overflow-y-auto border-t border-border-light/70 px-2 py-1">
+                {docs.map((d) => {
+                  const meta = kindOf(d.name);
+                  const Icon = meta.icon;
+                  return (
+                    <div key={d.key} className="flex items-center gap-2.5 px-1.5 py-1.5">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
+                        style={{ background: `${meta.color}14`, color: meta.color }}
+                      >
+                        <Icon size={13} strokeWidth={2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                          {d.name}
+                        </span>
+                        <span
+                          className={`block text-[11px] ${
+                            d.status === "error" ? "text-error" : "text-text-tertiary"
+                          }`}
+                        >
+                          {d.status === "error"
+                            ? d.error
+                            : d.status === "uploading"
+                              ? "Uploading…"
+                              : fileSize(d.size)}
+                        </span>
+                      </span>
+                      {d.status === "uploading" && (
+                        <Loader2 size={14} className="shrink-0 animate-spin text-blue-primary" />
+                      )}
+                      {d.status === "done" && (
+                        <Check size={14} strokeWidth={2.6} className="shrink-0 text-success" />
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${d.name}`}
+                        onClick={() => setDocs((cur) => cur.filter((x) => x.key !== d.key))}
+                        className="shrink-0 cursor-pointer rounded p-1 text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                      >
+                        <Trash2 size={13} strokeWidth={2} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* It is FOR this deal, and says so rather than making you trust that
             it worked out which one. */}
         <p className="rounded-lg border border-border-light bg-surface/60 px-3 py-2.5 text-[12.5px] text-text-secondary">
@@ -210,7 +402,7 @@ export function NewContractDialog({
             </button>
             <button
               type="button"
-              disabled={busy || !name.trim()}
+              disabled={busy || uploading || !name.trim()}
               onClick={create}
               className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -219,7 +411,7 @@ export function NewContractDialog({
               ) : (
                 <Plus size={14} strokeWidth={2.4} />
               )}
-              {busy ? "Creating…" : "Create the contract"}
+              {uploading ? "Uploading…" : busy ? "Creating…" : "Create the contract"}
             </button>
           </span>
         </div>

@@ -4,6 +4,7 @@ import { getDataMode } from "./dataMode";
 import { spreadEvenly } from "./revenueAccrualsShared";
 import {
   CONTRACT_STATUSES,
+  type ContractDoc,
   EMPTY_CONTRACTS,
   nextContractReference,
   type Contract,
@@ -97,6 +98,25 @@ function normalizeContract(v: unknown): Contract | null {
     signedOn: str(r.signedOn, 20) || undefined,
     owner: str(r.owner, 80) || undefined,
     documentUrl: str(r.documentUrl, 2000) || undefined,
+    /* Every field named or dropped by the next write, same as everywhere. */
+    docs: (Array.isArray(r.docs) ? r.docs : [])
+      .map((v) => {
+        const d = (v ?? {}) as Partial<ContractDoc>;
+        const id = str(d.id, 60);
+        const name = str(d.name, 200);
+        if (!id || !name) return null;
+        return {
+          id,
+          name,
+          docsPath: str(d.docsPath, 400) || undefined,
+          fileName: str(d.fileName, 200) || undefined,
+          url: str(d.url, 2000) || undefined,
+          addedBy: str(d.addedBy, 80),
+          addedAt: str(d.addedAt, 40),
+          note: str(d.note, 400) || undefined,
+        } as ContractDoc;
+      })
+      .filter((d): d is ContractDoc => d !== null),
     signedBy: str(r.signedBy, 120) || undefined,
     /* Which booked-revenue goal this counts towards. Normalised like every
        other field rather than spread through, so a browser cannot invent a
@@ -275,6 +295,8 @@ export type ContractInput = {
   signedBy?: string;
   schedule?: { month: string; amount: number }[];
   note?: string;
+  /** Files attached when it was created, or added later. */
+  docs?: ContractDoc[];
 };
 
 export async function saveContract(
@@ -289,6 +311,18 @@ export async function saveContract(
     const draft = normalizeContract({
       ...existing,
       ...input,
+      /* WHO ATTACHED IT IS THE SERVER'S TO SAY. The browser sends the file and
+         its name; it does not get to name the person who added it, and a doc
+         arriving without a stamp gets this write's. */
+      ...(input.docs
+        ? {
+            docs: input.docs.map((d) => ({
+              ...d,
+              addedBy: d.addedBy?.trim() ? d.addedBy : who,
+              addedAt: d.addedAt || new Date().toISOString(),
+            })),
+          }
+        : {}),
       id: existing?.id ?? uid(),
       /* The reference is minted once and never rewritten — it is the key the
          delivery platform holds, and a contract that renumbers itself breaks

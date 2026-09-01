@@ -76,6 +76,31 @@ export type ContractGoalLink = {
   postedAt?: string;
 };
 
+/**
+ * A FILE ON A CONTRACT.
+ *
+ * Anir, Aug 31: "Why the fuck would it not take attachments? All of them need
+ * attachments."
+ *
+ * A contract carried one `documentUrl` — a single link somebody pasted — which
+ * is not what a contract is. There is the signed PDF, the statement of work,
+ * the amendment that came after it, and the purchase order. Same shape the
+ * solutioning and meeting stores already use, so the viewer and the download
+ * route need nothing new to render one.
+ */
+export type ContractDoc = {
+  id: string;
+  name: string;
+  /** Where the bytes live in Freya.Docs when it is an uploaded file. */
+  docsPath?: string;
+  fileName?: string;
+  /** A link somebody pasted instead of uploading. */
+  url?: string;
+  addedBy: string;
+  addedAt: string;
+  note?: string;
+};
+
 export type Contract = {
   id: string;
   /** THE HANDSHAKE KEY: "that ID will act as a link between this system and
@@ -103,7 +128,10 @@ export type Contract = {
    * the legal team already uses, and duplicating it here would create a second
    * source of truth for the one document that must not have one.
    */
+  /** Superseded by `docs`, kept so older rows keep rendering their link. */
   documentUrl?: string;
+  /** Everything attached to this contract. */
+  docs?: ContractDoc[];
   /** Who signed on the customer side. Part of "is this verified". */
   signedBy?: string;
   /**
