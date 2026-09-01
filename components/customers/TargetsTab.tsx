@@ -2,9 +2,10 @@
 
 import { TabActions } from "./TabActions";
 import { useMemo, useState } from "react";
-import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, UserRound, DoorOpen } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, Trash2, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { countryOptions } from "@/lib/countries";
 import { PersonSelect } from "@/components/performance/bits";
@@ -114,6 +115,9 @@ export function TargetsTab({
   const [openWho, setOpenWho] = useState(true);
   const [openPursuit, setOpenPursuit] = useState(true);
   const [draft, setDraft] = useState({ ...BLANK_TARGET });
+  /* Red, and it asks first — the standing rule for every delete in the app. */
+  const [confirmRemove, setConfirmRemove] = useState<TargetAccount | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [busy, setBusy] = useState(false);
   const set = (patch: Partial<typeof BLANK_TARGET>) =>
     setDraft((d) => ({ ...d, ...patch }));
@@ -148,6 +152,26 @@ export function TargetsTab({
       toast(error instanceof Error ? error.message : "That didn't save.", "error");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function removeTarget(target: TargetAccount) {
+    setRemoving(true);
+    try {
+      const res = await fetch("/api/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "remove", id: target.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "That didn't save.");
+      setList(data.state.targets);
+      setConfirmRemove(null);
+      toast(`${target.name} is off the target list.`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -414,7 +438,15 @@ export function TargetsTab({
                     Quarter
                   </th>
                   {showConnection && (
-                    <th className="w-[11%] px-2 py-2.5 pr-4">Connection</th>
+                    <th className="w-[11%] px-2 py-2.5">Connection</th>
+                  )}
+                  {/* ADD WITHOUT REMOVE (found in the loop, Sep 1). This table
+                      has "Add target" and offered no way to take one off —
+                      even though /api/targets has had an `op: "remove"` all
+                      along. A mistyped company sat on the list permanently.
+                      Left-aligned, the standing rule for this column. */}
+                  {canEdit && (
+                    <th className="w-[80px] px-2 py-2.5 pr-4 text-left">Actions</th>
                   )}
                 </tr>
               </thead>
@@ -538,6 +570,19 @@ export function TargetsTab({
                           ) : (
                             <span className="text-[11px] text-text-tertiary">·</span>
                           )}
+                        </td>
+                      )}
+                      {canEdit && (
+                        <td className="px-2 py-2.5 pr-4 text-left">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRemove(t)}
+                            aria-label={`Remove ${t.name}`}
+                            title={`Remove ${t.name} from the target list`}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                          >
+                            <Trash2 size={14} strokeWidth={2} />
+                          </button>
                         </td>
                       )}
                     </tr>
@@ -876,6 +921,23 @@ export function TargetsTab({
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        busy={removing}
+        onClose={() => setConfirmRemove(null)}
+        title="Remove this target?"
+        body={
+          <>
+            <b>{confirmRemove?.name}</b> comes off the target list.
+          </>
+        }
+        detail="It is only the prospect list — nothing that already exists for this company is touched."
+        confirmLabel="Remove target"
+        onConfirm={() => {
+          if (confirmRemove) void removeTarget(confirmRemove);
+        }}
+      />
     </div>
   );
 }
