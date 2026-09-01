@@ -205,6 +205,19 @@ export function EditDealDialog({
     <Modal
       open
       onClose={onClose}
+      /* THE FRAME DOES NOT MOVE (Anir, Aug 31: "stop changing the dimensions
+         whenever I click on them. It has to stay the same").
+         `tall` pins the height, so a short page and a long page occupy the
+         same box and the content scrolls inside it. Without it the dialog was
+         sized by whatever page was showing, and every Add and Back resized and
+         re-centred the whole thing under the cursor. */
+      tall
+      /* A FIXED height, not a floor. `tall` alone still let a short page
+         shrink the box — the contract page came in 19px shorter and 10px
+         further down the screen, which is exactly the jump he is describing.
+         An explicit height means every page occupies the same rectangle and
+         the content scrolls inside it. */
+      dialogClassName="h-[min(820px,calc(100vh-2rem))]"
       title={
         adding === "contracts"
           ? "New contract"
@@ -222,7 +235,7 @@ export function EditDealDialog({
         /* A PAGE OF THIS DIALOG, NOT A SECOND ONE. Same frame, same width, a
            back arrow where the fields were — so it reads as going deeper into
            the deal rather than as a new thing landing on top of it. */
-        <div className="flex min-h-[420px] flex-col">
+        <div className="flex min-h-full flex-col">
           {adding === "contracts" ? (
             <NewContractDialog
               chromeless
@@ -277,7 +290,7 @@ export function EditDealDialog({
       ) : (
       /* A FIXED FLOOR, so the frame does not jump when the error line
           appears or a picker opens under a field. */
-      <div className="flex min-h-[420px] flex-col">
+      <div className="flex min-h-full flex-col">
         <div className="space-y-4">
           <Field label="What is this deal called?">
             <input
