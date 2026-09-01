@@ -267,6 +267,7 @@ export function EditDealDialog({
             <input
               autoFocus
               value={name}
+              maxLength={200}
               onChange={(e) => setName(e.target.value)}
               className={INPUT}
               placeholder="GRI — Fortrea"

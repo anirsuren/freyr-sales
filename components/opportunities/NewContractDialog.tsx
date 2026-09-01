@@ -230,6 +230,7 @@ export function NewContractDialog({
           <input
             autoFocus
             value={name}
+            maxLength={200}
             onChange={(e) => setName(e.target.value)}
             className={INPUT}
             placeholder={deal.name}

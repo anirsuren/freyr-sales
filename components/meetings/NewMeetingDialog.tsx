@@ -269,6 +269,7 @@ export function NewMeetingDialog({
           <Field label="What is this meeting about">
             <Input
               value={title}
+              maxLength={200}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Initial meeting with GSK regulatory affairs"
             />

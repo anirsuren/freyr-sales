@@ -1186,6 +1186,7 @@ export function ContractsModule({
               <Field label="Contract name">
                 <Input
                   value={editing.name}
+                  maxLength={200}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   placeholder="Freya.Label managed service"
                 />

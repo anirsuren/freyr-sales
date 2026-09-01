@@ -1892,6 +1892,7 @@ export function NewRequestDialog({
               <input
                 autoFocus
                 value={title}
+                maxLength={200}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={
                   kind === "submission"
