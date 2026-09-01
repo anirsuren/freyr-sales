@@ -160,7 +160,7 @@ export function CustomerActivityTab({
           <div>
             <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
               Offering activity
-              <InfoHint text={"There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery.\nEach one is either Initiated, Under progress or Completed.\nOne activity per offering is marked Current, and that is the one the heat map reads."} />
+              <InfoHint text={"There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery.\nEach one is either Initiated, Under progress or Completed.\nOne activity per offering is marked Current, and that is the one the Coverage heat map shows."} />
             </h2>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">
               {total > 0
@@ -186,9 +186,9 @@ export function CustomerActivityTab({
               Nothing logged for this account yet.
             </p>
             <p className="mx-auto mt-1 max-w-[420px] text-[12.5px] text-text-secondary">
-              Pick the offering you are selling and record where it stands, a
-              first conversation is a Lead, a paid trial is a Pilot. You can log
-              one that has not happened yet by dating it in the future.
+              Pick the offering you are selling and say where it stands. A first
+              conversation is a Lead. A paid trial is a Pilot. You can also log
+              something that has not happened yet by giving it a future date.
             </p>
             {canEdit && (
               <Button className="mt-4" onClick={() => setPicking(true)}>

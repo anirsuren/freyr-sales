@@ -113,8 +113,10 @@ export default async function TeamPage() {
      * total is the sum of the offering rows, weighted applies each row's own
      * confidence.
      */
+    /* The "and not Future" that used to open this filter went with the
+       level itself (Suren, Sep 1: "just pipeline"). */
     const openDeals = opps.opportunities.filter(
-      (o) => o.level !== "Future" && o.status !== "Won" && o.status !== "Lost"
+      (o) => o.status !== "Won" && o.status !== "Lost"
     );
     const ownerTotals = new Map<
       string,
@@ -385,7 +387,7 @@ export default async function TeamPage() {
       { openValue: number; weighted: number; openCount: number }
     >();
     for (const o of opportunities) {
-      if (!o.owner || o.level === "Future") continue;
+      if (!o.owner) continue;
       if (o.status === "Won" || o.status === "Lost") continue;
       const key = o.owner.trim().toLowerCase();
       const row = byOwner.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
@@ -418,7 +420,7 @@ export default async function TeamPage() {
   if (getDataMode() === "live") {
     const { opportunities } = await readOpportunities();
     const open = opportunities.filter(
-      (o) => o.level !== "Future" && o.status !== "Won" && o.status !== "Lost"
+      (o) => o.status !== "Won" && o.status !== "Lost"
     );
     totalPipeline = open.reduce((s, o) => s + opportunityValue(o), 0);
     totalWeighted = open.reduce((s, o) => s + Math.round(weightedValue(o)), 0);

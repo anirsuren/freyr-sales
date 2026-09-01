@@ -581,7 +581,7 @@ export function ForecastRisk({
               Forecast risk
             </h2>
             <InfoHint
-              text={`Your weighted commit, split by how recently each deal was actually touched. A deal that has had no logged call, email or note for more than ${rottingDays} days counts as exposed.`}
+              text={`The money in your forecast, split by how recently each deal was actually touched. A deal with no call, email or note logged for more than ${rottingDays} days counts as exposed.`}
             />
           </div>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
@@ -617,12 +617,12 @@ export function ForecastRisk({
                   Active vs exposed
                 </h3>
                 <InfoHint
-                  text={`Your weighted commit, split at the ${rottingDays}-day inactivity threshold. Hover either half, or any bar, to see the deals behind it.`}
+                  text={`The same money again, with every deal untouched for more than ${rottingDays} days pulled out of it. Hover either half, or any bar, to see the deals behind it.`}
                 />
               </div>
               <p className="mt-0.5 text-[10.5px] text-text-secondary">
-                The same {formatMoney(commit)} of weighted commit, split by how
-                recently it was worked
+                The same {formatMoney(commit)} of forecast, split by how
+                recently each deal was worked
               </p>
             </div>
           </div>
@@ -639,7 +639,7 @@ export function ForecastRisk({
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Active",
-                      `Touched within the last ${rottingDays} days. ${activePct}% of the weighted commit.`,
+                      `Called, emailed or noted in the last ${rottingDays} days. That is ${activePct}% of the forecast.`,
                       activeWeighted,
                       MEASURE,
                       warm
@@ -660,7 +660,7 @@ export function ForecastRisk({
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Exposed",
-                      `No logged activity in over ${rottingDays} days: ${riskPct}% of the weighted commit.`,
+                      `Nothing logged for more than ${rottingDays} days. That is ${riskPct}% of the forecast.`,
                       riskWeighted,
                       RISK,
                       quiet
@@ -686,7 +686,7 @@ export function ForecastRisk({
                 list={warm}
                 hover={splitHover(
                   "Active",
-                  `Touched within the last ${rottingDays} days. ${activePct}% of the weighted commit.`,
+                  `Called, emailed or noted in the last ${rottingDays} days. That is ${activePct}% of the forecast.`,
                   activeWeighted,
                   MEASURE,
                   warm
@@ -702,7 +702,7 @@ export function ForecastRisk({
                 list={quiet}
                 hover={splitHover(
                   "Exposed",
-                  `No logged activity in over ${rottingDays} days: ${riskPct}% of the weighted commit.`,
+                  `Nothing logged for more than ${rottingDays} days. That is ${riskPct}% of the forecast.`,
                   riskWeighted,
                   RISK,
                   quiet
@@ -958,8 +958,8 @@ export function ForecastRisk({
                 </div>
               ) : (
                 <p className="py-8 text-center text-[12px] text-text-secondary">
-                  There are no open deals in the book yet, so there is nothing to
-                  measure.
+                  No open deals yet, so there is nothing to measure. Create a
+                  deal in the pipeline and it will show up here.
                 </p>
               )}
             </div>

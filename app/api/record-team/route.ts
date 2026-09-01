@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
 import { setRecordTeam, type TeamedRecord } from "@/lib/recordTeams";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  moduleWriteRefusal,
+  recordWriteRefusal,
+} from "@/lib/moduleAccessServer";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +47,41 @@ export async function POST(req: NextRequest) {
 
   const refusal = await moduleWriteRefusal(owningModule);
   if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
+  /**
+   * AND YOU CANNOT PUT YOURSELF ON SOMEBODY ELSE'S RECORD.
+   *
+   * This is the route that decides who is on a record, so without a record-level
+   * check it is the way around every other record-level check: add yourself as
+   * the owner here, and the account you could only view a second ago is yours to
+   * edit. The module check above is not enough, because the whole point of
+   * Suren's Sep 1 rule is that holding Edit on Customers no longer means holding
+   * Edit on every customer.
+   *
+   * An UNCLAIMED record still accepts the first person to take it. That is how
+   * anything ever gets an owner, and it matches what recordWriteRefusal answers
+   * for a record nobody is on.
+   */
+  {
+    const record =
+      type === "customer"
+        ? await getDb()
+            .customers.get(id)
+            .then((c) =>
+              c
+                ? {
+                    id: c.id,
+                    owner: c.owner,
+                    owner_user_id: c.owner_user_id,
+                    created_by: c.created_by,
+                  }
+                : { id }
+            )
+            .catch(() => ({ id }))
+        : { id };
+    const denied = await recordWriteRefusal(owningModule, record);
+    if (denied) return NextResponse.json({ error: denied }, { status: 403 });
+  }
 
   try {
     const me = await getCurrentUser();

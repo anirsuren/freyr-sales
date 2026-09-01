@@ -294,7 +294,7 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
           <RolesGuide />
           <InfoHint
             text={
-              "The role somebody joins on: BD Member, BD Owner, Solutioning Member or Admin. It is the base — privileges tick on top of it and only ever add.\nAdmin is the one thing only this can grant: much of the app checks it directly.\nOnly an admin can change it, and the server refuses it from anyone else."
+              "The role somebody joins on. BD Member, BD Owner, Solutioning Member or Admin. Privileges tick on top of a role and only ever add to it.\nAdmin is the one thing only a role can hand out.\nOnly an admin can change this, and nobody else can get round it."
             }
           />
         </p>
@@ -520,6 +520,10 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
             </>
           )
         }
+        confirmLabel={pendingPriv?.to ? "Give it" : "Take it away"}
+        /* Red is for what cannot be taken back. Giving a privilege is an
+           ordinary change, so only taking one away wears the red. */
+        tone={pendingPriv?.to ? "primary" : "destructive"}
       />
 
       {/* A ROLE CHANGE ASKS FIRST (Anir, Aug 15: "whenever I'm changing

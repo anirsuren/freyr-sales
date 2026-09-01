@@ -476,7 +476,7 @@ export function ContractsModule({
     <div>
       <PageHeader
         title="Contracts"
-        subtitle="Where sales closes. The baseline of every contract and its revenue schedule, with the reference the delivery platform reads it by."
+        subtitle="Where sales closes. Every contract, the months its money is earned in, and the reference number the delivery platform knows it by."
         action={
           canWrite ? (
             <button
@@ -545,7 +545,7 @@ export function ContractsModule({
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <AlertTriangle size={15} strokeWidth={2} style={{ color: "#B45309" }} />
             Deals sitting at “Create contract”
-            <InfoHint text="These deals have reached the “Create contract” status and nobody has drafted the contract yet. That status is where sales hands over to delivery, so anything sitting here is a handover that has not happened." />
+            <InfoHint text="These deals are marked “Create contract” and nobody has written the contract yet. That is the point where sales hands the deal to delivery. Every deal here is a handover still waiting." />
           </h2>
           <div className="mt-2 divide-y divide-border-light">
             {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((d) => (
@@ -676,7 +676,7 @@ export function ContractsModule({
           }
           description={
             contracts.length === 0
-              ? "A contract is created here when a deal reaches “Create contract”. It carries the baseline — name, customer, value, schedule — and a reference the delivery platform reads it by."
+              ? "Nothing has been contracted yet. Use New contract, up in the corner, to write the first one. A deal that reaches “Create contract” also turns up here waiting for one."
               : "Clear the search or the filter."
           }
         />
@@ -942,7 +942,7 @@ export function ContractsModule({
                           <p className="mt-3.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                             <Coins size={13} strokeWidth={2.2} className="text-blue-primary" />
                             Schedule revenue
-                            <InfoHint text="What delivery will recognise, month by month. Once a contract is Ready for delivery or Signed this schedule supersedes the deal's accrual plan, because it is decided after the contract starts and is therefore the firmer number." />
+                            <InfoHint text="How much of this contract is earned in each month. Once the contract is Ready for delivery or Signed, reports use these months instead of the plan on the deal. This one is written after the contract starts, so it is the more reliable number." />
                             <span className="ml-1 font-normal text-text-secondary tnum">
                               {formatMoney(total)} across {c.schedule.length}{" "}
                               {c.schedule.length === 1 ? "month" : "months"}
@@ -1586,7 +1586,7 @@ export function ContractsModule({
         title="Delete this contract?"
         body={
           confirmDelete
-            ? `${confirmDelete.reference} — ${confirmDelete.name} — goes for good, and the delivery platform loses the reference it reads this by. If it simply fell through, set the status to Cancelled instead.`
+            ? `${confirmDelete.reference}, ${confirmDelete.name}, goes for good. The delivery platform loses the reference it knows this contract by. If the deal simply fell through, set the status to Cancelled instead of deleting.`
             : ""
         }
         confirmLabel="Delete contract"

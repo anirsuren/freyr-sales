@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-react";
+import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn } from "@/lib/utils";
 import { DimensionStack } from "./DimensionStack";
 import {
   estimateOf,
+  opportunityConfidence,
   signDateOf,
   sumEstimates,
   type EstimateMeasure,
@@ -43,19 +45,27 @@ import {
  * entered says so in a sentence instead of drawing a grid of dots.
  */
 
-export type SummaryDimension = "group" | "customer" | "offering" | "revenue";
+export type SummaryDimension = "group" | "customer" | "offering" | "revenue" | "owner";
 
 export const DIMENSION_LABEL: Record<SummaryDimension, string> = {
   group: "Customer group",
   customer: "Customer",
   offering: "Offering",
-  revenue: "Revenue status",
+  /* Suren, Sep 1: "one of the groupings you want to add is maybe owners —
+     all the deals related to owner that we can do". */
+  owner: "Owner",
+  /* HIS WORD FOR IT (Suren, Sep 1: "this revenue status, we call this
+     something — what do we call it? They call it an opportunity category").
+     Same rename as the Level field on the deal: one vocabulary for the thing
+     that says whether a deal is Go get, Pipeline or High confidence. */
+  revenue: "Opportunity category",
 };
 
 export const DIMENSION_COLOR: Record<SummaryDimension, string> = {
   group: "#0071E3",
   customer: "#0F766E",
   offering: "#B4318F",
+  owner: "#C2410C",
   revenue: "#7C3AED",
 };
 
@@ -150,7 +160,7 @@ function fromDate(iso: string | undefined, timeline: Timeline): string | null {
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function periodLabel(key: string, timeline: Timeline): string {
+export function periodLabel(key: string, timeline: Timeline): string {
   if (timeline === "monthly") {
     const [y, m] = key.split("-");
     return `${MONTH_NAMES[Number(m) - 1]} '${y.slice(2)}`;
@@ -177,6 +187,10 @@ type Node = {
   children: Node[];
 };
 
+/** What an owner row says when the deal has nobody on it. Kept next to the
+ *  only two places that care: the label builder and the mark below. */
+export const NO_OWNER_LABEL = "Nobody yet";
+
 function buildTree(
   deals: Opportunity[],
   order: SummaryDimension[],
@@ -193,8 +207,26 @@ function buildTree(
     if (list) list.push(d);
     else buckets.set(k, [d]);
   }
+  /* "NOBODY YET" IS NOT A NAME, SO IT DOES NOT SORT LIKE ONE.
+     Anir, Sep 1: "why on earth is nobody in front of Suren? Shouldn't that
+     nobody be at the end." Alphabetically N falls between Anir and Suren, so
+     the unassigned bucket, which is 97 of the 102 deals and by far the biggest
+     row, was sitting in the middle of the real people as though it were one of
+     them.
+
+     Placeholders go last in every dimension, not just Owner: an unassigned
+     bucket is the leftovers, and the leftovers belong at the bottom of the
+     list whatever the column is called. Everything else keeps sorting by name,
+     which is what makes a row findable. */
+  const isLeftovers = (label: string) =>
+    label === NO_OWNER_LABEL || /^(no |unassigned|nobody|none$)/i.test(label);
   return [...buckets.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
+    .sort((a, b) => {
+      const la = isLeftovers(a[0]);
+      const lb = isLeftovers(b[0]);
+      if (la !== lb) return la ? 1 : -1;
+      return a[0].localeCompare(b[0]);
+    })
     .map(([label, rows]) => {
       const key = `${path}/${dim}:${label}`;
       return {
@@ -209,6 +241,31 @@ function buildTree(
 
 function DimensionMark({ dim, label }: { dim: SummaryDimension; label: string }) {
   if (dim === "customer") return <CompanyLogo name={label} className="h-6 w-6 shrink-0" />;
+
+  /* A PERSON GETS THEIR FACE, the way an account gets its logo two lines up.
+     Anir, Sep 1: "for the owner, I need the profile pictures to show up for
+     the people instead of that icon of the arrow." Every owner row was wearing
+     the same orange trending-up arrow, which says nothing about who owns it
+     and, worse, is the identical glyph the revenue dimension uses.
+
+     "Nobody yet" is deliberately NOT given an avatar: it is not a person, and
+     Avatar resolves photos by NAME, so handing it a placeholder string is
+     exactly how somebody else's face ends up on a row that has no owner. It
+     keeps a neutral outline instead. */
+  if (dim === "owner") {
+    if (label === NO_OWNER_LABEL)
+      return (
+        <UserRound
+          size={14}
+          strokeWidth={2.2}
+          className="shrink-0"
+          style={{ color: DIMENSION_COLOR.owner }}
+          aria-hidden="true"
+        />
+      );
+    return <Avatar name={label} className="h-6 w-6 shrink-0" />;
+  }
+
   const Icon = dim === "offering" ? Package : dim === "group" ? Layers : TrendingUp;
   return (
     <Icon
@@ -218,6 +275,69 @@ function DimensionMark({ dim, label }: { dim: SummaryDimension; label: string })
       style={{ color: DIMENSION_COLOR[dim] }}
       aria-hidden="true"
     />
+  );
+}
+
+/**
+ * WHERE THE DEAL SITS, ON THE ROW ITSELF (Suren, Sep 1: "Here, for every
+ * opportunity, we also should see where that opportunity is at 60% or 80% in
+ * pipeline").
+ *
+ * The summary reaches a deal after three or four folds and then says only what
+ * it is worth. The one number that says whether that money is likely to arrive
+ * was the one thing you had to leave the page to find.
+ *
+ * IT WEARS THE SLIDER'S COLOUR, NOT A NEW ONE. The confidence bar sweeps red
+ * through amber to green degree by degree (Anir, Aug 18: "a gradual red-to-green
+ * thing, not just red, yellow, or green"), and the middle of the sweep holds its
+ * lightness so it reads as yellow rather than olive (Anir, Aug 19: "there's not
+ * enough yellow"). Same hue on the same number, so a deal cannot look one colour
+ * on the edit screen and another here.
+ *
+ * The sweep lives inline inside ConfidenceSlider rather than as an export, so it
+ * is restated here. The alpha goes INSIDE the hsl() rather than appended as hex:
+ * "hsl(12, 76%, 43%)" + "14" is not a colour and the browser drops the whole
+ * declaration.
+ */
+/**
+ * BLUE, NOT A VERDICT WALL — the decision Anir already made for this exact
+ * figure on this exact page (Aug 17, recorded in OpportunitiesBrowser): "the
+ * first cut coloured confidence red/amber/green and a young pipeline became a
+ * page of red. Red means horrible, and 25% confidence is not horrible, it is
+ * early."
+ *
+ * It matters here more than anywhere: of the 69 deals carrying a confidence,
+ * 52 sit at 10-25%. A red-to-green sweep would turn every expanded group into
+ * the page he rejected. The SLIDER on the deal form keeps its sweep, because
+ * there you are setting one number and the gradient is the instrument; a table
+ * of a hundred rows is a different job.
+ */
+const CONFIDENCE_BLUE = "#0071E3";
+function confidenceTint(_pct: number): { fg: string; bg: string; border: string } {
+  return {
+    fg: CONFIDENCE_BLUE,
+    bg: "rgba(0, 113, 227, 0.08)",
+    border: "rgba(0, 113, 227, 0.22)",
+  };
+}
+
+/**
+ * QUIET, AND BESIDE THE NAME — never a column of its own. The period grid is
+ * the thing this table is for; a sixth header would push it sideways for a
+ * figure that is two characters wide. It rides in the pinned name cell, which
+ * is width-locked, so the money columns do not move a pixel (Anir, Aug 30:
+ * "it looks like everything's shifting to the right — I don't like that").
+ */
+function ConfidencePill({ pct }: { pct: number }) {
+  const c = confidenceTint(pct);
+  return (
+    <span
+      className="shrink-0 rounded-full border px-1.5 py-[1px] text-[10px] font-bold tnum"
+      style={{ color: c.fg, background: c.bg, borderColor: c.border }}
+      title={`${pct}% confidence`}
+    >
+      {pct}%
+    </span>
   );
 }
 
@@ -292,6 +412,7 @@ export function OpportunitySummary({
       if (dim === "group") return groupNameFor(d);
       if (dim === "customer") return d.customer || "No customer";
       if (dim === "offering") return offeringNameFor(d);
+      if (dim === "owner") return d.owner || NO_OWNER_LABEL;
       return d.level;
     },
     [groupNameFor, offeringNameFor]
@@ -530,6 +651,10 @@ export function OpportunitySummary({
         node.deals.forEach((d, i) => {
           const own = estimateOf(d, measure);
           const p = periodByDeal.get(d.id);
+          /* The same read the Opportunities list draws its own per-deal
+             confidence from, so one deal cannot say 25% on one screen and
+             something else on the other. Undefined means nobody has set one. */
+          const confidence = opportunityConfidence(d);
           return_deal_row: {
             out.push(
               <tr
@@ -569,6 +694,13 @@ export function OpportunitySummary({
                     <span className="min-w-0 truncate" title={d.name}>
                       {d.name}
                     </span>
+                    {/* ONLY ON THE DEAL, never on the rows above it. A group's
+                        confidence would have to be an average of the deals
+                        under it, which is a number nobody typed and nobody can
+                        act on. And a deal with none shows NOTHING rather than
+                        0%: a third of the book has never had one set, and a
+                        zero on those rows reads as "no chance". */}
+                    {confidence !== undefined && <ConfidencePill pct={confidence} />}
                   </button>
                 </th>
                 <td className={cn(cellCls, "font-semibold text-text-primary")}>
@@ -652,11 +784,30 @@ export function OpportunitySummary({
                   it is not how anything else in this app folds — the goal
                   categories, the deal form and the summary rows are all a
                   heading you press with a chevron that turns. */}
+              {/* THE HINT SITS BESIDE THE FOLD, NOT INSIDE IT. InfoHint renders
+                  its own <button>, and a button nested in a button is invalid
+                  HTML — React threw "Hydration failed" on every load of this
+                  page while it was in there. The standing rule in this repo is
+                  to place hints BESIDE a heading rather than within it, and
+                  this is exactly why. My own doing, Sep 1. */}
+              {/* The chevron and the hint are ONE cluster, not two loose marks.
+                  Before this they were a 16px chevron flung to the far right by
+                  the button's justify-between, and a 20px circled question mark
+                  after it on a different vertical offset (mt-0.5 against
+                  mt-[3px]). Anir, Sep 1: "look at all the elements inside it,
+                  the dropdown arrow especially, and then the spacing."
+
+                  Now both sit in matched 24px round targets on a shared centre
+                  line, so they line up with each other and the chevron has a
+                  hover state the same shape as the hint's. The button still
+                  spans the row, so clicking anywhere on the line still folds
+                  it. */}
+              <div className="flex w-full items-start gap-0.5">
               <button
                 type="button"
                 onClick={() => setChartOpen((v) => !v)}
                 aria-expanded={chartOpen}
-                className="group flex w-full cursor-pointer items-start justify-between gap-3 text-left"
+                className="group flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
               >
                 {/* One line, one size, open or closed. */}
                 <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
@@ -679,16 +830,22 @@ export function OpportunitySummary({
                     )}
                   </span>
                 </span>
-                <ChevronDown
-                  size={16}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  className={cn(
-                    "mt-0.5 shrink-0 text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary",
-                    chartOpen && "rotate-180"
-                  )}
-                />
+                <span className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors group-hover:bg-blue-light">
+                  <ChevronDown
+                    size={15}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                    className={cn(
+                      "text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary",
+                      chartOpen && "rotate-180"
+                    )}
+                  />
+                </span>
               </button>
+              <div className="flex h-6 shrink-0 items-center">
+                <InfoHint text="Each column is the period a deal is expected to SIGN in, taken from its Expected to sign date. The year runs April to March, so Q1 is April to June. A deal with no expected sign date is in the total but in none of the columns, which is why the count of deals carrying a figure can be lower than the deal count." />
+              </div>
+              </div>
               {chartOpen && (
                 <div className="mt-3">
                   <BarChart
@@ -765,6 +922,9 @@ export function OpportunitySummary({
                     deals.map((d) => {
                       const own = estimateOf(d, measure);
                       const p = periodByDeal.get(d.id);
+                      /* Every grouping removed still leaves DEAL rows, so the
+                         confidence belongs here for the same reason. */
+                      const confidence = opportunityConfidence(d);
                       return (
                         <tr
                           key={d.id}
@@ -790,6 +950,9 @@ export function OpportunitySummary({
                               >
                                 {d.name}
                               </span>
+                              {confidence !== undefined && (
+                                <ConfidencePill pct={confidence} />
+                              )}
                             </button>
                           </th>
                           <td className={cn(cellCls, "font-semibold text-text-primary")}>

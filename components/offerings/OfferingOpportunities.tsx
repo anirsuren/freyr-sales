@@ -96,7 +96,7 @@ export function OfferingOpportunities({
       <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
         <Target size={15} strokeWidth={2} className="text-blue-primary" />
         Opportunities on this offering
-        <InfoHint text="Every deal in the pipeline that carries this offering, whoever owns it. The same records as the Opportunities page, read from this offering's side so you do not have to go and filter for it." />
+        <InfoHint text="Every deal in the pipeline that includes this offering, whoever owns it. These are the same deals you see on the Opportunities page, gathered here so you do not have to filter for them yourself." />
       </h2>
       <p className="mt-0.5 text-[12.5px] text-text-secondary">
         {rows.length} {rows.length === 1 ? "deal" : "deals"} across {accounts}{" "}

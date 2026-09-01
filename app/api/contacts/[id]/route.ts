@@ -2,7 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { getDataMode } from "@/lib/dataMode";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
-import { moduleDeleteRefusal } from "@/lib/moduleAccessServer";
+import {
+  moduleDeleteRefusal,
+  recordDeleteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +60,23 @@ export async function DELETE(
   const contact = await db.contacts.get(id);
   if (!contact) {
     return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+  }
+
+  /* A CONTACT BELONGS TO AN ACCOUNT, so removing one is a change to that
+     account and the account decides (Suren, Sep 1). Asked after the contact is
+     found so a person who may not touch this account still cannot use the
+     answer to learn which contact ids exist. */
+  {
+    const parent = await db.customers.get(contact.customer_id);
+    if (parent) {
+      const denied = await recordDeleteRefusal("/customers", {
+        id: parent.id,
+        owner: parent.owner,
+        owner_user_id: parent.owner_user_id,
+        created_by: parent.created_by,
+      });
+      if (denied) return NextResponse.json({ error: denied }, { status: 403 });
+    }
   }
 
   try {

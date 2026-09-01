@@ -249,6 +249,28 @@ export function CustomerTabs({
     all?: TabOffering[];
   };
 }) {
+  /* A NUMBER ON EVERY TAB, NOT JUST THE BAND ONES.
+     Anir, Sep 1: "why do these things not have any numbers? Obviously, they
+     should have numbers too."
+
+     The strip is built from two sources. The bands carry their own count, so
+     Leads read "Leads 0"; the static tabs beside them carried none, so Digital
+     components, Contacts and Activity read as though they held nothing to
+     count. Same data each panel renders, counted once here.
+
+     A tab with nothing behind it deliberately still shows 0 rather than
+     hiding the number: the point of the count is to answer "is there anything
+     in here" without opening it, and a blank cannot answer that. */
+  const tabCounts: Record<string, number> = {
+    components: (customer.digital_components || []).length,
+    contacts: contacts.length,
+    sessions: sessions.length,
+    activity: (customer.offering_usage || []).reduce(
+      (sum, u) => sum + (u.engagement_versions?.length || 0),
+      0
+    ),
+  };
+
   const { toast } = useToast();
   const router = useRouter();
   const currentUser = useCurrentUser();
@@ -850,6 +872,9 @@ export function CustomerTabs({
               )}
             >
               {t.label}
+              {tabCounts[t.key] !== undefined && (
+                <b className="ml-1.5 tnum font-semibold">{tabCounts[t.key]}</b>
+              )}
             </button>
           ))}
         </div>
@@ -880,9 +905,20 @@ export function CustomerTabs({
                     not, so the Overview could show them and offer no way to
                     correct one. Same owner-or-manager rule the route already
                     enforced. */}
-                <span className="text-[11.5px] text-text-tertiary">
-                  Click a value to change it
-                </span>
+                {/* ONLY WHEN CLICKING ONE ACTUALLY DOES SOMETHING. The line was
+                    unconditional, so a person who may not write this account
+                    was invited to click values that then did nothing. Harmless
+                    while the only read-only case was a view-only privilege;
+                    since Suren's Sep 1 record rule an ordinary BD Member meets
+                    it on every account that is somebody else's, which is most
+                    of them. The fields themselves were always honest, see
+                    EditableFact, so this was the last thing on the card still
+                    promising an edit. */}
+                {canEditFacts && (
+                  <span className="text-[11.5px] text-text-tertiary">
+                    Click a value to change it
+                  </span>
+                )}
               </div>
               <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-x-6 gap-y-2.5">
                 <EditableFact
@@ -1201,7 +1237,8 @@ export function CustomerTabs({
                 })}
                 {valueProps.length === 0 && (
                   <p className="text-[13px] text-text-secondary">
-                    No matched services yet, generate a session.
+                    No services have been matched to this account yet. Generate
+                    a session and they appear here.
                   </p>
                 )}
               </div>
@@ -1697,7 +1734,7 @@ export function CustomerTabs({
                   <b>{removingContact?.name}</b> comes off this account.
                 </>
               }
-              detail="Meetings and requests that named them keep the name they were given; only the person's record here is removed."
+              detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
               confirmLabel="Remove contact"
               onConfirm={async () => {
                 if (!removingContact) return;
@@ -2267,7 +2304,7 @@ export function CustomerTabs({
               </h3>
               {atts.length === 0 && (
                 <p className="text-[12px] text-text-tertiary">
-                  Nothing attached yet, use the Attach button above.
+                  Nothing attached yet. Use the Attach button above to add a file.
                 </p>
               )}
               {atts.length > 0 && (

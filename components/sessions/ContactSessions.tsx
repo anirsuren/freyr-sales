@@ -19,7 +19,7 @@ export function ContactSessions({ sessions }: { sessions: PitchSession[] }) {
         <EmptyState
           icon={FileText}
           title="No pitch sessions yet"
-          description="Generated pitch sessions for this contact will appear here."
+          description="A pitch session works out what to say to this customer. Start one from the Sessions page and it shows up here."
         />
       </Card>
     );

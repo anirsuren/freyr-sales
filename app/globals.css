@@ -2118,3 +2118,18 @@ input {
     transition: none;
   }
 }
+
+/* Accrual record status and origin pills. Same pattern as .availability-pill,
+   and for the same reason: tailwind.config.ts sets no `darkMode` key, so
+   Tailwind's `dark:` variants follow the OS rather than this app's `.dark`
+   class toggle. Custom properties are what actually track the in-app theme. */
+.accrual-status-chip {
+  color: var(--accrual-chip-color);
+  background-color: var(--accrual-chip-bg);
+  border: 1px solid transparent;
+}
+.dark .accrual-status-chip {
+  color: var(--accrual-chip-color-dark) !important;
+  background-color: var(--accrual-chip-bg-dark) !important;
+  border-color: var(--accrual-chip-border-dark) !important;
+}

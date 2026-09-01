@@ -886,7 +886,7 @@ export function CustomerOfferingsTab({
           </p>
           {o.materials.length === 0 ? (
             <p className="text-[12px] text-text-tertiary">
-              None yet, add them on the offering and they&apos;ll show here.
+              None yet. Add them on the offering page and they show up here.
             </p>
           ) : (
             /* One material per row. Two-up packed the titles, the format and
@@ -1025,9 +1025,9 @@ export function CustomerOfferingsTab({
           What type of customer is this?
         </h2>
         <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[520px] mx-auto mt-2 mb-6">
-          Pick the segment, the same master list your offerings are mapped to.
-          The moment you classify it, every offering that applies shows up here
-          with its description and sales materials.
+          Pick the segment. It is the same list your offerings use. As soon as
+          you pick one, every offering that applies to this company shows up
+          here with its description and its sales materials.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-left">
           {typeOptions.map((t) => {
@@ -1117,7 +1117,7 @@ export function CustomerOfferingsTab({
         <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
           <span className="inline-flex items-center gap-1">
             Segment
-            <InfoHint text="What kind of company this is: its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, listed below. Change it if it was classified wrong." />
+            <InfoHint text="What kind of company this is, meaning its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, shown below. Change it if the wrong one was picked." />
           </span>
           <ColorSelect
             ariaLabel="Change customer segment"
@@ -1158,13 +1158,13 @@ export function CustomerOfferingsTab({
         {applicable.length === 0 ? (
           <EmptyState
             icon={Package}
-            title={`No offerings mapped to ${customerType} yet`}
-            description="Map this customer type on your offerings and everything that applies will show up here."
+            title={`Nothing in the catalogue is for ${customerType} yet`}
+            description="Open an offering and add this customer type to it. Everything that applies then shows up here."
           />
         ) : toPitch.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            They&apos;re already using everything that applies, a good problem
-            to have.
+            They are already using everything that applies to them. There is
+            nothing left to pitch.
           </p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch stagger">

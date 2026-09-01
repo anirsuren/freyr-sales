@@ -137,7 +137,7 @@ export function DealSnapshot({
         <section className={PANEL}>
           <PanelHead
             label="Win chance"
-            hint="Set by the stage this deal has reached: every deal at the same stage is counted at the same odds."
+            hint="The stage this deal has reached sets the odds. Every deal on the same stage is counted the same way."
           >
             <span className="flex items-center gap-2">
               <ExpandedChartModal

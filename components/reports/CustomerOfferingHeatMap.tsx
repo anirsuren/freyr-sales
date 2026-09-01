@@ -1226,7 +1226,7 @@ export function CustomerOfferingHeatMap({
                 >
                   <span className="flex items-center gap-1">
                     Report row
-                    <InfoHint text={"The one activity this offering shows on the customer heat map. Exactly one per offering.\nTick a different row to report that one instead."} />
+                    <InfoHint text={"The one activity this cell shows on the heat map. Only one can be picked for this customer and this offering.\nTick a different row to show that one instead."} />
                   </span>
                   <span>Activity</span>
                   <span>Status</span>

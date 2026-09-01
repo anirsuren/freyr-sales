@@ -14,11 +14,17 @@
  *   THE DISPLAY CURRENCY   — what YOU want to read the board in. A view
  *                            setting, per person, converted on the way out.
  *
- * RATES ARE ENTERED, NOT INVENTED. There is no live FX feed here on purpose: a
- * rate pulled at render time makes last quarter's report change every time you
- * open it, and a made-up rate on a board slide is worse than no number at all.
- * An admin sets the rate for the year; anything without a rate is shown in its
- * own currency and marked, never silently converted at 1:1.
+ * BOARD RATES ARE ENTERED, NOT INVENTED. The display currency does not run off
+ * a live feed on purpose: a rate pulled at render time makes last quarter's
+ * report change every time you open it, and a made-up rate on a board slide is
+ * worse than no number at all. An admin sets the rate for the year; anything
+ * without a rate is shown in its own currency and marked, never silently
+ * converted at 1:1.
+ *
+ * ONE DEAL ON ITS SIGN DATE IS A DIFFERENT QUESTION, and it does read a live
+ * source. See the "live FX lookup" half at the bottom of this file for why the
+ * two do not fight: that one converts a single opportunity for display, dated
+ * to the day it signs, and never touches a stored number or a report total.
  */
 
 export type CurrencyCode =
@@ -131,4 +137,130 @@ export function fmtMoney(value: number, code: CurrencyCode = BASE_CURRENCY): str
   if (v >= 1e6) return `${sign}${symbol}${trim1(v / 1e6)}M`;
   if (v >= 1e3) return `${sign}${symbol}${trim1(v / 1e3)}K`;
   return `${sign}${symbol}${Math.round(v).toLocaleString("en-US")}`;
+}
+
+/* ------------------------------------------------------- live FX lookup */
+
+/**
+ * THE RATE ON THE DAY THE DEAL SIGNS (Suren, Sep 1: "based on that date,
+ * whatever the conversion rate is on that particular day, like on 1st of
+ * September, it takes the value of that date").
+ *
+ * This is the second, newer half of the module and it does NOT replace the
+ * admin-entered `CurrencyRates` above. That table converts the whole board
+ * into whichever currency you want to READ it in, and it is deliberately a
+ * fixed number so last quarter's report does not move under you. This half
+ * answers one narrower question: an opportunity was written down in rupees,
+ * what is that in dollars on its own sign date. Only the opportunity form
+ * uses it, and only to show a figure it never stores.
+ *
+ * RATE DIRECTION, SAID ONCE AND OBEYED EVERYWHERE: a rate is HOW MANY UNITS
+ * OF THAT CURRENCY ONE US DOLLAR BUYS. INR 94.95 means $1 = Rs 94.95, so a
+ * rupee amount becomes dollars by DIVIDING. Same arrow as `CurrencyRates`
+ * above, and the same arrow the source hands back for base=USD, so nothing
+ * is inverted on the way in. A silently flipped rate is the classic bug
+ * here, which is why there is ONE seam and ONE arrow.
+ *
+ * WHERE THE NUMBER COMES FROM: the European Central Bank's daily reference
+ * rates, read through api.frankfurter.dev. No key, no account, no npm
+ * package. The fetching and its cache are SERVER work and live in
+ * lib/fxRates.ts; this module stays client-safe and only ever looks up a
+ * number somebody already handed it.
+ *
+ * rateFor IS THE ONLY SEAM. Nothing else in the app may look a rate up, so
+ * swapping the source later touches lib/fxRates.ts and nothing here.
+ */
+
+export type FxDayRates = {
+  /**
+   * The day the rates actually belong to, which is not always the day that
+   * was asked for. Markets shut at weekends so a Sunday resolves back to the
+   * Friday, and a sign date in the future has no rate in the world yet, so it
+   * falls back to the latest published day. Callers show this date rather
+   * than the one they asked for, because the alternative is a number labelled
+   * with a day it did not come from.
+   */
+  date: string;
+  /** Units of each currency per 1 US dollar. */
+  rates: Partial<Record<CurrencyCode, number>>;
+};
+
+/**
+ * Held per process, keyed by the day ASKED FOR. On the server this is warmed
+ * by lib/fxRates; in the browser the deal form fetches /api/fx and calls
+ * setFxRates before it reads anything back out. Empty is a normal state and
+ * means "no rate known", never "assume one".
+ */
+const fxDays = new Map<string, FxDayRates>();
+
+/** "latest" for an absent or unparseable day, so one key shape reaches the
+ *  cache, the API route and the lookup. */
+export function fxKey(onIso: string | null | undefined): string {
+  const s = String(onIso ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "latest";
+}
+
+/** Hand the lookup a day's rates. Passing null forgets them, which is what a
+ *  failed fetch does: no entry means rateFor answers "I do not know". */
+export function setFxRates(
+  onIso: string | null | undefined,
+  day: FxDayRates | null
+): void {
+  const key = fxKey(onIso);
+  if (!day) {
+    fxDays.delete(key);
+    return;
+  }
+  fxDays.set(key, day);
+}
+
+/** What was loaded for that day, so a caller can print the date the rate is
+ *  actually from. */
+export function fxRatesFor(
+  onIso: string | null | undefined
+): FxDayRates | undefined {
+  return fxDays.get(fxKey(onIso));
+}
+
+/**
+ * THE SEAM. Units of `currency` per 1 US dollar on `onIso`, or undefined when
+ * nobody has loaded a rate for that day.
+ *
+ * undefined is a real answer and callers must show it as one. A missing rate
+ * is never 1, and it is never last week's rate wearing today's date: both of
+ * those put a wrong number on a board slide, which is worse than a blank.
+ */
+export function rateFor(
+  currency: string,
+  onIso: string | undefined
+): number | undefined {
+  const code = String(currency || "").toUpperCase();
+  if (!isCurrencyCode(code)) return undefined;
+  // A dollar is a dollar on every day of the year, no lookup needed.
+  if (code === BASE_CURRENCY) return 1;
+  const rate = fxDays.get(fxKey(onIso))?.rates[code as CurrencyCode];
+  return typeof rate === "number" && Number.isFinite(rate) && rate > 0
+    ? rate
+    : undefined;
+}
+
+/**
+ * What a local amount is worth in US dollars on that day, or undefined when
+ * the rate is not known. DIVIDES, per the arrow above.
+ *
+ * Display only. Suren, Sep 1: "the entire reporting dashboards, everything
+ * should be in USD. It's only within the opportunities where we will capture
+ * the local currency" — and the number the person typed is the one that gets
+ * stored, so this figure is computed fresh every time it is shown and never
+ * written back into a deal.
+ */
+export function convertToUsd(
+  amount: number,
+  currency: string,
+  onIso: string | undefined
+): number | undefined {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return undefined;
+  const rate = rateFor(currency, onIso);
+  if (!rate) return undefined;
+  return amount / rate;
 }

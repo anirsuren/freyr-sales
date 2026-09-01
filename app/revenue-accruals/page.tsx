@@ -61,7 +61,7 @@ export default async function RevenueAccrualsPage() {
       /* THE PIPELINE ITSELF, so the accrual summary can group and total the
          same way Opportunities does (Suren, Aug 30). The DealOption list below
          stays as it is — it feeds the planner, which wants a flat picker. */
-      opportunities={opportunities.filter((o) => o.level !== "Future")}
+      opportunities={opportunities}
       customerGroups={groupState.groups.map((g) => ({
         id: g.id,
         name: g.name,

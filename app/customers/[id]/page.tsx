@@ -33,6 +33,11 @@ import {
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
 import { requireModuleAccess, moduleWriteRefusal, moduleDeleteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canDeleteRecord,
+  canEditRecord,
+  resolveScope,
+} from "@/lib/recordScope";
 
 /** The account's own name in the tab, the way every offering already does it.
  *  A static "Customer" made three open accounts indistinguishable in the tab
@@ -213,6 +218,37 @@ export default async function CustomerDetailPage({
   const bands360 = orderBands(c360);
   const recordTeams = await readRecordTeams();
 
+  /**
+   * WHAT MAY THIS PERSON DO TO **THIS** ACCOUNT (Suren, Sep 1): "you can only
+   * do anything on a particular customer that you are part of or created or
+   * edited so far. For other records that they are not part of, they should
+   * have a view option to view other records."
+   *
+   * Resolved on the server and used to decide which controls are drawn at all.
+   * The controls are a courtesy, not the control: PATCH /api/customers/[id],
+   * the contacts routes and /api/record-team each ask the same question again
+   * through recordWriteRefusal, so a hidden button is never the only thing
+   * standing between somebody and a write.
+   *
+   * NO "VIEW ONLY" BANNER HERE (Anir, Sep 1: "I don't want you to say 'view
+   * only'... that's just wasting space"). The absence of the controls says it,
+   * and the shield in the top bar gives the reason on hover, which is where he
+   * asked for that answer to live. See /api/my-access.
+   */
+  const scope = await resolveScope();
+  const asRecord = {
+    id: customer.id,
+    owner: customer.owner,
+    owner_user_id: customer.owner_user_id,
+    created_by: customer.created_by,
+  };
+  const mayEditThisAccount =
+    !(await moduleWriteRefusal("/customers")) &&
+    canEditRecord(asRecord, "customers", scope);
+  const mayDeleteOnThisAccount =
+    !(await moduleDeleteRefusal("/customers")) &&
+    canDeleteRecord(asRecord, "customers", scope);
+
 
   return (
     <div>
@@ -310,15 +346,22 @@ export default async function CustomerDetailPage({
           entire thing should be just one big page"). See CustomerTabs. */}
       <CustomerTabs
         /* The same question PATCH /api/customers/[id] asks, so the identity
-           fields are editable exactly when a save would land. */
-        canEditFacts={!(await moduleWriteRefusal("/customers"))}
+           fields are editable exactly when a save would land. Since Sep 1 that
+           question includes whether this account is one of yours. */
+        canEditFacts={mayEditThisAccount}
         /* Removing a person from an account is a DELETE, not a write — asked
            separately so an editor cannot delete and a control that would be
            refused is never drawn. */
-        canDeleteContacts={!(await moduleDeleteRefusal("/customers"))}
+        canDeleteContacts={mayDeleteOnThisAccount}
         bands={bands360}
         bandActions={{
-          team: (
+          /* CHANGING WHO IS ON AN ACCOUNT IS THE STRONGEST WRITE THERE IS, so
+             it is drawn only for somebody who may already change this account.
+             Otherwise it is the way round every other check: put yourself on
+             the record and it becomes yours. /api/record-team refuses it as
+             well; this stops it being offered. The team itself still READS on
+             the band for everybody, which is the point of view access. */
+          team: mayEditThisAccount ? (
             <RecordTeamButton
               type="customer"
               id={customer.id}
@@ -326,7 +369,7 @@ export default async function CustomerDetailPage({
               team={teamFor(recordTeams, "customer", customer.id)}
               members={solutioningMembers}
             />
-          ),
+          ) : null,
         }}
         customer={customer}
         contacts={contacts}

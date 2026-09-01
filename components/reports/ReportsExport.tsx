@@ -57,7 +57,7 @@ export function ReportsExport({ report }: { report: PortfolioReport }) {
     <button
       onClick={exportCsv}
       disabled={empty}
-      title={empty ? "Nothing to export yet: no revenue has been logged." : undefined}
+      title={empty ? "Nothing to export yet. No revenue has been logged." : undefined}
       className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-lg border border-border text-text-secondary hover:bg-surface transition-colors disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
     >
       <Download size={16} strokeWidth={1.5} />

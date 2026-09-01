@@ -64,6 +64,8 @@ import {
   OpportunitySummary,
   DIMENSION_LABEL,
   TIMELINES,
+  periodKeyOf,
+  periodLabel,
   type SummaryDimension,
   type Timeline,
 } from "./OpportunitySummary";
@@ -71,6 +73,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn, formatDate } from "@/lib/utils";
+import { ConfidenceSlider, snapConfidence } from "./ConfidenceSlider";
 import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredSet, useStoredView } from "@/lib/useStoredView";
 import {
@@ -575,11 +578,27 @@ export function OpportunitiesBrowser({
    *  separate, like a separate tab within the pipeline page?"). Future deals
    *  have no money yet, so they get their own table instead of $0 rows
    *  diluting the pipeline's numbers. Remembered per person. */
-  const [pipeView, setPipeView] = useStoredView<"current" | "future">(
+  const [storedPipeView, setPipeView] = useStoredView<"current" | "future">(
     "freyr.opportunities.view",
     "current",
     ["current", "future"]
   );
+  /**
+   * ONE LIST IN REAL MODE (Suren, Sep 1, on this exact pill pair: "this current
+   * pipeline future, he has to take this off because it's all confusing
+   * things... make sure that these two things are gone now. Somebody comes
+   * here, they can add a new opportunity, and they can search").
+   *
+   * The split earns its keep in mock, where Future carries invented numbers.
+   * In the real workspace the 23 Future rows are named prospects with no money
+   * on them at all — nothing to add up — so the toggle asked people to choose
+   * between a pipeline and a list of names, which is the confusion he means.
+   *
+   * Nothing is deleted and nothing changes in Mock. Real mode simply opens on
+   * the pipeline, and a person who last left the toggle on Future does not
+   * come back to a view that no longer has a way out.
+   */
+  const pipeView = live ? "current" : storedPipeView;
   /** GROUPING IS A LENS, NOT A STRUCTURE (Suren, Aug 17 call: "bring all the
    *  opportunities together under one customer… it's just a grouping
    *  mechanism — every row is an opportunity, I'm not taking that out"). */
@@ -607,6 +626,12 @@ export function OpportunitiesBrowser({
     "summary",
     ["summary", "table"] as const
   );
+  /* And whatever was remembered gets healed. Hiding the toggle alone would
+     have stranded anybody whose last choice was the table on a view with no
+     way out of it, so a stored "table" is put back to the summary once. */
+  useEffect(() => {
+    if (dealView === "table") setDealView("summary");
+  }, [dealView, setDealView]);
   /* His four, in his default order; drag on the summary rewrites it. */
   const [dimOrder, setDimOrder] = useStickyValue<SummaryDimension[]>(
     "freyr.opportunities.dims",
@@ -625,14 +650,11 @@ export function OpportunitiesBrowser({
     "customer",
     ["none", "customer", "offering"]
   );
-  const futures = useMemo(
-    () => list.filter((o) => o.level === "Future"),
-    [list]
-  );
-  const currentList = useMemo(
-    () => list.filter((o) => o.level !== "Future"),
-    [list]
-  );
+  /* THE FUTURE LEVEL IS RETIRED (Suren, Sep 1: "take the word future off").
+     Its 23 deals were clubbed into Pipeline, so there is nothing to separate
+     out any more and the current list is simply the list. */
+  const futures = useMemo<typeof list>(() => [], []);
+  const currentList = list;
   const [query, setQuery] = useState("");
   // MULTISELECT filters (Anir, Aug 18: "multiselect. wherever this applies…
   // across other pages and dropdowns too") — empty pick means everything.
@@ -676,9 +698,9 @@ export function OpportunitiesBrowser({
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("deal");
     if (!wanted) return;
-    if (list.some((o) => o.id === wanted && o.level === "Future")) {
-      setPipeView("future");
-    }
+    /* A ?deal= link used to flip the page to the Future tab when the deal
+       lived there. There is no Future tab and no Future level now, so every
+       deal is on the one list already. */
     setFlashId(wanted);
     const at = window.setTimeout(() => {
       document
@@ -1033,11 +1055,40 @@ export function OpportunitiesBrowser({
     const withConfidence = shown
       .map((o) => opportunityConfidence(o))
       .filter((c): c is number => typeof c === "number");
+    /* THE THIRD TILE. Suren took Weighted off because it confused people, and
+       two tiles in a three-column grid left an empty third column, which is
+       what Anir was looking at: "there are just two data points and they're
+       not even centered, come up with a third data point that will actually
+       make sense."
+
+       This is what is expected to SIGN in the fiscal quarter we are in.
+       Deliberately NOT a probability-weighted number: that is the thing that
+       was just removed, and multiplying a deal by its confidence is exactly
+       the arithmetic he could not follow. This is the plain sum of the
+       estimated TCV of the deals whose Expected to sign date falls in this
+       quarter, so it can be checked by hand against the column of the same
+       name in the table below it.
+
+       It also earns its place: it is the only number on the page that answers
+       "what lands next", which is the whole point of the module ("the whole
+       idea is only about booking"). Deals with no sign date are in the count
+       of the first tile and in none of this, the same rule the period columns
+       already use. */
+    const thisQuarter = periodKeyOf(new Date().toISOString().slice(0, 10), "quarterly");
+    const signingNow = thisQuarter
+      ? shown.filter((o) => periodKeyOf(signDateOf(o), "quarterly") === thisQuarter)
+      : [];
     return {
       value,
       weighted,
       acv: sumEstimates(shown, "acv"),
       tcv: sumEstimates(shown, "tcv"),
+      quarter: {
+        key: thisQuarter,
+        label: thisQuarter ? periodLabel(thisQuarter, "quarterly") : "",
+        total: sumEstimates(signingNow, "tcv").total,
+        count: signingNow.length,
+      },
       count: shown.length,
       avgConfidence: withConfidence.length
         ? Math.round(
@@ -1087,6 +1138,32 @@ export function OpportunitiesBrowser({
         )
           ? "a value on the offering"
           : "",
+        /* SUREN'S FOUR, ON NEW DEALS ONLY (Sep 1, going down the form field by
+           field: "you have to make everything mandatory... Estimated TCV is
+           mandatory. ACV is not mandated. Confidence level is mandatory.
+           Expected to sign is mandatory. Owner is mandatory").
+
+           They join this list rather than getting a check of their own, so the
+           Add button stays disabled until the deal is complete and the form
+           has ONE answer to "what is still missing" instead of two that can
+           disagree. ACV is deliberately absent.
+
+           NEW ONLY, for the same reason the value rule above is new-only: 97
+           of the 102 deals in the workspace have no owner, and holding edits
+           to this list would stop anybody correcting a record they already
+           have. Confidence and the signing date live on the offering row. */
+        !editing.id && moneyOrNull(editing.estimatedTcv) === null
+          ? "the estimated TCV"
+          : "",
+        !editing.id &&
+        (editing.rows[0]?.confidence === "" ||
+          editing.rows[0]?.confidence === undefined)
+          ? "the confidence level"
+          : "",
+        !editing.id && !editing.rows[0]?.estSignDate
+          ? "the expected signing date"
+          : "",
+        !editing.id && !editing.owner?.trim() ? "the owner" : "",
       ].filter(Boolean);
 
   async function save() {
@@ -1145,8 +1222,7 @@ export function OpportunitiesBrowser({
         level: revenueTypeFromConfidence(
           editing.rows[0]?.confidence === "" || editing.rows[0]?.confidence === undefined
             ? undefined
-            : Number(editing.rows[0].confidence),
-          editing.level === "Future"
+            : Number(editing.rows[0].confidence)
         ),
         status: editing.status || undefined,
         owner: editing.owner || undefined,
@@ -1907,8 +1983,60 @@ export function OpportunitiesBrowser({
       </h1>
       {/* Same pill idiom as the performance rooms, at the same size. NO
           entrance animation on these — the performance lesson holds here too. */}
-      <div className="relative z-40 mb-6 mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* THE PAGE GETS A HEADER AGAIN.
+          Anir, Sep 1: "I still want the top of the opportunities page to mimic
+          this", pointing at Revenue Accruals: a title, one line saying what the
+          page is, the primary action on that same line, then the tiles, then
+          the toolbar.
+
+          It had no header at all. The Aug redesign gave the title job to the
+          Current/Future pills ("the pills move up to where the title was and
+          carry the name themselves"), and when Suren had those pills removed
+          from live the page lost its name with them, leaving a bare search bar
+          at the top. PageHeader was still imported here and rendered nowhere.
+
+          New opportunity moves onto the title line, which is where Plan a deal
+          sits on the page he is copying. That still answers his earlier
+          complaint, which was that the button sat ALONE on an empty row, not
+          that it had to be inside the search bar. */}
+      {live && (
+        <PageHeader
+          title="Opportunities"
+          subtitle="Every deal in the pipeline: what it is worth, how likely it is, and when it is expected to sign."
+          action={
+            canCreate ? (
+              <Button
+                onClick={() =>
+                  // Opens on one empty offering row, because that is the first
+                  // thing to fill in and an empty list reads as a dead end.
+                  setEditing(
+                    draftStash.current["new"] ?? {
+                      ...BLANK,
+                      owner: meName,
+                      // ONE offering per opportunity (Suren, Aug 17 call) — the
+                      // form opens with its single offering block ready.
+                      rows: [blankLine()],
+                      level: "Pipeline",
+                    }
+                  )
+                }
+              >
+                <Plus size={14} strokeWidth={2.2} /> New opportunity
+              </Button>
+            ) : null
+          }
+        />
+      )}
+      {/* In mock the pills survive and carry the name themselves, so this row
+          still earns its place there. */}
+      <div className={cn(
+        "relative z-40 mb-6 mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        live && "hidden"
+      )}>
+        <div className={cn(
+          "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          live && "hidden"
+        )}>
           {([
             { key: "current" as const, label: "Current pipeline", count: currentList.length, icon: Workflow, color: "#0071E3" },
             { key: "future" as const, label: "Future", count: futures.length, icon: CalendarClock, color: "#7C3AED" },
@@ -1949,27 +2077,6 @@ export function OpportunitiesBrowser({
             );
           })}
         </div>
-        <div className="shrink-0">{
-          canCreate && live ? (
-            <Button
-              onClick={() =>
-                // Opens on one empty offering row, because that is the first
-                // thing to fill in and an empty list reads as a dead end.
-                setEditing(
-                  draftStash.current["new"] ?? {
-                    ...BLANK,
-                    owner: meName,
-                    // ONE offering per opportunity (Suren, Aug 17 call) — the
-                    // form opens with its single offering block ready.
-                    rows: [blankLine()],
-                    level: pipeView === "future" ? "Future" : "Pipeline",
-                  }
-                )
-              }
-            >
-              <Plus size={14} strokeWidth={2.2} /> New opportunity
-            </Button>
-          ) : null}</div>
       </div>
 
       {/* Same entrance the performance rooms play when the tab flips — the
@@ -2004,6 +2111,7 @@ export function OpportunitiesBrowser({
           results. */}
       <PageToolbar
         className="mt-4"
+
         query={query}
             onQuery={setQuery}
             placeholder="Search deals, accounts, offerings, owners…"
@@ -2063,7 +2171,7 @@ export function OpportunitiesBrowser({
                 label: "Revenue type",
                 values: levelFilter,
                 onChange: setLevelFilter,
-                options: OPPORTUNITY_LEVELS.filter((l) => l !== "Future").map((l) => ({
+                options: OPPORTUNITY_LEVELS.map((l) => ({
                   value: l,
                   label: l,
                   color: LEVEL_COLOR[l],
@@ -2173,9 +2281,13 @@ export function OpportunitiesBrowser({
                     dense
                     collapsible={false}
                     className="w-[150px] shrink-0"
+                    /* ONLY THE BOOKED NUMBER (Suren, Sep 1: "you don't show
+                       ACV at all... we will only show total contract value.
+                       The whole idea is only about booking"). The ACV field
+                       stays on the deal, where he wants it kept for reporting;
+                       it is no longer something this page totals by. */
                     options={[
                       { value: "tcv", label: "Estimated TCV", color: "#0071E3" },
-                      { value: "acv", label: "Estimated ACV", color: "#0F766E" },
                     ]}
                   />
                   <ColorSelect
@@ -2210,11 +2322,19 @@ export function OpportunitiesBrowser({
               />
               )
             }
+            /* THE TABLE VIEW IS GONE (Suren, Sep 1: "remove table view here on
+               this page only... this table view is not the matrix report, it
+               is actually an individual record that we are showing as a model
+               here, so I don't like this. This view is not even based on the
+               group. Let's not get the table, just one view").
+
+               Only this page. Every other Summary/Table pair in the app is
+               untouched — he was explicit that it was this one. */
             view={
               <span
                 role="group"
                 aria-label="How to show the pipeline"
-                className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
+                className="hidden shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
               >
                 {(
                   [
@@ -2292,18 +2412,10 @@ export function OpportunitiesBrowser({
               : levelFilter.map((l) => l.toLowerCase()).join(", ")
           }
         />
-        <StatTile
-          icon={Target}
-          label="Estimated ACV"
-          value={totals.acv.entered === 0 ? "·" : money(totals.acv.total)}
-          sub={
-            totals.acv.entered === 0
-              ? "nobody has entered one yet"
-              : totals.acv.entered < totals.acv.of
-                ? `across ${totals.acv.entered} of ${totals.acv.of} deals`
-                : "annual contract value"
-          }
-        />
+        {/* TCV LEADS, ACV SITS BESIDE IT (Suren, Sep 1: "estimated ACV is
+            not important, it can go on the right side. Estimated TCV is
+            important, so make sure of that"). TCV is the booked number people
+            quote; ACV is the optional yearly slice kept for reporting. */}
         <StatTile
           icon={TrendingUp}
           label="Estimated TCV"
@@ -2314,6 +2426,20 @@ export function OpportunitiesBrowser({
               : totals.tcv.entered < totals.tcv.of
                 ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
                 : "total contract value"
+          }
+        />
+        {/* NO ACV TILE EITHER (same instruction): "here you don't show ACV
+            at all... the whole idea is only about booking". It read "nobody
+            has entered one yet" on every deal in the workspace, so it was an
+            empty box arguing for a number he does not want totalled here. */}
+        <StatTile
+          icon={CalendarClock}
+          label={totals.quarter.label ? `Signing ${totals.quarter.label}` : "Signing this quarter"}
+          value={totals.quarter.count === 0 ? "·" : money(totals.quarter.total)}
+          sub={
+            totals.quarter.count === 0
+              ? "nothing is due to sign this quarter"
+              : `${totals.quarter.count} ${totals.quarter.count === 1 ? "deal" : "deals"} expected to sign`
           }
         />
       </div>
@@ -2727,67 +2853,38 @@ export function OpportunitiesBrowser({
                   deal can still be future revenue. */}
               <Field label="Revenue type">
                 {(() => {
-                  const isFuture = editing.level === "Future";
                   const conf =
                     editing.rows[0]?.confidence === "" ||
                     editing.rows[0]?.confidence === undefined
                       ? undefined
                       : Number(editing.rows[0].confidence);
-                  const derived = revenueTypeFromConfidence(conf, isFuture);
-                  /* A DROPDOWN, NOT A TICK BOX (Anir, Aug 28: "this is
-                     weird — they should make the revenue type a drop down.
-                     Why is it a checkbox?"). It was a read-only pill with a
-                     checkbox underneath, so the one field had two controls
-                     and neither looked like the others on the row.
+                  const derived = revenueTypeFromConfidence(conf);
+                  /* THE BAR DECIDES, AND NOW IT IS THE ONLY THING THAT DOES.
+                     This was a two-option menu: whatever the confidence bar
+                     said, or "Future". Future answered WHEN the money lands
+                     rather than how likely it is, which is why it was a real
+                     choice sitting beside a derived one.
 
-                     There are exactly TWO things a person can choose here,
-                     so the menu offers exactly two. Pipeline, High
-                     confidence and Go get are not choices — the confidence
-                     bar decides which one applies (Suren, Aug 18: "you play
-                     with the bar, the moment you put it at 99 that means
-                     I'll take it as go get") — so they appear as ONE row
-                     wearing whichever the bar currently says. Future is the
-                     real decision: it answers WHEN the money lands, not how
-                     likely it is, which is why a 99% deal can still be
-                     future revenue. */
-                  const barLevel = revenueTypeFromConfidence(conf, false);
-                  const BarIcon = LEVEL_ICON[barLevel];
+                     Suren retired it on Sep 1 ("take the word future off...
+                     we don't have the concept of future"), so one of the two
+                     options is gone and a menu with a single entry is not a
+                     menu. What is left is what the bar already told us
+                     (Suren, Aug 18: "you play with the bar, the moment you
+                     put it at 99 that means I'll take it as go get"), so the
+                     field states it rather than pretending to ask. */
+                  const Icon = LEVEL_ICON[derived];
                   return (
                     <div className="mt-1 space-y-1.5">
-                      <span data-derived-revenue-type={derived} className="block">
-                        <ColorSelect
-                          value={isFuture ? "Future" : "bar"}
-                          ariaLabel="Revenue type"
-                          collapsible={false}
-                          className="w-full"
-                          minWidth={0}
-                          dense
-                          onChange={(v) =>
-                            setEditing({
-                              ...editing,
-                              level: v === "Future" ? "Future" : barLevel,
-                            })
-                          }
-                          options={[
-                            {
-                              value: "bar",
-                              label: barLevel,
-                              color: LEVEL_COLOR[barLevel],
-                              ...(BarIcon ? { icon: BarIcon } : {}),
-                            },
-                            {
-                              value: "Future",
-                              label: "Future",
-                              color: LEVEL_COLOR.Future,
-                              ...(LEVEL_ICON.Future ? { icon: LEVEL_ICON.Future } : {}),
-                            },
-                          ]}
-                        />
+                      <span
+                        data-derived-revenue-type={derived}
+                        className="flex h-10 w-full items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-semibold"
+                        style={{ color: LEVEL_COLOR[derived] }}
+                      >
+                        {Icon ? <Icon size={14} strokeWidth={2.2} /> : null}
+                        {derived}
                       </span>
                       <p className="text-[11px] leading-snug text-text-tertiary">
-                        {isFuture
-                          ? "Revenue lands in a later financial year."
-                          : `Follows the confidence bar. ${revenueTypeRule(derived)}.`}
+                        Follows the confidence bar. {revenueTypeRule(derived)}.
                       </p>
                     </div>
                   );
@@ -3381,137 +3478,6 @@ function withCommas(digits: string): string {
  * become 95 / 99 / 100; below it nothing changes. Typing an exact figure is
  * untouched and still accepts 72, or 97.
  */
-function snapConfidence(raw: number): number {
-  const n = Math.max(0, Math.min(100, raw));
-  if (n <= 95) return Math.round(n / 5) * 5;
-  /* 96, 97 round back to 95; 98 and 99 land on 99; 100 stays 100. */
-  if (n >= 99.5) return 100;
-  return n >= 97.5 ? 99 : 95;
-}
-
-function ConfidenceSlider({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  // Dragging is CONTINUOUS and the stored number snaps to 5s; typing is exact
-  // (Anir, Aug 17: "the bar moves smoothly but the numbers go every 5 but i
-  // can still enter in 72"). `drag` holds the thumb's true position while the
-  // pointer is down so the bar glides instead of chunking through 5% steps.
-  const [drag, setDrag] = useState<number | null>(null);
-  const n = value === "" ? null : Number(value);
-  const committed =
-    n === null || Number.isNaN(n) ? null : Math.max(0, Math.min(100, n));
-  const pct = drag ?? committed ?? 0;
-  // ONE CONTINUOUS SWEEP from red through amber to green (Anir, Aug 18:
-  // "a gradual red-to-green thing, not just red, yellow, or green") — the
-  // hue tracks the value degree by degree instead of snapping at bands.
-  const active = !(committed === null && drag === null);
-  // The middle of the sweep must actually look YELLOW (Anir, Aug 19: "there's
-  // not enough yellow"): between orange and green the lightness holds at 47%
-  // and saturation runs hotter, because a yellow hue at 40% lightness reads
-  // as olive, not yellow.
-  const hue = Math.round(pct * 1.2);
-  const midField = hue > 30 && hue < 100;
-  const color = active
-    ? `hsl(${hue}, ${midField ? 85 : 76}%, ${midField ? 47 : Math.round(44 - pct * 0.06)}%)`
-    : "#8E98A8";
-  const dragging = drag !== null;
-  return (
-    /* STACKED, NOT SIDE-BY-SIDE (Anir, Aug 18: "it would look so much better
-       if the textbox was underneath… make it look premium"): the track gets
-       the whole width, and the number sits under its right end as a bare
-       bold figure in the same colour — still typeable, still exact. */
-    <div className="space-y-1">
-      <span
-        className="relative flex h-5 min-w-0 items-center"
-        style={{ ["--range-color" as string]: color }}
-      >
-        <span className="pointer-events-none absolute inset-x-0 h-[6px] overflow-hidden rounded-full bg-[color:var(--border-light)]">
-          <span
-            className={cn(
-              "block h-full rounded-full transition-[filter] duration-200",
-              dragging && "brightness-110"
-            )}
-            style={{
-              width: `${pct}%`,
-              // A two-stop red-to-green gradient interpolates through BROWN.
-              // The bright stop at the sweep's hue midpoint is what makes the
-              // middle of the bar genuinely yellow.
-              background: `linear-gradient(90deg, hsl(4, 76%, 48%), hsl(${Math.round(pct * 0.6)}, 88%, 50%), ${color})`,
-              boxShadow: dragging ? `0 0 10px ${color}66` : undefined,
-            }}
-          />
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={pct}
-          onChange={(e) => {
-            const raw = Number(e.target.value);
-            setDrag(raw);
-            onChange(String(snapConfidence(raw)));
-          }}
-          onPointerUp={() => setDrag(null)}
-          onBlur={() => setDrag(null)}
-          aria-label="Confidence. Drag to set"
-          className="freyr-range relative z-[1] h-5 w-full cursor-pointer appearance-none bg-transparent"
-        />
-      </span>
-      {/* The figure RIDES THE DOT (Suren, Aug 18: "the number should be under
-          the dot always") — anchored at the thumb's percent and clamped so it
-          never slides off the ends. Translate and scale are both Tailwind
-          transforms so the drag pop still composes with the centering. */}
-      <div className="relative h-[26px]">
-        {/* THE FIGURE IS A CHIP, NOT LOOSE DIGITS (Anir, Aug 28: "even at
-            30%, it looks weird, something's wrong"). A bold number and a
-            small grey % floating alone under the bar, at whatever percent
-            the thumb happens to sit, read as strays: three rows, three
-            different alignments. In a tinted chip carrying the bar's own
-            colour it reads as the thumb's own label, which is what it is,
-            and it is still typeable. */}
-        <div
-          className={cn(
-            "absolute top-0 flex -translate-x-1/2 items-center gap-0.5 rounded-full border px-2 py-[1px] transition-transform duration-150",
-            dragging && "scale-110"
-          )}
-          style={{
-            left: `clamp(34px, ${pct}%, calc(100% - 34px))`,
-            background: active ? `${color}14` : "var(--surface)",
-            borderColor: active ? `${color}40` : "var(--border-light)",
-          }}
-        >
-          <input
-            value={value}
-            onChange={(e) => {
-              // Confidence is 0–100, full stop (Anir: "this shouldn't be
-              // allowed" at 145%). Anything typed past the ends snaps to them.
-              const text = e.target.value;
-              const typed = Number(text);
-              onChange(
-                text.trim() !== "" && Number.isFinite(typed)
-                  ? String(Math.max(0, Math.min(100, typed)))
-                  : text
-              );
-            }}
-            inputMode="numeric"
-            placeholder="25"
-            aria-label="Confidence. Type an exact figure"
-            className="w-[30px] border-0 bg-transparent p-0 text-center text-[14.5px] font-bold tnum outline-none placeholder:text-text-tertiary"
-            style={{ color }}
-          />
-          <span className="text-[10.5px] font-semibold" style={{ color: active ? color : undefined }}>
-            %
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
  * THE FUTURE TAB — deals nobody has pitched yet, from the workbook's Future
@@ -4032,7 +3998,7 @@ function SingleOfferingEditor({
               line.confidence === "" || line.confidence === undefined
                 ? undefined
                 : Number(line.confidence);
-            const derived = revenueTypeFromConfidence(conf, false);
+            const derived = revenueTypeFromConfidence(conf);
             const Icon = LEVEL_ICON[derived];
             /* ONE LINE, ALWAYS THE SAME HEIGHT (Anir, Aug 28: "when it hits
                99 or 95, it takes up two lines now, which is weird. I don't
@@ -4050,9 +4016,7 @@ function SingleOfferingEditor({
                   ? `${CONFIDENCE_GO_GET}% and up, paperwork is the only thing left`
                   : derived === "High confidence"
                     ? `${CONFIDENCE_HIGH}% to ${CONFIDENCE_GO_GET - 1}%`
-                    : derived === "Future"
-                      ? "Lands in a later financial year"
-                      : `Under ${CONFIDENCE_HIGH}%`;
+                    : `Under ${CONFIDENCE_HIGH}%`;
             return (
               <p
                 data-confidence-verdict={derived}

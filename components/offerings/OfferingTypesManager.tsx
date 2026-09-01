@@ -281,7 +281,7 @@ export function OfferingTypesManager({
           confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0
             ? `${offeringCounts[confirmRemove.id]} offering${
                 offeringCounts[confirmRemove.id] === 1 ? "" : "s"
-              } currently use it. They are not deleted, but they lose this type.`
+              } use it right now. They are not deleted, but they will no longer have a type.`
             : undefined
         }
         confirmLabel="Remove type"

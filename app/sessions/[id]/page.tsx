@@ -27,7 +27,7 @@ export default async function SessionPage({
       <EmptyState
         icon={SearchX}
         title="Session not found"
-        description="This pitch session doesn't exist yet, or the link is invalid. Head back to your sessions to find it."
+        description="This link no longer works, or the session was removed. Head back to your sessions to find it."
         className="py-24"
         action={
           <SmartBack

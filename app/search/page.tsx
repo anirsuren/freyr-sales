@@ -197,7 +197,7 @@ function SearchInner() {
         <EmptyState
           icon={Search}
           title="Start typing to search"
-          description="Records you open will also show up here as recently viewed."
+          description="Anything you open shows up here too, so you can get back to it quickly."
         />
       )}
     </div>

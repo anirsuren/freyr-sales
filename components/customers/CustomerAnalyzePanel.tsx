@@ -382,9 +382,9 @@ export function CustomerAnalyzePanel({
                 {canEdit && analyzeInfo}
               </h2>
               <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed">
-                Not analyzed yet, analyze to qualify its type, ownership and
-                revenue from the web, and the offerings that fit show
-                automatically.
+                Nothing has been looked up for this company yet. An analysis
+                fills in its type, ownership and revenue from the web, and the
+                offerings that fit then show up on their own.
               </p>
             </div>
             {canEdit ? (
@@ -476,7 +476,7 @@ export function CustomerAnalyzePanel({
           </p>
         ) : applicableOfferings.length === 0 ? (
           <p className="text-[13px] text-text-tertiary">
-            No offerings are mapped to {customerType} yet.
+            Nothing in the catalogue is for {customerType} yet.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

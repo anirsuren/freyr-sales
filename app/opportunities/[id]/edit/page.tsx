@@ -2,15 +2,17 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
-import { buildOpportunity360 } from "@/lib/opportunity360";
+import { listOfferings } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  recordWriteRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { readPrivileges } from "@/lib/privileges";
-import { readRecordTeams } from "@/lib/recordTeams";
+import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { mayTouchOpportunity } from "@/lib/recordAccess";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getDataMode } from "@/lib/dataMode";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -67,11 +69,10 @@ export default async function EditDealPage({
   if (!deal) notFound();
 
   const db = getDb();
-  const [customers, contacts] = await Promise.all([
+  const [customers, offerings] = await Promise.all([
     db.customers.list().catch(() => []),
-    db.contacts.list().catch(() => []),
+    listOfferings(),
   ]);
-  const bands = await buildOpportunity360(deal.id, role);
 
   const customerId =
     customers.find(
@@ -90,10 +91,6 @@ export default async function EditDealPage({
     opportunityId: deal.id,
     ...(customerId ? { customerId } : {}),
   });
-
-  const mayCreateSolutioning =
-    (await canOpenModule("/solutioning")) &&
-    !(await moduleWriteRefusal("/solutioning"));
 
   /* Real names in Real mode, the sample cast in Mock — identical to the deal
      page, so the two pickers offer the same people. */
@@ -121,6 +118,13 @@ export default async function EditDealPage({
         "Daniel Foster",
       ];
 
+  /* The People section is part of the form, so this door carries it too, and
+     asks the same question the route asks. One form, one set of facts,
+     whichever way somebody came in. */
+  const mayChangeTeam =
+    verdict.mayEdit &&
+    !(await recordWriteRefusal("/opportunities", { id: deal.id }));
+
   return (
     <div className="mx-auto max-w-[1100px]">
       <SmartBack
@@ -131,38 +135,30 @@ export default async function EditDealPage({
       </SmartBack>
       <PageHeader
         title={`Edit ${deal.name || deal.customer}`}
-        subtitle="The deal's own details, and everything hanging off it: contracts, submissions, presentations, meetings and the work asked of solutioning."
+        /* The sections of records that used to sit under the form are gone
+           (Suren, Sep 1: "The edit deal has all these things below, right?
+           These things we also don't need, right, because the tabs are already
+           here"), so the line that promised them had to go with them. */
+        subtitle="The deal's own details. Contracts, submissions, presentations, meetings and accruals each have their own tab on the deal itself."
       />
       <div className="mt-5">
         <DealEditScreen
           deal={deal}
-          bands={bands}
           mayEdit={verdict.mayEdit}
           why={verdict.why}
-          createOptions={
-            mayCreateSolutioning
-              ? {
-                  customers: customers.map((c) => ({
-                    id: c.id,
-                    name: c.company_name ?? "",
-                  })),
-                  opportunities: opportunities.map((o) => ({
-                    id: o.id,
-                    label: o.name || `${o.customer} deal`,
-                    customer: o.customer,
-                    customerId: o.customerId ?? null,
-                  })),
-                  members,
-                  contacts: contacts.map((c) => ({
-                    id: c.id,
-                    name: c.full_name,
-                    customerId: c.customer_id ?? null,
-                    title: c.job_title ?? "",
-                  })),
-                  meName: me.name,
-                }
-              : null
-          }
+          meName={me.name}
+          people={members}
+          team={teamFor(teams, "opportunity", deal.id)}
+          mayChangeTeam={mayChangeTeam}
+          customers={customers.map((c) => ({
+            id: c.id,
+            name: c.company_name ?? "",
+          }))}
+          offerings={offerings.map((o) => ({
+            id: o.id,
+            name: o.offering_name,
+            type: o.offering_type,
+          }))}
         />
       </div>
     </div>

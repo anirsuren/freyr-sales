@@ -169,7 +169,7 @@ export function DealTimeline({
       hint: date
         ? `${def} Logged ${formatDateTime(date)}.`
         : reached
-          ? `${def} Nothing was logged at this step: the deal moved straight past it.`
+          ? `${def} Nothing was logged at this step. The deal moved straight past it.`
           : `${def} This deal hasn't got here yet.`,
       enteredAt: date ?? null,
       days: stayDays.has(i) ? (stayDays.get(i) as number) : null,
@@ -190,7 +190,7 @@ export function DealTimeline({
         <div>
           <div className="flex items-center gap-1.5">
             <h2 className="text-[15px] font-semibold text-text-primary">Deal stage</h2>
-            <InfoHint text="Every deal moves through these four steps in order. A filled dot already happened and shows its date. An empty dot is still ahead. The number between two dots is how many days the deal sat on the first one." />
+            <InfoHint text="Every deal moves through these steps in order. A filled dot already happened and shows its date. An empty dot is still ahead. The number between two dots is how many days the deal sat on the first one." />
           </div>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
             How far this deal has got, how long each step held it, and what&apos;s

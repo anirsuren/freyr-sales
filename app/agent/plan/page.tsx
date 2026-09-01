@@ -101,11 +101,11 @@ export default async function AgentGoalsPage() {
         </div>
         {runs.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            Nothing yet, set a goal above, or open the{" "}
+            Nothing here yet. Set a goal above, or open the{" "}
             <Link href="/agent/inbox" className="text-blue-primary hover:underline">
               To-do
             </Link>{" "}
-            to approve and run the agent&apos;s queued work.
+            to approve the work the agent has lined up.
           </p>
         ) : (
           <AgentRunHistory runs={runs} />

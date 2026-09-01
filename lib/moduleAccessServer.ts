@@ -9,6 +9,13 @@ import {
   canDeleteModuleWith,
   canWriteModuleWith,
 } from "./moduleAccess";
+import { moduleForPath } from "./privileges";
+import {
+  canDeleteRecord,
+  canEditRecord,
+  resolveScope,
+  type ScopedRecord,
+} from "./recordScope";
 import { viewerAccessMap } from "./viewerAccess";
 
 /**
@@ -76,6 +83,57 @@ export async function moduleDeleteRefusal(path: string): Promise<string | null> 
   if (!canDeleteModuleWith(path, user.role, access))
     return "Only an owner can delete this.";
   return null;
+}
+
+/**
+ * MAY THEY CHANGE **THIS ONE**, not merely this kind of thing.
+ *
+ * The module helpers above answer for a module and every record in it alike,
+ * which was the whole answer until Suren drew the second line (Sep 1): "you can
+ * only do anything on a particular customer that you are part of or created or
+ * edited so far... for other records that they are not part of, they should
+ * have a view option."
+ *
+ * So a write now has to clear two gates and this asks both, in order. The
+ * module first, because somebody who may not write here at all should be told
+ * that rather than told whose record it is; then the record.
+ *
+ * HIDING THE BUTTON IS NOT THE CONTROL. Every write path calls this. A page
+ * that draws no Edit control is a courtesy; this is the thing that actually
+ * refuses, and it is why a curl with somebody else's cookie gets a 403 instead
+ * of a save.
+ */
+export async function recordWriteRefusal(
+  path: string,
+  record: ScopedRecord
+): Promise<string | null> {
+  const moduleRefusal = await moduleWriteRefusal(path);
+  if (moduleRefusal) return moduleRefusal;
+
+  const moduleKey = moduleForPath(path);
+  /* A path with no row in the privilege table is governed by the role rules
+     alone, exactly as it was before any of this. See lib/privileges. */
+  if (!moduleKey) return null;
+
+  const scope = await resolveScope();
+  if (canEditRecord(record, moduleKey, scope)) return null;
+  return "This one is not yours, so you can look at it but not change it.";
+}
+
+/** The same question for removing it. */
+export async function recordDeleteRefusal(
+  path: string,
+  record: ScopedRecord
+): Promise<string | null> {
+  const moduleRefusal = await moduleDeleteRefusal(path);
+  if (moduleRefusal) return moduleRefusal;
+
+  const moduleKey = moduleForPath(path);
+  if (!moduleKey) return null;
+
+  const scope = await resolveScope();
+  if (canDeleteRecord(record, moduleKey, scope)) return null;
+  return "This one is not yours, so you can look at it but not remove it.";
 }
 
 /** The page-side twin: read-only visitors are sent away from an editor. */

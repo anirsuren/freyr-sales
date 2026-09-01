@@ -402,7 +402,7 @@ export function NewMeetingDialog({
                       ...guestNames.map((n) => ({
                         id: `guest:${n}`,
                         label: n,
-                        sub: "Not on file",
+                        sub: "Not a saved contact",
                         avatarName: n,
                       })),
                     ]}
@@ -423,12 +423,12 @@ export function NewMeetingDialog({
                     onCreate={(name) => void addContact(name)}
                     placeholder="Pick or type their attendees…"
                     
-                    emptyLabel="Nobody on file yet — type a name to add them."
+                    emptyLabel="Nobody saved here yet. Type a name to add them."
                   />
                   {theirContacts.length === 0 && (
                     <p className="mt-1 text-[11.5px] text-text-tertiary">
-                      Nobody is on file at this account. Type a name to add them
-                      to this meeting.
+                      Nobody is saved against this account yet. Type a name to
+                      add them to this meeting.
                     </p>
                   )}
                 </>
@@ -536,7 +536,7 @@ export function NewMeetingDialog({
           docs={stagedDocs}
           setDocs={setStagedDocs}
           uploadUrl="/api/meetings/upload-draft"
-          hint="The agenda, a brief, the deck — whatever belongs with it."
+          hint="The agenda, a brief, the deck, whatever belongs with it."
         />
       </div>
 

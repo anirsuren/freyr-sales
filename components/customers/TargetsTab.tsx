@@ -932,7 +932,7 @@ export function TargetsTab({
             <b>{confirmRemove?.name}</b> comes off the target list.
           </>
         }
-        detail="It is only the prospect list — nothing that already exists for this company is touched."
+        detail="This is only the prospect list. Nothing that already exists for this company is touched."
         confirmLabel="Remove target"
         onConfirm={() => {
           if (confirmRemove) void removeTarget(confirmRemove);

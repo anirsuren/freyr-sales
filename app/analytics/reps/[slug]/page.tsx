@@ -151,7 +151,6 @@ export default async function RepPage({
     const myOpen = (await readOpportunities()).opportunities.filter(
       (deal) =>
         (deal.owner ?? "").trim().toLowerCase() === member.name.trim().toLowerCase() &&
-        deal.level !== "Future" &&
         deal.status !== "Won" &&
         deal.status !== "Lost"
     );
@@ -727,7 +726,7 @@ export default async function RepPage({
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartInspector
             title="Biggest accounts"
-            description="Where the open value is concentrated."
+            description="The accounts holding the most open money."
             records={accountRecords}
             searchPlaceholder="Find an account..."
             className="h-full"

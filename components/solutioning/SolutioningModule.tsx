@@ -571,8 +571,8 @@ export function SolutioningModule({
       ) : shown.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title={`Nothing in ${ROOM_META[room].title.toLowerCase()} matches these filters.`}
-          description="Try a different type, status or search term."
+          title={`No ${ROOM_META[room].noun} match these filters.`}
+          description="Clear the search box, or pick a different type, status or owner."
         />
       ) : view === "split" ? (
         /* LEFT: THE ROOM AS A RUNNING LIST. RIGHT: THE ONE YOU PICKED.
@@ -801,9 +801,9 @@ export function SolutioningModule({
         title={`Delete ${confirmDelete?.ref}?`}
         body={
           <>
-            This removes <b>{confirmDelete?.ref}</b> and its documents for
-            everyone. If the work simply stopped, cancel it instead — a
-            cancelled record stays in history.
+            <b>{confirmDelete?.ref}</b> and its documents go, for everyone. If
+            the work simply stopped, cancel it instead. A cancelled record
+            stays in the list where people can still read it.
           </>
         }
         confirmLabel="Delete it"
@@ -2118,7 +2118,7 @@ export function NewRequestDialog({
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={3}
-              placeholder="Scope, context, links — whatever helps them start."
+              placeholder="Scope, context, links, whatever helps them start."
               className="mt-1.5 w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
             />
           </label>

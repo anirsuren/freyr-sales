@@ -849,7 +849,7 @@ export function CustomerTypesManager({
               {customerTypes.find((t) => t.id === confirmRemoveType)?.name ??
                 "This type"}
             </NamePill>{" "}
-            comes off the list. No offering is for it, so nothing is retargeted.
+            comes off the list. No offering is for this type, so nothing else changes.
           </>
         }
         confirmLabel="Remove type"
@@ -897,7 +897,7 @@ export function CustomerTypesManager({
           removingMarket && (marketCounts[removingMarket.id] || 0) > 0
             ? `${marketCounts[removingMarket.id]} offering${
                 marketCounts[removingMarket.id] === 1 ? "" : "s"
-              } are filed under it. They are not deleted, but they lose this market.`
+              } are filed under it. They are not deleted, but they will no longer list this market.`
             : undefined
         }
         confirmLabel="Remove market"

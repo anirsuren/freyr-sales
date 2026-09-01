@@ -1,6 +1,13 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  /* The app switches theme by putting a `.dark` class on the root and
+     remembering it in localStorage (freyr.theme). Without this line Tailwind
+     3.4 defaults to the `media` strategy, so every `dark:` utility followed the
+     LAPTOP's system setting instead of the in-app toggle: three files in
+     Offerings stayed light when the rest of the app went dark, and went dark on
+     a Mac set to dark even when the toggle said light. */
+  darkMode: "class",
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",

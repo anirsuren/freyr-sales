@@ -92,7 +92,7 @@ export default async function ForecastPage() {
 
   const deals = buildDeals(sessions, customers, contacts, interactions);
   if (getDataMode() === "live" && deals.length === 0) {
-    return <EmptyState icon={Target} title="No forecast yet" description="Add an account and create the first deal to start your real forecast." />;
+    return <EmptyState icon={Target} title="No forecast yet" description="Add an account and create its first deal. The forecast fills in from there." />;
   }
   const open = deals.filter((d) => d.stage !== "Closed Lost");
   const bestCase = open.reduce((s, d) => s + d.value, 0);
@@ -264,14 +264,14 @@ export default async function ForecastPage() {
           raw={commit}
           accent
           icon={CircleCheck}
-          hint="The realistic number: every open deal's value multiplied by its chance of closing, added up. What you can reasonably promise."
+          hint="Every open deal counted at its chance of closing, then added up. This is the number you can reasonably promise."
         />
         <Stat
           label="Best case (open)"
           value={formatMoney(bestCase)}
           raw={bestCase}
           icon={TrendingUp}
-          hint="The optimistic number: the full value of every open deal if they ALL closed. The ceiling, not the expectation."
+          hint="The full value of every open deal, added up as if all of them closed. This is the ceiling, not what to expect."
         />
         <Stat
           label="Quarter quota"
@@ -285,7 +285,7 @@ export default async function ForecastPage() {
           value={formatMoney(gap)}
           raw={gap}
           icon={Flag}
-          hint="How much more committed revenue you need to hit the target."
+          hint="How far the realistic number still is from the target."
         />
       </section>
 
@@ -341,7 +341,7 @@ export default async function ForecastPage() {
           <div className="xl:pr-5 flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <h2 className="text-[15px] font-semibold text-text-primary">By stage</h2>
-              <InfoHint text={"Your pipeline broken down by step.\nThe light column is the full value.\nThe solid part is that value cut down by how likely each step is to close."} />
+              <InfoHint text={"Every deal you have, grouped by the step it is on, Closed Lost included.\nThe light column is the full value.\nThe solid part is that value cut down by how likely each step is to close."} />
             </div>
             <div className="flex items-center gap-4 mb-3 text-[11px] text-text-tertiary">
               <span className="inline-flex items-center gap-1.5">
@@ -523,7 +523,7 @@ export default async function ForecastPage() {
               <h2 className="text-[15px] font-semibold text-text-primary">
                 Where your commit comes from
               </h2>
-              <InfoHint text="Your realistic forecast, split two ways: by the stage it sits in, and by what is being sold. Lost deals are left out." />
+              <InfoHint text="The same realistic number, split two ways. Once by the stage each deal is on, and once by what is being sold. Deals you lost are left out." />
             </div>
             <p className="text-[11px] text-text-tertiary mb-3">
               The same committed number, sliced two ways
@@ -680,7 +680,7 @@ export default async function ForecastPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-[15px] font-semibold text-text-primary">Deal drivers</h2>
-                <InfoHint text="The open deals adding the most to this quarter's forecast, once the odds are applied." />
+                <InfoHint text="The five open deals adding the most to this quarter's forecast, after each one is counted at its chance of closing." />
               </div>
               <p className="mt-0.5 text-[11px] text-text-tertiary">
                 Highest weighted contribution first
@@ -859,7 +859,7 @@ export default async function ForecastPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-[15px] font-semibold text-text-primary">Forecast signals</h2>
-                <InfoHint text="A quick health check on your quarter. High coverage and high confidence are good. High concentration is bad: it means too much rides on too few deals." />
+                <InfoHint text="Four quick checks on the quarter. The first three are better when they are high. The last one is a warning, because a big number there means most of your forecast rides on only three deals." />
               </div>
               <p className="text-[10.5px] text-text-tertiary">What needs managing now</p>
             </div>
@@ -876,7 +876,7 @@ export default async function ForecastPage() {
               {
                 label: "Commit confidence",
                 value: forecastConfidence,
-                detail: "Weighted share of open pipeline",
+                detail: "The realistic number as a share of the full open value",
                 color: "#0071E3",
               },
               {
@@ -913,8 +913,8 @@ export default async function ForecastPage() {
             <p className="text-[10.5px] leading-relaxed text-text-secondary">
               <span className="font-semibold text-text-primary">{formatMoney(gap)} remains to quota.</span>{" "}
               {staleOpen.length > 0
-                ? `${formatMoney(riskWeighted)} of commit is exposed across ${staleOpen.length} stale ${staleOpen.length === 1 ? "deal" : "deals"}.`
-                : "No committed value is currently stale."}
+                ? `${formatMoney(riskWeighted)} of it sits on ${staleOpen.length} ${staleOpen.length === 1 ? "deal" : "deals"} nobody has touched for over ${ROTTING_DAYS} days.`
+                : `Every open deal has been touched in the last ${ROTTING_DAYS} days.`}
             </p>
           </div>
         </Card>

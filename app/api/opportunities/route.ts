@@ -281,6 +281,44 @@ export async function POST(req: NextRequest) {
          row says edit, so it let them start deals as well as correct them. */
       const refusal = await moduleCreateRefusal("/opportunities");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
+      /* WHAT A NEW DEAL MUST CARRY, ENFORCED HERE AND NOT ONLY IN THE FORM.
+         Suren, Sep 1: "you have to make everything mandatory... Estimated TCV
+         is mandatory. ACV is not mandated. Confidence level is mandatory.
+         Expected to sign is mandatory. Owner is mandatory."
+
+         The browser checks the same list, but a check that lives only in the
+         browser is a suggestion: this route is reachable from the agent, from
+         a script, and from anything else that learns the shape. Owner is the
+         exception and is absent below on purpose, because the line underneath
+         already guarantees one by falling back to the creator.
+
+         ADD ONLY. Editing an existing deal is deliberately not held to this:
+         97 of the 102 deals in the workspace have no owner, so enforcing it on
+         update would stop people correcting records they already have. */
+      const draft = body(raw) as {
+        estimatedTcv?: unknown;
+        lines?: { confidence?: unknown; estSignDate?: unknown }[];
+      };
+      const firstLine = Array.isArray(draft.lines) ? draft.lines[0] : undefined;
+      const needed: string[] = [];
+      if (typeof draft.estimatedTcv !== "number" || !Number.isFinite(draft.estimatedTcv))
+        needed.push("an estimated TCV");
+      if (typeof firstLine?.confidence !== "number" || !Number.isFinite(firstLine.confidence))
+        needed.push("a confidence level");
+      if (typeof firstLine?.estSignDate !== "string" || !firstLine.estSignDate.trim())
+        needed.push("an expected signing date");
+      if (needed.length)
+        return NextResponse.json(
+          {
+            error:
+              needed.length === 1
+                ? `A new deal needs ${needed[0]}.`
+                : `A new deal needs ${needed.slice(0, -1).join(", ")} and ${needed[needed.length - 1]}.`,
+          },
+          { status: 400 }
+        );
+
       const created = await addOpportunity({
         ...body(raw),
         // An opportunity nobody owns is an opportunity nobody chases.

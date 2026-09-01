@@ -222,7 +222,7 @@ export function ActivityMasterCard({
                   <div>
                     <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                       How it counts
-                      <InfoHint text={"Counts as 1. Each one adds one.\nDollar value. The activity's money is the number.\nPerson types the number. Typed at logging time.\nNot counted. Logged for the record only."} />
+                      <InfoHint text={"Counts as 1. Each one adds one, and nobody types a number.\nDollar value. The activity's own money is the number.\nPerson types the number. Whoever logs it says how much it adds.\nNot counted. It is kept for the record and feeds no goal."} />
                     </span>
                     {writable ? (
                       <ColorSelect
@@ -265,7 +265,7 @@ export function ActivityMasterCard({
                       <div>
                         <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           Counts from
-                          <InfoHint text={"The status at which it starts counting. A contract counts only when completed; a pilot already counts while under progress."} />
+                          <InfoHint text={"The status where this activity starts counting. A contract only counts once it is Completed. A pilot already counts while it is Under progress."} />
                         </span>
                         {writable ? (
                           <ColorSelect
@@ -305,7 +305,7 @@ export function ActivityMasterCard({
                       <div className="min-h-0 flex-1">
                         <span className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           Goals it may feed
-                          <InfoHint text={"The allowed list. Whoever logs the activity picks ONE goal from it at logging time."} />
+                          <InfoHint text={"The goals this activity is allowed to count towards. Whoever logs it picks one of them, and only one."} />
                         </span>
                         <span className="flex min-w-0 flex-col items-start gap-1.5">
                           {a.goalIds.map((gid) => {
@@ -469,7 +469,7 @@ export function ActivityMasterCard({
         }}
         busy={busy}
         title={`Remove ${confirmRemove?.label ?? "this activity"}?`}
-        body="Anything already logged with it keeps its history; it just stops being offered when people log new activities."
+        body="Anything already logged with it keeps its history. It just stops being offered the next time somebody logs an activity."
         confirmLabel="Remove"
       />
     </Card>

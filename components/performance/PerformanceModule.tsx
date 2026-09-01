@@ -1027,8 +1027,8 @@ function MasterTab({
         <div className="mt-4">
           <EmptyState
             icon={ClipboardList}
-            title="Start the goal master"
-            description="This is the one place every goal lives: its type, its subgoals, who owns them, and whether it's being tracked on the plan. Add the first goal to begin."
+            title="No goals here yet"
+            description="This is the one place every goal lives. Add the first one and you can give it a target, split it into smaller parts, and say who carries it."
             action={
               <button
                 type="button"
@@ -3008,7 +3008,7 @@ function GoalPopupBody({
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned groups
-          <InfoHint text={"This goal handed to a whole department, with a target for the group.\nIts people keep their own targets; nobody logs a number on the group itself, because a group's achievement is its people's added up."} />
+          <InfoHint text={"This goal given to a whole department, with a target for the group.\nIts people keep their own targets. Nobody logs a number on the group itself. What a group has done is just its people's numbers added together."} />
         </p>
         {live && groupRows.length > 0 && (
           <Tooltip label="Assign this goal to a group">
@@ -3215,7 +3215,7 @@ function GoalPopupBody({
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned individually
-          <InfoHint text={"People given this goal on their own, outside any group above.\nA group's people are listed inside their group, with their share of its target. They are not repeated here.\nEverything rolls up the same way: person → group → organization."} />
+          <InfoHint text={"People given this goal on their own, outside any group above.\nSomebody who is already in a group is listed inside that group instead, with their share of its target. Nobody is shown twice.\nThe numbers always add up the same way. Person into group, group into the whole company."} />
         </p>
         {/* A PLUS, NOT A SENTENCE (Anir, Aug 15: "it can just be a blue and
             white plus sign on the right side of the assigned people text").
@@ -3379,6 +3379,9 @@ function GoalPopupBody({
                       </>
                     }
                     detail="Anything they already logged against it stays on the record."
+                    /* Red is for what cannot be taken back. Assigning the goal
+                       again puts this straight, so it wears the ordinary blue. */
+                    tone="primary"
                     confirmLabel="Unassign"
                     busy={busy}
                   />
@@ -3803,7 +3806,7 @@ function GoalEditorFields({
         <span className="min-w-0">
           <span className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
             Track on Org performance
-            <InfoHint text={"Tracking means this goal is counted and shown on Org performance with its target and actuals.\nOff means it stays on the master list only."} />
+            <InfoHint text={"Tracking means this goal is counted and shown on Org performance, with its target and everything logged against it.\nOff means it stays on this master list only."} />
           </span>
           <span className="block text-[11px] text-text-tertiary">
             {picked
@@ -3823,7 +3826,7 @@ function GoalEditorFields({
         <div className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
           <span className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Schedule
-            <InfoHint text={"Cumulative figures this goal should have reached by each date, e.g. $300K by 30 Sep, $700K by 31 Dec.\nThe drill-down's \"must be at\" marker reads the latest one that has passed.\nLeave it empty and the app says nothing about pace instead of guessing."} />
+            <InfoHint text={"Running totals this goal should have reached by certain dates. For example $300K by 30 Sep, then $700K by 31 Dec.\nWhen you open the goal, the \"must be at\" marker uses the last date that has gone by.\nLeave this empty and the app will not say anything about whether you are on pace."} />
             <span className="ml-1 font-normal text-text-tertiary">
               optional
             </span>
@@ -3965,6 +3968,9 @@ function GoalEditorFields({
                         title="Remove this milestone?"
                         body="It comes off the goal's schedule."
                         detail="Nothing changes until you save the schedule."
+                        /* Red is for what cannot be taken back. This only edits
+                           the unsaved form, so it wears the ordinary blue. */
+                        tone="primary"
                         confirmLabel="Remove it"
                       />
                       {faulted && (
@@ -4376,7 +4382,7 @@ function SubgoalEditorFields({
           <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Groups on this subgoal
-              <InfoHint text={"A whole department carrying this slice. Its people are added below automatically at a target of 0, so they can log straight away.\nSave the subgoal first, then assign. A group needs something to attach to."} />
+              <InfoHint text={"A whole department carrying this part of the goal. Its people are added below automatically with a target of 0, so they can start logging right away.\nSave the subgoal first, then pick a group. There has to be something for the group to attach to."} />
             </label>
             <div className="mt-2 space-y-1.5">
               {(editing.groupAssignments ?? []).length === 0 ? (
@@ -5136,7 +5142,7 @@ function LogActualModal({
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Which booking?
               <InfoHint
-                text={`${goal?.name ?? "This goal"} is only ever the sum of the bookings underneath it, so the number belongs to one of them.`}
+                text={`${goal?.name ?? "This goal"} is only ever the bookings underneath it added together. So the number has to go on one of them.`}
               />
             </label>
             <div className="mt-1">
@@ -5181,7 +5187,7 @@ function LogActualModal({
             Customer
             <InfoHint
               text={
-                "Which account this number came from. Pick the real account so the money can be traced back to it.\nTyping something not on the list is allowed for a win that has no account record yet."
+                "Which account this number came from. Pick the real account so the money can be traced back to it.\nIf the account has no record here yet, you can type the name instead."
               }
             />
           </label>
@@ -5443,7 +5449,7 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Amount
-              <InfoHint text="How much this single achievement is worth, in this goal&apos;s unit. It adds onto everything logged before it." />
+              <InfoHint text="How much this one achievement is worth, counted the way this goal counts. It adds on top of everything logged before it." />
             </label>
             <div className="relative mt-1 flex gap-2">
               {/* MONEY CARRIES ITS CURRENCY (Suren, via Anir, Aug 15:

@@ -156,7 +156,7 @@ export default async function MarketIntelCompanyPage({
         <EmptyState
           icon={Radar}
           title="Nothing is tracked under this link"
-          description="No company with that address is on your watchlist, in the live feed, or in the sample set. The link may be out of date, or the company was never added. Open one from the dashboard, or add it with “Track a company”."
+          description="This link no longer works, or the company was never added. Open a company from the dashboard, or add one with “Track a company”."
         />
       </div>
     );

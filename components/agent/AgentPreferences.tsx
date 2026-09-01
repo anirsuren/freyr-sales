@@ -168,7 +168,7 @@ export function AgentPreferences() {
           on={prefs.only_mine}
           onChange={(v) => save({ only_mine: v })}
           label="Only act on my accounts"
-          hint="When on, the agent focuses on accounts you own; the rest of the book is hidden."
+          hint="When this is on, the agent only works on accounts you own. Everyone else's accounts are left out."
         />
       </div>
 
@@ -229,13 +229,13 @@ export function AgentPreferences() {
           on={prefs.autopilot_reengage}
           onChange={(v) => save({ autopilot_reengage: v })}
           label="Autopilot may re-engage cooling deals"
-          hint="When off, cooling deals are left for you to handle instead of auto-drafted."
+          hint="When this is off, the agent will not write to cooling deals on its own. They go to your approval queue instead."
         />
         <Toggle
           on={prefs.autopilot_stabilize}
           onChange={(v) => save({ autopilot_stabilize: v })}
           label="Autopilot may stabilize at-risk accounts"
-          hint="When off, at-risk accounts are left for you to approve."
+          hint="When this is off, the agent will not act on at-risk accounts on its own. They go to your approval queue instead."
         />
       </div>
 

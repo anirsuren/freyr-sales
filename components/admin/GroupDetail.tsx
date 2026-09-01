@@ -971,6 +971,9 @@ export function GroupDetail({
           )
         }
         confirmLabel="Take it off"
+        /* Red is for what cannot be taken back. The goal stays in the Goal
+           Master and can be given to the group again, so this is blue. */
+        tone="primary"
         busy={busy}
       />
     </div>

@@ -363,7 +363,7 @@ export function OfferingOverviewMain({
         />
         {report.customerCount === 0 ? (
           <p className="mt-5 pl-11 text-[13px] text-text-tertiary">
-            No commercial data yet. Add this offering to a customer to begin tracking adoption and revenue.
+            No commercial data yet. Add this offering to a customer and the app starts tracking who uses it and what it earns.
           </p>
         ) : (
           <div className="mt-5 pl-11">

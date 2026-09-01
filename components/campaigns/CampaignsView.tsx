@@ -761,7 +761,7 @@ export function CampaignsView({
         <EmptyState
           icon={Megaphone}
           title="No campaigns yet"
-          description="Draft one message for an offering, pick the contacts, and queue the blast: everyone on the list with an email gets it."
+          description="A campaign is one message you send to a list of contacts. Write it, pick who gets it, and queue it. Nothing actually goes out until email is connected."
           action={
             <Button
               onClick={() => {

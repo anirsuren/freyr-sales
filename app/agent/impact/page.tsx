@@ -85,28 +85,28 @@ export default async function AgentImpactPage({
       value: String(impact.totalRuns),
       icon: Bot,
       tone: "text-blue-primary",
-      hint: "How many times the agent did work for you in this window: a one-click action, a full play, or an autopilot pass.",
+      hint: "How many times the agent did work for you over the time range you picked. A one-click action, a full play and an autopilot pass each count as one.",
     },
     {
       label: "Accounts worked",
       value: String(impact.accountsTouched),
       icon: Building2,
       tone: "text-text-primary",
-      hint: "How many different accounts the agent touched here: drafted for, logged on, or moved forward.",
+      hint: "How many different accounts the agent worked on. An account counts once, however many things the agent did there.",
     },
     {
       label: "Entries logged",
       value: String(impact.entriesLogged),
       icon: ScrollText,
       tone: "text-success",
-      hint: "Notes and activity the agent recorded on your accounts (drafts saved, follow-ups set, calls logged): all left for your review.",
+      hint: "Notes and activity the agent wrote on your accounts, like saved drafts, follow-ups and logged calls. It is all left for you to check.",
     },
     {
       label: "Pipeline at those accounts",
       value: formatMoney(pipelineAtWorked),
       icon: Wallet,
       tone: "text-text-primary",
-      hint: "Total open deal value at the accounts the agent worked. Shown for context: not a claim the agent caused it.",
+      hint: "The total value of open deals at the accounts the agent worked on. It is here for background, not a claim that the agent won it.",
     },
   ];
 
@@ -185,7 +185,7 @@ export default async function AgentImpactPage({
         <Card>
           {impact.totalRuns === 0 ? (
             <p className="text-[13px] text-text-secondary">
-              No agent runs in this window yet.
+              The agent has not run in this time range yet.
             </p>
           ) : (
             <BarChart data={seriesData} height={160} unit="runs" />

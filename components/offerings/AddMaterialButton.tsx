@@ -1449,8 +1449,8 @@ export function AddMaterialButton({
                         Aug 12: "when you add a file, you lose it... I have no
                         idea what's going on"). */}
                     <p className="mt-0.5 text-[11.5px] text-text-secondary">
-                      Each file starts with your shared choices above — adjust
-                      any file on its own card before saving.
+                      Each file starts with the choices you made above. Change any
+                      file on its own card before you save.
                     </p>
                   </div>
                   <span className="shrink-0 text-[11.5px] text-text-tertiary">
@@ -1535,8 +1535,8 @@ export function AddMaterialButton({
                                   className="mt-[1px] shrink-0"
                                 />
                                 A .{mismatch.ext} file is usually{" "}
-                                {MATERIAL_FORMAT_META[mismatch.expected].label} —
-                                saving it as{" "}
+                                {MATERIAL_FORMAT_META[mismatch.expected].label}.
+                                Saving it as{" "}
                                 {MATERIAL_FORMAT_META[(fileOverrides[key]?.kind || kind) as MaterialFormat].label}{" "}
                                 is still allowed.
                               </p>
@@ -1556,7 +1556,7 @@ export function AddMaterialButton({
                               <span className="font-medium normal-case tracking-normal text-text-tertiary">
                                 optional
                               </span>
-                              <InfoHint text={"Freyr transcribes this video automatically once it is uploaded.\nIf you already have a transcript, add it here and the two are reconciled into one: your spelling wins on names and product terms, and anything only the machine caught is kept."} />
+                              <InfoHint text={"Freyr writes out what this video says on its own once it is uploaded.\nIf you already have a transcript, add it here and the two are merged into one. Your spelling of names and product terms wins, and anything only the automatic version picked up is kept."} />
                             </span>
                             <TranscriptPicker
                               value={fileOverrides[key]?.transcript}

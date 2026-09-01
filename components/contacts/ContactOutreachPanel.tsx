@@ -301,8 +301,8 @@ export function ContactOutreachPanel({
                 }`}
               >
                 {voiceWired
-                  ? "Agents are wired: no phone number is connected yet, so the call queues until one is."
-                  : "Voice agents aren't configured in this environment yet."}
+                  ? "The voice agents are ready, but no phone number is connected yet. The call waits in the queue until one is."
+                  : "Voice agents are not set up here yet."}
               </p>
               <div className="flex justify-end">
                 <Button onClick={queueCall} loading={queuing}>
@@ -345,7 +345,7 @@ export function ContactOutreachPanel({
                   {" · "}
                   {draft.source === "claude" ? "AI-personalized" : "template"}
                   {" · "}
-                  Nothing sends from here, copy it and send it yourself.
+                  Nothing sends from here. Copy it and send it yourself.
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -394,7 +394,7 @@ export function ContactOutreachPanel({
           </div>
         ) : (
           <p className="text-[13px] text-text-tertiary">
-            No offerings are mapped to this customer type yet.
+            No offerings match this customer type yet.
           </p>
         )
       ) : (

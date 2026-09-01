@@ -732,7 +732,7 @@ export default async function VoicePage() {
             <EmptyState
               icon={PhoneCall}
               title="No calls queued yet"
-              description="Queue one from a contact's AI voice call, or select contacts on the Contacts page and run a category's agent on the whole list."
+              description="Open a contact and start an AI voice call to queue the first one. You can also tick several contacts on the Contacts page and send one agent down the whole list."
             />
           </Card>
         ) : (

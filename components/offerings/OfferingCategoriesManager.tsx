@@ -344,7 +344,7 @@ export function OfferingCategoriesManager({
           confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0
             ? `${offeringCounts[confirmRemove.id]} offering${
                 offeringCounts[confirmRemove.id] === 1 ? "" : "s"
-              } currently sit in it. They are not deleted, but they lose this grouping.`
+              } are in it right now. They are not deleted, but they will no longer have a category.`
             : undefined
         }
         confirmLabel="Remove category"

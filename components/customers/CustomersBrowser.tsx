@@ -66,11 +66,11 @@ type EnrichedCustomer = Customer & {
 // Plain-English explanations for the table columns a rep might not recognize.
 const COL_HINTS: Record<string, string> = {
   Opportunity:
-    "How big a deal this account could be, based on company size. High = Large, Medium = Mid, Low = Small. A quick read on where the bigger prizes are.",
+    "How big a deal this account could be. It comes from the size of the company, so a Large company reads High and a Small one reads Low. Use it to see where the bigger prizes are.",
   // Health column intentionally has no header hint — each row's Health badge
   // already explains itself on hover, and an exact-text test depends on the
   // header reading exactly "Health".
-  "Last Outcome": "The result of the most recent touch you logged with this account.",
+  "Last Outcome": "How the last thing you logged with this account went.",
   "Last Session": "The last time you ran a pitch or logged activity with this account.",
 };
 

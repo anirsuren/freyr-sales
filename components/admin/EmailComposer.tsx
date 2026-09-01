@@ -672,7 +672,7 @@ export function EmailComposer() {
         <div className="mt-4 space-y-3.5">
           <RecipientField
             label="To"
-            hint="Start typing a name to pick somebody, or type any address and press Enter. Anyone can be a recipient; they do not need an account here."
+            hint="Start typing a name to pick somebody, or type any address and press Enter. Anybody can be a recipient. They do not need an account here."
             value={to}
             onChange={setTo}
             people={people}
@@ -1033,7 +1033,7 @@ export function EmailComposer() {
             — you can put that somewhere else"). It was printed on every row of
             the log, where it never once differed. */}
         <InfoHint
-          text={`Every email an admin sent from here, newest first, including the ones the provider refused. Click one to read it exactly as it went out.${
+          text={`Every email an admin sent from here, newest first, including the ones that failed to go out. Click one to read it exactly as it was sent.${
             from ? `\nEverything goes out from ${from}.` : ""
           }`}
         />

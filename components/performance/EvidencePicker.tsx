@@ -237,7 +237,7 @@ export function EvidencePicker({
     <div>
       <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
         Evidence
-        <InfoHint text={"The proof behind the claim: the signed contract, SOW or opportunity summary.\nThe group owner opens it before verifying, and money claims cannot be submitted without it."} />
+        <InfoHint text={"The proof behind the number. A signed contract, an SOW, or the opportunity summary.\nThe group owner opens it before saying yes, and a money claim cannot be sent without one."} />
       </label>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         {value.map((e, i) => (

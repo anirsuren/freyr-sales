@@ -52,7 +52,7 @@ export const CONTRIBUTION_META: Record<
   },
   none: {
     label: "Not counted",
-    hint: "Logged for the record; it feeds no goal.",
+    hint: "Kept for the record. It feeds no goal.",
   },
 };
 

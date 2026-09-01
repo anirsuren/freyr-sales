@@ -1,10 +1,48 @@
-import { orderBands } from "./connectionOrder";
-import { canAccessModule } from "./moduleAccess";
+import { cache } from "react";
+import { orderDealBands } from "./connectionOrder";
+import { canAccessModuleWith } from "./moduleAccess";
+import { viewerAccessMap } from "./viewerAccess";
 import type { UserIdentityRole } from "./userIdentity";
 import { readSolutioning, solutioningShelf } from "./solutioning";
 import { readMeetings } from "./meetings";
 import { readContracts } from "./contracts";
+import { readRevenueAccruals } from "./revenueAccruals";
+import { monthLabel, type AccrualLine } from "./revenueAccrualsShared";
+import { formatMoney } from "./pipeline";
 import { BAND_ICONS, type Customer360Band, type Customer360Item } from "./customer360Shared";
+
+/**
+ * ONE READ OF THE ACCRUAL PLANS PER REQUEST, NOT ONE PER DEAL.
+ *
+ * Every plan in the company lives in a single stored row, and the pipeline
+ * page builds a band set for EVERY opportunity in the list — so asking the
+ * store inside the loop is the same row fetched a hundred times over. React's
+ * cache collapses that to one round trip, exactly as lib/recordAssignments.ts
+ * does for the same reason.
+ */
+const readAccrualPlans = cache(async () => {
+  const state = await readRevenueAccruals().catch(() => null);
+  return state?.plans ?? [];
+});
+
+/**
+ * HOW ONE MONTH'S TOTAL WAS MADE UP (Suren, Sep 1: "what if we need a
+ * separation between month-on-month revenue and one-time revenue? You can make
+ * another column: OTS amount in USD, ARR amount in USD... and then you can
+ * have a total column, which will come for every month").
+ *
+ * The row already shows the total, so this is the breakdown beside it. Plans
+ * written before that split existed carry neither figure and say nothing here
+ * rather than printing a zero nobody entered.
+ */
+function accrualSplit(line: AccrualLine): string {
+  return [
+    line.ots ? `One-time ${formatMoney(line.ots)}` : null,
+    line.arr ? `Recurring ${formatMoney(line.arr)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /**
  * EVERYTHING ON ONE DEAL.
@@ -30,9 +68,25 @@ export async function buildOpportunity360(
   opportunityId: string,
   role: UserIdentityRole
 ): Promise<Customer360Band[]> {
-  const may = (path: string) => canAccessModule(path, role);
+  /* THE BANDS AND THE DOOR MUST AGREE.
+   *
+   * This used to be `canAccessModule(path, role)` — the ROLE rules — while the
+   * page that renders these bands is guarded by `requireModuleAccess`, which
+   * uses `canAccessModuleWith(path, role, access)` — the PRIVILEGE TABLE. Two
+   * different authorities deciding the same question, so they disagreed:
+   * a BD Member has `edit` on Revenue Accruals in the stored table and no
+   * access under the role rules, which meant the page answered 200 and then
+   * rendered with the tab silently missing. The person sees a deal with most
+   * of its tabs gone and nothing anywhere says why.
+   *
+   * Same resolver as the door now. If the table cannot be read,
+   * `canAccessModuleWith` falls back to the role rules on its own, so this is
+   * never less permissive than it was.
+   */
+  const access = await viewerAccessMap().catch(() => null);
+  const may = (path: string) => canAccessModuleWith(path, role, access);
 
-  const [solutioning, meetings, contracts] = await Promise.all([
+  const [solutioning, meetings, contracts, accrualPlans] = await Promise.all([
     may("/solutioning")
       ? readSolutioning().then((s) => s.requests).catch(() => [])
       : Promise.resolve([]),
@@ -42,6 +96,7 @@ export async function buildOpportunity360(
     may("/contracts")
       ? readContracts().then((s) => s.contracts).catch(() => [])
       : Promise.resolve([]),
+    may("/revenue-accruals") ? readAccrualPlans() : Promise.resolve([]),
   ]);
 
   const against = (ids: unknown) =>
@@ -131,6 +186,78 @@ export async function buildOpportunity360(
     });
   }
 
+  if (may("/revenue-accruals")) {
+    /**
+     * WHEN THIS DEAL'S MONEY LANDS, ON THE DEAL ITSELF.
+     *
+     * Suren, Sep 1: "one more tab called revenue accruals" — and earlier in
+     * the same call, what the tab is for: "we can enter accrued revenue... the
+     * accruals actually go into the revenue accrual module, but you can enter
+     * from here. You can have this tab, and then you can create accrual for
+     * it."
+     *
+     * So this READS the accruals module rather than keeping a second copy of
+     * the plan. One plan per opportunity, ever, keyed by opportunityId, and
+     * /revenue-accruals/{id} is the page where it is written.
+     *
+     * THE BAND EXISTS WITH NOTHING IN IT, which is the whole point of the tab:
+     * a deal nobody has planned is precisely the deal somebody needs to plan,
+     * and the tab is the way in. Hiding it until a plan existed would mean the
+     * only deals you could plan from here are the ones already planned.
+     */
+    const plan = accrualPlans.find((p) => p.opportunityId === opportunityId);
+    /* A plan is a calendar, so it reads in calendar order whatever order the
+       rows were saved in. "YYYY-MM" sorts as text exactly as it does as a
+       date, which is why the store writes months that way. */
+    const lines = [...(plan?.lines ?? [])].sort((a, b) =>
+      a.month.localeCompare(b.month)
+    );
+    bands.push({
+      key: "revenueAccruals",
+      label: "Revenue accruals",
+      icon: BAND_ICONS.revenueAccruals,
+      color: "#0369A1",
+      count: lines.length,
+      /**
+       * ACCRUALS ARE USD, FULL STOP (Suren, Sep 1: "we don't have to go to
+       * local currency. It automatically only picks up USD, and everywhere
+       * reporting will be USD. Only within the opportunity you will see the
+       * local currency").
+       *
+       * So the amounts leave here as the plain numbers the store holds and
+       * wear the app's own money format on the other side. No conversion, no
+       * currency code, nothing for a second rate table to disagree with.
+       */
+      total: lines.reduce((sum, l) => sum + (l.amount || 0), 0),
+      href: "/revenue-accruals",
+      hrefLabel: "Revenue accruals",
+      empty:
+        "No accrual plan on this deal yet. Make one in Revenue accruals to say which months its money lands in.",
+      items: lines.map<Customer360Item>((line) => {
+        const split = accrualSplit(line);
+        return {
+          id: `${opportunityId}:${line.month}`,
+          title: monthLabel(line.month),
+          amount: line.amount,
+          /* NO href, deliberately. This used to point at
+             `/revenue-accruals/{deal}`, which was that deal's own plan page.
+             That page is gone: Suren, Sep 1, looking at it beside the dialog,
+             said "I don't want a different screen, it has to be consistent",
+             so the route is now a redirect to the module list and the plan is
+             edited in a dialog that opens on the deal itself.
+
+             Leaving the href here meant clicking a month walked you off the
+             deal and dumped you on a list, which is the exact journey he
+             rejected. OpportunityDetail was deleting this property on the way
+             past to stop that; the fix belongs here, at the source, so no
+             other renderer of these bands inherits the same trap. That
+             downstream delete is now a harmless no-op. */
+          ...(split ? { sub: split } : {}),
+        };
+      }),
+    });
+  }
+
   if (may("/contracts")) {
     /* A CONTRACT HOLDS ONE DEAL, NOT A LIST. This filtered `opportunityIds`,
        a field a contract has never had (the store writes `opportunityId`), so
@@ -162,5 +289,5 @@ export async function buildOpportunity360(
   }
 
   /* One shared order for every connection strip in the app. */
-  return orderBands(bands);
+  return orderDealBands(bands);
 }

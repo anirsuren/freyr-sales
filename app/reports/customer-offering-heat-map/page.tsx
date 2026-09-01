@@ -49,12 +49,12 @@ export default async function CustomerOfferingHeatMapPage() {
             <Grid3X3 size={22} strokeWidth={1.8} />
           </span>
           <h2 className="mt-4 text-[16px] font-semibold text-text-primary">
-            The matrix is ready for data
+            Nothing to show yet
           </h2>
           <p className="mt-1 max-w-[520px] text-[13px] leading-relaxed text-text-secondary">
-            Add at least one customer and one offering. The report will then
-            show every pairing, beginning at To pitch, without inserting demo
-            records into the live workspace.
+            This report needs at least one customer and one offering. Add both
+            and every pairing shows up here, each one empty until somebody logs
+            the first activity against it.
           </p>
         </div>
       ) : (

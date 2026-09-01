@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
+import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { buildOpportunity360 } from "@/lib/opportunity360";
 import { meetingsForOpportunity, readMeetings } from "@/lib/meetings";
 import { listOfferings } from "@/lib/offerings";
@@ -9,13 +10,17 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { readPrivileges } from "@/lib/privileges";
-import { readRecordTeams } from "@/lib/recordTeams";
+import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { mayTouchOpportunity } from "@/lib/recordAccess";
 import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail";
 import { RequestSolutioningButton } from "@/components/customers/RequestSolutioningButton";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getDataMode } from "@/lib/dataMode";
-import { canOpenModule, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  canOpenModule,
+  moduleWriteRefusal,
+  recordWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +108,26 @@ export default async function OpportunityPage({
   });
 
   /**
+   * MAY THIS PERSON CHANGE WHO IS ON THE DEAL.
+   *
+   * Anir, Sep 1: "if I want to add people, how do I do that? ... There should
+   * be a plus button on people." So the Overview's People section can now put
+   * somebody on a deal, and since Sep 1 being on a deal is what makes it
+   * editable. That makes this the strongest write on the page and it is asked
+   * the strongest way available: the exact call /api/record-team makes before
+   * it saves, with the exact record shape it passes, so the control and the
+   * route can never disagree about the answer.
+   *
+   * AND the deal-level verdict on top, because the record check does not know
+   * about the account's own team and mayTouchOpportunity does. Both, never
+   * either: this must not become a way to reach a deal the page would not
+   * otherwise let you touch.
+   */
+  const mayChangeTeam =
+    verdict.mayEdit &&
+    !(await recordWriteRefusal("/opportunities", { id: deal.id }));
+
+  /**
    * ASK FOR SOLUTIONING FROM THE DEAL IT IS FOR.
    *
    * Anir, Aug 31, looking at a deal's empty Presentations tab: "am I supposed
@@ -146,9 +171,63 @@ export default async function OpportunityPage({
     (await canOpenModule("/solutioning")) &&
     !(await moduleWriteRefusal("/solutioning"));
 
+  /**
+   * PLANNING THE ACCRUAL WITHOUT LEAVING THE DEAL.
+   *
+   * Suren, Sep 1: "that opportunity is going to have only one revenue
+   * approval... Create revenue accrual, we should do it at this level only.
+   * It's NOT a revenue accrual tab... I think the same screen from there, both
+   * the screens have to be the same. It's just that same screen shows up
+   * here."
+   *
+   * So the Revenue accruals tab opens the module's own planner in place rather
+   * than handing over to another page. The dialog needs three things the tab
+   * cannot work out for itself: whether this person may write a plan, the deal
+   * in the shape the planner wants, and the plan already on it.
+   *
+   * WRITE, ASKED ON THE SERVER, exactly the question /api/revenue-accruals
+   * asks before it saves. Somebody who may only read gets no button rather
+   * than a form that fails on Save — and the band, its months and the way out
+   * to the module are all still there, because reading was never the thing
+   * being gated.
+   */
+  const mayPlanAccrual =
+    (await canOpenModule("/revenue-accruals")) &&
+    !(await moduleWriteRefusal("/revenue-accruals"));
+  const accrualPlan = (await canOpenModule("/revenue-accruals"))
+    ? ((await readRevenueAccruals().catch(() => null))?.plans.find(
+        (p) => p.opportunityId === deal.id
+      ) ?? null)
+    : null;
+  /* The planner's own view of a deal: the same fields the Revenue accruals
+     module hands it, read off the opportunity here. One offering per
+     opportunity (Suren, Aug 17), so the first line is the line. */
+  const accrualLine = (deal.lines ?? [])[0];
+  const accrualOfferingId = accrualLine?.offeringId ?? deal.offeringIds[0];
+  const accrualOfferingLabel = accrualOfferingId
+    ? (offerings.find((o) => o.id === accrualOfferingId)?.offering_name ??
+      accrualOfferingId)
+    : (accrualLine?.offeringLabel ?? deal.offeringLabels[0]);
+  const accrualSignDate = accrualLine?.estSignDate ?? deal.estSignDate;
+
   return (
     <OpportunityDetail
       verdict={verdict}
+      accrual={{
+        mayPlan: mayPlanAccrual,
+        plan: accrualPlan,
+        deal: {
+          id: deal.id,
+          name: deal.name || `${deal.customer} deal`,
+          customer: deal.customer,
+          ...(deal.customerId ? { customerId: deal.customerId } : {}),
+          ...(accrualOfferingId ? { offeringId: accrualOfferingId } : {}),
+          ...(accrualOfferingLabel ? { offeringLabel: accrualOfferingLabel } : {}),
+          value: deal.value ?? 0,
+          ...(deal.status ? { status: deal.status } : {}),
+          ...(accrualSignDate ? { estSignDate: accrualSignDate } : {}),
+        },
+      }}
       /* What the create dialogs need, resolved once on the server. Null when
          this person may not create solutioning work, which hides the doors
          rather than showing ones that fail. */
@@ -208,6 +287,19 @@ export default async function OpportunityPage({
         name: o.offering_name,
         type: o.offering_type,
       }))}
+      /* WHAT THE OVERVIEW FORM'S TWO PICKERS NEED. Passed on their own rather
+         than read off createOptions, which is null for anybody who may not
+         raise solutioning work — the owner of a deal should not lose the owner
+         picker because of a privilege on a different module. */
+      customers={customers.map((c) => ({
+        id: c.id,
+        name: c.company_name ?? "",
+      }))}
+      people={members}
+      meName={me.name}
+      /* Who is on this deal, read off the teams row this page already loaded. */
+      team={teamFor(teams, "opportunity", deal.id)}
+      mayChangeTeam={mayChangeTeam}
       customerId={customerId}
       meetings={meetingsForOpportunity(meetingState.meetings, deal.id)
         .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))

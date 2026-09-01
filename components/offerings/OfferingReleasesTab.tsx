@@ -1691,7 +1691,7 @@ export function OfferingReleasesTab({
         }}
         title="Remove this version?"
         body={<><b>{confirmVersion?.version}</b> and its feature list come off the roadmap.</>}
-        detail="This saves immediately."
+        detail="This saves straight away. It does not wait for a Save button."
         confirmLabel="Remove it"
       />
       <Modal open={adding} onClose={closeAddModal} title="Add a roadmap version" size="wide">

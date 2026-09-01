@@ -891,7 +891,7 @@ export function OfferingsBrowser({
             {!mapped && (
               <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Awaiting details, add who it&apos;s for, its markets &amp; sales
+                Awaiting details. Add who it is for, its markets and its sales
                 materials
               </p>
             )}
@@ -1490,7 +1490,7 @@ export function OfferingsBrowser({
           <EmptyState
             icon={Package}
             title="No offerings yet."
-            description="Build the repository by adding your first offering: its type, who it's for, the markets it covers, and the sales materials behind it."
+            description="Add your first offering. You give it a type, say who it is for, list the markets it covers, and attach the sales materials behind it."
             action={newOfferingAction}
           />
         </Card>

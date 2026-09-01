@@ -143,8 +143,17 @@ export function RecordTeamButton({
             </Field>
           </div>
 
+          {/* WHAT THIS ACTUALLY DOES, SAID TRUTHFULLY.
+              It used to read "This records who is on it. It does not change what
+              anybody can open," which was true when the store was written on
+              Aug 28 and stopped being true on Sep 1, when lib/recordScope
+              started reading these teams to answer whether a record is
+              editable. Putting somebody on a record now hands them the pen, and
+              a dialog that promises the opposite is the worst place to learn
+              that. */}
           <p className="mt-3 text-[11.5px] text-text-tertiary">
-            This records who is on it. It does not change what anybody can open.
+            The people here can change this record. Everybody else can see it and
+            cannot change it.
           </p>
 
           <div className="mt-4 flex items-center justify-end gap-2">

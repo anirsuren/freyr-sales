@@ -311,8 +311,8 @@ export function OfferingActivities({
           </p>
           <p className="mx-auto mt-0.5 max-w-[460px] text-[12px] leading-snug text-text-secondary">
             Until you add one, this account does not show up for this
-            offering on the heat map or in any report. Add where it stands
-            today, a lead, an opportunity, a pilot.
+            offering on the heat map or in any report. Say where it stands
+            today. It might be a lead, an opportunity or a pilot.
           </p>
           <span className="mt-3 inline-flex">
             <Button onClick={() => openEditor()}>
@@ -325,28 +325,18 @@ export function OfferingActivities({
            they will consume it… activity has to be a table, columns have to
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
-        <div className="relative pt-9">
-          {/* THE + IS THE APP'S BLUE SQUARE, TOP RIGHT (Anir, Aug 27: "I
-              don't want the add activity going here. It should be like a blue
-              square with a white plus, and it should just be in the top
-              right"). The dashed full-width row under the table was a second
-              row-shaped thing that was not a row; on this page a plus always
-              means add and always looks the same. */}
-          {/* The anchor is the SPAN, not the button — Tooltip's own wrapper
-              is position:relative, so an absolute button pinned itself to
-              the tooltip span and sat at the left edge. */}
-          <span className="absolute right-0 top-0 z-10">
-            <Tooltip label="Add activity">
-              <button
-                type="button"
-                aria-label="Add activity"
-                onClick={() => openEditor()}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white shadow-sm transition-opacity hover:opacity-90"
-              >
-                <Plus size={16} strokeWidth={2.6} />
-              </button>
-            </Tooltip>
-          </span>
+        <div>
+        {/* THE + LIVES IN THE ACTIONS COLUMN, not in the air above the table.
+            Anir, Sep 1: "the plus sign is in an odd spot, so just fix that. It
+            should be somewhere better, obviously, like on the right, in line
+            with something."
+
+            It was absolutely positioned at the top right of a 36px strip of
+            padding, so it lined up with nothing: not the table, not the
+            offering header above it, not the row buttons below. It now sits in
+            the Actions header cell, directly above the pencil and the bin it
+            belongs with, left aligned like every other Actions column in this
+            app. */}
         <div className="overflow-x-auto pt-1">
           {/* The min-width only has to be wide enough that no chip wraps; past that
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
@@ -366,12 +356,21 @@ export function OfferingActivities({
                     there should be an actions column"). The pencil and the bin
                     sit under a header that says what they are; adding moved to
                     the footer row below, where a table normally puts it. */}
-                {/* Back over its own icons (Anir, Aug 28: "the column is not
-                    aligned with the actual thing"). The + used to sit inside
-                    this corner and the header had to dodge it; the button
-                    lives above the table now, so the label lines up with the
-                    pencils under it. */}
-                <th className="w-[88px] py-2 pr-1 text-left font-bold">Actions</th>
+                <th className="w-[88px] py-2 pr-1 text-left font-bold">
+                  <span className="flex items-center gap-2">
+                    Actions
+                    <Tooltip label="Add activity">
+                      <button
+                        type="button"
+                        aria-label="Add activity"
+                        onClick={() => openEditor()}
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-opacity hover:opacity-90"
+                      >
+                        <Plus size={14} strokeWidth={2.6} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -484,7 +483,7 @@ export function OfferingActivities({
                           onClose={() => setConfirmDelete(null)}
                           onConfirm={() => remove(version.id)}
                           title="Remove this activity?"
-                          body={`Attempt ${version.version} comes off this offering's activity log.`}
+                          body={`Attempt ${version.version} comes off this offering's activity log. Nothing else on this account changes.`}
                           confirmLabel="Remove activity"
                         />
                       </span>
@@ -546,7 +545,7 @@ export function OfferingActivities({
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 Status
-                <InfoHint text="We record the date this status was reached. You can still change it." />
+                <InfoHint text="The app saves the date this status was reached. You can change that date later." />
               </label>
               <ColorSelect
                 value={status}
@@ -578,7 +577,7 @@ export function OfferingActivities({
               value={comments}
               onChange={(event) => setComments(event.target.value)}
               rows={2}
-              placeholder="Met their regulatory lead; they want a second market added before signing."
+              placeholder="Met their regulatory lead. They want a second market added before signing."
               className={`${FIELD} resize-y`}
             />
           </div>
@@ -625,7 +624,7 @@ export function OfferingActivities({
               <div className="col-span-full min-w-0">
                 <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                   Opportunities
-                  <InfoHint text={"The deals this activity belongs to.\nAdd them on the Opportunities page and they become pickable here."} />
+                  <InfoHint text={"The deals this activity belongs to.\nAdd a deal on the Opportunities page and it shows up in this list."} />
                   <span className="font-normal text-text-tertiary">optional</span>
                 </label>
                 {/* SEARCH, NOT A CHIP WALL — the same picker the opportunity

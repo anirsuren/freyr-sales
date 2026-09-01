@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * NOTHING ROUTES TO THIS FILE ANY MORE. Read the block below before you wire
+ * it back up.
+ *
+ * Suren, Sep 1, with this page and the accrual dialog open beside each other:
+ * "I don't want a different screen. It has to be consistent... this screen is
+ * confusing, this screen is better" — pointing at the dialog. And on the deal
+ * page: "It's NOT a revenue accrual tab... I think the same screen from there,
+ * both the screens have to be the same. It's just that same screen shows up
+ * here."
+ *
+ * So the one accrual screen in the app is components/accruals/
+ * AccrualPlanDialog, mounted in the Revenue accruals module and, in place, on
+ * the deal's own Revenue accruals tab. app/revenue-accruals/[id] used to
+ * render this component and now redirects to the module.
+ *
+ * This file is left on disk deliberately, unrouted and unimported, so the
+ * decision is one line away from being reversed. It is NOT maintained: it
+ * does not know about deviations, and anything added to the planner from here
+ * on is added to the dialog.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
@@ -29,6 +51,19 @@ import { cn } from "@/lib/utils";
  * THE MATHS IS THE SHARED ONE. spreadEvenly and the pinning rule come from
  * lib/revenueAccrualsShared, the same functions the dialog uses, so a plan
  * built here and a plan built there cannot round differently.
+ *
+ * THIS PAGE IS ON ITS WAY OUT (Suren, Sep 1: "when you added an accrual, this
+ * screen you did, right? This is the same screen that shows up in there for
+ * them to edit if they want... I don't want a different screen. It has to be
+ * consistent.").
+ *
+ * He is describing exactly what this file is. Adding a plan opens the plan
+ * dialog; editing a plan card opens the same dialog; but clicking a deal in
+ * the opportunity summary lands here instead — a second editor over the same
+ * data, reached from one place out of three. It is meant to become the dialog,
+ * which means nothing new should be built into it. What it must do until then
+ * is not LOSE anything the dialog can write, which is why the one-time and
+ * recurring split is carried through below rather than re-authored here.
  */
 
 type Deal = {
@@ -43,7 +78,51 @@ type Deal = {
   estSignDate?: string;
 };
 
-type Line = { month: string; amount: string; pinned?: boolean };
+type Line = {
+  month: string;
+  amount: string;
+  pinned?: boolean;
+  /** One-time revenue, as it was typed on the plan dialog. */
+  ots?: string;
+  /** Recurring revenue, as it was typed on the plan dialog. */
+  arr?: string;
+};
+
+/**
+ * ONE-TIME AND RECURRING PASS THROUGH THIS PAGE UNTOUCHED.
+ *
+ * Suren, Sep 1: "what if we need a separation between month-on-month revenue
+ * and one-time revenue? You can make another column: OTS amount in USD, ARR
+ * amount in USD... and then you can have a total column."
+ *
+ * The two halves are filled in on the plan dialog, which is the screen he then
+ * said is the only one there should be: "I don't want a different screen. It
+ * has to be consistent." This page is the older second editor and is on its way
+ * out. Until it goes, it has to be able to CARRY a split it does not itself
+ * author — because it loaded only `month` and `amount` and saved only `month`
+ * and `amount`, so opening a split plan here and pressing Save wiped the
+ * breakdown while every total stayed exactly the same. Nothing on screen said
+ * anything had happened.
+ *
+ * Same two helpers as the dialog, with the same names and the same rules,
+ * written out here rather than imported because they are private to that
+ * module.
+ */
+
+/** Has somebody filled in a split for this month? An empty box is not a
+ *  split — a month with neither half behaves as it always did. */
+function isSplit(l: Line | undefined): boolean {
+  return !!l && (!!l.ots || !!l.arr);
+}
+
+/** WHAT A MONTH IS WORTH: the two halves added up once either is filled in,
+ *  and otherwise the amount that was typed or shared out. One function, so the
+ *  bar, the banner, the even split and the save all agree on the same number. */
+function rowTotal(l: Line): string {
+  return isSplit(l)
+    ? String((Number(l.ots) || 0) + (Number(l.arr) || 0))
+    : l.amount;
+}
 
 function money(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
@@ -76,7 +155,16 @@ export function AccrualPlanPage({
   const [count, setCount] = useState(String(plan?.lines.length || 6));
   const [lines, setLines] = useState<Line[]>(
     plan?.lines.length
-      ? plan.lines.map((l) => ({ month: l.month, amount: String(l.amount) }))
+      ? plan.lines.map((l) => ({
+          month: l.month,
+          amount: String(l.amount),
+          /* A SAVED SPLIT COMES IN WITH THE MONTH IT BELONGS TO. Dropping it
+             here is what made Save destructive: the row was rebuilt from two
+             fields, so the two halves never existed by the time it was
+             written back. */
+          ...(l.ots === undefined ? {} : { ots: String(l.ots) }),
+          ...(l.arr === undefined ? {} : { arr: String(l.arr) }),
+        }))
       : spreadEvenly(deal.value ?? 0, startMonth, 6).map((l) => ({
           month: l.month,
           amount: String(l.amount),
@@ -84,7 +172,10 @@ export function AccrualPlanPage({
   );
   const [note, setNote] = useState(plan?.note ?? "");
 
-  const planned = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  /** Split months count as what their two halves come to, not as the amount
+   *  that was sitting in the row before somebody split it. */
+  const planned = lines.reduce((s, l) => s + (Number(rowTotal(l)) || 0), 0);
+  const anySplit = lines.some((l) => isSplit(l));
   const target = Number(contractValue) || 0;
   const off = planned - target;
 
@@ -101,9 +192,17 @@ export function AccrualPlanPage({
     const current = next.lines ?? lines;
     const keys = monthsFrom(start, n);
 
-    const locked = keys.map((_, i) =>
-      current[i]?.pinned ? Number(current[i]?.amount) || 0 : null
-    );
+    /* A month is held either because somebody typed its total or because
+       somebody filled in its OTS/ARR. A split IS a typed number — it just
+       arrived as two — so it claims its share of the contract value the same
+       way and the loose months absorb the rest. Without this line a split
+       month is loose, gets overwritten by the even share, and then saves an
+       amount that disagrees with the two halves underneath it. */
+    const locked = keys.map((_, i) => {
+      const l = current[i];
+      if (isSplit(l)) return Number(rowTotal(l)) || 0;
+      return l?.pinned ? Number(l.amount) || 0 : null;
+    });
     const loose = locked.filter((a) => a === null).length;
     const left = Math.max(
       0,
@@ -114,8 +213,11 @@ export function AccrualPlanPage({
 
     setLines(
       keys.map((month, i) => {
-        if (locked[i] !== null)
-          return { month, amount: String(locked[i]), pinned: true };
+        /* A held month rides through WHOLE — its typed total, its pin and
+           both halves of its split. Rebuilding the row from named fields here
+           is what threw the split away on the very next keystroke, so editing
+           one month quietly rewrote every other one. */
+        if (locked[i] !== null) return { ...current[i], month };
         seen += 1;
         const share = seen === loose ? left - per * (loose - 1) : per;
         return { month, amount: String(share) };
@@ -124,8 +226,18 @@ export function AccrualPlanPage({
   }
 
   async function save() {
+    /* `amount` IS THE TOTAL, always — the report, the frozen sheet and the
+       month-on-month gap all read it, and a split only ever says how that
+       total was arrived at. Each half rides along when somebody filled it in
+       and is simply absent when nobody did, so a plan written before these
+       columns existed saves exactly as it always has. */
     const rows = lines
-      .map((l) => ({ month: l.month, amount: Math.round(Number(l.amount) || 0) }))
+      .map((l) => ({
+        month: l.month,
+        amount: Math.round(Number(rowTotal(l)) || 0),
+        ...(l.ots ? { ots: Math.round(Number(l.ots) || 0) } : {}),
+        ...(l.arr ? { arr: Math.round(Number(l.arr) || 0) } : {}),
+      }))
       .filter((l) => l.month);
     if (!rows.length) {
       toast("Add at least one month, or press Spread evenly.", "error");
@@ -290,7 +402,13 @@ export function AccrualPlanPage({
                 onChange={(e) => {
                   const v = e.target.value.replace(/[^0-9]/g, "");
                   setCount(v);
-                  reshape({ count: v });
+                  /* NOT WHILE THE BOX IS EMPTY. Typing "12" over "6" passes
+                     through the empty string, which used to reshape the plan
+                     down to a single month between one keystroke and the next
+                     — taking five months of typed amounts, and now their
+                     splits, with it. The rows simply hold still until there is
+                     a number to hold them to. */
+                  if (Number(v) >= 1) reshape({ count: v });
                 }}
                 className="h-[38px] w-full rounded-lg border border-border-light px-3 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-primary disabled:bg-surface"
               />
@@ -308,7 +426,15 @@ export function AccrualPlanPage({
                 }
                 className="h-[38px] shrink-0 rounded-lg border border-border-light px-3.5 text-[13px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
               >
-                Spread evenly
+                {/* THE BUTTON SAYS WHAT IT COSTS. It lets go of every month
+                    somebody chose — a held total, and now a one-time/recurring
+                    split — and re-splits the contract value clean. That is the
+                    point of it, but a button that reads "Spread evenly" gives
+                    no warning that a breakdown is about to go. Same wording
+                    the plan dialog uses for the same press. */}
+                {lines.some((l) => l.pinned || isSplit(l))
+                  ? "Start over, even split"
+                  : "Spread evenly"}
               </button>
             )}
           </div>
@@ -335,17 +461,18 @@ export function AccrualPlanPage({
             <div className="flex items-center gap-4 border-b border-border-light bg-surface px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
               <span className="w-[96px] shrink-0">Month</span>
               <span className="min-w-0 flex-1">Share</span>
-              <span className="w-[150px] shrink-0">Amount (USD)</span>
+              <span className="w-[150px] shrink-0">Total (USD)</span>
             </div>
             {lines.map((l, i) => {
-              const amount = Number(l.amount) || 0;
+              const split = isSplit(l);
+              const amount = Number(rowTotal(l)) || 0;
               /* Against the BIGGEST month, not the contract: with an even
                  spread every bar would otherwise sit at a sixth of the width
                  and the row would look empty on a plan that is perfectly
                  fine. Measured against the peak, an even split reads as six
                  full bars, which is what "even" should look like. */
               const peak = Math.max(
-                ...lines.map((x) => Number(x.amount) || 0),
+                ...lines.map((x) => Number(rowTotal(x)) || 0),
                 1
               );
               const share = planned > 0 ? (amount / planned) * 100 : 0;
@@ -366,7 +493,11 @@ export function AccrualPlanPage({
                         className="block h-full rounded-full transition-[width] duration-200"
                         style={{
                           width: `${Math.max((amount / peak) * 100, amount > 0 ? 2 : 0)}%`,
-                          background: l.pinned ? "#0071E3" : "#7C3AED",
+                          /* A split month is somebody's own number just as
+                             much as a typed total is, so it wears the same
+                             held colour rather than looking like a share the
+                             formula worked out. */
+                          background: l.pinned || split ? "#0071E3" : "#7C3AED",
                         }}
                       />
                     </span>
@@ -374,11 +505,20 @@ export function AccrualPlanPage({
                       {share > 0 ? `${Math.round(share)}%` : ""}
                     </span>
                   </span>
+                  {/* A SPLIT MONTH'S TOTAL IS ARITHMETIC, NOT A FIELD.
+                      Typing over it would set an amount that disagrees with
+                      the two halves saved underneath, and the store resolves
+                      that disagreement in favour of the halves — so the number
+                      a person typed would vanish on the way to the database
+                      with nothing on screen to say so. It reads as a number
+                      instead of a box that lies about being typeable. */}
                   <input
-                    value={l.amount}
+                    value={rowTotal(l)}
                     disabled={!canWrite}
+                    readOnly={split}
+                    tabIndex={split ? -1 : undefined}
                     inputMode="numeric"
-                    aria-label={`Amount for ${monthLabel(l.month)}`}
+                    aria-label={`Total for ${monthLabel(l.month)}`}
                     onChange={(e) => {
                       const next = [...lines];
                       next[i] = {
@@ -391,13 +531,28 @@ export function AccrualPlanPage({
                     }}
                     className={cn(
                       "h-[34px] w-[150px] shrink-0 rounded-lg border px-3 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-primary disabled:bg-surface",
-                      l.pinned ? "border-blue-primary" : "border-border-light"
+                      split
+                        ? "cursor-default border-transparent bg-surface"
+                        : l.pinned
+                          ? "border-blue-primary"
+                          : "border-border-light"
                     )}
                   />
                 </div>
               );
             })}
           </div>
+
+          {/* SAY IT, RATHER THAN LEAVING A DEAD BOX. Somebody who lands here
+              on a split plan needs to know why one row will not take a number
+              and that pressing Save keeps the breakdown intact. */}
+          {anySplit && (
+            <p className="mt-2 text-[12px] text-text-tertiary">
+              Some months are split into one-time and recurring revenue. Those
+              totals add themselves up here and save exactly as they are. To
+              change a split, open the plan from the accruals list.
+            </p>
+          )}
 
           {/* THE BUTTON LIVES WITH THE THING IT SAVES (Anir, Sep 1: "are you
               telling me this stuff on the right is saving what's on the left?"
@@ -436,7 +591,7 @@ export function AccrualPlanPage({
                 <p className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
                   Saves the {lines.length}{" "}
                   {lines.length === 1 ? "month" : "months"} above.
-                  <InfoHint text="A deal signs on one date but is earned over several months. This is where you say which: a $150K deal over six months is $25K a month. It matters because close dates answer the wrong question — they say a six-month deal signed in September earns nothing in January, when it earns a sixth of itself. Saving moves no money and tells nobody. Freeze a month later and anything that shifts out of it is flagged, so revenue cannot slide quietly into next quarter." />
+                  <InfoHint text="A deal is signed on one date, but the money comes in over several months. Here you say how much lands in each month. A $150K deal spread over six months is $25K a month. Saving only writes the plan down. No money moves and nobody is told." />
                 </p>
                 <button
                   type="button"

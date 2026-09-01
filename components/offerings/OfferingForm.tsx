@@ -1324,7 +1324,7 @@ export function OfferingForm({
       }
     } catch {
       setSaveError(
-        "The offering could not be saved because the connection failed. Your edits are still here; try Save changes again."
+        "The offering could not be saved because the connection failed. Your edits are still here. Press Save changes to try again."
       );
     } finally {
       setSaving(false);
@@ -1377,8 +1377,11 @@ export function OfferingForm({
             comes off the offering.
           </>
         }
-        detail="Nothing is deleted until you press Save changes. Cancel out of the page and it stays exactly as it was."
+        detail="Nothing is deleted until you press Save changes. Leave the page without saving and the file stays exactly as it was."
         confirmLabel="Remove it"
+        /* Red is for what cannot be taken back. This only takes a row out of
+           the form you are still filling in, so it is blue. */
+        tone="primary"
       />
       <ConfirmDialog
         open={confirmRow !== null}
@@ -1420,6 +1423,9 @@ export function OfferingForm({
         }
         detail="Nothing is saved until you press Save changes."
         confirmLabel="Remove it"
+        /* Red is for what cannot be taken back. This only takes a row out of
+           the form you are still filling in, so it is blue. */
+        tone="primary"
       />
 
       {/* ------------------------------------------------------ the basics */}
@@ -2279,7 +2285,7 @@ export function OfferingForm({
       <FormSection
         icon={Building2}
         title="Who it's for"
-        hint="The customer types this offering applies to: by family and company size."
+        hint="The customer types this offering is for, picked by family and company size."
       >
         {ctGroups.map(({ fam, types }) => {
           const famLabel = types[0]?.family ?? fam;
@@ -2752,7 +2758,7 @@ export function OfferingForm({
       <FormSection
         icon={Layers}
         title="Related offerings"
-        hint="What shows in the Related offerings section of this offering's page. Its category-mates appear automatically; remove any, or add offerings from anywhere in the catalogue."
+        hint="What shows in the Related offerings section of this offering's page. Anything in the same category shows up on its own. You can take any of those off, or add offerings from anywhere else."
         count={
           relatedPool.filter(
             (x) =>
@@ -3074,7 +3080,7 @@ export function OfferingForm({
           </div>
           <div className="flex items-center gap-3 pt-1">
             <span className="text-[12px] text-text-tertiary">
-              It joins the list here; the offering saves when you press save.
+              It joins the list here. The offering saves when you press Save changes.
             </span>
             <button
               type="button"
@@ -3177,7 +3183,7 @@ export function OfferingForm({
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         title="Delete this offering?"
-        body={`${offeringName || "This offering"} and its catalog entry are removed for everyone. This can't be undone.`}
+        body={`${offeringName || "This offering"} disappears from the offerings list for everyone in the company. This cannot be undone.`}
         confirmLabel="Delete offering"
         busy={deleting}
       />

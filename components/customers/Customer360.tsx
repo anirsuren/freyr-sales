@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
+  Banknote,
   CalendarClock,
   CalendarPlus,
   Contact as ContactIcon,
@@ -92,6 +93,10 @@ export const BAND_ICON_MAP = {
   contacts: ContactIcon,
   leads: UserPlus,
   contracts: FileSignature,
+  /* Money, not a third calendar. Meetings already wear the clock and meeting
+     requests the plus, and a plan of months beside them would have read as a
+     third kind of diary rather than as revenue. */
+  revenueAccruals: Banknote,
 } satisfies Record<string, LucideIcon>;
 
 
@@ -116,12 +121,32 @@ export function Customer360({
   bands,
   emptyLine,
   bandActions,
+  bandEmpty = false,
   chromeless = false,
   forceKey,
 }: {
   company: string;
   bands: Customer360Band[];
   emptyLine?: string;
+  /**
+   * LET AN EMPTY BAND SAY ITS OWN SENTENCE.
+   *
+   * Every band already writes one — "No meeting has been held against this
+   * deal yet.", "No goal is assigned to this person." — and the type says it
+   * is "shown instead of the list when the band is empty". This panel has
+   * always drawn a generic "Nothing on {label} for {company} yet." over the
+   * top of them instead, so not one of them has ever been read.
+   *
+   * It matters most on the deal page, where the generic line names the
+   * CUSTOMER on a page about one deal and points nowhere, and where Revenue
+   * accruals is a tab whose entire job when empty is to say where the plan
+   * gets made (Suren, Sep 1: "you can have this tab, and then you can create
+   * accrual for it").
+   *
+   * OPT-IN, not switched on for everybody, because the customer and person
+   * pages would change their wording too and nobody asked for that.
+   */
+  bandEmpty?: boolean;
   /**
    * A control belonging to ONE area, keyed by band. The Team tab needs a way
    * to say who is on the record, and that control has no business appearing
@@ -195,6 +220,12 @@ export function Customer360({
   /* Which columns this band actually fills in. */
   const anyAmount = !!active?.items.some((i) => i.amount !== undefined && i.amount > 0);
   const anyWhen = !!active?.items.some((i) => !!i.when);
+  /* Detail earns its column the same way Value and When do. Every band that
+     existed when this table was written filled it in, so it was drawn
+     unconditionally; Revenue accruals is a month and an amount and nothing
+     else, and it drew six rows of em-dashes under a heading — the exact thing
+     the note on this table says a column must not be. */
+  const anySub = !!active?.items.some((i) => !!i.sub);
 
   return (
     <section
@@ -608,7 +639,9 @@ export function Customer360({
               </div>
             ) : active.count === 0 ? (
               <p className="mt-1 py-6 text-center text-[12.5px] text-text-secondary">
-                Nothing on {active.label.toLowerCase()} for {company} yet.
+                {bandEmpty
+                  ? active.empty
+                  : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}
               </p>
             ) : chromeless ? (
               /* A REAL TABLE, ONE ROW PER RECORD (Suren, Aug 28: "he wants it
@@ -635,9 +668,11 @@ export function Customer360({
                       <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         {singularLabel(active.label)}
                       </th>
-                      <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                        Detail
-                      </th>
+                      {anySub && (
+                        <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          Detail
+                        </th>
+                      )}
                       {anyAmount && (
                         <th className="pb-2 pr-4 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           Value
@@ -701,9 +736,11 @@ export function Customer360({
                             </span>
                           </span>
                         </td>
-                        <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
-                          {item.sub || "—"}
-                        </td>
+                        {anySub && (
+                          <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
+                            {item.sub || "—"}
+                          </td>
+                        )}
                         {anyAmount && (
                           <td className="py-3 pr-4 text-right">
                             {item.amount !== undefined && item.amount > 0 ? (

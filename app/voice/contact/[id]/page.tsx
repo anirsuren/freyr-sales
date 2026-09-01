@@ -58,7 +58,7 @@ export default async function VoiceContactPage({
       <EmptyState
         icon={SearchX}
         title="Contact not found"
-        description="That contact isn't on file. Head back to the voice team."
+        description="This link no longer works, or the contact was removed. Head back to the voice team to find them."
         className="py-24"
         action={
           <SmartBack

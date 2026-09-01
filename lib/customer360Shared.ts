@@ -34,6 +34,11 @@ export const BAND_ICONS = {
   contacts: "contacts",
   leads: "leads",
   contracts: "contracts",
+  /* WHEN THE MONEY LANDS (Suren, Sep 1, on the deal page: "one more tab
+     called revenue accruals"). Its own key because its own glyph: the note
+     above this map is what happens when several bands share one, and a plan
+     of months is not a contract, a goal or an opportunity. */
+  revenueAccruals: "revenueAccruals",
 } as const;
 
 export type BandIconKey = keyof typeof BAND_ICONS;

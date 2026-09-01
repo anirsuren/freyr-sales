@@ -25,7 +25,7 @@ export function ViewOnlyNotice({
         </div>
         <h2 className="text-[16px] font-semibold text-text-primary">View only</h2>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-text-secondary">
-          Your account can read the offerings repository but not add to it. Ask a
+          Your account can read the offerings list but cannot add to it. Ask a
           workspace admin if you need to create one.
         </p>
         <Link

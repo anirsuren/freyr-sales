@@ -513,29 +513,67 @@ export const MODULE_GROUPING: Partial<Record<ModuleKey, GroupType>> = {
  *      writing things."
  *   2. WHAT DOES THE MATRIX SAY? Read or write on that module.
  *
- * VIEW ALL OPENS THE FIRST GATE ONLY, AND ONLY FOR READING. Somebody with it
- * sees every record in the module and can change none of the ones that are not
- * theirs. That asymmetry is the whole point of the privilege, so it is written
- * here once rather than re-derived at each call site.
+ * SOMEBODY ELSE'S RECORD IS VISIBLE, AND READ ONLY (Suren, Sep 1). This is the
+ * half that changed. It used to answer "none" unless you held View all, so a
+ * record that was not yours was not merely uneditable, it was gone. His words
+ * on the privileges screen:
+ *
+ *   "You can only do anything on a particular customer that you are part of or
+ *   created or edited so far... For other records that they are not part of,
+ *   they should have a view option to view other records."
+ *
+ * So the floor for anybody who can open the module at all is View, and the
+ * ceiling on a record that is not theirs is also View. Never Edit, never
+ * Create, however generous the matrix row is. That asymmetry is unchanged and
+ * is why it is written here once rather than re-derived at each call site.
+ *
+ * NONE STILL MEANS NONE. The first line is the whole of it: somebody the matrix
+ * gives no access to this module sees nothing here, and no record-level rule
+ * can hand them a way in.
  */
 export type RecordAccess = Access;
 
 export function recordAccess(input: {
   /** What the matrix says this person may do in this module. */
   moduleAccess: Access;
-  /** Do they hold View all? */
+  /**
+   * Do they hold View all?
+   *
+   * NO LONGER CHANGES THE ANSWER FOR A RECORD, because since Suren's Sep 1
+   * answer every record in a module you can open is at least viewable. Kept in
+   * the signature deliberately: it is still a real privilege on a real screen,
+   * the callers still resolve it, and if he narrows this back to "only View all
+   * sees other people's records" it is one line here rather than an archaeology
+   * exercise. See the open question in the report of Sep 1.
+   */
   viewAll: boolean;
   /** Did they create it, own it, or were they assigned to it? */
   mine: boolean;
   /** Is it in a group they belong to? */
   inMyGroup: boolean;
+  /**
+   * IS ANYBODY ON THIS RECORD AT ALL: an owner, a member, a group?
+   *
+   * A record nobody has been put on is nobody's, and gating it would freeze
+   * every account in the company on the day this ships: the sixteen real
+   * customers all read "Unassigned", and PATCH /api/customers/[id] has always
+   * allowed a write when no owner is recorded. So an unclaimed record keeps
+   * answering with the module row, exactly as it did before this rule existed,
+   * and starts gating the moment somebody is put on it. Same reasoning, and the
+   * same wording, as lib/recordAccess for an opportunity with no team.
+   *
+   * Suren did not speak to unclaimed records either way. This preserves what
+   * they do today rather than deciding for him.
+   */
+  claimed: boolean;
 }): RecordAccess {
   if (input.moduleAccess === "none") return "none";
   const connected = input.mine || input.inMyGroup;
   if (connected) return input.moduleAccess;
-  /* Not theirs. View all is the only way through, and it never writes —
-     never Edit and never Create, however generous the matrix row is. */
-  return input.viewAll ? "view" : "none";
+  /* Nobody is on it, so there is nobody for it to belong to instead. */
+  if (!input.claimed) return input.moduleAccess;
+  /* Somebody else's. Look, do not touch. */
+  return "view";
 }
 
 /** What those privileges add up to on one module. */

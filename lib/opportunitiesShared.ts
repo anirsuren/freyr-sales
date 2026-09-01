@@ -22,15 +22,29 @@ import type { CurrencyCode } from "./currency";
  * performanceShared.
  */
 
-/** Where the deal sits in the funnel. Suren's sheet uses exactly these. */
+/**
+ * Where the deal sits in the funnel. Suren's sheet uses exactly these.
+ *
+ * THERE IS NO "FUTURE" ANY MORE (Suren, Sep 1: "I don't want future and
+ * current pipeline. All this goes away", and again: "we don't have the concept
+ * of future in any of your contracting conversations, right? No, no, just
+ * pipeline. We have high confidence, go-get pipeline. ok fine take the word
+ * future off").
+ *
+ * It was the workbook's Future Pipeline sheet: an intention with a client, an
+ * offering and a target quarter, kept out of the funnel until somebody pitched
+ * it. Carrying it as a fourth level meant every reader in the app had to
+ * remember to exclude it from a total, and a deal could be 99% certain and
+ * still be filed under a word that means "not yet". The 23 deals that were at
+ * Future are Pipeline now; nothing about them changed except the word.
+ *
+ * WHEN THE MONEY LANDS IS STILL A REAL QUESTION and it still has a real
+ * answer: the estimated sign date. It was never this field's job.
+ */
 export const OPPORTUNITY_LEVELS = [
   "Pipeline",
   "Go get",
   "High confidence",
-  /** Nobody has pitched yet — an intention with a client, an offering and a
-   *  target quarter (the workbook's Future Pipeline sheet). The deal starts
-   *  when someone flips this to Pipeline and fills in the money. */
-  "Future",
 ] as const;
 export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
 
@@ -53,19 +67,21 @@ export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
  * So the person sets ONE number and the label follows. Two fields that could
  * disagree became one that cannot.
  *
- * FUTURE IS NOT ON THIS SCALE. It is a statement about WHEN the money lands,
- * not how likely it is: "I might sign today but this revenue will come in a
- * year and a half or two years." A deal can be 99% certain and still be
- * future revenue, so it stays a separate flag rather than a confidence band.
+ * AND NOW THE BAR IS THE WHOLE ANSWER. There used to be a `futureRevenue`
+ * flag here that overrode the bar and returned "Future", on the reasoning that
+ * WHEN the money lands is a different question from how likely it is: "I might
+ * sign today but this revenue will come in a year and a half or two years."
+ * Suren retired the word on Sep 1 ("just pipeline. We have high confidence,
+ * go-get pipeline"), so the flag has nothing left to return and the parameter
+ * is gone rather than accepted and ignored. When the money lands is the
+ * estimated sign date's job and always was.
  */
 export const CONFIDENCE_GO_GET = 99;
 export const CONFIDENCE_HIGH = 95;
 
 export function revenueTypeFromConfidence(
-  confidence: number | undefined,
-  futureRevenue?: boolean
+  confidence: number | undefined
 ): OpportunityLevel {
-  if (futureRevenue) return "Future";
   const c = typeof confidence === "number" && Number.isFinite(confidence) ? confidence : 0;
   if (c >= CONFIDENCE_GO_GET) return "Go get";
   if (c >= CONFIDENCE_HIGH) return "High confidence";
@@ -86,14 +102,16 @@ export function revenueTypeFromConfidence(
  * a verdict from an empty cell rather than reading one. A deal with no
  * confidence keeps whatever it was imported as until somebody moves the bar.
  *
- * Future is never derived: it says WHEN the money lands, not how likely it is.
+ * THE FUTURE SHORT-CIRCUIT IS GONE with the level itself (Suren, Sep 1). It
+ * used to return before the bar was even read, which is why a Future deal
+ * could sit at 99% and still not read as Go get. Now every deal is judged the
+ * one way.
  */
 export function effectiveRevenueType(deal: {
   level: OpportunityLevel;
   confidence?: number;
   lines?: { confidence?: number }[];
 }): OpportunityLevel {
-  if (deal.level === "Future") return "Future";
   /* One offering per opportunity since Aug 17, so the row's own confidence is
      the deal's when it carries one. */
   const rowConfidence = (deal.lines ?? []).find(
@@ -101,12 +119,11 @@ export function effectiveRevenueType(deal: {
   )?.confidence;
   const confidence = rowConfidence ?? deal.confidence;
   if (typeof confidence !== "number") return deal.level;
-  return revenueTypeFromConfidence(confidence, false);
+  return revenueTypeFromConfidence(confidence);
 }
 
 /** The sentence under the bar, so nobody has to remember the two numbers. */
 export function revenueTypeRule(level: OpportunityLevel): string {
-  if (level === "Future") return "Revenue lands in a later financial year";
   if (level === "Go get") return `${CONFIDENCE_GO_GET}% and up — paperwork is the only thing left`;
   if (level === "High confidence") return `${CONFIDENCE_HIGH}% to ${CONFIDENCE_GO_GET - 1}%`;
   return `Under ${CONFIDENCE_HIGH}%`;
@@ -271,6 +288,26 @@ export type Opportunity = {
   /** New business / Existing business / Renewal. Suren, Aug 31. */
   dealType?: DealType;
   value: number;
+  /**
+   * THE MONEY BELOW IS IN THIS CURRENCY (Suren, Sep 1: "the entire reporting
+   * dashboards, everything should be in USD. It's only within the
+   * opportunities where we will capture the local currency").
+   *
+   * `value`, `estimatedAcv` and `estimatedTcv` hold THE NUMBER THE PERSON
+   * TYPED, in whatever this says. An Indian deal signed for 40,000,000 is
+   * stored as 40000000 with currency INR, not as its dollar equivalent, so
+   * the figure on the screen is always the figure on the contract.
+   *
+   * ABSENT MEANS US DOLLARS. Every deal in the book predates this field and
+   * every one of them is in dollars, so an empty currency has to keep reading
+   * correctly rather than becoming a question. Nothing is migrated and no
+   * stored number moves.
+   *
+   * THE DOLLAR FIGURE IS NEVER STORED HERE. It is worked out for display from
+   * the rate on the deal's sign date (lib/currency's rateFor) each time it is
+   * shown. Writing it down would freeze one day's rate into the record and
+   * then quietly disagree with the same sum done anywhere else.
+   */
   currency?: CurrencyCode;
   /**
    * WHAT THE DEAL IS WORTH, THE TWO WAYS SUREN READS IT (his Aug 30 sheet:
@@ -318,8 +355,11 @@ export type Opportunity = {
    * against the master's counts-from threshold is what offers the goal count.
    */
   activities?: OpportunityActivity[];
-  /** Future-level deals only: when the first pitch is planned (ISO day) and
-   *  the sheet's target quarter, e.g. "Q2" or "2027". */
+  /** When the first pitch is planned (ISO day) and the sheet's target quarter,
+   *  e.g. "Q2" or "2027". Came in with the workbook's Future Pipeline sheet
+   *  and stays now that the Future level is gone: the 23 deals that carried
+   *  these are still the deals nobody has pitched yet, and throwing the dates
+   *  away to tidy up after a renamed field would lose something real. */
   targetPitchDate?: string;
   targetQuarter?: string;
   createdAt: string;
@@ -332,6 +372,18 @@ export const EMPTY_OPPORTUNITIES: OpportunitiesState = { opportunities: [] };
 
 export function normalizeLevel(raw: unknown): OpportunityLevel {
   const s = String(raw ?? "").trim().toLowerCase();
+  /**
+   * "FUTURE" IS STILL A WORD THAT ARRIVES HERE, AND IT MUST NOT BLANK A DEAL.
+   *
+   * The level was retired on Sep 1 and the 23 live records were moved to
+   * Pipeline, but the word outlives the field: Suren's workbook has a Future
+   * Pipeline sheet, an Excel re-import would carry it, and so would any
+   * backup taken before today. Named rather than left to the fallback below,
+   * because the fallback is a catch-all for junk and this is a known value
+   * with a known answer — if somebody ever tightens that fallback into a
+   * rejection, an old import must still land on Pipeline and not on nothing.
+   */
+  if (s === "future") return "Pipeline";
   const hit = OPPORTUNITY_LEVELS.find((l) => l.toLowerCase() === s);
   return hit ?? "Pipeline";
 }

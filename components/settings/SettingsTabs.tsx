@@ -158,7 +158,7 @@ const SERVICE_LABELS: Record<string, string> = {
   anthropic: "AI analysis & pitch generation",
   supabase: "Workspace database",
   firecrawl: "Website research",
-  apify: "LinkedIn enrichment",
+  apify: "LinkedIn research",
   telegram: "Instant notifications",
   email: "Email delivery",
 };
@@ -1257,7 +1257,7 @@ export function SettingsTabs({
                 <span className="mb-1.5 flex items-center gap-1.5">
                   <span className="text-[13px] font-medium text-text-primary">Title</span>
                   <InfoHint
-                    text={"This job title appears on your Team profile.\nYour Admin, Owner or BD Member access is managed separately."}
+                    text={"This job title shows on your Team profile.\nChanging it does not change what you are allowed to do in the app."}
                   />
                 </span>
                 <Input

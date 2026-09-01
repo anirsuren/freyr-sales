@@ -156,8 +156,10 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
       (o) =>
         (o.customerId && o.customerId === c.id) || o.customer === c.company_name
     );
+    /* Open means not yet decided. The "and not Future" that used to be here
+       went with the level itself (Suren, Sep 1). */
     const open = mine.filter(
-      (o) => o.status !== "Won" && o.status !== "Lost" && o.level !== "Future"
+      (o) => o.status !== "Won" && o.status !== "Lost"
     );
     return {
       id: c.id,
@@ -195,7 +197,7 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
              customer also, that kind of a grouping first — all the customers").
              The deals are what carry the money, so the summary reads them and
              counts the accounts. */
-          deals: oppState.opportunities.filter((o) => o.level !== "Future"),
+          deals: oppState.opportunities,
           customerGroups: groups.map((g) => ({
             id: g.id,
             name: g.name,

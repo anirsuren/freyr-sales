@@ -138,25 +138,25 @@ const DOC_TABS: {
   {
     key: "customer",
     label: "Customer documents",
-    hint: "What the customer gave us: the RFP package, their requirements.",
+    hint: "Anything the customer sent us. Their RFP pack and their requirements go here.",
     example: "RFP package from the customer",
   },
   {
     key: "working",
     label: "Working documents",
-    hint: "Work in progress: the drafts being built.",
+    hint: "Drafts the team is still working on.",
     example: "Response draft v2",
   },
   {
     key: "final",
     label: "Final deliverables",
-    hint: "What was actually submitted or presented.",
+    hint: "What we actually sent or showed the customer.",
     example: "RFP response, final",
   },
   {
     key: "analysis",
     label: "Analysis",
-    hint: "What we made of the customer documents.",
+    hint: "Our own notes on the customer documents, like a gap analysis.",
     example: "Requirements gap analysis",
   },
 ];
@@ -856,7 +856,7 @@ export function RequestDetail({
                 <SectionHeading
                   icon={ListChecks}
                   title={`Divisions and who owns them (${(r.divisions ?? []).length})`}
-                  description="Derived from the opportunities on this request. One accountable lead each."
+                  description="These come from the opportunities on this request. Each one has a lead who is accountable for it."
                 />
                 <div className="mt-4 space-y-2.5 pl-11">
                   {(r.divisions ?? []).map((division) => {
@@ -1391,7 +1391,7 @@ export function RequestDetail({
             )}
           </>
         }
-        detail="It moves out of the open list. You can reopen it afterwards if something else comes up."
+        detail="It leaves the open list. You can reopen it later if something else comes up."
         confirmLabel="Yes, mark it completed"
       />
 
@@ -1403,12 +1403,17 @@ export function RequestDetail({
           setCancelReason("");
           setConfirmCancel(false);
         }}
+        /* RED IS FOR WHAT CANNOT BE TAKEN BACK. Cancelling does not delete the
+           record, but no code path brings it back: cancelRequest only ever
+           sets status to "cancelled", reopenRequest returns early unless the
+           status is "completed", and canWrite above turns the whole record
+           read-only from then on. One-way door, so it keeps the red. */
         title={`Cancel ${r.ref}?`}
         body={
           <>
-            The work stops and <b>{r.ref}</b> stays in history, marked
-            Cancelled, so anyone looking later can see what happened to it.
-            Nothing is deleted.
+            The work on <b>{r.ref}</b> stops for good. Nothing is deleted, and
+            it stays in the list marked Cancelled so people can see what
+            happened to it. Nobody can change it after this.
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
@@ -1508,7 +1513,7 @@ export function RequestDetail({
           setConfirmRemoveDoc(null);
         }}
         title="Remove this document?"
-        body={<><b>{confirmRemoveDoc?.name}</b> comes off this request for everyone working it.</>}
+        body={<><b>{confirmRemoveDoc?.name}</b> comes off this request for everyone working on it. You would have to add it again.</>}
         confirmLabel="Remove it"
       />
       <ConfirmDialog
@@ -1528,7 +1533,7 @@ export function RequestDetail({
            the title is what tells you it is the right record. The ref stays,
            after it, for the person who does work by number. */
         title={`Delete "${r.title}"?`}
-        body={`${r.ref} and its document list go with it. Documents linked into other requests are unlinked there too.`}
+        body={`${r.ref} and every document on it go too. If another request borrowed one of these documents, it disappears from there as well.`}
         confirmLabel="Delete the request"
       />
     </div>
@@ -2058,7 +2063,7 @@ function AddDocForm({
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Why it's here — optional"
+            placeholder="Why it's here (optional)"
             className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus sm:col-span-2"
           />
         </div>

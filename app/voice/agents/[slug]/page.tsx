@@ -637,7 +637,7 @@ export default async function VoiceAgentPage({
         {convos.length === 0 && called.length === 0 && waiting.length === 0 ? (
           <Card>
             <p className="text-[13px] text-text-secondary">
-              Nothing yet, call{" "}
+              Nothing yet. Call{" "}
               {line ? (
                 <span className="font-semibold text-text-primary tnum">
                   {formatPhone(line.number)}
@@ -645,8 +645,8 @@ export default async function VoiceAgentPage({
               ) : (
                 `${persona.name}'s line`
               )}{" "}
-              or queue contacts from the Contacts page, and every conversation
-              lands here with its transcript.
+              or queue contacts from the Contacts page. Every call lands here
+              with a transcript of what was said.
             </p>
           </Card>
         ) : (

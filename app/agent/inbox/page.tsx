@@ -93,7 +93,7 @@ export default async function AgentInboxPage() {
           <EmptyState
             icon={CheckCircle2}
             title="Nothing waiting on you"
-            description="No pitches in compliance review and nothing approved-but-unsent. You're clear."
+            description="No pitches are waiting for a compliance check, and nothing you approved is still sitting unsent."
           />
         ) : (
           <>

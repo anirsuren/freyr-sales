@@ -13,6 +13,10 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 
+/** The default floor for a trigger's width. Named so `dense` can tell a
+ *  caller-set floor from the one it inherited. */
+const DEFAULT_MIN_WIDTH = 170;
+
 export type ColorOption = {
   value: string;
   label: string;
@@ -197,7 +201,7 @@ export function ColorSelect({
   options,
   onChange,
   className,
-  minWidth = 170,
+  minWidth = DEFAULT_MIN_WIDTH,
   fill = false,
   ariaLabel,
   collapsible = true,
@@ -546,10 +550,22 @@ export function ColorSelect({
    * constant is the trigger's own chrome (dot, gaps, chevron, padding).
    */
   const shownLabel = String(triggerLabel || selected?.label || "");
+  /* A DENSE SELECT HUGS ITS OWN LABEL. The 170px floor above is right for a
+     filter that sits alone and should not jump about as the selection changes,
+     and wrong for the SHOW cluster on a toolbar: "Monthly" needs about 117px,
+     got padded to 170, and since the label is the flex-growing child the
+     leftover 53px opened up between the word and the chevron.
+
+     Anir raised that arrow twice on Sep 1 ("the dropdown arrow on the right
+     side looks a little bit weird", then "even the drop-down arrow there is a
+     little weird, I don't know what's going on"). This is what was going on.
+     The floor is the caller's to set, so `dense` simply stops applying the
+     default one; a dense caller that wants a floor still passes `minWidth`. */
+  const floor = dense && minWidth === DEFAULT_MIN_WIDTH ? 0 : minWidth;
   const fitWidth = compact
     ? SP_COMPACT_SIZE
     : Math.max(
-        minWidth,
+        floor,
         Math.ceil(shownLabel.length * 6.9) + (selected ? 34 : 12) + 34
       );
 

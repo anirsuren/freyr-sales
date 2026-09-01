@@ -55,7 +55,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     icon: ShieldCheck,
     color: "#0071E3",
     detail:
-      "Everyone in the workspace, and what each of them holds. A person can hold several privileges at once. Only an admin can change a role or a privilege, and the server enforces that too, so this page being admin-only is the convenience rather than the security.",
+      "Everyone in the workspace, and what each of them is allowed to do. One person can hold several privileges at once. Only an admin can change somebody's role or their privileges.",
   },
   {
     key: "groups",
@@ -63,7 +63,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     icon: UsersRound,
     color: "#7C3AED",
     detail:
-      "The departments people belong to. A group has one owner and the people in it. Open a group to set the goals it carries and each person's target. A group's TYPE decides which module can hand it work: a business development group takes customers, contracts and opportunities; a solutioning group takes solution requests, submissions, presentations and meetings.",
+      "The departments people belong to. Each group has one owner and the people in it. Open a group to set the goals it carries and each person's target.\n\nThe kind of group decides what work it can be given. A business development group takes customers, contracts and opportunities. A solutioning group takes solution requests, submissions, presentations and meetings.",
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").
@@ -76,7 +76,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     icon: KeyRound,
     color: "#B45309",
     detail:
-      "In which module each role may do what. View looks. Edit changes what is already there. Create makes new ones and is the only one that can delete.\n\nAll of it applies only to records a person created or was assigned to. View all is the one privilege that shows them everybody else's, and it never lets them change one.\n\nEvery change takes effect straight away, asks first, and emails the admins. Who holds which role is on Team members.",
+      "What each role is allowed to do in each module. View means look only. Edit means change something that is already there. Create means make new ones, and it is the only one that can delete.\n\nAll of this applies only to records a person created or was given. View all is the one privilege that shows somebody everybody else's records, and it never lets them change one.\n\nEvery change happens straight away, asks you first, and emails the admins. Who holds which role is on Team members.",
   },
   {
     key: "activity",
@@ -84,7 +84,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     icon: ListChecks,
     color: "#0F766E",
     detail:
-      "What an activity is worth, and which goal it counts toward. When someone logs an activity — a pilot, a contract — these rules decide what it is worth and which goal it can count toward. Set them once; every log in the app follows them.",
+      "What an activity is worth, and which goal it counts toward. When somebody logs a pilot or a contract, these rules decide what it adds and where it lands. Set them once and every log in the app follows them.",
   },
   // Sending mail out of the workspace is an admin job, so it lives with the
   // other admin controls (Anir, Aug 25: "build the email stuff out for

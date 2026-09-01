@@ -116,7 +116,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
           {reps.length > 0 && (
             <ExpandedChartControl
               title="Weighted forecast by rep"
-              subtitle="Compare each teammate's probability-adjusted quarter forecast, open pipeline, and share of the team quota."
+              subtitle="Compare each teammate's realistic quarter forecast, their open pipeline, and their share of the team quota."
               items={expansionItems}
               itemNoun="series"
               renderExpanded={(visibleKeys) => {

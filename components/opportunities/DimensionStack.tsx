@@ -40,9 +40,21 @@ type Drag = {
   from: number;
   startX: number;
   dx: number;
+  /** Where it would land if you let go right now. Kept on the drag rather
+      than recomputed per render so the hit test can be sticky (see targetOf)
+      and so the strip, the numbers and the drop can never disagree. */
+  to: number;
   slots: Slot[];
   gap: number;
 };
+
+/**
+ * How far past a midpoint the chip has to be before the swap commits, and
+ * how far back before it lets go again. A hand is never perfectly still; a
+ * few pixels of stickiness is the difference between "it moved" and a chip
+ * buzzing across the boundary.
+ */
+const STICK = 5;
 
 export function DimensionStack({
   order,
@@ -68,19 +80,62 @@ export function DimensionStack({
 
   const centre = (s: Slot) => s.left + s.width / 2;
 
-  /** Where the held chip would land, from the pointer delta alone. */
+  /**
+   * Where the held chip would land, from the pointer delta alone.
+   *
+   * NUDGE IT AND IT GOES (Suren, Sep 1: "the shuffle is kinda weird, it should
+   * know I'm doing it, I shouldn't have to move my cursor exactly where the
+   * gap is for it to move, it's too strict").
+   *
+   * It was strict because it measured CENTRE against CENTRE: the held chip's
+   * middle had to reach the neighbour's middle, which on labels this long is
+   * most of two hundred pixels of dragging before anything acknowledged you.
+   * All that travel bought no precision either, because the neighbour has
+   * already visibly slid aside by then.
+   *
+   * The forgiving rule, and the one every sortable list uses, is to ask
+   * whether the held chip has COVERED the neighbour's midpoint: its leading
+   * edge against that neighbour's centre. Half the chip over the halfway mark
+   * is unambiguously a swap, and it costs roughly half the travel.
+   *
+   * Still a pure function of the pointer delta and still measured against the
+   * slots taken once at pointerdown, so the contract above holds. The only
+   * history it carries is `d.to`, and only to bias each boundary AWAY from
+   * wherever the chip already sits: entering a new position asks for STICK px
+   * past the midpoint, holding the one you have forgives STICK px back. A
+   * hand resting on a boundary stays put instead of buzzing across it.
+   *
+   * Both walks always start from home, so pulling back the way you came
+   * retreats through the same boundaries that let you in. The early return
+   * matters: unlike the old test, which asked one point about both
+   * directions, these two ask about opposite EDGES, a whole chip width apart.
+   * Left of home and right of home are separate questions and only one of
+   * them can be yes, so the second walk must not get to answer the first.
+   */
   function targetOf(d: Drag): number {
-    const held = centre(d.slots[d.from]) + d.dx;
+    const left = d.slots[d.from].left + d.dx;
+    const right = left + d.slots[d.from].width;
+    /* Right of home: how many neighbours has the leading edge covered? */
     let to = d.from;
-    while (to < d.slots.length - 1 && held > centre(d.slots[to + 1])) to += 1;
-    while (to > 0 && held < centre(d.slots[to - 1])) to -= 1;
+    while (
+      to < d.slots.length - 1 &&
+      right > centre(d.slots[to + 1]) + (to + 1 > d.to ? STICK : -STICK)
+    )
+      to += 1;
+    if (to !== d.from) return to;
+    /* Left of home: the same question asked of the trailing edge. */
+    while (
+      to > 0 &&
+      left < centre(d.slots[to - 1]) - (to - 1 < d.to ? STICK : -STICK)
+    )
+      to -= 1;
     return to;
   }
 
   /** How far chip `j` slides to make room. Exactly the held chip's width. */
   function shiftOf(d: Drag, j: number): number {
     if (j === d.from) return 0;
-    const to = targetOf(d);
+    const to = d.to;
     const room = d.slots[d.from].width + d.gap;
     if (to > d.from && j > d.from && j <= to) return -room;
     if (to < d.from && j < d.from && j >= to) return room;
@@ -102,11 +157,19 @@ export function DimensionStack({
       slots.length > 1 ? slots[1].left - (slots[0].left + slots[0].width) : 6;
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    setDrag({ dim, from, startX: e.clientX, dx: 0, slots, gap });
+    setDrag({ dim, from, startX: e.clientX, dx: 0, to: from, slots, gap });
   }
 
   function move(e: React.PointerEvent) {
-    setDrag((d) => (d ? { ...d, dx: e.clientX - d.startX } : d));
+    setDrag((d) => {
+      if (!d) return d;
+      /* dx and the target it implies are written together, so no render ever
+         sees a delta and a landing place that disagree. Recomputing from the
+         PREVIOUS `to` is what makes the boundary sticky; it is still pure, so
+         React calling this updater twice lands on the same answer. */
+      const moved = { ...d, dx: e.clientX - d.startX };
+      return { ...moved, to: targetOf(moved) };
+    });
   }
 
   /**
@@ -135,7 +198,7 @@ export function DimensionStack({
        drop (measured on screen, Aug 30). */
     const d = drag;
     if (!d) return;
-    const to = targetOf(d);
+    const to = d.to;
     setDrag(null);
     if (to === d.from) return;
 
@@ -213,7 +276,7 @@ export function DimensionStack({
            as the order it is about to become rather than the one it was. */
         const shown = drag
           ? held
-            ? targetOf(drag) + 1
+            ? drag.to + 1
             : i + 1 + (shift < 0 ? -1 : shift > 0 ? 1 : 0)
           : i + 1;
         return (

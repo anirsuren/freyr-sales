@@ -43,7 +43,7 @@ export function OfferingCustomers({
       <EmptyState
         icon={Building2}
         title="No customer is on this offering yet"
-        description={`Log an activity against ${offeringName} on a customer's Activity tab, or connect one of its components to an account, and they appear here.`}
+        description={`Go to a customer's Activity tab and log an activity for ${offeringName}. You can also connect one of its components to an account. Either way, that customer then shows up here.`}
       />
     );
   }

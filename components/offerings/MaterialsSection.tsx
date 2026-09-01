@@ -1859,7 +1859,7 @@ export function MaterialsSection({
         }
         detail={
           pendingRemoval?.docsPath
-            ? "The assistant also forgets what was inside it. The file stays in storage, but you would have to upload it again to bring it back."
+            ? "Freyr AI also forgets what was inside it. The file stays in storage, but you would have to upload it again to bring it back."
             : undefined
         }
         confirmLabel="Remove material"

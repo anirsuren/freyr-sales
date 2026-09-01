@@ -173,7 +173,7 @@ export function AnalyticsView({
           </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Open Pipeline Value
-            <InfoHint text="The total dollar value of every deal still in play: nothing won or lost yet." />
+            <InfoHint text="The total value of every deal still in play. Deals you have already lost are left out." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={openValue} unit="money" />
@@ -188,7 +188,7 @@ export function AnalyticsView({
           </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Total Deals
-            <InfoHint text="How many deals are in this view: open and closed, for the time range you picked." />
+            <InfoHint text="How many deals are in this view, open and closed together. It follows the time range you picked." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={totalDeals} unit="count" />
@@ -240,7 +240,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Pipeline by Stage
-              <InfoHint text="Where your open money sits across the steps. Click a stage to see the deals in it, including the ones you won and lost." />
+              <InfoHint text="The value of every deal, grouped by the step it is on. Closed Lost is one of the bars, so this is not only open money. Click a bar to see the deals in it." />
             </h2>
             <ExpandedChartModal
               title="Pipeline by Stage"
@@ -340,7 +340,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Outcome Mix
-              <InfoHint text="What happened after your calls and emails. Click any outcome to see exactly who: who is interested, who is not, who booked a meeting." />
+              <InfoHint text="What happened after your calls and emails. Click any outcome to see exactly which people are behind it." />
             </h2>
             <ExpandedChartModal
               title="Outcome Mix"

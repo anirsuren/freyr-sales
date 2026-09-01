@@ -128,7 +128,7 @@ export function CustomerGroupsTab({
         <EmptyState
           icon={Layers}
           title="No groups yet"
-          description="A group is a named set of accounts — Strategic accounts, EU filings, renewals due. Each one shows what those accounts add up to."
+          description="A group is a set of accounts you name yourself, such as Strategic accounts, EU filings or renewals due. Once a group exists, it adds up what all those accounts are worth in one place."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -265,7 +265,7 @@ export function CustomerGroupsTab({
         open={!!confirmDelete}
         title={`Delete "${confirmDelete?.name ?? "this group"}"?`}
         /* The one thing somebody deleting a group needs to be sure of. */
-        body={`The group goes; the ${
+        body={`The group is deleted. The ${
           confirmDelete?.customerIds.length ?? 0
         } account${
           (confirmDelete?.customerIds.length ?? 0) === 1 ? "" : "s"
@@ -358,7 +358,7 @@ function GroupDialog({
         </Field>
 
         <div className="mt-3">
-          <Field label="Why it exists — optional">
+          <Field label="Why it exists (optional)">
             <Textarea
               rows={2}
               value={description}

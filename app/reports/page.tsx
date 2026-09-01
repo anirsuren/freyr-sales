@@ -229,8 +229,8 @@ export default async function ReportsPage() {
               Customer Offering Heat Map
             </h2>
             <p className="mt-1 max-w-[720px] text-[12px] leading-relaxed text-text-secondary">
-              See the current motion for every customer and offering, then
-              open a pairing for value, dates, linked records and history.
+              Where every customer stands on every offering. Open any square
+              for the value, the dates, the linked records and the history.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-5">
@@ -273,8 +273,8 @@ export default async function ReportsPage() {
               Activity → Goal flow
             </h2>
             <p className="mt-1 max-w-[720px] text-[12px] leading-relaxed text-text-secondary">
-              How much each activity actually poured into each goal — built
-              from results stamped with the activity they came from.
+              How much each activity actually brought in against each goal.
+              Only results that say which activity they came from are counted.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-5">
@@ -297,7 +297,7 @@ export default async function ReportsPage() {
         <EmptyState
           icon={ReceiptText}
           title="No offering revenue yet"
-          description="Reps log revenue on each customer's Offerings tab. It rolls up here: total revenue, licenses, customers, renewals, and what is still in progress."
+          description="Revenue is logged on each customer's Offerings tab. Add one there and this page adds it all up, along with licenses, contracts and renewals."
         />
       ) : (
         <>
@@ -671,8 +671,8 @@ export default async function ReportsPage() {
             </div>
             {report.renewals.length === 0 ? (
               <p className="px-5 pb-5 text-[13px] text-text-secondary">
-                No dated contracts yet, add start/end dates to a revenue line and
-                renewals track here.
+                No contracts have dates on them yet. Put a start and end date on
+                a revenue line and it will show up here.
               </p>
             ) : (
               <div className="overflow-x-auto">

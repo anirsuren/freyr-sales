@@ -122,7 +122,7 @@ export function MaterialReadState({
     return (
       <span className="mt-1 flex items-center gap-1.5">
         <Tooltip
-          label={`Freyr AI read this file — ${words.toLocaleString()} words`}
+          label={`Freyr AI read this file, ${words.toLocaleString()} words`}
           side="top"
         >
           <span
@@ -145,11 +145,11 @@ export function MaterialReadState({
     return (
       <span className="mt-1 flex items-center gap-1.5">
         <Tooltip
-          label="No readable text inside — stored and downloadable as it is"
+          label="No readable text inside. It is stored and you can still download it"
           side="top"
         >
           <span
-            aria-label="No readable text inside; stored and downloadable as it is"
+            aria-label="No readable text inside. It is stored and you can still download it"
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary"
           >
             <FileQuestion size={10} strokeWidth={2.4} aria-hidden="true" />

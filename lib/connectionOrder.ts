@@ -54,3 +54,35 @@ export function orderBands(bands: Customer360Band[]): Customer360Band[] {
   };
   return [...bands].sort((a, b) => rank(a.key) - rank(b.key));
 }
+
+/**
+ * THE DEAL READS ITS OWN ORDER (Suren, Sep 1, on the opportunity page: "the
+ * order needs to be a little changed. Contracts can come at the end, and those
+ * requests should come earlier — solution request meeting, submissions,
+ * presentations, meetings they're doing").
+ *
+ * This is deliberately NOT the shared sequence above. That one is his Aug 28
+ * grid and still governs the customer, contract and person pages, which he did
+ * not ask me to touch. On a deal the flow is what was ASKED for, then what was
+ * produced, then what was held, and the signed paper last — so contracts moves
+ * from third to last and the two request bands come to the front.
+ *
+ * Anything not named here keeps working and sorts after, same as above.
+ */
+export const DEAL_CONNECTION_ORDER = [
+  "solutionRequests",
+  "meetingRequests",
+  "submissions",
+  "presentations",
+  "meetings",
+  "revenueAccruals",
+  "contracts",
+] as const;
+
+export function orderDealBands(bands: Customer360Band[]): Customer360Band[] {
+  const rank = (key: string) => {
+    const i = (DEAL_CONNECTION_ORDER as readonly string[]).indexOf(key);
+    return i === -1 ? DEAL_CONNECTION_ORDER.length : i;
+  };
+  return [...bands].sort((a, b) => rank(a.key) - rank(b.key));
+}

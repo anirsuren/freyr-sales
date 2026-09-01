@@ -29,8 +29,8 @@ export default async function ServiceCatalogPage() {
         <Card className="p-0">
           <EmptyState
             icon={Package}
-            title="No services indexed yet"
-            description="Run a knowledge-base crawl in Admin to populate the catalog."
+            title="No services here yet"
+            description="This list is built by reading the Freyr website. An admin can start that from the Admin page, using Re-crawl Freyr Website."
           />
         </Card>
       ) : (

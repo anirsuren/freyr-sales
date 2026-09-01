@@ -2,57 +2,64 @@
 
 import { useRouter } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
-import { InfoHint } from "@/components/ui/InfoHint";
+import type { DealTeam } from "./DealPeople";
 import type { Opportunity } from "@/lib/opportunitiesShared";
-import type { Customer360Band } from "@/components/customers/Customer360";
 
 /**
  * THE CLIENT HALF OF THE EDIT PAGE.
  *
- * The page itself is a server component, so the save call, the router refresh
- * and the "you may only look" case live here. It is deliberately thin: the
- * form is the same component the customer screen opens inline, asked to render
- * as a page instead of as a dialog, so the two can never drift.
+ * The page itself is a server component, so the save call and the refresh live
+ * here. It is deliberately thin: the form is the same component the deal page's
+ * Overview tab renders, so the two can never drift.
+ *
+ * VIEW-ONLY IS NOT A DIFFERENT SCREEN. It used to be a card saying "this deal
+ * is not yours to change" and nothing else, so somebody without the pen could
+ * not even read the deal's own figures here. The editor draws every field as a
+ * value instead of a control and says why at the top, which is the same answer
+ * and a usable page.
  */
 export function DealEditScreen({
   deal,
-  bands,
-  createOptions,
+  customers = [],
+  offerings = [],
+  people = [],
+  meName = "",
+  team = null,
+  mayChangeTeam = false,
   mayEdit,
   why,
 }: {
   deal: Opportunity;
-  bands: Customer360Band[];
-  createOptions: React.ComponentProps<typeof EditDealDialog>["createOptions"];
+  customers?: { id: string; name: string }[];
+  offerings?: { id: string; name: string; type?: string }[];
+  people?: string[];
+  meName?: string;
+  /** Who is on the deal, so the People section reads the same here as on the
+   *  Overview tab — one form, one set of facts, either door. */
+  team?: DealTeam;
+  mayChangeTeam?: boolean;
   mayEdit: boolean;
   why: string;
 }) {
   const router = useRouter();
 
-  /* Read-only is said once, at the top, rather than by an editor that refuses
-     every field one at a time. */
-  if (!mayEdit) {
-    return (
-      <div className="rounded-2xl border border-border-light bg-white p-6">
-        <p className="text-[14px] font-semibold text-text-primary">
-          This deal is not yours to change
-        </p>
-        <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-text-secondary">
-          {why}
-          <InfoHint text={why} />
-        </p>
-      </div>
-    );
-  }
-
   return (
     <EditDealDialog
       asPage
       deal={deal}
-      bands={bands}
-      createOptions={createOptions}
-      onCreated={() => router.refresh()}
+      mayEdit={mayEdit}
+      why={why}
+      customers={customers}
+      offerings={offerings}
+      people={people}
+      meName={meName}
+      team={team}
+      mayChangeTeam={mayChangeTeam}
+      /* NOTHING NAVIGATES ON SAVE ANY MORE. Each field commits on its own, so
+         a push back to the deal would fire the moment somebody left the first
+         box and take the rest of the form away with it. */
       onClose={() => router.push(`/opportunities/${deal.id}`)}
+      onSaved={() => router.refresh()}
       onSave={async (patch) => {
         const res = await fetch("/api/opportunities", {
           method: "POST",
@@ -60,18 +67,11 @@ export function DealEditScreen({
           /* SPREAD, NOT NESTED. The route reads the changed fields off the
              TOP LEVEL of the body (`body(raw)` in app/api/opportunities), so a
              `patch` object was never looked at and every field arrived
-             undefined: the page navigated back cheerfully and saved nothing.
-
-             Found in the loop by editing a probe deal's name, pressing Save,
-             and reading the store back — the name had not moved. The dialog
-             version in OpportunityDetail has always spread it, which is why
-             the old flow worked and this one silently did not. */
+             undefined: the page navigated back cheerfully and saved nothing. */
           body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) return data?.error || "That did not save.";
-        router.push(`/opportunities/${deal.id}`);
-        router.refresh();
         return null;
       }}
     />

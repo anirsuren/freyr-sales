@@ -407,7 +407,7 @@ export function LeadsModule({
           title={leads.length === 0 ? "No leads yet" : "Nothing matches those filters"}
           description={
             leads.length === 0
-              ? "A lead is anyone who came in before there is a deal: a demo request from the website, a card from a conference, a referral. Add the first one and qualify it with a meeting."
+              ? "A lead is anyone who got in touch before there is a real deal. A demo request from the website, a card from a conference, a referral. Press New lead at the top to add the first one."
               : "Clear a filter to see the rest."
           }
         />

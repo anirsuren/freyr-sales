@@ -200,8 +200,11 @@ export function PasskeySetup() {
           setConfirmOff(false);
           void removeAll();
         }}
+        /* STAYS RED: this throws the saved fingerprint away for good. Turning
+           Touch ID back on means enrolling this device from scratch. */
         title="Turn Touch ID off?"
         body="Signing in on this device goes back to your password."
+        detail="The saved fingerprint is thrown away. To use Touch ID again you have to set it up from scratch."
         confirmLabel="Turn it off"
       />
     </div>

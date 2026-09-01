@@ -48,6 +48,7 @@ export function PageToolbar({
   sort,
   view,
   display,
+  action,
   bare = false,
   className,
 }: {
@@ -72,6 +73,21 @@ export function PageToolbar({
   view?: ReactNode;
   /** Anything else that belongs in the right-hand display cluster. */
   display?: ReactNode;
+  /**
+   * THE PAGE'S PRIMARY ACTION, on the toolbar line.
+   *
+   * Anir, Sep 1, looking at Opportunities: "the new opportunity should be on
+   * the same line as a search bar, obviously." It had been sitting on its own
+   * row above, which in live mode was a row containing nothing else, so the
+   * button floated alone over 60px of white.
+   *
+   * It gets its own slot rather than being folded into `display` because it is
+   * not a display control: `sort`, `view` and `display` all change how the
+   * list is shown, and this one creates a record. Sharing a slot would also
+   * put it inside the border-left cluster that groups the view switches, which
+   * reads as though making a deal were a way of looking at them.
+   */
+  action?: ReactNode;
   /**
    * NO CHROME OF ITS OWN, for a page that has already drawn the box (Anir,
    * Aug 21, on Opportunities: "you don't need three fucking rectangles, you
@@ -135,6 +151,9 @@ export function PageToolbar({
           {display}
           {view}
         </div>
+      )}
+      {action && (
+        <div className={cn("shrink-0", !hasDisplay && "ml-auto")}>{action}</div>
       )}
     </SearchPriority>
   );

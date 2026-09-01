@@ -33,10 +33,118 @@
  * functions only — the store is lib/revenueAccruals.ts.
  */
 
-/** One month of planned revenue. `month` is an ISO year-month, "2026-04". */
+/**
+ * One month of planned revenue. `month` is an ISO year-month, "2026-04".
+ *
+ * ONE-TIME AND RECURRING, SPLIT (Suren, Sep 1: "what if we need a separation
+ * between month-on-month revenue and one-time revenue? You can make another
+ * column: OTS amount in USD, ARR amount in USD... and then you can have a
+ * total column, which will come for every month").
+ *
+ * `amount` REMAINS THE TOTAL and is what every rollup reads — the report, the
+ * month-on-month gap, the contract schedule that aliases this type. The two
+ * splits are optional and additive: fill them and the total follows; leave
+ * them empty and the total is entered directly, exactly as every plan written
+ * before today already is. Nothing existing has to be migrated.
+ */
 export type AccrualLine = {
   month: string;
   amount: number;
+  /** One-time revenue in this month. */
+  ots?: number;
+  /** Recurring revenue in this month. */
+  arr?: number;
+};
+
+/**
+ * WHAT AN ACCRUAL RECORD IS RIGHT NOW. Suren, Sep 1, after working through and
+ * discarding several other words: exactly these three, no more.
+ *
+ *  · ACTIVE AND FILLED — it has accrual numbers and it is the current version.
+ *    A user deviation produces another one of these; deviating does not make a
+ *    record less current, it makes it newer.
+ *  · NON FILLED — nobody has entered numbers. He noted this matters most on Go
+ *    get and High confidence deals and matters less on Pipeline, which is a
+ *    question of how loudly to say it. This layer reports it the same either
+ *    way and leaves the emphasis to the screen.
+ *  · INACTIVE — a version the system created because the estimated sign date
+ *    passed with no signature, deliberately left blank. "Somebody has to go and
+ *    fix it."
+ *
+ * APPROVAL IS NOT IN HERE ON PURPOSE. He raised it in the same breath ("should
+ * the top pay also review it as a process?") and floated an Approved status,
+ * then settled on the three above without landing it. Nothing is built for it.
+ */
+export const ACCRUAL_STATUSES = [
+  "Active and Filled",
+  "Non Filled",
+  "Inactive",
+] as const;
+export type AccrualStatus = (typeof ACCRUAL_STATUSES)[number];
+
+/**
+ * HOW A VERSION CAME TO EXIST. This is the other axis and it is not the status:
+ * his sheet carries both, a version number with a status beside it, and a
+ * record that was user-deviated is still Active and Filled.
+ *
+ *  · original — the plan as first written. Every plan saved before versions
+ *    existed reads as this, version 1, with no stored data changed.
+ *  · user     — somebody pressed Deviate, adjusted the months and gave a reason.
+ *  · system   — the sweep found the sign date had passed unsigned and opened a
+ *               blank version to force a human back to it.
+ */
+export const DEVIATION_ORIGINS = ["original", "user", "system"] as const;
+export type DeviationOrigin = (typeof DEVIATION_ORIGINS)[number];
+
+/**
+ * ONE VERSION OF AN ACCRUAL RECORD.
+ *
+ * Suren, Sep 1: "The moment you do that, this record from version 1 becomes a
+ * new record called version 2, and the record status becomes deviated. Every
+ * time you see an accrual record, the record has a version number and a
+ * status."
+ *
+ * SO A DEVIATION APPENDS, IT NEVER OVERWRITES. Version 1 keeps the figures it
+ * always had; version 2 holds the revised ones. That is the only reason a
+ * variance between them exists to report, and it is the same instinct as the
+ * frozen snapshot: this module never loses the number it used to say.
+ *
+ * THE MONTHS CARRY THE FULL OTS/ARR/TOTAL SHAPE ("the two columns repeat for
+ * the deviation, and then they adjust and save"), which is why a version holds
+ * AccrualLine and not a bare figure. A deviation may also name months the
+ * original plan never had, which is exactly his example: nothing in September,
+ * something in October, November and December.
+ */
+export type AccrualVersion = {
+  /** 1-based and contiguous. Version 1 is the plan as first written. */
+  version: number;
+  origin: DeviationOrigin;
+  /** What THIS version says. Empty on a system version, deliberately. */
+  lines: AccrualLine[];
+  /**
+   * WHY. Required on a user deviation and refused without one, because a
+   * deviation nobody explained is the number that starts the argument in the
+   * meeting. The system does not give a reason; its blankness is the reason.
+   */
+  reason?: string;
+  /** Who made this version. "It also shows who all have deviated." */
+  by: string;
+  at: string;
+  /**
+   * SET ONLY BY THE SYSTEM SWEEP, and only ever alongside origin `system`.
+   *
+   * Suren, Sep 1, asked directly whether a person could mark one inactive:
+   * "nobody can make it inactive because people have to enter that information
+   * somehow. If they have not filled it, then it's non-filled... if the system
+   * makes it inactive, it's primarily because of the dates. They expire."
+   *
+   * So a human's inaction produces Non Filled and nothing else. There is no
+   * user-facing way to set this, and the normaliser drops it from any version
+   * that is not the system's own, so a hand-edited row cannot smuggle one in.
+   * "Our system just inactivates it, don't even fill." Filling that version
+   * clears it, which is the fix he described.
+   */
+  inactive?: boolean;
 };
 
 export type AccrualPlan = {
@@ -65,7 +173,29 @@ export type AccrualPlan = {
    * the months quietly become fiction.
    */
   signDateAtPlan?: string;
+  /**
+   * THE OPERATIVE MONTHS, and its meaning has not changed: this is what every
+   * rollup in the app reads — the report, the dashboard, the month-on-month
+   * gap, the contract schedule that aliases AccrualLine.
+   *
+   * With versions in play this mirrors the LAST FILLED version, and the
+   * normaliser enforces that the same way it enforces amount = ots + arr. A
+   * system version being blank therefore does NOT blank the plan: that is rule
+   * 2 above, in his own words, "it's not removing, you can invalidate... but
+   * there has to be a flag which says it is not validating and you go and fix
+   * it." The flag is the Inactive status. The money stays on the report.
+   */
   lines: AccrualLine[];
+  /**
+   * THE VERSION HISTORY, oldest first, the last one operative.
+   *
+   * OPTIONAL, AND THAT IS THE WHOLE BACKWARD-COMPATIBILITY STORY. Every plan
+   * written before today has no `versions` key and none is written into the
+   * database for it. Such a plan reads as a single version 1 of origin
+   * `original`, Active and Filled when it has figures and Non Filled when it
+   * does not. Nothing is migrated; see planVersions().
+   */
+  versions?: AccrualVersion[];
   note?: string;
   updatedBy: string;
   updatedAt: string;
@@ -157,6 +287,263 @@ export function spreadEvenly(
 
 export function planTotal(plan: Pick<AccrualPlan, "lines">): number {
   return plan.lines.reduce((s, l) => s + (l.amount || 0), 0);
+}
+
+/* --------------------------------------------------------------- versions */
+
+/**
+ * IS THERE A NUMBER IN HERE? "Non filled" is his word for a record nobody has
+ * entered accruals against, so a month list of zeroes is not filled: nobody
+ * accrues nothing on purpose, and treating typed zeroes as filled would hide
+ * the deals the Non Filled flag exists to surface.
+ */
+export function versionFilled(lines: AccrualLine[]): boolean {
+  return lines.some((l) => (l.amount || 0) > 0);
+}
+
+/** One version's status. The three words he landed on, and only those. */
+export function versionStatus(version: AccrualVersion): AccrualStatus {
+  if (version.inactive) return "Inactive";
+  return versionFilled(version.lines) ? "Active and Filled" : "Non Filled";
+}
+
+export function versionTotal(version: AccrualVersion): number {
+  return version.lines.reduce((s, l) => s + (l.amount || 0), 0);
+}
+
+/**
+ * EVERY VERSION OF A PLAN, OLDEST FIRST, INCLUDING PLANS THAT HAVE NONE.
+ *
+ * This is where backward compatibility lives, and it is the reason no stored
+ * row has to be rewritten. A plan saved before versions existed has no
+ * `versions` key, so it reads here as exactly one version: number 1, origin
+ * `original`, carrying the months it already had, stamped with the edit it
+ * already recorded. Active and Filled when it has figures, Non Filled when it
+ * does not, which is what he asked for and what it always effectively was.
+ */
+export function planVersions(
+  plan: Pick<AccrualPlan, "lines" | "versions" | "updatedBy" | "updatedAt">
+): AccrualVersion[] {
+  const stored = plan.versions ?? [];
+  if (stored.length) return [...stored].sort((a, b) => a.version - b.version);
+  return [
+    {
+      version: 1,
+      origin: "original",
+      lines: plan.lines,
+      by: plan.updatedBy,
+      at: plan.updatedAt,
+    },
+  ];
+}
+
+/**
+ * THE VERSION A PERSON IS ACTUALLY EDITING, and it is not simply the highest
+ * number.
+ *
+ * Suren, Sep 1: "When the user enters, it's always whichever is the latest
+ * active version." A system version is Inactive by construction, so the newest
+ * version is exactly the wrong answer on a record the sweep has just touched:
+ * an edit routed there would land on a version marked expired and blank.
+ *
+ * This is a named function rather than a line each caller writes because
+ * getting it wrong writes to a superseded version, silently. `lines` on the
+ * plan mirrors this same version, so the report, the editor and the screen can
+ * never be looking at three different sets of months.
+ */
+export function latestActiveVersion(
+  plan: Pick<AccrualPlan, "lines" | "versions" | "updatedBy" | "updatedAt">
+): AccrualVersion {
+  const all = planVersions(plan);
+  for (let i = all.length - 1; i >= 0; i -= 1) {
+    if (!all[i].inactive) return all[i];
+  }
+  /* Version 1 is never the system's, so this is unreachable in practice; it
+     is here so a corrupted row degrades to the oldest record rather than
+     throwing on a page somebody is trying to read. */
+  return all[0];
+}
+
+/**
+ * ONE MONTH, BEFORE AND AFTER. This is Suren's "another column that shows up
+ * against all of this" (Sep 1): the version being deviated FROM on one side,
+ * the figures being typed on the other.
+ *
+ * Either side may be missing, and both cases are real. A month with no
+ * `revised` was dropped by the deviation. A month with no `planned` is one the
+ * deviation ADDED, which is his own example: "He's not putting anything in
+ * September; he puts in October, November, December."
+ */
+export type VersionMonthRow = {
+  month: string;
+  planned: AccrualLine | undefined;
+  revised: AccrualLine | undefined;
+  variance: number;
+};
+
+export type VersionComparison = {
+  rows: VersionMonthRow[];
+  plannedTotal: number;
+  revisedTotal: number;
+  varianceTotal: number;
+};
+
+/**
+ * ONE VERSION AGAINST ANOTHER, MONTH BY MONTH.
+ *
+ * The Deviate form and the record's own history table both need these numbers,
+ * and three components each doing their own subtraction is how a page ends up
+ * showing a variance that disagrees with its own footer.
+ *
+ * SCOPE, DELIBERATELY: this compares two versions of ONE record and nothing
+ * else. Sizing what deviations cost across a period was raised in the same
+ * conversation and put off: "should we complicate this now, or should we leave
+ * it for now?... You can do that later, right?... Let's just focus on who
+ * deviated." So there is no cross-period impact analysis here, on purpose. The
+ * month-on-month snapshot gap further down is a separate, older mechanism and
+ * is untouched by any of this.
+ */
+export function buildVersionComparison(
+  from: AccrualLine[],
+  to: AccrualLine[]
+): VersionComparison {
+  const before = new Map(from.map((l) => [l.month, l]));
+  const after = new Map(to.map((l) => [l.month, l]));
+  const months = [...new Set([...before.keys(), ...after.keys()])].sort();
+  const rows: VersionMonthRow[] = months.map((month) => {
+    const planned = before.get(month);
+    const revised = after.get(month);
+    return {
+      month,
+      planned,
+      revised,
+      variance: (revised?.amount ?? 0) - (planned?.amount ?? 0),
+    };
+  });
+  const plannedTotal = from.reduce((s, l) => s + (l.amount || 0), 0);
+  const revisedTotal = to.reduce((s, l) => s + (l.amount || 0), 0);
+  return {
+    rows,
+    plannedTotal,
+    revisedTotal,
+    varianceTotal: revisedTotal - plannedTotal,
+  };
+}
+
+/** One row of the history table on a record's own screen. */
+export type VersionHistoryRow = {
+  version: number;
+  origin: DeviationOrigin;
+  status: AccrualStatus;
+  lines: AccrualLine[];
+  total: number;
+  /** Present on a user deviation, which cannot be saved without one. */
+  reason?: string;
+  by: string;
+  at: string;
+  /** True on the version a person would be editing (latestActiveVersion). */
+  current: boolean;
+};
+
+/**
+ * EVERY PREVIOUS VERSION OF ONE RECORD, NEWEST FIRST.
+ *
+ * Suren, Sep 1: "There will be one more table about all the previous
+ * deviations for this record. That will have all the versions that got
+ * deviated, and those versions will show up." Newest first because the
+ * question being asked of this table is always what happened last.
+ */
+export function buildVersionHistory(
+  plan: Pick<AccrualPlan, "lines" | "versions" | "updatedBy" | "updatedAt">
+): VersionHistoryRow[] {
+  const current = latestActiveVersion(plan).version;
+  return planVersions(plan)
+    .map((v) => ({
+      version: v.version,
+      origin: v.origin,
+      status: versionStatus(v),
+      lines: v.lines,
+      total: versionTotal(v),
+      ...(v.reason ? { reason: v.reason } : {}),
+      by: v.by,
+      at: v.at,
+      current: v.version === current,
+    }))
+    .reverse();
+}
+
+/** One row of the Deviations tab. */
+export type PlanDeviationSummary = {
+  opportunityId: string;
+  opportunityName: string;
+  customer: string;
+  /** The number he wants on the row: the latest version of this record. */
+  version: number;
+  status: AccrualStatus;
+  origin: DeviationOrigin;
+  /**
+   * "The number of deviations shows up." Version 1 is the plan, not a
+   * deviation, so this counts everything after it.
+   */
+  deviationCount: number;
+  /** "It also shows who all have deviated." People only, oldest first. */
+  deviatedBy: string[];
+  /** Whether the system has flagged this record as expired and unsigned. */
+  systemDeviated: boolean;
+  lastDeviatedAt?: string;
+  /** False on a record nobody has ever deviated, so the tab can filter to the
+   *  records that belong on it. */
+  deviated: boolean;
+};
+
+/**
+ * ONE RECORD, AS THE DEVIATIONS TAB READS IT.
+ *
+ * His columns are Opportunity ID, Version no, Status, Owner, number of
+ * deviations and a History control. OWNER IS NOT IN HERE and that is not an
+ * oversight: the owner belongs to the opportunity and this app already joins
+ * deals to plans wherever it shows both. Copying it onto the plan would give
+ * it a second, staler home, and the one field this type does denormalise
+ * (opportunityName) is denormalised for a stated reason.
+ */
+export function buildPlanDeviation(
+  plan: Pick<
+    AccrualPlan,
+    | "lines"
+    | "versions"
+    | "updatedBy"
+    | "updatedAt"
+    | "opportunityId"
+    | "opportunityName"
+    | "customer"
+  >
+): PlanDeviationSummary {
+  const all = planVersions(plan);
+  const latest = all[all.length - 1];
+  const deviations = all.slice(1);
+  const people: string[] = [];
+  for (const v of deviations) {
+    if (v.origin === "user" && v.by && !people.includes(v.by)) people.push(v.by);
+  }
+  return {
+    opportunityId: plan.opportunityId,
+    opportunityName: plan.opportunityName,
+    customer: plan.customer,
+    version: latest.version,
+    /* The record's status is the status of its newest version, INCLUDING an
+       inactive one: that flag is the whole point of the sweep and hiding it
+       behind the latest active version would bury it. Editing still goes to
+       latestActiveVersion; reading the state of the record does not. */
+    status: versionStatus(latest),
+    origin: latest.origin,
+    deviationCount: deviations.length,
+    deviatedBy: people,
+    systemDeviated: deviations.some((v) => v.origin === "system"),
+    ...(deviations.length
+      ? { lastDeviatedAt: deviations[deviations.length - 1].at }
+      : {}),
+    deviated: deviations.length > 0,
+  };
 }
 
 /* --------------------------------------------------------------- verdicts */

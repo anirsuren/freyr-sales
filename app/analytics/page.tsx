@@ -47,7 +47,7 @@ export default async function AnalyticsPage({
     db.interactions.list(),
   ]);
   if (dataMode === "live" && allSessions.length === 0) {
-    return <EmptyState icon={BarChart3} title="No analytics yet" description="Create your first account and log activity to begin building real performance analytics." />;
+    return <EmptyState icon={BarChart3} title="No analytics yet" description="Add an account, then log a call or an email against it. The charts build themselves from there." />;
   }
 
   const range =

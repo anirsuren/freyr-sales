@@ -22,7 +22,10 @@ import {
   normalizeActivity,
   normalizeStatus,
 } from "@/lib/customerOfferingHeatMap";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  moduleWriteRefusal,
+  recordWriteRefusal,
+  canOpenModule,} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +136,23 @@ export async function PATCH(
   const customer = await db.customers.get((await params).id);
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  /* AND MAY THEY CHANGE **THIS** ACCOUNT (Suren, Sep 1): "you can only do
+     anything on a particular customer that you are part of or created or
+     edited so far. For other records that they are not part of, they should
+     have a view option." The module check above says whether they may write in
+     Customers at all; this says whether they may write in THIS one. The page
+     draws no Edit control when this would refuse, but the page is not the
+     control. This is. */
+  {
+    const refusal = await recordWriteRefusal("/customers", {
+      id: customer.id,
+      owner: customer.owner,
+      owner_user_id: customer.owner_user_id,
+      created_by: customer.created_by,
+    });
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 
   let body: any = {};
@@ -524,6 +544,14 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  /* Same hole as the list route, same fix. A record page is guarded by
+     requireModuleAccess; this is the API behind it and asked nothing. */
+  if (!(await canOpenModule("/customers")))
+    return NextResponse.json(
+      { error: "Not available on this account." },
+      { status: 403 }
+    );
+
   const db = getDb();
   const customer = await db.customers.get((await params).id);
   if (!customer) {

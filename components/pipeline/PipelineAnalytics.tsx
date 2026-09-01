@@ -183,7 +183,7 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
         {/* LEFT — the wide left-to-right curve: how the open book was built. */}
         <div className="flex flex-col xl:pr-5">
           <div className="flex items-center justify-between gap-3">
-            <Eyebrow hint="Every point is the total value of the deals you have open today that already existed on that date. A flat stretch means no new pipeline came in that week. Deals that were already lost are left out at every point, because they are not part of what you are working now.">
+            <Eyebrow hint="Every point is the total value of the deals you have open today that already existed on that date. A flat run means no new deals arrived between those two dates. Deals you have already lost are left out, because they are not part of what you are working now.">
               Open pipeline, day by day
             </Eyebrow>
             <ExpandedChartModal
@@ -231,7 +231,7 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             side, so the wide layout never leaves a dead band under the bars. */}
         <div className="mt-5 flex flex-col border-t border-border-light pt-5 xl:mt-0 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
           <div className="flex items-center justify-between gap-3">
-            <Eyebrow hint="The same open money, split by the step each deal is sitting on right now. Bar height is the full value of the deals in that step; the line under it is how many deals make it up. Lost deals are excluded: they are not pipeline any more.">
+            <Eyebrow hint="The same open money, split by the step each deal is on right now. Each bar is the full value of the deals in that step, and the small number above it is how many deals that is. Deals you have lost are left out.">
               Where that money sits
             </Eyebrow>
             <ExpandedChartModal

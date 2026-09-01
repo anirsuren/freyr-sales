@@ -389,7 +389,7 @@ export function OfferingCompetition({
           <EmptyState
             icon={Swords}
             title="No competition on file yet"
-            description={`Add the products that compete with ${offeringName} and collect the team's intel on each one: pricing, positioning, links and documents.`}
+            description={`Add the products that compete with ${offeringName}. For each one the team can note the price, how it is sold, and any links or documents worth keeping.`}
           />
         </div>
       ) : view === "tiles" ? (
@@ -423,7 +423,7 @@ export function OfferingCompetition({
                   </span>
                 ) : (
                   <span className="mt-3 flex h-[58px] flex-1 items-center justify-center rounded-md border border-dashed border-border-light text-[10.5px] font-medium text-text-tertiary">
-                    No notes yet — open to add the first one
+                    No notes yet. Open this to add the first one
                   </span>
                 )}
                 <span className="mt-3 flex items-center justify-between gap-2 border-t border-border-light pt-2.5">
@@ -748,7 +748,7 @@ export function OfferingCompetition({
                 </>
               ) : (
                 <span className="text-[11.5px] text-text-tertiary">
-                  Sample data — switch to Real mode to add intel.
+                  Sample data. Switch to Real mode to add your own notes.
                 </span>
               )}
             </div>

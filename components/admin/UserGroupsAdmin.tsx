@@ -359,7 +359,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group type
-                <InfoHint text={"What kind of work this group can be given, not what its people may do.\nA business development group can be given customers, contracts and opportunities. A solutioning group can be given solution requests, submissions, presentations and meetings.\nEverybody keeps whatever privileges they already hold."} />
+                <InfoHint text={"What kind of work this group can be given. It does not change what its people are allowed to do.\nA business development group can be given customers, contracts and opportunities. A solutioning group can be given solution requests, submissions, presentations and meetings.\nEverybody keeps whatever privileges they already have."} />
               </label>
               <div className="mt-1">
                 <ColorSelect

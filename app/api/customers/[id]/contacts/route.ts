@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDataMode } from "@/lib/dataMode";
 import { getDb } from "@/lib/db";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import { recordWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,22 @@ export async function POST(
     (scope && customer.workspace_id && customer.workspace_id !== scope.workspaceId)
   ) {
     return NextResponse.json({ error: "Customer not found." }, { status: 404 });
+  }
+
+  /* ADDING SOMEBODY TO AN ACCOUNT IS A CHANGE TO THAT ACCOUNT, so the account
+     decides (Suren, Sep 1). This route asked nothing at all before, not the
+     module row either, so anybody signed in could file a contact against any
+     account in the company. Flagged in the report of Sep 1: the module half of
+     this is a hole that predates the record rule, and closing it is Anir's
+     call to keep or revert. */
+  {
+    const refusal = await recordWriteRefusal("/customers", {
+      id: customer.id,
+      owner: customer.owner,
+      owner_user_id: customer.owner_user_id,
+      created_by: customer.created_by,
+    });
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

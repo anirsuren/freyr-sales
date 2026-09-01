@@ -414,7 +414,7 @@ export function MeetingDetail({
             )}
             {m.docs.length === 0 ? (
               <p className="mt-3 py-6 text-center text-[12.5px] text-text-secondary">
-                Nothing handed over yet.
+                No documents yet. Use the plus button above to add one.
               </p>
             ) : (
               <ul className="mt-3 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light">
@@ -466,7 +466,7 @@ export function MeetingDetail({
                         d.docsPath || d.url
                           ? setViewing(d)
                           : toast(
-                              `"${d.label}" is a name on the record — no file was uploaded against it.`,
+                              `"${d.label}" is only a name on the record. No file was ever uploaded for it.`,
                               "error"
                             )
                       }

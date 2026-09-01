@@ -194,7 +194,7 @@ export default async function ConversationPage({
       <EmptyState
         icon={SearchX}
         title="Transcript not available"
-        description="This conversation couldn't be loaded: it may still be processing, or the voice service isn't connected in this environment."
+        description="The call may still be turning into text, which takes a minute or two. It can also mean the phone service is not connected here. Try again shortly."
         className="py-24"
         action={
           <SmartBack
@@ -321,10 +321,10 @@ export default async function ConversationPage({
               </p>
               <p className="mt-1 text-[12.5px] text-text-secondary">
                 {vm.status === "analyzing"
-                  ? "Transcript turns appear first; the summary, outcome, and CRM activity fill in as ElevenLabs finishes analysis."
+                  ? "The words come through first. The summary, the outcome and the activity note fill in once ElevenLabs has been back over the call."
                   : vm.status === "in_progress" || vm.status === "initiated"
-                    ? "Freyr already has the caller and account context. The transcript will populate as soon as processing begins."
-                    : "The call ended without usable speech data."}
+                    ? "Freyr already knows who is on the call and which account it belongs to. What gets said will appear here once the call is under way."
+                    : "The call ended and nothing was said that could be written down."}
               </p>
             </div>
           ) : (

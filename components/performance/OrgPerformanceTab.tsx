@@ -536,10 +536,10 @@ export function OrgPerformanceTab({
                   [
                     { h: "Goal" },
                     { h: "Target", hint: "The number to hit for the year. Set it here or in the Goal Master." },
-                    { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
+                    { h: "Actual", hint: "Everything logged so far, added up. Some goals, like a win rate or an average, show the newest number instead of a total." },
                     { h: "Met", hint: "Met means the actual has reached the target." },
                     { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
-                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it, once something has been logged. With nothing logged there is nothing to sign off." },
+                    { h: "Verified", hint: "Leadership says yes or no by hand. Click the pill to change it, once something has been logged. With nothing logged there is nothing to sign off." },
                     { h: "Actions" },
                   ] as { h: string; hint?: string }[]
                 ).map((col, i) => (
@@ -1315,7 +1315,7 @@ export function OrgPerformanceTab({
             description={
               scope
                 ? scope.emptyDescription
-                : "Goals live on the Goal Master. Mark one as 'On the goal plan' and it shows up here with its target, actuals and verification."
+                : "Goals live on the Goal Master. Mark one as 'On the goal plan' and it turns up here with its target, what has been logged, and whether leadership has signed it off."
             }
             action={
               scope ? undefined : (

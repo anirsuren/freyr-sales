@@ -2,16 +2,35 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Pencil, Target } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
-import { EditableFact } from "./EditableFact";
 import { EditDealDialog } from "./EditDealDialog";
+/* THE OVERVIEW TAB IS THE EDIT FORM (Suren, Sep 1: "This overview can be the
+   edit deal, actually, and within the overview, let them edit if you want").
+   The same component the /edit page renders, so the two cannot drift. */
+import { DealOverviewEditor } from "./DealOverviewEditor";
+import type { DealTeam } from "./DealPeople";
 import { AddToBandButton } from "./AddToBandButton";
 import { NewContractDialog } from "./NewContractDialog";
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
-import { DEAL_TYPES, OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
+/* THE MEETINGS TAB HAD NO WAY TO MAKE ONE. Its Add button set `creating` to a
+   key nothing rendered, so the one control on an empty Meetings tab did
+   nothing at all. This is the module's own form, which has carried
+   prefillOpportunityId since the day it was written — "opened from a deal, so
+   it arrives already attached to that deal" — and had never been opened from
+   one. */
+import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
+import { useToast } from "@/components/ui/Toast";
+/* THE ACCRUAL PLANNER ITSELF, not a link to it (Suren, Sep 1: "it's just that
+   same screen shows up here"). The Revenue accruals module mounts this exact
+   component; so does the Revenue accruals tab below. */
+import {
+  AccrualPlanDialog,
+  type DealOption,
+} from "@/components/accruals/AccrualPlanDialog";
+import type { AccrualPlan } from "@/lib/revenueAccrualsShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -20,8 +39,6 @@ import {
   effectiveRevenueType,
   estimatedAcvOf,
   estimatedTcvOf,
-  opportunityValue,
-  signDateOf,
   weightedValue,
   type Opportunity,
 } from "@/lib/opportunitiesShared";
@@ -55,17 +72,42 @@ const LEVEL_TONE: Record<string, string> = {
 
 export function OpportunityDetail({
   verdict,
+  accrual = null,
   requestSolutioning = null,
   createOptions = null,
   deal,
   bands,
   offerings,
+  customers = [],
+  people = [],
+  meName = "",
+  team = null,
+  mayChangeTeam = false,
   customerId,
   meetings,
 }: {
   /** What this person may do to THIS deal — the privilege map joined to who is
    *  on the account and on the deal. Decided on the server. */
   verdict: { mayEdit: boolean; mayCreate: boolean; why: string };
+  /**
+   * WHAT THE REVENUE ACCRUALS TAB NEEDS TO OPEN ITS PLANNER HERE.
+   *
+   * Suren, Sep 1: "Create revenue accrual, we should do it at this level only
+   * ... It's NOT a revenue accrual tab... both the screens have to be the
+   * same. It's just that same screen shows up here."
+   *
+   * `mayPlan` is the module's WRITE question, answered on the server, so a
+   * view-only person gets no button rather than a form that fails on Save.
+   * `plan` is what is already on this deal, so the dialog opens on its months
+   * instead of a blank form that would overwrite them. Null when this person
+   * cannot see the accruals module at all, and then the band is not built
+   * either.
+   */
+  accrual?: {
+    mayPlan: boolean;
+    deal: DealOption;
+    plan: AccrualPlan | null;
+  } | null;
   /** Server-rendered so the page can ask the privilege table before drawing
    *  it. Null when this person may not raise one. */
   requestSolutioning?: React.ReactNode;
@@ -86,6 +128,17 @@ export function OpportunityDetail({
   deal: Opportunity;
   bands: Customer360Band[];
   offerings: { id: string; name: string; type?: string }[];
+  /** The accounts this deal may be moved between, for the Overview form's
+   *  customer picker. Empty leaves that one field read-only. */
+  customers?: { id: string; name: string }[];
+  /** The roster the owner is picked from. Empty falls back to a typed name. */
+  people?: string[];
+  /** Whoever is looking, so they are the first name on the owner list. */
+  meName?: string;
+  /** Who is recorded on this deal, for the Overview's People section. */
+  team?: DealTeam;
+  /** May this person change that list. The server's own answer. */
+  mayChangeTeam?: boolean;
   customerId: string | null;
   meetings: {
     id: string;
@@ -96,11 +149,9 @@ export function OpportunityDetail({
     status: string;
   }[];
 }) {
-  const value = opportunityValue(deal);
   const acv = estimatedAcvOf(deal);
   const tcv = estimatedTcvOf(deal);
   const level = effectiveRevenueType(deal);
-  const signs = signDateOf(deal);
   const [tab, setTab] = useState<string>("overview");
   const [editing, setEditing] = useState(false);
   /**
@@ -110,7 +161,11 @@ export function OpportunityDetail({
    * this, so the two entry points cannot drift into behaving differently.
    */
   const [creating, setCreating] = useState<string | null>(null);
+  /** The accrual planner, open on THIS deal. Mounted only while it is open, so
+   *  it seeds itself from the plan the server just handed us. */
+  const [planningAccrual, setPlanningAccrual] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   /**
    * ONE FIELD AT A TIME, THROUGH THE SAME API THE FORM USES.
@@ -135,19 +190,63 @@ export function OpportunityDetail({
     }
   }
 
-  const num = (v: string) => (v.trim() === "" ? null : Number(v.replace(/[^0-9]/g, "")));
-  const offeringNames = [
-    ...deal.offeringIds
-      .map((id) => offerings.find((o) => o.id === id)?.name)
-      .filter((n): n is string => !!n),
-    ...deal.offeringLabels,
-  ];
+  /**
+   * A MONTH ON THE ACCRUAL BAND IS NOT A LINK ANY MORE.
+   *
+   * lib/opportunity360 gives every accrual row `/revenue-accruals/{deal}` —
+   * the standalone planning page, which is the screen Suren threw out ("I
+   * don't want a different screen") and which now redirects to the module. So
+   * following it would do the one thing this whole change exists to stop:
+   * take somebody off the deal they are planning. The row still shows the
+   * month, its amount and its one-time/recurring split; the way to CHANGE it
+   * is the button beside the band, which opens the planner here.
+   */
+  const shownBands = bands.map((b) =>
+    b.key === "revenueAccruals"
+      ? {
+          ...b,
+          items: b.items.map((item) => {
+            const row = { ...item };
+            delete row.href;
+            return row;
+          }),
+        }
+      : b
+  );
+
 
   return (
     <div>
       {/* THE CREATE DIALOGS. Opened from the tab strip or from the Edit
           screen's sections — same state, same dialog, so the two doors cannot
           behave differently. */}
+      {/* THE ACCRUAL PLANNER, IN PLACE (Suren, Sep 1: "Create revenue accrual,
+          we should do it at this level only... It's NOT a revenue accrual tab.
+          I think the same screen from there, both the screens have to be the
+          same. It's just that same screen shows up here").
+
+          This used to be a <Link> to /revenue-accruals/{deal} — a second
+          editor on a second page, reached from the tab, which is exactly what
+          he rejected. Somebody planning revenue for a deal now never leaves
+          the deal: the same dialog the Revenue accruals module opens is
+          mounted right here, and saving refreshes the band underneath it.
+
+          The picker inside has nothing to offer, because on a deal's own page
+          the deal is not a question — it shows which deal is being planned and
+          there is nowhere else to go. */}
+      {planningAccrual && accrual && (
+        <AccrualPlanDialog
+          dealId={accrual.deal.id}
+          deals={[accrual.deal]}
+          pickable={[]}
+          plans={accrual.plan ? [accrual.plan] : []}
+          onClose={() => setPlanningAccrual(false)}
+          /* The band is server rendered, so its rows and its total move once
+             the server has been asked again. The dialog does that refresh
+             itself; there is nothing to navigate to. */
+          onSaved={() => undefined}
+        />
+      )}
       {creating === "contracts" && (
         <NewContractDialog
           deal={deal}
@@ -155,10 +254,51 @@ export function OpportunityDetail({
           onCreated={() => router.refresh()}
         />
       )}
+      {/* A MEETING, PLANNED FROM THE DEAL IT IS ABOUT.
+          The Meetings tab's Add button has always existed and has never worked:
+          it set `creating` to "meetings", which the block below explicitly
+          skips and nothing else answered, so the click did nothing. Same dialog
+          the Meetings module opens, same endpoint, with the deal and its
+          account already filled in — which is the one thing the module cannot
+          do for you. */}
+      {creating === "meetings" && createOptions && (
+        <NewMeetingDialog
+          meName={createOptions.meName}
+          members={createOptions.members}
+          customers={createOptions.customers}
+          contacts={createOptions.contacts}
+          opportunities={createOptions.opportunities}
+          prefillOpportunityId={deal.id}
+          prefillCustomerName={deal.customer}
+          onClose={() => setCreating(null)}
+          onCreate={async (input) => {
+            const res = await fetch("/api/meetings", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ op: "create", ...input }),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.ok) {
+              toast(data?.error || "That didn't save.", "error");
+              return false;
+            }
+            setCreating(null);
+            router.refresh();
+            return true;
+          }}
+        />
+      )}
       {/* The TAB door opens a dialog of its own — there is no parent frame to
           be a page of. The Edit screen's sections render the same forms
           chromeless, inside the dialog already open. */}
-      {creating && creating !== "contracts" && creating !== "meetings" && createOptions && (
+      {/* Revenue accruals is excluded because it has a dialog of its own,
+          mounted above, so it must never fall through to the solutioning
+          form. */}
+      {creating &&
+        creating !== "contracts" &&
+        creating !== "meetings" &&
+        creating !== "revenueAccruals" &&
+        createOptions && (
         <NewRequestDialog
           room={
             creating === "submissions"
@@ -328,12 +468,13 @@ export function OpportunityDetail({
           value={acv === undefined ? "·" : money(acv)}
           sub={acv === undefined ? "not entered yet" : "one year of it"}
         />
-        <StatTile
-          icon={Package}
-          label="Weighted"
-          value={money(weightedValue(deal))}
-          sub={`${money(value)} × confidence`}
-        />
+        {/* WEIGHTED IS GONE (Suren, Sep 1, reading this row of tiles out loud:
+            "this weighted, and all — don't confuse him, take it out. This
+            doesn't make sense, we don't use this actually").
+
+            It was value × confidence, a forecasting figure nobody at Freyr
+            works from. The two tiles beside it are the numbers people actually
+            enter and quote, so the row now carries only those. */}
       </div>
 
       {/* THE CONNECTED AREAS ARE THE PAGE'S OWN TABS, full width — the same
@@ -362,7 +503,7 @@ export function OpportunityDetail({
         >
           Overview
         </button>
-        {bands.map((b) => (
+        {shownBands.map((b) => (
           <button
             key={b.key}
             role="tab"
@@ -384,273 +525,137 @@ export function OpportunityDetail({
       {/* Keyed so each area animates in, exactly as the customer page does. */}
       <div key={tab} className="tab-panel">
         {tab === "overview" ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="min-w-0 space-y-4">
-              {/* THE OVERVIEW IS THE DASHBOARD.
-                  Suren, Aug 31: "I need a dashboard which says... total
-                  contract value, estimated annual contract value, that's fine.
-                  And then... dashboard wise, should we have all these small
-                  boxes, contract 0, submission 0, presentation 0 and below
-                  that, give a link so that... here also you can go to the
-                  submission."
+          /* THE OVERVIEW IS THE EDIT FORM.
 
-                  The counts were only in the tab strip, which reads as
-                  navigation rather than as a figure — you had to notice a
-                  small number beside a word to learn there were three decks on
-                  this deal. Here they are the thing itself, and each one opens
-                  the list behind it, so the overview answers "what is on this
-                  deal" without a click and gets you there with one. */}
-              {/* A rep whose role opens none of these modules gets no bands at
-                  all, and a heading over an empty grid is worse than no
-                  section — so it only exists when there is something in it. */}
-              {bands.length > 0 && (
-              <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+             Suren, Sep 1: "This overview can be the edit deal, actually, and
+             within the overview, let them edit if you want," and then, plainly:
+             "When I press Add a Deal, remember all the shit that's there has to
+             be in the overview section underneath in little sections and
+             stuff."
+
+             So every field the Add a Deal form asks for is here, grouped into
+             little titled sections, saving itself as it is changed. No trip to
+             a separate screen for the thing this tab exists to show.
+
+             THE RIGHT-HAND SUMMARY CARD IS GONE WITH IT. It restated Value,
+             Estimated ACV, Estimated TCV, Confidence, Status, Revenue type,
+             Type of opportunity, Expected to sign, Owner, Offering and Added,
+             every one of them marked canEdit={false} — a read-only copy of the
+             fields now sitting editable a few centimetres to its left. Suren's
+             standing rule is breakdowns, not restatements. The two facts it
+             carried that the form did not, the offering and the day the deal
+             was added, are fields in "The deal" section now, so nothing went
+             with it.
+
+             Full width, because a 320px column beside a form is 320px of
+             white. */
+          <DealOverviewEditor
+            deal={deal}
+            /* THE SAME GATE THE EDIT BUTTON READS, decided on the server and
+               re-checked by the API route on every write. A view-only person
+               gets every field as a value and no way to post one. */
+            mayEdit={verdict.mayEdit}
+            why={verdict.why}
+            customers={customers}
+            offerings={offerings}
+            people={people}
+            meName={meName}
+            /* WHO IS ON THE DEAL, and whether this person may change that —
+               both decided on the server, both re-checked by /api/record-team
+               before it writes a single name. */
+            team={team}
+            mayChangeTeam={mayChangeTeam}
+            onSave={saveField}
+          >
+            {meetings.length > 0 && (
+              <section className="rounded-2xl border border-border-light bg-white p-5 shadow-card">
                 <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  What is on this deal
+                  Meetings held against this deal
                 </h2>
-                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-                  {bands.map((b) => {
-                    const Icon =
-                      BAND_ICON_MAP[b.icon as keyof typeof BAND_ICON_MAP] ?? Target;
-                    return (
-                      <button
-                        key={b.key}
-                        type="button"
-                        onClick={() => setTab(b.key)}
-                        className="group flex cursor-pointer flex-col items-start gap-1.5 rounded-lg border border-border-light bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-primary hover:shadow-card"
+                <ul className="mt-2.5 space-y-2">
+                  {meetings.map((m) => (
+                    <li key={m.id}>
+                      <Link
+                        href={`/meetings/${m.id}`}
+                        className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                       >
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-md"
-                          style={{ background: `${b.color}14`, color: b.color }}
-                        >
-                          <Icon size={15} strokeWidth={1.9} />
-                        </span>
-                        <span className="tnum text-[20px] font-semibold leading-none text-text-primary">
-                          {b.count}
-                        </span>
-                        <span className="text-[11.5px] leading-snug text-text-secondary group-hover:text-blue-primary">
-                          {b.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        {m.title}
+                      </Link>
+                      <span className="text-[11.5px] text-text-tertiary tnum">
+                        {m.ref} · {m.owner} · {m.meetingAt?.slice(0, 10)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </section>
-              )}
-              {deal.nextSteps ? (
-                <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-                  <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Note from the sheet
-                  </h2>
-                  <p className="mt-1.5 max-w-[68ch] text-[13.5px] leading-relaxed text-text-primary">
-                    {deal.nextSteps}
-                  </p>
-                </section>
-              ) : (
-                <section className="rounded-xl border border-border-light bg-white px-5 py-8 text-center text-[12.5px] text-text-secondary shadow-card">
-                  Nothing was written on this deal. Everything connected to it is
-                  in the tabs above.
-                </section>
-              )}
-              {meetings.length > 0 && (
-                <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-                  <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Meetings held against this deal
-                  </h2>
-                  <ul className="mt-2.5 space-y-2">
-                    {meetings.map((m) => (
-                      <li key={m.id}>
-                        <Link
-                          href={`/meetings/${m.id}`}
-                          className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                        >
-                          {m.title}
-                        </Link>
-                        <span className="text-[11.5px] text-text-tertiary tnum">
-                          {m.ref} · {m.owner} · {m.meetingAt?.slice(0, 10)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </div>
-
-            <aside className="min-w-0">
-            {/* ONE QUIET BLOCK. It had four levels of uppercase grey — a card
-                title, three section headings, and a label over every value —
-                which is a lot of shouting for ten short facts, and the pairs
-                left a hole in the right column wherever a group had an odd
-                number ("I hate the way that looks. Still.").
-
-                No section headings now: the pairing already groups them and a
-                hairline says where one group ends. Labels are sentence case at
-                reading size rather than tracked-out capitals. The order fills
-                both columns so the right side never sits empty. */}
-            <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
-                <EditableFact
-                  label="Value"
-                  value={value ? String(value) : ""}
-                  kind="money"
-                  stacked
-                  canEdit={false}
-                  format={(v) => money(Number(v))}
-                  onSave={(v) => saveField({ value: num(v) ?? 0 })}
-                />
-                <EditableFact
-                  label="Estimated ACV"
-                  value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
-                  kind="money"
-                  stacked
-                  canEdit={false}
-                  format={(v) => money(Number(v))}
-                  onSave={(v) => saveField({ estimatedAcv: num(v) })}
-                />
-                <EditableFact
-                  label="Estimated TCV"
-                  value={
-                    deal.estimatedTcv === undefined
-                      ? tcv === undefined
-                        ? ""
-                        : String(tcv)
-                      : String(deal.estimatedTcv)
-                  }
-                  kind="money"
-                  stacked
-                  canEdit={false}
-                  hint={
-                    deal.estimatedTcv === undefined && tcv !== undefined
-                      ? "follows the deal's value"
-                      : undefined
-                  }
-                  format={(v) => money(Number(v))}
-                  onSave={(v) => saveField({ estimatedTcv: num(v) })}
-                />
-                <EditableFact
-                  label="Confidence"
-                  value={deal.confidence === undefined ? "" : String(deal.confidence)}
-                  kind="percent"
-                  stacked
-                  canEdit={false}
-                  format={(v) => `${v}%`}
-                  onSave={(v) => saveField({ confidence: num(v) })}
-                />
-              </div>
-
-              <div className="my-4 h-px bg-border-light" />
-
-              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
-                <EditableFact
-                  label="Status"
-                  value={deal.status ?? ""}
-                  stacked
-                  canEdit={false}
-                  options={[
-                    { value: "", label: "Not set" },
-                    ...OPPORTUNITY_STATUSES.map((x) => ({ value: x, label: x })),
-                  ]}
-                  onSave={(v) => saveField({ status: v })}
-                />
-                <EditableFact
-                  label="Revenue type"
-                  value={deal.revenueType ?? ""}
-                  stacked
-                  canEdit={false}
-                  options={[
-                    { value: "", label: "Not set" },
-                    ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
-                  ]}
-                  onSave={(v) => saveField({ revenueType: v })}
-                />
-                {/* Suren, Aug 31: "opportunity is missing one thing, what
-                    type of opportunity... new business, existing business,
-                    renewal, all of that comes along, so it's all part of the
-                    overview." Sits beside Revenue type because the two get
-                    read together and answer different questions. */}
-                <EditableFact
-                  label="Type of opportunity"
-                  value={deal.dealType ?? ""}
-                  stacked
-                  canEdit={false}
-                  options={[
-                    { value: "", label: "Not set" },
-                    ...DEAL_TYPES.map((x) => ({ value: x, label: x })),
-                  ]}
-                  onSave={(v) => saveField({ dealType: v })}
-                />
-                <EditableFact
-                  label="Expected to sign"
-                  value={signs ?? ""}
-                  kind="date"
-                  stacked
-                  canEdit={false}
-                  onSave={(v) => saveField({ estSignDate: v })}
-                />
-                <EditableFact
-                  label="Owner"
-                  value={deal.owner ?? ""}
-                  placeholder="Nobody yet"
-                  stacked
-                  canEdit={false}
-                  onSave={(v) => saveField({ owner: v.trim() })}
-                />
-              </div>
-
-              <div className="my-4 h-px bg-border-light" />
-
-              <div className="grid grid-cols-2 gap-x-5 gap-y-3.5">
-                <Row label="Offering" value={offeringNames.join(", ") || "None"} />
-                <Row
-                  label="Added"
-                  value={new Date(deal.createdAt).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                />
-              </div>
-            </section>
-          </aside>
-          </div>
+            )}
+          </DealOverviewEditor>
         ) : (
           <Customer360
             chromeless
+            /* Each area says its own sentence when it is empty, rather than
+               the panel's generic "Nothing on X for {company} yet." — which
+               names the ACCOUNT on a page about one deal and tells you
+               nothing about what to do next. Revenue accruals is the reason
+               it matters: empty, that tab's only job is to say where the plan
+               gets made. */
+            bandEmpty
             forceKey={tab}
             company={deal.customer}
-            bands={bands}
+            bands={shownBands}
             /* An add button in every tab, beside the way out to the module.
                The tab that tells you there are none is the place you look for
                the way to make one. */
             bandActions={Object.fromEntries(
-              bands.map((b) => [
+              shownBands.map((b) => [
                 b.key,
-                <AddToBandButton
-                  key={b.key}
-                  bandKey={b.key}
-                  label={b.label}
-                  onAdd={setCreating}
-                />,
+                /* REVENUE ACCRUALS OPENS ITS PLANNER RIGHT HERE (Suren,
+                   Sep 1: "we can enter accrued revenue... the accruals
+                   actually go into the revenue accrual module, but you can
+                   enter from here. You can have this tab, and then you can
+                   create accrual for it" — and, on the screen it opens: "I
+                   think the same screen from there, both the screens have to
+                   be the same. It's just that same screen shows up here").
+
+                   The plan still lives in the accruals module and there is
+                   still exactly one of it per deal; what changed is that
+                   writing it does not send you to another page. Same
+                   component, same months, same save — mounted above.
+
+                   NO BUTTON WHEN YOU MAY NOT WRITE ONE. The months are still
+                   listed and the way out to the module is still on the panel;
+                   only the editing door is gated, and it is gated on the
+                   server's answer to the same question the API asks. */
+                b.key === "revenueAccruals" ? (
+                  accrual?.mayPlan ? (
+                    <button
+                      key={b.key}
+                      type="button"
+                      onClick={() => setPlanningAccrual(true)}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      {b.count === 0 ? (
+                        <Plus size={13} strokeWidth={2.4} />
+                      ) : (
+                        <Pencil size={13} strokeWidth={2.4} />
+                      )}
+                      {b.count === 0 ? "Add accrual" : "Open the plan"}
+                    </button>
+                  ) : null
+                ) : (
+                  <AddToBandButton
+                    key={b.key}
+                    bandKey={b.key}
+                    label={b.label}
+                    onAdd={setCreating}
+                  />
+                ),
               ])
             )}
             emptyLine="Nothing is connected to this deal yet."
           />
         )}
       </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[11.5px] leading-4 text-text-tertiary">{label}</p>
-      <p
-        className="truncate text-[13.5px] leading-5 font-semibold text-text-primary"
-        title={value}
-      >
-        {value}
-      </p>
     </div>
   );
 }

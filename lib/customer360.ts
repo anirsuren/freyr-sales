@@ -7,7 +7,8 @@ import { readSolutioning, solutioningShelf } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
 import { meetingsForCustomer, readMeetings } from "./meetings";
-import { canAccessModule } from "./moduleAccess";
+import { canAccessModuleWith } from "./moduleAccess";
+import { viewerAccessMap } from "./viewerAccess";
 import type { UserIdentityRole } from "./userIdentity";
 import {
   BAND_ICONS,
@@ -36,7 +37,23 @@ export async function buildCustomer360(
   companyName: string,
   role: UserIdentityRole
 ): Promise<Customer360Band[]> {
-  const may = (path: string) => canAccessModule(path, role);
+  /* THE BANDS AND THE DOOR MUST AGREE.
+   *
+   * This used to be `canAccessModule(path, role)` — the ROLE rules — while the
+   * page that renders these bands is guarded by `requireModuleAccess`, which
+   * uses `canAccessModuleWith(path, role, access)` — the PRIVILEGE TABLE. Two
+   * different authorities deciding the same question, so they disagreed:
+   * a BD Member has `edit` on Revenue Accruals in the stored table and no
+   * access under the role rules, which meant the page answered 200 and then
+   * rendered with the tab silently missing. The person sees a deal with most
+   * of its tabs gone and nothing anywhere says why.
+   *
+   * Same resolver as the door now. If the table cannot be read,
+   * `canAccessModuleWith` falls back to the role rules on its own, so this is
+   * never less permissive than it was.
+   */
+  const access = await viewerAccessMap().catch(() => null);
+  const may = (path: string) => canAccessModuleWith(path, role, access);
 
   const [opps, solutioning, leads, contracts, meetings, recordTeams] = await Promise.all([
     may("/opportunities")

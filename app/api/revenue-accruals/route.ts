@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import {
+  deviateAccrualPlan,
   freezeAccrualSnapshot,
+  parseFigure,
   readRevenueAccruals,
   removeAccrualPlan,
   removeAccrualSnapshot,
   saveAccrualPlan,
+  sweepAccrualPlans,
 } from "@/lib/revenueAccruals";
+import { readOpportunities } from "@/lib/opportunities";
+import type { AccrualLine } from "@/lib/revenueAccrualsShared";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -115,6 +120,126 @@ export async function POST(req: NextRequest) {
       }
       await removeAccrualPlan(opportunityId);
       return NextResponse.json({ ok: true, state: await readRevenueAccruals() });
+    }
+    if (op === "deviate") {
+      /* THE DEVIATE BUTTON (Suren, Sep 1: "if he's going to change it, he has
+         to put a button called Deviate... The moment you do that, this record
+         from version 1 becomes a new record called version 2").
+
+         THIS IS A WRITE, NOT A CREATE AND NOT A DELETE. It appends a version to
+         a plan that already exists and removes nothing, so the write gate above
+         (moduleWriteRefusal) is the whole permission question, exactly as it is
+         for editing the months on that plan today. */
+      const opportunityId = String(body.opportunityId ?? "");
+
+      /* THE REASON IS THE LAST COLUMN OF HIS SHEET and it is not optional.
+         Refused here as well as in the store so the message names the missing
+         thing rather than arriving as a generic save failure. */
+      const reason = String(body.reason ?? "").trim();
+      if (!reason) {
+        return NextResponse.json(
+          { error: "Say why this is deviating before you save it." },
+          { status: 400 }
+        );
+      }
+
+      /* EVERY FIGURE STRICTLY, OTS AND ARR INCLUDED ("the two columns repeat
+         for the deviation"). A string that becomes NaN, a negative, a boolean:
+         all refused out loud. Nothing is coerced into a 0 that would then be
+         read as a month somebody deliberately zeroed. */
+      const raw = Array.isArray(body.lines) ? body.lines : [];
+      if (!raw.length) {
+        return NextResponse.json(
+          { error: "A deviation needs at least one month." },
+          { status: 400 }
+        );
+      }
+      const lines: AccrualLine[] = [];
+      for (const item of raw) {
+        const row = (item ?? {}) as Record<string, unknown>;
+        const month = String(row.month ?? "");
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+          return NextResponse.json(
+            { error: `"${month}" is not a month this plan can use.` },
+            { status: 400 }
+          );
+        }
+        const ots = row.ots === undefined ? undefined : parseFigure(row.ots);
+        const arr = row.arr === undefined ? undefined : parseFigure(row.arr);
+        const split = row.ots !== undefined || row.arr !== undefined;
+        if (
+          (row.ots !== undefined && ots === undefined) ||
+          (row.arr !== undefined && arr === undefined)
+        ) {
+          return NextResponse.json(
+            {
+              error: `The one-time and recurring figures for ${month} have to be zero or more.`,
+            },
+            { status: 400 }
+          );
+        }
+        /* The split IS the total when it is present, the same rule the plan
+           itself follows, so the two can never disagree. */
+        const amount = split ? (ots ?? 0) + (arr ?? 0) : parseFigure(row.amount);
+        if (amount === undefined) {
+          return NextResponse.json(
+            { error: `The amount for ${month} has to be zero or more.` },
+            { status: 400 }
+          );
+        }
+        lines.push({
+          month,
+          amount,
+          ...(ots === undefined ? {} : { ots }),
+          ...(arr === undefined ? {} : { arr }),
+        });
+      }
+
+      /* Same lesson the delete op above learned: name what was missing rather
+         than answering ok:true to a call that did nothing. */
+      const before = await readRevenueAccruals();
+      if (!before.plans.some((p) => p.opportunityId === opportunityId)) {
+        return NextResponse.json(
+          { error: "There is no accrual plan on that deal." },
+          { status: 404 }
+        );
+      }
+
+      const plan = await deviateAccrualPlan(opportunityId, lines, reason, me.name);
+      return NextResponse.json({
+        ok: true,
+        plan,
+        state: await readRevenueAccruals(),
+      });
+    }
+    if (op === "system-deviate") {
+      /* THE SYSTEM DEVIATION BUTTON (Suren, Sep 1: "there will be a button that
+         you go and click on. Every time somebody comes and clicks on that
+         button, the system will go and record all the revenue and all the
+         opportunities. If the contract date is passed and the signatures have
+         not happened, then it will automatically create a new version").
+
+         A BUTTON AND NOT A CRON, like freezing a month above it. Nothing in
+         this module moves on its own, and this one writes to every plan at
+         once, which is the last thing that should ever fire unattended.
+
+         The deals come from here rather than from the store so the accruals
+         library keeps no opinion about opportunities; it is handed the sign
+         dates and statuses and judges the plans it already holds. */
+      const { opportunities } = await readOpportunities();
+      const result = await sweepAccrualPlans(
+        opportunities.map((o) => ({
+          id: o.id,
+          estSignDate: o.estSignDate,
+          status: o.status,
+        })),
+        me.name
+      );
+      return NextResponse.json({
+        ok: true,
+        ...result,
+        state: await readRevenueAccruals(),
+      });
     }
     if (op === "freeze") {
       const snapshot = await freezeAccrualSnapshot(me.name);

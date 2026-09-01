@@ -474,8 +474,8 @@ export function OfferingReports({
           {report.totalLicenses === 0 ? (
             <div className="flex flex-1 items-center">
               <p className="text-[12px] leading-relaxed text-text-secondary">
-                No licensed seats on this offering yet, every account below is
-                on project or service revenue, so there are no seats to count.
+                No licensed seats on this offering yet. Every account below is
+                on project or service revenue, so there is nothing to count.
               </p>
             </div>
           ) : (
@@ -595,7 +595,7 @@ export function OfferingReports({
               {customerSummaries.length === 0 && (
                 <tr>
                   <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
-                    No accounts use {offeringName} yet, the first customer marked
+                    No accounts use {offeringName} yet. The first customer marked
                     as in use starts this table.
                   </td>
                 </tr>
@@ -912,8 +912,8 @@ export function OfferingReports({
               {report.customers.length === 0 && (
                 <tr>
                   <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
-                    No commercial lines recorded yet, each contract, license and
-                    service agreement lands here as it is added.
+                    Nothing has been recorded yet. Every contract, license and
+                    service agreement shows up here as it is added.
                   </td>
                 </tr>
               )}

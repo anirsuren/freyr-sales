@@ -145,8 +145,8 @@ export function ContactEngagement({
 
       {total === 0 ? (
         <p className="mt-4 text-[13px] text-text-secondary">
-          Nothing logged with {firstName} yet, after your first email, call or
-          meeting, the charts fill in here.
+          Nothing logged with {firstName} yet. Log your first email, call or
+          meeting and the charts fill in here.
         </p>
       ) : (
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 items-stretch">

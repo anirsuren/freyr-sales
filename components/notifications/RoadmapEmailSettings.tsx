@@ -111,7 +111,7 @@ export function RoadmapEmailSettings({ followable }: { followable: Followed[] })
           </p>
         ) : following.length === 0 ? (
           <p className="text-[12.5px] text-text-secondary">
-            You follow nothing yet. Open a component and press{" "}
+            You are not following anything yet. Open a component and press{" "}
             <b className="font-semibold text-text-primary">Notify me</b> beside
             its versions, or turn on every roadmap above.
           </p>

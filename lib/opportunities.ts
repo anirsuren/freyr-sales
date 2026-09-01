@@ -191,7 +191,14 @@ function normalizeOne(raw: unknown): Opportunity | null {
   const customer = str(r.customer, 200);
   // A line item with neither a name nor an account is not a deal, it is noise.
   if (!name && !customer) return null;
-  const currency = isCurrencyCode(r.currency) ? (r.currency as CurrencyCode) : undefined;
+  /* THE CURRENCY THE TYPED MONEY IS IN, left undefined when nobody said —
+     which every deal in the book currently is, and which readers take as USD
+     (see the field's note in opportunitiesShared). Upper-cased on the way in
+     the way normalizeLines already does it for the offering rows, so "inr"
+     and "INR" cannot end up as two different currencies in the same store. */
+  const currency = isCurrencyCode(r.currency)
+    ? ((r.currency as string).toUpperCase() as CurrencyCode)
+    : undefined;
   const now = new Date().toISOString();
   const rows = normalizeLines(r.lines);
   // The rows ARE the money once there are any, so the stored total is written
@@ -591,6 +598,9 @@ export type OpportunityInput = {
    *  an emptied box could never take a wrong figure back off a deal. */
   estimatedAcv?: number | null;
   estimatedTcv?: number | null;
+  /** Which currency the three money fields above were typed in. Absent means
+   *  nobody said, which reads as USD. Never the converted figure — the dollar
+   *  equivalent is shown, not stored. */
   currency?: string;
   confidence?: number;
   estSignDate?: string;

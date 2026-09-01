@@ -295,14 +295,16 @@ function digestFor(
 
     // --- Their pipeline: the deals with their name on them. ---
     const all = opps?.opportunities ?? [];
+    /* EVERY DEAL WITH THEIR NAME ON IT. There used to be an "and not Future"
+       here and a separate count of the Future ones underneath; Suren retired
+       that level on Sep 1 ("just pipeline. We have high confidence, go-get
+       pipeline"), so those deals are Pipeline and belong in the same total as
+       the rest. */
     const mine = all.filter(
-      (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level !== "Future"
+      (o) => (o.owner ?? "").trim().toLowerCase() === me
     );
     const pipeValue = mine.reduce((sum, o) => sum + opportunityValue(o), 0);
     const pipeWeighted = mine.reduce((sum, o) => sum + weightedValue(o), 0);
-    const futureCount = all.filter(
-      (o) => (o.owner ?? "").trim().toLowerCase() === me && o.level === "Future"
-    ).length;
     const nextSign = mine
       .flatMap((o) =>
         (o.lines ?? [])
@@ -365,9 +367,6 @@ function digestFor(
             row("Weighted (value × confidence)", usd(pipeWeighted)),
             ...(nextSign
               ? [row(`Next signing: ${nextSign.deal}`, nextSign.date)]
-              : []),
-            ...(futureCount > 0
-              ? [row("Future deals waiting on a pitch", String(futureCount))]
               : []),
           ].join("");
 

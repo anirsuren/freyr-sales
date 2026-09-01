@@ -1077,7 +1077,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     No deals in this stage
                   </p>
                   <p className="text-[10.5px] text-text-tertiary leading-snug">
-                    Nothing to work here right now.
+                    Add a deal, or move one here from another stage.
                   </p>
                 </div>
               )}
