@@ -12,6 +12,7 @@ import {
   ClipboardList,
   FilePlus2,
   Flag,
+  Pencil,
   Hand,
   CircleDashed,
   ExternalLink,
@@ -239,6 +240,11 @@ export function RequestDetail({
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  /* The one door to the facts on this record, so nothing on the header writes
+     the moment it is brushed. */
+  const [editing, setEditing] = useState(false);
+  const [editPriority, setEditPriority] = useState("");
+  const [editNeededBy, setEditNeededBy] = useState("");
   /* CLOSING A REQUEST ASKS FIRST (Anir, Aug 30: "when I click it, it should ask
      me for a pop-up just like hand it back, to confirm I want to mark it as
      complete"). It is the one action here that ends the record for everybody
@@ -436,6 +442,24 @@ export function RequestDetail({
                   Create {r.kind === "submission" ? "submission" : "presentation"}
                 </button>
               )}
+            {/* THE EDIT DOOR (Anir, Sep 1: "Where's the edit stuff? There's
+                no edit button or anything, cuz how do I edit this?"). The same
+                rule the route applies to an update: the requester, the owner,
+                or a manager. */}
+            {canWrite && (iRequested || iOwn || managerial) && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setEditPriority(r.priority ?? "");
+                  setEditNeededBy(r.neededBy ?? "");
+                  setEditing(true);
+                }}
+                className={RECORD_ACTION_NEUTRAL}
+              >
+                <Pencil size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Edit
+              </button>
+            )}
             {!r.owner && r.status !== "completed" && fulfiller && (
               <button
                 type="button"
@@ -595,25 +619,29 @@ export function RequestDetail({
           />
         )}
 
-        {/* SOL-012 lists Priority as mandatory metadata, and it is the one field
-            a queue is actually sorted by. */}
-        {canWrite && (
-        <ColorSelect
-          value={r.priority ?? ""}
-          onChange={(v) => void post({ op: "set-priority", priority: v })}
-          ariaLabel="Priority"
-          minWidth={168}
-          options={[
-            { value: "", label: "Priority not set", color: "#64748B", icon: Flag },
-            ...REQUEST_PRIORITIES.map((x) => ({
-              value: x,
-              label: `${x} priority`,
-              color: PRIORITY_TONE[x],
-              icon: Flag,
-            })),
-          ]}
-        />
-        )}
+        {/* PRIORITY IS A FACT HERE, NOT A CONTROL (Anir, Sep 1: "for the
+            high-priority thing, you can't just be a dropdown here. Where's the
+            edit stuff? There's no edit button or anything... I don't want it
+            to just be a dropdown that anyone can change").
+
+            It sat among five read-only chips looking exactly like them and
+            wrote the moment you touched it — the timeline above already shows
+            "Priority set to High" and "Priority cleared" a minute apart, which
+            is somebody discovering that by accident. A chip now, changed
+            through Edit like every other fact on the record.
+
+            SOL-012 still lists it as mandatory metadata; what changed is how
+            it is reached, not whether it exists. */}
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+          style={{
+            background: `${r.priority ? PRIORITY_TONE[r.priority] : "#64748B"}14`,
+            color: r.priority ? PRIORITY_TONE[r.priority] : "#64748B",
+          }}
+        >
+          <Flag size={12} strokeWidth={2.4} />
+          {r.priority ? `${r.priority} priority` : "Priority not set"}
+        </span>
 
         {/* WHERE THIS CAME FROM (Suren, Aug 26: "you can say the submission is
             related to a request, but even without a request, a submission can
@@ -1375,6 +1403,86 @@ export function RequestDetail({
         }
         confirmLabel="Cancel it"
       />
+
+      {/* EDITING THE FACTS, DELIBERATELY (Anir, Sep 1: "I don't want it to
+          just be a dropdown that anyone can change"). Open it, change what you
+          meant to change, save. Nothing on the header writes on touch. */}
+      {editing && (
+        <Modal
+          open
+          onClose={() => setEditing(false)}
+          title={`Edit ${r.ref}`}
+          size="default"
+        >
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Priority
+              </span>
+              <span className="mt-1.5 block">
+                <ColorSelect
+                  value={editPriority}
+                  onChange={setEditPriority}
+                  ariaLabel="Priority"
+                  minWidth={200}
+                  options={[
+                    { value: "", label: "Priority not set", color: "#64748B", icon: Flag },
+                    ...REQUEST_PRIORITIES.map((x) => ({
+                      value: x,
+                      label: `${x} priority`,
+                      color: PRIORITY_TONE[x],
+                      icon: Flag,
+                    })),
+                  ]}
+                />
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Needed by
+              </span>
+              <input
+                type="date"
+                value={editNeededBy}
+                onChange={(e) => setEditNeededBy(e.target.value)}
+                className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </label>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  /* Only what actually moved, so saving the dialog cannot
+                     overwrite a field somebody else changed while it was
+                     open — and each lands on the timeline under its own name. */
+                  if (editPriority !== (r.priority ?? "")) {
+                    await post({ op: "set-priority", priority: editPriority });
+                  }
+                  if (editNeededBy !== (r.neededBy ?? "")) {
+                    await post({
+                      op: "update",
+                      patch: { neededBy: editNeededBy || null },
+                    });
+                  }
+                  setEditing(false);
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <ConfirmDialog
         open={confirmRemoveDoc !== null}
         onClose={() => setConfirmRemoveDoc(null)}
