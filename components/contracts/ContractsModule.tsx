@@ -1088,7 +1088,20 @@ export function ContractsModule({
                             "replace it with the arrow"). This one was missed in
                             the first sweep and found by re-reading the chat
                             against the code. */}
-                        {c.opportunityId && (
+                        {/* ONLY IF THE DEAL IS STILL THERE.
+                            Found in the loop, Sep 1: deleting a deal leaves
+                            every contract that referenced it holding a dangling
+                            opportunityId, and this arrow went on offering to
+                            open it — landing on the pipeline with nothing
+                            highlighted. A control that cannot do its job stops
+                            being drawn, which is the standing rule.
+
+                            Checked against the loaded deal list rather than
+                            cleared from the record: the name stays on the
+                            contract as history, and this also covers rows that
+                            were already dangling before today. */}
+                        {c.opportunityId &&
+                          deals.some((d) => d.id === c.opportunityId) && (
                           <Link
                             href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
                             title="Open the deal"
