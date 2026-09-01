@@ -76,6 +76,10 @@ export default async function OpportunityPage({
 
   const db = getDb();
   const customers = await db.customers.list().catch(() => []);
+  /* Needed by the meeting form, which asks who from the customer side is
+     coming. Loaded here rather than inside the dialog because the dialog is
+     a client component and this is the only page that opens it from a deal. */
+  const contacts = await db.contacts.list().catch(() => []);
   const bands = await buildOpportunity360(deal.id, role);
 
   const customerId =
@@ -162,6 +166,13 @@ export default async function OpportunityPage({
                 customerId: o.customerId ?? null,
               })),
               members,
+              contacts: contacts.map((c) => ({
+                id: c.id,
+                name: c.full_name,
+                customerId: c.customer_id ?? null,
+                title: c.job_title ?? "",
+              })),
+              meName: me.name,
             }
           : null
       }

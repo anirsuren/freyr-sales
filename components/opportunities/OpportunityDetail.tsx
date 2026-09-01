@@ -79,6 +79,9 @@ export function OpportunityDetail({
       customerId: string | null;
     }[];
     members: string[];
+    /** Customer-side people, for the meeting form's attendee picker. */
+    contacts: { id: string; name: string; customerId: string | null; title: string }[];
+    meName: string;
   } | null;
   deal: Opportunity;
   bands: Customer360Band[];
@@ -288,8 +291,15 @@ export function OpportunityDetail({
               <InfoHint text={verdict.why} />
             </span>
           )}
+          {/* WITH THE DEAL NAMED, so the list lands ON it (Anir, Aug 31: "it
+              doesn't look like the button that says 'Open in the pipeline'
+              even does anything"). A bare /opportunities dropped you at the
+              top of a hundred rows with your deal folded away inside a shut
+              group — indistinguishable from nothing happening. `?deal=` is the
+              browser's own focus mechanism: it unfolds the group, scrolls to
+              the row and flashes it. */}
           <Link
-            href="/opportunities"
+            href={`/opportunities?deal=${encodeURIComponent(deal.id)}`}
             className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
           >
             Open in the pipeline

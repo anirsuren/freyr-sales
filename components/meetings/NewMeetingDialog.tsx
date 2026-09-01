@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, CalendarDays, CircleDashed, Users } from "lucide-react";
+import { ArrowLeft, Building2, CalendarDays, CircleDashed, Users } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { DocumentDrop, landedDocs, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { FormRoom } from "@/components/ui/FormRoom";
 import { Field, Input } from "@/components/ui/Input";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -44,6 +45,10 @@ export function NewMeetingDialog({
   contacts,
   opportunities,
   meeting,
+  chromeless = false,
+  onBack,
+  prefillOpportunityId,
+  prefillCustomerName,
   onClose,
   onCreate,
 }: {
@@ -54,6 +59,16 @@ export function NewMeetingDialog({
   opportunities: OpportunityOption[];
   /** Prefill and save back onto this meeting instead of creating one. */
   meeting?: Meeting;
+  /** Rendered as a page of the deal's Edit dialog rather than as its own
+   *  window: same frame, same size, back arrow instead of a second close. */
+  chromeless?: boolean;
+  onBack?: () => void;
+  /** Opened from a deal, so it arrives already attached to that deal — the
+   *  link the deal's Meetings tab reads. */
+  prefillOpportunityId?: string;
+  /** The deal's own account. Deals imported from the pipeline sheet carry a
+   *  customer NAME and no customer id, so this is the only handle on it. */
+  prefillCustomerName?: string;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -67,7 +82,14 @@ export function NewMeetingDialog({
   const [customerId, setCustomerId] = useState(
     meeting?.customerId ??
       customers.find((c) => c.name === meeting?.customer)?.id ??
-      ""
+      /* Opened from a deal: that deal's account is the answer, so it starts
+         chosen rather than making you find it in a list of sixty. */
+      (prefillCustomerName
+        ? (customers.find(
+            (c) =>
+              c.name.trim().toLowerCase() === prefillCustomerName.trim().toLowerCase()
+          )?.id ?? `name:${prefillCustomerName}`)
+        : "")
   );
   const [contactIds, setContactIds] = useState<string[]>(
     meeting?.contactIds ?? []
@@ -147,11 +169,43 @@ export function NewMeetingDialog({
   );
   const [owner, setOwner] = useState(meeting?.owner ?? meName);
   const [opportunityIds, setOpportunityIds] = useState<string[]>(
-    meeting?.opportunityIds ?? []
+    meeting?.opportunityIds ?? (prefillOpportunityId ? [prefillOpportunityId] : [])
   );
+  /* ALL OF THEM NEED ATTACHMENTS (Anir, Aug 31). A meeting has always had a
+     `docs` field and an upload endpoint; what it did not have was any way to
+     reach either from the form that makes one, so the brief you were holding
+     could only be attached after the fact, from a different screen. */
+  const [stagedDocs, setStagedDocs] = useState<StagedDoc[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const customer = customers.find((c) => c.id === customerId);
+  /**
+   * THE DEAL'S OWN ACCOUNT IS ALWAYS PICKABLE.
+   *
+   * Found testing, Aug 31: opening this from the BMS deal and searching the
+   * account picker for "BMS" returned "Nothing matches that", so Create
+   * meeting stayed disabled and no meeting could be made from that deal at
+   * all — nor from any of the hundred others, because deals imported from the
+   * pipeline sheet carry a customer NAME and no id, and this picker only ever
+   * listed rows from the customers table.
+   *
+   * A deal naming its customer IS the account for this purpose. It is offered
+   * under a `name:` id, and the save sends the name rather than a made-up
+   * customer id, so nothing here invents a customer record.
+   */
+  const NAME_ID = "name:";
+  const pickableCustomers = useMemo(() => {
+    if (!prefillCustomerName?.trim()) return customers;
+    const has = customers.some(
+      (c) => c.name.trim().toLowerCase() === prefillCustomerName.trim().toLowerCase()
+    );
+    if (has) return customers;
+    return [
+      { id: `${NAME_ID}${prefillCustomerName}`, name: prefillCustomerName },
+      ...customers,
+    ];
+  }, [customers, prefillCustomerName]);
+
+  const customer = pickableCustomers.find((c) => c.id === customerId);
 
   /* Only this account's people and deals: a meeting with GSK has no use for
      Takeda's contacts, and a picker holding every contact in the book is a
@@ -167,19 +221,12 @@ export function NewMeetingDialog({
 
   const ready = title.trim() && customerId && meetingAt;
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={editing ? "Edit meeting" : "New meeting"}
-      /* THE BIG STANDARD SIZE, the one every other workflow dialog uses
-         (Anir, Aug 28: "make the popup a standard size, the bigger size").
-         At 640px the three rooms squeezed two-up fields into half-columns;
-         980px is what Solutioning's new-request dialog runs at, so a form of
-         this weight now opens at the size the app already established for
-         forms of this weight. */
-      size="workflow"
-    >
+  const body = (
+    /* Fills the frame it is given rather than floating at the top of it: as a
+       page of the deal's dialog the rooms start collapsed, so a footer that
+       sat at its natural height left a third of the window empty under the
+       buttons (the standing no-dead-space rule). */
+    <div className={chromeless ? "flex min-h-full flex-col" : undefined}>
       {/* THE DIALOG HOLDS ITS SIZE (Anir, Aug 28: "again, but these pop-ups,
           bro. Stop. the dimensions have to stay the same" — and on the accrual
           dialog before it: "why is the pop-up so small? It looks bad, but once
@@ -190,7 +237,22 @@ export function NewMeetingDialog({
           cursor and, with all of them open, ran off the bottom of the screen.
           A fixed working height with the rooms scrolling inside it: opening a
           room fills space that was already there instead of taking more. */}
-      <div className="h-[min(64vh,560px)] space-y-3 overflow-y-auto pr-1">
+      <div className={chromeless ? "flex-1 space-y-3" : "h-[min(64vh,560px)] space-y-3 overflow-y-auto pr-1"}>
+        {/* A PAGE OF THE DEAL'S DIALOG, NOT A SECOND WINDOW (Anir, Aug 31:
+            "it has to be clear that it's just a subpage, and then you can go
+            back to this main Edit... You can't open up a new pop-up"). Inside
+            Edit deal the frame already scrolls and already has its height, so
+            a second scroller here would put a box inside a box. */}
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-1 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          >
+            <ArrowLeft size={15} strokeWidth={2.2} />
+            Back
+          </button>
+        )}
         {/* EDITING OPENS EVERYTHING (found in the browser, Aug 28: with the
             rooms collapsed the dialog held 200px of white under three closed
             strips). Creating is a sequence — you fill the first room, then the
@@ -292,7 +354,7 @@ export function NewMeetingDialog({
                         icon: CircleDashed,
                       },
                     ]),
-                ...customers.map((c) => {
+                ...pickableCustomers.map((c) => {
                 const deals = opportunities.filter(
                   (o) => o.customerId === c.id
                 ).length;
@@ -465,6 +527,16 @@ export function NewMeetingDialog({
             </Field>
           </div>
         </FormRoom>
+
+        {/* ALL OF THEM NEED ATTACHMENTS (Anir, Aug 31). The agenda, the brief,
+            the deck you are walking in with — attached while you are booking
+            the meeting, not on a second trip to its page afterwards. */}
+        <DocumentDrop
+          docs={stagedDocs}
+          setDocs={setStagedDocs}
+          uploadUrl="/api/meetings/upload-draft"
+          hint="The agenda, a brief, the deck — whatever belongs with it."
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
@@ -486,7 +558,10 @@ export function NewMeetingDialog({
                 title,
                 type,
                 meetingAt,
-                customerId,
+                /* A `name:` id is this dialog's own handle on a deal's
+                   account, not a customer record — so it never leaves here.
+                   The name does. */
+                ...(customerId.startsWith(NAME_ID) ? {} : { customerId }),
                 customer: customer?.name ?? "",
                 contactIds,
                 contactNames: [
@@ -502,6 +577,10 @@ export function NewMeetingDialog({
                 attendees,
                 presenters,
                 owner,
+                /* Only the ones that landed. A row that failed is still on
+                   screen saying so, and carrying it would attach a document
+                   with nothing behind it. */
+                docs: landedDocs(stagedDocs, "md"),
               });
             } finally {
               setBusy(false);
@@ -512,6 +591,22 @@ export function NewMeetingDialog({
           {busy ? "Saving…" : editing ? "Save changes" : "Create meeting"}
         </button>
       </div>
+    </div>
+  );
+
+  /* Inside Edit deal it is a page of that dialog; on its own it is the dialog.
+     Same form, same width, so moving between them does not resize the frame. */
+  if (chromeless) return body;
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={editing ? "Edit meeting" : "New meeting"}
+      /* THE BIG STANDARD SIZE, the one every other workflow dialog uses
+         (Anir, Aug 28: "make the popup a standard size, the bigger size"). */
+      size="workflow"
+    >
+      {body}
     </Modal>
   );
 }

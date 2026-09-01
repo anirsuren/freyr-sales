@@ -977,7 +977,37 @@ export function OpportunitiesBrowser({
    *  session-local: closing eleven customers to read the twelfth and finding
    *  all eleven open again on the way back is the page not listening (Anir,
    *  Aug 28: "also ur not saving if I had it closed or opened"). */
-  const [shutGroups, setShutGroups] = useStoredSet("freyr.opportunities.shutGroups");
+  const [shutGroups, setShutGroups, shutGroupsReady] = useStoredSet(
+    "freyr.opportunities.shutGroups"
+  );
+
+  /**
+   * A DEAL YOU WERE SENT TO IS IN A GROUP THAT MAY BE FOLDED SHUT.
+   *
+   * Anir, Aug 31: "it doesn't look like the button that says 'Open in the
+   * pipeline' even does anything."
+   *
+   * It did navigate. It landed on a list whose groups were all folded — so the
+   * row the scroll was aiming at was not in the document, nothing moved, and
+   * the button read as dead. Folds are remembered on purpose, so this opens
+   * ONLY the group holding the deal you asked for and leaves every other fold
+   * exactly as you left it.
+   *
+   * It waits for `shutGroupsReady` because the remembered folds arrive from
+   * localStorage a tick after mount: unfolding before they land would be
+   * overwritten by them the moment they did.
+   */
+  useEffect(() => {
+    if (!shutGroupsReady) return;
+    const wanted = new URLSearchParams(window.location.search).get("deal");
+    if (!wanted) return;
+    const target = list.find((o) => o.id === wanted);
+    if (!target) return;
+    const key = groupKeyOf(target);
+    if (!shutGroups.includes(key)) return;
+    setShutGroups(shutGroups.filter((k) => k !== key));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shutGroupsReady, list.length, shutGroups.length]);
 
   const groupSections = useMemo(() => {
     if (groupBy === "none") return [] as { key: string; rows: Opportunity[] }[];

@@ -6,8 +6,8 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   AlertTriangle,
-  CheckCircle2,
   Briefcase,
+  CheckCircle2,
   CircleDashed,
   ChevronDown,
   Circle,
@@ -16,7 +16,6 @@ import {
   Coins,
   Download,
   FileText,
-  ShieldCheck,
   Target,
   FileSignature,
   Inbox,
@@ -49,7 +48,6 @@ import {
   CONTRACT_STATUSES,
   contractChecks,
   contractStatusColor,
-  readinessGaps,
   scheduleTotal,
   type Contract,
   type ContractStatus,
@@ -670,7 +668,6 @@ export function ContractsModule({
             if (!("reference" in entry)) return entry;
             const c = entry;
             const isOpen = openId === c.id;
-            const gaps = readinessGaps(c);
             return (
               <section
                 key={c.id}
@@ -734,106 +731,112 @@ export function ContractsModule({
 
                 {isOpen && (
                   <div className="border-t border-border-light px-4 py-3.5">
-                    {gaps.length > 0 && c.status === "Draft" && (
-                      <p
-                        className="mb-3 rounded-lg px-3 py-2 text-[12.5px] font-semibold"
-                        style={{
-                          background: "rgba(180,83,9,0.08)",
-                          color: "#B45309",
-                        }}
-                      >
-                        Before this can go to delivery it still needs{" "}
-                        {gaps.join(", ")}.
-                      </p>
-                    )}
+                    {/* WHAT IS LEFT ON IT, SAID ONCE (Anir, Aug 31: "this is
+                        a horrible UI. I have no idea what this is").
 
-                    {/* "ARE THESE CONTRACTS VERIFIED?" (Anir, Aug 26). Nothing
-                        on the row answered that, because a status word is an
-                        assertion, not evidence. This is the checklist behind
-                        it: six facts a contract either has or does not. Every
-                        line is a field being present, never a judgement. */}
+                        It used to say the same thing four times: a banner
+                        listing the gaps, a "2 of 6 confirmed" badge, a chip per
+                        gap repeating the banner, and a "2 done" chip repeating
+                        the left half of the badge. Four readings of one fact,
+                        which is the restatement he keeps striking out — a
+                        breakdown, not a restatement.
+
+                        And all of it in alarm amber, on a contract whose only
+                        crime was being a draft. Amber and red mean something is
+                        WRONG; a draft that is not signed yet is not wrong, it
+                        is early. Colour is reserved, so progress is drawn in
+                        the app's own blue and the outstanding items are quiet.
+
+                        One line now: how far along, then the specific things
+                        still outstanding. */}
                     {(() => {
                       const checks = contractChecks(c);
                       const missing = checks.filter((x) => !x.ok);
                       const done = checks.length - missing.length;
                       const all = missing.length === 0;
                       return (
-                        /* WHAT IS STILL MISSING, not a wall of ticks (Anir,
-                           Aug 26: "I don't like the whole section under What is
-                           confirmed... completely revamp that").
-
-                           Six rows of green ticks said "everything is fine" in
-                           the most expensive way a card can say it. The part
-                           worth reading is the part that is NOT done, so that
-                           leads, as a colour-and-icon chip like every other
-                           chip in the app, and the rest collapses to a count
-                           you can hover. No grey panel around it. */
-                        <div className="mb-3.5 flex flex-wrap items-center gap-2">
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold"
-                            style={{
-                              background: all
-                                ? "rgba(22,163,74,0.10)"
-                                : "rgba(180,83,9,0.10)",
-                              color: all ? "#16A34A" : "#B45309",
-                            }}
-                          >
-                            <ShieldCheck size={13} strokeWidth={2.3} />
-                            {all
-                              ? "Everything confirmed"
-                              : `${done} of ${checks.length} confirmed`}
-                          </span>
-
-                          {missing.map((chk) => (
-                            <span
-                              key={chk.label}
-                              title={chk.detail ?? chk.label}
-                              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold"
-                              style={{
-                                borderColor: "rgba(180,83,9,0.30)",
-                                background: "rgba(180,83,9,0.06)",
-                                color: "#B45309",
-                              }}
-                            >
-                              <CircleDashed size={12} strokeWidth={2.4} />
-                              {chk.label}
+                        <div className="mb-3.5">
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+                            {/* SIX SEGMENTS, ONE PER FACT. A count you have to
+                                read is slower than a bar you can glance at, and
+                                the glance test is the standing one. */}
+                            <span className="flex shrink-0 items-center gap-[3px]" aria-hidden="true">
+                              {checks.map((chk, i) => (
+                                <span
+                                  key={chk.label}
+                                  className={cn(
+                                    "h-1.5 w-5 rounded-full",
+                                    i < done
+                                      ? all
+                                        ? "bg-[color:#16A34A]"
+                                        : "bg-blue-primary"
+                                      : "bg-border-light"
+                                  )}
+                                />
+                              ))}
                             </span>
-                          ))}
-
-                          {!all && (
                             <span
-                              title={checks.filter((x) => x.ok).map((x) => x.label).join(", ")}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary"
+                              className={cn(
+                                "text-[12.5px] font-semibold",
+                                all ? "text-[color:#16A34A]" : "text-text-primary"
+                              )}
                             >
-                              <CheckCircle2
-                                size={12}
-                                strokeWidth={2.4}
-                                className="text-[color:#16A34A]"
-                              />
-                              {done} done
+                              {all
+                                ? "Everything confirmed"
+                                : `${done} of ${checks.length} confirmed`}
                             </span>
-                          )}
+                            {!all && (
+                              <span className="text-[12.5px] text-text-secondary">
+                                still to do:
+                              </span>
+                            )}
+                            {missing.map((chk) => (
+                              <span
+                                key={chk.label}
+                                title={chk.detail ?? chk.label}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[12px] font-medium text-text-secondary"
+                              >
+                                <CircleDashed
+                                  size={12}
+                                  strokeWidth={2.4}
+                                  className="text-text-tertiary"
+                                />
+                                {chk.label}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
 
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
-                      {[
-                        ["Reference", c.reference],
-                        ["Starts", c.startDate ? formatDate(c.startDate) : "—"],
-                        ["Ends", c.endDate ? formatDate(c.endDate) : "—"],
-                        ["Signed", c.signedOn ? formatDate(c.signedOn) : "—"],
-                      ].map(([label, value]) => (
-                        <span key={label}>
-                          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                            {label}
-                          </span>
-                          <span className="font-semibold tnum text-text-primary">
-                            {value}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
+                    {/* ONLY THE FACTS THIS CONTRACT ACTUALLY HAS. A grid of
+                        four em-dashes is a row of holes where information
+                        should be, and Reference was printed here as well as in
+                        the row header a few pixels above it. A fact with no
+                        value is already reported by its chip in the line
+                        above. */}
+                    {(() => {
+                      const facts: [string, string][] = [];
+                      if (c.startDate) facts.push(["Starts", formatDate(c.startDate)]);
+                      if (c.endDate) facts.push(["Ends", formatDate(c.endDate)]);
+                      if (c.signedOn) facts.push(["Signed", formatDate(c.signedOn)]);
+                      if (c.owner) facts.push(["Owner", c.owner]);
+                      if (facts.length === 0) return null;
+                      return (
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
+                          {facts.map(([label, value]) => (
+                            <span key={label}>
+                              <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                {label}
+                              </span>
+                              <span className="font-semibold tnum text-text-primary">
+                                {value}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     {/* WHERE THIS CONTRACT'S MONEY WENT. A row that says a
                         contract is signed but not whose number it became is

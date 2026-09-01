@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { NewContractDialog } from "./NewContractDialog";
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
+import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -113,6 +114,9 @@ export function EditDealDialog({
       customerId: string | null;
     }[];
     members: string[];
+    /** Customer-side people, for the meeting form's attendee picker. */
+    contacts: { id: string; name: string; customerId: string | null; title: string }[];
+    meName: string;
   } | null;
   /** Start a new record in that area. The parent owns the dialog, because a
    *  modal opened inside a modal is a trap with two close buttons. */
@@ -162,6 +166,22 @@ export function EditDealDialog({
    * open behind you when you return.
    */
   const [adding, setAdding] = useState<string | null>(null);
+
+  /**
+   * WHICH SECTIONS ARE OPEN, HELD HERE RATHER THAN BY THE BROWSER.
+   *
+   * Anir, Aug 31: "when I click on Add, Create New Presentation, and then I go
+   * back, it just disappears, like whatever I was on, so that's kind of
+   * annoying."
+   *
+   * The folds were plain <details>, which own their own open/closed state. The
+   * create form replaces this whole block while it is showing, so every one of
+   * them was destroyed on the way in and rebuilt closed on the way out — you
+   * came back to six shut strips and had to find your place again. Holding it
+   * up here means the sections outlive the form, so Back returns you to the
+   * page you left, with the thing you just made sitting in it.
+   */
+  const [open, setOpen] = useState<Set<string>>(new Set());
   const canSave = name.trim().length > 0 && !saving;
 
   async function submit() {
@@ -219,7 +239,9 @@ export function EditDealDialog({
          the content scrolls inside it. */
       dialogClassName="h-[min(820px,calc(100vh-2rem))]"
       title={
-        adding === "contracts"
+        adding === "meetings"
+          ? "New meeting"
+          : adding === "contracts"
           ? "New contract"
           : adding === "submissions"
             ? "New submission"
@@ -236,7 +258,37 @@ export function EditDealDialog({
            back arrow where the fields were — so it reads as going deeper into
            the deal rather than as a new thing landing on top of it. */
         <div className="flex min-h-full flex-col">
-          {adding === "contracts" ? (
+          {adding === "meetings" && createOptions ? (
+            /* THE LAST ONE THAT HANDED YOU OFF (Anir, Aug 31: "Why is there
+               nothing for meetings?"). Every other band opened a page of this
+               dialog; Meetings alone bounced to the Meetings module, because
+               its form was welded to that page's data. It takes the same
+               prefills and the same back arrow as the rest now. */
+            <NewMeetingDialog
+              chromeless
+              onBack={() => setAdding(null)}
+              meName={createOptions.meName}
+              members={createOptions.members}
+              customers={createOptions.customers}
+              contacts={createOptions.contacts}
+              opportunities={createOptions.opportunities}
+              prefillOpportunityId={deal.id}
+              prefillCustomerName={deal.customer}
+              onClose={() => setAdding(null)}
+              onCreate={async (input) => {
+                const res = await fetch("/api/meetings", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ op: "create", ...input }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data?.error) return false;
+                setAdding(null);
+                onCreated?.();
+                return true;
+              }}
+            />
+          ) : adding === "contracts" ? (
             <NewContractDialog
               chromeless
               deal={deal}
@@ -461,16 +513,44 @@ export function EditDealDialog({
                  they are counts, and you are making a single one. */
               const one = b.label.replace(/s$/, "").toLowerCase();
               const start = () => {
-                if (b.key === "meetings") {
+                /* Opening the form marks the band open, so coming back from it
+                   lands you on the section you left rather than on a wall of
+                   closed strips (Anir, Aug 31: "when I click on Add, Create
+                   New Presentation, and then I go back, it just disappears,
+                   like whatever I was on"). */
+                setOpen((cur) => new Set(cur).add(b.key));
+                if (b.key === "meetings" && !createOptions) {
+                  /* No create options means this person may not make one here;
+                     the old hand-off to the Meetings page is the fallback. */
                   onAdd?.(b.key);
                   return;
                 }
                 setAdding(b.key);
               };
-              const canAdd = b.key === "meetings" ? !!onAdd : true;
+              const canAdd =
+                b.key === "meetings" ? !!createOptions || !!onAdd : true;
+              const isOpen = open.has(b.key);
               return (
-              <details key={b.key} className="group rounded-xl border border-border-light bg-white">
-                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <details
+                key={b.key}
+                open={isOpen}
+                className="group rounded-xl border border-border-light bg-white"
+              >
+                <summary
+                  /* preventDefault so the browser's own toggle never runs:
+                     with `open` driven from state, letting both fight leaves
+                     the strip and the state disagreeing after a re-render. */
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setOpen((cur) => {
+                      const next = new Set(cur);
+                      if (next.has(b.key)) next.delete(b.key);
+                      else next.add(b.key);
+                      return next;
+                    });
+                  }}
+                  className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden"
+                >
                   <ChevronDown
                     size={14}
                     strokeWidth={2.2}
