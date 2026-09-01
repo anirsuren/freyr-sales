@@ -4,6 +4,7 @@ import { getRole } from "@/lib/role";
 import { viewerAccessMap } from "@/lib/viewerAccess";
 import { moduleForPath, PRIVILEGE_MODULES, type Access } from "@/lib/privileges";
 import { canAccessModule } from "@/lib/moduleAccess";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,12 @@ export const dynamic = "force-dynamic";
  *
  * It reports and never decides. Nothing here grants anything.
  */
+
+/** The lower of two levels, so a cap can never hand somebody MORE than they had. */
+function weaker(a: Access, b: Access): Access {
+  const order: Access[] = ["none", "view", "edit", "create"];
+  return order.indexOf(a) <= order.indexOf(b) ? a : b;
+}
 
 /** Plain English, in the person's own case. No jargon, no privilege ids. */
 function explain(level: Access, moduleLabel: string): {
@@ -79,11 +86,41 @@ export async function GET(req: NextRequest) {
    * unreachable). Reading it any other way here would let the badge disagree
    * with the buttons around it, which is worse than no badge.
    */
-  const level: Access = access
+  const fromTable: Access = access
     ? (access[key] ?? "none")
     : canAccessModule(path, role)
       ? "edit"
       : "none";
+
+  /**
+   * EVERY GATE THE SAVE PASSES THROUGH, NOT JUST THE FIRST ONE.
+   *
+   * Offerings and FDL Components carry a SECOND gate the privilege table knows
+   * nothing about: canManageOfferings(), which asks the ROLE and admits only an
+   * admin or a BD Owner. Every write endpoint for both modules sits behind it,
+   * and app/offerings/page.tsx already asks both before drawing its create
+   * button, "so the control is on screen exactly when it works".
+   *
+   * This badge was asking only the table, so a BD Member holding the BO Owner
+   * privilege — whose row says Create, and whose whole job this is — was told
+   * "You can add, change and remove" on a page with no create button, and got
+   * 403 "View only: admin access required" from the API if they found another
+   * way to ask. Proven all four ways on Sep 1, signing in as each.
+   *
+   * Whether that person SHOULD be able to create an offering is Anir's call and
+   * nothing here decides it: capping the badge changes nobody's access, it only
+   * stops the badge promising what the server refuses. If the answer is that
+   * they should, the fix is in canManageOfferings and this cap then does
+   * nothing, because the two gates will agree.
+   */
+  const ROLE_GATED_MODULES: ReadonlySet<string> = new Set([
+    "offerings",
+    "digital_components",
+  ]);
+  const level: Access =
+    ROLE_GATED_MODULES.has(key) && !(await canManageOfferings())
+      ? weaker(fromTable, "view")
+      : fromTable;
 
   const { headline, detail } = explain(level, moduleLabel);
 
