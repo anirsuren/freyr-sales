@@ -7,7 +7,10 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { FdlComponentDetail } from "@/components/fdl/FdlComponentDetail";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  moduleDeleteRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +64,10 @@ export default async function FdlComponentPage({
     connected: !!offering.component_ids?.includes(id),
   }));
   const canEdit = await canManageOfferings();
+  /* BOTH GATES THE DELETE ROUTE ASKS, so the button is on screen exactly when
+     it works — the privilege table first, then the role rule beside it. */
+  const canDelete =
+    canEdit && !(await moduleDeleteRefusal("/components"));
 
   // WHO RUNS THIS COMPONENT, AND ON WHICH VERSION (Suren, Aug 8: "if I go to
   // the component and click on this version, I want to see all the customers
@@ -90,6 +97,7 @@ export default async function FdlComponentPage({
         component={component}
         homes={homes}
         canEdit={canEdit}
+        canDelete={canDelete}
         customers={customers}
         backTo={backTo}
         offerings={offerings}

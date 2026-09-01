@@ -816,9 +816,14 @@ export function FdlComponentsBrowser({
               Component name
               <InfoHint text="What this piece of software is called, for example Register Module or PI Agent." />
             </label>
+            {/* The cap the route already keeps: /api/fdl-components trims the
+                name to 80 characters, so a longer one was accepted, saved short
+                and never mentioned. Declaring it here stops the typing where
+                the server would have cut it. */}
             <input
               autoFocus
               value={name}
+              maxLength={80}
               onChange={(event) => setName(event.target.value)}
               placeholder="Register Module"
               className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"

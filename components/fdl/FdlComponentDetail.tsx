@@ -228,6 +228,7 @@ export function FdlComponentDetail({
   component,
   homes,
   canEdit,
+  canDelete = false,
   customers = [],
   backTo,
   offerings = [],
@@ -235,6 +236,8 @@ export function FdlComponentDetail({
   component: FdlComponent;
   homes: { id: string; name: string }[];
   canEdit: boolean;
+  /** Both gates the DELETE route asks, resolved on the server. */
+  canDelete?: boolean;
   customers?: ComponentCustomer[];
   /** Where the reader came from, so back returns there. */
   backTo?: string | null;
@@ -245,6 +248,8 @@ export function FdlComponentDetail({
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const [addingOffering, setAddingOffering] = useState(false);
+  const [confirmDeleteComponent, setConfirmDeleteComponent] = useState(false);
+  const [deletingComponent, setDeletingComponent] = useState(false);
   const [readingFeature, setReadingFeature] = useState<FdlFeature | null>(null);
   /** OPEN IT WITHOUT DOWNLOADING IT (Anir, Aug 9: "I should be able to open it
    *  without downloading it"). Images and PDFs render right here; storage
@@ -1751,8 +1756,58 @@ export function FdlComponentDetail({
               Add to an offering
             </button>
           )}
+          {/* A COMPONENT YOU CAN MAKE IS A COMPONENT YOU CAN UNMAKE. The API
+              has had DELETE since it was written; nothing in the app ever
+              called it, so one typed in by mistake could only be removed by
+              somebody with the endpoint. Same shape as every other delete
+              here: red, named, and behind a confirm. */}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteComponent(true)}
+              aria-label={`Delete ${component.name}`}
+              title={`Delete ${component.name}`}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1 text-[12px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+            >
+              <Trash2 size={12} strokeWidth={2.4} />
+              Delete
+            </button>
+          )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteComponent}
+        onClose={() => setConfirmDeleteComponent(false)}
+        title="Delete this component?"
+        body={
+          <>
+            <strong>{component.name}</strong> goes for good, with its versions
+            and its features.
+          </>
+        }
+        detail="It also comes off any offering it is part of. Those offerings stay; they simply stop listing this piece."
+        confirmLabel="Delete component"
+        busy={deletingComponent}
+        onConfirm={async () => {
+          setDeletingComponent(true);
+          try {
+            const res = await fetch(`/api/fdl-components/${component.id}`, {
+              method: "DELETE",
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              toast(data.error || "Could not delete that component.", "error");
+              return;
+            }
+            toast(`${component.name} deleted`);
+            router.push("/components");
+          } finally {
+            setDeletingComponent(false);
+            setConfirmDeleteComponent(false);
+          }
+        }}
+      />
 
       {/* CONNECTING FROM THIS SIDE. The link existed only from the offering,
           so an owner sitting on a component had to go and find it (Suren,
