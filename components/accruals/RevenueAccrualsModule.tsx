@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CalendarRange,
-  Building2,
   ChevronDown,
   Coins,
   Download,
@@ -786,46 +785,48 @@ export function RevenueAccrualsModule({
               setOnly("all");
               setGroupBy("none");
             }}
-            filtersBefore={
-              <ColorSelect
-                value={only}
-                onChange={(v) => setOnly(v as typeof only)}
-                ariaLabel="Show"
-                minWidth={200}
-                dense
-                collapsible={false}
-                options={[
-                  { value: "all", label: "All plans", color: "#0071E3" },
-                  {
-                    value: "flagged",
-                    label: `Flagged (${flagged.length})`,
-                    color: AMBER,
-                  },
-                  {
-                    value: "missing",
-                    label: `Need a plan (${missing.length})`,
-                    color: AMBER,
-                  },
-                ]}
-              />
-            }
-            filtersAfter={
-              /* His third angle. The other two — by deal and by month — are
-                 the list and the gap tab; this is the offering one. */
-              <ColorSelect
-                value={groupBy}
-                onChange={(v) => setGroupBy(v as typeof groupBy)}
-                ariaLabel="Group rows"
-                minWidth={180}
-                dense
-                collapsible={false}
-                options={[
-                  { value: "none", label: "No grouping", color: "#8E98A8" },
-                  { value: "customer", label: "Group by customer", color: "#0071E3", icon: Building2 },
-                  { value: "offering", label: "Group by offering", color: "#B4318F", icon: Package },
-                ]}
-              />
-            }
+            /* ONE FILTER BUTTON, NOT THREE SELECTS ON THE SHELF (Anir,
+               Sep 1: "this UI is so weird. It's so fucking busy... maybe just
+               have a filter button instead and have all those things there").
+
+               PageToolbar has had a proper Filter button all along — the Goal
+               Master and Customers both use it — and this page simply never
+               asked for it, passing its selects as loose extras instead. So
+               the row carried a search box plus three full-width dropdowns
+               plus an export, five controls wide, above a second row of
+               grouping chips.
+
+               Both of these belong to the LIST below. The chips on the row
+               under this one belong to the summary TABLE and stay with it:
+               they are two different groupings that happen to share a word,
+               and stacking them in one bar would make that worse, not better.
+               `only` and `groupBy` are single-choice, so each group takes the
+               first value it is handed and an empty array means the default. */
+            filterAriaLabel="Filter accrual plans"
+            groups={[
+              {
+                key: "show",
+                label: "Show",
+                values: only === "all" ? [] : [only],
+                onChange: (next) =>
+                  setOnly((next[0] as typeof only) ?? "all"),
+                options: [
+                  { value: "flagged", label: `Flagged (${flagged.length})`, color: AMBER },
+                  { value: "missing", label: `Need a plan (${missing.length})`, color: AMBER },
+                ],
+              },
+              {
+                key: "group",
+                label: "Group rows",
+                values: groupBy === "none" ? [] : [groupBy],
+                onChange: (next) =>
+                  setGroupBy((next[0] as typeof groupBy) ?? "none"),
+                options: [
+                  { value: "customer", label: "By customer", color: "#0071E3" },
+                  { value: "offering", label: "By offering", color: "#B4318F" },
+                ],
+              },
+            ]}
             sort={
               <ColorSelect
                 value={sort}
