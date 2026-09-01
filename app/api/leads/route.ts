@@ -15,6 +15,10 @@ import {
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
 
+/** Same shape the contacts route uses, so the two modules agree on what an
+ *  address is. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -68,6 +72,20 @@ export async function POST(req: NextRequest) {
       if (!String((body.lead as { id?: string } | undefined)?.id ?? "")) {
         const refusal = await moduleCreateRefusal("/leads");
         if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      }
+      /* THE SAME CHECK THE CONTACTS ROUTE MAKES. A lead's email box is
+         type="email", but a dialog is not a form, so nothing validated it and
+         "not-an-email" stored happily — the dialog guards it now, and so does
+         this, because the dialog is not the only way in. Optional, as it has
+         always been; wrong is what is refused, not missing. */
+      const rawEmail = String(
+        (body.lead as { email?: unknown } | undefined)?.email ?? ""
+      ).trim();
+      if (rawEmail && !EMAIL_PATTERN.test(rawEmail)) {
+        return NextResponse.json(
+          { error: "Enter a valid email address." },
+          { status: 400 }
+        );
       }
       const lead = await saveLead(body.lead ?? {}, me.name);
       return NextResponse.json({ ok: true, lead, state: await readLeads() });
