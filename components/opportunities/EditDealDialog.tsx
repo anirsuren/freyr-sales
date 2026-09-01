@@ -404,6 +404,10 @@ export function EditDealDialog({
           <Field label="Note from the sheet">
             <textarea
               value={note}
+              /* Stored as nextSteps, which lib/opportunities trims to 600.
+                 Paste a couple of paragraphs about a call and the tail went
+                 without a word. */
+              maxLength={600}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"

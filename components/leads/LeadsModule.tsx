@@ -940,6 +940,7 @@ export function LeadsModule({
                 <Textarea
                   rows={2}
                   value={editing.interest}
+                  maxLength={500}
                   onChange={(e) =>
                     setEditing({ ...editing, interest: e.target.value })
                   }
