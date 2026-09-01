@@ -36,6 +36,11 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import {
+  OverflowMenu,
+  OVERFLOW_ITEM,
+  OVERFLOW_ITEM_DANGER,
+} from "@/components/ui/OverflowMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
@@ -74,12 +79,6 @@ import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import {
-  RECORD_ACTION_DELETE,
-  RECORD_ACTION_DELETE_ICON,
-  RECORD_ACTION_DONE,
-  RECORD_ACTION_ICON,
-  RECORD_ACTION_NEUTRAL,
-  RECORD_ACTION_UNDO,
 } from "@/components/solutioning/recordActions";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
@@ -397,174 +396,171 @@ export function RequestDetail({
           <span className="min-w-0 break-words">{r.title}</span>
         </h1>
 
-        {/* Workable in Mock too: the store keeps the two apart. */}
-        {(
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {/* BUILD THE THING THIS ASKED FOR (Suren, Aug 26: "if the request
-                is created, you look at the request and then say, from there you
-                create a submission. It's a submission request: create a
-                submission. If it's a presentation request, create a
-                presentation"). Only on a REQUEST, only for what it asked for,
-                and a meeting asks for no artefact so it gets no button. The new
-                item arrives already linked back here, and finishing it closes
-                this. */}
-            {r.type === "request" &&
-              r.status !== "completed" &&
-              r.status !== "cancelled" &&
-              /* SOL-026: creating the work is an owner's write, and the route
-                 refuses anyone else. Rendering it for them made a button whose
-                 only output was an error. */
-              may.create &&
-              (r.kind === "submission" || r.kind === "presentation") && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    const made = await create({
-                      type: r.kind === "submission" ? "submission" : "presentation",
-                      kind: r.kind,
-                      requestId: r.id,
-                      title: r.title,
-                      customer: r.customer,
-                      ...(r.customerId ? { customerId: r.customerId } : {}),
-                      ...(r.subtype ? { subtype: r.subtype } : {}),
-                      ...(r.neededBy ? { neededBy: r.neededBy } : {}),
-                      opportunityIds: r.opportunityIds,
-                      opportunityLabels: r.opportunityLabels,
-                      contactIds: r.contactIds,
-                      contactNames: r.contactNames,
-                    });
-                    if (made) router.push(`/solutioning/${made.id}`);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  <Plus size={14} strokeWidth={2.4} />
-                  Create {r.kind === "submission" ? "submission" : "presentation"}
-                </button>
-              )}
-            {/* THE EDIT DOOR (Anir, Sep 1: "Where's the edit stuff? There's
-                no edit button or anything, cuz how do I edit this?"). The same
-                rule the route applies to an update: the requester, the owner,
-                or a manager. */}
-            {canWrite && (iRequested || iOwn || managerial) && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setEditPriority(r.priority ?? "");
-                  setEditNeededBy(r.neededBy ?? "");
-                  setEditing(true);
-                }}
-                className={RECORD_ACTION_NEUTRAL}
-              >
-                <Pencil size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Edit
-              </button>
-            )}
-            {!r.owner && r.status !== "completed" && fulfiller && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => post({ op: "pick-up" })}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {/* Business words, his own (Suren, Aug 27: "What's 'pick it
-                    up'?... can you guys take this up?"). The HAND, not a
-                    check (Anir, Aug 27: "it looked like I had it taken up
-                    already based on the button") — a tick on a blue pill
-                    reads as a state achieved, and this is an action. */}
-                <Hand size={14} strokeWidth={2.4} /> Take this up
-              </button>
-            )}
-            {r.owner && r.status !== "completed" && iOwn && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => post({ op: "release" })}
-                /* RED, LIKE EVERY OTHER UNDO (Anir, Aug 28: "hand it back
-                   should be red"). It takes your name off work in progress
-                   and puts it back in the queue, which is the same shape as
-                   the app's other reversals. */
-                className={RECORD_ACTION_UNDO}
-              >
-                <Undo2 size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Hand it back
-              </button>
-            )}
-            {r.status !== "completed" &&
-              r.status !== "cancelled" &&
-              (iRequested || managerial) && (
-              /* "The sales person says it is completed" — the requester's
-                 button, honest about whose it is. */
-              <button
-                type="button"
-                disabled={busy}
-                title={
-                  iRequested
-                    ? "You asked for this, so you close it"
-                    : `Closing on ${r.requestedBy}'s behalf`
-                }
-                onClick={() => setConfirmComplete(true)}
-                className={RECORD_ACTION_DONE}
-              >
-                <Check size={RECORD_ACTION_ICON} strokeWidth={2.4} /> Mark it completed
-              </button>
-            )}
-            {r.status === "completed" && (iRequested || managerial) && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => post({ op: "reopen" })}
-                className={RECORD_ACTION_NEUTRAL}
-              >
-                <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
-              </button>
-            )}
-            {/* CANCELLED, NOT DELETED (SOL-033: "Use Cancelled status when work
-                is discontinued... Cancelled records remain available in history
-                and related views with a clear Cancelled status").
+        {/* ONE OBVIOUS NEXT STEP, THE REST BEHIND A "···".
+            Anir, Sep 1: "There are so many buttons here. Do we need all these?
+            Be honest."
 
-                This is the control a normal user is meant to reach for. The
-                delete beside it stays admin-only and is for erroneous rows, not
-                for work that simply stopped. */}
-            {r.status !== "cancelled" &&
-              r.status !== "completed" &&
-              (iRequested || iOwn || managerial) && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setConfirmCancel(true)}
-                  title="Stop this work and keep it in history"
-                  className={RECORD_ACTION_NEUTRAL}
-                >
-                  <Undo2 size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Cancel it
-                </button>
-              )}
-            {r.status === "cancelled" && (iRequested || iOwn || managerial) && (
+            Honestly: each was correctly gated, and he still saw five, because
+            he was the admin AND the requester AND it was unowned AND unfinished
+            — every branch fired at once. Correct, and still wrong to look at.
+            Two filled blue buttons competed for "the thing to do", and Delete
+            sat at the same weight as everyday work.
+
+            Nothing is taken away. Whatever a person could reach before, they
+            reach now; the header just states its one next step and puts the
+            rest one click down. */}
+        {(() => {
+          const mayCreateWork =
+            r.type === "request" &&
+            r.status !== "completed" &&
+            r.status !== "cancelled" &&
+            /* SOL-026: creating the work is an owner's write, and the route
+               refuses anyone else. */
+            may.create &&
+            (r.kind === "submission" || r.kind === "presentation");
+          const mayTakeUp = !r.owner && r.status !== "completed" && fulfiller;
+          const mayHandBack = !!r.owner && r.status !== "completed" && iOwn;
+          const mayComplete =
+            r.status !== "completed" &&
+            r.status !== "cancelled" &&
+            (iRequested || managerial);
+          const mayReopen =
+            (r.status === "completed" && (iRequested || managerial)) ||
+            (r.status === "cancelled" && (iRequested || iOwn || managerial));
+          const mayCancel =
+            r.status !== "cancelled" &&
+            r.status !== "completed" &&
+            (iRequested || iOwn || managerial);
+          const mayEdit = canWrite && (iRequested || iOwn || managerial);
+          const mayDelete =
+            may.remove &&
+            (meRole === "admin" || (iRequested && r.status === "initiated"));
+
+          const createWork = async () => {
+            const made = await create({
+              type: r.kind === "submission" ? "submission" : "presentation",
+              kind: r.kind,
+              requestId: r.id,
+              title: r.title,
+              customer: r.customer,
+              ...(r.customerId ? { customerId: r.customerId } : {}),
+              ...(r.subtype ? { subtype: r.subtype } : {}),
+              ...(r.neededBy ? { neededBy: r.neededBy } : {}),
+              opportunityIds: r.opportunityIds,
+              opportunityLabels: r.opportunityLabels,
+              contactIds: r.contactIds,
+              contactNames: r.contactNames,
+            });
+            if (made) router.push(`/solutioning/${made.id}`);
+          };
+          const openEdit = () => {
+            setEditPriority(r.priority ?? "");
+            setEditNeededBy(r.neededBy ?? "");
+            setEditing(true);
+          };
+
+          /* THE PRIMARY IS WHATEVER THIS RECORD IS WAITING ON. Nobody has it
+             yet, so taking it up comes before building the thing; once
+             somebody owns it, building the thing is the job. */
+          const primary = mayTakeUp
+            ? { label: "Take this up", icon: Hand, run: () => post({ op: "pick-up" }) }
+            : mayCreateWork
+              ? {
+                  label: `Create ${r.kind === "submission" ? "submission" : "presentation"}`,
+                  icon: Plus,
+                  run: createWork,
+                }
+              : mayReopen
+                ? { label: "Reopen", icon: RotateCcw, run: () => post({ op: "reopen" }) }
+                : null;
+
+          /* Anything the primary did not take. */
+          const menu: React.ReactNode[] = [];
+          if (mayEdit)
+            menu.push(
+              <button key="edit" type="button" disabled={busy} onClick={openEdit} className={OVERFLOW_ITEM}>
+                <Pencil size={14} strokeWidth={2.2} /> Edit
+              </button>
+            );
+          if (mayCreateWork && primary?.label !== `Create ${r.kind === "submission" ? "submission" : "presentation"}`)
+            menu.push(
+              <button key="create" type="button" disabled={busy} onClick={() => void createWork()} className={OVERFLOW_ITEM}>
+                <Plus size={14} strokeWidth={2.2} />
+                Create {r.kind === "submission" ? "submission" : "presentation"}
+              </button>
+            );
+          if (mayHandBack)
+            menu.push(
+              <button key="release" type="button" disabled={busy} onClick={() => void post({ op: "release" })} className={OVERFLOW_ITEM}>
+                <Undo2 size={14} strokeWidth={2.2} /> Hand it back
+              </button>
+            );
+          if (mayComplete)
+            menu.push(
               <button
+                key="complete"
                 type="button"
                 disabled={busy}
-                onClick={() => post({ op: "reopen" })}
-                className={RECORD_ACTION_NEUTRAL}
+                title={iRequested ? "You asked for this, so you close it" : `Closing on ${r.requestedBy}'s behalf`}
+                onClick={() => setConfirmComplete(true)}
+                className={OVERFLOW_ITEM}
               >
-                <RotateCcw size={RECORD_ACTION_ICON} strokeWidth={2.2} /> Reopen
+                <Check size={14} strokeWidth={2.4} /> Mark it completed
               </button>
-            )}
-            {/* Same rule the route applies: the privilege table first, then who
-                this is. Admins keep the escape hatch for erroneous rows. */}
-            {may.remove &&
-              (meRole === "admin" || (iRequested && r.status === "initiated")) && (
+            );
+          if (mayCancel)
+            menu.push(
               <button
+                key="cancel"
+                type="button"
+                disabled={busy}
+                title="Stop this work and keep it in history"
+                onClick={() => setConfirmCancel(true)}
+                className={OVERFLOW_ITEM}
+              >
+                <Undo2 size={14} strokeWidth={2.2} /> Cancel it
+              </button>
+            );
+          if (mayReopen && primary?.label !== "Reopen")
+            menu.push(
+              <button key="reopen" type="button" disabled={busy} onClick={() => void post({ op: "reopen" })} className={OVERFLOW_ITEM}>
+                <RotateCcw size={14} strokeWidth={2.2} /> Reopen
+              </button>
+            );
+          if (mayDelete)
+            menu.push(
+              <button
+                key="delete"
                 type="button"
                 disabled={busy}
                 onClick={() => setConfirmDelete(true)}
-                title="Delete this request"
-                aria-label="Delete this request"
-                className={RECORD_ACTION_DELETE}
+                className={OVERFLOW_ITEM_DANGER}
               >
-                <Trash2 size={RECORD_ACTION_DELETE_ICON} strokeWidth={2} />
+                <Trash2 size={14} strokeWidth={2.2} /> Delete this request
               </button>
-            )}
-          </div>
-        )}
+            );
+
+          if (!primary && menu.length === 0) return null;
+          const PrimaryIcon = primary?.icon;
+          return (
+            <div className="flex shrink-0 items-center gap-2">
+              {primary && PrimaryIcon && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void primary.run()}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  <PrimaryIcon size={14} strokeWidth={2.4} />
+                  {primary.label}
+                </button>
+              )}
+              {menu.length > 0 && (
+                <OverflowMenu label={`More actions for ${r.ref}`}>{menu}</OverflowMenu>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* The tags own their own line, the offering rule (Anir, Aug 8).
