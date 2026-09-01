@@ -13,6 +13,7 @@ import {
 } from "@/lib/opportunities";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { logActual, readPerformance, removeActual } from "@/lib/performance";
+import { removeAccrualPlan } from "@/lib/revenueAccruals";
 import { withPerformanceWrite } from "@/lib/performanceQueue";
 import {
   moduleCreateRefusal,
@@ -329,6 +330,19 @@ export async function POST(req: NextRequest) {
             }
           }
         });
+        /* THE ACCRUAL PLAN GOES WITH THE DEAL.
+           Found in the loop, Sep 1: deleting a probe deal left its accrual
+           plan behind, and that plan keeps its months and its money — so the
+           Revenue Accruals page went on counting a deal that no longer exists
+           in "Total accrued revenue", with a row whose deal cannot be opened.
+
+           Exactly the reasoning already applied to met entries two lines
+           above: a plan is a child of the deal and means nothing without it.
+           Failure is swallowed for the same reason — the deal must still go
+           even if the accrual store is unreachable. */
+        try {
+          await removeAccrualPlan(id);
+        } catch {}
         await removeOpportunity(id);
         return NextResponse.json({ ok: true });
       }
