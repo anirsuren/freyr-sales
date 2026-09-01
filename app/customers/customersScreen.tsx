@@ -23,7 +23,7 @@ import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { TipItem } from "@/components/charts/Charts";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleCreateRefusal, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 
 
@@ -212,6 +212,18 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
         memberNames={memberNames}
         live={getDataMode() !== "mock"}
         canEditTargets={isManagerOrAdmin(await getRole())}
+        /* THE GROUPS TAB ASKS THE SAME QUESTIONS THE ROUTE ASKS.
+           Anir, Sep 1, walking the app as a BD Member: "It looks like I can
+           create a new group. Is that right as a BD member? I don't know."
+
+           It was not right. /api/customer-groups refuses `create` without
+           CREATE on Customers, and a BD Member has edit — so the button was
+           drawn for somebody the server would turn away. Worse, the prop
+           behind it read `live ? canEditTargets || true : true`, which is
+           `true` in every branch: the groups tab has been unconditionally
+           editable for everybody, in both modes, since it was written. */
+        canEditGroups={!(await moduleWriteRefusal("/customers"))}
+        canCreateGroups={!(await moduleCreateRefusal("/customers"))}
       />
     </div>
   );

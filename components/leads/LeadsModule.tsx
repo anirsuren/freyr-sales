@@ -238,16 +238,21 @@ export function LeadsModule({
               <Plus size={15} strokeWidth={2.4} /> New lead
             </button>
           ) : (
-            /* THE PILL HAS TO SAY THE REAL REASON (Anir, Aug 30: "why does it
-               say sample leads switch to real mode, but I'm on real mode?").
-               It was gated on canWrite alone, so every non-admin in REAL mode
-               was told to switch to the mode they were already in. Mock and
-               view-only are two different states. */
-            <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              {live
-                ? "You can see the leads here, but not change them"
-                : "Sample leads. Switch to Real mode to work the live list"}
-            </span>
+            /* THE SHIELD IN THE TOP BAR ALREADY SAYS THIS (Anir, Sep 1: "I don't
+               want you to say that... I want there to be somewhere on the page
+               where, depending on the role I have... I should see an icon.
+               When I hover over the icon, it shows me exactly what I can do").
+
+               A pill announcing what you CANNOT do is a permanent apology
+               taking header space on every page a view-only account opens, and
+               it repeats what the access shield answers on hover. The mock
+               notice stays — that one tells you the DATA is not real, which
+               nothing else says. */
+            live ? null : (
+              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
+                Sample leads. Switch to Real mode to work the live list
+              </span>
+            )
           )
         }
       />

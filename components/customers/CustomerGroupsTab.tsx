@@ -58,10 +58,15 @@ export function CustomerGroupsTab({
   groups: initial,
   customers,
   canEdit,
+  canCreate,
 }: {
   groups: CustomerGroup[];
   customers: GroupCustomer[];
   canEdit: boolean;
+  /** Starting a NEW group is a create, which the route asks for separately —
+   *  a BD Member holds edit and would be refused (Anir, Sep 1: "It looks like
+   *  I can create a new group. Is that right as a BD member?"). It was not. */
+  canCreate: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -108,7 +113,7 @@ export function CustomerGroupsTab({
           state, where it already is, and not over a list of groups somebody
           has already made. */}
       <TabActions>
-        {canEdit && (
+        {canCreate && (
           <button
             type="button"
             onClick={() => setCreating(true)}

@@ -685,17 +685,17 @@ export function RevenueAccrualsModule({
               </button>
             </div>
           ) : (
-            <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-{/* SAY THE REAL REASON (Anir, Aug 30: "why does it say sample
-                  leads switch to real mode, but I'm on real mode?"). These
-                  pills were gated on canWrite alone, so every non-admin in
-                  REAL mode was told to switch to the mode they were already
-                  in — an instruction that cannot be followed. Mock and
-                  view-only are two different states. */}
-              {live
-                ? "You can see the plans here, but not change them"
-                : "Sample plan. Switch to Real mode to work the live numbers"}
-            </span>
+            /* THE SHIELD IN THE TOP BAR ALREADY SAYS THIS (Anir, Sep 1:
+                "I don't want you to say that"). A pill announcing what you
+                CANNOT do is a permanent apology in the header of every page a
+                view-only account opens, and the access shield answers it on
+                hover already. The mock notice stays — that one says the DATA
+                is not real, which nothing else says. */
+            live ? null : (
+              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
+                Sample plan. Switch to Real mode to work the live numbers
+              </span>
+            )
           )
         }
       />

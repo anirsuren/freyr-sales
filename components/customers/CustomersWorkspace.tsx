@@ -31,6 +31,8 @@ export function CustomersWorkspace({
   memberNames = [],
   live,
   canEditTargets = false,
+  canEditGroups = false,
+  canCreateGroups = false,
 }: {
   /** Which room, from the URL — not from remembered state. */
   routeTab: CustomerRouteTab;
@@ -44,6 +46,11 @@ export function CustomersWorkspace({
   memberNames?: string[];
   live: boolean;
   canEditTargets?: boolean;
+  /** Write on Customers — may change a group that exists. */
+  canEditGroups?: boolean;
+  /** Create on Customers — may start a new one. The route asks these two
+   *  separately, so the buttons must too. */
+  canCreateGroups?: boolean;
 }) {
   /* CUSTOMERS IS WHERE YOU LAND (Anir, Aug 30: "when I go to customers make
      sure I land up on the customers page not targets"). /customers sends you
@@ -127,7 +134,8 @@ export function CustomersWorkspace({
           <CustomerGroupsTab
             groups={groups}
             customers={groupCustomers}
-            canEdit={live ? canEditTargets || true : true}
+            canEdit={canEditGroups}
+            canCreate={canCreateGroups}
           />
         ) : (
           <TargetsTab targets={targets} memberNames={memberNames} live={live} canEdit={canEditTargets} />

@@ -190,11 +190,12 @@ export function AccrualPlanPage({
             </p>
           </div>
         </div>
-        {!canWrite && (
+        {/* Only the MOCK notice survives: "you cannot change this" is the
+            access shield's job, and it does it on hover instead of holding
+            header space on every visit. */}
+        {!canWrite && !live && (
           <span className="rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
-            {live
-              ? "You can see this plan, but not change it"
-              : "Sample plan. Switch to Real mode to work the live numbers"}
+            Sample plan. Switch to Real mode to work the live numbers
           </span>
         )}
       </div>

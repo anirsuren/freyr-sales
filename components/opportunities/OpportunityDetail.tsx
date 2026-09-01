@@ -288,12 +288,12 @@ export function OpportunityDetail({
               <Pencil size={14} strokeWidth={2.2} />
               Edit deal
             </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
-              View only
-              <InfoHint text={verdict.why} />
-            </span>
-          )}
+          ) : null}
+          {/* NO "VIEW ONLY" PILL (Anir, Sep 1: "I don't want you to say 'view
+              only'... that's just wasting space"). The absence of the Edit
+              button already says it, and the access shield in the top bar
+              answers it properly on hover — which is where he asked for the
+              answer to live. */}
           {/* WITH THE DEAL NAMED, so the list lands ON it (Anir, Aug 31: "it
               doesn't look like the button that says 'Open in the pipeline'
               even does anything"). A bare /opportunities dropped you at the
