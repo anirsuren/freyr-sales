@@ -518,7 +518,7 @@ export function EditDealDialog({
    */
   if (asPage) {
     return (
-      <div className="pb-24">
+      <div className="pb-6">
         <div className="space-y-4">
           <FormSection
             icon={Briefcase}
@@ -594,11 +594,21 @@ export function EditDealDialog({
           })}
         </div>
 
-        {/* SAVE STAYS REACHABLE. Six open sections are taller than the window,
-            and a Save button at the bottom of that is a Save button nobody
-            finds. */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-light bg-white/95 px-6 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
+        {/* SAVE STAYS REACHABLE, AND STAYS PART OF THE PAGE.
+            Six open sections are taller than the window, so the bar has to
+            follow you down. It was `fixed` to the WINDOW, which centred it on
+            the window rather than on the content and ran the strip in behind
+            the sidebar — so the buttons sat off to the right of the cards they
+            belong to and the whole thing read as floating debris (Anir, Sep 1:
+            "I don't know why the Save Changes button looks like that. It's in
+            a weird spot... I like how it's sticky, but it just looks a little
+            odd").
+
+            Sticky inside the content column instead: same width as the cards,
+            same left and right edges, and it lifts off the page as a card of
+            its own rather than a full-bleed rule across the app. */}
+        <div className="sticky bottom-4 z-30 mt-4 rounded-2xl border border-border-light bg-white/95 px-5 py-3 shadow-[0_6px_24px_rgba(15,23,42,0.10)] backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
             <span className="min-w-0 text-[12.5px] text-error">{error}</span>
             <span className="flex shrink-0 items-center gap-2">
               <button

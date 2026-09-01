@@ -494,8 +494,7 @@ export function OpportunityDetail({
                   value={value ? String(value) : ""}
                   kind="money"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   format={(v) => money(Number(v))}
                   onSave={(v) => saveField({ value: num(v) ?? 0 })}
                 />
@@ -504,8 +503,7 @@ export function OpportunityDetail({
                   value={deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)}
                   kind="money"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   format={(v) => money(Number(v))}
                   onSave={(v) => saveField({ estimatedAcv: num(v) })}
                 />
@@ -520,8 +518,7 @@ export function OpportunityDetail({
                   }
                   kind="money"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   hint={
                     deal.estimatedTcv === undefined && tcv !== undefined
                       ? "follows the deal's value"
@@ -535,8 +532,7 @@ export function OpportunityDetail({
                   value={deal.confidence === undefined ? "" : String(deal.confidence)}
                   kind="percent"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   format={(v) => `${v}%`}
                   onSave={(v) => saveField({ confidence: num(v) })}
                 />
@@ -549,8 +545,7 @@ export function OpportunityDetail({
                   label="Status"
                   value={deal.status ?? ""}
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   options={[
                     { value: "", label: "Not set" },
                     ...OPPORTUNITY_STATUSES.map((x) => ({ value: x, label: x })),
@@ -561,8 +556,7 @@ export function OpportunityDetail({
                   label="Revenue type"
                   value={deal.revenueType ?? ""}
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   options={[
                     { value: "", label: "Not set" },
                     ...REVENUE_TYPES.map((x) => ({ value: x, label: x })),
@@ -578,8 +572,7 @@ export function OpportunityDetail({
                   label="Type of opportunity"
                   value={deal.dealType ?? ""}
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   options={[
                     { value: "", label: "Not set" },
                     ...DEAL_TYPES.map((x) => ({ value: x, label: x })),
@@ -591,8 +584,7 @@ export function OpportunityDetail({
                   value={signs ?? ""}
                   kind="date"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   onSave={(v) => saveField({ estSignDate: v })}
                 />
                 <EditableFact
@@ -600,8 +592,7 @@ export function OpportunityDetail({
                   value={deal.owner ?? ""}
                   placeholder="Nobody yet"
                   stacked
-                  canEdit={verdict.mayEdit}
-                  asDialog
+                  canEdit={false}
                   onSave={(v) => saveField({ owner: v.trim() })}
                 />
               </div>
