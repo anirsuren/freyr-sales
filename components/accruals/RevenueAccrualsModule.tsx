@@ -35,6 +35,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -1098,11 +1099,18 @@ export function RevenueAccrualsModule({
                 values line up in real columns and the captions are said once
                 at the top instead of 79 times down the page. */}
             <div className={cn(ACCRUAL_ROW_GRID, "mt-4 px-4 pb-1 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary")}>
+              {/* LEFT, ALL OF THEM (Anir, Sep 1: "make sure every single
+                  column and the data points are left-aligned. I don't think
+                  they are"). Money and dates were right-aligned out of
+                  convention; the rule in this app is one edge, and a header
+                  that sits over the right end of its column while the next
+                  one starts at the left is exactly the ragged reading he keeps
+                  striking out. */}
               <span>Deal</span>
               <span>Shape</span>
-              <span className="text-right">Planned</span>
-              <span className="text-right">Est. close</span>
-              <span className="text-right">Last updated</span>
+              <span>Planned</span>
+              <span>Est. close</span>
+              <span>Last updated</span>
               {/* Left-aligned, header and icons both — the standing rule for
                   an actions column everywhere in this app. */}
               <span className="text-left">Actions</span>
@@ -1157,6 +1165,19 @@ export function RevenueAccrualsModule({
                     data-accrual-plan={plan.opportunityId}
                     className={cn(
                       "overflow-hidden rounded-xl border bg-white shadow-card transition-colors",
+                      /* DIM WHAT YOU ARE NOT READING (Anir, Sep 1: "when I
+                         click a deal, the others should dim"), the same rule
+                         the pipeline tree already follows. Dimmed, not hidden:
+                         a row you are not reading is still a row you might
+                         glance at, and hover brings it straight back.
+
+                         No transition on the opacity — the card already runs
+                         one on its border colour, and a second running
+                         transition on the same element supplies its own value,
+                         which is how the summary table's fade got stuck at 1. */
+                      openDeal !== null &&
+                        !isOpen &&
+                        "opacity-40 hover:opacity-100",
                       fresh
                         ? "border-blue-primary ring-2 ring-[rgba(0,113,227,0.18)]"
                         : verdict.invalid
@@ -1243,7 +1264,7 @@ export function RevenueAccrualsModule({
                         </span>
                       )}
                     </span>
-                    <span className="text-right">
+                    <span className="text-left">
                       <span className="block text-[14px] font-bold tnum text-text-primary">
                         {formatMoney(planTotal(plan))}
                       </span>
@@ -1260,7 +1281,7 @@ export function RevenueAccrualsModule({
                           value and nothing else. A cell with no value keeps
                           its place rather than collapsing and shunting every
                           column after it out of line. */}
-                      <span className="text-right">
+                      <span className="text-left">
                         {deal?.estSignDate ? (
                           <b className="block text-[12.5px] tnum text-text-primary">
                             {formatDate(deal.estSignDate)}
@@ -1271,15 +1292,27 @@ export function RevenueAccrualsModule({
                           </span>
                         )}
                       </span>
+                      {/* A FACE ON THE PERSON (Anir, Sep 1: "just make sure
+                          there are profile pictures"). The customer had its
+                          logo and the person who last touched the plan was a
+                          line of text, which is the one place on this row a
+                          name appears and the one place it had nothing to
+                          recognise it by. */}
                       <span
-                        className="min-w-0 text-right"
+                        className="flex min-w-0 items-center gap-2 text-left"
                         title={`Last updated by ${plan.updatedBy} on ${formatDate(plan.updatedAt)}`}
                       >
-                        <span className="block truncate text-[12.5px] font-medium text-text-primary">
-                          {plan.updatedBy}
-                        </span>
-                        <span className="block text-[11.5px] tnum text-text-secondary">
-                          {formatDate(plan.updatedAt)}
+                        <Avatar
+                          name={plan.updatedBy}
+                          className="h-7 w-7 shrink-0 text-[9px]"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                            {plan.updatedBy}
+                          </span>
+                          <span className="block text-[11.5px] tnum text-text-secondary">
+                            {formatDate(plan.updatedAt)}
+                          </span>
                         </span>
                       </span>
                       {/* Every control on the row, in the column the header

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Coins, Loader2, Sparkles } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { StatTile } from "@/components/ui/StatTile";
 import { useToast } from "@/components/ui/Toast";
@@ -337,55 +338,19 @@ export function AccrualPlanPage({
 
         <aside className="min-w-0">
           <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-            {/* SAY WHAT THE BUTTON DOES BEFORE SOMEBODY PRESSES IT.
-                Anir, Sep 1: "What the hell does 'create the plan' mean? I
-                don't know what this button does on the right side... I just
-                pressed it. I don't even know what I did."
+            {/* A QUESTION MARK, NOT AN ESSAY (Anir, Sep 1: "I don't need
+                this big text, bro. I just need a question mark").
 
-                Fair. A blue button called "Create the plan" sat under a Note
-                box with nothing on the page saying what a plan IS, so it read
-                as "save the note" and gave no clue whether pressing it moved
-                money, told anyone, or counted towards a target. The answer —
-                it records the schedule and moves nothing — was written down in
-                lib/revenueAccruals and never said out loud to the person
-                deciding whether to click.
-
-                The negative is the important half: Suren's rule is that
-                nothing auto-pushes, and a person cannot rely on that unless
-                they are told it. */}
-            <p className="text-[13px] font-semibold text-text-primary">
-              What this saves
+                He was right the first time that the button explained nothing,
+                and right the second time that eleven lines of prose beside a
+                Note box is its own kind of noise. The answer belongs on hover,
+                where the app already puts every other explanation. */}
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
+              Save this month split
+              <InfoHint text="Records how this deal's money is expected to land, month by month. It moves no money, tells nobody, and counts towards no goal. It feeds the month columns on the accruals table, and it is the baseline a frozen month is later compared against, so a month that comes up short is flagged rather than quietly shifted. Change it whenever the deal changes." />
             </p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
-              The month-by-month split on the left: how this deal&apos;s{" "}
-              <b>{money(target)}</b> is expected to land. It is a plan, not a
-              payment.
-            </p>
-            <ul className="mt-2.5 space-y-1.5 text-[12.5px] text-text-secondary">
-              <li className="flex gap-2">
-                <span className="text-text-tertiary">·</span>
-                <span>
-                  It does <b>not</b> move any money, and it does not count
-                  towards anyone&apos;s goal.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-text-tertiary">·</span>
-                <span>
-                  Nobody is notified. You can come back and change it whenever
-                  the deal changes.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-text-tertiary">·</span>
-                <span>
-                  If a month later comes up short, it gets flagged here rather
-                  than quietly shifted.
-                </span>
-              </li>
-            </ul>
 
-            <label className="mt-4 block border-t border-border-light pt-4">
+            <label className="mt-3 block">
               <span className="mb-1 block text-[11.5px] text-text-tertiary">
                 Note
                 <span className="ml-1.5 text-text-tertiary">

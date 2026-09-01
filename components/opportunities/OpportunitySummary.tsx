@@ -411,7 +411,13 @@ export function OpportunitySummary({
     return <span className={dim ? "text-text-secondary" : undefined}>{money(n)}</span>;
   }
 
-  function renderNode(node: Node, depth: number): React.ReactNode[] {
+  function renderNode(
+    node: Node,
+    depth: number,
+    /* Where this node sits among its siblings, purely so the reveal can
+       stagger. Defaults to 0 for the roots, which do not animate anyway. */
+    rowIndex = 0
+  ): React.ReactNode[] {
     const { total, byPeriod } = cellsOf(node.deals);
     const shown = open.has(node.key);
     const faded = !onOpenPath(node.key);
@@ -420,8 +426,12 @@ export function OpportunitySummary({
     out.push(
       <tr
         key={node.key}
+        /* Its position among its siblings, so a branch opening staggers down
+           the list instead of every child appearing on the same frame. */
+        style={{ ["--row" as string]: rowIndex }}
         className={cn(
           "border-b border-border-light hover:bg-surface/50",
+          depth > 0 && "tree-row-in",
           /* Dimmed, not hidden: the totals still have to be readable, because
              a row you are not reading is still a row you might glance at.
 
@@ -492,7 +502,9 @@ export function OpportunitySummary({
 
     if (shown) {
       if (node.children.length) {
-        for (const c of node.children) out.push(...renderNode(c, depth + 1));
+        node.children.forEach((c, childIndex) =>
+          out.push(...renderNode(c, depth + 1, childIndex))
+        );
       } else {
         /* THE LOWEST LEVEL IS THE VALUE, AND NOTHING ELSE (Suren, Aug 30:
            "when I click on that, I don't want to see all of this. Just this
@@ -501,14 +513,15 @@ export function OpportunitySummary({
            place here; a deal's own figures across the periods are the whole
            point of the row, and the panel buried them. The name still opens
            the deal for anyone who wants it. */
-        for (const d of node.deals) {
+        node.deals.forEach((d, i) => {
           const own = estimateOf(d, measure);
           const p = periodByDeal.get(d.id);
           return_deal_row: {
             out.push(
               <tr
                 key={`${node.key}/${d.id}`}
-                className="border-b border-border-light last:border-b-0"
+                style={{ ["--row" as string]: i }}
+                className="tree-row-in border-b border-border-light last:border-b-0"
               >
                 <th
                   scope="row"
@@ -559,7 +572,7 @@ export function OpportunitySummary({
               </tr>
             );
           }
-        }
+        });
       }
     }
     return out;
