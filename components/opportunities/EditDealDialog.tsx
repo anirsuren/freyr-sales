@@ -425,6 +425,16 @@ export function EditDealDialog({
         contacts={createOptions.contacts}
         opportunities={createOptions.opportunities}
         prefillOpportunityId={deal.id}
+        /* THE ACCOUNT COMES WITH THE DEAL.
+           Found in the loop, Sep 1: on the GSK deal, "Who it is with" read
+           "No account picked" and Create meeting stayed disabled even with a
+           title and a date filled in — because `customerId` is required and
+           nothing supplied it.
+
+           The prop existed and the OLD dialog branch below passed it; the page
+           branch, written later, did not. Two call sites, one of them wrong,
+           and the wrong one is the one the Edit deal PAGE renders. */
+        prefillCustomerName={deal.customer}
         onClose={() => setAdding(null)}
         onCreate={async (input) => {
           const res = await fetch("/api/meetings", {
