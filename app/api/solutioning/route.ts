@@ -8,7 +8,7 @@ import {
   setDeliverableStatus,
   setPriority,
   setWorkstream,
-  type DeliverableStatus,
+  DELIVERABLE_STATUSES,
   type RequestPriority,
   assignDocument,
   completeRequest,
@@ -427,7 +427,23 @@ export async function POST(req: NextRequest) {
     } else if (op === "set-deliverable-status") {
       const refusal = await moduleWriteRefusal("/solutioning");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
-      const next = body.status as DeliverableStatus;
+      /* A CAST IS NOT A CHECK. This read body.status and asserted it was a
+         DeliverableStatus, so any string went straight onto the record —
+         set-priority two branches up has always validated against its own
+         list. Sending a made-up one wiped the status (the reader normalises an
+         unknown value away to undefined, so "Draft" became nothing) and left
+         "Moved to Totally Made Up Status" in the activity trail, which is the
+         record's permanent history. The picker only ever sends one of these
+         six; every other caller now has to as well. */
+      const next = DELIVERABLE_STATUSES.find((x) => x === body.status);
+      if (!next) {
+        return NextResponse.json(
+          {
+            error: `A deliverable status is one of: ${DELIVERABLE_STATUSES.join(", ")}.`,
+          },
+          { status: 400 }
+        );
+      }
       await setDeliverableStatus({ requestId, status: next, by: me.name });
     } else if (op === "cancel") {
       /* SOL-033. Cancelling is not deleting: it is a WRITE, so it is open to
