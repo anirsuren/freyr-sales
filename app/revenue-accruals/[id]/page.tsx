@@ -49,7 +49,7 @@ export default async function AccrualPlanRoute({
   await requireServerMemberScope();
   const { id } = await params;
 
-  const [state, { opportunities }, offerings, me] = await Promise.all([
+  const [state, { opportunities }, offerings] = await Promise.all([
     readRevenueAccruals(),
     readOpportunities(),
     listOfferings(),

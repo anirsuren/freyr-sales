@@ -25,7 +25,7 @@ export default async function LeadsPage() {
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
   const db = getDb();
-  const [state, me, customers, directory] = await Promise.all([
+  const [state, , customers, directory] = await Promise.all([
     readLeads(),
     getCurrentUser(),
     db.customers.list().catch(() => []),
