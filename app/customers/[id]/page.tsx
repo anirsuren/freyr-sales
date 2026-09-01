@@ -195,26 +195,23 @@ export default async function CustomerDetailPage({
         .filter(Boolean)
     ),
   ].sort((a, b) => a.localeCompare(b));
-  if (c360.length) {
-    /* Pushed and re-ordered rather than spliced into position 1: the order
-       comes from lib/connectionOrder now, and a hand-placed index was jumping
-       the queue his grid sets. */
-    c360.push({
-      key: "contacts",
-      label: "Contacts",
-      icon: BAND_ICONS.contacts,
-      color: "#0891B2",
-      count: contacts.length,
-      href: `/customers/${customer.id}?tab=contacts`,
-      hrefLabel: "All contacts",
-      empty: "Nobody is on file at this account yet.",
-      items: contacts.map((c) => ({
-        id: c.id,
-        title: c.full_name,
-        sub: [c.job_title, c.email].filter(Boolean).join(" · "),
-      })),
-    });
-  }
+  /* NO CONTACTS BAND. THE PAGE ALREADY HAS A CONTACTS TAB.
+     Anir, Sep 1: "why would we have contacts tabs two of em."
+
+     There were literally two tabs reading "Contacts 0" side by side on one
+     strip. This band was one of them, and the giveaway is its own href: it
+     pointed at `?tab=contacts`, which is the OTHER one. A tab whose action is
+     to open its twin.
+
+     The tab wins and the band goes, because the tab is the one that can
+     actually do the work: it owns Add contact and the contact delete. This
+     band was a read-only list of the same people. Removing the tab instead
+     would have taken those two controls off the only screen that has them.
+
+     Contacts are not a connection band in the first place. The bands are
+     other RECORDS that point at this account, opportunities, contracts,
+     leads. A contact is part of the account itself, which is why it has its
+     own tab and its own editor. */
   const bands360 = orderBands(c360);
   const recordTeams = await readRecordTeams();
 
