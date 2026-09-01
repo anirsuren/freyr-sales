@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 // The five family icons that used to be listed here came with the local
 // FAMILY_META copy; they now travel with CUSTOMER_FAMILY_META instead.
-import { Plus, ArrowRight, X, Pencil, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
+import { Plus, ArrowRight, X, Pencil, Trash2, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -93,6 +93,10 @@ export function CustomerTypesManager({
   // Markets in use by offerings get a confirm step before removal — deleting one
   // cascades, unmapping it from every offering.
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  /* Removing a customer TYPE, kept apart from the market removal below it:
+     they hit different routes and read differently in the confirm. */
+  const [confirmRemoveType, setConfirmRemoveType] = useState<string | null>(null);
+  const [removingTypeBusy, setRemovingTypeBusy] = useState(false);
   const removingMarket = markets.find((m) => m.id === confirmRemove) ?? null;
 
   // EDITING AN EXISTING DEFINITION (change log #37). Separate state from the
@@ -657,15 +661,34 @@ export function CustomerTypesManager({
                   </span>
                 </Link>
                 {canManageLists && (
-                  <button
-                    type="button"
-                    onClick={() => openTypeEditor(t)}
-                    aria-label={`Edit ${t.name}`}
-                    title="Edit this definition"
-                    className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                  >
-                    <Pencil size={14} strokeWidth={2} />
-                  </button>
+                  <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => openTypeEditor(t)}
+                      aria-label={`Edit ${t.name}`}
+                      title="Edit this definition"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <Pencil size={14} strokeWidth={2} />
+                    </button>
+                    {/* ONLY WHEN NOTHING IS FOR IT (found in the loop, Sep 1:
+                        you could Add a customer type and never remove one).
+                        A customer type is who an offering is FOR, so removing
+                        one that is in use would quietly retarget somebody's
+                        offering — the route refuses that too and says which
+                        offerings are holding it. */}
+                    {count === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRemoveType(t.id)}
+                        aria-label={`Remove ${t.name}`}
+                        title="Remove this customer type"
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    )}
+                  </span>
                 )}
                 </div>
               );
@@ -815,6 +838,42 @@ export function CustomerTypesManager({
           turning into a red inline "Remove / Keep" strip that reflowed the
           whole row of chips around it (Anir, Aug 15: "everything should be up
           to date with our standards"). */}
+      <ConfirmDialog
+        open={confirmRemoveType !== null}
+        busy={removingTypeBusy}
+        onClose={() => setConfirmRemoveType(null)}
+        title="Remove this customer type?"
+        body={
+          <>
+            <NamePill>
+              {customerTypes.find((t) => t.id === confirmRemoveType)?.name ??
+                "This type"}
+            </NamePill>{" "}
+            comes off the list. No offering is for it, so nothing is retargeted.
+          </>
+        }
+        confirmLabel="Remove type"
+        onConfirm={async () => {
+          if (!confirmRemoveType) return;
+          setRemovingTypeBusy(true);
+          try {
+            const res = await fetch(`/api/customer-types/${confirmRemoveType}`, {
+              method: "DELETE",
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              toast(data.error || "Could not remove that customer type.", "error");
+              return;
+            }
+            toast("Customer type removed.");
+            setConfirmRemoveType(null);
+            router.refresh();
+          } finally {
+            setRemovingTypeBusy(false);
+          }
+        }}
+      />
+
       <ConfirmDialog
         open={confirmRemove !== null}
         onClose={() => setConfirmRemove(null)}

@@ -3844,6 +3844,31 @@ export function deleteMarket(id: string): boolean {
   return true;
 }
 
+/**
+ * REMOVE A CUSTOMER TYPE.
+ *
+ * Found in the loop, Sep 1: the page has "Add customer type" and no way to
+ * remove one — not in the UI and not on the route, which had only GET and
+ * POST. So a typo'd customer type was permanent, which is the asymmetry Anir
+ * called a problem on contacts ("if I can't delete one, that's a problem").
+ *
+ * Mirrors deleteMarket exactly, including stripping the id off every offering
+ * so nothing is left pointing at a ghost. The UI only offers this on a type no
+ * offering uses, so in practice that strip is a belt-and-braces for a race,
+ * not a way to silently retarget somebody's offering.
+ */
+export function deleteCustomerType(id: string): boolean {
+  const before = activeStore().customerTypes.length;
+  activeStore().customerTypes = activeStore().customerTypes.filter(
+    (t) => t.id !== id
+  );
+  if (activeStore().customerTypes.length === before) return false;
+  for (const o of activeStore().offerings) {
+    o.customer_type_ids = o.customer_type_ids.filter((cid) => cid !== id);
+  }
+  return true;
+}
+
 // ---- Offering types (managed master list) --------------------------------
 export function listOfferingTypes(): OfferingType[] {
   return [...activeStore().offeringTypes];
