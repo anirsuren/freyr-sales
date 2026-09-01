@@ -4,6 +4,7 @@ import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Briefcase,
   CalendarCheck,
   CalendarClock,
   CalendarDays,
@@ -1178,7 +1179,14 @@ export function GoalZoom({
                             className="h-5 w-5 shrink-0 text-[7px]"
                           />
                         ) : (
-                          <span className="h-5 w-5 shrink-0" />
+                          /* No account on the row is not a reason to leave a
+                             hole where every neighbour has a mark (Anir,
+                             Sep 1: "there should be an icon for the individual
+                             opportunity, and this goes for everything"). It is
+                             still a deal's result, so it wears the deal glyph. */
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[color:#4338CA]/10 text-[color:#4338CA]">
+                            <Briefcase size={11} strokeWidth={2.2} aria-hidden="true" />
+                          </span>
                         )}
                         <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-text-primary">
                           {/* `account` is "" when nothing was recorded, and ""

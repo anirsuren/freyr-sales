@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-react";
+import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp } from "lucide-react";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -520,7 +520,25 @@ export function OpportunitySummary({
                     onClick={() => onOpenDeal(d.id)}
                     className="flex w-full cursor-pointer items-center gap-2 text-left text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
                   >
-                    <span className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {/* THE DEAL GETS A MARK LIKE EVERY ROW ABOVE IT.
+                        Anir, Sep 1: "there should be an icon for the
+                        individual opportunity, and this goes for everything.
+                        It just looks odd."
+
+                        Group, customer, offering and level each carried one
+                        and the leaf — the actual deal, the thing the whole
+                        tree exists to reach — was an invisible 12px spacer, so
+                        the last row read as a stray caption under the rows
+                        that had marks. A briefcase, the app's own opportunity
+                        glyph from the sidebar, in indigo: the customer's logo
+                        is already on the row above, so repeating it would say
+                        nothing this row does not already sit under. */}
+                    <Briefcase
+                      size={13}
+                      strokeWidth={2.2}
+                      className="shrink-0 text-[color:#4338CA]"
+                      aria-hidden="true"
+                    />
                     <span className="min-w-0 truncate" title={d.name}>
                       {d.name}
                     </span>
