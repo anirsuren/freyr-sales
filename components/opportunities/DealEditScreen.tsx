@@ -57,7 +57,16 @@ export function DealEditScreen({
         const res = await fetch("/api/opportunities", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ op: "update", id: deal.id, patch }),
+          /* SPREAD, NOT NESTED. The route reads the changed fields off the
+             TOP LEVEL of the body (`body(raw)` in app/api/opportunities), so a
+             `patch` object was never looked at and every field arrived
+             undefined: the page navigated back cheerfully and saved nothing.
+
+             Found in the loop by editing a probe deal's name, pressing Save,
+             and reading the store back — the name had not moved. The dialog
+             version in OpportunityDetail has always spread it, which is why
+             the old flow worked and this one silently did not. */
+          body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) return data?.error || "That did not save.";
