@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, File, FileSpreadsheet, FileText, Loader2, Plus, Presentation, Trash2, UploadCloud, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Check, File, FileSpreadsheet, FileText, Loader2, Plus, Presentation, Trash2, UploadCloud, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { Opportunity } from "@/lib/opportunitiesShared";
@@ -80,10 +80,25 @@ export function NewContractDialog({
   deal,
   onClose,
   onCreated,
+  chromeless = false,
+  onBack,
 }: {
   deal: Opportunity;
   onClose: () => void;
   onCreated: () => void;
+  /**
+   * RENDER THE FORM WITHOUT ITS OWN FRAME.
+   *
+   * Anir, Aug 31: "You can't open up a new pop-up. That's not what I want...
+   * when I click Add to Submissions, it should keep the same exact pop-up.
+   * That size of the pop-up stays the same."
+   *
+   * Opened from a tab this IS the dialog. Opened from inside Edit deal it is a
+   * page of that dialog, so it must not bring a second frame with it — one
+   * modal, one size, one close button, and a back arrow to where you were.
+   */
+  chromeless?: boolean;
+  onBack?: () => void;
 }) {
   const [name, setName] = useState(deal.name ?? "");
   const [value, setValue] = useState(String(deal.value ?? ""));
@@ -199,9 +214,18 @@ export function NewContractDialog({
     }
   }
 
-  return (
-    <Modal open onClose={onClose} title="New contract" size="wide">
+  const body = (
       <div className="space-y-4">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-1 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          >
+            <ArrowLeft size={15} strokeWidth={2.2} />
+            Back to {deal.name}
+          </button>
+        )}
         <Field label="What is the contract called?">
           <input
             autoFocus
@@ -416,6 +440,14 @@ export function NewContractDialog({
           </span>
         </div>
       </div>
+  );
+
+  /* Inside Edit deal it is a page; on its own it is the dialog. Same form,
+     same size, so moving between them does not resize the frame. */
+  if (chromeless) return body;
+  return (
+    <Modal open onClose={onClose} title="New contract" size="workflow">
+      {body}
     </Modal>
   );
 }

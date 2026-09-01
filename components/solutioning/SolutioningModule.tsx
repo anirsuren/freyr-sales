@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlarmClock,
+  ArrowLeft,
   ArrowUpRight,
   Briefcase,
   CalendarClock,
@@ -1105,6 +1106,19 @@ function RequestPanel({
 }: {
   r: SolutionRequest;
   room: "requests" | "submissions" | "presentations";
+  /**
+   * RENDER THE FORM WITHOUT ITS OWN FRAME.
+   *
+   * Anir, Aug 31: "You can't open up a new pop-up... when I click Add to
+   * Submissions, it should keep the same exact pop-up. That size of the pop-up
+   * stays the same."
+   *
+   * Opened from Solutioning this IS the dialog. Opened from inside the deal's
+   * Edit screen it is a PAGE of that dialog, so it must not bring a second
+   * frame — one modal, one size, one close button.
+   */
+  chromeless?: boolean;
+  onBack?: () => void;
 }) {
   return (
     <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
@@ -1369,6 +1383,8 @@ export function NewRequestDialog({
   prefillCompany,
   prefillLead,
   room,
+  chromeless = false,
+  onBack,
 }: {
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => Promise<boolean>;
@@ -1386,6 +1402,14 @@ export function NewRequestDialog({
    *  no "request" language (Suren, Aug 27: "I'm creating a new submission.
    *  Why are you saying 'request a submission'?"). */
   room: "requests" | "submissions" | "presentations";
+  /**
+   * RENDER WITHOUT ITS OWN FRAME (Anir, Aug 31: "You can't open up a new
+   * pop-up... it should keep the same exact pop-up. That size of the pop-up
+   * stays the same"). On its own this IS the dialog; inside the deal's Edit
+   * screen it is a page of that one.
+   */
+  chromeless?: boolean;
+  onBack?: () => void;
 }) {
   const directKind: SolutioningKind | null =
     room === "submissions"
@@ -1527,8 +1551,8 @@ export function NewRequestDialog({
     !!kind && title.trim().length > 0 && !!customer && !uploading;
 
   return (
-    <Modal
-      open
+    <FrameOrNot
+      chromeless={chromeless}
       onClose={onClose}
       title={
         directKind
@@ -1537,7 +1561,7 @@ export function NewRequestDialog({
             ? `Request a ${KIND_META[kind].label.toLowerCase()}`
             : "What do you need?"
       }
-      size="workflow"
+      onBack={onBack}
     >
       {/* ONE SIZE THE WHOLE WAY THROUGH (Anir, Aug 25: "when I click on
           Solutioning New Request, I don't know why this is so small. Keep the
@@ -2104,6 +2128,49 @@ export function NewRequestDialog({
         </div>
       )}
       </div>
-    </Modal>
+    </FrameOrNot>
+  );
+}
+
+/**
+ * THE SAME CONTENT, WITH OR WITHOUT A DIALOG AROUND IT.
+ *
+ * A form that only knows how to be a modal can only ever be opened as one. On
+ * its own this is the dialog; inside another dialog it is a page of it, and a
+ * page must not drag a second frame and a second close button along with it.
+ */
+function FrameOrNot({
+  chromeless,
+  onClose,
+  title,
+  onBack,
+  children,
+}: {
+  chromeless: boolean;
+  onClose: () => void;
+  title: string;
+  onBack?: () => void;
+  children: React.ReactNode;
+}) {
+  if (!chromeless)
+    return (
+      <Modal open onClose={onClose} title={title} size="workflow">
+        {children}
+      </Modal>
+    );
+  return (
+    <div>
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+        >
+          <ArrowLeft size={15} strokeWidth={2.2} />
+          Back
+        </button>
+      )}
+      {children}
+    </div>
   );
 }

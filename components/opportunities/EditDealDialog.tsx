@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ChevronDown, Loader2, Plus, Save } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Save } from "lucide-react";
 import Link from "next/link";
 import type { Customer360Band } from "@/components/customers/Customer360";
+import { NewContractDialog } from "./NewContractDialog";
+import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -90,6 +92,7 @@ const INPUT =
 export function EditDealDialog({
   deal,
   bands = [],
+  createOptions = null,
   onAdd,
   onClose,
   onCreated,
@@ -99,6 +102,18 @@ export function EditDealDialog({
   /** Everything hanging off this deal, so each area is a section you can open
    *  and add to without leaving the screen. */
   bands?: Customer360Band[];
+  /** What the solutioning form needs. Null hides those pages rather than
+   *  opening one that cannot save. */
+  createOptions?: {
+    customers: { id: string; name: string }[];
+    opportunities: {
+      id: string;
+      label: string;
+      customer: string;
+      customerId: string | null;
+    }[];
+    members: string[];
+  } | null;
   /** Start a new record in that area. The parent owns the dialog, because a
    *  modal opened inside a modal is a trap with two close buttons. */
   onAdd?: (bandKey: string) => void;
@@ -147,74 +162,6 @@ export function EditDealDialog({
    * open behind you when you return.
    */
   const [adding, setAdding] = useState<string | null>(null);
-  const [cName, setCName] = useState("");
-  const [cValue, setCValue] = useState("");
-  const [cStatus, setCStatus] = useState("Draft");
-  const [cStart, setCStart] = useState("");
-  const [cEnd, setCEnd] = useState("");
-  const [cOwner, setCOwner] = useState("");
-  const [cNote, setCNote] = useState("");
-  const [cBusy, setCBusy] = useState(false);
-  const [cError, setCError] = useState<string | null>(null);
-
-  function resetContract() {
-    setCName(`${deal.name}`);
-    setCValue(String(deal.value ?? ""));
-    setCStatus("Draft");
-    setCStart("");
-    setCEnd("");
-    setCOwner(deal.owner ?? "");
-    setCNote("");
-    setCError(null);
-  }
-
-  async function createContract() {
-    if (!cName.trim()) {
-      setCError("Give the contract a name.");
-      return;
-    }
-    setCBusy(true);
-    setCError(null);
-    try {
-      const res = await fetch("/api/contracts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          op: "save",
-          contract: {
-            name: cName.trim(),
-            customer: deal.customer,
-            ...(deal.customerId ? { customerId: deal.customerId } : {}),
-            /* The whole point of creating it from here: it arrives already
-               attached to this deal, which is the link the Contracts tab
-               reads. */
-            opportunityId: deal.id,
-            opportunityName: deal.name,
-            value: Math.round(Number(cValue.replace(/[^0-9.]/g, "")) || 0),
-            status: cStatus,
-            ...(cStart ? { startDate: cStart } : {}),
-            ...(cEnd ? { endDate: cEnd } : {}),
-            ...(cOwner.trim() ? { owner: cOwner.trim() } : {}),
-            ...(cNote.trim() ? { note: cNote.trim() } : {}),
-            schedule: [],
-          },
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.error) {
-        setCError(data?.error || "That did not save.");
-        setCBusy(false);
-        return;
-      }
-      setCBusy(false);
-      setAdding(null);
-      onCreated?.();
-    } catch {
-      setCError("That did not save.");
-      setCBusy(false);
-    }
-  }
-
   const canSave = name.trim().length > 0 && !saving;
 
   async function submit() {
@@ -258,131 +205,74 @@ export function EditDealDialog({
     <Modal
       open
       onClose={onClose}
-      title={adding === "contracts" ? "New contract" : `Edit ${deal.name}`}
+      title={
+        adding === "contracts"
+          ? "New contract"
+          : adding === "submissions"
+            ? "New submission"
+            : adding === "presentations"
+              ? "New presentation"
+              : adding
+                ? "New request"
+                : `Edit ${deal.name}`
+      }
       size="workflow"
     >
-      {adding === "contracts" ? (
-        /* PAGE TWO. The back arrow is the whole promise: nothing you typed on
-           the deal is lost, because the deal form is still mounted behind
-           this one. */
+      {adding ? (
+        /* A PAGE OF THIS DIALOG, NOT A SECOND ONE. Same frame, same width, a
+           back arrow where the fields were — so it reads as going deeper into
+           the deal rather than as a new thing landing on top of it. */
         <div className="flex min-h-[420px] flex-col">
-          <button
-            type="button"
-            onClick={() => setAdding(null)}
-            className="mb-4 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
-          >
-            <ArrowLeft size={15} strokeWidth={2.2} />
-            Back to {deal.name}
-          </button>
-
-          <div className="space-y-4">
-            <Field label="What is the contract called?">
-              <input
-                autoFocus
-                value={cName}
-                onChange={(e) => setCName(e.target.value)}
-                className={INPUT}
-                placeholder={deal.name}
-              />
-            </Field>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Value">
-                <input
-                  value={cValue}
-                  onChange={(e) => setCValue(e.target.value)}
-                  inputMode="numeric"
-                  className={INPUT}
-                  placeholder="180000"
-                />
-              </Field>
-              <Field label="Status">
-                <ColorSelect
-                  value={cStatus}
-                  onChange={setCStatus}
-                  ariaLabel="Contract status"
-                  minWidth={190}
-                  options={[
-                    { value: "Draft", label: "Draft", color: "#64748B" },
-                    {
-                      value: "Ready for delivery",
-                      label: "Ready for delivery",
-                      color: "#0071E3",
-                    },
-                    { value: "Signed", label: "Signed", color: "#1A7A35" },
-                    { value: "Cancelled", label: "Cancelled", color: "#B42318" },
-                  ]}
-                />
-              </Field>
-              <Field label="Owner">
-                <input
-                  value={cOwner}
-                  onChange={(e) => setCOwner(e.target.value)}
-                  className={INPUT}
-                  placeholder="Nobody yet"
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Starts">
-                <input
-                  type="date"
-                  value={cStart}
-                  onChange={(e) => setCStart(e.target.value)}
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Ends">
-                <input
-                  type="date"
-                  value={cEnd}
-                  onChange={(e) => setCEnd(e.target.value)}
-                  className={INPUT}
-                />
-              </Field>
-            </div>
-            <Field label="Note">
-              <textarea
-                value={cNote}
-                onChange={(e) => setCNote(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-                placeholder="Anything worth saying about this contract."
-              />
-            </Field>
-            {/* It is FOR this deal, and says so rather than making you trust
-                that it worked out which one. */}
-            <p className="rounded-lg border border-border-light bg-surface/60 px-3 py-2.5 text-[12.5px] text-text-secondary">
-              This contract is created against <b>{deal.name}</b> for{" "}
-              <b>{deal.customer}</b>, so it lands on this deal&apos;s Contracts
-              tab.
-            </p>
-          </div>
-
-          <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-            <span className="min-w-0 text-[12.5px] text-error">{cError}</span>
-            <span className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAdding(null)}
-                className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={cBusy || !cName.trim()}
-                onClick={createContract}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {cBusy ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Plus size={14} strokeWidth={2.4} />
-                )}
-                {cBusy ? "Creating…" : "Create the contract"}
-              </button>
-            </span>
-          </div>
+          {adding === "contracts" ? (
+            <NewContractDialog
+              chromeless
+              deal={deal}
+              onBack={() => setAdding(null)}
+              onClose={() => setAdding(null)}
+              onCreated={() => {
+                setAdding(null);
+                onCreated?.();
+              }}
+            />
+          ) : createOptions ? (
+            <NewRequestDialog
+              chromeless
+              onBack={() => setAdding(null)}
+              room={
+                adding === "submissions"
+                  ? "submissions"
+                  : adding === "presentations"
+                    ? "presentations"
+                    : "requests"
+              }
+              customers={createOptions.customers}
+              opportunities={createOptions.opportunities}
+              members={createOptions.members}
+              prefillCustomerId={deal.customerId ?? null}
+              prefillOpportunityId={deal.id}
+              prefillCompany={deal.customer}
+              prefillLead={null}
+              onClose={() => setAdding(null)}
+              onCreate={async (input) => {
+                const type =
+                  adding === "submissions"
+                    ? "submission"
+                    : adding === "presentations"
+                      ? "presentation"
+                      : "request";
+                const res = await fetch("/api/solutioning", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ op: "create", type, ...input }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data?.request) return false;
+                setAdding(null);
+                onCreated?.();
+                return true;
+              }}
+            />
+          ) : null}
         </div>
       ) : (
       /* A FIXED FLOOR, so the frame does not jump when the error line
@@ -603,16 +493,18 @@ export function EditDealDialog({
                   ) : (
                     <p className="mb-3 text-[12.5px] text-text-secondary">{b.empty}</p>
                   )}
-                  {onAdd && (
+                  {/* Meetings has its own form elsewhere with fields this
+                      dialog does not carry, so it is the one that still hands
+                      off; everything else opens as a page of this dialog. */}
+                  {(b.key === "meetings" ? !!onAdd : true) && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (b.key === "contracts") {
-                          resetContract();
-                          setAdding("contracts");
+                        if (b.key === "meetings") {
+                          onAdd?.(b.key);
                           return;
                         }
-                        onAdd(b.key);
+                        setAdding(b.key);
                       }}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
                     >

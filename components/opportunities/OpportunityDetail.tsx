@@ -152,6 +152,9 @@ export function OpportunityDetail({
           onCreated={() => router.refresh()}
         />
       )}
+      {/* The TAB door opens a dialog of its own — there is no parent frame to
+          be a page of. The Edit screen's sections render the same forms
+          chromeless, inside the dialog already open. */}
       {creating && creating !== "contracts" && creating !== "meetings" && createOptions && (
         <NewRequestDialog
           room={
@@ -204,12 +207,7 @@ export function OpportunityDetail({
            * the control that opens it — so the edit screen closes and hands
            * over rather than stacking a modal on a modal.
            */
-          onAdd={(key) => {
-            /* The Edit screen stays open behind it, so closing the create
-               dialog puts you back exactly where you were — one destination,
-               two doors. */
-            setCreating(key);
-          }}
+          createOptions={createOptions}
           onCreated={() => router.refresh()}
           onSave={saveField}
         />
