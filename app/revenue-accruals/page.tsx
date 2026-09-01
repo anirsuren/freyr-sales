@@ -6,7 +6,7 @@ import { listOfferings, initializeLiveOfferings } from "@/lib/offerings";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Revenue Accruals" };
 export const dynamic = "force-dynamic";
@@ -39,7 +39,24 @@ export default async function RevenueAccrualsPage() {
   return (
     <RevenueAccrualsModule
       state={state}
-      canWrite={me.role === "admin"}
+      /**
+       * THE TABLE DECIDES, NOT A HARDCODED ROLE.
+       *
+       * Found in the loop, Sep 1: as a BD Owner — who holds CREATE on Revenue
+       * accruals in the privilege table — the page showed no "Plan a deal", no
+       * "Freeze this month", and no per-plan controls. This line was why:
+       * `me.role === "admin"` is a role check, and every other module in the
+       * app asks the privilege table instead.
+       *
+       * So Revenue accruals appeared in the Admin privilege grid, could be
+       * granted to somebody, and granting it changed nothing — the same defect
+       * Submissions and Presentations had until Aug 31.
+       *
+       * Write is the right question for this prop: it gates editing and
+       * planning, and `moduleCreateRefusal` guards creation inside the module
+       * where the route already asks it.
+       */
+      canWrite={!(await moduleWriteRefusal("/revenue-accruals"))}
       live={getDataMode() === "live"}
       /* THE PIPELINE ITSELF, so the accrual summary can group and total the
          same way Opportunities does (Suren, Aug 30). The DealOption list below

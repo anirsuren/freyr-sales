@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
@@ -48,7 +48,12 @@ export default async function LeadsPage() {
     <LeadsModule
       state={state}
       live={live}
-      canWrite={me.role === "admin"}
+      /* THE TABLE DECIDES, NOT A HARDCODED ROLE (found in the loop, Sep 1).
+         `me.role === "admin"` ignores the privilege table, so this module
+         could be granted to somebody in the Admin grid and granting it changed
+         no button — the same defect Submissions and Presentations had until
+         Aug 31, and Revenue accruals until today. */
+      canWrite={!(await moduleWriteRefusal("/leads"))}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

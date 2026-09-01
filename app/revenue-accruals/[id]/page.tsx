@@ -4,7 +4,7 @@ import { readOpportunities } from "@/lib/opportunities";
 import { listOfferings } from "@/lib/offerings";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { AccrualPlanPage } from "@/components/accruals/AccrualPlanPage";
 
@@ -81,7 +81,12 @@ export default async function AccrualPlanRoute({
           ? { estSignDate: line?.estSignDate ?? deal.estSignDate }
           : {}),
       }}
-      canWrite={me.role === "admin"}
+      /* THE TABLE DECIDES, NOT A HARDCODED ROLE (found in the loop, Sep 1).
+         `me.role === "admin"` ignores the privilege table, so this module
+         could be granted to somebody in the Admin grid and granting it changed
+         no button — the same defect Submissions and Presentations had until
+         Aug 31, and Revenue accruals until today. */
+      canWrite={!(await moduleWriteRefusal("/revenue-accruals"))}
       live={getDataMode() === "live"}
     />
   );

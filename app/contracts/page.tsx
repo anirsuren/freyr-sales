@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Contracts" };
 export const dynamic = "force-dynamic";
@@ -55,7 +55,12 @@ export default async function ContractsPage() {
   return (
     <ContractsModule
       state={state}
-      canWrite={me.role === "admin"}
+      /* THE TABLE DECIDES, NOT A HARDCODED ROLE (found in the loop, Sep 1).
+         `me.role === "admin"` ignores the privilege table, so this module
+         could be granted to somebody in the Admin grid and granting it changed
+         no button — the same defect Submissions and Presentations had until
+         Aug 31, and Revenue accruals until today. */
+      canWrite={!(await moduleWriteRefusal("/contracts"))}
       live={getDataMode() === "live"}
       members={members}
       meName={me.name}
