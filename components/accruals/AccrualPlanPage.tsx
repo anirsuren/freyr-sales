@@ -218,7 +218,7 @@ export function AccrualPlanPage({
         />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-5">
         <section className="min-w-0 rounded-xl border border-border-light bg-white p-5 shadow-card">
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-0 flex-1">
@@ -334,36 +334,27 @@ export function AccrualPlanPage({
               </tbody>
             </table>
           </div>
-        </section>
 
-        <aside className="min-w-0">
-          <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-            {/* A QUESTION MARK, NOT AN ESSAY (Anir, Sep 1: "I don't need
-                this big text, bro. I just need a question mark").
+          {/* THE BUTTON LIVES WITH THE THING IT SAVES (Anir, Sep 1: "are you
+              telling me this stuff on the right is saving what's on the left?"
+              — and, once told: "that's the worst UI in the world, and it's so
+              unclear").
 
-                He was right the first time that the button explained nothing,
-                and right the second time that eleven lines of prose beside a
-                Note box is its own kind of noise. The answer belongs on hover,
-                where the app already puts every other explanation. */}
-            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
-              Save this month split
-              {/* SAY WHAT IT IS FOR, NOT HOW IT WORKS (Anir, Sep 1: "I still
-                  don't understand what that does. You're not doing a good job
-                  explaining").
+              He is right. The months were in one card and the button that
+              saved them in a separate card beside it, under its own heading.
+              Two cards side by side read as two independent things, so the
+              button looked like it belonged to the Note it sat under — which
+              is exactly how he read it, twice, and why he pressed it without
+              knowing what he had done.
 
-                  The first version of this said it "feeds the month columns"
-                  and was "the baseline a frozen month is compared against" —
-                  true, and useless, because that is the plumbing rather than
-                  the reason. The reason is that a deal's value and the month
-                  it is earned in are two different facts, and only one of them
-                  was written down anywhere. */}
-              <InfoHint text="A deal signs on one date but is earned over several months. This is where you say which: a $500K deal over four months is $125K a month. It matters because close dates answer the wrong question — they say a four-month deal signed in November earns nothing in January, when it earns a quarter of itself. Saving moves no money and tells nobody. Freeze a month later and anything that shifts out of it is flagged, so revenue cannot slide quietly into next quarter." />
-            </p>
-
-            <label className="mt-3 block">
-              <span className="mb-1 block text-[11.5px] text-text-tertiary">
+              One card now, and the save is the last thing in it: the months,
+              then a note about them, then the button that writes them down.
+              Nothing to the right of it to be confused with. */}
+          <div className="mt-5 border-t border-border-light pt-4">
+            <label className="block">
+              <span className="mb-1 block text-[12px] font-semibold text-text-primary">
                 Note
-                <span className="ml-1.5 text-text-tertiary">
+                <span className="ml-1.5 font-normal text-text-tertiary">
                   optional, for whoever reads this next
                 </span>
               </span>
@@ -371,27 +362,31 @@ export function AccrualPlanPage({
                 value={note}
                 disabled={!canWrite}
                 onChange={(e) => setNote(e.target.value)}
-                rows={4}
+                rows={2}
                 placeholder="Why the money lands this way."
                 className="w-full resize-y rounded-lg border border-border-light px-3 py-2 text-[13px] text-text-primary outline-none focus:border-blue-primary disabled:bg-surface"
               />
             </label>
             {canWrite && (
-              <button
-                type="button"
-                onClick={() => void save()}
-                disabled={busy}
-                className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2.5 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {busy && <Loader2 size={14} className="animate-spin" />}
-                {/* The button names the thing it acts on, not an abstraction:
-                    "the plan" meant nothing until the card above it said so,
-                    and even now the months are what you are saving. */}
-                {plan ? "Save this month split" : "Save this month split"}
-              </button>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
+                  Saves the {lines.length}{" "}
+                  {lines.length === 1 ? "month" : "months"} above.
+                  <InfoHint text="A deal signs on one date but is earned over several months. This is where you say which: a $150K deal over six months is $25K a month. It matters because close dates answer the wrong question — they say a six-month deal signed in September earns nothing in January, when it earns a sixth of itself. Saving moves no money and tells nobody. Freeze a month later and anything that shifts out of it is flagged, so revenue cannot slide quietly into next quarter." />
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void save()}
+                  disabled={busy}
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2.5 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy && <Loader2 size={14} className="animate-spin" />}
+                  Save these months
+                </button>
+              </div>
             )}
-          </section>
-        </aside>
+          </div>
+        </section>
       </div>
     </div>
   );
