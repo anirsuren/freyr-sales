@@ -123,7 +123,57 @@ export function OpportunityDetail({
       {editing && (
         <EditDealDialog
           deal={deal}
+          bands={bands}
           onClose={() => setEditing(false)}
+          /**
+           * ADDING FROM A SECTION.
+           *
+           * Contracts and meetings have their own forms with their own
+           * required fields, so those go to the module with this deal named
+           * rather than growing a second half-form in here. The four
+           * solutioning areas share one dialog, and the page already carries
+           * the control that opens it — so the edit screen closes and hands
+           * over rather than stacking a modal on a modal.
+           */
+          onAdd={(key) => {
+            setEditing(false);
+            if (key === "contracts") {
+              router.push(
+                `/contracts?new=1&opportunity=${encodeURIComponent(deal.id)}`
+              );
+              return;
+            }
+            if (key === "meetings") {
+              router.push(
+                `/meetings?new=1&opportunity=${encodeURIComponent(deal.id)}`
+              );
+              return;
+            }
+            /**
+             * The four solutioning areas land in the Solutioning room that
+             * owns them, with the dialog already open and this deal and its
+             * account already chosen — `?new=1` is the trigger the module has
+             * read since Aug 27, and the opportunity and customer params are
+             * the ones its dialog pre-fills from.
+             *
+             * A meeting REQUEST is a request, so it opens in Requests; the
+             * kind is picked there, which is one click and honest about what
+             * it is making.
+             */
+            const room =
+              key === "submissions"
+                ? "submissions"
+                : key === "presentations"
+                  ? "presentations"
+                  : "requests";
+            const params = new URLSearchParams({
+              tab: room,
+              new: "1",
+              opportunity: deal.id,
+            });
+            if (customerId) params.set("customer", customerId);
+            router.push(`/solutioning?${params.toString()}`);
+          }}
           onSave={saveField}
         />
       )}

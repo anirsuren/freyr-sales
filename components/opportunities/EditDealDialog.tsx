@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Save } from "lucide-react";
+import Link from "next/link";
+import type { Customer360Band } from "@/components/customers/Customer360";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -87,10 +89,18 @@ const INPUT =
 
 export function EditDealDialog({
   deal,
+  bands = [],
+  onAdd,
   onClose,
   onSave,
 }: {
   deal: Opportunity;
+  /** Everything hanging off this deal, so each area is a section you can open
+   *  and add to without leaving the screen. */
+  bands?: Customer360Band[];
+  /** Start a new record in that area. The parent owns the dialog, because a
+   *  modal opened inside a modal is a trap with two close buttons. */
+  onAdd?: (bandKey: string) => void;
   onClose: () => void;
   /** Returns null on success, or a message to show. */
   onSave: (patch: Record<string, unknown>) => Promise<string | null>;
@@ -311,6 +321,88 @@ export function EditDealDialog({
             />
           </Field>
         </div>
+
+        {/* EVERYTHING ELSE ON THE DEAL, SECTION BY SECTION.
+            Anir, Aug 31: "kind of like the edit offering screen, where you
+            have it separated into sections... overview, contracts,
+            submissions, presentations, etc. Each section, you can obviously
+            close them or open them" — and then, plainly: "where the fuck can
+            I add shit?"
+
+            The answer used to be nowhere. This dialog edited eleven fields
+            and stopped, and the tabs behind it could show you a deal had no
+            presentations without offering any way to make one. Each area is
+            a fold now: what is in it, and the button that adds to it. */}
+        {bands.length > 0 && (
+          <div className="mt-6 space-y-1.5 border-t border-border-light pt-5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              What is on this deal
+            </p>
+            {bands.map((b) => (
+              <details key={b.key} className="group rounded-xl border border-border-light bg-white">
+                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                    className="shrink-0 text-text-tertiary transition-transform duration-200 group-open:rotate-180"
+                  />
+                  <span className="flex-1 text-[13.5px] font-semibold text-text-primary">
+                    {b.label}
+                  </span>
+                  <span
+                    className="tnum rounded-full px-2 py-0.5 text-[11.5px] font-bold"
+                    style={{ background: `${b.color}14`, color: b.color }}
+                  >
+                    {b.count}
+                  </span>
+                </summary>
+                <div className="border-t border-border-light px-4 py-3">
+                  {b.items.length > 0 ? (
+                    <ul className="mb-3 space-y-1.5">
+                      {b.items.slice(0, 6).map((it) => (
+                        <li key={it.id}>
+                          <Link
+                            href={it.href ?? "#"}
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                                {it.title}
+                              </span>
+                              {it.sub && (
+                                <span className="block truncate text-[11px] text-text-tertiary">
+                                  {it.sub}
+                                </span>
+                              )}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                      {b.items.length > 6 && (
+                        <li className="px-2 text-[11.5px] text-text-tertiary">
+                          and {b.items.length - 6} more
+                        </li>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="mb-3 text-[12.5px] text-text-secondary">{b.empty}</p>
+                  )}
+                  {onAdd && (
+                    <button
+                      type="button"
+                      onClick={() => onAdd(b.key)}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+                    >
+                      <Plus size={13} strokeWidth={2.4} />
+                      Add to {b.label.toLowerCase()}
+                    </button>
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-5">
           <span className="min-w-0 text-[12.5px] text-error">{error}</span>
