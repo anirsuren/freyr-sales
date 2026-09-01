@@ -348,6 +348,10 @@ function GroupDialog({
         <Field label="What is this group called">
           <Input
             value={name}
+            /* lib/customerGroups trims the name to 80 and the reason to 240,
+               so a longer one went in whole and came back short with nothing
+               said. Declared here so typing stops where the server cuts. */
+            maxLength={80}
             onChange={(e) => setName(e.target.value)}
             placeholder="Strategic accounts"
           />
@@ -358,6 +362,7 @@ function GroupDialog({
             <Textarea
               rows={2}
               value={description}
+              maxLength={240}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 setDescription(e.target.value)
               }

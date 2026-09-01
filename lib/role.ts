@@ -145,7 +145,27 @@ export async function isAdmin(): Promise<boolean> {
 
 export async function canManageOfferings(): Promise<boolean> {
   const role = await getRole();
-  return role === "admin" || role === "bd_owner";
+  if (role === "admin" || role === "bd_owner") return true;
+  /**
+   * A BUSINESS OFFERING OWNER OWNS THE OFFERINGS (Anir, Sep 1: "I just need to
+   * make sure that all the people who were offering owners before can create
+   * offerings").
+   *
+   * This asked the ROLE only, so the BO Owner privilege — whose row in the
+   * matrix says Create on Offerings and Digital components — bought nothing
+   * here. Six of the seven people named as owners on an offering are also
+   * bd_owner and were fine; Neha Sharma is a bd_member, so she owned offerings
+   * she could not edit or create.
+   *
+   * Imported at call time rather than at the top: lib/viewerAccess imports
+   * getRole from this file, and a static import back would be a cycle.
+   */
+  const { viewerAccessMap } = await import("./viewerAccess");
+  const access = await viewerAccessMap().catch(() => null);
+  /* No table (unreachable, or not being enforced) means the old answer, so a
+     blip cannot silently hand the catalogue to everybody. */
+  if (!access) return false;
+  return access.offerings === "create";
 }
 
 /** Compliance queue and workspace-wide outreach actions are manager-level.
