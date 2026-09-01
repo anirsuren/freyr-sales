@@ -1505,6 +1505,31 @@ export function OpportunitiesBrowser({
                         </td>
                         <td className="px-2 py-3.5">
                           <span className="flex items-center justify-start gap-0.5">
+                            {/* THE WAY INTO THE DEAL (Anir, Sep 1: "On
+                                opportunities, how do I go to this specific
+                                opportunity? On the summary page it's pretty
+                                simple: I just click on it, but here there's no
+                                way to go there").
+
+                                I added this to the OTHER table in this file
+                                first — there are two, and the one on screen
+                                was this one, so the arrow rendered nowhere.
+                                Caught by counting the anchors in the live DOM
+                                rather than trusting the edit.
+
+                                Outside the writable gate on purpose: reading a
+                                deal is not a write, and every control here was
+                                behind `writable && mayTouch`, which left a
+                                view-only account with no door at all. */}
+                            <Link
+                              href={`/opportunities/${o.id}`}
+                              title={`Open ${o.name}`}
+                              aria-label={`Open ${o.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                            >
+                              <ArrowUpRight size={13} strokeWidth={2.2} />
+                            </Link>
                             {writable && mayTouch(o) && (
                               <>
                                 <button
