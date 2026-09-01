@@ -145,9 +145,34 @@ export default async function OpportunityPage({
   return (
     <OpportunityDetail
       verdict={verdict}
+      /* What the create dialogs need, resolved once on the server. Null when
+         this person may not create solutioning work, which hides the doors
+         rather than showing ones that fail. */
+      createOptions={
+        mayRequestSolutioning
+          ? {
+              customers: customers.map((c) => ({
+                id: c.id,
+                name: c.company_name ?? "",
+              })),
+              opportunities: opportunities.map((o) => ({
+                id: o.id,
+                label: o.name || `${o.customer} deal`,
+                customer: o.customer,
+                customerId: o.customerId ?? null,
+              })),
+              members,
+            }
+          : null
+      }
       requestSolutioning={
         mayRequestSolutioning ? (
           <RequestSolutioningButton
+            /* Keyed because it is created here and rendered among siblings in
+               the detail's header: React counts that as a list and warns
+               without one. Harmless to render, noisy in the console, and a
+               console nobody can read is a console nobody checks. */
+            key="request-solutioning"
             customerId={customerId ?? ""}
             companyName={deal.customer}
             customers={customers.map((c) => ({

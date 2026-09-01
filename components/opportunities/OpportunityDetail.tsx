@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { EditableFact } from "./EditableFact";
 import { EditDealDialog } from "./EditDealDialog";
 import { AddToBandButton } from "./AddToBandButton";
+import { NewContractDialog } from "./NewContractDialog";
+import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { DEAL_TYPES, OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
@@ -54,6 +56,7 @@ const LEVEL_TONE: Record<string, string> = {
 export function OpportunityDetail({
   verdict,
   requestSolutioning = null,
+  createOptions = null,
   deal,
   bands,
   offerings,
@@ -66,6 +69,17 @@ export function OpportunityDetail({
   /** Server-rendered so the page can ask the privilege table before drawing
    *  it. Null when this person may not raise one. */
   requestSolutioning?: React.ReactNode;
+  /** What the create dialogs need. Absent when this person may not create. */
+  createOptions?: {
+    customers: { id: string; name: string }[];
+    opportunities: {
+      id: string;
+      label: string;
+      customer: string;
+      customerId: string | null;
+    }[];
+    members: string[];
+  } | null;
   deal: Opportunity;
   bands: Customer360Band[];
   offerings: { id: string; name: string; type?: string }[];
@@ -86,6 +100,13 @@ export function OpportunityDetail({
   const signs = signDateOf(deal);
   const [tab, setTab] = useState<string>("overview");
   const [editing, setEditing] = useState(false);
+  /**
+   * ONE DIALOG, TWO DOORS (Anir, Aug 31: "I can add it from the edit page, or
+   * I can add it by actually going to that tab... Both ways have to be
+   * there"). The tab button and the Edit screen's section button both set
+   * this, so the two entry points cannot drift into behaving differently.
+   */
+  const [creating, setCreating] = useState<string | null>(null);
   const router = useRouter();
 
   /**
@@ -121,6 +142,53 @@ export function OpportunityDetail({
 
   return (
     <div>
+      {/* THE CREATE DIALOGS. Opened from the tab strip or from the Edit
+          screen's sections — same state, same dialog, so the two doors cannot
+          behave differently. */}
+      {creating === "contracts" && (
+        <NewContractDialog
+          deal={deal}
+          onClose={() => setCreating(null)}
+          onCreated={() => router.refresh()}
+        />
+      )}
+      {creating && creating !== "contracts" && creating !== "meetings" && createOptions && (
+        <NewRequestDialog
+          room={
+            creating === "submissions"
+              ? "submissions"
+              : creating === "presentations"
+                ? "presentations"
+                : "requests"
+          }
+          customers={createOptions.customers}
+          opportunities={createOptions.opportunities}
+          members={createOptions.members}
+          prefillCustomerId={customerId}
+          prefillOpportunityId={deal.id}
+          prefillCompany={deal.customer}
+          prefillLead={null}
+          onClose={() => setCreating(null)}
+          onCreate={async (input) => {
+            const type =
+              creating === "submissions"
+                ? "submission"
+                : creating === "presentations"
+                  ? "presentation"
+                  : "request";
+            const res = await fetch("/api/solutioning", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ op: "create", type, ...input }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.request) return false;
+            setCreating(null);
+            router.refresh();
+            return true;
+          }}
+        />
+      )}
       {editing && (
         <EditDealDialog
           deal={deal}
@@ -137,43 +205,10 @@ export function OpportunityDetail({
            * over rather than stacking a modal on a modal.
            */
           onAdd={(key) => {
-            setEditing(false);
-            if (key === "contracts") {
-              router.push(
-                `/contracts?new=1&opportunity=${encodeURIComponent(deal.id)}`
-              );
-              return;
-            }
-            if (key === "meetings") {
-              router.push(
-                `/meetings?new=1&opportunity=${encodeURIComponent(deal.id)}`
-              );
-              return;
-            }
-            /**
-             * The four solutioning areas land in the Solutioning room that
-             * owns them, with the dialog already open and this deal and its
-             * account already chosen — `?new=1` is the trigger the module has
-             * read since Aug 27, and the opportunity and customer params are
-             * the ones its dialog pre-fills from.
-             *
-             * A meeting REQUEST is a request, so it opens in Requests; the
-             * kind is picked there, which is one click and honest about what
-             * it is making.
-             */
-            const room =
-              key === "submissions"
-                ? "submissions"
-                : key === "presentations"
-                  ? "presentations"
-                  : "requests";
-            const params = new URLSearchParams({
-              tab: room,
-              new: "1",
-              opportunity: deal.id,
-            });
-            if (customerId) params.set("customer", customerId);
-            router.push(`/solutioning?${params.toString()}`);
+            /* The Edit screen stays open behind it, so closing the create
+               dialog puts you back exactly where you were — one destination,
+               two doors. */
+            setCreating(key);
           }}
           onCreated={() => router.refresh()}
           onSave={saveField}
@@ -583,8 +618,7 @@ export function OpportunityDetail({
                   key={b.key}
                   bandKey={b.key}
                   label={b.label}
-                  opportunityId={deal.id}
-                  customerId={customerId}
+                  onAdd={setCreating}
                 />,
               ])
             )}
