@@ -51,7 +51,22 @@ export function AppShell({
    *  authority. Null = fall back to the role rules. */
   moduleAccess?: Record<string, Access> | null;
 }) {
-  const pathname = usePathname() || "";
+  /**
+   * THE PREFIX IS A LABEL, NOT PART OF THE ROUTE.
+   *
+   * /mock-mode/opportunities is rewritten to /opportunities before the server
+   * ever sees it, but the BROWSER keeps the prefix — which is the whole point
+   * of it — so usePathname hands this component "/mock-mode/opportunities".
+   * Every gate below matches on the path, so a prefixed URL matched nothing
+   * and the shell decided the route was not released and sent you to
+   * /offerings (found opening a /mock-mode link straight from the address bar).
+   *
+   * Stripped once, here, so nothing downstream has to know the prefix exists.
+   */
+  const rawPathname = usePathname() || "";
+  const pathname = rawPathname.startsWith("/mock-mode")
+    ? rawPathname.slice("/mock-mode".length) || "/"
+    : rawPathname;
   const scrollerRef = useRef<HTMLElement | null>(null);
 
   /**

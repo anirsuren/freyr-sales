@@ -456,7 +456,19 @@ export function EditDealDialog({
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
               What is on this deal
             </p>
-            {bands.map((b) => (
+            {bands.map((b) => {
+              /* One word for one thing: the band labels are plural because
+                 they are counts, and you are making a single one. */
+              const one = b.label.replace(/s$/, "").toLowerCase();
+              const start = () => {
+                if (b.key === "meetings") {
+                  onAdd?.(b.key);
+                  return;
+                }
+                setAdding(b.key);
+              };
+              const canAdd = b.key === "meetings" ? !!onAdd : true;
+              return (
               <details key={b.key} className="group rounded-xl border border-border-light bg-white">
                 <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
                   <ChevronDown
@@ -474,60 +486,99 @@ export function EditDealDialog({
                   >
                     {b.count}
                   </span>
+                  {/* QUICK ADD, WITHOUT OPENING THE SECTION (Anir, Aug 31:
+                      "maybe also have a blue square with the white plus on it
+                      for each of those sections so I can quickly create one
+                      just like that"). Someone who already knows they want a
+                      new submission should not have to unfold a list of the
+                      ones that exist to find the way to make one.
+
+                      preventDefault, because this button lives inside the
+                      summary and a click there would otherwise toggle the
+                      fold underneath it. */}
+                  {canAdd && (
+                    <button
+                      type="button"
+                      aria-label={`Create new ${one}`}
+                      title={`Create new ${one}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        start();
+                      }}
+                      className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-opacity hover:opacity-90"
+                    >
+                      <Plus size={13} strokeWidth={2.6} />
+                    </button>
+                  )}
                 </summary>
                 <div className="border-t border-border-light px-4 py-3">
                   {b.items.length > 0 ? (
-                    <ul className="mb-3 space-y-1.5">
-                      {b.items.slice(0, 6).map((it) => (
-                        <li key={it.id}>
-                          <Link
-                            href={it.href ?? "#"}
-                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate text-[12.5px] font-medium text-text-primary">
-                                {it.title}
-                              </span>
-                              {it.sub && (
-                                <span className="block truncate text-[11px] text-text-tertiary">
-                                  {it.sub}
+                    <>
+                      <ul className="space-y-1.5">
+                        {b.items.slice(0, 6).map((it) => (
+                          <li key={it.id}>
+                            <Link
+                              href={it.href ?? "#"}
+                              className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                                  {it.title}
                                 </span>
-                              )}
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
-                      {b.items.length > 6 && (
-                        <li className="px-2 text-[11.5px] text-text-tertiary">
-                          and {b.items.length - 6} more
-                        </li>
+                                {it.sub && (
+                                  <span className="block truncate text-[11px] text-text-tertiary">
+                                    {it.sub}
+                                  </span>
+                                )}
+                              </span>
+                            </Link>
+                          </li>
+                        ))}
+                        {b.items.length > 6 && (
+                          <li className="px-2 text-[11.5px] text-text-tertiary">
+                            and {b.items.length - 6} more
+                          </li>
+                        )}
+                      </ul>
+                      {/* With a list above it the button is a footer action,
+                          left-aligned under the rows it adds to. */}
+                      {canAdd && (
+                        <button
+                          type="button"
+                          onClick={start}
+                          className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+                        >
+                          <Plus size={13} strokeWidth={2.4} />
+                          Create new {one}
+                        </button>
                       )}
-                    </ul>
+                    </>
                   ) : (
-                    <p className="mb-3 text-[12.5px] text-text-secondary">{b.empty}</p>
-                  )}
-                  {/* Meetings has its own form elsewhere with fields this
-                      dialog does not carry, so it is the one that still hands
-                      off; everything else opens as a page of this dialog. */}
-                  {(b.key === "meetings" ? !!onAdd : true) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (b.key === "meetings") {
-                          onAdd?.(b.key);
-                          return;
-                        }
-                        setAdding(b.key);
-                      }}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
-                    >
-                      <Plus size={13} strokeWidth={2.4} />
-                      Add to {b.label.toLowerCase()}
-                    </button>
+                    /* EMPTY IS A STATE, NOT A LEFTOVER (Anir, Aug 31:
+                        "Shouldn't that be centered, like the text that says
+                        'No submissions on this deal yet' and then the
+                        button?"). Nothing to align to on the left when there
+                        is nothing there, so the sentence and the one thing you
+                        can do about it sit together in the middle. */
+                    <div className="flex flex-col items-center gap-2.5 px-4 py-6 text-center">
+                      <p className="text-[12.5px] text-text-secondary">{b.empty}</p>
+                      {canAdd && (
+                        <button
+                          type="button"
+                          onClick={start}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                        >
+                          <Plus size={13} strokeWidth={2.4} />
+                          Create new {one}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </details>
-            ))}
+              );
+            })}
           </div>
         )}
 

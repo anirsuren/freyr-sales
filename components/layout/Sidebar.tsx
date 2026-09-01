@@ -133,7 +133,12 @@ export function Sidebar({
   /** Resolved server-side in app/layout. Null = the role rules still decide. */
   moduleAccess?: Record<string, Access> | null;
 }) {
-  const pathname = usePathname() || "";
+  /* The /mock-mode prefix is a label on the window, not part of the route —
+     without stripping it no sidebar item ever matches and nothing lights up. */
+  const rawPathname = usePathname() || "";
+  const pathname = rawPathname.startsWith("/mock-mode")
+    ? rawPathname.slice("/mock-mode".length) || "/"
+    : rawPathname;
   const currentUser = useCurrentUser();
   /** Market Intel picks its room with ?tab=, so the sidebar has to read it. */
   const search = useSearchParams().toString();

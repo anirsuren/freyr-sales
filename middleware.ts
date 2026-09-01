@@ -147,7 +147,23 @@ function securityHeaders(response: NextResponse, requestId: string) {
 
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
-  const pathname = request.nextUrl.pathname;
+  /**
+   * /mock-mode IS A LABEL, NOT A ROUTE.
+   *
+   * next.config rewrites /mock-mode/x to /x, but middleware runs BEFORE that
+   * rewrite, so every check below would otherwise judge a path the app does
+   * not have: not public, not on the release list, not a released module — and
+   * the release gate sent every prefixed URL to /offerings (found opening a
+   * /mock-mode link straight from the address bar).
+   *
+   * Judging the real route keeps the door exactly as locked as it was:
+   * /mock-mode/admin is evaluated as /admin, so it needs everything /admin
+   * needs. The prefix can never be used to walk around any of this.
+   */
+  const rawPathname = request.nextUrl.pathname;
+  const pathname = rawPathname.startsWith("/mock-mode")
+    ? rawPathname.slice("/mock-mode".length) || "/"
+    : rawPathname;
   const authMode = process.env.AUTH_MODE;
   const recognizedAuthMode =
     authMode === "entra" ||
