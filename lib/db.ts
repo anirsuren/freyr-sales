@@ -339,6 +339,33 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
           await supabase.from("contacts").insert(data).select().single()
         );
       },
+      /**
+       * TAKE A CONTACT OFF AN ACCOUNT.
+       *
+       * Anir, Sep 1: "Yeah, if I can't delete one, that's a problem."
+       *
+       * A contact could be created from four different screens and removed
+       * from none, so a typo'd name was permanent on a real customer — found
+       * cleaning up a test probe, which had to come out of the database by
+       * hand because the app offered no way.
+       *
+       * Scoped first, exactly like update: the row must be visible in THIS
+       * workspace before it can be deleted, and the delete repeats the
+       * customer id so a leaked contact id cannot reach across accounts.
+       */
+      remove: async (id: string) => {
+        const existing = await scopedContact(id);
+        if (!existing) return false;
+        const result = await supabase
+          .from("contacts")
+          .delete()
+          .eq("id", id)
+          .eq("customer_id", existing.customer_id)
+          .select("id")
+          .maybeSingle();
+        if (result.error) throw new Error(result.error.message);
+        return !!result.data;
+      },
       update: async (id: string, data: Partial<Contact>) => {
         const existing = await scopedContact(id);
         if (!existing) return null;

@@ -246,6 +246,16 @@ export const liveDb = {
         customer_id: customerId,
       });
     },
+    /* Same workspace check as update: a contact id from another workspace
+       finds nothing to delete rather than deleting something. */
+    remove: async (id: string) => {
+      const existing = workspaceContact(id);
+      if (!existing) return false;
+      const idx = store.contacts.findIndex((c) => c.id === id);
+      if (idx === -1) return false;
+      store.contacts.splice(idx, 1);
+      return true;
+    },
   },
   pitchSessions: {
     list: async (customerId?: string, contactId?: string) => {

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Pin,
   Newspaper,
@@ -20,6 +21,7 @@ import {
   Check,
   Pencil,
   Users,
+  Trash2,
   Mail,
   Phone,
   Briefcase,
@@ -186,6 +188,7 @@ export function CustomerTabs({
   offeringsCatalog,
   fdlComponents = [],
   canEditComponents = false,
+  canDeleteContacts = false,
   includeDemoTeam,
   bands = [],
   bandActions,
@@ -221,6 +224,9 @@ export function CustomerTabs({
   // serialized by the server page for the Offerings tab.
   fdlComponents?: FdlComponent[];
   canEditComponents?: boolean;
+  /** May remove a person from this account. A DELETE on Customers, asked
+   *  separately from the write that lets you add one. */
+  canDeleteContacts?: boolean;
   offeringsCatalog?: {
     typeOptions: string[];
     applicable: TabOffering[];
@@ -292,6 +298,12 @@ export function CustomerTabs({
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  /* Red, and it asks first — the standing rule for every delete in the app. */
+  const [removingContact, setRemovingContact] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactForm, setContactForm] = useState({
     fullName: "",
@@ -1623,12 +1635,32 @@ export function CustomerTabs({
                   ) : (
                     <span />
                   )}
-                  {c.email && (
-                    <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
-                      <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                      <span className="break-all">{c.email}</span>
-                    </span>
-                  )}
+                  <span className="flex min-w-0 items-center gap-2">
+                    {c.email && (
+                      <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
+                        <Mail size={12} strokeWidth={1.6} className="shrink-0" />
+                        <span className="break-all">{c.email}</span>
+                      </span>
+                    )}
+                    {/* z-10, because the card is a stretched link: without it
+                        the name's ::after swallows this click and opens the
+                        contact instead of asking to remove them. */}
+                    {canDeleteContacts && (
+                      <button
+                        type="button"
+                        title={`Remove ${c.full_name}`}
+                        aria-label={`Remove ${c.full_name}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setRemovingContact({ id: c.id, name: c.full_name });
+                        }}
+                        className="relative z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                      >
+                        <Trash2 size={14} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </span>
                 </div>
               </Card>
             ))}
@@ -1641,6 +1673,35 @@ export function CustomerTabs({
               />
             )}
             </div>
+            <ConfirmDialog
+              open={!!removingContact}
+              busy={removeBusy}
+              onClose={() => setRemovingContact(null)}
+              title="Remove this contact?"
+              body={
+                <>
+                  <b>{removingContact?.name}</b> comes off this account.
+                </>
+              }
+              detail="Meetings and requests that named them keep the name they were given; only the person's record here is removed."
+              confirmLabel="Remove contact"
+              onConfirm={async () => {
+                if (!removingContact) return;
+                setRemoveBusy(true);
+                try {
+                  const res = await fetch(
+                    `/api/contacts/${encodeURIComponent(removingContact.id)}`,
+                    { method: "DELETE" }
+                  );
+                  if (res.ok) {
+                    setRemovingContact(null);
+                    router.refresh();
+                  }
+                } finally {
+                  setRemoveBusy(false);
+                }
+              }}
+            />
           </div>
         )}
 

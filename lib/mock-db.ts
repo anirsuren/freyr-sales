@@ -1253,6 +1253,15 @@ export const mockDb = {
       persist();
       return store.contacts[idx];
     },
+    /* Mock mirrors real, so a contact removed here goes for good here too —
+       and nothing it does can reach the live store. */
+    remove: async (id: string) => {
+      const idx = store.contacts.findIndex((c) => c.id === id);
+      if (idx === -1) return false;
+      store.contacts.splice(idx, 1);
+      persist();
+      return true;
+    },
   },
   pitchSessions: {
     list: async (customerId?: string, contactId?: string) =>

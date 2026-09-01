@@ -32,7 +32,7 @@ import {
 } from "@/lib/offerings";
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { requireModuleAccess, moduleWriteRefusal, moduleDeleteRefusal } from "@/lib/moduleAccessServer";
 
 /** The account's own name in the tab, the way every offering already does it.
  *  A static "Customer" made three open accounts indistinguishable in the tab
@@ -312,6 +312,10 @@ export default async function CustomerDetailPage({
         /* The same question PATCH /api/customers/[id] asks, so the identity
            fields are editable exactly when a save would land. */
         canEditFacts={!(await moduleWriteRefusal("/customers"))}
+        /* Removing a person from an account is a DELETE, not a write — asked
+           separately so an editor cannot delete and a control that would be
+           refused is never drawn. */
+        canDeleteContacts={!(await moduleDeleteRefusal("/customers"))}
         bands={bands360}
         bandActions={{
           team: (
