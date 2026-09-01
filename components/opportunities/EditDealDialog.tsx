@@ -7,6 +7,8 @@ import type { Customer360Band } from "@/components/customers/Customer360";
 import { NewContractDialog } from "./NewContractDialog";
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
+import { FormSection } from "@/components/ui/FormSection";
+import { Briefcase, CalendarDays, FileSignature, Presentation as PresentationIcon, Send, Users } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -87,10 +89,32 @@ function Field({
   );
 }
 
+/** Each area gets its own tile, the way every offerings section does. */
+const BAND_ICON: Record<string, typeof Briefcase> = {
+  contracts: FileSignature,
+  submissions: Send,
+  presentations: PresentationIcon,
+  meetings: CalendarDays,
+  solutionRequests: Briefcase,
+  meetingRequests: Users,
+};
+
+/** What each section is for, in one line, because the offerings cards carry
+ *  a hint and a bare title next to a count reads as a stat, not a place. */
+const BAND_HINT: Record<string, string> = {
+  contracts: "Signed paper and the revenue schedule behind it.",
+  submissions: "Proposals and RFP responses sent to this customer.",
+  presentations: "Decks built and shown for this deal.",
+  meetings: "Calls and visits held on it.",
+  solutionRequests: "Work asked of the solutioning team.",
+  meetingRequests: "Meetings asked of the solutioning team.",
+};
+
 const INPUT =
   "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus";
 
 export function EditDealDialog({
+  asPage = false,
   deal,
   bands = [],
   createOptions = null,
@@ -99,6 +123,20 @@ export function EditDealDialog({
   onCreated,
   onSave,
 }: {
+  /**
+   * RENDER AS A PAGE, NOT A DIALOG.
+   *
+   * Anir, Sep 1: "the edit deal is actually not supposed to be a pop-up...
+   * it should be like the offerings page. Whatever you have is fine. We look
+   * at the offerings pages, just copy that, and then, if I want to create a
+   * new contract, etc., within the edit deal, then it can be a pop-up."
+   *
+   * So the hierarchy inverts. Editing a deal is a place you go, with room for
+   * six sections; creating a contract inside it is the interruption, and an
+   * interruption is what a modal is FOR. The dialog form is kept because the
+   * customer screen still opens it inline.
+   */
+  asPage?: boolean;
   deal: Opportunity;
   /** Everything hanging off this deal, so each area is a section you can open
    *  and add to without leaving the screen. */
@@ -221,128 +259,9 @@ export function EditDealDialog({
     onClose();
   }
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      /* THE FRAME DOES NOT MOVE (Anir, Aug 31: "stop changing the dimensions
-         whenever I click on them. It has to stay the same").
-         `tall` pins the height, so a short page and a long page occupy the
-         same box and the content scrolls inside it. Without it the dialog was
-         sized by whatever page was showing, and every Add and Back resized and
-         re-centred the whole thing under the cursor. */
-      tall
-      /* A FIXED height, not a floor. `tall` alone still let a short page
-         shrink the box — the contract page came in 19px shorter and 10px
-         further down the screen, which is exactly the jump he is describing.
-         An explicit height means every page occupies the same rectangle and
-         the content scrolls inside it. */
-      dialogClassName="h-[min(820px,calc(100vh-2rem))]"
-      title={
-        adding === "meetings"
-          ? "New meeting"
-          : adding === "contracts"
-          ? "New contract"
-          : adding === "submissions"
-            ? "New submission"
-            : adding === "presentations"
-              ? "New presentation"
-              : adding
-                ? "New request"
-                : `Edit ${deal.name}`
-      }
-      size="workflow"
-    >
-      {adding ? (
-        /* A PAGE OF THIS DIALOG, NOT A SECOND ONE. Same frame, same width, a
-           back arrow where the fields were — so it reads as going deeper into
-           the deal rather than as a new thing landing on top of it. */
-        <div className="flex min-h-full flex-col">
-          {adding === "meetings" && createOptions ? (
-            /* THE LAST ONE THAT HANDED YOU OFF (Anir, Aug 31: "Why is there
-               nothing for meetings?"). Every other band opened a page of this
-               dialog; Meetings alone bounced to the Meetings module, because
-               its form was welded to that page's data. It takes the same
-               prefills and the same back arrow as the rest now. */
-            <NewMeetingDialog
-              chromeless
-              onBack={() => setAdding(null)}
-              meName={createOptions.meName}
-              members={createOptions.members}
-              customers={createOptions.customers}
-              contacts={createOptions.contacts}
-              opportunities={createOptions.opportunities}
-              prefillOpportunityId={deal.id}
-              prefillCustomerName={deal.customer}
-              onClose={() => setAdding(null)}
-              onCreate={async (input) => {
-                const res = await fetch("/api/meetings", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ op: "create", ...input }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || data?.error) return false;
-                setAdding(null);
-                onCreated?.();
-                return true;
-              }}
-            />
-          ) : adding === "contracts" ? (
-            <NewContractDialog
-              chromeless
-              deal={deal}
-              onBack={() => setAdding(null)}
-              onClose={() => setAdding(null)}
-              onCreated={() => {
-                setAdding(null);
-                onCreated?.();
-              }}
-            />
-          ) : createOptions ? (
-            <NewRequestDialog
-              chromeless
-              onBack={() => setAdding(null)}
-              room={
-                adding === "submissions"
-                  ? "submissions"
-                  : adding === "presentations"
-                    ? "presentations"
-                    : "requests"
-              }
-              customers={createOptions.customers}
-              opportunities={createOptions.opportunities}
-              members={createOptions.members}
-              prefillCustomerId={deal.customerId ?? null}
-              prefillOpportunityId={deal.id}
-              prefillCompany={deal.customer}
-              prefillLead={null}
-              onClose={() => setAdding(null)}
-              onCreate={async (input) => {
-                const type =
-                  adding === "submissions"
-                    ? "submission"
-                    : adding === "presentations"
-                      ? "presentation"
-                      : "request";
-                const res = await fetch("/api/solutioning", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ op: "create", type, ...input }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data?.request) return false;
-                setAdding(null);
-                onCreated?.();
-                return true;
-              }}
-            />
-          ) : null}
-        </div>
-      ) : (
-      /* A FIXED FLOOR, so the frame does not jump when the error line
-          appears or a picker opens under a field. */
-      <div className="flex min-h-full flex-col">
+  /* The eleven deal fields, written once and shown in whichever shell
+     is asking for them. */
+  const fields = (
         <div className="space-y-4">
           <Field label="What is this deal called?">
             <input
@@ -491,6 +410,369 @@ export function EditDealDialog({
             />
           </Field>
         </div>
+  );
+
+  /* THE THING BEING CREATED, WHICHEVER SHELL WE ARE IN. On a page it is a
+     modal on top; inside the dialog it is the dialog's second page. */
+  const creating =
+    adding === "meetings" && createOptions ? (
+      <NewMeetingDialog
+        chromeless={!asPage}
+        onBack={asPage ? undefined : () => setAdding(null)}
+        meName={createOptions.meName}
+        members={createOptions.members}
+        customers={createOptions.customers}
+        contacts={createOptions.contacts}
+        opportunities={createOptions.opportunities}
+        prefillOpportunityId={deal.id}
+        onClose={() => setAdding(null)}
+        onCreate={async (input) => {
+          const res = await fetch("/api/meetings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "create", ...input }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.error) return false;
+          setAdding(null);
+          onCreated?.();
+          return true;
+        }}
+      />
+    ) : adding === "contracts" ? (
+      <NewContractDialog
+        chromeless={!asPage}
+        deal={deal}
+        onBack={asPage ? undefined : () => setAdding(null)}
+        onClose={() => setAdding(null)}
+        onCreated={() => {
+          setAdding(null);
+          onCreated?.();
+        }}
+      />
+    ) : adding && createOptions ? (
+      <NewRequestDialog
+        chromeless={!asPage}
+        onBack={asPage ? undefined : () => setAdding(null)}
+        room={
+          adding === "submissions"
+            ? "submissions"
+            : adding === "presentations"
+              ? "presentations"
+              : "requests"
+        }
+        customers={createOptions.customers}
+        opportunities={createOptions.opportunities}
+        members={createOptions.members}
+        prefillCustomerId={deal.customerId ?? null}
+        prefillOpportunityId={deal.id}
+        prefillCompany={deal.customer}
+        prefillLead={null}
+        onClose={() => setAdding(null)}
+        onCreate={async (input) => {
+          const type =
+            adding === "submissions"
+              ? "submission"
+              : adding === "presentations"
+                ? "presentation"
+                : "request";
+          const res = await fetch("/api/solutioning", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "create", type, ...input }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.request) return false;
+          setAdding(null);
+          onCreated?.();
+          return true;
+        }}
+      />
+    ) : null;
+
+  /* One list, one way of drawing it, so the page and the dialog cannot end up
+     showing different things in their sections. */
+  const bandBody = (b: (typeof bands)[number]) => {
+    const one = b.label.replace(/s$/, "").toLowerCase();
+    const start = () => {
+      setOpen((cur) => new Set(cur).add(b.key));
+      if (b.key === "meetings" && !createOptions) {
+        onAdd?.(b.key);
+        return;
+      }
+      setAdding(b.key);
+    };
+    const canAdd = b.key === "meetings" ? !!createOptions || !!onAdd : true;
+    return { one, start, canAdd };
+  };
+
+  /**
+   * THE PAGE (Anir, Sep 1: "it should be like the offerings page... just copy
+   * that, and then, if I want to create a new contract, etc., within the edit
+   * deal, then it can be a pop-up").
+   *
+   * Same section card the offerings editor uses, imported rather than
+   * imitated. Creating something is a modal ON this page, which is the one
+   * place a modal belongs: it interrupts, you finish it, you are back where
+   * you were with the section still open.
+   */
+  if (asPage) {
+    return (
+      <div className="pb-24">
+        <div className="space-y-4">
+          <FormSection
+            icon={Briefcase}
+            title="Deal details"
+            hint="What this deal is, what it is worth, and when it is expected to sign."
+            defaultOpen
+          >
+            {fields}
+          </FormSection>
+
+          {bands.map((b) => {
+            const { one, start, canAdd } = bandBody(b);
+            return (
+              <FormSection
+                key={b.key}
+                icon={BAND_ICON[b.key] ?? Briefcase}
+                title={b.label}
+                hint={BAND_HINT[b.key] ?? `Everything on this deal's ${b.label.toLowerCase()}.`}
+                count={b.count}
+                alwaysShowAction
+                action={
+                  canAdd ? (
+                    <button
+                      type="button"
+                      onClick={start}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      <Plus size={13} strokeWidth={2.4} />
+                      Create new {one}
+                    </button>
+                  ) : undefined
+                }
+              >
+                {b.items.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {b.items.map((it) => (
+                      <li key={it.id}>
+                        <Link
+                          href={it.href ?? "#"}
+                          className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 ring-1 ring-border-light transition-colors hover:ring-blue-subtle"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                              {it.title}
+                            </span>
+                            {it.sub && (
+                              <span className="block truncate text-[11px] text-text-tertiary">
+                                {it.sub}
+                              </span>
+                            )}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="flex flex-col items-center gap-2.5 px-4 py-6 text-center">
+                    <p className="text-[12.5px] text-text-secondary">{b.empty}</p>
+                    {canAdd && (
+                      <button
+                        type="button"
+                        onClick={start}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        <Plus size={14} strokeWidth={2.4} />
+                        Create new {one}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </FormSection>
+            );
+          })}
+        </div>
+
+        {/* SAVE STAYS REACHABLE. Six open sections are taller than the window,
+            and a Save button at the bottom of that is a Save button nobody
+            finds. */}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-light bg-white/95 px-6 py-3 backdrop-blur">
+          <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
+            <span className="min-w-0 text-[12.5px] text-error">{error}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!canSave}
+                onClick={submit}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} strokeWidth={2.4} />
+                )}
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </span>
+          </div>
+        </div>
+
+        {/* The pop-up he DID ask for: creating a thing, on top of the page. */}
+        {adding && creating && (
+          <Modal
+            open
+            onClose={() => setAdding(null)}
+            title={
+              adding === "meetings"
+                ? "New meeting"
+                : adding === "contracts"
+                  ? "New contract"
+                  : adding === "submissions"
+                    ? "New submission"
+                    : adding === "presentations"
+                      ? "New presentation"
+                      : "New request"
+            }
+            size="workflow"
+          >
+            {creating}
+          </Modal>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      /* THE FRAME DOES NOT MOVE (Anir, Aug 31: "stop changing the dimensions
+         whenever I click on them. It has to stay the same").
+         `tall` pins the height, so a short page and a long page occupy the
+         same box and the content scrolls inside it. Without it the dialog was
+         sized by whatever page was showing, and every Add and Back resized and
+         re-centred the whole thing under the cursor. */
+      tall
+      /* A FIXED height, not a floor. `tall` alone still let a short page
+         shrink the box — the contract page came in 19px shorter and 10px
+         further down the screen, which is exactly the jump he is describing.
+         An explicit height means every page occupies the same rectangle and
+         the content scrolls inside it. */
+      dialogClassName="h-[min(820px,calc(100vh-2rem))]"
+      title={
+        adding === "meetings"
+          ? "New meeting"
+          : adding === "contracts"
+          ? "New contract"
+          : adding === "submissions"
+            ? "New submission"
+            : adding === "presentations"
+              ? "New presentation"
+              : adding
+                ? "New request"
+                : `Edit ${deal.name}`
+      }
+      size="workflow"
+    >
+      {adding ? (
+        /* A PAGE OF THIS DIALOG, NOT A SECOND ONE. Same frame, same width, a
+           back arrow where the fields were — so it reads as going deeper into
+           the deal rather than as a new thing landing on top of it. */
+        <div className="flex min-h-full flex-col">
+          {adding === "meetings" && createOptions ? (
+            /* THE LAST ONE THAT HANDED YOU OFF (Anir, Aug 31: "Why is there
+               nothing for meetings?"). Every other band opened a page of this
+               dialog; Meetings alone bounced to the Meetings module, because
+               its form was welded to that page's data. It takes the same
+               prefills and the same back arrow as the rest now. */
+            <NewMeetingDialog
+              chromeless
+              onBack={() => setAdding(null)}
+              meName={createOptions.meName}
+              members={createOptions.members}
+              customers={createOptions.customers}
+              contacts={createOptions.contacts}
+              opportunities={createOptions.opportunities}
+              prefillOpportunityId={deal.id}
+              prefillCustomerName={deal.customer}
+              onClose={() => setAdding(null)}
+              onCreate={async (input) => {
+                const res = await fetch("/api/meetings", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ op: "create", ...input }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data?.error) return false;
+                setAdding(null);
+                onCreated?.();
+                return true;
+              }}
+            />
+          ) : adding === "contracts" ? (
+            <NewContractDialog
+              chromeless
+              deal={deal}
+              onBack={() => setAdding(null)}
+              onClose={() => setAdding(null)}
+              onCreated={() => {
+                setAdding(null);
+                onCreated?.();
+              }}
+            />
+          ) : createOptions ? (
+            <NewRequestDialog
+              chromeless
+              onBack={() => setAdding(null)}
+              room={
+                adding === "submissions"
+                  ? "submissions"
+                  : adding === "presentations"
+                    ? "presentations"
+                    : "requests"
+              }
+              customers={createOptions.customers}
+              opportunities={createOptions.opportunities}
+              members={createOptions.members}
+              prefillCustomerId={deal.customerId ?? null}
+              prefillOpportunityId={deal.id}
+              prefillCompany={deal.customer}
+              prefillLead={null}
+              onClose={() => setAdding(null)}
+              onCreate={async (input) => {
+                const type =
+                  adding === "submissions"
+                    ? "submission"
+                    : adding === "presentations"
+                      ? "presentation"
+                      : "request";
+                const res = await fetch("/api/solutioning", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ op: "create", type, ...input }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data?.request) return false;
+                setAdding(null);
+                onCreated?.();
+                return true;
+              }}
+            />
+          ) : null}
+        </div>
+      ) : (
+      /* A FIXED FLOOR, so the frame does not jump when the error line
+          appears or a picker opens under a field. */
+      <div className="flex min-h-full flex-col">
+        {fields}
 
         {/* EVERYTHING ELSE ON THE DEAL, SECTION BY SECTION.
             Anir, Aug 31: "kind of like the edit offering screen, where you

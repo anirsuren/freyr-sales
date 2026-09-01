@@ -277,14 +277,17 @@ export function OpportunityDetail({
               Submissions and Presentations tabs read zero. */}
           {requestSolutioning}
           {verdict.mayEdit ? (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
+            /* A PLACE, NOT A POP-UP (Anir, Sep 1: "the edit deal is actually
+               not supposed to be a pop-up... it should be like the offerings
+               page"). A link, so it can be opened in a tab, bookmarked and
+               reloaded like the offering editor it is modelled on. */
+            <Link
+              href={`/opportunities/${deal.id}/edit`}
               className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               <Pencil size={14} strokeWidth={2.2} />
               Edit deal
-            </button>
+            </Link>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
               View only

@@ -674,14 +674,38 @@ export function SolutioningModule({
                       {picked.title}
                     </span>
                   </span>
-                  <Link
-                    href={`/solutioning/${picked.id}${room === "requests" ? "" : `?tab=${room}`}`}
-                    title="Open the full request"
-                    aria-label={`Open ${picked.ref} in full`}
-                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                  >
-                    <ArrowUpRight size={15} strokeWidth={2.2} />
-                  </Link>
+                  {/* THE SAME ACTIONS THE TABLE HAS (Anir, Sep 1: "this goes
+                      for all the pages, but on split view I need to have all
+                      the same functionality that there is on table view").
+
+                      Split had the open-in-full arrow and nothing else, so
+                      switching layout quietly took Delete away — the same
+                      record, the same person, a different answer depending on
+                      a view toggle. Same rule as the table row: an admin, or
+                      whoever raised it while nothing has started. */}
+                  <span className="flex shrink-0 items-center gap-1">
+                    <Link
+                      href={`/solutioning/${picked.id}${room === "requests" ? "" : `?tab=${room}`}`}
+                      title="Open the full request"
+                      aria-label={`Open ${picked.ref} in full`}
+                      className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <ArrowUpRight size={15} strokeWidth={2.2} />
+                    </Link>
+                    {(meRole === "admin" || picked.status === "initiated") && (
+                      <button
+                        type="button"
+                        title={`Delete ${picked.ref}`}
+                        aria-label={`Delete ${picked.ref}`}
+                        onClick={() =>
+                          setConfirmDelete({ id: picked.id, ref: picked.ref })
+                        }
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                      >
+                        <Trash2 size={15} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </span>
                 </div>
                 <RequestPanel r={picked} room={room} />
               </>
