@@ -89,24 +89,6 @@ jobs:
             | set_env("DEFAULT_DATA_MODE"; "mock")
             | set_env("DATA_MODE_LOCKED"; "0")
             | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
-            # DEV WRITES ITS DOCUMENTS SOMEWHERE ELSE (Anir, Sep 1: "dev and
-            # production both have the same doc storage, which is wrong").
-            #
-            # dev and prod are two ECS accounts in front of ONE Supabase
-            # project, so both read the same docs-storage-config row and both
-            # landed in freyrsales/freyrsales. Every dev test upload has been
-            # going into the production document store.
-            #
-            # Set here rather than by hand on the task definition so it cannot
-            # be lost: this job rewrites the definition on every deploy, and an
-            # env var nobody re-applies is an env var that disappears the next
-            # time somebody registers a revision from a clean copy.
-            #
-            # SAFE FOR PROD. promote-to-prod.sh reads PROD's own task
-            # definition and swaps only the image — it never copies dev's
-            # environment — so prod keeps no DOCS_BUCKET, falls through to the
-            # shared row, and stays on freyrsales/freyrsales.
-            | set_env("DOCS_BUCKET"; "freyrsales-dev")
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
                   .compatibilities, .registeredAt, .registeredBy)
           ' > taskdef.json
