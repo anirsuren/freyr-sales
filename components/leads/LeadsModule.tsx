@@ -216,6 +216,15 @@ export function LeadsModule({
       toast("A lead needs at least a person or a company name.", "error");
       return;
     }
+    /* type="email" is on the box, but nothing in this dialog is a form, so the
+       browser never validates it — "not-an-email" saved happily and sat in the
+       record until somebody tried to write to it. Optional, but if it is filled
+       in it has to be an address. Same test the session form uses. */
+    const email = editing.email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast("Enter a valid email address, or leave it empty.", "error");
+      return;
+    }
     const ok = await post(
       { op: "save", lead: { ...editing, id: editing.id || undefined } },
       editing.id ? "Lead updated." : "Lead added."
@@ -699,8 +708,15 @@ export function LeadsModule({
         >
           <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
             <Field label="Person">
+              {/* THE CAP THE SERVER ALREADY KEEPS, said out loud. lib/leads
+                  trims a name to 120 characters on the way in, so a longer one
+                  was accepted, saved short, and nobody was told — paste a job
+                  title into the name box and half of it vanishes on save.
+                  Declaring it here stops the typing at the same place the
+                  server would have cut it. */}
               <Input
                 value={editing.name}
+                maxLength={120}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 placeholder="Who got in touch"
               />
@@ -812,6 +828,7 @@ export function LeadsModule({
               <Input
                 type="email"
                 value={editing.email}
+                maxLength={200}
                 onChange={(e) => setEditing({ ...editing, email: e.target.value })}
                 placeholder="name@company.com"
               />
