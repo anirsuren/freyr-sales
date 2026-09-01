@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 import { useEscapeToClose } from "@/components/ui/useDismissable";
+import { floatingMenuStyle, type FloatingMenuStyle } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,12 +33,52 @@ export function OverflowMenu({
 }) {
   const [open, setOpen] = useState(false);
   useEscapeToClose(open, () => setOpen(false));
+  const ref = useRef<HTMLDivElement>(null);
+
+  /**
+   * PORTALLED, LIKE EVERY OTHER MENU IN THIS APP.
+   *
+   * Anir, Sep 1, looking straight through it: "Come on, fucking fix this
+   * shit." The panel had bg-white and z-50 and was still see-through — z-index
+   * is scoped to a stacking context, and this menu lives inside the record
+   * header while the chips it was overlapping live in a sibling that paints
+   * later. No z-50 inside the header can ever beat them.
+   *
+   * ColorSelect solved this long ago by rendering to document.body and
+   * positioning from the trigger's rect, which escapes every ancestor. Same
+   * helper, same behaviour, so this menu flips above the trigger near the
+   * bottom of the window exactly like the app's other dropdowns.
+   */
+  const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) setMenuStyle(floatingMenuStyle(rect, 232, 220));
+    setOpen(true);
+  };
+
+  /* A scroll or a resize moves the trigger out from under a menu that is
+     pinned to the viewport, so the menu closes rather than hanging in space. */
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-label={label}
         aria-expanded={open}
         className={cn(
@@ -48,27 +90,32 @@ export function OverflowMenu({
       >
         <MoreHorizontal size={17} strokeWidth={2} />
       </button>
-      {open && (
-        <>
-          {/* A click anywhere else closes it, and the sheet is BELOW the menu
-              so a click on an item still reaches the item. */}
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="menu"
-            /* Any click inside closes it: every row in here either fires an
-               action or opens a dialog, and in both cases the menu is done. */
-            onClick={() => setOpen(false)}
-            className="absolute right-0 z-50 mt-2 flex w-[232px] flex-col gap-0.5 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
-          >
-            {children}
-          </div>
-        </>
-      )}
+      {open &&
+        menuStyle &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            {/* A click anywhere else closes it. Below the panel, so a click on
+                a row still reaches the row. */}
+            <button
+              type="button"
+              className="fixed inset-0 z-[999] cursor-default"
+              aria-label="Close menu"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              role="menu"
+              /* Any click inside closes it: every row here either fires an
+                 action or opens a dialog, and either way the menu is done. */
+              onClick={() => setOpen(false)}
+              style={menuStyle}
+              className="z-[1000] flex flex-col gap-0.5 overflow-y-auto rounded-xl border border-border-light bg-white p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
+            >
+              {children}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
