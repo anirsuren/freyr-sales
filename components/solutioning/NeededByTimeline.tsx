@@ -227,9 +227,19 @@ function Marker({
 }) {
   return (
     <div className="absolute z-10" style={{ left, top: 0 }}>
+      {/* SOLID, NOT A TINT (Anir, Sep 1: "the icons are transparent bro they
+          cant be like that").
+
+          The circle was a 12%-alpha wash of the hue with the icon drawn in the
+          full hue on top — and the rail line runs THROUGH this spot, so the
+          blue bar showed straight through the fill and muddied the glyph. It
+          read as a half-erased icon rather than a marker.
+
+          A solid disc with a white glyph, the way every other icon tile in the
+          app is drawn, and the rail can no longer come through it. */}
       <span
         className="absolute grid h-[22px] w-[22px] -translate-x-1/2 place-items-center rounded-full ring-2 ring-white"
-        style={{ top: RAIL_TOP - 8, background: `${hue}1F`, color: hue }}
+        style={{ top: RAIL_TOP - 8, background: hue, color: "#FFFFFF" }}
       >
         <Icon size={12} strokeWidth={2.4} />
       </span>
