@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { canAccessModule } from "@/lib/moduleAccess";
 import {
   markLeadConverted,
   readLeads,
@@ -29,7 +28,6 @@ export const dynamic = "force-dynamic";
  * hiding a nav item is a curtain, this is the lock.
  */
 async function closed(): Promise<NextResponse | null> {
-  const me = await getCurrentUser();
   return (await canOpenModule("/leads"))
     ? null
     : NextResponse.json({ error: "Not available on this account." }, { status: 403 });
