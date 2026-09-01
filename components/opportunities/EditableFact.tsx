@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,6 +35,7 @@ export function EditableFact({
   hint,
   stacked = false,
   canEdit,
+  asDialog = false,
   options,
   onSave,
   format,
@@ -45,6 +47,19 @@ export function EditableFact({
   kind?: FactKind;
   placeholder?: string;
   canEdit: boolean;
+  /**
+   * EDIT IT IN A DIALOG RATHER THAN IN PLACE.
+   *
+   * Anir, Aug 31, pointing at the deal's facts panel: "these edit buttons
+   * have to be like pop-ups when I click on them."
+   *
+   * In place is right where the value sits in a wide row with room to grow.
+   * In a narrow right-hand column it is not: the input replaces the number
+   * you were reading, in a space too small to type a date into, and the two
+   * tiny tick-and-cross buttons beside it are a 24px target each. Opt-in per
+   * caller, so the pages that read well in place keep reading well in place.
+   */
+  asDialog?: boolean;
   /** When present the field is a picker rather than a free input. */
   options?: { value: string; label: string }[];
   /** Returns nothing on success, or a message to show on failure. */
@@ -165,7 +180,7 @@ export function EditableFact({
       </div>
     );
 
-  if (stacked && !editing)
+  if (stacked && (!editing || asDialog))
     return (
       <div className="min-w-0">
         <p className="text-[11.5px] leading-4 text-text-tertiary">{label}</p>
@@ -194,8 +209,89 @@ export function EditableFact({
         {hint && (
           <p className="truncate text-[11px] leading-4 text-text-tertiary">{hint}</p>
         )}
-        {error && (
+        {error && !editing && (
           <p className="text-[11px] font-semibold text-[color:#DC2626]">{error}</p>
+        )}
+        {asDialog && editing && (
+          <Modal
+            open
+            onClose={() => {
+              setDraft(value);
+              setEditing(false);
+            }}
+            title={label}
+          >
+            <div className="space-y-4">
+              {options ? (
+                <select
+                  autoFocus
+                  value={draft}
+                  disabled={busy}
+                  onChange={(e) => setDraft(e.target.value)}
+                  className="h-10 w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                >
+                  {options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  autoFocus
+                  value={draft}
+                  disabled={busy}
+                  type={kind === "date" ? "date" : "text"}
+                  inputMode={
+                    kind === "money" || kind === "percent" ? "numeric" : undefined
+                  }
+                  onChange={(e) =>
+                    setDraft(
+                      kind === "money" || kind === "percent"
+                        ? e.target.value.replace(/[^0-9]/g, "")
+                        : e.target.value
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void commit();
+                  }}
+                  placeholder={placeholder}
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                />
+              )}
+              {hint && (
+                <p className="text-[12px] text-text-secondary">{hint}</p>
+              )}
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 text-[12.5px] text-error">{error}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(value);
+                      setEditing(false);
+                    }}
+                    className="cursor-pointer rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void commit()}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {busy ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Check size={14} strokeWidth={2.4} />
+                    )}
+                    {busy ? "Saving…" : "Save"}
+                  </button>
+                </span>
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
     );
