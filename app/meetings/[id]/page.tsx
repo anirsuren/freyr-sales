@@ -11,6 +11,25 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
+/* THE TAB HAS TO SAY WHICH MEETING. Without this every meeting was just
+   "Freyr Sales Intelligence" in the tab strip, the history and any bookmark —
+   open three at once and they are indistinguishable. Every other detail page
+   in the app names its record; these two shipped last and never got it. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const state = await readMeetings().catch(() => null);
+  const meeting = state?.meetings.find((m) => m.id === id);
+  return {
+    title: meeting
+      ? `${meeting.ref}${meeting.title ? ` ${meeting.title}` : ""} · Meetings`
+      : "Meeting",
+  };
+}
+
 export default async function MeetingPage({
   params,
 }: {

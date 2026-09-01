@@ -13,6 +13,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/* Same as the meeting page beside it: the tab said "Freyr Sales Intelligence"
+   for every request, so a row of open requests was a row of identical tabs. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const state = await readSolutioning().catch(() => null);
+  const request = state?.requests.find((r) => r.id === id);
+  return {
+    title: request
+      ? `${request.ref}${request.title ? ` ${request.title}` : ""} · Solutioning`
+      : "Solution request",
+  };
+}
+
 /** One request: the four document tabs, the people on it, and its story. */
 export default async function SolutioningRequestPage({
   params,
