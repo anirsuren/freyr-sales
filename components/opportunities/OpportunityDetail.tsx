@@ -8,6 +8,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
 import { EditableFact } from "./EditableFact";
 import { EditDealDialog } from "./EditDealDialog";
+import { AddToBandButton } from "./AddToBandButton";
 import { DEAL_TYPES, OPPORTUNITY_STATUSES, REVENUE_TYPES } from "@/lib/opportunitiesShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
@@ -174,6 +175,7 @@ export function OpportunityDetail({
             if (customerId) params.set("customer", customerId);
             router.push(`/solutioning?${params.toString()}`);
           }}
+          onCreated={() => router.refresh()}
           onSave={saveField}
         />
       )}
@@ -571,6 +573,21 @@ export function OpportunityDetail({
             forceKey={tab}
             company={deal.customer}
             bands={bands}
+            /* An add button in every tab, beside the way out to the module.
+               The tab that tells you there are none is the place you look for
+               the way to make one. */
+            bandActions={Object.fromEntries(
+              bands.map((b) => [
+                b.key,
+                <AddToBandButton
+                  key={b.key}
+                  bandKey={b.key}
+                  label={b.label}
+                  opportunityId={deal.id}
+                  customerId={customerId}
+                />,
+              ])
+            )}
             emptyLine="Nothing is connected to this deal yet."
           />
         )}
