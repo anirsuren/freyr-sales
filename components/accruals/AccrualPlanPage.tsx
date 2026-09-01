@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Coins, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -200,22 +200,49 @@ export function AccrualPlanPage({
         )}
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile icon={Coins} label="Contract value" value={money(target)} sub="what is being spread" />
-        <StatTile
-          icon={Sparkles}
-          label="Planned across the months"
-          value={money(planned)}
-          sub={`${lines.length} ${lines.length === 1 ? "month" : "months"}`}
-        />
-        <StatTile
-          icon={Coins}
-          label={off === 0 ? "It adds up" : off > 0 ? "Over by" : "Short by"}
-          value={off === 0 ? "✓" : money(Math.abs(off))}
-          color={off === 0 ? "#1A7A35" : "#B45309"}
-          warn={off !== 0}
-          sub={off === 0 ? "months match the contract" : "months do not match the contract"}
-        />
+      {/* ONE LINE, NOT THREE CARDS (Anir, Sep 1: "you can just significantly
+          make this UI look a lot better... I don't know what this is").
+
+          The three tiles said one fact three times: the contract is $150K,
+          the months come to $150K, and — as a third card, with a tick — that
+          those two match. Three restatements of a sum, taking a quarter of
+          the screen above the thing you actually came to edit. It is one
+          sentence, and the only part worth a colour is the part where the two
+          numbers DISAGREE. */}
+      <div
+        className={cn(
+          "mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-4 py-3",
+          off === 0
+            ? "border-border-light bg-white"
+            : "border-[rgba(180,83,9,0.3)] bg-[rgba(180,83,9,0.05)]"
+        )}
+      >
+        <span className="flex items-baseline gap-2">
+          <span className="text-[11.5px] text-text-tertiary">Contract</span>
+          <b className="text-[16px] tnum text-text-primary">{money(target)}</b>
+        </span>
+        <span className="text-text-tertiary" aria-hidden="true">
+          &rarr;
+        </span>
+        <span className="flex items-baseline gap-2">
+          <span className="text-[11.5px] text-text-tertiary">
+            Planned over {lines.length}{" "}
+            {lines.length === 1 ? "month" : "months"}
+          </span>
+          <b className="text-[16px] tnum text-text-primary">{money(planned)}</b>
+        </span>
+        <span className="flex-1" />
+        {off === 0 ? (
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:#1A7A35]">
+            <Check size={15} strokeWidth={2.6} />
+            The months add up
+          </span>
+        ) : (
+          <span className="text-[13px] font-semibold text-[color:#B45309]">
+            {off > 0 ? "Over by" : "Short by"} {money(Math.abs(off))} &mdash;
+            the months do not add up to the contract
+          </span>
+        )}
       </div>
 
       <div className="mt-5">

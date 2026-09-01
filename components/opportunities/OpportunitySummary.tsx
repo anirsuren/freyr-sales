@@ -231,6 +231,7 @@ export function OpportunitySummary({
   offeringNameFor,
   onOpenDeal,
   spread,
+  toolbar,
 }: {
   deals: Opportunity[];
   order: SummaryDimension[];
@@ -241,6 +242,19 @@ export function OpportunitySummary({
   offeringNameFor: (deal: Opportunity) => string;
   /** The deal's own page. The summary itself never unfolds one — see below. */
   onOpenDeal: (id: string) => void;
+  /**
+   * A CONTROL THAT BELONGS ON THE VIEW ROW.
+   *
+   * Anir, Sep 1: "You don't need to say how the revenue accrues. Just
+   * literally put the view stuff at the top in line with the quarterly
+   * dropdown, and then it's just that simple."
+   *
+   * The accruals page had a heading, and under it a row of grouping chips,
+   * and off to the right of the heading a timeline picker — three tiers of
+   * chrome above one table, when the chips and the picker are the same kind
+   * of thing: how you want this table cut. They share a line now.
+   */
+  toolbar?: React.ReactNode;
   /**
    * HOW ONE DEAL'S MONEY LANDS ACROSS PERIODS, when it does not all land at
    * once. The pipeline puts a deal's whole figure in the period its closure
@@ -590,12 +604,17 @@ export function OpportunitySummary({
 
   return (
     <div>
-      <DimensionStack
-        order={order}
-        onReorder={onReorder}
-        label={DIMENSION_LABEL}
-        color={DIMENSION_COLOR}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <DimensionStack
+            order={order}
+            onReorder={onReorder}
+            label={DIMENSION_LABEL}
+            color={DIMENSION_COLOR}
+          />
+        </div>
+        {toolbar && <div className="shrink-0">{toolbar}</div>}
+      </div>
 
       {grand.entered === 0 ? (
         <section className="rounded-xl border border-border-light bg-white px-5 py-8 text-center shadow-card">
@@ -610,8 +629,21 @@ export function OpportunitySummary({
         </section>
       ) : (
         <>
+          {/* THINNER WHEN IT IS CLOSED (Anir, Sep 1: "can you make sure it's
+              a lot thinner? It does not need to be that thick").
+
+              Closed, this is a one-line summary and a chevron, and it was
+              wearing 20px of padding top and bottom plus a two-line stack — a
+              90px band whose whole job is to say "the chart is down here if
+              you want it". Open, the padding earns its keep, so it comes back
+              only then. */}
           {chart.length > 0 && (
-            <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+            <section
+              className={cn(
+                "rounded-xl border border-border-light bg-white shadow-card transition-[padding]",
+                chartOpen ? "p-5" : "px-4 py-2.5"
+              )}
+            >
               {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
                   show the graph thing, just make it a drop-down like you do
                   this somewhere else"). A labelled button beside the heading
@@ -625,12 +657,33 @@ export function OpportunitySummary({
                 aria-expanded={chartOpen}
                 className="group flex w-full cursor-pointer items-start justify-between gap-3 text-left"
               >
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                    <TrendingUp size={15} strokeWidth={2} className="text-blue-primary" />
+                <span
+                  className={cn(
+                    "min-w-0",
+                    /* Closed, the title and its figure sit on ONE line; the
+                       stacked version is what made the strip tall. */
+                    !chartOpen && "flex flex-wrap items-baseline gap-x-2.5"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 font-semibold text-text-primary",
+                      chartOpen ? "text-[15px]" : "text-[13.5px]"
+                    )}
+                  >
+                    <TrendingUp
+                      size={chartOpen ? 15 : 14}
+                      strokeWidth={2}
+                      className="text-blue-primary"
+                    />
                     Where this money lands
                   </span>
-                  <span className="mt-0.5 block text-[12.5px] text-text-secondary">
+                  <span
+                    className={cn(
+                      "text-[12.5px] text-text-secondary",
+                      chartOpen ? "mt-0.5 block" : "inline"
+                    )}
+                  >
                     {money(grand.total)}{" "}
                     {spread ? "accruing" : `of ${measureLabel}`} across{" "}
                     {chart.length} {chart.length === 1 ? "period" : "periods"}

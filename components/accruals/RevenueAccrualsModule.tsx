@@ -945,26 +945,37 @@ export function RevenueAccrualsModule({
                 Deals with no plan contribute nothing and are counted in the
                 tile above, rather than padding a total nobody has planned. */}
             <section className="mt-4 rounded-xl border border-border-light bg-white p-4 shadow-card">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-[15px] font-semibold text-text-primary">
-                  How the revenue accrues
-                </h2>
-                <ColorSelect
-                  value={accrTimeline}
-                  ariaLabel="Accrual timeline"
-                  onChange={(v) => setAccrTimeline(v as Timeline)}
-                  minWidth={150}
-                  dense
-                  collapsible={false}
-                  className="w-[150px] shrink-0"
-                  options={TIMELINES.map((t) => ({
-                    value: t.key,
-                    label: t.label,
-                    color: "#7C3AED",
-                  }))}
-                />
-              </div>
+              {/* NO HEADING (Anir, Sep 1: "You don't need to say how the
+                  revenue accrues. Just literally put the view stuff at the top
+                  in line with the quarterly dropdown, and then it's just that
+                  simple"). The page is called Revenue Accruals and the table
+                  is the only thing in the card; a heading saying so again is
+                  a third tier of chrome over one table. The picker moves onto
+                  the chips' own row, where it belongs — both answer "how do
+                  you want this cut". */}
               <OpportunitySummary
+                toolbar={
+                  <ColorSelect
+                    value={accrTimeline}
+                    ariaLabel="Accrual timeline"
+                    onChange={(v) => setAccrTimeline(v as Timeline)}
+                    /* THE ARROW SAT MILES FROM THE WORD (Anir, Sep 1: "the
+                       dropdown arrow on the right side looks a little bit
+                       weird"). A fixed 150px trigger around a nine-letter
+                       label leaves the chevron floating at the far edge with a
+                       lake of white between them, which reads as a broken
+                       control rather than a tight one. It sizes to its own
+                       label now. */
+                    dense
+                    collapsible={false}
+                    className="shrink-0"
+                    options={TIMELINES.map((t) => ({
+                      value: t.key,
+                      label: t.label,
+                      color: "#7C3AED",
+                    }))}
+                  />
+                }
                 deals={opportunities}
                 order={accrDims}
                 onReorder={setAccrDims}
