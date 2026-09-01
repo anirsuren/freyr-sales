@@ -4,37 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
-  LayoutDashboard,
-  FilePlus2,
-  Building2,
-  Database,
-  Columns3,
-  CalendarClock,
-  Contact,
   Package,
-  Settings,
   Building,
   User,
   Sparkles,
   Bot,
   Rocket,
   Zap,
-  Boxes,
-  UsersRound,
-  Gauge,
-  FileBarChart,
-  ChartColumnBig,
-  Radar,
-  Megaphone,
-  PhoneCall,
-  ListChecks,
-  Rss,
-  Bell,
-  Target,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { canAccessModule } from "@/lib/moduleAccess";
+import { canAccessModuleWith } from "@/lib/moduleAccess";
+import type { Access } from "@/lib/privileges";
+import { ALL_NAV_ITEMS, PALETTE_ONLY_ITEMS } from "./navItems";
 import { isOfferingsReleasePath } from "@/lib/release";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -42,37 +24,15 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
-// KEEP THIS THE SAME LIST THE SIDEBAR SHOWS (found Aug 16: the rail offered
-// eight modules in real mode and search could jump to two). Every module a
-// person can click in the rail has to be typeable here, or "jump to a page"
-// is a promise the box does not keep. Both surfaces are filtered by the same
-// release gate below, so a page appears here exactly when it appears there.
+// THE RAIL'S OWN LIST, not a copy of it (components/layout/navItems).
+//
+// The copy that used to live here is why this broke twice. Every module a
+// person can click in the rail has to be typeable here, or "jump to a page" is
+// a promise the box does not keep — and a second list means the promise breaks
+// silently, one module at a time, as things ship.
 const NAV: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Agent", href: "/agent", icon: Bot },
-  // Offerings near the top, consistent with the offerings-first sidebar order.
-  { label: "Offerings", href: "/offerings", icon: Package },
-  { label: "FDL Components", href: "/components", icon: Boxes },
-  { label: "New Session", href: "/intake", icon: FilePlus2 },
-  { label: "Sessions", href: "/sessions", icon: CalendarClock },
-  { label: "Pipeline", href: "/pipeline", icon: Columns3 },
-  { label: "Forecast", href: "/forecast", icon: Target },
-  { label: "Customers", href: "/customers", icon: Building2 },
-  { label: "Contacts", href: "/contacts", icon: Contact },
-  { label: "Team", href: "/team", icon: UsersRound },
-  { label: "Goals", href: "/performance", icon: Gauge },
-  { label: "Reports", href: "/reports", icon: FileBarChart },
-  { label: "Market Intel", href: "/market-intel", icon: Radar },
-  { label: "Sequences", href: "/sequences", icon: Zap },
-  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
-  { label: "Voice agents", href: "/voice", icon: PhoneCall },
-  { label: "Tasks", href: "/tasks", icon: ListChecks },
-  { label: "Analytics", href: "/analytics", icon: ChartColumnBig },
-  { label: "Activity", href: "/activity", icon: Rss },
-  { label: "Notifications", href: "/notifications", icon: Bell },
-  { label: "Admin", href: "/admin", icon: Database },
-  { label: "Service Catalog", href: "/services", icon: Package },
-  { label: "Settings", href: "/settings", icon: Settings },
+  ...ALL_NAV_ITEMS,
+  ...PALETTE_ONLY_ITEMS,
 ];
 
 // Agent commands runnable from anywhere (V9 #21). "nav" items jump; "run" items
@@ -127,6 +87,7 @@ export function CommandPalette({
   anchored = false,
   offeringsOnly = false,
   customersReleased = false,
+  moduleAccess = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -134,6 +95,8 @@ export function CommandPalette({
   anchored?: boolean;
   offeringsOnly?: boolean;
   customersReleased?: boolean;
+  /** This person's resolved module map — the same one the sidebar filters on. */
+  moduleAccess?: Record<string, Access> | null;
 }) {
   const router = useRouter();
   const me = useCurrentUser();
@@ -261,15 +224,16 @@ export function CommandPalette({
         (n) =>
           // A BD Member must not be able to jump to an Owner-only module
           // from search either (Freyr, Aug 12).
-          // ONE ANSWER FOR "IS THIS RELEASED", the same one the sidebar asks.
-          // This used to be a hand-rolled prefix test that knew only about
-          // offerings and customers, which is precisely the drift lib/release
-          // exists to stop — the rail had graduated six more modules into real
-          // mode and search never heard about it.
-          canAccessModule(n.href, me.role) &&
+          // THE SAME TWO QUESTIONS THE SIDEBAR ASKS, asked the same way.
+          // The access half used to be canAccessModule, which answers from the
+          // ROLE alone — so a rep whose privileges opened Customers, Reports,
+          // FDL Components and Market Intel saw all four in the rail and could
+          // not type any of them. The privilege table is the thing in charge
+          // (Suren, Aug 29), so search has to read it too.
+          canAccessModuleWith(n.href, me.role, moduleAccess) &&
           (!offeringsOnly || isOfferingsReleasePath(n.href))
       ),
-    [offeringsOnly, q, me.role]
+    [offeringsOnly, q, me.role, moduleAccess]
   );
 
   const agentMatches = useMemo(

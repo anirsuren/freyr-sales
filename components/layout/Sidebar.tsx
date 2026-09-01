@@ -4,32 +4,13 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  FileSignature,
-  CalendarRange,
-  UserPlus,
   FolderOpen,
-  Radar,
-  LayoutDashboard,
   CalendarClock,
-  Columns3,
-  Briefcase,
   Building2,
-  Contact,
   UsersRound,
-  ChartColumnBig,
-  FileBarChart,
-  Rss,
-  ListChecks,
-  Zap,
-  Target,
-  Package,
-  Sparkles,
-  Megaphone,
-  PhoneCall,
   PanelLeftClose,
   PanelLeftOpen,
   LucideIcon,
-  Boxes,
   Gauge,
   ShieldCheck,
   CircleUserRound,
@@ -44,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
-import { canAccessModule, canAccessModuleWith } from "@/lib/moduleAccess";
+import { canAccessModuleWith } from "@/lib/moduleAccess";
+import { ALL_NAV_ITEMS } from "./navItems";
 import type { Access } from "@/lib/privileges";
 import {
   useCurrentUser,
@@ -59,47 +41,6 @@ import { userScopedStorageKey } from "@/lib/userIdentity";
 // offerings-first ("offerings is module #1; I want to start with offerings; a
 // sales guy comes in and looks at the offer"). The repository of what we sell
 // shouldn't be buried below pipeline/forecast/customers.
-const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/agent", label: "Agent", icon: Sparkles },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/offerings", label: "Offerings", icon: Package },
-  { href: "/components", label: "FDL Components", icon: Boxes },
-  { href: "/pipeline", label: "Pipeline", icon: Columns3 },
-  { href: "/forecast", label: "Forecast", icon: Target },
-  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
-  // Requests for presentations, submissions and meetings — sales asks, the
-  // Solutioning Member fulfils (Suren, Aug 24). Sits by Opportunities because
-  // that is what most requests are against.
-  { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
-  /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes
-     an opportunity, an opportunity plans its accrued revenue, and a contract
-     is where sales closes it. All three are admin-only for now
-     (lib/moduleAccess NEW_MODULES_ADMIN_ONLY). */
-  { href: "/leads", label: "Leads", icon: UserPlus },
-  { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange },
-  { href: "/contracts", label: "Contracts", icon: FileSignature },
-  { href: "/customers", label: "Customers", icon: Building2 },
-  { href: "/contacts", label: "Contacts", icon: Contact },
-  { href: "/team", label: "Team", icon: UsersRound },
-  { href: "/sessions", label: "Sessions", icon: CalendarClock },
-  { href: "/sequences", label: "Sequences", icon: Zap },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/voice", label: "Voice agents", icon: PhoneCall },
-  { href: "/tasks", label: "Tasks", icon: ListChecks },
-  { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
-  { href: "/reports", label: "Reports", icon: FileBarChart },
-  /* Suren, Aug 25: "we are calling it Performance but I don't want to call
-     it performance — it's a goal view, the view is based on goals, it's
-     actually Goals." The URL stays /performance so every bookmark, deep
-     link and shared goal URL keeps working; /goals redirects here. */
-  { href: "/performance", label: "Goals", icon: Gauge },
-  { href: "/market-intel", label: "Market Intel", icon: Radar },
-  { href: "/activity", label: "Activity", icon: Rss },
-  // Running the workspace — user groups and system status. Its own page in
-  // the nav, not buried in the account menu (Anir, Aug 12: "there has to be
-  // an admin tab, like a page").
-  { href: "/admin", label: "Admin", icon: ShieldCheck },
-];
 
 // Release gating (Suren): the first Freyr rollout shows ONLY production-ready
 // modules — everything else stays hidden until it's released.

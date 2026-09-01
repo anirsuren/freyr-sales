@@ -15,6 +15,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
+import type { Access } from "@/lib/privileges";
 import {
   groupByUrgency,
   NOTIF_READ_KEY,
@@ -53,6 +54,7 @@ export function TopBar({
   offeringsOnly = false,
   customersReleased = false,
   feedbackAction,
+  moduleAccess = null,
 }: {
   onMenuClick?: () => void;
   onAgentToggle?: () => void;
@@ -60,6 +62,8 @@ export function TopBar({
   offeringsOnly?: boolean;
   customersReleased?: boolean;
   feedbackAction?: ReactNode;
+  /** Passed straight through to the palette so search and the rail agree. */
+  moduleAccess?: Record<string, Access> | null;
 } = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -361,6 +365,7 @@ export function TopBar({
             anchored
             offeringsOnly={offeringsOnly}
             customersReleased={customersReleased}
+            moduleAccess={moduleAccess}
         />
       </div>
 

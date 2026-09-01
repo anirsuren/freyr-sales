@@ -469,6 +469,7 @@ export function AppShell({
           />
           <div className="flex h-full min-w-0 flex-1 flex-col">
             <TopBar
+              moduleAccess={moduleAccess}
               offeringsOnly={offeringsOnly}
               customersReleased={customersReleased}
               onMenuClick={() => setMobileNavOpen(true)}
