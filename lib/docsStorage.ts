@@ -66,41 +66,6 @@ function configFromEnv(): DocsConfig | null {
   };
 }
 
-/**
- * WHERE THIS ENVIRONMENT'S FILES GO, WHEN THE CREDENTIALS ARE SHARED.
- *
- * Anir, Sep 1: "dev and production both have the same doc storage, which is
- * wrong."
- *
- * He is right, and the reason is structural. dev and prod are two ECS accounts
- * in front of ONE Supabase project, so they read one `docs-storage-config` row
- * and therefore one namespace: every dev test upload has been landing in the
- * production `freyrsales/freyrsales` store.
- *
- * The env path above already beats that row — but only ALL AT ONCE. It needs
- * five credential vars before it returns anything, so pointing dev at a
- * different bucket meant copying the client id, secret, token URL and scope
- * onto the dev task definition too: four secrets duplicated to change one
- * word, and two places to rotate them.
- *
- * These two override the namespace on top of WHICHEVER source supplied the
- * credentials. Set DOCS_BUCKET (and/or DOCS_MODULE_ID) on the dev task
- * definition alone and dev writes somewhere else, with prod untouched and no
- * secret copied anywhere.
- *
- * INERT UNTIL SOMEBODY SETS THEM. With neither var present this returns the
- * config exactly as it arrived, so nothing changes in any environment today.
- */
-function withNamespaceOverride(cfg: DocsConfig): DocsConfig {
-  const e = process.env;
-  if (!e.DOCS_BUCKET && !e.DOCS_MODULE_ID) return cfg;
-  return {
-    ...cfg,
-    moduleId: e.DOCS_MODULE_ID || cfg.moduleId,
-    bucket: e.DOCS_BUCKET || cfg.bucket,
-  };
-}
-
 declare global {
   // eslint-disable-next-line no-var
   var __FREYR_DOCS_CONFIG__: DocsConfig | null | undefined;
@@ -135,11 +100,11 @@ async function docsConfig(): Promise<DocsConfig | null> {
           .eq("id", CONFIG_ROW)
           .maybeSingle();
         const cfg = isDocsConfig(data?.catalog)
-          ? withNamespaceOverride({
+          ? {
               ...(data.catalog as DocsConfig),
               moduleId: (data.catalog as DocsConfig).moduleId || "freyrsales",
               bucket: (data.catalog as DocsConfig).bucket || "freyrsales",
-            })
+            }
           : null;
         if (cfg) globalThis.__FREYR_DOCS_CONFIG__ = cfg;
         else globalThis.__FREYR_DOCS_CONFIG_LOAD__ = undefined;
