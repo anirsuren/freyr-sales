@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { fmtWhen } from "@/lib/whenLabel";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { isFullName } from "@/lib/fullName";
 import { useEffect, useRef, useState } from "react";
@@ -15,8 +13,8 @@ import {
   detectTimeZone,
   formatAbsolute,
 } from "@/lib/timeZone";
-import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, PencilRuler,
-  UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
+import { Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, PencilRuler,
+  UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PasskeySetup } from "@/components/settings/PasskeySetup";
 import { SsoCard } from "@/components/settings/SsoCard";
@@ -38,7 +36,6 @@ import {
   type UserIdentity,
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
-import { MemberPresence } from "@/components/presence/PresenceDot";
 
 /**
  * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
@@ -47,17 +44,6 @@ import { MemberPresence } from "@/components/presence/PresenceDot";
  * this app, and a role is an identity. Admin is the widest grant, so it is the
  * one that has to be unmistakable at a glance.
  */
-const INVITE_ROLE_OPTIONS: ColorOption[] = [
-  { value: "BD Member", label: "BD Member", color: "#0071E3", icon: UserRound },
-  { value: "Owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
-  {
-    value: "Solutioning Member",
-    label: "Solutioning Member",
-    color: "#DB2777",
-    icon: PencilRuler,
-  },
-  { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
-];
 
 // The directory's role control for admins — same three identities, keyed by
 // the STORED role values the access API expects.
@@ -76,7 +62,15 @@ const ROLE_CHANGE_OPTIONS: ColorOption[] = [
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
   { key: "profile", label: "Profile", description: "Identity and preferences", icon: UserRound },
-  { key: "team", label: "Team", description: "Members and invitations", icon: UsersRound },
+  /* NO TEAM TAB IN SETTINGS. Anir, Sep 2: "I'll just remove the team page...
+     if you just shift all of this to the main admin module that you have,
+     that will be good, right? If you merge the two, basically."
+
+     It listed the same people from the same endpoint as Admin > Team members,
+     so the workspace had two member directories that could disagree. Status,
+     last seen and signed up now sit on the admin rows, next to the privileges
+     those people hold, which is where somebody looking a colleague up is
+     already standing. */
   { key: "notifications", label: "Notifications", description: "Alerts and digests", icon: Bell },
   { key: "integrations", label: "Integrations", description: "Connected systems", icon: PlugZap },
   { key: "access", label: "Access", description: "Approvals and roles", icon: KeyRound },
@@ -163,37 +157,6 @@ const SERVICE_LABELS: Record<string, string> = {
   email: "Email delivery",
 };
 
-type Member = { name: string; email: string; role: string; you?: boolean };
-
-/** "Just now" → "45m ago" → "7h ago" → "Yesterday" → "4 days ago" → "Jul 29". */
-/** The day an account was created. A date, never "3 days ago": Saras asked for
- *  this to see WHEN people signed up, and a relative age answers a different
- *  question than the one the column is there for (change log #34, Aug 14). */
-function signUpLabel(iso: string | null | undefined): string {
-  if (!iso) return "Not recorded";
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return "Not recorded";
-  return at.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function lastSeenLabel(iso: string | null | undefined): string {
-  if (!iso) return "Not yet";
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "Not yet";
-  const minutes = Math.round((Date.now() - then) / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 type AccessRole = "admin" | "bd_owner" | "bd_member" | "sol_member";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null; joinedAt: string | null }[];
@@ -484,6 +447,9 @@ export function SettingsTabs({
           ? "Solutioning Member"
           : "BD Member";
   const [role, setRole] = useState(authenticatedRoleLabel);
+  /* `sso` itself is only read by the SSO card's own render; setSso is used by
+     the toggles. Lint flags the value as unused because of that split, which
+     is why it must not be deleted. */
   const [sso, setSso] = useState({
     provider: "Azure AD",
     connected: false,
@@ -500,29 +466,6 @@ export function SettingsTabs({
   // "admins should be able to make other people admins and change other
   // roles"). The server enforces the one hard rule — the workspace can never
   // be left without an active admin.
-  async function changeMemberRole(
-    member: { id: string; name: string; role: string },
-    nextRole: string
-  ) {
-    if (member.role === nextRole || accessBusy) return;
-    setAccessBusy(member.id);
-    try {
-      const response = await fetch("/api/settings/access", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "change_role", memberId: member.id, role: nextRole }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not change the role");
-      if (data.directory) setAccessDirectory(data.directory);
-      const label = ROLE_CHANGE_OPTIONS.find((o) => o.value === nextRole)?.label || nextRole;
-      toast(`${member.name} is now ${label}`);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Could not change the role", "error");
-    } finally {
-      setAccessBusy(null);
-    }
-  }
   const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
 
   const activeTab = visibleTabs.find((item) => item.key === tab) || visibleTabs[0];
@@ -922,72 +865,6 @@ export function SettingsTabs({
       );
     } finally {
       setPasswordResetBusy(false);
-    }
-  }
-  async function addMember() {
-    if (!canInvite) {
-      toast("Reps can't invite teammates: ask an admin or manager", "error");
-      return;
-    }
-    if (!isFullName(invite.name) || !invite.email) {
-      toast("Enter the full name, first and last, plus the email", "error");
-      return;
-    }
-    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Owner" ? "bd_owner" : invite.role === "Solutioning Member" ? "sol_member" : "bd_member";
-    setAccessBusy("invite");
-    try {
-      if (authConfig.approvalEnabled) {
-        const response = await fetch("/api/settings/access", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "invite",
-            name: invite.name.trim(),
-            email: invite.email,
-            role: accessRole,
-          }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Invite failed");
-        setAccessDirectory(data.directory);
-        const delivery = data.invitationDelivery?.emailResult as
-          | { ok?: boolean; skipped?: boolean; error?: string }
-          | undefined;
-        if (delivery?.ok && !delivery.skipped) {
-          toast(`Invitation emailed to ${invite.email}`);
-        } else {
-          toast(
-            delivery?.error
-              ? `Invitation created, but email failed: ${delivery.error}`
-              : "Invitation created, but email delivery is not configured",
-            "error"
-          );
-        }
-      } else {
-        setAccessDirectory((directory) => ({
-          ...directory,
-          invitations: [
-            {
-              id: `invite-${Date.now()}`,
-              name: invite.name.trim(),
-              email: invite.email.toLowerCase(),
-              role: accessRole,
-              expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
-              // The row the server is writing right now, shown before the
-              // refetch: you sent it, just then.
-              createdAt: new Date().toISOString(),
-              invitedBy: currentUser.name,
-            },
-            ...directory.invitations,
-          ],
-        }));
-        toast(`Demo invitation created for ${invite.email}`);
-      }
-      setInvite({ name: "", email: "", role: "BD Member" });
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Invite failed", "error");
-    } finally {
-      setAccessBusy(null);
     }
   }
 
@@ -1394,163 +1271,9 @@ export function SettingsTabs({
         </Card>
       )}
 
-      {tab === "team" && (
-        <div className="tab-panel stagger space-y-5">
-          {/* THE COUNTS BELOW ARE ADMIN-ONLY DATA. A rep never fetches the
-              directory (the endpoint refuses them), so this panel used to fall
-              back to its seed value and state, in large bold type, that the
-              company has one member (Anir, Aug 13: "this doesn't make sense…
-              where is everyone???"). Say what is actually true and send them to
-              the roster everyone can already see. */}
-          {authConfig.approvalEnabled && currentUser.role !== "admin" && (
-            <Card className="flex items-center justify-between gap-4 px-5 py-4">
-              <p className="text-[13px] leading-snug text-text-secondary">
-                Workspace membership is managed by an admin, so the counts and
-                the directory here are not visible to your account.
-                <br />
-                The full roster of everyone at Freyr is on the Team page.
-              </p>
-              <Link
-                href="/team"
-                className="shrink-0 rounded-lg bg-blue-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
-              >
-                Open Team
-              </Link>
-            </Card>
-          )}
-
-          <div className={cn(
-            "grid grid-cols-3 gap-3",
-            authConfig.approvalEnabled && currentUser.role !== "admin" && "hidden"
-          )}>
-            {[
-              { label: "Active members", value: accessDirectory.members.filter((member) => member.active).length, icon: UsersRound, color: "text-blue-primary bg-blue-light" },
-              { label: "Awaiting approval", value: accessDirectory.requests.length, icon: Clock3, color: "text-warning bg-warning/10" },
-              { label: "Open invitations", value: accessDirectory.invitations.length, icon: Mail, color: "text-success bg-success/10" },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <Card key={label} className="flex items-center gap-3 px-4 py-3.5">
-                <span className={cn("flex h-9 w-9 items-center justify-center rounded-md", color)}>
-                  <Icon size={16} />
-                </span>
-                <span>
-                  <span className="block text-[22px] font-bold leading-none text-text-primary tnum">{value}</span>
-                  <span className="mt-1 block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">{label}</span>
-                </span>
-              </Card>
-            ))}
-          </div>
-
-          {/* THE INVITE FORM MOVED TO /team (Anir, Aug 12: "this should not be
-              in the settings page. This should be in the team page"). Hiring
-              happens where you look at the people; what stays here is the
-              record of who is already in and who is still pending. */}
-
-          <Card className={cn(
-            "overflow-hidden p-0",
-            authConfig.approvalEnabled && currentUser.role !== "admin" && "hidden"
-          )}>
-            <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">
-              <div>
-                <h2 className="text-[14px] font-semibold text-text-primary">Member directory</h2>
-                <p className="text-[11px] text-text-tertiary">Active identity, role, and recent access.</p>
-              </div>
-              {/* The tile above says "Active members 24" and this said "25
-                  people": two counts of the same thing, on one screen, with
-                  nothing to explain the gap (Anir, Aug 14). Name the extra. */}
-              <span className="text-[11px] font-medium text-text-tertiary">
-                {(() => {
-                  const total = accessDirectory.members.length;
-                  const suspended = accessDirectory.members.filter((m) => !m.active).length;
-                  const noun = total === 1 ? "person" : "people";
-                  if (!suspended) return `${total} ${noun}`;
-                  return `${total} ${noun}, ${suspended} suspended`;
-                })()}
-              </span>
-            </div>
-            <div className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px_130px] border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              <span>Member</span><span>Role</span><span>Status</span><span>Last seen</span><span>Signed up</span>
-            </div>
-            <ul className="divide-y divide-border-light">
-              {accessDirectory.members.map((member) => (
-                <li key={member.id} className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px_130px] items-center px-5 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
-                    <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
-                  </div>
-                  {/* READ-ONLY HERE. Changing a role is running the workspace,
-                      so the control lives on the Admin page beside User groups
-                      (Anir, Aug 15: "It should not be in the settings. It
-                      doesn't make any sense"). This stays a roster. */}
-                  <RoleTag role={member.role} size="sm" className="w-fit" />
-                  {/* STATUS IS PRESENCE, NOT THE ACCOUNT FLAG. This column
-                      printed "Active" on every row, because `active` only means
-                      the account is not suspended — so eight people who were
-                      plainly not all at their desks read identically (Anir,
-                      Aug 7: "You have to know who is online... obviously
-                      they're not all online"). A suspended account still says
-                      so: that outranks where the person is. */}
-                  <MemberPresence active={member.active} lastSeenAt={member.lastSeenAt} />
-                  {/* Human time, not an hour counter — "186 hours ago" means
-                      nothing; "Jul 30" does (Anir, Aug 6). Hover shows the
-                      exact moment, per the app-wide timestamp rule. */}
-                  <span
-                    className="text-[11px] text-text-tertiary"
-                    title={member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString() : undefined}
-                  >
-                    {lastSeenLabel(member.lastSeenAt)}
-                  </span>
-                  {/* WHEN THEY SIGNED UP (Saras, Aug 14, change log #34). The
-                      date was already loaded with the directory and shown on a
-                      person's own profile; it simply never reached the table
-                      an admin actually reads. Hover gives the exact moment,
-                      per the app-wide timestamp rule. */}
-                  <span
-                    className="text-[11px] text-text-tertiary"
-                    title={member.joinedAt ? new Date(member.joinedAt).toLocaleString() : undefined}
-                  >
-                    {signUpLabel(member.joinedAt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          {accessDirectory.invitations.length > 0 && (
-            <Card className="overflow-hidden p-0">
-              <div className="border-b border-border-light px-5 py-3.5"><h2 className="text-[14px] font-semibold text-text-primary">Pending invitations</h2></div>
-              <ul className="divide-y divide-border-light">
-                {accessDirectory.invitations.map((invitation) => (
-                  <li key={invitation.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                    <span className="min-w-0">
-                      <span className="block truncate text-[12.5px] font-medium text-text-primary">
-                        {invitation.email}
-                      </span>
-                      {/* Who sent it and when, because an invitation nobody
-                          can attribute is not much of an invitation (Anir,
-                          Aug 15: "I need to know who invited"). */}
-                      <span
-                        className="text-[10.5px] text-text-tertiary"
-                        suppressHydrationWarning
-                      >
-                        {invitation.invitedBy
-                          ? `Invited by ${invitation.invitedBy} · ${fmtWhen(invitation.createdAt)}`
-                          : `Sent ${fmtWhen(invitation.createdAt)}`}
-                        {" · expires "}
-                        {fmtWhen(invitation.expiresAt)}
-                      </span>
-                    </span>
-                    {/* The same role tag the directory above uses. This was
-                        amber, which in this app means "waiting" or "at risk",
-                        not the least privilege (Anir, Aug 15: "why is it red? You have to
-                        have consistent colors everywhere"). */}
-                    <RoleTag role={invitation.role} size="sm" className="shrink-0" />
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-        </div>
-      )}
+      {/* The Team panel that stood here moved to Admin > Team members on
+          Sep 2. Two directories of the same people, from the same
+          endpoint, was one too many. */}
 
       {tab === "notifications" && (
         <div className="tab-panel stagger space-y-4">

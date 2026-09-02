@@ -4,6 +4,7 @@ import { RolesGuide } from "@/components/admin/RolesGuide";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { cn } from "@/lib/utils";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -25,7 +26,37 @@ type Member = {
   role: string;
   active: boolean;
   accountType?: string;
+  /* ALREADY IN THE RESPONSE, NEVER RENDERED HERE. /api/settings/access has
+     always returned these; this screen simply did not declare them, so the
+     same facts were only readable on the Settings > Team page. */
+  lastSeenAt?: string | null;
+  joinedAt?: string | null;
 };
+
+/** "Just now", "3h ago", "Yesterday", then a date. Lifted verbatim from the
+ *  Settings page this screen absorbed, so the two never phrase it differently. */
+function lastSeenLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not yet";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "Not yet";
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Online is "seen inside the last five minutes", the same rule the Settings
+ *  directory used. */
+function isOnline(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return !Number.isNaN(t) && Date.now() - t < 5 * 60 * 1000;
+}
 
 export function MemberRoles() {
   const { toast } = useToast();
@@ -350,11 +381,46 @@ export function MemberRoles() {
                   </span>
                 );
               })()}
+              {/* STATUS, LAST SEEN AND SIGNED UP, ABSORBED FROM SETTINGS.
+                  Anir, Sep 2: "this is useful information about whether a
+                  member is online or offline, when they were last seen, and
+                  the date when they made their account. If you just shift all
+                  of this to the main admin module, that will be good... if you
+                  merge the two, basically."
+
+                  It was on Settings > Team, a second screen listing the same
+                  people from the same endpoint. One list of members now, in
+                  the place where their access is set. Hidden below xl so the
+                  row does not crush on a narrow window; the facts are still on
+                  the person's own record. */}
+              <span className="hidden shrink-0 items-center gap-1.5 text-[11.5px] xl:flex">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    isOnline(m.lastSeenAt) ? "bg-success" : "bg-border"
+                  )}
+                />
+                <span className={isOnline(m.lastSeenAt) ? "font-semibold text-success" : "text-text-tertiary"}>
+                  {isOnline(m.lastSeenAt) ? "Online" : "Offline"}
+                </span>
+              </span>
+              <span className="hidden w-[92px] shrink-0 text-[11.5px] text-text-tertiary xl:block">
+                {lastSeenLabel(m.lastSeenAt)}
+              </span>
+              <span className="hidden w-[92px] shrink-0 text-[11.5px] text-text-tertiary xl:block">
+                {m.joinedAt
+                  ? new Date(m.joinedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "Not recorded"}
+              </span>
               {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in split
                   view is it different from the table view? That's a huge
-                  problem"). The role dropdown sets the one value the database
-                  allows; this opens the ten privileges, which is where BO
-                  Owner — the one an offering owner actually needs — lives. */}
+                  problem"). This opens the ten privileges, which is where BO
+                  Owner, the one an offering owner actually needs, lives. */}
               <button
                 type="button"
                 onClick={() => setPrivFor(m)}
