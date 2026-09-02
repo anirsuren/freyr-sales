@@ -1,3 +1,4 @@
+import { Avatar } from "@/components/ui/Avatar";
 import { stampedAt } from "@/lib/performanceShared";
 
 /**
@@ -32,18 +33,19 @@ export function CreatedStamp({
   if (!who && !when) return null;
   return (
     <p
-      className={
+      className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 ${
         className ?? "text-[11.5px] text-text-tertiary"
-      }
+      }`}
     >
-      {verb}
+      <span>{verb}</span>
       {who ? (
         <>
-          {" by "}
+          <span>by</span>
+          <Avatar name={who} className="h-5 w-5 shrink-0 text-[9px]" />
           <span className="font-semibold text-text-secondary">{who}</span>
         </>
       ) : null}
-      {when ? `${who ? " on " : " "}${when}` : null}
+      {when ? <span>{`${who ? "on " : ""}${when}`}</span> : null}
     </p>
   );
 }

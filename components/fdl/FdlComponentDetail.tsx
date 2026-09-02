@@ -75,6 +75,7 @@ import {
   versionTone,
   withV,
 } from "@/components/fdl/FdlComponentsBrowser";
+import { AskFreyrButton } from "@/components/agent/AskFreyrButton";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
@@ -113,12 +114,16 @@ function slug(value: string) {
  * browser's stored "closed" disagree and React throws away the whole tree.
  */
 function useFold(key: string) {
-  const [open, setOpen] = useState(true);
+  /* SHUT UNTIL ASKED (Anir, Sep 2: "it should be closed by default").
+     Every section on this page opening at once made the component a wall of
+     text you had to scroll past to reach anything. Whatever somebody last
+     chose is still remembered, so a section they keep open stays open. */
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     try {
-      setOpen(localStorage.getItem(`freyr.fdl.fold.${key}`) !== "0");
+      setOpen(localStorage.getItem(`freyr.fdl.fold.${key}`) === "1");
     } catch {
-      /* private mode: sections just stay open */
+      /* private mode: sections just stay shut */
     }
   }, [key]);
   const toggle = () =>
@@ -914,10 +919,21 @@ export function FdlComponentDetail({
      be able to click anywhere on that") — a shut section is one header line,
      so it wears one header line's padding; the p-5 comes back when there is
      content under it. The click-anywhere half lives on the <section>s. */
+  /* THE HEADER HOLDS STILL. Anir has now raised this twice: Aug 27 ("if I
+     click on Features, it's moving. It should just stay still") and again on
+     Sep 2 ("when I click it, it's moving. You can't have that").
+
+     The cause was here. The card's own padding changed with the fold, p-5 open
+     against py-2.5 shut, so the band itself jumped 10px every time somebody
+     pressed it. The thing you clicked moved out from under the pointer.
+
+     Padding is constant now and the OPENED BODY carries the extra room
+     instead, so the header sits at exactly the same y whether the section is
+     open or shut. Only the colour of the rail changes. */
   const FOLD_CARD = (open: boolean) =>
     cn(
-      "rise-in rounded-xl border border-border-light bg-white shadow-card border-l-[3px]",
-      open ? "p-5 border-l-blue-primary" : "px-5 py-2.5 border-l-border-light cursor-pointer"
+      "rise-in rounded-xl border border-border-light bg-white shadow-card border-l-[3px] px-5 py-3.5",
+      open ? "border-l-blue-primary" : "border-l-border-light cursor-pointer"
     );
 
   /* THE THREE LONG SECTIONS FOLD (Anir, Aug 25: "the features section, the
@@ -927,6 +943,29 @@ export function FdlComponentDetail({
   const [featuresOpen, toggleFeatures] = useFold("features");
   const [customersOpen, toggleCustomers] = useFold("customers");
   const [compareOpen, toggleCompare] = useFold("compare");
+  /* The roadmap history folds the same way, and is remembered the same way, so
+     somebody who never looks at it stops seeing it open on every component. */
+  /* SHUT ON EVERY ARRIVAL, AND NOT REMEMBERED (Anir, Sep 2: "I literally
+     said, bro, it should be closed on a new page when I open up a new page. I
+     don't know why you keep opening it by default").
+
+     Deliberately NOT useFold. The other sections remember your choice, and
+     that memory is keyed per SECTION rather than per component, so opening the
+     history once on one component left it open on every component after it,
+     which is exactly what he kept landing on. A change log is a thing you go
+     looking for, not a thing you want greeting you on arrival, so this one
+     starts shut every time and only opens when asked. */
+  const [roadmapHistoryOpen, setRoadmapHistoryOpen] = useState(false);
+  const toggleRoadmapHistory = () => setRoadmapHistoryOpen((v) => !v);
+  /* THE HISTORY GETS THE SAME TWO VIEWS THE VERSIONS HAVE (Anir, Sep 2: "in a
+     similar way you have the version timeline, let's do a view where you can
+     see the roadmap version history in a timeline... I can choose in the top
+     right of the dropdown"). Remembered like the other view choice. */
+  const [roadmapView, setRoadmapView] = useStoredView<"list" | "timeline">(
+    "freyr.fdl.roadmapView",
+    "list",
+    ["list", "timeline"]
+  );
 
 
   /** ONE VERSION'S FULL CARD — header, features, files, customers,
@@ -1689,7 +1728,20 @@ export function FdlComponentDetail({
               ? "Back"
               : "All components"}
         </SmartBack>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
+        {/* IDENTITY LEFT, ACTIONS RIGHT, LIKE THE OFFERING PAGE.
+            Anir, Sep 2: "I don't like the delete button. Should it be at the
+            top right, or should it be next to the edit button?... I think the
+            edit button should be on the right side. Look at the offering page.
+            It should be something similar."
+
+            Everything used to run down the left in one column, so Delete sat
+            in the middle of a sentence about which offering the component
+            belongs to, next to an Add button, wearing the same size as both.
+            A destructive action reading as part of a sentence is how it gets
+            pressed by accident. The offering page keeps its actions in a
+            shrink-0 cluster on the right of the header, so this does too. */}
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
           <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>
           <FdlTypeChip type={component.type} />
@@ -1698,19 +1750,41 @@ export function FdlComponentDetail({
               <Rocket size={11} strokeWidth={2.2} /> Current {withV(current)}
             </span>
           )}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* Stays on the page and opens the shared assistant. A component is
+              not an offering, so it is asked in words rather than handed
+              through the offering context slot. */}
+          <AskFreyrButton
+            about={component.name}
+            prompt={`Tell me about the FDL component "${component.name}". What is it, which offerings is it part of, and what has changed on it recently?`}
+          />
           {canEdit && (
             <button
               type="button"
               aria-label="Rename component"
+              title="Rename this component"
               onClick={() => {
                 setNameDraft(component.name);
                 setRenaming(true);
               }}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
             >
-              <Pencil size={13} strokeWidth={2} />
+              <Pencil size={15} strokeWidth={1.9} />
             </button>
           )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteComponent(true)}
+              aria-label={`Delete ${component.name}`}
+              title={`Delete ${component.name}`}
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-light bg-white text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+            >
+              <Trash2 size={15} strokeWidth={1.9} />
+            </button>
+          )}
+        </div>
         </div>
         {/* WHO ADDED THIS COMPONENT, AND WHEN (Anir, Aug 23: "I need to see who
             created these FDL components, including the time"). Silent on the
@@ -1756,23 +1830,9 @@ export function FdlComponentDetail({
               Add to an offering
             </button>
           )}
-          {/* A COMPONENT YOU CAN MAKE IS A COMPONENT YOU CAN UNMAKE. The API
-              has had DELETE since it was written; nothing in the app ever
-              called it, so one typed in by mistake could only be removed by
-              somebody with the endpoint. Same shape as every other delete
-              here: red, named, and behind a confirm. */}
-          {canDelete && (
-            <button
-              type="button"
-              onClick={() => setConfirmDeleteComponent(true)}
-              aria-label={`Delete ${component.name}`}
-              title={`Delete ${component.name}`}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1 text-[12px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
-            >
-              <Trash2 size={12} strokeWidth={2.4} />
-              Delete
-            </button>
-          )}
+          {/* Delete moved up to the actions cluster in the header. It used to
+              sit here, inside a sentence about which offering this belongs to
+              and the same size as the Add button beside it. */}
         </div>
       </div>
 
@@ -2223,64 +2283,6 @@ export function FdlComponentDetail({
             }}
           />
           )}
-          {/* WHO CHANGED THIS ROADMAP, AND WHEN (product owner, Aug 20:
-              "Every time there is a change in road map it has to be versioned.
-              Just like how you version a document").
-              This is the roadmap people actually edit — the offering-level one
-              has had no editor since the tab was replaced — so the history has
-              to live here, next to the versions it records. */}
-          {(component.roadmap_versions?.length ?? 0) >= 0 && (
-            /* IT HAS TO LOOK LIKE SOMETHING YOU CLICK (Anir, Aug 23: "people
-               are not going to know they have to click on Roadmap version
-               history — it doesn't look like something you'd click on. Can
-               you make it more like a dropdown? That's what it is").
-
-               It was a line of grey text with an icon, indistinguishable from
-               the labels around it, so the whole change history sat one click
-               away behind something nobody would think to press. It wears the
-               app's dropdown clothes now: a bordered control with a chevron
-               that turns as it opens — the same shape every other foldable
-               section on this page uses. */
-            /* AND IT NEEDS AIR ABOVE IT (Anir, Aug 25: "the roadmap history is
-               literally touching the timeline"). The control carried only a
-               bottom margin, so it sat flush against the timeline's baseline
-               labels and read as part of the chart rather than as its own
-               thing to press. */
-            <details className="group mb-4 mt-5">
-              {/* OPEN LOOKS OPEN (Anir, Aug 27: "it's hard to see when I
-                  have the roadmap history on or off"). Closed: a plain white
-                  control. Open: filled blue, like every active toggle in the
-                  app — the chevron alone was the only difference, and nobody
-                  reads a chevron's direction at a glance. */}
-              <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary group-open:border-blue-primary group-open:bg-blue-light group-open:text-blue-primary [&::-webkit-details-marker]:hidden">
-                <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
-                Roadmap version history
-                <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary group-open:bg-white group-open:text-blue-primary">
-                  {component.roadmap_versions?.length
-                    ? `v${component.roadmap_versions[0].version}`
-                    : "No changes yet"}
-                </span>
-                <ChevronDown
-                  size={14}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  className="shrink-0 text-text-tertiary transition-transform duration-200 group-open:rotate-180"
-                />
-              </summary>
-              {/* ITS OWN ROOM, NOT THE SAME FLOOR AS THE VERSIONS.
-                  The history opened straight into the page, so its entries and
-                  the release cards below shared one background and one width
-                  and read as a single list of nine things. An inset panel with
-                  its own tint and its own sentence says plainly: this is what
-                  CHANGED, and the cards under it are what EXISTS. */}
-              <div className="mt-3 rounded-xl border border-border-light bg-surface/50 p-4">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  What changed on this roadmap
-                </p>
-                <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
-              </div>
-            </details>
-          )}
           {versionsView === "list" && (
           // ONE CARD PER VERSION. A divided list of text rows made every
           // version look like the same sentence repeated, with the open panel
@@ -2300,6 +2302,118 @@ export function FdlComponentDetail({
           )}
           </div>
         )}
+          {/* ONE CARD, LIKE FEATURES. NOT A PILL THAT REVEALS A BOX.
+              Anir, Sep 2: "look at the features in the dropdown right below.
+              It should literally be like that: when I press it, it should be
+              part of the same thing, not a separate thing."
+
+              It was a <details> whose summary was a small pill floating on the
+              page, and opening it dropped a separately bordered panel
+              underneath. Two containers for one idea, and the pill did not
+              look like it owned what appeared below it. Now it is a FOLD_CARD,
+              the same component the Features, Customers and Compare sections
+              use: the band IS the card's header, and its content opens inside
+              the same card.
+
+              AND IT SITS BELOW THE VERSIONS (Anir, Sep 2: "in both the views,
+              the roadmap version history has to be below the versions,
+              obviously"). It used to render between the timeline and the list,
+              so in list view the history of the roadmap appeared above the
+              versions it is a history OF. */}
+          <section
+            className={cn(FOLD_CARD(roadmapHistoryOpen), "mt-4")}
+            onClick={roadmapHistoryOpen ? undefined : toggleRoadmapHistory}
+          >
+            <div
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleRoadmapHistory();
+              }}
+              className="flex cursor-pointer select-none items-center justify-between gap-4"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <GitBranch
+                  size={15}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className="shrink-0 text-blue-primary"
+                />
+                <span className="text-[15px] font-semibold text-text-primary">
+                  Roadmap version history
+                </span>
+                <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-bold text-text-tertiary">
+                  {component.roadmap_versions?.length
+                    ? `v${component.roadmap_versions[0].version}`
+                    : "No changes yet"}
+                </span>
+                {/* Beside the heading, and it eats its own click so pressing
+                    the question mark does not fold the card underneath it.
+                    Never inside the toggle: InfoHint renders a button, and a
+                    button in a button fails hydration. */}
+                <span onClick={(e) => e.stopPropagation()}>
+                  <InfoHint text="Every time somebody changes this roadmap, the change is saved as a new version, the way a document keeps its drafts. This is the list of those changes: what was edited, who edited it, and what the roadmap said before they did. It is not the list of releases, that is the Versions above." />
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                {/* Only while the card is open: a view switch on a shut card
+                    switches something nobody can see. It eats its own clicks so
+                    picking a view does not fold the card under it. */}
+                {roadmapHistoryOpen && (component.roadmap_versions?.length ?? 0) > 0 && (
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ViewSelect
+                      value={roadmapView}
+                      onChange={setRoadmapView}
+                      tileValue="list"
+                      tableValue="timeline"
+                      tileLabel="List view"
+                      tableLabel="Timeline view"
+                      tileIcon={Rows3}
+                      tableIcon={GanttChartSquare}
+                    />
+                  </span>
+                )}
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className={cn(
+                    "shrink-0 text-text-secondary transition-transform duration-200",
+                    !roadmapHistoryOpen && "-rotate-90"
+                  )}
+                />
+              </span>
+            </div>
+            {roadmapHistoryOpen && (
+              <div
+                key={roadmapView}
+                className="tab-panel mt-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {roadmapView === "timeline" &&
+                (component.roadmap_versions?.length ?? 0) > 0 ? (
+                  /* THE SAME TIMELINE THE VERSIONS USE, fed the history instead
+                     of the releases, so the two cannot drift apart. Each saved
+                     version becomes a marker at the moment it was saved: the
+                     newest is "current", everything behind it is a thing that
+                     already happened. Clicking a marker is not wired to a popup
+                     here, because the list view directly below already opens
+                     each version in place. */
+                  <VersionTimeline
+                    releases={(component.roadmap_versions ?? []).map((v, i) => ({
+                      id: `roadmap-v${v.version}`,
+                      version: `v${v.version}`,
+                      date: v.savedAt.slice(0, 10),
+                      status: "released" as const,
+                      current: i === 0,
+                      featureCount: v.changes.length,
+                    }))}
+                  />
+                ) : (
+                  <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
+                )}
+              </div>
+            )}
+          </section>
       </section>
 
       {/* ------------------------------------------------------- features */}
@@ -2383,7 +2497,13 @@ export function FdlComponentDetail({
         </div>
 
         {featuresOpen && (
-          <>
+          <div className="tab-panel">
+            {/* THE BODY ARRIVES, IT DOES NOT SNAP IN (Anir, Sep 2: "I want
+              the animations on all these dropdowns. I need animations when
+              I click on them"). Same `tab-panel` reveal the roadmap card
+              and the version views already use, so every fold on this page
+              opens the same way. It is a fragment no longer, because a
+              fragment cannot carry a class. */}
         {/* ONE VERSION, NOT A MATRIX. A tick column per version turned this
             into a second comparison table sitting above the real one (Suren,
             Aug 9: "I already have a comparison table... why the heck are you
@@ -2430,11 +2550,25 @@ export function FdlComponentDetail({
                       setExpandedFeatureId(rowOpen ? null : feature.id)
                     }
                     aria-expanded={rowOpen}
-                    className={`cursor-pointer transition-colors ${
+                    /* OPEN ONE FEATURE AND THE REST STEP BACK.
+                       Anir, Sep 2: "when I press the dropdown, I think all the
+                       other features should probably be dimmed."
+
+                       Same treatment as the roadmap history above. An opened
+                       feature can run to a paragraph, so the fourteen rows
+                       around it compete with the one thing you asked to read.
+                       Nothing is hidden and no row moves, so you keep your
+                       place in the list; hovering a dimmed row brings it back
+                       so it still reads as clickable rather than disabled. */
+                    className={cn(
+                      "cursor-pointer transition-[background-color,opacity] duration-200",
                       rowOpen
                         ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                        : "hover:bg-surface"
-                    }`}
+                        : "hover:bg-surface",
+                      expandedFeatureId !== null &&
+                        !rowOpen &&
+                        "opacity-40 hover:opacity-80"
+                    )}
                   >
                     <td className="py-2.5 pl-3 pr-4">
                       {/* The popup trigger hugs the WORDS. As a full-width
@@ -2705,11 +2839,28 @@ export function FdlComponentDetail({
                   </tr>
                   {rowOpen && (
                     <tr className="!border-t-0 bg-surface">
+                      {/* INDENTED UNDER ITS OWN ROW.
+                          Anir, Sep 2: "when I click on a feature, it should be
+                          indented so I can clearly see."
+
+                          The body started at the same left edge as the feature
+                          name above it, so an opened description read as the
+                          next row in the table rather than as the inside of the
+                          one you just opened. It now starts where the name
+                          starts, past the F-000 chip, so the eye follows the
+                          row down into its own detail. The blue rail stays at
+                          the table's edge and marks the whole open block. */}
                       <td
                         colSpan={canEdit ? 5 : 4}
-                        className="pb-4 pl-3 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                        className="pb-4 pl-[52px] pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                       >
                         <div className="tab-panel">
+            {/* THE BODY ARRIVES, IT DOES NOT SNAP IN (Anir, Sep 2: "I want
+              the animations on all these dropdowns. I need animations when
+              I click on them"). Same `tab-panel` reveal the roadmap card
+              and the version views already use, so every fold on this page
+              opens the same way. It is a fragment no longer, because a
+              fragment cannot carry a class. */}
                           {feature.description ? (
                             <p className="max-w-[860px] whitespace-pre-line text-[12.5px] leading-relaxed text-text-primary">
                               {feature.description}
@@ -2740,7 +2891,7 @@ export function FdlComponentDetail({
             </table>
           </div>
         )}
-          </>
+          </div>
         )}
       </section>
 
@@ -2812,7 +2963,13 @@ export function FdlComponentDetail({
           </div>
         </div>
         {customersOpen && (
-          <>
+          <div className="tab-panel">
+            {/* THE BODY ARRIVES, IT DOES NOT SNAP IN (Anir, Sep 2: "I want
+              the animations on all these dropdowns. I need animations when
+              I click on them"). Same `tab-panel` reveal the roadmap card
+              and the version views already use, so every fold on this page
+              opens the same way. It is a fragment no longer, because a
+              fragment cannot carry a class. */}
         {connected.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             No customer is recorded on this component yet. Add one here, or
@@ -3027,7 +3184,7 @@ export function FdlComponentDetail({
             )}
           </>
         )}
-          </>
+          </div>
         )}
       </section>
 
@@ -3104,7 +3261,7 @@ export function FdlComponentDetail({
             </div>
           </div>
           {compareOpen && (
-            <>
+            <div className="tab-panel">
           {compareReleases.length >= 2 && compareRows.length === 0 ? (
             /* Two versions picked and neither carries a single feature. The
                table used to render its header over nothing, which reads as a
@@ -3177,7 +3334,7 @@ export function FdlComponentDetail({
               Pick one more version and the table appears here.
             </p>
           )}
-            </>
+            </div>
           )}
         </section>
       )}
