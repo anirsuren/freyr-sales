@@ -365,6 +365,18 @@ export type PerformanceState = {
    * recorded rather than converted at a guess. See lib/currency.ts.
    */
   rates?: CurrencyRates;
+  /**
+   * WHICH GENERATION OF THE MOCK SEED BUILT THIS ROW. Mock only, and never
+   * written on the live row.
+   *
+   * Anir, Sep 2, asked for two things at once: a demo dense enough that "it
+   * shouldnt even matter" how far you click, and "i should still be able to
+   * add edit and delete shit if i really want". A seed that rebuilt itself on
+   * every read would satisfy the first and break the second. So it stamps its
+   * generation here, and a row already carrying the current number is left
+   * exactly as it is. See lib/performance.ts.
+   */
+  seedVersion?: number;
 };
 
 /** The goal types exactly as they appear in Suren's goals.xlsx (Aug 11). */

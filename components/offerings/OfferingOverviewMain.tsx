@@ -1,4 +1,3 @@
-import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
 import { RelatedOfferingsSection } from "@/components/offerings/RelatedOfferingsSection";
 import Link from "next/link";
 import {
@@ -14,7 +13,6 @@ import {
   Package,
   ReceiptText,
   Building2,
-  GitBranch,
 } from "lucide-react";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
@@ -222,16 +220,6 @@ export function OfferingOverviewMain({
    * change lines generalised — a line names a version by its customer-facing
    * label, and nothing reliably separates "V2.5 moved" from "Added V9".
    */
-  const roadmapVersions = canSeeNextVersion
-    ? (o.roadmap_versions ?? [])
-    : (o.roadmap_versions ?? []).map((v) => ({
-        ...v,
-        changes: ["The roadmap was updated"],
-        releases: (v.releases || []).filter((r) => r.status === "released"),
-        roadmap_details: v.roadmap_details
-          ? { ...v.roadmap_details, nextExpectedLive: "", nextVersions: "", nextModules: [] }
-          : undefined,
-      }));
   const nextVersion = (canSeeNextVersion && roadmap?.nextVersions?.trim()) || "";
   const nextExpected = roadmap?.nextExpectedLive?.trim() || "";
   const nextMilestones: { label: string; body: string }[] = nextVersion
@@ -327,24 +315,21 @@ export function OfferingOverviewMain({
             is about to quote, because the question it answers — "did this move
             since I told the client?" — only occurs to you while you are
             looking at the number. Folded shut: it is history, not the headline. */}
-        {/* ALWAYS THERE, EVEN AT ZERO. Hiding this until the first edit meant
-            the day it shipped nobody could find it, on any offering — a built
-            feature that looks unbuilt (Anir, Aug 20, on his own screen: "Again,
-            do you see it?"). Empty it says so in one line and costs nothing. */}
-        <details className="mt-5 max-w-[640px] pl-11">
-          <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary">
-            <GitBranch size={13} strokeWidth={2.2} aria-hidden="true" />
-            Roadmap version history
-            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[11px] font-bold text-text-tertiary">
-              {roadmapVersions.length
-                ? `v${roadmapVersions[0].version}`
-                : "No changes yet"}
-            </span>
-          </summary>
-          <div className="mt-3">
-            <RoadmapVersionHistory versions={roadmapVersions} />
-          </div>
-        </details>
+        {/* NO ROADMAP HISTORY ON AN OFFERING.
+            Anir, Sep 2: "I don't think there will be any data here in the
+            offering availability section, roadmap and version history, because
+            they removed the roadmap tab weeks ago. I think I meant to put that
+            on FDL components."
+
+            He is right, and the code already knew it: the note in
+            FdlComponentDetail says the offering-level roadmap "has had no
+            editor since the tab was replaced". So this could only ever render
+            "No changes yet", on every offering, forever. A control that cannot
+            have content is worse than a missing one, because people go looking
+            for the thing that fills it.
+
+            The history lives on FDL components, where the roadmap is actually
+            edited. RoadmapVersionHistory is unchanged and still used there. */}
       </section>
 
 
@@ -738,8 +723,18 @@ export function OfferingOverviewMain({
         heading={
           <SectionHeading
             icon={Layers}
-            title="Related offerings"
-            description={`The rest of ${o.offering_category}. The offerings that solve neighbouring problems for this account.`}
+            /* A COUNT, LIKE MARKETS HAS (Anir, Sep 2: "can it show in brackets
+               the number of related offerings, like it does for markets?
+               Eswar has linked five, so it should just say five in
+               brackets"). */
+            title={`Related offerings (${related.length})`}
+            /* Trimmed twice on his word: "you can remove this part of the
+               description, the rest of Regulatory Information Management",
+               then "for this account, so you can remove for this account as
+               well". The category is already named in the sidebar of this same
+               page, and the section is not scoped to an account at all, so
+               both halves were saying something untrue or redundant. */
+            description="The offerings that solve neighbouring problems."
           />
         }
       />

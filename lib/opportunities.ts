@@ -5,6 +5,7 @@ import type {
 } from "./opportunitiesShared";
 import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
+import { mockFillOpportunities } from "./mockFillLife";
 import {
   EMPTY_OPPORTUNITIES,
   normalizeConfidence,
@@ -527,6 +528,17 @@ function seededMock(): OpportunitiesState {
       updatedAt: now,
     });
   });
+
+  /* AND THE 140 GENERATED ACCOUNTS GET DEALS TOO.
+     The demo cast above covers a dozen names. lib/mock-db generates 140 more
+     behind them, and those had nothing against them at all, so every one of
+     the accounts Anir actually clicks through read "Opportunities 0" (found
+     by him on cust-fill-140, Sep 2: "we need to have mock data"). Appended,
+     never replacing: the sheet and the demo deals are untouched.
+
+     In memory rather than into the row, which is what mock has always done
+     for opportunities, so this can never be written anywhere. */
+  opportunities.push(...mockFillOpportunities());
 
   return { opportunities };
 }

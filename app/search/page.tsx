@@ -18,7 +18,6 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { getRecent, type RecentItem } from "@/lib/recent";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
@@ -38,17 +37,16 @@ function typeMeta(type: string) {
   return TYPE_META[type] ?? TYPE_FALLBACK;
 }
 
-// Every result leads with the record's OWN mark, never a generic glyph in a
-// blue square: a company shows its logo, a person their headshot, an offering
-// its branded icon. Same 32px footprint the old square had, so rows stay in
-// line.
+// A company shows its logo and a person their headshot. An offering used to
+// show its own branded gradient tile; it now falls through to the plain type
+// mark every other kind of record wears (Anir, Sep 2: "can you just remove
+// these icons from all the offering names? They're not really needed"). Same
+// 32px footprint either way, so rows stay in line.
 function RecordMark({ type, label }: { type: string; label: string }) {
   if (type === "Customer")
     return <CompanyLogo name={label} className="w-8 h-8 text-[11px]" />;
   if (type === "Contact")
     return <Avatar name={label} className="w-8 h-8 text-[11px]" />;
-  if (type === "Offering")
-    return <OfferingIcon name={label} className="w-8 h-8" />;
   const { icon: Icon, color, bg } = typeMeta(type);
   return (
     <span

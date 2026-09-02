@@ -17,7 +17,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
@@ -811,9 +810,12 @@ export default async function VoiceAgentPage({
             <Link
               key={o.id}
               href={`/offerings/${o.id}`}
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-primary bg-white border border-border-light rounded-lg pl-1.5 pr-2.5 py-1 hover:border-blue-subtle hover:text-blue-primary hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all"
+              /* No glyph in front of the name (Anir, Sep 2: "can you just
+                 remove these icons from all the offering names? They're not
+                 really needed"). The tight pl-1.5 existed to hug that tile,
+                 so the padding is even again. */
+              className="inline-flex items-center text-[12.5px] font-medium text-text-primary bg-white border border-border-light rounded-lg px-2.5 py-1 hover:border-blue-subtle hover:text-blue-primary hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all"
             >
-              <OfferingIcon name={o.offering_name} className="w-[18px] h-[18px] text-[8px] shrink-0" />
               {o.offering_name}
             </Link>
           ))}

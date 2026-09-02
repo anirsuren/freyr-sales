@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getDataMode } from "./dataMode";
 import { hasSupabase } from "./env";
+import { mockFillRecordTeams } from "./mockFillLife";
 
 /**
  * WHO OWNS A RECORD, AND WHO ELSE IS ON IT.
@@ -153,10 +154,40 @@ async function writeRow(state: RecordTeamsState): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * THE MOCK ACCOUNTS GET A NAMED OWNER AND TEAM, ONCE.
+ *
+ * The Team tab on a generated account said "Nothing on team for Isolde Bio
+ * yet" (Anir, Sep 2), because nothing had ever been assigned to one and this
+ * store had no mock samples at all. It has some now.
+ *
+ * Appended rather than replacing, and laid down ONCE: an entry somebody
+ * cleared in mock has to stay cleared, so the presence of the generated keys
+ * is what stops it running again.
+ *
+ * Mock only, twice over: the caller checks the mode and the generator itself
+ * answers with nothing outside it.
+ */
+async function topUpMockFill(): Promise<RecordTeamsState> {
+  return withWrite(async () => {
+    const base = normalize(await readRowRaw().catch(() => null));
+    if (Object.keys(base.teams).some((k) => k.includes("fill-"))) return base;
+    const generated = mockFillRecordTeams();
+    if (Object.keys(generated).length === 0) return base;
+    /* Anything already stored wins, so this can only ever fill in blanks. */
+    const next: RecordTeamsState = { teams: { ...generated, ...base.teams } };
+    await writeRow(next).catch(() => undefined);
+    return next;
+  });
+}
+
 export async function readRecordTeams(): Promise<RecordTeamsState> {
-  return readRowRaw()
+  const state = await readRowRaw()
     .then(normalize)
     .catch(() => structuredClone(EMPTY_RECORD_TEAMS));
+  if (getDataMode() !== "mock") return state;
+  if (Object.keys(state.teams).some((k) => k.includes("fill-"))) return state;
+  return topUpMockFill().catch(() => state);
 }
 
 /** Set both facts at once — the dialog always sends the whole picture. */

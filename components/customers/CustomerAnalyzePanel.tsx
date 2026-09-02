@@ -16,7 +16,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -486,9 +485,11 @@ export function CustomerAnalyzePanel({
                 href={`/offerings/${o.id}`}
                 className="group flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
               >
-                <span className="flex items-center gap-2.5 min-w-0">
-                  <OfferingIcon name={o.name} className="w-8 h-8 shrink-0" />
-                  {/* Offering names are long — "Freya.GRR-PAC (Global Regulatory
+                <span className="flex items-center min-w-0">
+                  {/* No glyph in front of the name (Anir, Sep 2: "can you just
+                      remove these icons from all the offering names? They're
+                      not really needed").
+                      Offering names are long — "Freya.GRR-PAC (Global Regulatory
                       Requirements for Product Approval Change)", and used to be
                       cut off mid-word with "…", which is banned app-wide (Suren,
                       Jul 27). They wrap onto a second line instead. */}

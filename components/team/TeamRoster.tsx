@@ -72,7 +72,8 @@ export type RosterRep = {
   linkedin: string;
   teamsUrl: string;
   openValue: number;
-  weighted: number;
+  /* No weighted field: the number came off every surface on Anir, Sep 2
+     ("they dont use weighted"), and nothing feeds or reads it now. */
   openCount: number;
   meetings: number;
   quota: number;
@@ -232,9 +233,10 @@ function StageDonut({ rep, size = 82 }: { rep: RosterRep; size?: number }) {
 
 function TripleStat({ rep }: { rep: RosterRep }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    /* WEIGHTED IS GONE (Anir, Sep 2: "they dont use weighted"). This was
+       three stats; the grid drops to two so the pair still fills the row. */
+    <div className="grid grid-cols-2 gap-2">
       {[
-        { l: "Weighted", v: formatMoney(rep.weighted) },
         { l: "Open deals", v: String(rep.openCount) },
         { l: "Meetings", v: String(rep.meetings) },
       ].map((s) => (
@@ -285,7 +287,8 @@ function PipelineInspector({
       </div>
 
       <div className="mt-2.5 flex items-center gap-2 text-[10px]">
-        <span className="rounded-md bg-surface px-2 py-1 text-text-secondary"><strong className="text-text-primary tnum">{formatMoney(rep.weighted)}</strong> weighted</span>
+        {/* A weighted chip led this row until Anir, Sep 2: "they dont use
+            weighted". */}
         <span className="rounded-md bg-surface px-2 py-1 text-text-secondary"><strong className="text-text-primary tnum">{rep.openCount}</strong> deals</span>
         <span className="rounded-md bg-surface px-2 py-1 text-text-secondary"><strong className="text-text-primary tnum">{rep.meetings}</strong> meetings</span>
       </div>
@@ -835,14 +838,10 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 <th className="px-4 py-2.5">Person</th>
                 <th className="px-4 py-2.5">Contact</th>
                 <th className="px-4 py-2.5 w-[230px]">Open pipeline</th>
-                {/* LEFT, LIKE EVERY OTHER COLUMN (Anir, Aug 29: "these have
-                    to be left aligned"). Three right-aligned columns in the
-                    middle of a left-aligned table put the numbers hard against
-                    the NEXT column's heading, so "$600K" read as if it
-                    belonged to Open deals. The app's standing rule since Aug 8
-                    is that only a fixed row of icons centres or trails; facts
-                    share the left edge with their heading. */}
-                <th className="px-4 py-2.5">Weighted</th>
+                {/* A Weighted column sat here until Anir, Sep 2: "they dont
+                    use weighted". Seven columns now, so the expanded panel
+                    below spans seven. Every heading stays left-aligned (Anir,
+                    Aug 29: "these have to be left aligned"). */}
                 <th className="px-4 py-2.5">Open deals</th>
                 <th className="px-4 py-2.5">Meetings</th>
                 <th className="px-4 py-2.5 w-[120px]">Activity · 10w</th>
@@ -1099,9 +1098,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <PipelineBarInspector rep={r} />
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
-                      {formatMoney(r.weighted)}
-                    </td>
                     <td className="px-4 py-3.5 text-[14px] text-text-secondary tnum">
                       {r.openCount}
                     </td>
@@ -1147,7 +1143,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                   {openRep === r.identityKey && (
                     <tr className="!border-t-0 bg-surface">
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                       >
                         {/* THE NUMBERS AS TILES, IN ONE ROW (Anir, Aug 16:
@@ -1160,10 +1156,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             divided by a rule rather than boxed one by one,
                             because it is one row. */}
                         <div className="tab-panel rounded-xl bg-white ring-1 ring-inset ring-[color:var(--border-light)]">
-                          <div className="grid grid-cols-2 divide-x divide-border-light sm:grid-cols-4">
+                          {/* Three tiles, not four: the Weighted forecast tile
+                              came out on Anir, Sep 2 ("they dont use
+                              weighted"), and the grid closes up behind it so
+                              the row still divides evenly. */}
+                          <div className="grid grid-cols-3 divide-x divide-border-light">
                             {[
                               { icon: DollarSign, label: "Open pipeline", value: formatMoney(r.openValue), sub: `${r.openCount} live ${r.openCount === 1 ? "deal" : "deals"}` },
-                              { icon: TrendingUp, label: "Weighted forecast", value: formatMoney(r.weighted), sub: "probability-adjusted" },
                               { icon: Layers, label: "Open deals", value: String(r.openCount), sub: "in the pipeline" },
                               { icon: CalendarDays, label: "Meetings", value: String(r.meetings), sub: "booked" },
                             ].map((t) => (

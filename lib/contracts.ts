@@ -2,6 +2,7 @@ import "server-only";
 
 import { getDataMode } from "./dataMode";
 import { spreadEvenly } from "./revenueAccrualsShared";
+import { mockFillContracts, hasMockFillRows } from "./mockFillLife";
 import {
   CONTRACT_STATUSES,
   type ContractDoc,
@@ -267,13 +268,46 @@ function sampleContracts(): ContractsState {
  * now SEED that row once and everything after is an ordinary read. Emptying it
  * deliberately stays empty: the seed fires only when the row never existed.
  */
+/**
+ * THE 140 GENERATED ACCOUNTS GET contracts, ONCE.
+ *
+ * Anir, Sep 2, on cust-fill-140: every tab read zero, because the samples
+ * above only ever covered the hand-named demo cast. The generated long tail
+ * now gets its own, and the shape of this matters as much as the rows do:
+ *
+ *  - APPENDED, never replacing. Whatever is already in the mock row stays,
+ *    including anything somebody added in mock themselves.
+ *  - ONCE. "i should still be able to add edit and delete shit if i really
+ *    want" — a floor that relaid itself on every read would undo a deletion
+ *    the moment the page reloaded. The rows are the marker, so once they are
+ *    down this never runs again and the store is ordinary from then on.
+ *  - INSIDE THE WRITE QUEUE, re-reading there, so a save that landed while
+ *    this was waiting its turn is not thrown away.
+ *
+ * Mock only, twice over: the caller checks the mode and the generator itself
+ * answers with nothing outside it.
+ */
+async function topUpMockFill(): Promise<ContractsState> {
+  return withWrite(async () => {
+    const raw = await readRowRaw().catch(() => null);
+    const base = raw ? normalize(raw) : sampleContracts();
+    if (hasMockFillRows(base.contracts.map((r) => r.id))) return base;
+    const rows = mockFillContracts();
+    if (rows.length === 0) return base;
+    const next: ContractsState = { contracts: [...base.contracts, ...rows] };
+    await writeRow(next).catch(() => undefined);
+    return next;
+  });
+}
+
 export async function readContracts(): Promise<ContractsState> {
   if (getDataMode() !== "mock") return readRow();
   const existing = await readRowRaw();
-  if (existing) return normalize(existing);
-  const seeded = sampleContracts();
-  await writeRow(seeded).catch(() => undefined);
-  return seeded;
+  if (existing) {
+    const state = normalize(existing);
+    if (hasMockFillRows(state.contracts.map((c) => c.id))) return state;
+  }
+  return topUpMockFill();
 }
 
 export type ContractInput = {

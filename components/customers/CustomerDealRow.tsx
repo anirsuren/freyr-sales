@@ -47,8 +47,6 @@ function stageDetails(stageName: string) {
 
 export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
   const { stage, color, probability } = stageDetails(deal.stage);
-  const weighted = Math.round(deal.value * probability);
-  const upside = Math.max(0, deal.value - weighted);
   const currentStageIndex = STAGES.indexOf(stage);
 
   const summary = (
@@ -98,11 +96,10 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
       </span>
 
       <span>
+        {/* Deal value, nothing else (Anir, Sep 2: "they dont use weighted").
+            A second line under it used to read "$X weighted". */}
         <span className="block text-[16px] font-bold leading-none text-text-primary tnum">
           {formatMoney(deal.value)}
-        </span>
-        <span className="mt-1 block text-[10.5px] text-text-tertiary tnum">
-          {formatMoney(weighted)} weighted
         </span>
       </span>
 
@@ -170,17 +167,18 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
         <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
           Value profile
         </p>
+        {/* THE HEADLINE IS THE DEAL, NOT A DISCOUNT OF IT (Anir, Sep 2:
+            "they dont use weighted"). This panel led with value x confidence
+            and then repeated it as "Weighted $X / Upside $Y". It leads with
+            what the deal is worth; the bar still shows how much of it the
+            current stage says is likely. */}
         <div className="mt-3 flex items-baseline justify-between gap-3">
-          <span className="text-[18px] font-bold text-text-primary tnum">{formatMoney(weighted)}</span>
+          <span className="text-[18px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
           <span className="text-[11px] text-text-tertiary">{Math.round(probability * 100)}% likely</span>
         </div>
         <div className="mt-2 flex h-3 overflow-hidden rounded bg-surface">
           <span style={{ width: `${probability * 100}%`, background: color }} />
           <span className="bg-border-light/70" style={{ width: `${(1 - probability) * 100}%` }} />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[10.5px] text-text-tertiary">
-          <span>Weighted {formatMoney(weighted)}</span>
-          <span>Upside {formatMoney(upside)}</span>
         </div>
       </div>
 

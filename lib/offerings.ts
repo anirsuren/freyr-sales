@@ -13,7 +13,13 @@ import {
 import {
   canonicalMaterialFolder,
   isFixedMaterialFolder,
+  isServiceOfferingType,
   sanitizeMaterialFolderPath,
+  type AccessLevel,
+  type Division,
+  type DocumentType,
+  type JourneyStage,
+  type MaterialKind,
   type OfferingMaterial,
 } from "./offeringMaterials";
 import {
@@ -1269,6 +1275,11 @@ interface OfferingsStore {
   offeringTypeCopyVersion?: number;
   /** One-time marker for Eswar's approved Freya.Register roadmap document. */
   freyaRegisterRoadmapVersion?: number;
+  /** ONE-TIME MARKER FOR THE SHOWROOM'S CONTENT (mock only). Seeding demo
+   *  depth on every read is how a demo silently reverts an edit somebody just
+   *  made, so it runs once per version and then never again. Absent on the
+   *  real catalogue, which is never deepened at all. */
+  showroomDepthVersion?: number;
 }
 
 declare global {
@@ -1333,59 +1344,174 @@ const DEMO_ROADMAP_AUTHORS = [
   "Daniel Foster",
   "Grace Lockwood",
   "Hannah Schmidt",
+  "Marcus Ellery",
+  "Priya Nandakumar",
+  "Tobias Reinhart",
+  "Nadia Bellamy",
+  "Owen Fairweather",
+  "Rosalind Achebe",
 ];
 
+/**
+ * WHY A DATE MOVED, in the words somebody would actually use.
+ *
+ * The version list has carried a `reason` field since Aug 21 ("they should
+ * give a reason why it changed") and the showroom left it blank on every
+ * entry, so the one question a history exists to answer was the one thing the
+ * demo could not show. Written about work, never about a named person.
+ */
+const DEMO_ROADMAP_REASONS = [
+  "Dev capacity moved to the labelling release for a quarter.",
+  "Two customers asked for it in the same week, so it was pulled forward.",
+  "Health-authority guidance landed late and the validation work moved with it.",
+  "Scope grew after the pilot feedback and the date went with it.",
+  "Waiting on the data-migration tooling before this could be promised.",
+  "Held back so it ships alongside the platform upgrade rather than before it.",
+  "The pilot customer asked for a longer parallel run.",
+  "Reprioritised after the annual roadmap review.",
+];
+
+/**
+ * DETERMINISTIC PSEUDO-RANDOMNESS, because the showroom must read the same on
+ * every load. Nothing in the demo content below may reach for Math.random: a
+ * page that reshuffles between two reads is worse than a page that is empty,
+ * and a reviewer comparing screenshots would be comparing noise.
+ */
+function demoHash(...parts: (string | number)[]): number {
+  let h = 2166136261;
+  for (const ch of parts.join("\u0000")) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function demoPick<T>(list: readonly T[], ...parts: (string | number)[]): T {
+  return list[demoHash(...parts) % list.length];
+}
+
+function demoInt(min: number, max: number, ...parts: (string | number)[]): number {
+  return min + (demoHash(...parts) % (max - min + 1));
+}
+
+/** True for roughly `percent` of the seeds handed in, decided by hash rather
+ *  than by chance, so the same record always falls the same way. */
+function demoChance(percent: number, ...parts: (string | number)[]): boolean {
+  return demoHash(...parts) % 100 < percent;
+}
+
+/**
+ * A HISTORY THAT HAPPENED OVER TIME, NOT ALL AT ONCE.
+ *
+ * Anir, Sep 2, opening a mock component: every version had been saved inside
+ * the same three minutes, so the timeline drew every point on top of itself
+ * and a working feature looked broken. Saves now sit on a ladder that walks
+ * backwards from a few weeks ago in gaps of weeks to months, each at its own
+ * hour of its own working day, by whichever of ten demo colleagues the hash
+ * lands on. A component with one release gets one entry rather than none, so
+ * no component in the showroom opens on an empty history.
+ *
+ * Still built FROM the component's own versions and features, so the story it
+ * tells can never contradict the roadmap sitting next to it.
+ *
+ * Demo names only — mock never puts words in a real colleague's mouth.
+ */
 function seedRoadmapHistory(
   releases: FdlRelease[],
-  seed: number
+  seed: number,
+  key: string,
+  features: FdlFeature[] = []
 ): RoadmapVersion[] {
-  if (releases.length < 2) return [];
-  const daysAgo = (n: number) =>
-    new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  if (!releases.length) return [];
   const snapshot = (upTo: number) =>
-    releases.slice(0, upTo + 1).map((r) => ({ ...r }));
-  const out: RoadmapVersion[] = [];
-  const author = (i: number) =>
-    DEMO_ROADMAP_AUTHORS[(seed + i) % DEMO_ROADMAP_AUTHORS.length];
+    releases.slice(0, Math.max(1, upTo + 1)).map((r) => ({ ...r }));
 
-  releases.forEach((release, i) => {
-    if (i === 0) return;
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(120 - i * 30),
-      savedBy: author(i),
-      changes: [`Added ${release.version}${release.date ? ` (${release.date})` : ""}`],
-      releases: snapshot(i),
-    });
+  type Draft = { changes: string[]; reason?: string; upTo: number };
+  const drafts: Draft[] = [];
+  const label = (r: FdlRelease) =>
+    `${r.version}${r.date ? ` (${r.date})` : ""}`;
+
+  drafts.push({ changes: [`Added ${label(releases[0])}`], upTo: 0 });
+
+  releases.forEach((release, index) => {
+    if (index === 0) return;
+    drafts.push({ changes: [`Added ${label(release)}`], upTo: index });
+    /* THE FEATURE LINES A REP IS ACTUALLY ASKED ABOUT. Named from the
+       features the component really carries and from the version they really
+       arrived in, so opening the entry and opening the feature grid tell the
+       same story. */
+    const arrived = features.filter(
+      (feature) => feature.versionIds[0] === release.id
+    );
+    if (arrived.length && demoChance(65, key, "features", index)) {
+      const named = arrived.slice(0, demoInt(1, 3, key, "count", index));
+      drafts.push({
+        changes: named.map((feature) => `Added the feature ${feature.name}`),
+        upTo: index,
+      });
+    }
   });
-  /* One slipped date, because roadmaps slip — this is the entry that makes the
-     feature obviously useful when a rep asks "did this move since I quoted it?" */
+
+  /* One slipped date, because roadmaps slip — this is the entry that makes
+     the feature obviously useful when a rep asks "did this move since I
+     quoted it?", and now it says why, which is the only thing a diff can
+     never work out on its own. */
   const slipped = releases[releases.length - 1];
-  if (slipped?.date) {
+  if (releases.length > 1 && slipped?.date) {
     /* A slip has to land on an EARLIER date — the first cut computed the same
        month and printed "moved from 2026-10-01 to 2026-10-01", which is not a
-       slip, it is a typo with a timestamp. One quarter back, same day. */
+       slip, it is a typo with a timestamp. */
     const slipFrom = new Date(slipped.date);
-    slipFrom.setMonth(slipFrom.getMonth() - 3);
-    const was = slipFrom.toISOString().slice(0, 10);
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(21),
-      savedBy: author(out.length),
-      changes: [`${slipped.version} moved from ${was} to ${slipped.date}`],
-      releases: snapshot(releases.length - 1),
+    slipFrom.setMonth(slipFrom.getMonth() - demoInt(2, 5, key, "slip"));
+    drafts.push({
+      changes: [
+        `${slipped.version} moved from ${slipFrom.toISOString().slice(0, 10)} to ${slipped.date}`,
+      ],
+      reason: demoPick(DEMO_ROADMAP_REASONS, key, "why"),
+      upTo: releases.length - 1,
     });
   }
-  const current = releases.find((r) => r.current);
+
+  const current = releases.find((release) => release.current);
   if (current) {
-    out.push({
-      version: out.length + 1,
-      savedAt: daysAgo(3 + (seed % 4)),
-      savedBy: author(out.length),
+    drafts.push({
       changes: [`${current.version} is now the current version`],
-      releases: snapshot(releases.length - 1),
+      upTo: releases.length - 1,
     });
   }
+
+  /* THE LADDER. Newest entry a few weeks ago, then one gap of weeks-to-months
+     per step going back, so a five-entry history spans a year or more and no
+     two components move on the same days. */
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const daysBack: number[] = [];
+  let back = demoInt(4, 34, key, "tail");
+  for (let i = drafts.length - 1; i >= 0; i--) {
+    daysBack[i] = back;
+    back += demoInt(19, 148, key, "gap", i);
+  }
+  const savedAt = (i: number) => {
+    const at = new Date(now - daysBack[i] * DAY);
+    /* Its own hour of its own day. Every entry sharing one clock time was the
+       other half of what made the pile look generated. */
+    at.setUTCHours(
+      demoInt(7, 17, key, "hour", i),
+      demoInt(0, 59, key, "minute", i),
+      demoInt(0, 59, key, "second", i),
+      0
+    );
+    return at.toISOString();
+  };
+
+  const out: RoadmapVersion[] = drafts.map((draft, i) => ({
+    version: i + 1,
+    savedAt: savedAt(i),
+    savedBy: demoPick(DEMO_ROADMAP_AUTHORS, key, "by", i, seed),
+    ...(draft.reason ? { reason: draft.reason } : {}),
+    changes: draft.changes,
+    releases: snapshot(draft.upTo),
+  }));
   /* Newest first, the way the list reads. */
   return out.reverse();
 }
@@ -1510,8 +1636,10 @@ function buildFdlComponents(
       releases,
       features,
       /* The showroom needs a history to show; real mode starts empty and
-         fills itself as owners edit. */
-      roadmap_versions: seedRoadmapHistory(releases, index),
+         fills itself as owners edit. The component's own id is the seed, so
+         two components with the same number of releases still move on
+         different days. */
+      roadmap_versions: seedRoadmapHistory(releases, index, id, features),
     };
   });
 }
@@ -2785,6 +2913,830 @@ function showroomOfferings(): Offering[] {
   );
 }
 
+/* ------------------------------------------------------------------------ */
+/* SHOWROOM DEPTH — MOCK ONLY                                               */
+/* ------------------------------------------------------------------------ */
+
+/** Bump this only to lay a NEW floor under the showroom. Every bump re-runs
+ *  the fill on stores that are behind, and every write it makes is still
+ *  conditional on the field being empty, so a bump can add what is missing
+ *  and can never replace what somebody wrote. */
+const SHOWROOM_DEPTH_VERSION = 1;
+
+/**
+ * WHY THIS SECTION EXISTS.
+ *
+ * Anir, Sep 2, after clicking through mock: "i need there to be hundreds of
+ * data points in total down every rabbit hole for every single page so in mock
+ * mode ppl can see exactly how it will look. and i should still be able to add
+ * edit and delete shit if i really want."
+ *
+ * The showroom already had 55 offerings and 68 components, and almost every
+ * drill-down inside them was empty: 53 of 55 offerings held no sales material,
+ * none had an owner, none had a roadmap history, no connected component had a
+ * version pinned to it, and 25 components opened on "No changes yet". A
+ * catalogue that is wide and hollow demos worse than a small one that is full.
+ *
+ * TWO RULES GOVERN EVERYTHING BELOW.
+ *
+ * 1. MOCK ONLY. Every function here is reached from fillShowroomCatalog, which
+ *    is only ever called on mockStore. Real mode shows what an offering owner
+ *    actually entered and nothing else, and the two catalogues are separate
+ *    rows (Anir, Aug 8: "do not ever fuck with real mode").
+ *
+ * 2. A FLOOR, NOT A CEILING. This runs ONCE per store, behind
+ *    `showroomDepthVersion`, the same one-time-marker idiom the offering-type
+ *    copy and the Freya.Register roadmap already use. Seeding on every read is
+ *    how a demo silently reverts the thing somebody just edited, so it is not
+ *    done that way: after the marker is stamped, mock is an ordinary
+ *    read-write store and every add, edit and delete stands.
+ *
+ * Nothing invented here is attached to a real person or a real customer: the
+ * colleagues are the same demo roster the roadmap history uses, the customer
+ * names are mock accounts, and every link points at Freyr's own public site.
+ */
+
+/** The demo colleagues who own, upload and edit things in the showroom. */
+const SHOWROOM_PEOPLE: { name: string; email: string; role: string }[] = [
+  { name: "Audrey Kingsley", email: "audrey.kingsley@example.com", role: "Offering Owner" },
+  { name: "Daniel Foster", email: "daniel.foster@example.com", role: "Solution Consultant" },
+  { name: "Grace Lockwood", email: "grace.lockwood@example.com", role: "Regulatory SME" },
+  { name: "Hannah Schmidt", email: "hannah.schmidt@example.com", role: "Product Manager" },
+  { name: "Marcus Ellery", email: "marcus.ellery@example.com", role: "Sales Enablement" },
+  { name: "Priya Nandakumar", email: "priya.nandakumar@example.com", role: "Delivery Lead" },
+  { name: "Tobias Reinhart", email: "tobias.reinhart@example.com", role: "Regional Director" },
+  { name: "Nadia Bellamy", email: "nadia.bellamy@example.com", role: "Bid Manager" },
+  { name: "Owen Fairweather", email: "owen.fairweather@example.com", role: "Pre-sales Engineer" },
+  { name: "Rosalind Achebe", email: "rosalind.achebe@example.com", role: "Customer Success" },
+];
+
+/** Mock accounts, so a success story on an offering names a company the demo
+ *  workspace can actually open. Taken from the seeded customer list. */
+const SHOWROOM_ACCOUNTS = [
+  "Cortexa Biopharma",
+  "Helix Biologics",
+  "Solvance Pharma",
+  "NovaGene Therapeutics",
+  "Aether Medical Devices",
+  "Solara Consumer Health",
+  "Quantum Oncology",
+  "Meridian Pharmaceuticals",
+  "Northwind Biosciences",
+  "Orion Vaccines",
+  "BioNex Therapeutics",
+  "Kestrel Therapeutics",
+  "Halcyon Biosciences",
+  "Juniper Bio",
+  "Girona Sciences",
+];
+
+/**
+ * THE SHAPE OF A SALES LIBRARY, not fifteen copies of one row. Each entry is a
+ * different document type, a different folder, a different point in the buyer's
+ * journey and a different audience, so the filters, the folder tree and the
+ * access rules on the materials tab all have something to bite on.
+ */
+type ShowroomMaterialSpec = {
+  label: (offering: string) => string;
+  kind: MaterialKind;
+  documentType: DocumentType;
+  /** ONE OF THE SYSTEM FOLDERS, never an invented name. The materials tab
+   *  files everything into the fixed shelf, so a made-up folder here would
+   *  scatter the demo library across folders the picker does not offer. The
+   *  second entry is the services shelf, which drops Product Sheet, renames
+   *  Product Brief and replaces Product Demos with Videos (Anir, Aug 25). */
+  folder: string;
+  serviceFolder?: string;
+  journeyStages: JourneyStage[];
+  accessLevel: AccessLevel;
+  divisions: Division[];
+  note: (offering: string) => string;
+  link: string;
+};
+
+const SHOWROOM_MATERIALS: ShowroomMaterialSpec[] = [
+  {
+    label: (o) => `${o} one-pager`,
+    kind: "document",
+    documentType: "product_brief",
+    folder: "Product Sheet",
+    serviceFolder: "Service Brief",
+    journeyStages: ["awareness"],
+    accessLevel: "client_facing",
+    divisions: ["MPR", "MDV", "CON"],
+    note: (o) => `The single page to leave behind after a first conversation about ${o}.`,
+    link: FREYR_URL.resources,
+  },
+  {
+    label: (o) => `${o} sales deck`,
+    kind: "presentation",
+    documentType: "sales_deck",
+    folder: "Sales Decks/Long Sales Deck",
+    journeyStages: ["awareness", "evaluation"],
+    accessLevel: "client_facing",
+    divisions: ["MPR"],
+    note: (o) => `The full narrative deck for ${o}, built for a 45-minute first meeting.`,
+    link: FREYR_URL.resources,
+  },
+  {
+    label: (o) => `${o} demo walkthrough`,
+    kind: "video",
+    documentType: "product_demo",
+    folder: "Product Demos/Recorded Client Demos",
+    serviceFolder: "Videos/Recorded Client Demos",
+    journeyStages: ["evaluation"],
+    accessLevel: "client_facing",
+    divisions: ["MPR", "MDV"],
+    note: (o) => `Recorded walkthrough of ${o} with the narration a rep can talk over.`,
+    link: FREYR_URL.resources,
+  },
+  {
+    label: (o) => `${o} pricing and packaging`,
+    kind: "document",
+    documentType: "other",
+    folder: "Others",
+    journeyStages: ["decision"],
+    accessLevel: "internal_only",
+    divisions: ["MPR", "MDV", "CON"],
+    note: () => "Internal only. Band structure, volume breaks and the discount ladder.",
+    link: FREYR_URL.contact,
+  },
+  {
+    label: (o) => `Proposal template: ${o}`,
+    kind: "presentation",
+    documentType: "proposal",
+    folder: "Proposals",
+    journeyStages: ["decision"],
+    accessLevel: "client_facing",
+    divisions: ["MPR"],
+    note: (o) => `The RFP-ready response skeleton for ${o}, with the scope and assumptions sections already written.`,
+    link: FREYR_URL.resources,
+  },
+  {
+    label: (o) => `Objection handling: ${o}`,
+    kind: "document",
+    documentType: "battle_card",
+    folder: "Battle Cards",
+    journeyStages: ["evaluation", "decision"],
+    accessLevel: "internal_only",
+    divisions: ["MPR", "MDV"],
+    note: () => "Internal only. The six objections this offering actually meets, and the answer to each.",
+    link: FREYR_URL.insights,
+  },
+  {
+    label: () => "Discovery question set",
+    kind: "document",
+    documentType: "training",
+    folder: "Sales Qualifying Questions",
+    journeyStages: ["awareness"],
+    accessLevel: "internal_only",
+    divisions: ["MPR", "MDV", "CON"],
+    note: () => "The questions that separate a real requirement from a wish list, in the order to ask them.",
+    link: FREYR_URL.insights,
+  },
+  {
+    label: (o) => `Implementation overview: ${o}`,
+    kind: "presentation",
+    documentType: "training",
+    folder: "Sales Decks/Short Sales Deck",
+    journeyStages: ["decision"],
+    accessLevel: "client_facing",
+    divisions: ["MPR"],
+    note: () => "What onboarding looks like week by week, with the customer effort named honestly.",
+    link: FREYR_URL.resources,
+  },
+  {
+    label: () => "Security and data residency overview",
+    kind: "document",
+    documentType: "product_brief",
+    folder: "Product Brief",
+    serviceFolder: "Service Brief",
+    journeyStages: ["decision"],
+    accessLevel: "client_facing",
+    divisions: ["MPR", "MDV", "CON"],
+    note: () => "Hosting regions, retention, access control and the audit trail, in one page for a security review.",
+    link: FREYR_URL.resources,
+  },
+  {
+    label: () => "Competitive landscape brief",
+    kind: "document",
+    documentType: "battle_card",
+    folder: "Battle Cards",
+    journeyStages: ["evaluation"],
+    accessLevel: "internal_only",
+    divisions: ["MPR"],
+    note: () => "Internal only. Where the incumbent platforms are strong and where they are not.",
+    link: FREYR_URL.insights,
+  },
+  {
+    label: () => "Thought leadership: what changes in the next filing cycle",
+    kind: "document",
+    documentType: "thought_leadership",
+    folder: "Thought Leadership",
+    journeyStages: ["awareness"],
+    accessLevel: "client_facing",
+    divisions: ["MPR", "CON"],
+    note: () => "A point of view worth sending cold, because it is useful whether or not they buy anything.",
+    link: FREYR_URL.insights,
+  },
+  {
+    label: () => "Introductory email sequence",
+    kind: "document",
+    documentType: "intro_email",
+    folder: "Introductory Emails",
+    journeyStages: ["awareness"],
+    accessLevel: "internal_only",
+    divisions: ["MPR", "MDV", "CON"],
+    note: () => "Three emails and the two follow-ups, written to be edited rather than sent as they are.",
+    link: FREYR_URL.contact,
+  },
+  {
+    label: () => "Old customer demo recording",
+    kind: "video",
+    documentType: "other",
+    folder: "Product Demos/Internal Demos",
+    serviceFolder: "Videos/Internal Demos",
+    journeyStages: ["evaluation"],
+    accessLevel: "agent_only",
+    divisions: ["MPR"],
+    note: () => "Background material for the assistant. Not for sending to a customer.",
+    link: FREYR_URL.resources,
+  },
+];
+
+/** Success stories and reference calls are named after a mock account, so the
+ *  library reads like a library rather than a template with the name swapped. */
+const SHOWROOM_ACCOUNT_MATERIALS: {
+  label: (account: string) => string;
+  kind: MaterialKind;
+  documentType: DocumentType;
+  /** A system folder, for the same reason the list above uses one. */
+  folder: string;
+  journeyStages: JourneyStage[];
+  accessLevel: AccessLevel;
+  note: (account: string, offering: string) => string;
+}[] = [
+  {
+    label: (a) => `Success story: ${a}`,
+    kind: "document",
+    documentType: "case_study",
+    folder: "Success Stories and Case Studies",
+    journeyStages: ["evaluation"],
+    accessLevel: "client_facing",
+    note: (a, o) => `How ${a} put ${o} in front of their regulatory team, and what changed in the first two quarters.`,
+  },
+  {
+    label: (a) => `Reference call notes: ${a}`,
+    kind: "document",
+    documentType: "client_testimonial",
+    folder: "Client Testimonials",
+    journeyStages: ["decision"],
+    accessLevel: "internal_only",
+    note: (a) => `Internal only. What ${a} will and will not say on a reference call, and who to ask for.`,
+  },
+];
+
+/** A deterministic date somewhere in the last two years, laid out so a
+ *  library's files were plainly added over time rather than all at once. */
+function showroomStamp(key: string, index: number): string {
+  const DAY = 24 * 60 * 60 * 1000;
+  const at = new Date(
+    Date.now() - demoInt(6, 700, key, "when", index) * DAY
+  );
+  at.setUTCHours(
+    demoInt(8, 18, key, "h", index),
+    demoInt(0, 59, key, "m", index),
+    0,
+    0
+  );
+  return at.toISOString();
+}
+
+/** The sales library for one showroom offering. Deliberately uneven: a well
+ *  worked offering carries a dozen files, a newer one carries two, and a few
+ *  carry none at all, because an empty state is a real state and Anir has to
+ *  be able to see one. */
+function showroomMaterialsFor(offering: Offering): OfferingMaterial[] {
+  const key = offering.id;
+  const service = isServiceOfferingType(offering.offering_type);
+  /* One offering in eight stays empty on purpose. */
+  if (demoChance(12, key, "bare")) return [];
+  const wanted = demoInt(2, SHOWROOM_MATERIALS.length, key, "size");
+  const name = offering.offering_name;
+  const out: OfferingMaterial[] = [];
+  /* Rotate the starting point so two offerings of the same size do not carry
+     the same first five files. */
+  const start = demoHash(key, "start") % SHOWROOM_MATERIALS.length;
+  for (let i = 0; i < wanted; i++) {
+    const spec = SHOWROOM_MATERIALS[(start + i) % SHOWROOM_MATERIALS.length];
+    const person = demoPick(SHOWROOM_PEOPLE, key, "who", i);
+    out.push({
+      id: `sm-${key}-${String(i + 1).padStart(2, "0")}`,
+      kind: spec.kind,
+      label: spec.label(name),
+      url: spec.link,
+      description: spec.note(name),
+      folder: (service && spec.serviceFolder) || spec.folder,
+      journeyStages: [...spec.journeyStages],
+      journeyStage: spec.journeyStages[0],
+      divisions: [...spec.divisions],
+      accessLevel: spec.accessLevel,
+      documentType: spec.documentType,
+      addedBy: person.name,
+      addedAt: showroomStamp(key, i),
+    });
+  }
+  /* Customer-named files on the offerings that have enough of a library to
+     have earned them. */
+  if (wanted >= 5) {
+    SHOWROOM_ACCOUNT_MATERIALS.forEach((spec, i) => {
+      const account = demoPick(SHOWROOM_ACCOUNTS, key, "acct", i);
+      const person = demoPick(SHOWROOM_PEOPLE, key, "acctwho", i);
+      out.push({
+        id: `sm-${key}-a${i + 1}`,
+        kind: spec.kind,
+        label: spec.label(account),
+        url: FREYR_URL.insights,
+        description: spec.note(account, name),
+        folder: spec.folder,
+        journeyStages: [...spec.journeyStages],
+        journeyStage: spec.journeyStages[0],
+        divisions: ["MPR"],
+        accessLevel: spec.accessLevel,
+        documentType: spec.documentType,
+        addedBy: person.name,
+        addedAt: showroomStamp(key, 40 + i),
+      });
+    });
+  }
+  return out;
+}
+
+/** Folders an owner made but has not filled yet — the state that exists only
+ *  because somebody was mid-way through organising the library. */
+function showroomEmptyFolders(offering: Offering): string[] {
+  if (!demoChance(30, offering.id, "folder")) return [];
+  /* Nested under a system folder, because that is the only kind of folder an
+     owner can actually make: the twelve roots are fixed. */
+  return [
+    demoPick(
+      [
+        "Proposals/2026 renewals",
+        "Battle Cards/Regional",
+        "Others/Legal review",
+        "Success Stories and Case Studies/Devices",
+      ],
+      offering.id,
+      "foldername"
+    ),
+  ];
+}
+
+/** Ownership, as records an admin granted. The ids are demo ids that match no
+ *  real workspace account, so these rows can only ever ADD a name to the
+ *  owners card — they never take an ability away from a signed-in person, and
+ *  an admin can still edit every offering. */
+function showroomOwnersFor(offering: Offering): OfferingOwner[] {
+  const key = offering.id;
+  /* A quarter stay unowned, which is the state the "claim this offering"
+     prompt exists for. */
+  if (demoChance(25, key, "unowned")) return [];
+  const count = demoInt(1, 3, key, "owners");
+  const out: OfferingOwner[] = [];
+  for (let i = 0; i < count; i++) {
+    const person = SHOWROOM_PEOPLE[demoHash(key, "owner", i) % SHOWROOM_PEOPLE.length];
+    if (out.some((o) => o.name === person.name)) continue;
+    /* One in five is a pending request rather than a grant, so the difference
+       between asking and owning is visible somewhere in the demo. */
+    const pending = i > 0 && demoChance(20, key, "pending", i);
+    out.push({
+      memberId: `showroom-${person.email.split("@")[0]}`,
+      name: person.name,
+      email: person.email,
+      status: pending ? "requested" : "owner",
+      claimed_at: showroomStamp(key, 60 + i),
+      granted_by: pending ? person.name : "Workspace admin",
+    });
+  }
+  return out;
+}
+
+/** Which version of each connected component this package covers (Suren, Aug
+ *  9: "where is the version number? You need to say which version is
+ *  applicable for this offering"). Pinned to a version the component really
+ *  has, so the card can never quote a version that does not exist. */
+function showroomComponentVersions(
+  offering: Offering,
+  components: FdlComponent[]
+): { ids: string[]; versions: Record<string, string | null> } {
+  const ids = offering.component_ids ?? demoComponentsForOffering(offering.id);
+  const versions: Record<string, string | null> = {};
+  ids.forEach((componentId, i) => {
+    const component = components.find((c) => c.id === componentId);
+    if (!component || !component.releases.length) return;
+    /* Usually the version sellers quote today; sometimes a package is pinned a
+       release behind, which is the case the field was asked for. */
+    const current = component.releases.find((r) => r.current) ?? component.releases[0];
+    const behind =
+      component.releases.filter((r) => r.status === "released")[0] ?? current;
+    versions[componentId] = demoChance(25, offering.id, "pin", i)
+      ? behind.version
+      : current.version;
+  });
+  return { ids, versions };
+}
+
+/**
+ * THE OFFERING'S OWN VERSION HISTORY, built from the roadmap mock actually
+ * shows. `withVisibleMaterials` overlays demoRoadmapForOffering at read time,
+ * so the history is generated from that same list rather than from the stored
+ * (empty) releases — otherwise every entry would describe versions the page
+ * does not display.
+ */
+function showroomOfferingHistory(offering: Offering): RoadmapVersion[] {
+  const key = `${offering.id}:offering`;
+  if (demoChance(15, key, "nohistory")) return [];
+  const releases = demoRoadmapForOffering(offering);
+  const drafts: { changes: string[]; reason?: string; upTo: number }[] = [];
+  releases.forEach((release, i) => {
+    drafts.push({
+      changes: [`Added ${release.version}${release.date ? ` (${release.date})` : ""}`],
+      upTo: i,
+    });
+    if (i > 0 && release.features.length && demoChance(55, key, "feat", i)) {
+      drafts.push({
+        changes: [`${release.version}: ${demoInt(1, 3, key, "n", i)} features added`],
+        upTo: i,
+      });
+    }
+  });
+  const last = releases[releases.length - 1];
+  if (last?.date) {
+    const from = new Date(last.date);
+    from.setMonth(from.getMonth() - demoInt(2, 6, key, "slip"));
+    drafts.push({
+      changes: [
+        `${last.version} moved from ${from.toISOString().slice(0, 10)} to ${last.date}`,
+      ],
+      reason: demoPick(DEMO_ROADMAP_REASONS, key, "why"),
+      upTo: releases.length - 1,
+    });
+  }
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const daysBack: number[] = [];
+  let back = demoInt(5, 40, key, "tail");
+  for (let i = drafts.length - 1; i >= 0; i--) {
+    daysBack[i] = back;
+    back += demoInt(21, 130, key, "gap", i);
+  }
+  return drafts
+    .map((draft, i) => {
+      const at = new Date(now - daysBack[i] * DAY);
+      at.setUTCHours(
+        demoInt(7, 17, key, "hour", i),
+        demoInt(0, 59, key, "minute", i),
+        0,
+        0
+      );
+      return {
+        version: i + 1,
+        savedAt: at.toISOString(),
+        savedBy: demoPick(DEMO_ROADMAP_AUTHORS, key, "by", i),
+        ...(draft.reason ? { reason: draft.reason } : {}),
+        changes: draft.changes,
+        releases: releases.slice(0, draft.upTo + 1).map((r) => ({ ...r })),
+      } as RoadmapVersion;
+    })
+    .reverse();
+}
+
+/** A sentence about a neighbouring offering, in this offering's voice — the
+ *  editable related-offering note Saras asked for, which mock could not show
+ *  because nothing had ever been written. */
+const SHOWROOM_RELATED_NOTES = [
+  "Sold together more often than not: the two share a record, so a customer running one gets the second at a fraction of the setup.",
+  "Adjacent rather than bundled. Worth naming in a first meeting, worth quoting separately.",
+  "This is the upgrade path. Customers who outgrow the standalone module land here.",
+  "Same data, different audience. One is bought by regulatory, the other by the commercial team.",
+  "Runs underneath this one. If the customer already has it, implementation is materially shorter.",
+];
+
+/** Extra feature rows so the grid is not the same height on every component.
+ *  Written generically enough to be true of the module they are attached to,
+ *  and always mapped to versions that component really has. */
+const SHOWROOM_EXTRA_FEATURES = [
+  "Saved views per market, shareable with a named team",
+  "Field-level permissions so a contractor sees only their own scope",
+  "Scheduled export to the customer's own data warehouse",
+  "Bulk edit with a single approval covering the whole set",
+  "Configurable validation rules per health authority",
+  "Full-text search across every attached document",
+  "Side-by-side comparison of any two records",
+  "Email and in-app notifications on the events a team chooses",
+  "Delegation and out-of-office handover on every task",
+  "Audit export covering any date range, ready for an inspection",
+  "Read-only partner access with a time limit on it",
+  "API access with per-integration keys and usage logging",
+  "Custom fields without a release, governed by an admin",
+  "Attachment versioning with the superseded copy kept",
+  "Dashboard tiles a user can arrange for themselves",
+  "Bulk reassignment when a person leaves a team",
+];
+
+/** A file pinned to a feature — the spec or the screenshot Suren asked to be
+ *  able to attach. */
+function showroomAttachments(
+  componentId: string,
+  featureId: string,
+  index: number
+): FdlFeatureAttachment[] {
+  if (!demoChance(38, featureId, "attach")) return [];
+  const count = demoInt(1, 2, featureId, "attachcount");
+  const out: FdlFeatureAttachment[] = [];
+  for (let i = 0; i < count; i++) {
+    const image = demoChance(45, featureId, "img", i);
+    out.push({
+      id: `${componentId}-a${index + 1}${i + 1}`,
+      name: image
+        ? `screen-${String(index + 1).padStart(2, "0")}.png`
+        : `functional-spec-${String(index + 1).padStart(2, "0")}.pdf`,
+      url: FREYR_URL.resources,
+      kind: image ? "image" : "document",
+    });
+  }
+  return out;
+}
+
+/**
+ * THE EMPTY STATES, ON PURPOSE.
+ *
+ * A showroom where every single record is full teaches a reviewer nothing
+ * about what the app does before anybody has filled anything in, and those
+ * screens are the ones a new customer sees first. Three components that have a
+ * version and no features yet, and two offerings that have nothing but a name.
+ */
+function showroomBlankComponents(): FdlComponent[] {
+  return [
+    {
+      id: "fdl-show-901",
+      name: "Signals Workbench",
+      type: "Module",
+      releases: [
+        { id: "fdl-show-901-r1", version: "V0.9", date: "2026-11-20", status: "next" },
+      ],
+      features: [],
+      roadmap_versions: [],
+      created_at: "2026-08-14T09:20:00.000Z",
+      created_by: "Hannah Schmidt",
+    },
+    {
+      id: "fdl-show-902",
+      name: "Renewals Agent",
+      type: "Agent",
+      releases: [],
+      features: [],
+      roadmap_versions: [],
+      created_at: "2026-08-26T14:05:00.000Z",
+      created_by: "Owen Fairweather",
+    },
+    {
+      id: "fdl-show-903",
+      name: "Partner Portal",
+      type: "Platform",
+      releases: [
+        { id: "fdl-show-903-r1", version: "V1.0", date: "2027-01-15", status: "next" },
+      ],
+      features: [],
+      roadmap_versions: [],
+      created_at: "2026-08-30T11:40:00.000Z",
+      created_by: "Marcus Ellery",
+    },
+  ];
+}
+
+function showroomBlankOfferings(): Offering[] {
+  const blank = (
+    id: string,
+    type: string,
+    name: string,
+    category: string,
+    createdAt: string,
+    createdBy: string
+  ): Offering => {
+    /* `off` builds from the sheet's own columns and has no created_by among
+       them, so the author is stamped here rather than passed in and dropped. */
+    const record = off(id, type, name, "", {
+      offering_category: category,
+      created_at: createdAt,
+    });
+    record.created_by = createdBy;
+    return record;
+  };
+  return [
+    blank(
+      "of-show-901",
+      MODULE,
+      "Freya.Signals",
+      CAT_GRI,
+      "2026-08-28T10:15:00.000Z",
+      "Hannah Schmidt"
+    ),
+    blank(
+      "of-show-902",
+      SERVICE,
+      "Renewals Managed Service",
+      CAT_OTHERS,
+      "2026-09-01T08:30:00.000Z",
+      "Rosalind Achebe"
+    ),
+  ];
+}
+
+/**
+ * THE FIRST SEEDER'S SIGNATURE.
+ *
+ * Its histories were minted in one loop from one Date.now(), so every entry
+ * landed on the identical clock time, and it drew its names from four demo
+ * colleagues and no others. Nobody editing a roadmap by hand produces that,
+ * which makes it a safe test for "this is generated content, not somebody's
+ * work". Anything that fails the test is left exactly as it is.
+ */
+const FIRST_SEEDER_AUTHORS = new Set([
+  "Audrey Kingsley",
+  "Daniel Foster",
+  "Grace Lockwood",
+  "Hannah Schmidt",
+]);
+
+function isFirstSeederHistory(history: RoadmapVersion[]): boolean {
+  if (history.length < 2) return false;
+  const clockOf = (iso: string) => iso.slice(11);
+  const clock = clockOf(history[0].savedAt);
+  return history.every(
+    (version) =>
+      clockOf(version.savedAt) === clock &&
+      FIRST_SEEDER_AUTHORS.has(version.savedBy) &&
+      !version.reason
+  );
+}
+
+/**
+ * FILL THE SHOWROOM IN, ONCE.
+ *
+ * Only ever called on mockStore, and only when the store's depth marker is
+ * behind. Every write is conditional on the field being genuinely empty, so
+ * even if the marker were ever reset, nothing a person typed into the demo
+ * would be replaced by generated content.
+ */
+function deepenShowroom(s: OfferingsStore): void {
+  s.fdlComponents = s.fdlComponents ?? [];
+  const components = s.fdlComponents;
+
+  for (const component of components) {
+    if (!component.id.startsWith("fdl-demo-") && !component.id.startsWith("fdl-show-")) {
+      continue;
+    }
+    /* WHO ADDED THIS AND WHEN. Real mode leaves both blank on anything that
+       predates the field, because there is no honest author for it; the
+       showroom is invented from end to end, so it can say. */
+    if (!component.created_by) {
+      component.created_by = demoPick(SHOWROOM_PEOPLE, component.id, "author").name;
+      component.created_at = showroomStamp(component.id, 3);
+    }
+    /* FEATURE COUNTS THAT VARY. Every component carrying five or six rows made
+       the grid look printed rather than filled in. The blueprint's own
+       features always stay; these sit after them. */
+    const target = demoInt(0, 11, component.id, "extra");
+    if (component.releases.length && target && component.features.length) {
+      const releaseIds = component.releases.map((r) => r.id);
+      const start = demoHash(component.id, "featstart") % SHOWROOM_EXTRA_FEATURES.length;
+      for (let i = 0; i < target; i++) {
+        const name = SHOWROOM_EXTRA_FEATURES[(start + i) % SHOWROOM_EXTRA_FEATURES.length];
+        if (component.features.some((f) => f.name === name)) continue;
+        const id = `${component.id}-x${i + 1}`;
+        const from = demoHash(component.id, "from", i) % releaseIds.length;
+        component.features.push({
+          id,
+          fid: `X-${component.id.slice(-3)}${String(i + 1).padStart(2, "0")}`,
+          name,
+          description: demoFeatureDescription(
+            name,
+            component.name,
+            component.releases[0]?.version ?? "V1.0"
+          ),
+          versionIds: releaseIds.slice(from),
+          attachments: showroomAttachments(component.id, id, i),
+        });
+      }
+    }
+    /* Files on the features that were already there, not only the new ones. */
+    for (const [i, feature] of component.features.entries()) {
+      if (feature.attachments?.length) continue;
+      const attachments = showroomAttachments(component.id, feature.id, i);
+      if (attachments.length) feature.attachments = attachments;
+    }
+    /* THE HISTORY THE 25 COMPONENTS PERSISTED BEFORE THIS FIELD EXISTED NEVER
+       GOT. A persisted row always beats a fresh seed, so they opened on "No
+       changes yet" for good. The rest carry the FIRST seeder's output, which
+       is the pile Anir was looking at, so that gets rebuilt too — but only
+       when it still carries that seeder's signature. */
+    const history = component.roadmap_versions ?? [];
+    if (
+      (!history.length || isFirstSeederHistory(history)) &&
+      component.releases.length
+    ) {
+      const index = components.indexOf(component);
+      component.roadmap_versions = seedRoadmapHistory(
+        component.releases,
+        index,
+        component.id,
+        component.features
+      );
+    }
+  }
+
+  for (const blank of showroomBlankComponents()) {
+    if (!components.some((c) => c.id === blank.id)) components.push(blank);
+  }
+
+  for (const offering of s.offerings) {
+    /* TOP UP, DO NOT SKIP. Filling only the empty ones left Freya.Register —
+       the first card on the page — holding the three sample assets it has had
+       since July while everything behind it carried a dozen. Existing rows
+       keep their place at the front and nothing already there is rewritten;
+       only the generated ids that are missing get appended. */
+    {
+      const existing = offering.materials ?? [];
+      const held = new Set(existing.map((material) => material.id));
+      offering.materials = [
+        ...existing,
+        ...showroomMaterialsFor(offering).filter(
+          (material) => !held.has(material.id)
+        ),
+      ];
+    }
+    if (!offering.materialFolders?.length) {
+      offering.materialFolders = showroomEmptyFolders(offering);
+    }
+    if (!offering.owners?.length) {
+      offering.owners = showroomOwnersFor(offering);
+    }
+    if (!offering.created_by) {
+      offering.created_by = demoPick(SHOWROOM_PEOPLE, offering.id, "made").name;
+    }
+    if (!offering.component_versions) {
+      const { ids, versions } = showroomComponentVersions(offering, components);
+      offering.component_ids = offering.component_ids ?? ids;
+      offering.component_versions = versions;
+    }
+    if (!offering.roadmap_versions?.length) {
+      offering.roadmap_versions = showroomOfferingHistory(offering);
+    }
+    if (!offering.contacts?.length) {
+      const count = demoInt(1, 3, offering.id, "contacts");
+      offering.contacts = Array.from({ length: count }, (_, i) => {
+        const person = SHOWROOM_PEOPLE[demoHash(offering.id, "contact", i) % SHOWROOM_PEOPLE.length];
+        return {
+          id: `sc-${offering.id}-${i + 1}`,
+          name: person.name,
+          role: person.role,
+          email: person.email,
+          phone: "",
+        };
+      }).filter((c, i, all) => all.findIndex((x) => x.name === c.name) === i);
+      syncPoc(offering);
+    }
+  }
+
+  /* Related-offering notes, written between siblings in the same category so
+     the sentence makes sense wherever a reviewer lands. */
+  const byCategory = new Map<string, Offering[]>();
+  for (const offering of s.offerings) {
+    const bucket = byCategory.get(offering.offering_category);
+    if (bucket) bucket.push(offering);
+    else byCategory.set(offering.offering_category, [offering]);
+  }
+  for (const offering of s.offerings) {
+    if (offering.related_notes) continue;
+    const siblings = (byCategory.get(offering.offering_category) ?? []).filter(
+      (o) => o.id !== offering.id
+    );
+    if (!siblings.length || !demoChance(60, offering.id, "related")) continue;
+    const notes: Record<string, string> = {};
+    const count = Math.min(siblings.length, demoInt(1, 3, offering.id, "relcount"));
+    for (let i = 0; i < count; i++) {
+      const sibling = siblings[demoHash(offering.id, "sib", i) % siblings.length];
+      notes[sibling.id] = demoPick(SHOWROOM_RELATED_NOTES, offering.id, "note", i);
+    }
+    offering.related_notes = notes;
+  }
+
+  for (const blank of showroomBlankOfferings()) {
+    if (!s.offerings.some((o) => o.id === blank.id)) s.offerings.push(blank);
+  }
+}
+
 /**
  * TOP THE SHOWROOM UP, WHATEVER IT LOADED WITH.
  *
@@ -2811,6 +3763,15 @@ function fillShowroomCatalog(s: OfferingsStore): boolean {
   for (const offering of showroomOfferings()) {
     if (offeringIds.has(offering.id)) continue;
     s.offerings.push(offering);
+    changed = true;
+  }
+  /* THE CONTENT INSIDE THOSE RECORDS, ONCE. Adding rows is safe to repeat
+     because it is keyed on ids that either exist or do not; filling the
+     insides of a record is not, so it is gated on a version marker and never
+     runs a second time over a showroom somebody has been editing. */
+  if ((s.showroomDepthVersion ?? 0) < SHOWROOM_DEPTH_VERSION) {
+    deepenShowroom(s);
+    s.showroomDepthVersion = SHOWROOM_DEPTH_VERSION;
     changed = true;
   }
   return changed;
@@ -3430,6 +4391,13 @@ function replaceStore(target: OfferingsStore, source: OfferingsStore) {
   target.offerings = structuredClone(source.offerings);
   // Catalogs persisted before FDL components existed load without the field.
   target.fdlComponents = structuredClone(source.fdlComponents ?? []);
+  /* THE SHOWROOM MARKER BELONGS TO THE DOCUMENT, NOT TO THE PROCESS. Left
+     behind here it strands: a fresh boot deepens the seeded showroom, stamps
+     the marker on the object, then loads the persisted showroom over it — and
+     the stamp survives the load, so the row that actually needed filling was
+     the one that got skipped. Carried across, the question "has THIS catalogue
+     been filled in" is answered by the catalogue. */
+  target.showroomDepthVersion = source.showroomDepthVersion;
 }
 
 function isOfferingsStore(value: unknown): value is OfferingsStore {

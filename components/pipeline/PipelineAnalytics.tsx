@@ -132,11 +132,11 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
       icon: TIP_ICON_KEY[stage],
       // Count under the money, at rest — the bar states both facts without a hover.
       caption: `${inStage.length} ${inStage.length === 1 ? "deal" : "deals"}`,
-      // The bar is the FULL value; this names what the odds trim it to, so the
-      // headline number can never be mistaken for likely revenue.
-      tipNote: `${Math.round(odds * 100)}% odds at this step · ${formatMoney(
-        value * odds
-      )} likely`,
+      // The bar is the FULL value, and the odds say how likely a deal on this
+      // step is to close. The "· $X likely" that used to close this line was
+      // value x odds, and it came off on Anir, Sep 2: "they dont use
+      // weighted".
+      tipNote: `${Math.round(odds * 100)}% odds at this step`,
       tip: inStage.map((d) => ({
         logo: d.company,
         avatar: d.contactName,

@@ -98,7 +98,6 @@ export default async function DealDetailPage({
     !!currentUser.memberId &&
     deal.ownerUserId === currentUser.memberId;
   const value = deal?.value || 0;
-  const weighted = value * (STAGE_PROBABILITY[stage] ?? 0);
   const winProb = Math.round((STAGE_PROBABILITY[stage] ?? 0) * 100);
   const services = (session.recommended_services || []) as RecommendedService[];
   // A deal's NAME is what is being sold. Suren opened this page and asked "how
@@ -263,7 +262,6 @@ export default async function DealDetailPage({
         stage={stage}
         winProb={winProb}
         value={value}
-        weighted={weighted}
         daysInStage={daysInStage}
         stageStartedAt={stageStartedAt}
         rottingDays={ROTTING_DAYS}

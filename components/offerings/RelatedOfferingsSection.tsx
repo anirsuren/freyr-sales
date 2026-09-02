@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, LayoutGrid, Package, Rows3 } from "lucide-react";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { RelatedOfferingNote } from "@/components/offerings/RelatedOfferingNote";
 import { cn } from "@/lib/utils";
@@ -124,8 +123,10 @@ export function RelatedOfferingsSection({
               className="group flex min-h-[92px] flex-col justify-center gap-2 rounded-2xl border border-border-light bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
             >
               <span className="flex items-center gap-3">
-                <OfferingIcon name={relatedOffering.name} className="h-9 w-9 shrink-0" />
-                {/* The full name, always: default wrap breaks at spaces. */}
+                {/* No glyph in front (Anir, Sep 2: "can you just remove these
+                    icons from all the offering names? They're not really
+                    needed").
+                    The full name, always: default wrap breaks at spaces. */}
                 <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
                   {relatedOffering.name}
                 </span>
@@ -192,10 +193,6 @@ export function RelatedOfferingsSection({
                         href={`/offerings/${relatedOffering.id}`}
                         className="flex items-center gap-2.5"
                       >
-                        <OfferingIcon
-                          name={relatedOffering.name}
-                          className="h-8 w-8 shrink-0"
-                        />
                         <span className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
                           {relatedOffering.name}
                         </span>

@@ -179,10 +179,19 @@ function VideoTranscriptHint({ format }: { format: string }) {
   return (
     <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-blue-light/60 px-2 py-1.5 text-[11px] leading-snug text-blue-primary">
       <Captions size={12} strokeWidth={2.2} className="mt-[1px] shrink-0" />
-      <span>
-        Freyr transcribes this automatically. Have your own transcript? Add it
-        too and we will reconcile the two into one.
-      </span>
+      {/* DO NOT LEAD WITH THE AUTOMATIC TRANSCRIPT.
+          Anir, Sep 2: "I think you can remove that part of the message because
+          then people will take it for granted that they don't need to upload a
+          transcription, and we don't want that... just say that we suggest
+          that you add your own transcript file of the video as well. Something
+          simple and short."
+
+          Telling somebody the machine already has it handled is an invitation
+          to skip the step, and the hand-written transcript is the better one:
+          it gets names and product terms right. The automatic pass still runs,
+          it just stops being the headline. The detail is still one hover away
+          in the InfoHint further down this form. */}
+      <span>We suggest adding your own transcript file for this video.</span>
     </p>
   );
 }

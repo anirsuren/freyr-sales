@@ -7,13 +7,13 @@ import {
   Briefcase,
   FileSignature,
   Layers,
+  Package,
   Paperclip,
   Target,
   UserPlus,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
 /**
  * EVERY NAME THE ASSISTANT SAYS BECOMES A PILL.
@@ -59,9 +59,16 @@ const KIND: Record<
     href: () => "/team",
     mark: (name) => <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />,
   },
+  /**
+   * A plain glyph, not the offering's own gradient tile (Anir, Sep 2: "can you
+   * just remove these icons from all the offering names? They're not really
+   * needed"). The pill keeps A mark, because he asked for one on every name
+   * the assistant says (Aug 15), and it is now the same outline glyph the
+   * component, report and deal pills wear.
+   */
   offering: {
     href: (id) => `/offerings/${id}`,
-    mark: (name) => <OfferingIcon name={name} className="w-4 h-4 rounded text-[6px] shrink-0" />,
+    mark: () => <Package size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   component: {
     href: (id) => `/components/${id}`,

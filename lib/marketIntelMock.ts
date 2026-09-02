@@ -100,7 +100,13 @@ export function miFreshMinutes(id: string): number {
   return 4 + (h % 43);
 }
 
-export const MI_COMPANIES: MiCompany[] = [
+/**
+ * THE SIX REAL COMPANIES AND THE FOURTEEN INVENTED ONES, WRITTEN BY HAND.
+ * Left exactly as they are: the generated briefings below are appended to
+ * this list rather than mixed into it, so nothing here is ever rewritten by a
+ * generator.
+ */
+const MI_HAND_WRITTEN: MiCompany[] = [
   {
     id: "takeda",
     name: "Takeda",
@@ -657,6 +663,492 @@ export const MI_COMPANIES: MiCompany[] = [
       { daysAgo: 74, kind: "hiring", title: "Andean filings planned", detail: "Five further markets over eighteen months.", why: "New requirement sets on a fixed timeline. GRR-PAC and RIA.Compare are the whole pitch." },
     ],
   },
+];
+
+
+/* ------------------------------------------------------------------------ */
+/* THE REST OF THE WATCHLIST - generated, mock only                          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * TWENTY HAND-WRITTEN BRIEFINGS WAS NOT A WATCHLIST (Anir, Sep 2: "i need
+ * there to be hundreds of data points in total down every rabbit hole for
+ * every single page so in mock mode ppl can see exactly how it will look").
+ * The dashboard counted 48 companies and only 20 of them opened onto anything;
+ * the other 28 were names on a marquee.
+ *
+ * These twenty-four have full feeds. They are built rather than typed out, but
+ * built DETERMINISTICALLY: the same company always has the same people, the
+ * same posts on the same days, the same headlines, so two reads of a briefing
+ * never disagree and a reload never reshuffles the feed under somebody who is
+ * halfway through reading it.
+ *
+ * EVERY NAME HERE IS INVENTED. The six real companies above were written by
+ * hand and are left exactly as they are; nothing generated is attached to a
+ * real company or a real person.
+ */
+
+const INTEL_FIRST_NAMES = [
+  "Aurelia", "Bram", "Camille", "Devin", "Elke", "Fionn", "Greta", "Hugo",
+  "Imani", "Jonas", "Katarina", "Lorcan", "Maeve", "Nikhil", "Otto", "Petra",
+  "Quentin", "Rosa", "Soren", "Talia", "Ulrich", "Vera", "Wren", "Yusuf",
+];
+
+const INTEL_LAST_NAMES = [
+  "Abernathy", "Baumgartner", "Calloway", "Dunhill", "Escobar", "Falkner",
+  "Grieve", "Hollis", "Ibarra", "Jensvold", "Kaminski", "Lindgren",
+  "Moreau", "Nakashima", "Ostrander", "Pemberton", "Rasmussen", "Sandoval",
+  "Thornquist", "Ustinov", "Vasquez", "Whitlock", "Yamazaki", "Zoric",
+];
+
+const INTEL_ROLES = [
+  "VP, Global Regulatory Affairs",
+  "Head of Regulatory Operations",
+  "Director, Regulatory Intelligence",
+  "Global Head of Labeling",
+  "Senior Director, Submissions",
+  "Head of Quality and Compliance",
+  "Director, Regulatory CMC",
+  "VP, Development Operations",
+  "Head of Pharmacovigilance",
+  "Director, Regulatory Systems",
+  "Chief Regulatory Officer",
+  "Head of Digital Transformation",
+];
+
+const INTEL_POSTS = [
+  "The hardest part of a global submission is not the writing. It is agreeing on one version of the truth before anybody starts writing.",
+  "Six months of tracking handoffs taught us something uncomfortable: nobody was waiting on a decision. They were waiting on a file.",
+  "Every regulatory team I meet is measuring cycle time. Very few are measuring how much of it is queue rather than work.",
+  "Hiring for our regulatory operations group again. If you like unglamorous problems with enormous consequences, come and talk to us.",
+  "We moved our variation tracking off a spreadsheet this quarter. The spreadsheet was not the problem. The eleven copies of it were.",
+  "A health-authority question is free consulting. Log it, tag it, and stop being surprised by the same one next year.",
+  "Reminder that the label is a regulatory document, a commercial asset and a safety control at the same time. Most tools pick one.",
+  "Our first filing in a new region closed this month. Two years of preparation, three weeks of paperwork.",
+  "If your renewal calendar lives in someone's head, you do not have a renewal calendar. You have a single point of failure.",
+  "Spent the week with our affiliates. Every one of them has built the same workaround independently. That is a product signal.",
+  "The compliance case for structured content is easy. The commercial case is the one that gets it funded.",
+  "We are piloting an assistant on our own regulatory archive. Early read: excellent at finding, still supervised at concluding.",
+  "Three markets, three interpretations of the same guidance. This is why regional expertise cannot be automated away.",
+  "Congratulations to the team on closing the annual report cycle a fortnight early. Boring, on time, exactly as intended.",
+  "The question I keep asking vendors: what happens when the customer's data is messier than your demo data?",
+  "Data migration is where regulatory platform projects actually go wrong. Everyone budgets for the software.",
+  "Proud that our audit closed with no findings on documentation. That is five years of discipline, not five weeks of preparation.",
+  "Sat in on a submission dry run today. The gaps were all in the handoffs, none of them in the science.",
+  "We are rebuilding our regulatory intelligence process around impact rather than volume. Nobody needs another daily digest.",
+  "Two of our markets moved to electronic-only filing this year. The transition cost was almost entirely internal.",
+  "Anyone else finding that artwork approval, not the regulatory filing, is what actually delays a launch?",
+  "Our team's rule for a new tool: if it does not remove a spreadsheet, it is not solving anything.",
+  "Speaking at the regional regulatory forum next month on lifecycle change control. Say hello if you are there.",
+  "The best thing we did this year was give one person end-to-end ownership of the submission calendar.",
+  "Post-approval commitments are the quiet workload nobody staffs for until they are late.",
+  "A good regulatory system makes the right thing the easy thing. Most of ours make the right thing the slow thing.",
+  "We now run label deviation reviews quarterly instead of annually. Half the findings simply stopped occurring.",
+  "Vendor selection update: we shortlisted on data model, not on screenshots. Recommend it.",
+  "Half our regulatory queries last year traced back to one field being entered differently in two systems.",
+  "The unglamorous truth about digital transformation in regulatory: it is ninety percent taxonomy.",
+];
+
+const INTEL_NEWS_SOURCES = [
+  "Reuters",
+  "Fierce Pharma",
+  "Endpoints News",
+  "PharmaTimes",
+  "Regulatory Focus",
+  "Pharmaceutical Technology",
+  "MedTech Dive",
+  "European Pharmaceutical Review",
+];
+
+const INTEL_NEWS = [
+  {
+    headline: "{name} names a new head of regulatory affairs",
+    summary:
+      "The appointment consolidates regulatory strategy and operations under one function, reporting into development.",
+  },
+  {
+    headline: "{name} opens a regulatory hub in {city}",
+    summary:
+      "The site takes on submissions and labeling work previously spread across three offices, with hiring beginning this quarter.",
+  },
+  {
+    headline: "{name} confirms a review of its regulatory software estate",
+    summary:
+      "Leadership described the current estate as fragmented and said a vendor selection would run through the next two quarters.",
+  },
+  {
+    headline: "{name} files for approval in two additional markets",
+    summary:
+      "Both filings run through national procedures, with decisions expected inside the year.",
+  },
+  {
+    headline: "{name} reports faster submission cycles after a process overhaul",
+    summary:
+      "The company credits earlier label alignment rather than new technology for most of the improvement.",
+  },
+  {
+    headline: "{name} signs a multi-year data partnership",
+    summary:
+      "The agreement covers safety and post-market data across several regions, with an option to extend into regulatory intelligence.",
+  },
+  {
+    headline: "{name} expands its {region} affiliate network",
+    summary:
+      "Regional teams take on filings previously run centrally, which the company expects to shorten local approval timelines.",
+  },
+  {
+    headline: "{name} flags rising regulatory compliance costs",
+    summary:
+      "An earnings note put compliance and quality spend among the fastest-growing lines in operating cost.",
+  },
+  {
+    headline: "{name} completes an internal audit with no major findings",
+    summary:
+      "The company published a summary of its remediation programme alongside the result.",
+  },
+  {
+    headline: "{name} pilots an AI assistant across regulatory documentation",
+    summary:
+      "The pilot is limited to internal search and drafting, with every output reviewed by a regulatory professional.",
+  },
+  {
+    headline: "{name} restructures development operations",
+    summary:
+      "Regulatory affairs moves alongside clinical operations under a single operating model, with budget authority following.",
+  },
+  {
+    headline: "{name} withdraws a product from two smaller markets",
+    summary:
+      "The company cited the cost of maintaining registrations relative to volume rather than any safety concern.",
+  },
+  {
+    headline: "{name} invests in structured content management",
+    summary:
+      "The programme targets label and dossier reuse across markets, with the first release scheduled for next year.",
+  },
+  {
+    headline: "{name} adds capacity to its labeling function",
+    summary:
+      "The expansion follows a backlog in artwork approvals that delayed two regional launches.",
+  },
+  {
+    headline: "{name} joins an industry consortium on data standards",
+    summary:
+      "The group is working towards a shared exchange format for dossier components between sponsors and vendors.",
+  },
+  {
+    headline: "{name} sets a target for electronic-only submissions",
+    summary:
+      "The company committed to retiring paper filings in every market that accepts an electronic equivalent.",
+  },
+];
+
+const INTEL_CITIES = [
+  "Basel",
+  "Boston",
+  "Hyderabad",
+  "Singapore",
+  "Dublin",
+  "Copenhagen",
+  "Tokyo",
+  "Sao Paulo",
+  "Toronto",
+  "Barcelona",
+];
+
+const INTEL_REGIONS = [
+  "APAC",
+  "LATAM",
+  "EMEA",
+  "North American",
+  "Nordic",
+  "Middle East",
+];
+
+const INTEL_SIGNALS: {
+  kind: MiSignalKind;
+  title: string;
+  detail: string;
+  why: string;
+}[] = [
+  {
+    kind: "hiring",
+    title: "Regulatory hiring well above trend",
+    detail: "{n} open regulatory roles this month against a twelve-month average of {avg}.",
+    why: "Teams staff up ahead of platform decisions. This is the window to be in the room.",
+  },
+  {
+    kind: "leadership",
+    title: "New owner for regulatory",
+    detail: "Regulatory affairs now reports into a different function than it did last quarter.",
+    why: "New owner, new budget review. Prior vendor loyalties reset.",
+  },
+  {
+    kind: "competitor",
+    title: "Rival platform reported in a pilot",
+    detail: "Industry chatter places a competing vendor in a limited pilot with one division.",
+    why: "A pilot is not a rollout. A strong counter-demo now keeps the decision open.",
+  },
+  {
+    kind: "regulatory",
+    title: "Filing volume up sharply",
+    detail: "{n} filings last quarter against {avg} in the same quarter a year earlier.",
+    why: "Volume is what breaks a manual process. They will feel it before we call.",
+  },
+  {
+    kind: "expansion",
+    title: "Regional operations consolidating",
+    detail: "Markets moving under one regional function in {city}.",
+    why: "Consolidation is a tooling decision, and regional coverage is where most global platforms are weakest.",
+  },
+  {
+    kind: "deal",
+    title: "Selection window open",
+    detail: "A public commitment to reduce the software estate, with selection inside two quarters.",
+    why: "An open selection window is the best time to be evaluated, and this one has a clock on it.",
+  },
+  {
+    kind: "hiring",
+    title: "First regulatory operations lead hired",
+    detail: "A role that did not exist here a year ago has been filled from outside.",
+    why: "A new function buys its own tools. Being early is worth more than being cheap.",
+  },
+  {
+    kind: "regulatory",
+    title: "Electronic-only commitment published",
+    detail: "Paper filings to be retired in every market that accepts an electronic equivalent.",
+    why: "A stated deadline they have to hit, with a gap they cannot close by hiring.",
+  },
+  {
+    kind: "expansion",
+    title: "New market entries planned",
+    detail: "{n} further markets over the next eighteen months.",
+    why: "New requirement sets on a fixed timeline. Intelligence and comparison are the whole pitch.",
+  },
+  {
+    kind: "competitor",
+    title: "Incumbent contract under cost review",
+    detail: "A cost programme has put existing vendor agreements under review through the year.",
+    why: "Reviews cut both ways. An incumbent under cost pressure is an opening.",
+  },
+  {
+    kind: "deal",
+    title: "Data partnership signed",
+    detail: "A multi-year agreement covering safety and post-market data across several regions.",
+    why: "They are already buying data infrastructure. The regulatory layer is the adjacent sale.",
+  },
+  {
+    kind: "leadership",
+    title: "Digital transformation lead appointed",
+    detail: "A newly created role covering systems across development and regulatory.",
+    why: "Somebody has been hired to change things and has to show something inside a year.",
+  },
+];
+
+type IntelProfile = {
+  name: string;
+  industry: string;
+  hq: string;
+  competitors: string[];
+};
+
+const INTEL_PROFILES: IntelProfile[] = [
+  { name: "Aldermoor Therapeutics", industry: "Biopharma", hq: "Cambridge, UK", competitors: ["Veeva", "ArisGlobal"] },
+  { name: "Belrose Pharma", industry: "Specialty pharma", hq: "Lyon, France", competitors: ["IQVIA", "Certara"] },
+  { name: "Carrowmore Bio", industry: "Biologics", hq: "Galway, Ireland", competitors: ["Veeva", "Parexel"] },
+  { name: "Dunmore Medical", industry: "Medical devices", hq: "Minneapolis, USA", competitors: ["Intertek", "Emergo"] },
+  { name: "Elsworth Health", industry: "Consumer health", hq: "Manchester, UK", competitors: ["IQVIA", "Veeva"] },
+  { name: "Farnborough Devices", industry: "Medical devices", hq: "Farnborough, UK", competitors: ["Emergo", "Certara"] },
+  { name: "Glenmara Labs", industry: "Generics", hq: "Ahmedabad, India", competitors: ["ArisGlobal", "IQVIA"] },
+  { name: "Hartsmere Biotech", industry: "Biotech", hq: "San Diego, USA", competitors: ["Veeva", "Certara"] },
+  { name: "Inverness Consumer Health", industry: "Consumer health", hq: "Edinburgh, UK", competitors: ["IQVIA"] },
+  { name: "Jessamine Pharma", industry: "Specialty pharma", hq: "Milan, Italy", competitors: ["Parexel", "ArisGlobal"] },
+  { name: "Kilbrannan Bio", industry: "Biologics", hq: "Glasgow, UK", competitors: ["Veeva", "IQVIA"] },
+  { name: "Larkmead Diagnostics", industry: "Diagnostics", hq: "Uppsala, Sweden", competitors: ["Emergo", "Intertek"] },
+  { name: "Merrivale Medical", industry: "Medical devices", hq: "Melbourne, Australia", competitors: ["Emergo"] },
+  { name: "Norbury Consumer Brands", industry: "Consumer health", hq: "Chicago, USA", competitors: ["IQVIA", "Veeva"] },
+  { name: "Oakhampton Generics", industry: "Generics", hq: "Hyderabad, India", competitors: ["ArisGlobal", "Certara"] },
+  { name: "Pentland Vaccines", industry: "Vaccines", hq: "Copenhagen, Denmark", competitors: ["Parexel", "Veeva"] },
+  { name: "Quillon Therapeutics", industry: "Biopharma", hq: "Zurich, Switzerland", competitors: ["Veeva", "Certara"] },
+  { name: "Ravensworth Devices", industry: "Medical devices", hq: "Leeds, UK", competitors: ["Intertek", "Emergo"] },
+  { name: "Sedgemoor Pharma", industry: "Global biopharma", hq: "Philadelphia, USA", competitors: ["IQVIA", "Veeva", "Parexel"] },
+  { name: "Thornbury Bio", industry: "Biotech", hq: "Toronto, Canada", competitors: ["Certara"] },
+  { name: "Ullswater Health", industry: "Consumer health", hq: "Auckland, New Zealand", competitors: ["IQVIA"] },
+  { name: "Vexley Diagnostics", industry: "Diagnostics", hq: "Boston, USA", competitors: ["Emergo", "Veeva"] },
+  { name: "Windermere Pharma", industry: "Specialty pharma", hq: "Osaka, Japan", competitors: ["ArisGlobal", "IQVIA"] },
+  { name: "Yarrowfield Bio", industry: "Biologics", hq: "Leiden, Netherlands", competitors: ["Veeva", "Parexel"] },
+];
+
+/** Deterministic 32-bit hash. A briefing somebody is halfway through reading
+ *  must not change under them, so nothing here reaches for Math.random. */
+function intelHash(...parts: (string | number)[]): number {
+  let h = 2166136261;
+  for (const ch of parts.join(" ")) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function intelPick<T>(list: readonly T[], ...parts: (string | number)[]): T {
+  return list[intelHash(...parts) % list.length];
+}
+
+function intelInt(min: number, max: number, ...parts: (string | number)[]): number {
+  return min + (intelHash(...parts) % (max - min + 1));
+}
+
+function intelSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function buildIntelCompany(profile: IntelProfile): MiCompany {
+  const id = intelSlug(profile.name);
+  const shortName = profile.name.split(" ")[0];
+
+  /* People. Each name is built from two pools and checked against the ones
+     already on this briefing, so nobody appears twice on the same company. */
+  const peopleCount = intelInt(2, 5, id, "people");
+  const people: MiPerson[] = [];
+  for (let i = 0; i < peopleCount; i++) {
+    const name = `${intelPick(INTEL_FIRST_NAMES, id, "first", i)} ${intelPick(
+      INTEL_LAST_NAMES,
+      id,
+      "last",
+      i
+    )}`;
+    if (people.some((person) => person.name === name)) continue;
+    people.push({
+      id: `${id}-p${i + 1}`,
+      name,
+      role: intelPick(INTEL_ROLES, id, "role", i),
+      posts90d: intelInt(2, 12, id, "posts90d", i),
+    });
+  }
+
+  /* Posts, newest first, walking back across the ninety days the module
+     claims to cover. */
+  const postCount = intelInt(3, 8, id, "postcount");
+  const posts: MiPost[] = [];
+  let day = intelInt(1, 6, id, "firstpost");
+  for (let i = 0; i < postCount; i++) {
+    posts.push({
+      personId: people[intelHash(id, "author", i) % people.length].id,
+      daysAgo: day,
+      text: intelPick(INTEL_POSTS, id, "text", i),
+      reactions: intelInt(38, 690, id, "reactions", i),
+      comments: intelInt(3, 94, id, "comments", i),
+    });
+    day += intelInt(4, 19, id, "postgap", i);
+  }
+
+  /* News, with the company's own name, city and region written into it, so no
+     two briefings read as the same page with the title swapped. */
+  const newsCount = intelInt(3, 7, id, "newscount");
+  const news: MiNews[] = [];
+  let newsDay = intelInt(2, 9, id, "firstnews");
+  for (let i = 0; i < newsCount; i++) {
+    const template = INTEL_NEWS[intelHash(id, "news", i) % INTEL_NEWS.length];
+    news.push({
+      daysAgo: newsDay,
+      source: intelPick(INTEL_NEWS_SOURCES, id, "src", i),
+      headline: template.headline
+        .replace("{name}", profile.name)
+        .replace("{city}", intelPick(INTEL_CITIES, id, "city", i))
+        .replace("{region}", intelPick(INTEL_REGIONS, id, "region", i)),
+      summary: template.summary,
+    });
+    newsDay += intelInt(6, 22, id, "newsgap", i);
+  }
+  /* THE COMPANY'S OWN SITE IS THE THIRD SOURCE. Live keeps website pick-ups in
+     their own list; a sample briefing has one feed, so a site pick-up lands in
+     news with the site named as the source, which is what it is. Without these
+     the website pass Anant asked for was invisible everywhere in mock. */
+  news.push({
+    daysAgo: intelInt(3, 26, id, "sitenews"),
+    source: `${intelSlug(shortName)}.com newsroom`,
+    headline: `${profile.name} publishes its regulatory compliance statement for the year`,
+    summary:
+      "Posted to the company's own newsroom rather than picked up by the trade press, which is usually where a programme is described before it is announced.",
+  });
+  news.push({
+    daysAgo: intelInt(28, 78, id, "sitenews2"),
+    source: `${intelSlug(shortName)}.com careers`,
+    headline: `${profile.name} lists ${intelInt(4, 26, id, "roles")} open regulatory and quality roles`,
+    summary:
+      "Taken from the company's own careers page. Volume and seniority on that page move before any announcement does.",
+  });
+
+  /* Signals, with the numbers filled in so the detail line says something. */
+  const signalCount = intelInt(2, 5, id, "sigcount");
+  const signals: MiSignal[] = [];
+  let signalDay = intelInt(2, 12, id, "firstsig");
+  const used = new Set<string>();
+  for (let i = 0; i < signalCount; i++) {
+    const template = INTEL_SIGNALS[intelHash(id, "sig", i) % INTEL_SIGNALS.length];
+    if (used.has(template.title)) continue;
+    used.add(template.title);
+    const n = intelInt(6, 41, id, "n", i);
+    signals.push({
+      daysAgo: signalDay,
+      kind: template.kind,
+      title: template.title,
+      detail: template.detail
+        .replace("{n}", String(n))
+        .replace(
+          "{avg}",
+          String(Math.max(2, Math.round(n / intelInt(2, 4, id, "avg", i))))
+        )
+        .replace("{city}", intelPick(INTEL_CITIES, id, "sigcity", i)),
+      why: template.why,
+    });
+    signalDay += intelInt(9, 30, id, "siggap", i);
+  }
+
+  /* Twelve weeks of activity that walks rather than jumps, so the sparkline
+     has a shape instead of a sawtooth. */
+  const trend: number[] = [];
+  let level = intelInt(2, 9, id, "trendstart");
+  for (let week = 0; week < 12; week++) {
+    level = Math.max(1, level + intelInt(-2, 3, id, "trend", week));
+    trend.push(level);
+  }
+  const firstHalf = trend.slice(0, 6).reduce((a, b) => a + b, 0);
+  const secondHalf = trend.slice(6).reduce((a, b) => a + b, 0);
+
+  return {
+    id,
+    name: profile.name,
+    industry: profile.industry,
+    hq: profile.hq,
+    /* Momentum IS the two halves of the trend compared, so the badge and the
+       sparkline beside it can never tell a reader two different stories. */
+    momentum: Math.round(
+      ((secondHalf - firstHalf) / Math.max(1, firstHalf)) * 100
+    ),
+    trend,
+    competitors: profile.competitors,
+    people,
+    posts,
+    news,
+    signals,
+  };
+}
+
+function generatedIntelCompanies(): MiCompany[] {
+  return INTEL_PROFILES.map(buildIntelCompany);
+}
+
+/**
+ * THE WATCHLIST AS ONE LIST. Hand-written first, because those are the ones a
+ * reviewer is most likely to open, then the generated ones behind them.
+ */
+export const MI_COMPANIES: MiCompany[] = [
+  ...MI_HAND_WRITTEN,
+  ...generatedIntelCompanies(),
 ];
 
 /** Companies tracked without full sample feeds, so the dashboard reads as the

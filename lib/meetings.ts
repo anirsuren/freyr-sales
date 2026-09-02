@@ -3,6 +3,7 @@ import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { hasSupabase } from "./env";
 import { sampleDocPath } from "./sampleDocuments";
+import { mockFillMeetings, hasMockFillRows } from "./mockFillLife";
 
 /**
  * MEETINGS — customer meetings, as their own object.
@@ -319,18 +320,46 @@ async function writeRow(state: MeetingsState): Promise<void> {
  * that is ordinary, so a meeting added in mock persists and a mock row
  * emptied on purpose stays empty.
  */
+/**
+ * THE 140 GENERATED ACCOUNTS GET meetings, ONCE.
+ *
+ * Anir, Sep 2, on cust-fill-140: every tab read zero, because the samples
+ * above only ever covered the hand-named demo cast. Appended rather than
+ * replacing, and laid down ONCE: "i should still be able to add edit and
+ * delete shit if i really want", and a floor that relaid itself on every read
+ * would undo a deletion the moment the page reloaded. The rows are their own
+ * marker. Inside the write queue, re-reading there, so a save that landed
+ * while this waited its turn is not thrown away.
+ *
+ * Mock only, twice over: the caller checks the mode and the generator itself
+ * answers with nothing outside it.
+ */
+async function topUpMockFill(): Promise<MeetingsState> {
+  return withWrite(async () => {
+    const raw = await readRowRaw().catch(() => null);
+    const base = raw && !isStaleSeed(raw) ? normalize(raw) : sampleMeetings();
+    if (hasMockFillRows(base.meetings.map((m) => m.id))) return base;
+    const rows = mockFillMeetings();
+    if (rows.length === 0) return base;
+    const next: MeetingsState = { meetings: [...base.meetings, ...rows] };
+    /* The version rides along with the rows so a later change to the samples
+       can tell "seeded from an older set" from "somebody's own data". */
+    await writeRow({ ...next, sampleVersion: SAMPLE_VERSION } as MeetingsState).catch(
+      () => undefined
+    );
+    return next;
+  });
+}
+
 export async function readMeetings(): Promise<MeetingsState> {
   if (getDataMode() !== "mock")
     return readRow().catch(() => structuredClone(EMPTY_MEETINGS));
   const existing = await readRowRaw().catch(() => null);
-  if (existing && !isStaleSeed(existing)) return normalize(existing);
-  const seeded = sampleMeetings();
-  /* The version rides along with the rows so a later change to the samples can
-     tell "seeded from an older set" from "somebody's own data". */
-  await writeRow({ ...seeded, sampleVersion: SAMPLE_VERSION } as MeetingsState).catch(
-    () => undefined
-  );
-  return seeded;
+  if (existing && !isStaleSeed(existing)) {
+    const state = normalize(existing);
+    if (hasMockFillRows(state.meetings.map((m) => m.id))) return state;
+  }
+  return topUpMockFill();
 }
 
 /** MTG-0001, MTG-0002 — the same shape every other record here wears. */

@@ -1284,7 +1284,6 @@ function buildFacts(
 ): string {
   const open = deals.filter((d) => d.stage !== "Closed Lost");
   const openValue = open.reduce((s, d) => s + d.value, 0);
-  const weighted = Math.round(openValue * 0.45);
   const cooling = open.filter((d) => d.staleDays > ROTTING_DAYS);
   const atRisk = ctx.customers.filter((c) => {
     const ints = ctx.interactions.filter((i) => i.customer_id === c.id);
@@ -1324,7 +1323,9 @@ function buildFacts(
   });
 
   return [
-    `PIPELINE: ${open.length} open deals worth ${formatMoney(openValue)} (≈${formatMoney(weighted)} weighted by stage).`,
+    // Answered "worth $X (≈$Y weighted by stage)" until Anir, Sep 2: "they
+    // dont use weighted". Open pipeline only, no probability discount.
+    `PIPELINE: ${open.length} open deals worth ${formatMoney(openValue)} in open pipeline.`,
     `PENDING APPROVALS (${pending.length}): ${pending.map((a) => a.title).join("; ") || "none"}.`,
     `TO-DO / FOCUS ACTIONS: ${ctx.topActions.slice(0, 10).map((a) => a.title).join("; ") || "none"}.`,
     `COOLING DEALS (${cooling.length}): ${cooling.slice(0, 6).map((d) => `${d.company} ${formatMoney(d.value)} quiet ${d.staleDays}d`).join("; ") || "none"}.`,

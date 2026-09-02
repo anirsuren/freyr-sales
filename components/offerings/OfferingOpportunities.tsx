@@ -82,10 +82,6 @@ export function OfferingOpportunities({
   }
 
   const total = rows.reduce((s, r) => s + (r.value || 0), 0);
-  const weighted = rows.reduce(
-    (s, r) => s + ((r.value || 0) * (r.confidence ?? 0)) / 100,
-    0
-  );
   const open = rows.filter((r) => r.status !== "Won" && r.status !== "Lost");
   /* Grouped so the same account's deals sit together — the offering owner
      reads by customer even on the offering's own page. */
@@ -103,15 +99,12 @@ export function OfferingOpportunities({
         {accounts === 1 ? "account" : "accounts"} on {offeringName}.
       </p>
 
-      {/* The three numbers an offering owner actually opens this for. */}
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
+      {/* The two numbers an offering owner actually opens this for. A third
+          tile read "Weighted · value x confidence" until Anir, Sep 2: "they
+          dont use weighted". */}
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
         {[
           { label: "Total value", value: formatMoney(total), sub: `${rows.length} deals` },
-          {
-            label: "Weighted",
-            value: formatMoney(Math.round(weighted)),
-            sub: "value × confidence",
-          },
           {
             label: "Still open",
             value: String(open.length),

@@ -2,7 +2,6 @@ import {
   Activity,
   Briefcase,
   CircleDollarSign,
-  Percent,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import {
@@ -19,7 +18,6 @@ import {
 } from "@/lib/utils";
 import {
   OPEN_STAGES,
-  STAGE_PROBABILITY,
   formatMoney,
   type Deal,
 } from "@/lib/pipeline";
@@ -115,13 +113,10 @@ export function ContactEngagement({
     }))
     .sort((a, b) => b.value - a.value);
 
-  // Deals this person sits on — count, open value, and the probability-weighted
-  // figure the forecast uses. Only shown when there IS an open deal.
+  // Deals this person sits on — count and open value. Only shown when there
+  // IS an open deal.
   const openDeals = deals.filter((d) => OPEN_STAGES.includes(d.stage));
   const openValue = openDeals.reduce((s, d) => s + d.value, 0);
-  const weighted = Math.round(
-    openDeals.reduce((s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0), 0)
-  );
 
   return (
     <Card className="mb-8 p-5">
@@ -214,7 +209,10 @@ export function ContactEngagement({
       )}
 
       {openDeals.length > 0 && (
-        <div className="mt-5 pt-4 border-t border-border-light grid grid-cols-1 sm:grid-cols-3 gap-3">
+        /* Two stats, not three: a "Weighted (likely)" stat sat on the end
+           until Anir, Sep 2 ("they dont use weighted"), and the row closes up
+           behind it. */
+        <div className="mt-5 pt-4 border-t border-border-light grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             {
               icon: Briefcase,
@@ -229,13 +227,6 @@ export function ContactEngagement({
               value: formatMoney(openValue),
               bg: "rgba(5,150,105,0.12)",
               color: "#047857",
-            },
-            {
-              icon: Percent,
-              label: "Weighted (likely)",
-              value: formatMoney(weighted),
-              bg: "rgba(124,58,237,0.10)",
-              color: "#6D28D9",
             },
           ].map((t) => (
             <div

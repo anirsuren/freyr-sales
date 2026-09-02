@@ -56,7 +56,6 @@ import { ClaimReviewDialog } from "./EntryCards";
 import { EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
-import { weightedValue } from "@/lib/opportunitiesShared";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -1222,11 +1221,11 @@ export function GoalZoom({
                                 {opp.status}
                               </span>
                             )}
+                            {/* Win chance only (Anir, Sep 2: "they dont use
+                                weighted"). This chip used to append the
+                                weighted amount beside it. */}
                             {opp.confidence !== undefined && (
-                              <span className="tnum">
-                                {opp.confidence}% ·{" "}
-                                {fmtAmount(goal.unit, weightedValue(opp))} weighted
-                              </span>
+                              <span className="tnum">{opp.confidence}% win chance</span>
                             )}
                           </>
                         ) : (

@@ -13,6 +13,7 @@ import {
   Globe,
   type LucideIcon,
   CalendarClock,
+  Info,
 } from "lucide-react";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -27,7 +28,6 @@ import {
 } from "@/components/offerings/OfferingOverviewMain";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import {
   listAssignablePeople,
@@ -440,12 +440,12 @@ export default async function OfferingDetailPage({
       {/* Header: identity on the left, primary actions on the right */}
       <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="min-w-0">
-          <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
-            <OfferingIcon
-              name={o.offering_name}
-              category={o.offering_category}
-              className="w-11 h-11 shrink-0"
-            />
+          {/* NO GLYPH BESIDE THE NAME (Anir, Sep 2: "can you just remove
+              these icons from all the offering names? They're not really
+              needed"). The gradient tile used to sit here, which is why the
+              heading was a flex row with a gap. The name is the heading now,
+              so it is a plain block again. */}
+          <h1 className="min-w-0 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
             {o.offering_name}
           </h1>
           {/* THE DATE ONLY WHEN SOMEBODY IS NAMED (Anir, Aug 25: "this new
@@ -458,12 +458,45 @@ export default async function OfferingDetailPage({
               title — provenance with the provenance missing. It appears again
               the moment an offering is created by a real person, which is what
               he actually asked for. */}
+          {/* WHO ADDED IT, ON HOVER, NOT ON THE PAGE.
+              Anir, Sep 2: "whenever a new offering is added it gives this
+              tagline, can this be removed? It's not really needed, so it's
+              added by who, on which date, at what time. None of this is
+              needed, just the offering name... or hide it somewhere so when I
+              hover over, it'll show up."
+
+              It is a provenance fact, not a headline: useful once, when
+              somebody asks who put this here, and noise on every other visit.
+              It sat on its own line under the title of every offering.
+
+              Kept, not deleted, because "who added this" is exactly the
+              question that comes up about a catalogue entry nobody recognises.
+              It now rides on a small mark beside the name and says itself on
+              hover. Not a question mark: he was explicit that a question mark
+              is the wrong glyph, and a question mark means "what is this
+              feature" everywhere else in this app. */}
           {o.created_by ? (
-            <CreatedStamp
-              by={o.created_by}
-              at={o.created_at}
-              className="mt-1.5 pl-14 text-[11.5px] text-text-tertiary"
-            />
+            <Tooltip
+              label={`Added by ${o.created_by}${
+                o.created_at
+                  ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}`
+                  : ""
+              }`}
+            >
+              <span className="ml-2 inline-flex h-5 w-5 cursor-default items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-secondary">
+                <Info size={13} strokeWidth={2.1} aria-hidden="true" />
+                <span className="sr-only">
+                  Added by {o.created_by}
+                  {o.created_at
+                    ? ` on ${new Date(o.created_at).toLocaleDateString()}`
+                    : ""}
+                </span>
+              </span>
+            </Tooltip>
           ) : null}
         </div>
 
@@ -493,10 +526,15 @@ export default async function OfferingDetailPage({
                   <Link
                     href={`/offerings/${o.id}/edit`}
                     title="Edit this offering"
-                    aria-label="Edit this offering"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                    /* SAYS EDIT, AND WEARS THE APP'S BLUE (Anir, Sep 2: "blue
+                       with white for edit button, and say Edit properly").
+                       It was a bare outlined pencil, which asked the reader to
+                       know what a pencil does next to a gradient button that
+                       spells out what IT does. */
+                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-3.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
                   >
-                    <Pencil size={15} strokeWidth={1.9} />
+                    <Pencil size={15} strokeWidth={2.1} />
+                    Edit
                   </Link>
                 ) : null}
               </>
@@ -737,7 +775,10 @@ export default async function OfferingDetailPage({
                 <div>
                   <SectionHeading
                     icon={Building2}
-                    title="Target segments"
+                    /* Anir, Sep 2: "from Target Segments to Target Customer
+                       Types". His words for the thing, so his words on the
+                       heading. */
+                    title="Target Customer Types"
                     description="The kinds of company this is sold to, and at what size."
                   />
                   <div className="mt-5 pl-11">
@@ -826,7 +867,9 @@ export default async function OfferingDetailPage({
                 <div>
                   <SectionHeading
                     icon={Globe}
-                    title={`Markets (${o.markets.length})`}
+                    /* Anir, Sep 2: "from Markets it should say Applicable
+                       Markets". */
+                    title={`Applicable Markets (${o.markets.length})`}
                     description="The regions this offering is cleared to sell into."
                   />
                   <div className="mt-5 pl-11">

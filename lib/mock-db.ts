@@ -1,5 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { OFFERING_CATALOGUE_ORDER } from "./offeringCatalogue";
+import {
+  FILL_ACCOUNTS,
+  FILL_FIRST,
+  FILL_LAST,
+  FILL_STEMS,
+  FILL_SUFFIX,
+  mockFillContact,
+} from "./mockFillCast";
 import { dirname, join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { MOCK_PITCHES, MOCK_MATCHING_OUTPUT, MOCK_FREYR_KB } from "./claude";
@@ -95,48 +103,13 @@ function demoComponentLinks(accountId: string) {
 /**
  * THE IDENTITY OF A GENERATED CONTACT, DERIVED IN ONE PLACE.
  *
- * The long-tail accounts, their people and their company names are built from
- * these lists. lib/voice seeds calls against the same contacts and has to
- * print the same names on them: a call row reading "Lena Vogt" that links to
- * a contact page showing somebody else is worse than no call at all. Hoisted
- * out of seed() and exported so there is one derivation, not two that drift.
+ * The lists themselves now live in lib/mockFillCast, because the deal,
+ * contract, lead, meeting and solutioning stores had to generate work against
+ * these same 140 accounts and importing this module into each of them would
+ * have pulled the whole fs-backed store and the Anthropic SDK along with it.
+ * Still one derivation; re-exported here so lib/voice keeps its import.
  */
-const FILL_STEMS = [
-    "Aventis", "Belmara", "Calyx", "Dornier", "Eryx", "Fennec", "Girona",
-    "Halcyon", "Ionis", "Juniper", "Kestrel", "Lumen", "Marisol", "Nyxis",
-    "Orbis", "Pallas", "Quarry", "Rivenna", "Sable", "Tessera", "Umbra",
-    "Verdant", "Wexford", "Xantha", "Ymir", "Zephyra", "Altamira", "Borealis",
-    "Cinder", "Delphi", "Ember", "Fjord", "Granite", "Harrow", "Isolde",
-  ];
-const FILL_SUFFIX = [
-    "Biopharma", "Therapeutics", "Biosciences", "Labs", "Pharma",
-    "Medical", "Health", "Diagnostics", "Bio", "Sciences",
-  ];
-const FILL_FIRST = [
-    "Lena", "Owen", "Priya", "Tomas", "Ana", "Marco", "Yuki", "Ruth", "Hannah",
-    "Diego", "Farida", "Karl", "Meera", "Jonas", "Chiara", "Samuel", "Aisha",
-    "Viktor", "Noor", "Erik", "Camila", "Ibrahim", "Sofia", "Liam", "Nadia",
-    "Pavel", "Zara", "Mateo", "Ingrid", "Rohan",
-  ];
-const FILL_LAST = [
-    "Vogt", "Bradley", "Nair", "Lindqvist", "Sousa", "Bianchi", "Tanaka",
-    "Okafor", "Weiss", "Moreno", "Jensen", "Iyer", "Berg", "Ricci", "Adeyemi",
-    "Khan", "Petrov", "Rahman", "Larsen", "Duarte", "Cisse", "Marchetti",
-    "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
-  ];
-
-const fillAt = <T,>(list: T[], n: number): T => list[n % list.length]!;
-
-/** `account` is 1-based (cust-fill-001 is account 1); `slot` is 0-4. */
-export function mockFillContact(account: number, slot: number) {
-  const i = account - 1;
-  const company = `${fillAt(FILL_STEMS, i)} ${fillAt(FILL_SUFFIX, i * 3 + 1)}`;
-  return {
-    id: `cont-fill-${String(account).padStart(3, "0")}-${slot + 1}`,
-    name: `${fillAt(FILL_FIRST, i * 5 + slot)} ${fillAt(FILL_LAST, i * 7 + slot * 3)}`,
-    company,
-  };
-}
+export { mockFillContact };
 
 function seed(): MockStore {
   const customers: Customer[] = [
@@ -807,7 +780,6 @@ function seed(): MockStore {
 
   /* 140 accounts is roughly what a regional team carries, and it is enough for
      a table to page, a group total to mean something and search to matter. */
-  const FILL_ACCOUNTS = 140;
   for (let i = 0; i < FILL_ACCOUNTS; i += 1) {
     const n = i + 1;
     const company = `${at(FILL_STEMS, i)} ${at(FILL_SUFFIX, i * 3 + 1)}`;

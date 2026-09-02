@@ -22,7 +22,6 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
 // THE RAIL'S OWN LIST, not a copy of it (components/layout/navItems).
 //
@@ -413,12 +412,12 @@ export function CommandPalette({
                       name={it.recordName || it.label}
                       className="w-6 h-6 text-[9px] shrink-0"
                     />
-                  ) : it.recordType === "Offering" ? (
-                    <OfferingIcon
-                      name={it.recordName || it.label}
-                      className="w-6 h-6 shrink-0"
-                    />
                   ) : (
+                    /* An offering used to get its own gradient tile here; it
+                       now wears the plain Package glyph its row already
+                       carries (Anir, Sep 2: "can you just remove these icons
+                       from all the offering names? They're not really
+                       needed"). */
                     <Icon
                       size={18}
                       strokeWidth={1.6}

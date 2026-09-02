@@ -151,6 +151,181 @@ export function bustMarketIntelTrackingCache(): void {
   (globalThis as any).__MI_TRACKING_CACHE__ = undefined;
 }
 
+/**
+ * THE SHOWROOM'S TRACKED LIST, AS A FLOOR.
+ *
+ * Mock has to look like a workspace somebody has been using (Anir's standing
+ * rule), and this row was only ever written by hand, by
+ * scripts/mock/fill-market-intel.ts. Any database that script had not been run
+ * against showed a wall of sample briefings next to a tracked section with
+ * nothing in it at all.
+ *
+ * Deliberately a SUBSET of that script's list, sharing its ids and its
+ * `mockgen-` prefix, so running the script later replaces these rows cleanly
+ * rather than stacking a second copy of the same companies beside them. The
+ * script stays the rich fill; this is the floor under it.
+ *
+ * Invented companies and invented people only, exactly as the script has it.
+ */
+const SHOWROOM_TRACKED: [
+  string,
+  string,
+  "customer" | "competitor",
+  string,
+  string,
+  string[],
+  string,
+  [string, string][]
+][] = [
+  [
+    "westmere-labs",
+    "Westmere Labs",
+    "customer",
+    "Contract manufacturing",
+    "Zurich, Switzerland",
+    ["CDMO", "site transfers", "variations"],
+    "Added after the DIA conversation. Two site transfers coming, which is a variation programme.",
+    [
+      ["Nadine Aebischer", "Head of Regulatory Affairs"],
+      ["Rowan Ashworth", "Site Transfer Programme Lead"],
+    ],
+  ],
+  [
+    "penhale-therapeutics",
+    "Penhale Therapeutics",
+    "customer",
+    "Clinical-stage biopharma",
+    "Bristol, UK",
+    ["first filing", "MHRA", "EMA"],
+    "Pre-revenue, first filing inside two years. Watch for a Head of Regulatory hire.",
+    [
+      ["Imogen Trelawney", "VP, Development Operations"],
+      ["Kofi Mensah-Boateng", "Regulatory Consultant"],
+    ],
+  ],
+  [
+    "aldergrove-devices",
+    "Aldergrove Devices",
+    "customer",
+    "Medical devices",
+    "Vancouver, Canada",
+    ["MDR", "technical documentation", "notified body"],
+    "Still remediating MDR. Their notified body slot is the constraint, not their team.",
+    [
+      ["Marisol Guerrero", "Director, Quality and Regulatory"],
+      ["Henrik Solberg", "Technical File Owner"],
+    ],
+  ],
+  [
+    "starling-consumer",
+    "Starling Consumer Brands",
+    "customer",
+    "Consumer health",
+    "Melbourne, Australia",
+    ["artwork", "claims", "APAC registration"],
+    "Artwork-led. Came in through the Freya.Artwork webinar list.",
+    [
+      ["Tui Ngataki", "Regulatory and Artwork Manager"],
+      ["Deepa Raghunathan", "APAC Registration Lead"],
+    ],
+  ],
+  [
+    "hollowfield-bio",
+    "Hollowfield Bio",
+    "customer",
+    "Gene therapy",
+    "Cambridge, USA",
+    ["ATMP", "PRIME", "first-in-human"],
+    "First ATMP filing in eighteen months. They have never done one and they know it.",
+    [
+      ["Marguerite Okonjo", "Head of Regulatory Affairs"],
+      ["Teodor Vasiliev", "ATMP Programme Lead"],
+    ],
+  ],
+  [
+    "seabright-generics",
+    "Seabright Generics",
+    "customer",
+    "Generics",
+    "Hyderabad, India",
+    ["ANDA", "renewals", "variations"],
+    "Four hundred registrations and a two-person renewals team. Volume is the pitch.",
+    [
+      ["Lakshmi Venkataraman", "Head of Renewals"],
+      ["Arun Pillai", "Variations Manager"],
+    ],
+  ],
+  [
+    "cobalt-regulatory",
+    "Cobalt Regulatory Group",
+    "competitor",
+    "Regulatory consultancy",
+    "Philadelphia, USA",
+    ["services", "publishing", "outsourcing"],
+    "Competing with us on services deals in North America. Watch their hiring.",
+    [
+      ["Vance Pemberton", "Managing Director"],
+      ["Simone Auclair", "Head of Publishing Services"],
+    ],
+  ],
+  [
+    "quorum-rim",
+    "Quorum RIM",
+    "competitor",
+    "Regulatory software",
+    "Boston, USA",
+    ["RIM", "registrations", "platform"],
+    "New entrant, aggressive on price. Turned up in two of our shortlists this quarter.",
+    [
+      ["Dallas Weatherby", "VP, Product"],
+      ["Ingeborg Haugland", "Director, Solution Consulting"],
+    ],
+  ],
+];
+
+/* Fixed anchor rather than Date.now(), so the dates on these rows are the same
+   on every machine and a screenshot taken today still matches one taken last
+   week. Same anchor the fill script uses. */
+const SHOWROOM_TRACKED_ANCHOR = Date.parse("2026-08-20T09:00:00.000Z");
+
+function showroomTracking(): MarketIntelTracking {
+  const day = (n: number) =>
+    new Date(SHOWROOM_TRACKED_ANCHOR + n * 86_400_000).toISOString();
+  const companies: TrackedCompany[] = [];
+  const people: TrackedPerson[] = [];
+  SHOWROOM_TRACKED.forEach(
+    ([id, name, group, industry, hq, keywords, note, roster], index) => {
+      companies.push({
+        id: `mockgen-${id}`,
+        name,
+        group,
+        industry,
+        hq,
+        website: `https://${id.replace(/-/g, "")}.example`,
+        /* Blank on purpose: an invented slug can land on a real person's or
+           company's page, and the card hides the chip when it is empty. */
+        linkedinUrl: "",
+        competitors: [],
+        keywords,
+        note,
+        addedAt: day(-90 + index * 11),
+      });
+      roster.forEach(([person, role], seat) => {
+        people.push({
+          id: `mockgen-person-${index * 10 + seat + 1}`,
+          companyId: `mockgen-${id}`,
+          name: person,
+          role,
+          linkedinUrl: "",
+          headline: role,
+          addedAt: day(-80 + index * 4 + seat),
+        });
+      });
+    }
+  );
+  return { companies, people };
+}
+
 export async function readMarketIntelTracking(): Promise<MarketIntelTracking> {
   if (!hasTrackingDatabase()) return structuredClone(EMPTY);
   const row = rowId();
@@ -168,7 +343,21 @@ export async function readMarketIntelTracking(): Promise<MarketIntelTracking> {
   if (error) {
     throw new Error(`Could not load the tracking list: ${error.message}`);
   }
-  const tracking = normalize(data?.catalog);
+  let tracking = normalize(data?.catalog);
+  /* SEED THE SHOWROOM ONCE, AND ONLY WHEN THE ROW HAS NEVER EXISTED. Same
+     contract lib/contracts.ts uses: the samples become an ordinary row that
+     can then be added to, edited and emptied, and a demo somebody has
+     deliberately cleared out stays cleared. Real mode is never seeded. */
+  if (getDataMode() === "mock" && !data) {
+    tracking = showroomTracking();
+    await trackingClient()
+      .from("offering_catalog_state")
+      .upsert({ id: row, catalog: tracking, updated_at: new Date().toISOString() })
+      .then(
+        () => undefined,
+        () => undefined
+      );
+  }
   (globalThis as any).__MI_TRACKING_CACHE__ = { at: Date.now(), row, tracking };
   return tracking;
 }

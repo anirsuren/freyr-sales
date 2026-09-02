@@ -114,13 +114,13 @@ export function AnalyticsView({
       sub: c.company,
     })),
   }));
-  // The same deals, but priced at the SAME measure as the weighted chart they
-  // sit under, so the rows add up to the segment. Listing full open values
-  // under a probability-adjusted total is what Suren caught on the bar chart:
-  // "it says 318K for engaged, but when I add up the records behind this bar
-  // it says like a million". The open value stays on the second line so each
-  // row is still a recognisable deal, not a bare fraction of one.
-  const weightedStageTip = (stage: string) => {
+  // The same deals, but priced at the SAME measure as the chart they sit
+  // under, so the rows add up to the segment. Listing full open values under a
+  // probability-adjusted total is what Suren caught on the bar chart: "it says
+  // 318K for engaged, but when I add up the records behind this bar it says
+  // like a million". The open value stays on the second line so each row is
+  // still a recognisable deal, not a bare fraction of one.
+  const expectedStageTip = (stage: string) => {
     const odds = STAGE_PROBABILITY[stage as keyof typeof STAGE_PROBABILITY] ?? 0;
     return (stageDeals?.[stage] ?? []).map((d) => ({
       logo: d.company,
@@ -130,17 +130,17 @@ export function AnalyticsView({
       value: formatMoney(Math.round(d.value * odds)),
     }));
   };
-  const weightedByStage = openStages
+  const expectedByStage = openStages
     .map((s) => ({
       label: s.stage,
       value: Math.round(
         s.value * (STAGE_PROBABILITY[s.stage as keyof typeof STAGE_PROBABILITY] ?? 0)
       ),
       color: stageColor(s.stage),
-      tip: weightedStageTip(s.stage),
+      tip: expectedStageTip(s.stage),
     }))
     .filter((s) => s.value > 0);
-  const totalWeighted = weightedByStage.reduce((t, x) => t + x.value, 0);
+  const totalExpected = expectedByStage.reduce((t, x) => t + x.value, 0);
   const avgByStage = openStages.map((s) => ({
     label: s.stage,
     value: s.count > 0 ? Math.round(s.value / s.count) : 0,
@@ -592,42 +592,49 @@ export function AnalyticsView({
         </div>
       </Card>
 
-      {/* More context (Suren: "I need graphs here") — the realistic (weighted)
-          money by stage, and how big the average deal is at each step. */}
+      {/* More context (Suren: "I need graphs here") — the revenue each stage
+          is expected to produce, and how big the average deal is at each step.
+
+          THE LEFT CARD IS NOT CALLED "WEIGHTED" ANY MORE (Anir, Sep 2: "they
+          dont use weighted"). It was "Weighted Forecast by Stage" with a
+          centre reading "weighted". The chart itself stays and keeps drawing
+          the same probability-adjusted money, under the name the dashboard
+          already uses for exactly this donut: expected revenue by stage. The
+          word goes, the graph Suren asked for does not. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <Card className="h-full flex flex-col">
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
-              Weighted Forecast by Stage
-              <InfoHint text="Each stage's open value, cut down by how likely it is to close. This is the realistic number, not the headline one." />
+              Expected revenue by stage
+              <InfoHint text="Each stage's open value, adjusted for how likely a deal on that stage is to close. This is the realistic number, not the headline one." />
             </h2>
             <ExpandedChartModal
-              title="Weighted Forecast by Stage"
-              subtitle="Open pipeline value adjusted by each stage's probability of closing."
+              title="Expected revenue by stage"
+              subtitle="Probability-adjusted revenue expected from each pipeline stage."
               chart={{
                 kind: "donut",
-                segments: weightedByStage,
-                centerLabel: formatMoney(totalWeighted),
-                centerSub: "weighted",
+                segments: expectedByStage,
+                centerLabel: formatMoney(totalExpected),
+                centerSub: "expected revenue",
                 format: "money",
               }}
               className="h-8 whitespace-nowrap px-2.5 text-[11px]"
             />
           </div>
-          {weightedByStage.length > 0 ? (
+          {expectedByStage.length > 0 ? (
             <div className="flex-1 flex items-center gap-6">
               <DonutChart
-                syncId="dash-weighted"
-                segments={weightedByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
+                syncId="dash-expected-revenue"
+                segments={expectedByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
                 size={172}
                 thickness={18}
                 format="money"
-                centerLabel={formatMoney(totalWeighted)}
-                centerSub="weighted"
+                centerLabel={formatMoney(totalExpected)}
+                centerSub="expected revenue"
               />
               <DonutLegend
-                syncId="dash-weighted"
-                items={weightedByStage.map((s) => ({ label: s.label, color: s.color, value: s.value }))}
+                syncId="dash-expected-revenue"
+                items={expectedByStage.map((s) => ({ label: s.label, color: s.color, value: s.value }))}
                 format="money"
               />
             </div>

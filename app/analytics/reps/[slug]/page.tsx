@@ -7,7 +7,6 @@ import {
   PhoneCall,
   Layers,
   Target,
-  TrendingUp,
   ArrowRight,
   Trophy,
   ArrowLeft,
@@ -46,7 +45,7 @@ import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 import { readOpportunities } from "@/lib/opportunities";
 import { buildPerson360 } from "@/lib/person360";
 import { Customer360 } from "@/components/customers/Customer360";
-import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
+import { opportunityValue } from "@/lib/opportunitiesShared";
 
 /**
  * The teammate's own name in the tab. A static "Rep" label made every open profile
@@ -134,7 +133,7 @@ export default async function RepPage({
      * The roster now shows what each person is carrying, so clicking their
      * name had to stop contradicting the row it was opened from. Same
      * arithmetic as Team and Opportunities: total is the sum of the offering
-     * rows, weighted applies each row's own confidence.
+     * rows.
      *
      * The Meetings tile WAS an honest zero, written before meetings existed as
      * records. It stopped being honest the day the module shipped, and this
@@ -155,9 +154,8 @@ export default async function RepPage({
         deal.status !== "Lost"
     );
     const myValue = myOpen.reduce((sum, deal) => sum + opportunityValue(deal), 0);
-    const myWeighted = Math.round(
-      myOpen.reduce((sum, deal) => sum + weightedValue(deal), 0)
-    );
+    /* Three tiles, not four: a Weighted forecast tile sat second until Anir,
+       Sep 2 ("they dont use weighted"). */
     const zeroTiles = [
       {
         label: "Open pipeline",
@@ -165,7 +163,6 @@ export default async function RepPage({
         sub: `${myOpen.length} live ${myOpen.length === 1 ? "deal" : "deals"}`,
         icon: DollarSign,
       },
-      { label: "Weighted forecast", value: formatMoney(myWeighted), sub: "probability-adjusted", icon: TrendingUp },
       { label: "Open deals", value: String(myOpen.length), sub: "in the pipeline", icon: Briefcase },
       {
         label: "Meetings",
@@ -242,7 +239,7 @@ export default async function RepPage({
             </a>
           )}
         </Card>
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid grid-cols-3 gap-3">
           {zeroTiles.map((tile) => (
             <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
           ))}
@@ -276,8 +273,9 @@ export default async function RepPage({
             {/* THE MONEY RIDES THE NAME (Anir, Aug 27: "I hate when you
                 have something on the left and then I have to look like a
                 hundred thousand pixels to the right just to see it"). Value
-                on the title line, weighted beside the customer — nothing
-                flushed across the card. */}
+                rides the title line, nothing flushed across the card. The
+                weighted figure that used to sit beside the customer came off
+                on Anir, Sep 2: "they dont use weighted". */}
             <ul className="divide-y divide-border-light">
               {myOpen.map((deal) => (
                 <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
@@ -296,9 +294,6 @@ export default async function RepPage({
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px]">
                       <span className="truncate text-text-secondary">{deal.customer}</span>
-                      <span className="font-semibold text-blue-primary tnum">
-                        {formatMoney(Math.round(weightedValue(deal)))} weighted
-                      </span>
                     </span>
                   </span>
                 </li>
@@ -412,9 +407,10 @@ export default async function RepPage({
   // white. Burnt orange keeps "mid tier" warm and legible.
   const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#C2410C" : "#B02020";
 
+  /* Three tiles, not four: the Weighted tile came out on Anir, Sep 2 ("they
+     dont use weighted"). */
   const tiles = [
     { label: "Open pipeline", value: formatMoney(me.openValue), sub: `${me.openCount} live deal${me.openCount === 1 ? "" : "s"}`, icon: DollarSign },
-    { label: "Weighted", value: formatMoney(me.weighted), sub: "probability-adjusted", icon: TrendingUp },
     { label: "Qualified+", value: String(me.qualifiedPlus), sub: `${me.meetings} meeting${me.meetings === 1 ? "" : "s"} booked`, icon: Target },
     { label: "Avg deal", value: formatMoney(me.avgDeal), sub: `${me.deals} total owned`, icon: Layers },
   ];
@@ -589,8 +585,8 @@ export default async function RepPage({
         </div>
       </div>
 
-      {/* KPIs */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPIs — three since the Weighted tile came out (Anir, Sep 2). */}
+      <section className="grid grid-cols-3 gap-4">
         {tiles.map((t) => (
           <StatTile key={t.label} icon={t.icon} label={t.label} value={t.value} sub={t.sub} />
         ))}
@@ -614,9 +610,11 @@ export default async function RepPage({
           <div className="h-2.5 rounded-full bg-surface overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(attain, 100)}%`, background: attainColor }} />
           </div>
+          {/* This line quoted a weighted pipeline figure until Anir, Sep 2:
+              "they dont use weighted". It reads off the open book instead. */}
           <p className="text-[12px] text-text-tertiary mt-3">
-            {formatMoney(me.weighted)} weighted pipeline could add another{" "}
-            {Math.round((me.weighted / quota) * 100)}% toward the number.
+            {formatMoney(me.openValue)} of open pipeline could add another{" "}
+            {Math.round((me.openValue / quota) * 100)}% toward the number.
           </p>
         </Card>
         <Card className="flex flex-col justify-center">
@@ -770,7 +768,9 @@ export default async function RepPage({
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">
-                  {["Account", "Contact", "Stage", "Win %", "Value", "Weighted", "Last activity"].map((h) => (
+                  {/* A Weighted column sat between Value and Last activity
+                      until Anir, Sep 2: "they dont use weighted". */}
+                  {["Account", "Contact", "Stage", "Win %", "Value", "Last activity"].map((h) => (
                     <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       {h}
                     </th>
@@ -816,7 +816,6 @@ export default async function RepPage({
                       </td>
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum whitespace-nowrap">{Math.round(prob * 100)}%</td>
                       <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">{formatMoney(d.value)}</td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatMoney(Math.round(d.value * prob))}</td>
                       <td className="px-5 py-3 text-[13px] text-text-tertiary tnum whitespace-nowrap">{ago(d.staleDays)}</td>
                       <td className="px-5 py-3 text-right">
                         <Link href={`/deals/${d.sessionId}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open deal">

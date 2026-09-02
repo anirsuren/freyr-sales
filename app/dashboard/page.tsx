@@ -499,7 +499,6 @@ export default async function DashboardPage({
     0
   );
   const quarterGap = Math.max(0, QUARTER_QUOTA - quarterCommit);
-  const quarterCommitAttainment = Math.round((quarterCommit / QUARTER_QUOTA) * 100);
   const quarterPipelineAttainment = Math.round((quarterBestCase / QUARTER_QUOTA) * 100);
   const forecastStageRows = STAGES.filter((stage) => stage !== "Closed Lost")
     .map((stage) => {
@@ -575,9 +574,12 @@ export default async function DashboardPage({
                 />
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-4 divide-x divide-border-light rounded-md border border-border-light bg-surface/45">
+            {/* Three figures, not four: a "Weighted commit" tile led this
+                strip until Anir, Sep 2 ("they dont use weighted"). The commit
+                arithmetic still drives the gap and the stage donut; it is only
+                the labelled figure that is gone. */}
+            <div className="mt-4 grid grid-cols-3 divide-x divide-border-light rounded-md border border-border-light bg-surface/45">
               {[
-                ["Weighted commit", formatMoney(quarterCommit), `${quarterCommitAttainment}% of quota`],
                 ["Best case", formatMoney(quarterBestCase), `${quarterPipelineAttainment}% of quota`],
                 ["Gap to quota", formatMoney(quarterGap), quarterGap ? "Needs closing coverage" : "Quota covered"],
                 ["Open deals", String(quarterOpenDeals.length), `${riskDeals.length} currently at risk`],
@@ -691,10 +693,11 @@ export default async function DashboardPage({
                           </div>
                           <span className="text-[17px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
                         </div>
-                        <div className="mt-3 grid grid-cols-4 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
+                        {/* A Weighted cell sat third here until Anir, Sep 2:
+                            "they dont use weighted". */}
+                        <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
                           <div><p className="text-[12px] font-bold text-text-primary">{deal.stage}</p><p className="text-[9px] text-text-tertiary">Stage</p></div>
                           <div><p className="text-[12px] font-bold text-text-primary tnum">{Math.round(probability * 100)}%</p><p className="text-[9px] text-text-tertiary">Probability</p></div>
-                          <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(deal.value * probability)}</p><p className="text-[9px] text-text-tertiary">Weighted</p></div>
                           <div><p className={deal.staleDays > 14 ? "text-[12px] font-bold text-error tnum" : "text-[12px] font-bold text-text-primary tnum"}>{deal.staleDays}d</p><p className="text-[9px] text-text-tertiary">Since activity</p></div>
                         </div>
                         <div className="mt-3 flex items-center gap-2">
@@ -717,9 +720,10 @@ export default async function DashboardPage({
                         <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">{deal.company}</span>
                         <span className="mt-0.5 block text-[10.5px] text-text-tertiary">{deal.stage} · {confidence} confidence</span>
                       </div>
+                      {/* The deal value alone; a weighted line sat under it
+                          until Anir, Sep 2: "they dont use weighted". */}
                       <div className="text-right">
                         <span className="block text-[13px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
-                        <span className="text-[10px] text-text-tertiary tnum">{formatMoney(deal.value * probability)} weighted</span>
                       </div>
                       <ArrowRight size={14} className="shrink-0 text-text-tertiary" />
                     </Link>
@@ -817,10 +821,6 @@ export default async function DashboardPage({
                         contactCount: activityContacts.length,
                       });
                       const activityPipeline = activityDeals.reduce((sum, deal) => sum + deal.value, 0);
-                      const activityWeighted = activityDeals.reduce(
-                        (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0),
-                        0
-                      );
                       const nextMove = a.followUp
                         ? `Follow up with ${a.contact} on ${new Date(a.followUp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
                         : positive
@@ -860,9 +860,10 @@ export default async function DashboardPage({
                                   <HealthBadge health={activityHealth} />
                                 </div>
                               </div>
-                              <div className="mt-3 grid grid-cols-4 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
+                              {/* A Weighted cell sat second here until Anir,
+                                  Sep 2: "they dont use weighted". */}
+                              <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
                                 <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(activityPipeline)}</p><p className="text-[9px] text-text-tertiary">Pipeline</p></div>
-                                <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(activityWeighted)}</p><p className="text-[9px] text-text-tertiary">Weighted</p></div>
                                 <div><p className="text-[12px] font-bold text-text-primary tnum">{activityDeals.length}</p><p className="text-[9px] text-text-tertiary">Open deals</p></div>
                                 <div><p className="text-[12px] font-bold text-text-primary tnum">{activityContacts.length}</p><p className="text-[9px] text-text-tertiary">Contacts</p></div>
                               </div>

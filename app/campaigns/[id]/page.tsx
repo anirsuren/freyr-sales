@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
+import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { ChartInspector } from "@/components/charts/ChartInspector";
@@ -330,12 +330,10 @@ export default async function CampaignDetailPage({
           {offering && (
             <Link
               href={`/offerings/${offering.id}`}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap text-blue-primary hover:underline"
+              className="inline-flex items-center whitespace-nowrap text-blue-primary hover:underline"
             >
-              <OfferingIcon
-                name={offering.offering_name}
-                className="w-[18px] h-[18px] shrink-0"
-              />
+              {/* Name only (Anir, Sep 2: "can you just remove these icons from
+                  all the offering names? They're not really needed"). */}
               {offering.offering_name}
             </Link>
           )}

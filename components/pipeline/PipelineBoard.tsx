@@ -41,7 +41,6 @@ import {
   STAGE_COLOR,
   STAGE_ICON,
   STAGE_TO_OUTCOME,
-  STAGE_PROBABILITY,
   ROTTING_DAYS,
   formatMoney,
   type Deal,
@@ -353,8 +352,11 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     return map;
   }, [visible]);
 
-  const weighted = visible.reduce(
-    (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
+  /* The board's running total was a weighted figure until Anir, Sep 2: "they
+     dont use weighted". It is the plain open value of whatever the filters are
+     showing now, on the same not-Closed-Lost basis the page header uses. */
+  const openValue = visible.reduce(
+    (s, d) => (d.stage === "Closed Lost" ? s : s + d.value),
     0
   );
 
@@ -599,15 +601,15 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
               as loose body text. */}
           <span className="hidden h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 lg:inline-flex">
             <Term
-              k="weighted"
+              k="open_pipeline"
               side="bottom"
               underline={false}
               className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
             >
-              Weighted
+              Open
             </Term>
             <span className="text-[13px] font-bold text-text-primary tnum">
-              {formatMoney(weighted)}
+              {formatMoney(openValue)}
             </span>
           </span>
           <div
@@ -711,7 +713,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       {STAGES.map((stage, ci) => {
         const items = byStage[stage] || [];
         const total = items.reduce((sum, d) => sum + d.value, 0);
-        const wt = total * (STAGE_PROBABILITY[stage] ?? 0);
         const limit = wip[stage];
         const overLimit = limit != null && items.length > limit;
         // A stage is never plain type: its canonical colour + glyph, the same
@@ -786,15 +787,11 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     {limit != null ? `/${limit}` : ""}
                   </span>
                 </div>
+                {/* The column total, and nothing under it: a second line read
+                    "$X wtd" until Anir, Sep 2: "they dont use weighted". */}
                 <span className="shrink-0 text-right leading-tight">
                   <span className="block text-[12.5px] font-semibold text-text-primary tnum">
                     {formatMoney(total)}
-                  </span>
-                  <span className="block text-[10px] text-text-tertiary tnum">
-                    {formatMoney(wt)}{" "}
-                    <Term k="wtd" side="bottom" align="right" underline={false} className="underline decoration-dotted decoration-text-tertiary/50 underline-offset-2">
-                      wtd
-                    </Term>
                   </span>
                 </span>
               </div>

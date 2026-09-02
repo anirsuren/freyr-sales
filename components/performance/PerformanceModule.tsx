@@ -5319,10 +5319,12 @@ function LogActualModal({
           {/* THE MONEY COMES OFF THE DEAL (Anir, Aug 16: "from the opportunity,
               because this is all about dollar value… it's about any particular
               field from there you can select"). An opportunity carries two
-              figures — what it is worth signed, and what it is worth weighted
-              by confidence — so both are offered rather than one being assumed
-              to be the one he meant. They fill the box above; they do not lock
-              it, so typing the real signed number still wins. */}
+              figures — what it is worth signed, and, while it was still a
+              bet, what it was worth weighted by confidence. The weighted one
+              came off on Anir, Sep 2 ("they dont use weighted"), so a live
+              deal now offers the signed figures only. They fill the box above;
+              they do not lock it, so typing the real signed number still
+              wins. */}
           {linkedOpp && unit === "currency" && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] text-text-tertiary">
@@ -5370,7 +5372,14 @@ function LogActualModal({
                   };
                 })
                   : []),
-                ...(opportunityConfidence(linkedOpp) === undefined
+                /* NO WEIGHTED QUICK-FILL ON A LIVE DEAL (Anir, Sep 2: "they
+                   dont use weighted"). An open deal offered a third chip
+                   reading "Weighted · 65%" that filled the box with value x
+                   confidence. What survives is the decided wording, which on a
+                   Won deal is the whole signed figure and not a discount of
+                   it, and on a Lost deal is the $0 the dedupe already drops. */
+                ...(opportunityConfidence(linkedOpp) === undefined ||
+                (linkedOpp.status !== "Won" && linkedOpp.status !== "Lost")
                   ? []
                   : [
                       {
@@ -5379,11 +5388,7 @@ function LogActualModal({
                            the deal row stopped saying "100% confident" under a
                            Won badge. */
                         label:
-                          linkedOpp.status === "Won"
-                            ? "Signed, in full"
-                            : linkedOpp.status === "Lost"
-                              ? "Lost"
-                              : `Weighted · ${opportunityConfidence(linkedOpp)}%`,
+                          linkedOpp.status === "Won" ? "Signed, in full" : "Lost",
                         amount: weightedValue(linkedOpp),
                       },
                     ]),

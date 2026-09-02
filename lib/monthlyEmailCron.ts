@@ -33,6 +33,33 @@ export function armMonthlyEmailSchedule(): void {
    */
   if (process.env.NODE_ENV !== "production") return;
 
+  /**
+   * OFF UNTIL SOMEBODY TURNS IT ON.
+   *
+   * Anir, Sep 2: "can you stop all automated emails for now until the app is
+   * officially launched... the 30-day one, the monthly digest, turn that one
+   * off, leave everything on."
+   *
+   * So this is the ONLY send that is disabled. The announcement run and the
+   * roadmap digest are untouched and still go, and anything a person triggers
+   * by doing something in the app still sends.
+   *
+   * Opt-IN rather than deleted, and read from the environment rather than
+   * hard-coded, so switching it back on for launch is one variable on the task
+   * definition and not a code change, a review and a deploy. Absent means off,
+   * which is the safe direction for a thing that mails the whole company.
+   *
+   * The manual endpoint (POST /api/cron/monthly with CRON_SECRET) is
+   * deliberately NOT gated by this: that one is a person deciding to send,
+   * which is exactly the case he wants to keep.
+   */
+  if (process.env.MONTHLY_EMAILS_ENABLED !== "true") {
+    console.log(
+      "[monthly-emails] schedule not armed: MONTHLY_EMAILS_ENABLED is not 'true'"
+    );
+    return;
+  }
+
   const g = globalThis as Record<string, unknown>;
   if (g[ARMED_KEY]) return;
   g[ARMED_KEY] = true;

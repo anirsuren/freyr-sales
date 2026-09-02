@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowRight, DollarSign, TrendingUp, Target, CalendarCheck } from "lucide-react";
+import { ChevronDown, ArrowRight, DollarSign, Target, CalendarCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -92,7 +92,9 @@ function RepPipelineBar({
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-lg bg-surface/60 py-2">
+              {/* Two stats, not three: a Weighted cell sat on the end until
+                  Anir, Sep 2 ("they dont use weighted"). */}
+              <div className="mt-3 grid grid-cols-2 divide-x divide-border-light rounded-lg bg-surface/60 py-2">
                 {[
                   {
                     label: "Deals",
@@ -101,10 +103,6 @@ function RepPipelineBar({
                   {
                     label: "Win odds",
                     value: `${Math.round(probability * 100)}%`,
-                  },
-                  {
-                    label: "Weighted",
-                    value: formatMoney(stage.value * probability),
                   },
                 ].map((stat) => (
                   <div key={stat.label} className="px-2 text-center">
@@ -206,15 +204,15 @@ export function RepAnalytics({
   // Team roll-up for the supervisor lens — the whole floor at a glance.
   const team = useMemo(() => {
     const openPipe = reps.reduce((s, r) => s + r.openValue, 0);
-    const weighted = reps.reduce((s, r) => s + r.weighted, 0);
     const meetings = reps.reduce((s, r) => s + r.meetings, 0);
     const qualified = reps.reduce((s, r) => s + r.qualifiedPlus, 0);
-    return { openPipe, weighted, meetings, qualified, count: reps.length };
+    return { openPipe, meetings, qualified, count: reps.length };
   }, [reps]);
 
+  /* Four tiles, not five: a Weighted tile sat second until Anir, Sep 2 ("they
+     dont use weighted"), and the sum behind it went with it. */
   const teamStats = [
     { label: "Team pipeline", value: formatMoney(team.openPipe), icon: DollarSign },
-    { label: "Weighted", value: formatMoney(team.weighted), icon: TrendingUp },
     { label: "Qualified+", value: String(team.qualified), icon: Target },
     { label: "Meetings", value: String(team.meetings), icon: CalendarCheck },
     { label: "Reps", value: String(team.count), icon: null },
@@ -224,7 +222,6 @@ export function RepAnalytics({
   // ranks vs the best on the floor ("a chart, not just the number" — Suren).
   const maxOf = (sel: (r: RepStat) => number) => Math.max(1, ...reps.map(sel));
   const teamMax = {
-    weighted: maxOf((r) => r.weighted),
     avgDeal: maxOf((r) => r.avgDeal),
     qualifiedPlus: maxOf((r) => r.qualifiedPlus),
     meetings: maxOf((r) => r.meetings),
@@ -244,7 +241,7 @@ export function RepAnalytics({
       </div>
 
       {/* Team roll-up strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
         {teamStats.map((t) => {
           const Icon = t.icon;
           return (
@@ -278,15 +275,16 @@ export function RepAnalytics({
               !!rep.memberId &&
               !!currentUser.memberId &&
               rep.memberId === currentUser.memberId;
+            /* Weighted led both of these lists until Anir, Sep 2: "they dont
+               use weighted". Three KPIs now, in the collapsed row and in the
+               drawer's mini-bar grid alike. */
             const kpis = [
-              { label: "Weighted", value: formatMoney(rep.weighted) },
               { label: "Avg deal", value: formatMoney(rep.avgDeal) },
               { label: "Qualified+", value: String(rep.qualifiedPlus) },
               { label: "Meetings", value: String(rep.meetings) },
             ];
-            // Same four KPIs, each with a mini bar = this rep vs the team best.
+            // Same three KPIs, each with a mini bar = this rep vs the team best.
             const kpiViz = [
-              { label: "Weighted", value: formatMoney(rep.weighted), pct: Math.round((rep.weighted / teamMax.weighted) * 100), color: "#0071E3" },
               { label: "Avg deal", value: formatMoney(rep.avgDeal), pct: Math.round((rep.avgDeal / teamMax.avgDeal) * 100), color: "#7C3AED" },
               { label: "Qualified+", value: String(rep.qualifiedPlus), pct: Math.round((rep.qualifiedPlus / teamMax.qualifiedPlus) * 100), color: "#1A7A35" },
               // Burnt orange, not amber: the yellow band is banned app-wide,
@@ -394,7 +392,7 @@ export function RepAnalytics({
                     <div className="rounded-xl border border-border-light bg-surface/30 p-4 space-y-4">
                       {/* KPIs — each carries a mini bar vs the team best, not
                           just a bare number. */}
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                         {kpiViz.map((k) => (
                           <div
                             key={k.label}

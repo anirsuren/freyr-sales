@@ -76,7 +76,6 @@ import {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import {
-  OfferingIcon,
   offeringMark,
   serviceCardMark,
   SERVICE_CARD_ICON_COMPONENTS,
@@ -2802,7 +2801,9 @@ export function OfferingForm({
                       key={x.id}
                       className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
                     >
-                      <OfferingIcon name={x.name} className="h-8 w-8 shrink-0" />
+                      {/* No glyph beside the name (Anir, Sep 2: "can you
+                          just remove these icons from all the offering names?
+                          They're not really needed"). */}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-semibold text-text-primary">
                           {x.name}
@@ -2960,7 +2961,6 @@ export function OfferingForm({
                     onClick={() => pick(x)}
                     className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
                   >
-                    <OfferingIcon name={x.name} className="h-9 w-9 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-text-primary">
                         {x.name}

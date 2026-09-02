@@ -238,7 +238,7 @@ export function AdminTabs({
               </div>
             ) : (
               <div key="table" className="tab-panel">
-                <MemberRoles canEdit />
+                <MemberRoles />
                 <div className="mt-8">
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     Who holds which privilege

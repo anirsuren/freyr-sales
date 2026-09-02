@@ -3,7 +3,6 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import {
   Users,
   Wallet,
-  TrendingUp,
   CalendarCheck,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -21,7 +20,7 @@ import {
   STAGE_COLOR,
 } from "@/lib/pipeline";
 import { readOpportunities } from "@/lib/opportunities";
-import { opportunityValue, weightedValue } from "@/lib/opportunitiesShared";
+import { opportunityValue } from "@/lib/opportunitiesShared";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import {
   repEmail,
@@ -110,8 +109,7 @@ export default async function TeamPage() {
      * pipeline $0 across 0 open deals" over a $10.6M pipeline. The fix that
      * was supposed to land on Aug 20 went into the demo branch below, which
      * live mode never reaches. Same arithmetic the Opportunities header uses:
-     * total is the sum of the offering rows, weighted applies each row's own
-     * confidence.
+     * the total is the sum of the offering rows.
      */
     /* The "and not Future" that used to open this filter went with the
        level itself (Suren, Sep 1: "just pipeline"). */
@@ -120,14 +118,13 @@ export default async function TeamPage() {
     );
     const ownerTotals = new Map<
       string,
-      { openValue: number; weighted: number; openCount: number }
+      { openValue: number; openCount: number }
     >();
     for (const deal of openDeals) {
       if (!deal.owner) continue;
       const key = deal.owner.trim().toLowerCase();
-      const row = ownerTotals.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
+      const row = ownerTotals.get(key) ?? { openValue: 0, openCount: 0 };
       row.openValue += opportunityValue(deal);
-      row.weighted += Math.round(weightedValue(deal));
       row.openCount += 1;
       ownerTotals.set(key, row);
     }
@@ -231,7 +228,6 @@ export default async function TeamPage() {
            that does not exist. */
         teamsUrl: member.email ? teamsChatUrl(member.name, member.email) : "",
         openValue: mine?.openValue ?? 0,
-        weighted: mine?.weighted ?? 0,
         openCount: mine?.openCount ?? 0,
         /* In the room counts however you got there — ran it, presented, or
            simply attended. */
@@ -272,7 +268,6 @@ export default async function TeamPage() {
       linkedin: "",
       teamsUrl: "",
       openValue: 0,
-      weighted: 0,
       openCount: 0,
       meetings: 0,
       quota: 0,
@@ -294,14 +289,8 @@ export default async function TeamPage() {
         value: formatMoney(openDeals.reduce((s, o) => s + opportunityValue(o), 0)),
         sub: `across ${openDeals.length} open ${openDeals.length === 1 ? "deal" : "deals"}`,
       },
-      {
-        icon: TrendingUp,
-        label: "Weighted forecast",
-        value: formatMoney(
-          Math.round(openDeals.reduce((s, o) => s + weightedValue(o), 0))
-        ),
-        sub: "probability-adjusted",
-      },
+      /* A "Weighted forecast" tile sat here until Anir, Sep 2: "they dont
+         use weighted". Three tiles now, and the grid closes up behind it. */
       {
         icon: CalendarCheck,
         label: "Meetings booked",
@@ -340,7 +329,7 @@ export default async function TeamPage() {
             </span>
           }
         />
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid grid-cols-3 gap-3">
           {rollup.map((tile) => (
             <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
           ))}
@@ -376,39 +365,36 @@ export default async function TeamPage() {
    * buildDeals reads the demo pitch-session pipeline, which the live
    * workspace does not use — real deals live in the Opportunities store with
    * an owner on each row. In live mode those rows are the truth: a member's
-   * open pipeline is the sum of their not-Won-not-Lost current deals, and
-   * weighted is value x confidence, exactly the arithmetic the Opportunities
-   * header shows. Mock keeps the demo numbers.
+   * open pipeline is the sum of their not-Won-not-Lost current deals, exactly
+   * the arithmetic the Opportunities header shows. Mock keeps the demo
+   * numbers.
    */
   if (getDataMode() === "live") {
     const { opportunities } = await readOpportunities();
     const byOwner = new Map<
       string,
-      { openValue: number; weighted: number; openCount: number }
+      { openValue: number; openCount: number }
     >();
     for (const o of opportunities) {
       if (!o.owner) continue;
       if (o.status === "Won" || o.status === "Lost") continue;
       const key = o.owner.trim().toLowerCase();
-      const row = byOwner.get(key) ?? { openValue: 0, weighted: 0, openCount: 0 };
-      /* The same math the Opportunities page shows: total = sum of the
-         rows, weighted = each row times ITS OWN confidence. Reading the
-         deal-level fields alone undercounted every line-built deal. */
+      const row = byOwner.get(key) ?? { openValue: 0, openCount: 0 };
+      /* The same math the Opportunities page shows: the total is the sum of
+         the rows. Reading the deal-level fields alone undercounted every
+         line-built deal. */
       row.openValue += opportunityValue(o);
-      row.weighted += Math.round(weightedValue(o));
       row.openCount += 1;
       byOwner.set(key, row);
     }
     for (const r of stats) {
       const real = byOwner.get(r.name.trim().toLowerCase());
       r.openValue = real?.openValue ?? 0;
-      r.weighted = real?.weighted ?? 0;
       r.openCount = real?.openCount ?? 0;
     }
   }
 
   let totalPipeline = stats.reduce((s, r) => s + r.openValue, 0);
-  let totalWeighted = stats.reduce((s, r) => s + r.weighted, 0);
   const totalMeetings = stats.reduce((s, r) => s + r.meetings, 0);
   let totalOpen = stats.reduce((s, r) => s + r.openCount, 0);
   /**
@@ -423,7 +409,6 @@ export default async function TeamPage() {
       (o) => o.status !== "Won" && o.status !== "Lost"
     );
     totalPipeline = open.reduce((s, o) => s + opportunityValue(o), 0);
-    totalWeighted = open.reduce((s, o) => s + Math.round(weightedValue(o)), 0);
     totalOpen = open.length;
   }
 
@@ -480,7 +465,6 @@ export default async function TeamPage() {
         you ? currentUser.email : null
       ),
       openValue: r.openValue,
-      weighted: r.weighted,
       openCount: r.openCount,
       meetings: r.meetings,
       quota: repQuota(r.name),
@@ -499,7 +483,8 @@ export default async function TeamPage() {
   const rollup = [
     { icon: Users, label: "Team members", value: String(reps.length), sub: "on the sales floor" },
     { icon: Wallet, label: "Team pipeline", value: formatMoney(totalPipeline), sub: `across ${totalOpen} open deals` },
-    { icon: TrendingUp, label: "Weighted forecast", value: formatMoney(totalWeighted), sub: "probability-adjusted" },
+    /* A "Weighted forecast" tile sat here until Anir, Sep 2: "they dont use
+       weighted". Three tiles now, and the grid closes up behind it. */
     { icon: CalendarCheck, label: "Meetings booked", value: String(totalMeetings), sub: "live across the team" },
   ];
 
@@ -522,7 +507,7 @@ export default async function TeamPage() {
           number under it. The old hand-rolled card pinned a fixed 132px height
           and stranded the icon at the top, which is what made these read as
           oddly tall (Anir, Jul 25). */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <section className="grid grid-cols-3 gap-4 mb-6">
         {rollup.map((k) => (
           <StatTile key={k.label} {...k} />
         ))}

@@ -1,4 +1,5 @@
 import { getDataMode } from "./dataMode";
+import { mockFillSolutioning, hasMockFillRows } from "./mockFillLife";
 
 /**
  * SOLUTIONING — presentations, submissions and meetings, requested by sales
@@ -899,14 +900,43 @@ function sampleSolutioning(): SolutioningState {
  * now SEED that row once and everything after is an ordinary read. Emptying it
  * deliberately stays empty: the seed fires only when the row never existed.
  */
+/**
+ * THE 140 GENERATED ACCOUNTS GET solutioning records, ONCE.
+ *
+ * Anir, Sep 2, on cust-fill-140: every tab read zero, because the samples
+ * above only ever covered the hand-named demo cast. Appended rather than
+ * replacing, and laid down ONCE: "i should still be able to add edit and
+ * delete shit if i really want", and a floor that relaid itself on every read
+ * would undo a deletion the moment the page reloaded. The rows are their own
+ * marker. Inside the write queue, re-reading there, so a save that landed
+ * while this waited its turn is not thrown away.
+ *
+ * Mock only, twice over: the caller checks the mode and the generator itself
+ * answers with nothing outside it.
+ */
+async function topUpMockFill(): Promise<SolutioningState> {
+  return withWrite(async () => {
+    const raw = await readRowRaw().catch(() => null);
+    const base =
+      raw && !isPreSplitSeed(raw) ? normalize(raw) : sampleSolutioning();
+    if (hasMockFillRows(base.requests.map((r) => r.id))) return base;
+    const rows = mockFillSolutioning();
+    if (rows.length === 0) return base;
+    const next: SolutioningState = { requests: [...base.requests, ...rows] };
+    await writeRow(next).catch(() => undefined);
+    return next;
+  });
+}
+
 export async function readSolutioning(): Promise<SolutioningState> {
   if (getDataMode() !== "mock")
     return readRow().catch(() => structuredClone(EMPTY_SOLUTIONING));
   const existing = await readRowRaw();
-  if (existing && !isPreSplitSeed(existing)) return normalize(existing);
-  const seeded = sampleSolutioning();
-  await writeRow(seeded).catch(() => undefined);
-  return seeded;
+  if (existing && !isPreSplitSeed(existing)) {
+    const state = normalize(existing);
+    if (hasMockFillRows(state.requests.map((r) => r.id))) return state;
+  }
+  return topUpMockFill();
 }
 
 /**

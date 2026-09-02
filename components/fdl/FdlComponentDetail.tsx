@@ -80,6 +80,7 @@ import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
 import { VersionTimeline } from "@/components/fdl/VersionTimeline";
+import { RoadmapTimeline } from "@/components/offerings/RoadmapTimeline";
 import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -2131,7 +2132,11 @@ export function FdlComponentDetail({
                               tiles
                                 ? // min-h keeps a one-line name the same height
                                   // as a three-line one, so the grid stays even.
-                                  "relative flex h-full min-h-[112px] w-full flex-col items-center justify-center gap-2 px-3 py-3.5 text-center"
+                                  // 112px was sized for the offering glyph that
+                                  // sat above the name; with the glyph gone
+                                  // (Anir, Sep 2) 78px is the same three-line
+                                  // floor without the hole.
+                                  "relative flex h-full min-h-[78px] w-full flex-col items-center justify-center px-3 py-3.5 text-center"
                                 : "flex w-full items-center gap-3 px-3 py-2 text-left"
                             }`}
                           >
@@ -2140,10 +2145,12 @@ export function FdlComponentDetail({
                                 <span className="absolute left-2.5 top-2.5">
                                   {box}
                                 </span>
-                                <OfferingIcon
-                                  name={offering.name}
-                                  className="h-9 w-9 shrink-0"
-                                />
+                                {/* The offering's own glyph is gone from
+                                    every list of offering names (Anir, Sep 2:
+                                    "can you just remove these icons from all
+                                    the offering names? They're not really
+                                    needed"). The component's own mark, above,
+                                    stays. */}
                                 <span className="line-clamp-3 text-[12px] font-medium leading-snug text-text-primary">
                                   {offering.name}
                                 </span>
@@ -2151,10 +2158,6 @@ export function FdlComponentDetail({
                             ) : (
                               <>
                                 {box}
-                                <OfferingIcon
-                                  name={offering.name}
-                                  className="h-7 w-7 shrink-0"
-                                />
                                 <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
                                   {offering.name}
                                 </span>
@@ -2391,23 +2394,16 @@ export function FdlComponentDetail({
               >
                 {roadmapView === "timeline" &&
                 (component.roadmap_versions?.length ?? 0) > 0 ? (
-                  /* THE SAME TIMELINE THE VERSIONS USE, fed the history instead
-                     of the releases, so the two cannot drift apart. Each saved
-                     version becomes a marker at the moment it was saved: the
-                     newest is "current", everything behind it is a thing that
-                     already happened. Clicking a marker is not wired to a popup
-                     here, because the list view directly below already opens
-                     each version in place. */
-                  <VersionTimeline
-                    releases={(component.roadmap_versions ?? []).map((v, i) => ({
-                      id: `roadmap-v${v.version}`,
-                      version: `v${v.version}`,
-                      date: v.savedAt.slice(0, 10),
-                      status: "released" as const,
-                      current: i === 0,
-                      featureCount: v.changes.length,
-                    }))}
-                  />
+                  /* SPACED BY ORDER, NOT BY DATE. This first reused
+                     VersionTimeline, the date-scaled gantt the releases use,
+                     which is what "copy the version timeline" literally meant.
+                     It rendered and it was useless: these eighteen versions
+                     were all saved inside three minutes, so every marker
+                     landed on one pixel and only v1 and v18 were visible.
+                     RoadmapTimeline gives each version an equal slot and
+                     prints its real date underneath. See the note at the top
+                     of that file. */
+                  <RoadmapTimeline versions={component.roadmap_versions ?? []} />
                 ) : (
                   <RoadmapVersionHistory versions={component.roadmap_versions ?? []} />
                 )}

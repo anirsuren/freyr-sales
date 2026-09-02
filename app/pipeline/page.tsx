@@ -11,7 +11,6 @@ import { Briefcase, TrendingUp, Clock, AlertTriangle, Plus, type LucideIcon } fr
 import {
   buildDeals,
   formatMoney,
-  STAGE_PROBABILITY,
   ROTTING_DAYS,
 } from "@/lib/pipeline";
 
@@ -31,10 +30,6 @@ export default async function PipelinePage() {
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const open = deals.filter((d) => d.stage !== "Closed Lost");
   const openValue = open.reduce((s, d) => s + d.value, 0);
-  const weighted = deals.reduce(
-    (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
-    0
-  );
   const avgIdle = open.length
     ? Math.round(open.reduce((s, d) => s + d.staleDays, 0) / open.length)
     : 0;
@@ -58,15 +53,8 @@ export default async function PipelinePage() {
       icon: Briefcase,
       def: "How many deals are still in play right now: not yet won or lost.",
     },
-    {
-      label: "Weighted forecast",
-      raw: weighted,
-      unit: "money",
-      suffix: "",
-      warn: false,
-      icon: TrendingUp,
-      def: "What your pipeline is realistically worth: every deal's value adjusted for how likely it is to close at its current stage. A more honest number than the full total.",
-    },
+    /* A "Weighted forecast" stat sat here until Anir, Sep 2: "they dont use
+       weighted". Three stats now, and the row closes up behind it. */
     {
       label: "Avg idle",
       raw: avgIdle,
@@ -89,7 +77,7 @@ export default async function PipelinePage() {
 
   return (
     // The page assembles top-to-bottom on arrival, the same way /dashboard and
-    // /reports do: header → the four tiles → the agent line → the toolbar →
+    // /reports do: header → the three tiles → the agent line → the toolbar →
     // the columns. `.page-in` on AppShell is opacity-only (it can't use a
     // transform without trapping fixed descendants app-wide), so a page with no
     // per-element entrance lands completely flat — which is exactly how this
@@ -124,10 +112,10 @@ export default async function PipelinePage() {
 
       {/* Deal-velocity insights (V6) — the forecast page's stat-tile idiom,
           exactly: 7×7 icon square, 11px uppercase tertiary label, and the
-          number pinned to the bottom of a fixed-height card so the four tiles
-          line up perfectly across the row. `stagger` walks the four tiles in
-          left-to-right (0/40/80/120ms). */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 stagger">
+          number pinned to the bottom of a fixed-height card so the tiles
+          line up perfectly across the row. `stagger` walks the three tiles in
+          left-to-right (0/40/80ms). */}
+      <section className="grid grid-cols-3 gap-4 mb-4 stagger">
         {insights.map((s) => {
           const Icon = s.icon;
           return (

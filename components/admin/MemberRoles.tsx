@@ -2,14 +2,10 @@
 
 import { RolesGuide } from "@/components/admin/RolesGuide";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, ShieldCheck, UserRound, UsersRound, PencilRuler } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
-import { Button } from "@/components/ui/Button";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
-import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
-import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PrivilegeCards } from "./PrivilegeCards";
 import {
@@ -21,53 +17,6 @@ import {
 import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
-/**
- * WHO IS WHAT, AND WHO GETS TO SAY SO.
- *
- * Changing a teammate's role lived in Settings, next to theme and notification
- * preferences (Anir, Aug 15: "It should not be in the settings. It doesn't
- * make any sense"). Settings is what one person chooses for themselves;
- * deciding that someone is now a Manager is running the workspace, which is
- * what this page is for and why User groups already live here.
- *
- * Admin only, and enforced on the server too: the API refuses a role change
- * from anyone else, so this control being on an admin page is the convenience,
- * not the security.
- */
-
-const ROLE_OPTIONS: ColorOption[] = [
-  { value: "bd_member", label: "BD Member", color: "#0071E3", icon: UserRound },
-    /* "BD OWNER", NOT "OWNER" (Anir, Aug 31: "it says she's an owner, I don't
-     understand"). A bare "Owner" reads as "owns things" — so an Offering Owner
-     who held it looked correctly configured while the privilege table was
-     refusing her every write. It is the Business DEVELOPMENT owner; the one
-     that owns an offering is BO Owner, and lives in the privileges below. */
-  { value: "bd_owner", label: "BD Owner", color: "#7C3AED", icon: UsersRound },
-  /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role"): fulfils solutioning
-     requests, sees the Solutioning module, and nothing an Owner-only module. */
-  {
-    value: "sol_member",
-    label: "Solutioning Member",
-    color: "#DB2777",
-    icon: PencilRuler,
-  },
-  { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
-];
-
-/** Least power to most, so the dialog can say "promoting" or "reducing"
- *  instead of the useless "changing". Keyed on the roles as they are stored
- *  now; the pre-024 words are still listed because a row written before the
- *  migration reads back as `rep` or `manager` and an unranked role would make
- *  every change read as a demotion. */
-const RANK: Record<string, number> = {
-  bd_member: 0,
-  sol_member: 0,
-  bd_owner: 1,
-  admin: 2,
-  rep: 0,
-  solutions: 0,
-  manager: 1,
-};
 
 type Member = {
   id: string;
@@ -78,7 +27,7 @@ type Member = {
   accountType?: string;
 };
 
-export function MemberRoles({ canEdit }: { canEdit: boolean }) {
+export function MemberRoles() {
   const { toast } = useToast();
   const me = useCurrentUserOrNull();
 
@@ -105,12 +54,6 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     privId: string;
     privLabel: string;
     to: boolean;
-  } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  /** The role change waiting on a yes. Nothing is sent until it gets one. */
-  const [pending, setPending] = useState<{
-    member: Member;
-    nextRole: string;
   } | null>(null);
   /** null when the last load worked; otherwise why it did not. */
   const [failed, setFailed] = useState<null | "forbidden" | "error">(null);
@@ -149,38 +92,6 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
     void load();
   }, [load]);
 
-  async function changeRole(member: Member, nextRole: string) {
-    if (member.role === nextRole || busy) return;
-    setBusy(member.id);
-    try {
-      const res = await fetch("/api/settings/access", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "change_role",
-          memberId: member.id,
-          role: nextRole,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not change the role");
-      if (Array.isArray(data.directory?.members)) {
-        setMembers(data.directory.members);
-      } else {
-        await load();
-      }
-      const label = ROLE_OPTIONS.find((o) => o.value === nextRole)?.label ?? nextRole;
-      toast(`${member.name} is now ${label}`);
-      setPending(null);
-    } catch (error) {
-      toast(
-        error instanceof Error ? error.message : "Could not change the role",
-        "error"
-      );
-    } finally {
-      setBusy(null);
-    }
-  }
 
   useEffect(() => {
     let alive = true;
@@ -279,24 +190,16 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
           <ShieldCheck size={16} strokeWidth={2} className="text-blue-primary" />
-          {/* "BASE ROLE", NOT "MEMBER ROLES" (Anir, Aug 31: "yes rename it").
-              Two controls on this row decide what somebody can do and both were
-              called roles, so an Offering Owner carrying "Owner" looked fully
-              configured while the privilege table refused her every write. This
-              one is the base a person joins on — the four values the database
-              allows, and the only way to make somebody a real Admin. The ticks
-              beside it add to it. */}
-          Base role
-          {/* THE GUIDE SITS WHERE THE ROLES ARE SET (Anir, Aug 30: "I need a
-              guide for these roles... when I click it, it should have a pop-up
-              that explains the roles"). Beside the heading, so the question
-              gets answered at the moment somebody is about to change one. */}
+          {/* NOT "BASE ROLE" ANY MORE. There is no base role control on this
+              screen: Anir, Sep 2, "you can remove the base role part itself
+              and just retain the privileges". What this list now shows is the
+              people and what each of them holds, so that is what it is
+              called. */}
+          Team members
+          {/* One hint, not two. The second explained a dropdown that no longer
+              exists, and two question marks side by side is the sort of thing
+              that makes a screen look unfinished. */}
           <RolesGuide />
-          <InfoHint
-            text={
-              "The role somebody joins on. BD Member, BD Owner, Solutioning Member or Admin. Privileges tick on top of a role and only ever add to it.\nAdmin is the one thing only a role can hand out.\nOnly an admin can change this, and nobody else can get round it."
-            }
-          />
         </p>
         {members && (
           <span className="text-[11.5px] text-text-tertiary tnum">
@@ -394,33 +297,28 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
                   {m.email}
                 </span>
               </span>
-              {/*
-                THE DROPDOWN STAYS (Anir, Aug 29: "you can keep the dropdown...
-                keep whatever dropdown you had before, it's fine").
+              {/* THE BASE ROLE DROPDOWN IS GONE. PRIVILEGES ARE THE SYSTEM.
+                  Anir, Sep 2: "you can remove the base role part itself, and
+                  you can just retain the privileges... like it's complicated,
+                  I just want to give privileges, that's it."
 
-                I had replaced it with read-only chips on the reading that four
-                options could not express ten privileges. They are two different
-                facts, though: this is the ROLE somebody joined as — one value,
-                which is what an invite sets and what lib/privileges falls back
-                to for anyone nobody has ticked yet. The ten privileges are the
-                ticks table below, where a person can hold several.
+                  This reverses his own Aug 29 call to keep both, and he is
+                  right to reverse it: two controls answering "what can this
+                  person do" is one too many, and the base role was silently
+                  the one doing the work while the ticks below sat empty.
 
-                So both, and each one editable where it belongs.
-              */}
-              {canEdit ? (
-                <div className="w-[170px] shrink-0">
-                  <ColorSelect
-                    value={
-                      ROLE_OPTIONS.some((o) => o.value === m.role) ? m.role : "bd_member"
-                    }
-                    onChange={(next) => setPending({ member: m, nextRole: next })}
-                    ariaLabel={`${m.name}'s base role`}
-                    options={ROLE_OPTIONS}
-                  />
-                </div>
-              ) : (
-                <RoleTag role={m.role} size="sm" className="w-fit shrink-0" />
-              )}
+                  DONE IN THE SAFE ORDER, which matters. Every one of the 40
+                  active people was first given the privilege their base role
+                  already resolved to (bd_owner 16, bd_member 20, admin 5, plus
+                  the 6 bo_owner already held), so removing this control took
+                  nobody's access away: the ticks below now say out loud what
+                  the role was saying quietly. Removing it BEFORE that backfill
+                  would have stripped 33 of 40 people, including 3 of the 4
+                  admins.
+
+                  The `role` field itself is untouched in the data and
+                  lib/privileges still falls back to it, so an invite that sets
+                  a role, and any row nobody has ticked yet, both still work. */}
               {/* WHAT THEY HOLD, AT A GLANCE. Same badges the split roster
                   draws, so a person reads the same on both screens. Capped so
                   somebody with six does not push the controls off the row. */}
@@ -526,104 +424,10 @@ export function MemberRoles({ canEdit }: { canEdit: boolean }) {
         tone={pendingPriv?.to ? "primary" : "destructive"}
       />
 
-      {/* A ROLE CHANGE ASKS FIRST (Anir, Aug 15: "whenever I'm changing
-          someone from rep to admin, or maybe from admin to rep... it should
-          ask me for confirmation... show their profile picture, show their
-          name, show the tag and the colour and the pill"). Picking in the
-          dropdown no longer writes anything; it opens this, and only the
-          confirm sends. Handing someone Admin, or taking it away, changes
-          what a real colleague can do the next time they sign in. */}
-      <RoleChangeDialog
-        pending={pending}
-        busy={busy !== null}
-        onClose={() => setPending(null)}
-        onConfirm={() => {
-          if (pending) void changeRole(pending.member, pending.nextRole);
-        }}
-      />
+      {/* The role-change confirm dialog went with the dropdown that opened
+          it. Nothing writes a base role from this screen any more; privileges
+          are the system. */}
     </div>
   );
 }
 
-function RoleChangeDialog({
-  pending,
-  busy,
-  onClose,
-  onConfirm,
-}: {
-  pending: { member: Member; nextRole: string } | null;
-  busy: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const member = pending?.member;
-  const fromKey = roleKey(member?.role);
-  const toKey = roleKey(pending?.nextRole);
-  const promoting = RANK[toKey] > RANK[fromKey];
-  const first = member?.name.trim().split(/\s+/)[0] || "They";
-  /** "an Admin", "an Owner", "a BD Member" — the article follows the word. */
-  const a = (label: string) => (/^[AEIOU]/i.test(label) ? "an" : "a");
-  const toLabel = ROLE_META[toKey].label;
-  const fromLabel = ROLE_META[fromKey].label;
-
-  return (
-    <Modal
-      open={pending !== null}
-      onClose={onClose}
-      title={promoting ? "Give them more access?" : "Reduce their access?"}
-    >
-      {member && (
-        <>
-          <div className="rounded-xl border border-border-light bg-surface px-3.5 py-3">
-            <div className="flex items-center gap-3">
-              <Avatar name={member.name} className="h-11 w-11 shrink-0 text-[13px]" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[14px] font-bold text-text-primary">
-                  {member.name}
-                </span>
-                {/* Not truncated: the whole point of this dialog is being sure
-                    WHO you are about to change, and half an address does not
-                    tell you that. It wraps instead. */}
-                <span className="mt-0.5 block break-all text-[12px] text-text-secondary">
-                  {member.email}
-                </span>
-              </span>
-            </div>
-            <div className="mt-2.5 flex items-center gap-2 border-t border-border-light pt-2.5">
-              <RoleTag role={fromKey} size="sm" />
-              <ArrowRight
-                size={15}
-                strokeWidth={2.4}
-                aria-label="becomes"
-                className="text-text-tertiary"
-              />
-              <RoleTag role={toKey} size="sm" />
-            </div>
-          </div>
-
-          <p className="mt-3.5 text-[13.5px] leading-relaxed text-text-primary">
-            {promoting
-              ? `${first} gets everything ${a(toLabel)} ${toLabel} can do.`
-              : `${first} loses what ${a(fromLabel)} ${fromLabel} can do.`}{" "}
-            As {a(toLabel)} {toLabel}, {ROLE_META[toKey].what.toLowerCase()}.
-          </p>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
-            It takes effect the next time they load a page. You can change it
-            back here at any time.
-          </p>
-
-          <div className="mt-5 flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose} disabled={busy}>
-              Cancel
-            </Button>
-            <Button onClick={onConfirm} loading={busy}>
-              {promoting
-                ? `Make ${first} ${a(toLabel)} ${toLabel}`
-                : `Move ${first} to ${toLabel}`}
-            </Button>
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}

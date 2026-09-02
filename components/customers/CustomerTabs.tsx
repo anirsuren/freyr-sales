@@ -36,7 +36,6 @@ import { CustomerDigitalComponents } from "@/components/customers/CustomerDigita
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -1788,10 +1787,10 @@ export function CustomerTabs({
               })),
             };
           }).filter((segment) => segment.value > 0);
-          const weightedTotal = dealRows.reduce(
-            (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[deal.stage as keyof typeof STAGE_PROBABILITY] || 0),
-            0
-          );
+          /* NO WEIGHTED FIGURE HERE (Anir, Sep 2: "they dont use weighted").
+             The card header used to carry a Weighted total beside this chart;
+             the team never reads value x confidence, so the chart stands on
+             the open value alone. */
           return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1825,10 +1824,6 @@ export function CustomerTabs({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-[0.05em] text-text-tertiary">Weighted</p>
-                        <p className="text-[17px] font-bold text-text-primary tnum">{formatMoney(weightedTotal)}</p>
-                      </div>
                       <ExpandedChartModal
                         title="Pipeline value over time"
                         subtitle={`${customer.company_name} cumulative open value as opportunities entered the account.`}
@@ -2012,7 +2007,7 @@ export function CustomerTabs({
                             {svc.slice(0, 3).map((sv, i) => (
                               <span
                                 key={i}
-                                className="semantic-color-pill inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium"
+                                className="semantic-color-pill inline-flex items-center rounded-md px-2 py-1 text-[11.5px] font-medium"
                                 style={{
                                   "--semantic-color":
                                     SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length],
@@ -2020,7 +2015,10 @@ export function CustomerTabs({
                                     `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}0F`,
                                 } as CSSProperties}
                               >
-                                <OfferingIcon name={sv.service_name} className="h-4 w-4 rounded text-[6px]" />
+                                {/* Name only (Anir, Sep 2: "can you just
+                                    remove these icons from all the offering
+                                    names? They're not really needed"). The
+                                    chip keeps its colour. */}
                                 {sv.service_name}
                               </span>
                             ))}
@@ -2610,9 +2608,6 @@ export function CustomerTabs({
             setDealForm({ ...dealForm, [k]: v });
           const stageProb =
             (STAGE_PROBABILITY as Record<string, number>)[dealForm.stage] ?? 0;
-          const weighted = Math.round(
-            (Number(dealForm.value.replace(/[^0-9.]/g, "")) || 0) * stageProb
-          );
           return (
             <div className="space-y-3.5">
               <div>
@@ -2731,16 +2726,10 @@ export function CustomerTabs({
               </div>
 
               <div className="flex items-center justify-between gap-3 pt-1">
+                {/* Win chance only (Anir, Sep 2: "they dont use weighted").
+                    This line used to append the weighted amount beside it. */}
                 <span className="text-[12px] text-text-tertiary">
                   {Math.round(stageProb * 100)}% win chance
-                  {weighted > 0 && (
-                    <>
-                      {" · "}weighted{" "}
-                      <span className="font-semibold text-text-secondary tnum">
-                        {formatMoney(weighted)}
-                      </span>
-                    </>
-                  )}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button

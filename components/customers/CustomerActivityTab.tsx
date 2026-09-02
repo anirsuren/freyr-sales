@@ -7,7 +7,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
@@ -231,7 +230,9 @@ export function CustomerActivityTab({
                           open ? "rotate-90" : ""
                         }`}
                       />
-                      <OfferingIcon name={offering.name} className="h-8 w-8 shrink-0" />
+{/* No glyph beside the offering name (Anir, Sep 2: "can you just
+                          remove these icons from all the offering names?
+                          They're not really needed"). */}
                       <span className="min-w-0">
                         <span className="block text-[14px] font-semibold text-text-primary">
                           {offering.name}
@@ -352,7 +353,6 @@ export function CustomerActivityTab({
                     onClick={() => begin(offering.id)}
                     className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-border-light px-3 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
                   >
-                    <OfferingIcon name={offering.name} className="h-7 w-7 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-medium text-text-primary">
                         {offering.name}

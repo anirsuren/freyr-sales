@@ -10,7 +10,6 @@ import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
 import {
   ActivityGoalPrompt,
@@ -772,8 +771,10 @@ export function CustomerOfferingsTab({
     return (
     <Card className="p-5" data-testid={`cust-offering-${o.id}`}>
       <div className="flex items-start justify-between gap-3">
+        {/* No glyph beside the offering name (Anir, Sep 2: "can you just
+            remove these icons from all the offering names? They're not really
+            needed"). */}
         <div className="flex items-start gap-3 min-w-0">
-          <OfferingIcon name={o.name} className="w-9 h-9 rounded-lg shrink-0" />
           <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Link
@@ -847,7 +848,9 @@ export function CustomerOfferingsTab({
       </div>
 
       {expanded && o.description && (
-        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-3 mt-2.5 pl-12">
+        /* pl-12 lined this up under the offering's icon tile; the tile is
+           gone (Anir, Sep 2), so the paragraph starts at the card edge. */
+        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-3 mt-2.5">
           {o.description}
         </p>
       )}
@@ -960,7 +963,6 @@ export function CustomerOfferingsTab({
       data-testid={`cust-offering-${o.id}`}
     >
       <div className="flex items-start gap-3 min-w-0">
-        <OfferingIcon name={o.name} className="w-11 h-11 rounded-xl shrink-0" />
         <div className="min-w-0 flex-1">
           <Link
             href={`/offerings/${o.id}`}

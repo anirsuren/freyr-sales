@@ -223,6 +223,23 @@ export type AccrualSnapshot = {
 export type RevenueAccrualsState = {
   plans: AccrualPlan[];
   snapshots: AccrualSnapshot[];
+  /**
+   * WHICH GENERATION OF THE MOCK SEED THIS ROW WAS BUILT FROM. Mock only, and
+   * never written on the live row.
+   *
+   * Anir, Sep 2: "there should be so many data points for every single thing
+   * it shouldn't even matter" — and, in the same breath, "i should still be
+   * able to add edit and delete shit if i really want". Those two pull against
+   * each other: a seed that re-asserts itself on every read would put every
+   * demo edit back the way it found it, and a seed that only ever fires into a
+   * row that has never existed can never ship a bigger one.
+   *
+   * So the seed stamps its generation here. A row already carrying the current
+   * number is left completely alone, which is what makes an edit or a delete
+   * stick. A row carrying an older one is topped up ONCE, and only the rows
+   * the seed itself owns are replaced. See lib/revenueAccruals.ts.
+   */
+  seedVersion?: number;
 };
 
 export const EMPTY_ACCRUALS: RevenueAccrualsState = { plans: [], snapshots: [] };

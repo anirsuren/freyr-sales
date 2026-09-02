@@ -1187,29 +1187,28 @@ export function RevenueAccrualsModule({
                     : d.offeringLabels[0]) ?? "No offering"
                 }
                 onOpenDeal={(id) =>
-                  /* ONE SCREEN FOR ADD AND EDIT — and this reverses an earlier
-                     call, so both are on the record.
+                  /* A DEAL ROW GOES TO THE DEAL, the same as it does on
+                     Opportunities (Anir, Sep 2: "when I click this I don't
+                     think I want a popup... I want it, when I click it, just
+                     like opportunities, it takes me to the page").
 
-                     Anir, Aug 30: "I'm pretty sure he wants it to be a page
-                     instead of a popup" — because a twelve-month spread scrolls
-                     inside a fixed dialog sitting on top of the table it edits.
-                     That reasoning is real and this change does not make it
-                     untrue.
+                     This row is a DEAL inside a tree of deals, so clicking it
+                     should do what clicking a deal does everywhere else. It
+                     had been opening the accrual plan dialog, which made the
+                     same gesture mean two different things depending on which
+                     page you were standing on.
 
-                     Suren, Sep 1, with the page and the dialog open beside each
-                     other: "I don't want a different screen. It has to be
-                     consistent... this screen is confusing, this screen is
-                     better", pointing at the dialog. He also asked why editing
-                     an accrual looked nothing like adding one, which is what
-                     three entry points to two screens produced.
+                     Nothing is lost by going there: the deal page carries a
+                     Revenue accruals tab that opens this very dialog in place.
+                     And the dialog is still one click away from here, through
+                     "Plan a deal" and the pencil on any row that needs a plan,
+                     which is the option he asked me to keep.
 
-                     So all three doors now open the dialog. startPlan already
-                     took the saved plan for the pencil; this hands it the same
-                     thing. */
-                  /* The dialog finds the deal's saved plan itself, out of
-                     the `plans` it is handed, so all three doors say the same
-                     one thing: open the planner on this deal. */
-                  setPlanning({ dealId: id })
+                     This does not undo Suren's Sep 1 rule. That one was about
+                     the plan EDITOR being a single consistent screen rather
+                     than a separate page, and it still is. This is about what
+                     a deal row does when you click it. */
+                  router.push(`/opportunities/${id}`)
                 }
                 spread={{
                   /* `linesInScope` and not `plan.lines`: a year the filter

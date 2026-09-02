@@ -170,7 +170,10 @@ export function ConnectedComponents({
         <div className="flex shrink-0 items-center gap-2">
         {canEdit && (
           <Button
-            variant="secondary"
+            /* Blue, not outlined (Anir, Sep 2: "same here, blue button
+               white font"). Connecting a component is the action this block
+               exists for, so it wears the primary treatment rather than
+               sitting quietly beside the view toggle. */
             className="shrink-0"
             onClick={() => {
               setPicked([]);

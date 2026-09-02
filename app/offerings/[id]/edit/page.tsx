@@ -6,7 +6,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
 import { roadmapFromReleases } from "@/lib/roadmapFromReleases";
@@ -58,9 +57,11 @@ export default async function EditOfferingPage({
         title={`Edit ${o.offering_name}`}
         subtitle="Update this offering: its details, who it's for, the markets it's available in, and its sales materials."
         action={
-          /* Which offering you're editing, visible without scrolling back. */
-          <span className="inline-flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5">
-            <OfferingIcon name={o.offering_name} className="h-6 w-6" />
+          /* Which offering you're editing, visible without scrolling back.
+             No glyph in front of the name (Anir, Sep 2: "can you just remove
+             these icons from all the offering names? They're not really
+             needed"), so the pill is just the name. */
+          <span className="inline-flex items-center rounded-full border border-border-light bg-white px-3 py-1.5">
             <span className="text-[13px] font-semibold text-text-primary">
               {o.offering_name}
             </span>

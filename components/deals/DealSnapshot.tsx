@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   CircleCheck,
-  CircleDashed,
   Hourglass,
   TrendingUp,
   XCircle,
@@ -43,8 +42,6 @@ import { daysLabel } from "./dealTime";
 const RISK = "#B02020";
 /** The measure: the same blue as /forecast's commit bar. */
 const MEASURE = "#0071E3"; // = blue-primary
-/** The upside share: /forecast's best-case light blue. */
-const UPSIDE = "#C7DCFA"; // = blue-subtle
 /** A closed deal's spent track — muted, no alarm. */
 const SPENT = "#B7C4D4";
 /** The quiet half of a gauge: same hue, 12%. */
@@ -65,7 +62,6 @@ export function DealSnapshot({
   stage,
   winProb,
   value,
-  weighted,
   daysInStage,
   stageStartedAt,
   rottingDays,
@@ -75,14 +71,14 @@ export function DealSnapshot({
   stage: Stage;
   winProb: number;
   value: number;
-  weighted: number;
+  /* No weighted prop: the number came off every surface on Anir, Sep 2
+     ("they dont use weighted"). */
   /** Days the deal has been sitting on the stage it's on now. */
   daysInStage: number;
   stageStartedAt: string;
   rottingDays: number;
 }) {
   const lost = stage === "Closed Lost";
-  const gap = Math.max(0, value - weighted);
   const stageColor = STAGE_COLOR[stage];
   const StageIcon = STAGE_ICON[stage];
   const winChanceSegments = lost
@@ -92,11 +88,12 @@ export function DealSnapshot({
           label: "Likely to close",
           value: winProb,
           color: MEASURE,
+          /* Both tips quoted a weighted amount until Anir, Sep 2: "they dont
+             use weighted". They say what the slice means instead. */
           tip: [
             {
               name: company,
-              sub: `Counted in your forecast at ${stage}`,
-              value: formatMoney(weighted),
+              sub: `The odds every ${stage} deal is given`,
               logo: company,
               avatar: contactName || undefined,
             } as TipItem,
@@ -108,9 +105,8 @@ export function DealSnapshot({
           color: "transparent",
           tip: [
             {
-              name: "The part the forecast leaves out",
-              sub: "it only lands if you win the deal",
-              value: formatMoney(gap),
+              name: "The chance it does not close",
+              sub: `${formatMoney(value)} only lands if you win the deal`,
             } as TipItem,
           ],
         },
@@ -142,7 +138,7 @@ export function DealSnapshot({
             <span className="flex items-center gap-2">
               <ExpandedChartModal
                 title="Win chance"
-                subtitle={`${company} closing probability and forecast weighting.`}
+                subtitle={`${company} closing probability at its current stage.`}
                 chart={{
                   kind: "donut",
                   segments: winChanceSegments,
@@ -196,14 +192,18 @@ export function DealSnapshot({
           </div>
         </section>
 
-        {/* 2 — VALUE AT STAKE. One dominant number, then the split as two
-            aligned rows in the /forecast legend idiom: tinted icon tile, label,
-            money, share bar. The share is shown as a BAR, never as a second
-            printing of the percentage. */}
+        {/* 2 — DEAL VALUE. One dominant number and nothing under it but plain
+            English.
+
+            This panel used to split that number into "Counted today" and "Not
+            counted yet" — value x stage probability, and the remainder. Both
+            rows went on Anir, Sep 2: "they dont use weighted". The deal value
+            is the only money on this page, so the panel keeps it and loses the
+            split rather than going away with it. */}
         <section className={PANEL}>
           <PanelHead
-            label="Value at stake"
-            hint="The whole deal, split into the share your forecast already counts and the share it doesn't."
+            label="Deal value"
+            hint="What the whole deal is worth if it closes. Nothing here is discounted for the odds."
           >
             {lost ? (
               <Pill color={STAGE_COLOR["Closed Lost"]} Icon={XCircle}>
@@ -221,36 +221,13 @@ export function DealSnapshot({
             <span className={HERO_SUB}>on the table</span>
           </div>
 
-          <div className="mt-3 flex flex-1 flex-col justify-center gap-2">
-            <Tooltip
-              label={`${formatMoney(value)} is the whole deal. Your forecast counts ${formatMoney(weighted)} of it today; the rest only lands if you win.`}
-              side="top"
-              className="w-full cursor-pointer"
-            >
-              <span className="block w-full space-y-2">
-                {/* Counted = solid blue, not-counted = light blue — the exact
-                    commit/best-case pairing from /forecast, so the reader has
-                    already learnt these two colours. */}
-                <SplitRow
-                  Icon={CircleCheck}
-                  ink={lost ? SPENT : MEASURE}
-                  bar={lost ? SPENT : MEASURE}
-                  tile={0.14}
-                  label="Counted today"
-                  money={formatMoney(weighted)}
-                  pct={winProb}
-                />
-                <SplitRow
-                  Icon={CircleDashed}
-                  ink={lost ? SPENT : "#5B8DC9"}
-                  bar={lost ? quiet(SPENT) : UPSIDE}
-                  tile={0.1}
-                  label="Not counted yet"
-                  money={formatMoney(gap)}
-                  pct={100 - winProb}
-                />
-              </span>
-            </Tooltip>
+          <div className="mt-3 flex flex-1 flex-col justify-center gap-2.5">
+            {/* Facts only, in the same voice as the panel on the right. */}
+            <p className={NOTE}>
+              {lost
+                ? "The deal was lost, so none of this is coming in."
+                : "The whole amount, not a share of it. It lands in full if you win the deal, and not at all if you lose it."}
+            </p>
           </div>
         </section>
 
@@ -341,51 +318,8 @@ function Pill({
   );
 }
 
-/** One row of the money split, built to the same column rhythm as the /forecast
- *  donut legend — tinted icon tile, label, value, share bar — minus the percent,
- *  because that number already lives in the ring one panel to the left. */
-function SplitRow({
-  Icon,
-  ink,
-  bar,
-  tile,
-  label,
-  money,
-  pct,
-}: {
-  Icon: LucideIcon;
-  ink: string;
-  bar: string;
-  /** Strength of the wash behind the glyph, 0–1. */
-  tile: number;
-  label: string;
-  money: string;
-  pct: number;
-}) {
-  const wash = Math.round(tile * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return (
-    <span className="grid grid-cols-[18px_minmax(0,auto)_auto_minmax(36px,1fr)] items-center gap-x-2 text-[12px]">
-      <span
-        className="flex h-[18px] w-[18px] items-center justify-center rounded-md"
-        style={{ background: `${ink}${wash}` }}
-      >
-        <Icon size={11} strokeWidth={2.2} style={{ color: ink }} />
-      </span>
-      <span className="min-w-0 text-text-secondary">{label}</span>
-      <span className="justify-self-end font-semibold text-text-primary tnum">
-        {money}
-      </span>
-      <span className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${Math.max(pct, 3)}%`, background: bar }}
-        />
-      </span>
-    </span>
-  );
-}
+/* SplitRow lived here: one row of the "Counted today / Not counted yet" money
+   split. It went with the split on Anir, Sep 2: "they dont use weighted". */
 
 /** The 14-day runway. The whole track IS the quiet threshold, so the fill is
  *  literally "how much of your time is used up" — and it only turns red once

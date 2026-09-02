@@ -4,6 +4,7 @@ import { GROUP_TYPES } from "./privileges";
 import {
   DEFAULT_GOAL_TYPES,
   EMPTY_PERFORMANCE,
+  type EntryStatus,
   type GoalMeasure,
   type GoalUnit,
   type GoalGroupAssignment,
@@ -341,6 +342,13 @@ function normalize(value: unknown): PerformanceState {
     groups,
     actuals,
     rates,
+    /* CARRIED, like every other field here: this normalizer rebuilds the state
+       field by field, so a seed marker it did not name would be erased by the
+       first save anybody made in mock, and the seed would then rebuild itself
+       on top of that save. */
+    ...(typeof (raw as { seedVersion?: unknown }).seedVersion === "number"
+      ? { seedVersion: Math.round((raw as { seedVersion: number }).seedVersion) }
+      : {}),
   };
 }
 
@@ -353,6 +361,18 @@ async function readRow(): Promise<PerformanceState> {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return normalize(data?.catalog);
+}
+
+/** The stored row exactly as it is, or null when it has never been written. */
+async function readRowRaw(): Promise<unknown | null> {
+  if (!hasDatabase()) return null;
+  const { data, error } = await client()
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", activeRowId())
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.catalog ?? null;
 }
 
 async function writeRow(stateValue: PerformanceState): Promise<void> {
@@ -391,8 +411,74 @@ function uid(prefix: string): string {
  * Sample only. Live mode never passes a viewer and never takes this path.
  */
 export async function readPerformance(viewer?: string): Promise<PerformanceState> {
-  if (getDataMode() !== "live") return samplePerformance(viewer);
-  return readRow().catch(() => structuredClone(EMPTY_PERFORMANCE));
+  if (getDataMode() === "live") {
+    return readRow().catch(() => structuredClone(EMPTY_PERFORMANCE));
+  }
+  const state = await mockState();
+  return viewer ? asViewer(state, viewer) : state;
+}
+
+/**
+ * MOCK IS A REAL STORE, NOT A PICTURE OF ONE.
+ *
+ * Until Sep 2 this line answered every mock read with a freshly computed
+ * sample, and every mock WRITE went to `performance-management:mock` — a row
+ * nothing ever read back. So adding a goal in mock returned ok, wrote a real
+ * row, and changed nothing on screen; the same for editing one, assigning one,
+ * logging a result against one and deleting one. The demo looked full and was
+ * completely inert, which is the opposite of what Anir asked for ("i should
+ * still be able to add edit and delete shit if i really want").
+ *
+ * The sample now SEEDS that row once and everything after it is an ordinary
+ * read of an ordinary store, exactly the shape Revenue Accruals already uses.
+ * Emptying it deliberately stays empty and an edit stays edited, because the
+ * seed only fires at a generation change.
+ *
+ * WHAT A GENERATION CHANGE KEEPS. Only the rows the seed itself minted are
+ * replaced: everything it has ever written is prefixed `mock-` or `bk-`, and
+ * everything a person makes in mock comes from uid() as `pg-`, `sg-`, `pa-` or
+ * `gr-`. So a bigger seed can ship without stepping on work somebody did in
+ * the demo.
+ */
+const MOCK_SEED_VERSION = 1;
+const MOCK_SEED_ID = /^(mock-|bk-)/;
+
+async function mockState(): Promise<PerformanceState> {
+  if (!hasDatabase()) return samplePerformance();
+  const raw = await readRowRaw().catch(() => null);
+  const stored = raw ? normalize(raw) : null;
+  if (stored && stored.seedVersion === MOCK_SEED_VERSION) return stored;
+
+  /* A ROW WITH NO GENERATION ON IT IS NOT SOMEBODY'S WORK, IT IS RESIDUE.
+     Until this seed existed nothing ever read this row, so what is in it was
+     written by scripts nobody could see the output of — and what was actually
+     in it on Sep 2 was 33 goals from an Aug 14 import, 25 of them with a
+     target of zero and nothing logged, several of them duplicating the demo
+     goals by name. Carrying those forward would have put a page of empty
+     duplicates into the one mode whose whole job is to look full.
+     From generation 2 onward the row IS somebody's work, and only the rows the
+     seed itself minted are replaced. */
+  const carry = stored && typeof stored.seedVersion === "number" ? stored : null;
+  const fresh = samplePerformance();
+  const seeded: PerformanceState = {
+    types: [...new Set([...(carry?.types ?? []), ...fresh.types])],
+    goals: [
+      ...(carry?.goals.filter((g) => !MOCK_SEED_ID.test(g.id)) ?? []),
+      ...fresh.goals,
+    ],
+    groups: [
+      ...(carry?.groups.filter((g) => !MOCK_SEED_ID.test(g.id)) ?? []),
+      ...fresh.groups,
+    ],
+    actuals: [
+      ...(carry?.actuals.filter((a) => !MOCK_SEED_ID.test(a.id)) ?? []),
+      ...fresh.actuals,
+    ],
+    ...(carry?.rates ? { rates: carry.rates } : {}),
+    seedVersion: MOCK_SEED_VERSION,
+  };
+  await writeRow(seeded).catch(() => undefined);
+  return seeded;
 }
 
 /* ------------------------------------------------------------------- ops */
@@ -1647,6 +1733,23 @@ type MockGoal = {
   subs: MockSub[];
   /** Level goals: monthly reported values instead of accumulating entries. */
   levelSeries?: { person: string; values: number[] };
+  /**
+   * THE THREE THINGS THAT READ ZERO IN THE DEMO UNTIL SEP 2, all of them
+   * fields the module already had and nothing was filling (Anir: "i need there
+   * to be hundreds of data points in total down every rabbit hole").
+   *
+   * · schedule       — the goal's own milestones. With none, every pacing line
+   *                    in the app can only say nothing, so no goal ever read as
+   *                    ahead or behind.
+   * · assignedPeople — the person-level attach from the Goal Master. Zero of
+   *                    them existed, so "who is this goal on" was empty on
+   *                    every goal in mock.
+   * · assignedGroups — the same at department altitude, added Aug 15 and never
+   *                    once populated here.
+   */
+  schedule?: [string, number][];
+  assignedPeople?: [string, number][];
+  assignedGroups?: [string, number, string[]?][];
 };
 
 const T = DEFAULT_GOAL_TYPES;
@@ -1661,6 +1764,17 @@ const MOCK_GOALS: MockGoal[] = [
     target: 100_000_000,
     picked: true,
     verified: true,
+    schedule: [
+      ["2026-06-30", 25_000_000],
+      ["2026-09-30", 50_000_000],
+      ["2026-12-31", 75_000_000],
+      ["2027-03-31", 100_000_000],
+    ],
+    assignedGroups: [
+      ["mock-group-growth", 40_000_000],
+      ["mock-group-amr", 35_000_000],
+      ["mock-group-eua", 25_000_000],
+    ],
     subs: [
       {
         id: "mock-br-growth",
@@ -1718,6 +1832,17 @@ const MOCK_GOALS: MockGoal[] = [
     measure: "total",
     target: 70_000_000,
     picked: true,
+    schedule: [
+      ["2026-06-30", 17_500_000],
+      ["2026-09-30", 35_000_000],
+      ["2026-12-31", 52_500_000],
+    ],
+    assignedPeople: [
+      ["Gordon Ashby", 20_000_000],
+      ["Clara Middleton", 18_000_000],
+      ["Margaret Whitfield", 18_000_000],
+      ["Priya Raman", 14_000_000],
+    ],
     verified: true,
     subs: [
       {
@@ -1770,6 +1895,15 @@ const MOCK_GOALS: MockGoal[] = [
     measure: "total",
     target: 1200,
     picked: true,
+    schedule: [
+      ["2026-06-30", 300],
+      ["2026-09-30", 600],
+      ["2026-12-31", 900],
+    ],
+    assignedGroups: [
+      ["mock-group-inside", 700],
+      ["mock-group-growth", 500],
+    ],
     subs: [
       {
         id: "mock-mql-inbound",
@@ -1818,6 +1952,19 @@ const MOCK_GOALS: MockGoal[] = [
     measure: "total",
     target: 960,
     picked: true,
+    schedule: [
+      ["2026-06-30", 240],
+      ["2026-09-30", 480],
+      ["2026-12-31", 720],
+    ],
+    assignedPeople: [
+      ["Walter Hensley", 180],
+      ["Eleanor Rutherford", 160],
+      ["Nancy Caldwell", 160],
+      ["Clara Middleton", 150],
+      ["Marcus Bramwell", 150],
+      ["Thomas Beckett", 160],
+    ],
     subs: [
       {
         id: "mock-disc-amr",
@@ -1855,6 +2002,15 @@ const MOCK_GOALS: MockGoal[] = [
     measure: "total",
     target: 240,
     picked: true,
+    schedule: [
+      ["2026-06-30", 60],
+      ["2026-09-30", 120],
+      ["2026-12-31", 180],
+    ],
+    assignedGroups: [
+      ["mock-group-amr", 120, ["Russell Pemberton"]],
+      ["mock-group-eua", 90],
+    ],
     subs: [
       {
         id: "mock-prop-new",
@@ -1900,9 +2056,492 @@ const MOCK_GOALS: MockGoal[] = [
       ],
     },
   },
+  /* ------------------------------------------------------------------------
+     THIRTEEN MORE GOALS, added Sep 2 (Anir: "hundreds of data points in total
+     down every rabbit hole for every single page so in mock mode ppl can see
+     exactly how it will look").
+
+     Eight goals over a twenty-person roster demoed as a workspace three weeks
+     into its first quarter. These are the goals a regulatory-affairs sales
+     organisation actually carries, spread across all four types so no type
+     filter comes back empty, and deliberately uneven:
+
+       · MET      Named Account Outreach and First Meetings are past their
+                  number, so the app has something to show green.
+       · BEHIND   Expansion Revenue and RFP Responses are a long way short,
+                  which is what a goal in trouble looks like.
+       · UNTOUCHED Webinars Delivered and Customer Site Visits carry a target
+                  and nothing logged at all. An empty state is a real state and
+                  a demo without one implies the app cannot show it.
+     ------------------------------------------------------------------------ */
+  {
+    id: "mock-net-new-arr",
+    name: "Net New ARR Signed",
+    type: T[0],
+    unit: "currency",
+    measure: "total",
+    target: 28_000_000,
+    picked: true,
+    verified: true,
+    schedule: [
+      ["2026-06-30", 7_000_000],
+      ["2026-09-30", 14_000_000],
+      ["2026-12-31", 21_000_000],
+      ["2027-03-31", 28_000_000],
+    ],
+    assignedGroups: [
+      ["mock-group-growth", 12_000_000],
+      ["mock-group-amr", 9_000_000],
+      ["mock-group-eua", 7_000_000],
+    ],
+    subs: [
+      {
+        id: "mock-nna-platform",
+        name: "Platform subscriptions",
+        target: 16_000_000,
+        owners: ["Margaret Whitfield", "Gordon Ashby"],
+        pct: 0.61,
+        verified: true,
+        people: [
+          ["Margaret Whitfield", 4_000_000],
+          ["Gordon Ashby", 3_500_000],
+          ["Clara Middleton", 3_000_000],
+          ["Priya Raman", 3_000_000],
+          ["Elena Rossi", 2_500_000],
+        ],
+      },
+      {
+        id: "mock-nna-managed",
+        name: "Managed services",
+        target: 12_000_000,
+        owners: ["Grace Liu"],
+        pct: 0.47,
+        people: [
+          ["Grace Liu", 3_000_000],
+          ["Omar Haddad", 2_500_000],
+          ["Karl Jensen", 2_500_000],
+          ["Meera Iyer", 2_000_000],
+          ["Chiara Ricci", 2_000_000],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-pipeline-created",
+    name: "Qualified Pipeline Created",
+    type: T[0],
+    unit: "currency",
+    measure: "total",
+    target: 180_000_000,
+    picked: true,
+    schedule: [
+      ["2026-06-30", 45_000_000],
+      ["2026-09-30", 90_000_000],
+      ["2026-12-31", 135_000_000],
+    ],
+    assignedGroups: [
+      ["mock-group-inside", 40_000_000],
+      ["mock-group-apac", 35_000_000],
+    ],
+    subs: [
+      {
+        id: "mock-pipe-inbound",
+        name: "Inbound sourced",
+        target: 70_000_000,
+        owners: ["Tom Baker"],
+        pct: 0.66,
+        verified: true,
+        people: [
+          ["Tom Baker", 18_000_000],
+          ["Sofia Duarte", 14_000_000],
+          ["Liam Doyle", 13_000_000],
+          ["Camila Moreno", 13_000_000],
+          ["Erik Larsen", 12_000_000],
+        ],
+      },
+      {
+        id: "mock-pipe-outbound",
+        name: "Outbound sourced",
+        target: 110_000_000,
+        owners: ["Priya Raman"],
+        pct: 0.52,
+        people: [
+          ["Priya Raman", 25_000_000],
+          ["Kenji Watanabe", 20_000_000],
+          ["Anjali Menon", 20_000_000],
+          ["Wei Zhang", 20_000_000],
+          ["Rohan Desai", 15_000_000],
+          ["Mei Lin Chua", 10_000_000],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-expansion",
+    name: "Expansion Revenue from Existing Accounts",
+    type: T[0],
+    unit: "currency",
+    measure: "total",
+    target: 22_000_000,
+    picked: true,
+    schedule: [
+      ["2026-06-30", 5_500_000],
+      ["2026-09-30", 11_000_000],
+      ["2026-12-31", 16_500_000],
+    ],
+    assignedPeople: [
+      ["Yvonne Thatcher", 5_000_000],
+      ["Oliver Hastings", 4_500_000],
+      ["Grace Lockwood", 4_500_000],
+      ["Sylvia Ashcroft", 4_000_000],
+      ["Nancy Caldwell", 4_000_000],
+    ],
+    subs: [
+      {
+        /* A LONG WAY BEHIND, on purpose. Every subgoal in the demo used to sit
+           between 45% and 71%, so nothing on any screen ever looked like it
+           was in trouble. */
+        id: "mock-exp-crosssell",
+        name: "Cross-sell into existing accounts",
+        target: 14_000_000,
+        owners: ["Yvonne Thatcher"],
+        pct: 0.23,
+        people: [
+          ["Yvonne Thatcher", 4_000_000],
+          ["Oliver Hastings", 3_500_000],
+          ["Grace Lockwood", 3_500_000],
+          ["Hannah Schmidt", 3_000_000],
+        ],
+      },
+      {
+        id: "mock-exp-upsell",
+        name: "Upsell on renewal",
+        target: 8_000_000,
+        owners: ["Sylvia Ashcroft"],
+        pct: 0.31,
+        people: [
+          ["Sylvia Ashcroft", 3_000_000],
+          ["Nancy Caldwell", 2_500_000],
+          ["Marcus Bramwell", 2_500_000],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-renewal-rate",
+    name: "Renewal Rate (%)",
+    type: T[0],
+    unit: "percent",
+    measure: "level",
+    target: 92,
+    picked: true,
+    verified: true,
+    subs: [],
+    levelSeries: {
+      person: "Yvonne Thatcher",
+      values: [88, 89, 87, 90, 91, 90, 93, 92],
+    },
+  },
+  {
+    id: "mock-abm",
+    name: "Named Account Outreach (ABM)",
+    type: T[1],
+    unit: "count",
+    measure: "total",
+    target: 3_600,
+    picked: true,
+    schedule: [
+      ["2026-06-30", 900],
+      ["2026-09-30", 1_800],
+      ["2026-12-31", 2_700],
+    ],
+    assignedGroups: [
+      /* ONE PERSON TAKEN OFF A GROUP GOAL, which is the exception list Suren
+         asked for ("not all the users in the group need to have the same
+         goal... you also have the ability to delete that guy"). Nothing in
+         mock had ever used it, so the control demoed against an empty list. */
+      ["mock-group-inside", 2_000, ["Erik Larsen"]],
+      ["mock-group-apac", 1_600],
+    ],
+    subs: [
+      {
+        /* PAST THE NUMBER. Nothing in the demo had ever been met. */
+        id: "mock-abm-tier1",
+        name: "Tier 1 accounts",
+        target: 2_000,
+        owners: ["Tom Baker"],
+        pct: 1.06,
+        verified: true,
+        people: [
+          ["Tom Baker", 500],
+          ["Sofia Duarte", 400],
+          ["Liam Doyle", 400],
+          ["Camila Moreno", 400],
+          ["Erik Larsen", 300],
+        ],
+      },
+      {
+        id: "mock-abm-tier2",
+        name: "Tier 2 accounts",
+        target: 1_600,
+        owners: ["Kenji Watanabe"],
+        pct: 0.83,
+        people: [
+          ["Kenji Watanabe", 400],
+          ["Anjali Menon", 400],
+          ["Wei Zhang", 400],
+          ["Rohan Desai", 400],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-events",
+    name: "Conferences and Events Attended",
+    type: T[1],
+    unit: "count",
+    measure: "total",
+    target: 48,
+    picked: false,
+    assignedPeople: [
+      ["Marcus Chen", 12],
+      ["Nina Kowalski", 10],
+      ["Farida Khan", 10],
+    ],
+    subs: [
+      {
+        id: "mock-events-industry",
+        name: "Industry conferences",
+        target: 30,
+        owners: ["Marcus Chen"],
+        pct: 0.7,
+        people: [
+          ["Marcus Chen", 10],
+          ["Nina Kowalski", 10],
+          ["Farida Khan", 10],
+        ],
+      },
+      {
+        id: "mock-events-regional",
+        name: "Regional roadshows",
+        target: 18,
+        owners: ["Elena Rossi"],
+        pct: 0.44,
+        people: [
+          ["Elena Rossi", 6],
+          ["Priya Raman", 6],
+          ["Mei Lin Chua", 6],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-webinars",
+    name: "Webinars Delivered",
+    type: T[1],
+    unit: "count",
+    measure: "total",
+    /* NOTHING LOGGED AGAINST THIS ONE, DELIBERATELY. A demo where every goal
+       has numbers on it never shows what a goal nobody has started looks
+       like, and that is the state most goals are in on the day a team opens
+       the app. */
+    target: 24,
+    picked: false,
+    subs: [],
+  },
+  {
+    id: "mock-meetings",
+    name: "First Meetings Held",
+    type: T[2],
+    unit: "count",
+    measure: "total",
+    target: 720,
+    picked: true,
+    verified: true,
+    schedule: [
+      ["2026-06-30", 180],
+      ["2026-09-30", 360],
+      ["2026-12-31", 540],
+      ["2027-03-31", 720],
+    ],
+    assignedGroups: [
+      ["mock-group-growth", 260],
+      ["mock-group-inside", 240],
+      ["mock-group-apac", 220],
+    ],
+    subs: [
+      {
+        id: "mock-meet-newlogo",
+        name: "New logo meetings",
+        target: 420,
+        owners: ["Audrey Kingsley"],
+        pct: 1.02,
+        verified: true,
+        people: [
+          ["Audrey Kingsley", 90],
+          ["Thomas Beckett", 90],
+          ["Grace Lockwood", 80],
+          ["Eleanor Rutherford", 80],
+          ["Walter Hensley", 80],
+        ],
+      },
+      {
+        id: "mock-meet-existing",
+        name: "Existing account meetings",
+        target: 300,
+        owners: ["Sofia Duarte"],
+        pct: 0.74,
+        people: [
+          ["Sofia Duarte", 80],
+          ["Liam Doyle", 80],
+          ["Camila Moreno", 70],
+          ["Erik Larsen", 70],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-demos",
+    name: "Product Demos Delivered",
+    type: T[2],
+    unit: "count",
+    measure: "total",
+    target: 480,
+    picked: true,
+    schedule: [
+      ["2026-06-30", 120],
+      ["2026-09-30", 240],
+      ["2026-12-31", 360],
+    ],
+    assignedPeople: [
+      ["Jonas Berg", 80],
+      ["Aisha Adeyemi", 70],
+      ["Viktor Petrov", 70],
+      ["Noor Rahman", 60],
+    ],
+    subs: [
+      {
+        id: "mock-demo-platform",
+        name: "Platform demos",
+        target: 300,
+        owners: ["Jonas Berg"],
+        pct: 0.68,
+        verified: true,
+        people: [
+          ["Jonas Berg", 80],
+          ["Aisha Adeyemi", 75],
+          ["Viktor Petrov", 75],
+          ["Noor Rahman", 70],
+        ],
+      },
+      {
+        id: "mock-demo-devices",
+        name: "Device and MDR demos",
+        target: 180,
+        owners: ["Grace Liu"],
+        pct: 0.58,
+        people: [
+          ["Grace Liu", 50],
+          ["Karl Jensen", 45],
+          ["Meera Iyer", 45],
+          ["Chiara Ricci", 40],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-site-visits",
+    name: "Customer Site Visits",
+    type: T[2],
+    unit: "count",
+    measure: "total",
+    /* The second goal with nothing logged on it. See Webinars above. */
+    target: 120,
+    picked: false,
+    subs: [],
+  },
+  {
+    id: "mock-rfps",
+    name: "RFP / RFI Responses Submitted",
+    type: T[3],
+    unit: "count",
+    measure: "total",
+    target: 96,
+    picked: true,
+    schedule: [
+      ["2026-06-30", 24],
+      ["2026-09-30", 48],
+      ["2026-12-31", 72],
+    ],
+    assignedGroups: [["mock-group-solutions", 60]],
+    subs: [
+      {
+        id: "mock-rfp-pharma",
+        name: "Pharma and biotech",
+        target: 60,
+        owners: ["Aisha Adeyemi"],
+        pct: 0.28,
+        people: [
+          ["Aisha Adeyemi", 20],
+          ["Viktor Petrov", 20],
+          ["Noor Rahman", 20],
+        ],
+      },
+      {
+        id: "mock-rfp-devices",
+        name: "Devices and diagnostics",
+        target: 36,
+        owners: ["Jonas Berg"],
+        pct: 0.36,
+        people: [
+          ["Jonas Berg", 12],
+          ["Karl Jensen", 12],
+          ["Meera Iyer", 12],
+        ],
+      },
+    ],
+  },
+  {
+    id: "mock-cycle",
+    name: "Sales Cycle Length (days)",
+    type: T[3],
+    unit: "count",
+    measure: "level",
+    target: 120,
+    picked: false,
+    subs: [],
+    levelSeries: {
+      person: "Clara Middleton",
+      values: [168, 165, 159, 154, 150, 143, 139, 134],
+    },
+  },
+  {
+    id: "mock-newlogo-winrate",
+    name: "New Logo Win Rate (%)",
+    type: T[3],
+    unit: "percent",
+    measure: "level",
+    target: 38,
+    picked: true,
+    subs: [],
+    levelSeries: {
+      person: "Margaret Whitfield",
+      values: [27, 29, 28, 31, 33, 32, 35, 36],
+    },
+  },
 ];
 
-const MOCK_GROUPS: [string, string, string, string[]][] = [
+/**
+ * THE DEPARTMENTS. Five more than the demo used to carry, because three groups
+ * over a twenty-person roster made every group screen a list of three and left
+ * most of the sample cast in no department at all.
+ *
+ * The fifth column is the group TYPE (Suren, Aug 29: "a group already always
+ * has a group type: is it a business development group, a business offering
+ * group, a solutioning group, an admin group?"). Every group in mock now has
+ * one, so the chips on the group screens are never blank.
+ */
+const MOCK_GROUPS: [string, string, string, string[], string][] = [
   [
     "mock-group-growth",
     "Growth Accounts",
@@ -1915,6 +2554,7 @@ const MOCK_GROUPS: [string, string, string, string[]][] = [
       "Thomas Beckett",
       "Grace Lockwood",
     ],
+    "business_development",
   ],
   [
     "mock-group-amr",
@@ -1929,6 +2569,7 @@ const MOCK_GROUPS: [string, string, string, string[]][] = [
       "James O'Brien",
       "Russell Pemberton",
     ],
+    "business_development",
   ],
   [
     "mock-group-eua",
@@ -1943,6 +2584,49 @@ const MOCK_GROUPS: [string, string, string, string[]][] = [
       "Oliver Hastings",
       "Hannah Schmidt",
     ],
+    "business_development",
+  ],
+  [
+    "mock-group-apac",
+    "Focused Accounts APAC",
+    "Priya Raman",
+    [
+      "Priya Raman",
+      "Kenji Watanabe",
+      "Anjali Menon",
+      "Wei Zhang",
+      "Rohan Desai",
+      "Mei Lin Chua",
+    ],
+    "business_development",
+  ],
+  [
+    "mock-group-inside",
+    "Inside Sales",
+    "Tom Baker",
+    ["Tom Baker", "Sofia Duarte", "Liam Doyle", "Camila Moreno", "Erik Larsen"],
+    "business_development",
+  ],
+  [
+    "mock-group-devices",
+    "Medical Devices",
+    "Grace Liu",
+    ["Grace Liu", "Omar Haddad", "Karl Jensen", "Meera Iyer", "Chiara Ricci"],
+    "business_offering",
+  ],
+  [
+    "mock-group-partners",
+    "Partners and Alliances",
+    "Elena Rossi",
+    ["Elena Rossi", "Marcus Chen", "Nina Kowalski", "Farida Khan"],
+    "business_development",
+  ],
+  [
+    "mock-group-solutions",
+    "Solutioning",
+    "Jonas Berg",
+    ["Jonas Berg", "Aisha Adeyemi", "Viktor Petrov", "Noor Rahman"],
+    "solutioning",
   ],
 ];
 
@@ -2035,6 +2719,37 @@ function samplePerformance(viewer?: string): PerformanceState {
       verified: mock.verified === true,
       createdBy: by,
       createdAt,
+      /* THE SCHEDULE, THE PEOPLE AND THE DEPARTMENTS — three fields the module
+         has had for weeks that nothing in mock ever filled, so every pacing
+         line said nothing and every "who is this on" list was empty. */
+      ...(mock.schedule
+        ? { milestones: mock.schedule.map(([date, amount]) => ({ date, amount })) }
+        : {}),
+      ...(mock.assignedPeople
+        ? {
+            assignments: mock.assignedPeople.map(([person, target], i) => ({
+              person,
+              target,
+              verified: lcg(`${mock.id}:assign:${person}`)() > 0.35,
+              assignedBy: by,
+              assignedAt: `${MOCK_YEAR}-01-${String(8 + (i % 14)).padStart(2, "0")}T09:00:00.000Z`,
+            })),
+          }
+        : {}),
+      ...(mock.assignedGroups
+        ? {
+            groupAssignments: mock.assignedGroups.map(
+              ([groupId, target, excludedPeople], i) => ({
+                groupId,
+                target,
+                verified: lcg(`${mock.id}:group:${groupId}`)() > 0.3,
+                assignedBy: by,
+                assignedAt: `${MOCK_YEAR}-01-${String(9 + (i % 12)).padStart(2, "0")}T09:00:00.000Z`,
+                ...(excludedPeople?.length ? { excludedPeople } : {}),
+              })
+            ),
+          }
+        : {}),
       subgoals: mock.subs.map((s) => ({
         id: s.id,
         name: s.name,
@@ -2112,6 +2827,23 @@ function samplePerformance(viewer?: string): PerformanceState {
                   : roll < 0.75
                     ? "opportunity"
                     : "pilot";
+          /* NOT EVERY ENTRY IS SIGNED OFF (Anir, Sep 2: every rabbit hole
+             needs data). Every subgoal entry in the demo used to have no
+             status at all, which reads as verified, so the verify queue every
+             group head opens was empty and the sent-back path — the note, who
+             rejected it, when it was put back up — had nothing to show
+             anywhere in mock. The newest entries are the ones still in flight,
+             which is what a real week looks like. */
+          const recent = e >= ENTRIES - 3;
+          const claim = rand();
+          const status: EntryStatus | undefined = !recent
+            ? undefined
+            : claim < 0.45
+              ? "reported"
+              : claim < 0.62
+                ? "sent_back"
+                : undefined;
+          const owner = sub.owners[0] ?? person;
           actuals.push({
             id: `${sub.id}-${person.split(" ")[0]}-${e}`,
             goalId: mock.id,
@@ -2122,6 +2854,19 @@ function samplePerformance(viewer?: string): PerformanceState {
             addedBy: person,
             addedAt: createdAt,
             ...(activityId ? { activityId } : {}),
+            ...(status ? { status } : {}),
+            ...(status === "sent_back"
+              ? {
+                  managerNote: [
+                    "No evidence attached, please add the signed document.",
+                    "This looks like it belongs to the previous quarter.",
+                    "Split this into the two accounts it came from.",
+                  ][Math.floor(claim * 3) % 3],
+                  sentBackBy: owner,
+                  sentBackAt: `${date}T15:30:00.000Z`,
+                  ...(claim < 0.52 ? { resubmittedAt: `${date}T17:00:00.000Z` } : {}),
+                }
+              : {}),
           });
         }
       }
@@ -2218,11 +2963,12 @@ function samplePerformance(viewer?: string): PerformanceState {
   sampleCache = {
     types: [...DEFAULT_GOAL_TYPES],
     goals,
-    groups: MOCK_GROUPS.map(([id, name, head, members]) => ({
+    groups: MOCK_GROUPS.map(([id, name, head, members, groupType]) => ({
       id,
       name,
       head,
       members,
+      groupType,
       createdBy: by,
       createdAt,
     })),

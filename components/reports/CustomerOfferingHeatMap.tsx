@@ -50,7 +50,6 @@ import {
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Field, Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Textarea } from "@/components/ui/Textarea";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
@@ -2030,10 +2029,11 @@ export function CustomerOfferingHeatMap({
                         aria-label={`Open ${offering.name} offering`}
                         className="heat-map-offering-link group flex h-full flex-col items-center justify-center gap-1.5 rounded-lg text-center transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       >
-                        <OfferingIcon
-                          name={offering.name}
-                          className="h-5 w-5 shrink-0 rounded-md transition-transform group-hover:scale-105"
-                        />
+                        {/* No glyph over the offering name (Anir, Sep 2: "can
+                            you just remove these icons from all the offering
+                            names? They're not really needed"). The customer
+                            logos down the left stay: he asked about offerings
+                            only. */}
                         <p
                           className={cn(
                             "flex h-[26px] w-full items-start justify-center overflow-hidden text-[10.5px] font-semibold leading-[1.2] transition-colors duration-150 group-hover:text-primary",

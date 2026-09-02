@@ -31,7 +31,7 @@ import {
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { listOfferings } from "@/lib/offerings";
 import { portfolioReport, REVENUE_TYPE_META } from "@/lib/revenue";
-import { buildDeals, formatMoney, STAGE_PROBABILITY } from "@/lib/pipeline";
+import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
@@ -62,10 +62,6 @@ export default async function ReportsPage() {
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const openDeals = deals.filter((d) => d.stage !== "Closed Lost");
   const openValue = openDeals.reduce((s, d) => s + d.value, 0);
-  const weightedOpen = openDeals.reduce(
-    (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
-    0
-  );
 
   const hasRevenue = report.totalRevenue > 0 || report.offeringCount > 0;
 
@@ -764,11 +760,14 @@ export default async function ReportsPage() {
             )}
           </Card>
 
+          {/* Read "$X weighted pipeline" until Anir, Sep 2: "they dont use
+              weighted". It quotes the open book instead, the same number the
+              In progress tile carries. */}
           <p className="text-[12px] text-text-tertiary">
             <span className="font-semibold text-text-primary tnum">
-              {formatMoney(weightedOpen)}
+              {formatMoney(openValue)}
             </span>{" "}
-            weighted pipeline is still in progress on top of the{" "}
+            of open pipeline is still in progress on top of the{" "}
             {formatMoney(report.totalRevenue)} already on the books, see the{" "}
             <Link href="/forecast" className="text-blue-primary hover:underline">
               forecast

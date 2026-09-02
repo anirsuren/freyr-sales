@@ -164,12 +164,29 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  if (getDataMode() !== "live") {
-    return NextResponse.json(
-      { error: "Mock mode shows sample goals only. Switch to Real to change them." },
-      { status: 400 }
-    );
-  }
+  /**
+   * MOCK IS WRITABLE, and it always should have been.
+   *
+   * Anir, Aug 26: "all the same functionality (add, edit etc.) should be on
+   * mock mode, but it shouldn't affect real data." Sep 2, again: "i should
+   * still be able to add edit and delete shit if i really want."
+   *
+   * What stood here refused EVERY write the moment the session was in Mock, so
+   * adding a goal, editing a target, assigning one, logging a result against it
+   * and deleting it all answered "Mock mode shows sample goals only". It made
+   * sense while it lasted: mock reads were a freshly computed sample and the
+   * mock row was never read back, so a write really would have gone nowhere
+   * and told the person it had worked. readPerformance seeds and reads that row
+   * now, so a mock write lands and shows up, exactly as Revenue Accruals has
+   * behaved since Aug 26.
+   *
+   * NOTHING ABOUT WHO MAY WRITE CHANGES. moduleWriteRefusal above and the
+   * manager rules below are untouched, and every write still goes to
+   * `performance-management:mock` — a different row from the live plan, which
+   * is what makes this safe rather than merely convenient. The rest of this
+   * route was already built for it: assertRealPerson below deliberately
+   * returns early outside live mode.
+   */
   const me = await getCurrentUser();
   const manager = isManagerOrAdmin(me.role);
   /* `?? {}` as well as the catch: a body of literally `null` PARSES fine, so
