@@ -2803,7 +2803,7 @@ export function OpportunitiesBrowser({
                   into a management summary as though a person had said it. */}
               <Field
                 label="Estimated ACV"
-                hint="One year of this contract, in USD. Leave it empty until the number is known — an empty cell reads as 'not said yet' everywhere, a zero would read as 'worth nothing'."
+                hint="What this deal is worth in one year, in dollars. Leave it blank if you do not know yet. Blank means nobody has said. A zero means the deal is worth nothing, which is a different thing."
               >
                 <MoneyInput
                   value={editing.estimatedAcv}
@@ -2813,7 +2813,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Estimated TCV"
-                hint="The whole contract, across every year of it. Left empty it follows the deal's value above, which is what that figure already means — fill this in only when the contract total is genuinely different."
+                hint="What the whole contract is worth, adding up every year. Leave it blank and it uses the deal value above. Only fill it in if the contract total is actually different."
               >
                 <MoneyInput
                   value={editing.estimatedTcv}

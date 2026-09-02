@@ -1612,7 +1612,7 @@ export function RevenueAccrualsModule({
           setConfirmUnfreeze(null);
         }}
         title={`Unfreeze ${confirmUnfreeze ? monthLabel(confirmUnfreeze) : ""}?`}
-        body="The frozen sheet is removed and stops being the baseline for the month-on-month gap. Every accrual plan is left exactly as it is — this removes the photograph, not the thing photographed."
+        body="This throws away the saved copy of this month, so there is nothing left to compare against. Your actual plans are not touched. You are deleting the photo, not the thing in it."
         confirmLabel="Unfreeze the month"
       />
       <ConfirmDialog

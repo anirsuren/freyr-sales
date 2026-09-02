@@ -69,6 +69,15 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 2px rgba(0,0,0,0.04)",
         focus: "0 0 0 3px rgba(0,113,227,0.15)",
+        /* THE CLASS 28 FILES ALREADY ASK FOR.
+           `focus:shadow-input-focus` appears in 49 places across the app and
+           was never defined here, so Tailwind emitted nothing for it and no
+           text box, picker or textarea in the product showed a focus ring at
+           all. Clicking into a field gave you no sign of which field you were
+           in, which matters most for the people who navigate by keyboard.
+           Slightly stronger than `focus` because it has to read against an
+           input's own border rather than a flat card. */
+        "input-focus": "0 0 0 3px rgba(0,113,227,0.18)",
       },
       borderRadius: {
         sm: "6px",
