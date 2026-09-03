@@ -490,6 +490,8 @@ export type AccrualBadge = {
   problems: string[];
   headline: string;
   owner: string;
+  /** What the schedule adds up to (item 13). */
+  total?: number;
 };
 
 export function OpportunitiesBrowser({
@@ -2534,6 +2536,8 @@ export function OpportunitiesBrowser({
         <Card className="tab-panel mt-4 p-4">
           <OpportunitySummary
             deals={shown}
+            /* ITEM 13 — the accrual, against the opportunity rows. */
+            accrualPlans={accrualPlans}
             order={dimOrder}
             onReorder={setDimOrder}
             measure={measure}

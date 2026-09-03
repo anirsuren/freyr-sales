@@ -343,6 +343,7 @@ function ConfidencePill({ pct }: { pct: number }) {
 
 export function OpportunitySummary({
   deals,
+  accrualPlans = {},
   order,
   onReorder,
   measure,
@@ -354,6 +355,12 @@ export function OpportunitySummary({
   toolbar,
 }: {
   deals: Opportunity[];
+  /**
+   * ITEM 13 — "Revenue Accrual should go against the opportunity rows as
+   * well." Keyed by opportunity id, the same map the browser already holds for
+   * the planned/invalid marks; this reads the total off it.
+   */
+  accrualPlans?: Record<string, { planned: boolean; total?: number }>;
   order: SummaryDimension[];
   onReorder: (next: SummaryDimension[]) => void;
   measure: EstimateMeasure;
@@ -711,6 +718,34 @@ export function OpportunitySummary({
                         Still never 0%. A zero is a claim that the deal will
                         not close; "not set" is the truth, which is that the
                         question has not been answered. */}
+                    {/* ITEM 13 — THE ACCRUAL, ON THE OPPORTUNITY ROW.
+                        Manoj's sheet: "Revenue Accrual should go against the
+                        opportunity rows as well."
+
+                        Only on the deal, like the confidence beside it: an
+                        accrual belongs to one opportunity and a group's would
+                        be a sum of plans nobody made together. A planned deal
+                        says what its schedule adds up to; an unplanned one
+                        says nothing at all, because "no plan yet" is already
+                        what the empty space means and a $0 would read as a
+                        plan that accrues nothing.
+
+                        A plan the sweep emptied (item 19) reports $0 here,
+                        which is correct and is the point: the money has left
+                        the forward totals and this row should not still be
+                        claiming it. */}
+                    {(() => {
+                      const acc = accrualPlans[d.id];
+                      if (!acc?.planned) return null;
+                      return (
+                        <span
+                          title={`Revenue accrual planned: ${money(acc.total ?? 0)}`}
+                          className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(3,105,161,0.10)] px-1.5 py-px text-[10px] font-semibold text-[color:#0369A1]"
+                        >
+                          accrual {money(acc.total ?? 0)}
+                        </span>
+                      );
+                    })()}
                     {confidence === undefined ? (
                       <span className="shrink-0 whitespace-nowrap rounded-full border border-border-light px-1.5 py-px text-[10px] font-semibold text-text-tertiary">
                         not set

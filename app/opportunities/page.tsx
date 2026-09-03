@@ -113,6 +113,13 @@ export default async function OpportunitiesPage() {
               problems: verdict.problems,
               headline: verdict.headline,
               owner: deal?.owner ?? plan.updatedBy,
+              /* ITEM 13 — "Revenue Accrual should go against the opportunity
+                 rows as well." The badge already said WHETHER a deal was
+                 planned; this is how much, so the row can say it. Read off
+                 `plan.lines`, which is the schedule the reports read, so an
+                 expired plan that item 19 emptied reports 0 here too rather
+                 than a number nothing else agrees with. */
+              total: plan.lines.reduce((sum, l) => sum + (l.amount || 0), 0),
             },
           ];
         })
