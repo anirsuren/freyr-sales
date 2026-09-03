@@ -41,7 +41,7 @@ import { CopyMaterialLinkButton } from "@/components/offerings/CopyMaterialLinkB
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
 import {
   ACCESS_LEVELS,
@@ -161,6 +161,7 @@ export function MaterialsSection({
   materialFolders = [],
   offeringType,
   preferenceOwnerId,
+  inset = true,
   ownerNames = [],
 }: {
   materials: OfferingMaterial[];
@@ -191,6 +192,16 @@ export function MaterialsSection({
   /** Display names of this offering's OWNERS — an uploader on the list gets
    *  the crown beside their name, the same mark ownership wears everywhere. */
   ownerNames?: string[];
+  /**
+   * Indent the body to line up with the section heading's text.
+   *
+   * Right for a section stacked with others on the Overview, where every block
+   * shares the same 44px left edge. Wrong when this IS the screen: on the Sales
+   * Materials tab there is nothing above or below to line up with, and the
+   * indent was 44px stolen from a nine-column table (Anir, Sep 3: "why are you
+   * condensing the table? Let it take up the space. Don't indent it").
+   */
+  inset?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [formats, setFormats] = useState<string[]>([]);
@@ -722,7 +733,7 @@ export function MaterialsSection({
   if (!scopePreferenceReady) {
     return (
       <div
-        className="mt-5 ml-11"
+        className={cn("mt-5", inset && "ml-11")}
         aria-busy="true"
         aria-label="Loading your sales materials view"
       >
@@ -738,7 +749,7 @@ export function MaterialsSection({
   }
 
   return (
-    <div className="mt-5 ml-11">
+    <div className={cn("mt-5", inset && "ml-11")}>
       {viewing?.docsPath && offeringId && (
         <MaterialViewer
           offeringId={offeringId}
@@ -1174,7 +1185,7 @@ export function MaterialsSection({
         </p>
       ) : columns === "table" ? (
         <div className="materials-view-enter mt-3 overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <table className="w-full min-w-[1280px] border-collapse text-left">
+          <table className="w-full min-w-[1280px] table-fixed border-collapse text-left">
             <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               {/* "Uploaded by" — the person is the headline and the date sits
                   under their name anyway, so the old "Upload date" labelled the
@@ -1188,8 +1199,8 @@ export function MaterialsSection({
                     column a bit wider so that it's not so clustered within
                     less space — just the file name column"). Titles were
                     wrapping to four lines beside a 32px tile. */}
-                <th className="w-[24%] px-4 py-4 align-middle">File name</th>
-                <th className="px-4 py-4 align-middle">File format</th>
+                <th className="w-[20%] px-4 py-4 align-middle">File name</th>
+                <th className="w-[7%] px-4 py-4 align-middle">File format</th>
                 {/* FOLDER IS A COLUMN NOW (Anir, Aug 25: "in the file view,
                     when we're just looking at the list of files, can you add a
                     column called Folder? Currently the folder name is visible
@@ -1197,16 +1208,22 @@ export function MaterialsSection({
                     there, let's put this in a separate column"). Under the
                     name it read as part of the description; in its own column
                     it sorts, scans and lines up with everything else. */}
-                <th className="px-4 py-4 align-middle">Folder</th>
-                <th className="px-4 py-4 align-middle">Access level</th>
-                <th className="px-4 py-4 align-middle">Buyer&apos;s journey stage(s)</th>
-                <th className="px-4 py-4 align-middle">Division</th>
-                <th className="px-4 py-4 align-middle">Uploaded by</th>
+                <th className="w-[14%] px-4 py-4 align-middle">Folder</th>
+                <th className="w-[11%] px-4 py-4 align-middle">Access level</th>
+                {/* A WIDTH OF ITS OWN (Anir, Sep 3: "the buyer's journey stage
+                    is, I think, messing it up, so you have to figure out a way
+                    to put that on one line, or at least two lines"). With no
+                    width the longest header in the table was handed the
+                    narrowest column and broke into three lines, which set the
+                    height of the whole header row. */}
+                <th className="w-[13%] px-4 py-4 align-middle">Buyer&apos;s journey stage(s)</th>
+                <th className="w-[8%] px-4 py-4 align-middle">Division</th>
+                <th className="w-[12%] px-4 py-4 align-middle">Uploaded by</th>
                 {/* LEFT, like every other column and like the same table on the
                     Sales Materials page (Anir, Aug 26: "align this column
                     properly on the sales materials part of the offerings, it
                     should be left-aligned"). */}
-                <th className="px-4 py-4 align-middle">Actions</th>
+                <th className="w-[15%] px-4 py-4 align-middle">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1409,15 +1426,25 @@ export function MaterialsSection({
                       {level ? <TagPill label={level.label} color={level.color} icon={level.icon} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                     </td>
                     <td className="px-4 py-4 align-middle">
-                      {/* Stacked. Side by side, two stages ran wider than the
-                          column and pushed the row's other facts around. */}
-                      <div className="flex flex-col items-start gap-1">
+                      {/* THEY FLOW, THEY DO NOT STACK (Anir, Sep 3: "I don't
+                          like how thick the table here is... the buyer's
+                          journey stage is, I think, messing it up").
+
+                          One stage per line meant a material tagged Awareness
+                          and Evaluation was two lines tall, and since almost
+                          every row has two, almost every row was double height.
+                          They stack no longer because the column is no longer
+                          starved: the table lost its 44px indent and this
+                          header got a width of its own, so two stages sit side
+                          by side and only wrap when there are genuinely too
+                          many. */}
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                         {stagesForMaterial.length ? stagesForMaterial.map((stage) => {
                           const meta = JOURNEY_STAGE_META[stage];
                           return (
                             <span
                               key={stage}
-                              className="block text-[12.5px] text-text-primary"
+                              className="whitespace-nowrap text-[12.5px] text-text-primary"
                             >
                               {meta.short}
                             </span>
@@ -1480,16 +1507,24 @@ export function MaterialsSection({
                           </span>
                           <span className="mt-0.5 block whitespace-nowrap text-[10.5px] text-text-tertiary">
                             {uploadDate ? (
-                              /* THE TIME, NOT JUST THE DAY (Anir, Aug 31: "I
-                                 want the time here too, I want the time when I
-                                 uploaded it"). Several versions of one deck
-                                 land in an afternoon and the date alone cannot
-                                 say which is the one you just replaced. */
+                              /* THE DATE SHOWS, THE TIME IS ON HOVER (Anir,
+                                 Sep 3: "you can keep the date but remove the
+                                 time... because when I hover over the date, I
+                                 want to see the time").
+
+                                 He asked for the time on Aug 31 and the reason
+                                 still holds: several versions of one deck land
+                                 in an afternoon. But "Aug 3, 2026 • 3:50 AM"
+                                 wrapped to two lines in this column and made
+                                 every row taller for a fact almost nobody is
+                                 reading. The title carried the full stamp
+                                 already, so the hover is not new — only the
+                                 default is. */
                               <time
                                 dateTime={uploadDate}
                                 title={new Date(uploadDate).toLocaleString()}
                               >
-                                {formatDateTime(uploadDate)}
+                                {formatDate(uploadDate)}
                               </time>
                             ) : (
                               "Date not recorded"

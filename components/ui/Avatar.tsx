@@ -16,6 +16,37 @@ import {
 // own verified LinkedIn profile (Aug 6). Unlike the synthetic PHOTOS map
 // below, these are allowed in Real mode: they are the true faces, not
 // stand-ins. Keyed by every name form the app renders.
+/**
+ * HOW BIG THE INITIALS ARE, DECIDED FROM THE CIRCLE AND NOT FROM THE PAGE.
+ *
+ * Anir, Sep 3, looking at a "MO" chip beside two photographed owners: "If
+ * there's no profile picture, it looks so ugly. The text is huge."
+ *
+ * The initials span carried no font size of its own, so it inherited whatever
+ * the surrounding text was. Beside a body row that reads fine; inside the
+ * grouped deals list the owner name is a large bold heading, so the initials
+ * came out at heading size and burst out of a 24px circle while the two
+ * colleagues with photographs looked perfect either side of it. Every call
+ * site that looks right today looks right because somebody remembered to pass
+ * a `text-[Npx]`, and there are dozens of them.
+ *
+ * So the size comes from the badge instead. The height class IS the circle
+ * (`h-6` is 24px, `h-[18px]` is 18px), and initials want to be a bit over a
+ * third of it, clamped so a tiny chip stays legible and a large one does not
+ * turn into a poster. An explicit `text-` size from the caller still wins, so
+ * every deliberately tuned avatar in the app is untouched.
+ */
+const EXPLICIT_TEXT_SIZE = /\btext-(?:\[[\d.]+(?:px|rem|em)\]|(?:xs|sm|base|lg|\d?xl)\b)/;
+
+function initialsSizing(className?: string): { fontSize: number; lineHeight: number } | undefined {
+  if (className && EXPLICIT_TEXT_SIZE.test(className)) return undefined;
+  const m = className?.match(/\bh-(?:\[(\d+(?:\.\d+)?)px\]|(\d+(?:\.\d+)?))\b/);
+  /* No height class to read: 11px is the size a default 28px avatar wants, and
+     it is a great deal closer than "whatever the heading was". */
+  const box = m ? (m[1] ? Number(m[1]) : Number(m[2]) * 4) : 28;
+  return { fontSize: Math.round(Math.min(20, Math.max(7, box * 0.38))), lineHeight: 1 };
+}
+
 const REAL_PHOTOS: Record<string, string> = {
   "anant puranik": "/avatars/anant-puranik.png",
   "suren dheenadayalan": "/avatars/suren-dheenadayalan.png",
@@ -213,6 +244,7 @@ export function Avatar({
     />
   ) : (
     <span
+      style={initialsSizing(className)}
       className={cn(
         "inline-flex items-center justify-center rounded-full bg-blue-light text-blue-primary font-semibold shrink-0 isolate",
         className

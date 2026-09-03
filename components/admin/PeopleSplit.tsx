@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { Loader2, Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -39,13 +38,6 @@ type Member = {
   accountType?: string;
 };
 
-const ROLE_OPTIONS: ColorOption[] = [
-  { value: "bd_member", label: "BD Member", color: "#0071E3" },
-  { value: "bd_owner", label: "Owner", color: "#7C3AED" },
-  { value: "sol_member", label: "Solutioning Member", color: "#DB2777" },
-  { value: "admin", label: "Admin", color: "#0F766E" },
-];
-
 /**
  * SUSPENDED, IN THE COLOUR THIS APP RESERVES FOR IT.
  *
@@ -62,15 +54,6 @@ function SuspendedPill() {
 }
 
 /** Least power to most, so a demotion can be told from a promotion. */
-const ROLE_RANK: Record<string, number> = {
-  bd_member: 0,
-  sol_member: 0,
-  bd_owner: 1,
-  admin: 2,
-  rep: 0,
-  solutions: 0,
-  manager: 1,
-};
 
 export function PeopleSplit() {
   const { toast } = useToast();
@@ -87,10 +70,6 @@ export function PeopleSplit() {
     privId: string;
     privLabel: string;
     to: boolean;
-  } | null>(null);
-  const [pendingRole, setPendingRole] = useState<{
-    member: Member;
-    nextRole: string;
   } | null>(null);
 
   const load = useCallback(async () => {
@@ -222,39 +201,6 @@ export function PeopleSplit() {
     void savePrivileges({ ...state, peoplePrivileges: nextMap });
   }
 
-  async function applyPendingRole() {
-    const p = pendingRole;
-    setPendingRole(null);
-    if (!p) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/settings/access", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "change_role",
-          memberId: p.member.id,
-          role: p.nextRole,
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast(data?.error || "Could not change the role", "error");
-        return;
-      }
-      toast(
-        `${p.member.name} is now ${
-          ROLE_OPTIONS.find((o) => o.value === p.nextRole)?.label ?? p.nextRole
-        }`
-      );
-      await load();
-    } catch {
-      toast("Could not change the role", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const held = new Set(privilegesForPerson(state, selected.name));
   const fromRole = ROLE_PRIVILEGE[selected.role];
 
@@ -268,7 +214,13 @@ export function PeopleSplit() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      {/* THE LIST PANE FITS AN EMAIL ADDRESS (Anir, Sep 3: "you don't
+          have to shorten it, bro. You genuinely don't have to shorten it.
+          Just put them all there"). 260px cut every freyrsolutions.com
+          address mid-word, so the column showed a name and half a fact. The
+          right pane still takes the rest, and it holds two columns of
+          privilege cards, which need far less width than the table used to. */}
+      <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
         {/* LEFT: the roster. A search box on top, because forty-one people is
             already past the point of scrolling to find somebody (Anir, Aug 31:
             "why is there no search bar here to search for users"). */}
@@ -324,7 +276,7 @@ export function PeopleSplit() {
                       first name long before a workspace gets large, and the
                       address is the only thing that never collides. */}
                   {m.email && (
-                    <span className="block truncate text-[11px] text-text-tertiary">
+                    <span className="block break-all text-[11px] leading-snug text-text-tertiary">
                       {m.email}
                     </span>
                   )}
@@ -390,47 +342,23 @@ export function PeopleSplit() {
                 {selected.email}
               </p>
             </div>
-            <div className="w-[190px] shrink-0">
-              {/* A SUSPENDED PERSON'S ROLE IS NOT A DROPDOWN (Anir, Aug 30:
-                  "if he's suspended, why can I change this?"). They cannot sign
-                  in, so setting what they may do is a change with no subject.
-                  The role still SHOWS, because you need to know what they held
-                  when you decide whether to bring them back. */}
-              {selected.active ? (
-                <ColorSelect
-                  value={
-                    ROLE_OPTIONS.some((o) => o.value === selected.role)
-                      ? selected.role
-                      : "bd_member"
-                  }
-                  onChange={(next) =>
-                    next !== selected.role &&
-                    setPendingRole({ member: selected, nextRole: next })
-                  }
-                  ariaLabel={`${selected.name}'s base role`}
-                  options={ROLE_OPTIONS}
-                />
-              ) : (
-                (() => {
-                  const meta =
-                    ROLE_OPTIONS.find((o) => o.value === selected.role) ??
-                    ROLE_OPTIONS[0];
-                  return (
-                    <span
-                      title="Suspended: their role cannot be changed"
-                      className="flex h-[38px] items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-semibold text-text-tertiary"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: meta.color, opacity: 0.5 }}
-                      />
-                      <span className="truncate">{meta.label}</span>
-                    </span>
-                  );
-                })()
-              )}
-            </div>
+            {/* NO BASE ROLE CONTROL (Anir, Sep 1: "you can remove the base
+                role part itself, and you can just retain the privileges... I
+                just want to give privileges thatS IT"; again Sep 3: "I thought
+                you removed this. Why do we still have these four
+                categories?").
+
+                It came out of the Team members TABLE on Sep 1 and survived
+                here, so the four roles were still assignable from the pane on
+                the right of the same page. The privilege ticks below are the
+                whole of what an admin sets now.
+
+                The stored role is untouched and still read: it is what
+                `ROLE_PRIVILEGE` turns into the "From role" ticks, and it is
+                what the module-access resolver falls back to. Nothing is
+                revoked by removing the way to change it, and every person was
+                backfilled with the privileges their role implied before the
+                control went away. */}
           </div>
 
           <div className="mt-5">
@@ -440,8 +368,8 @@ export function PeopleSplit() {
             <p className="mt-0.5 text-[12px] text-text-tertiary">
               {selected.active ? (
                 <>
-                  Tick as many as they need. What they may do in a module is the
-                  most generous of everything they hold.
+                  Tick as many as they need. If two of these give different
+                  access to the same module, they get the higher one.
                 </>
               ) : (
                 /* WHY IT IS LOCKED, not just that it is. */
@@ -498,34 +426,6 @@ export function PeopleSplit() {
         busy={saving}
       />
 
-      <ConfirmDialog
-        open={pendingRole !== null}
-        onClose={() => setPendingRole(null)}
-        onConfirm={() => void applyPendingRole()}
-        title="Change their role?"
-        body={
-          pendingRole && (
-            <>
-              <b>{pendingRole.member.name}</b> becomes{" "}
-              <b>
-                {ROLE_OPTIONS.find((o) => o.value === pendingRole.nextRole)
-                  ?.label ?? pendingRole.nextRole}
-              </b>
-              .
-            </>
-          )
-        }
-        detail="The role is what they joined as, and what decides their access until somebody ticks a privilege for them."
-        confirmLabel="Change it"
-        /* A role change is a change, not a removal — unless it demotes. */
-        tone={
-          pendingRole &&
-          ROLE_RANK[pendingRole.nextRole] < ROLE_RANK[pendingRole.member.role]
-            ? "destructive"
-            : "primary"
-        }
-        busy={saving}
-      />
     </div>
   );
 }

@@ -91,9 +91,9 @@ export function RolesGuide({ className }: { className?: string }) {
       >
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="mb-4 max-w-[70ch] text-[13px] leading-relaxed text-text-secondary">
-            A person holds one or more of these. What they may do in a module is
-            the most generous of everything they hold, so extra privileges never
-            take access away. <b className="font-semibold">Create</b> is an
+            A person holds one or more of these. If two of them give different
+            access to the same module, they get the higher one, so adding a
+            privilege never takes access away. <b className="font-semibold">Create</b> is an
             owner, <b className="font-semibold">Edit</b> is a member, and
             whoever can create is the only one who can delete.
           </p>

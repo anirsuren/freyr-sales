@@ -113,9 +113,14 @@ export function RelatedOfferingsSection({
         </div>
       </div>
 
+      {/* THE SWITCH IS AN ANIMATION, NOT A JUMP (Anir, Sep 3: "when I switch
+          between cards and table, there is no animation"). Both branches wear
+          the app's own `.tab-panel` fade-and-rise, and the `key` is the view,
+          so React remounts on every toggle and the animation actually replays
+          instead of running once on first paint. */}
       {view === "cards" ? (
         /* Floating pill cards, not hairline rows (Anir, Jul 28). */
-        <div className="mt-5 ml-11 grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div key="cards" className="tab-panel mt-5 ml-11 grid grid-cols-1 gap-3 xl:grid-cols-2">
           {related.map((relatedOffering) => (
             <Link
               key={relatedOffering.id}
@@ -159,7 +164,7 @@ export function RelatedOfferingsSection({
            right — so a third list in this product does not invent a fourth
            look. The name is the link; the note keeps its own pencil, which is
            why the row is not one big anchor. */
-        <div className="mt-5 ml-11 overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div key="table" className="tab-panel mt-5 ml-11 overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
               <colgroup>
@@ -189,11 +194,20 @@ export function RelatedOfferingsSection({
                     className="group align-middle transition-colors hover:bg-surface"
                   >
                     <td className="px-4 py-3 align-middle">
+                      {/* THE ARROW BELONGS TO THE NAME, not to the column
+                          (Anir, Sep 3: "why is the arrow there? It didn't seem
+                          like a good place to put the arrow"). `flex-1` on the
+                          name span pushed the chevron to the far edge of the
+                          OFFERING column, so it hung in white space a long way
+                          from the word it points at and read as a stray glyph
+                          in the middle of the table. Sized to its content, the
+                          two travel together and the arrow says "this name
+                          opens". */}
                       <Link
                         href={`/offerings/${relatedOffering.id}`}
-                        className="flex items-center gap-2.5"
+                        className="inline-flex w-fit max-w-full items-center gap-1.5"
                       >
-                        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
+                        <span className="min-w-0 text-[13px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
                           {relatedOffering.name}
                         </span>
                         <ChevronRight

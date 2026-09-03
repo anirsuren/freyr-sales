@@ -76,6 +76,7 @@ import {
   withV,
 } from "@/components/fdl/FdlComponentsBrowser";
 import { AskFreyrButton } from "@/components/agent/AskFreyrButton";
+import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
@@ -1743,7 +1744,16 @@ export function FdlComponentDetail({
             shrink-0 cluster on the right of the header, so this does too. */}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
+          {/* An agent component wears its own face here too (Saras, Sep 3:
+              "avatar icons to also show up on the respective FDL Component
+              pages / Offering pages on the left side of the name"). Same rule
+              as the tile and list views, so a component looks like itself
+              wherever you meet it. */}
+          {agentIn(component.name) ? (
+            <AgentAvatar name={component.name} size={40} />
+          ) : (
+            <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
+          )}
           <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>
           <FdlTypeChip type={component.type} />
           {current && (

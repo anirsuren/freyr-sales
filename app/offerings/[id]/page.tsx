@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { SmartBack } from "@/components/ui/BackButton";
 import { notFound } from "next/navigation";
 import {
@@ -444,60 +445,20 @@ export default async function OfferingDetailPage({
               these icons from all the offering names? They're not really
               needed"). The gradient tile used to sit here, which is why the
               heading was a flex row with a gap. The name is the heading now,
-              so it is a plain block again. */}
-          <h1 className="min-w-0 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
-            {o.offering_name}
-          </h1>
-          {/* THE DATE ONLY WHEN SOMEBODY IS NAMED (Anir, Aug 25: "this new
-              thing pops up, the date the offering was added on — can we get
-              this removed? This isn't really needed. It comes up under all the
-              offerings").
+              so it is a plain block again.
 
-              He asked for who-and-when on Aug 23, and every offering predates
-              the field, so the line printed a bare seeded timestamp under every
-              title — provenance with the provenance missing. It appears again
-              the moment an offering is created by a real person, which is what
-              he actually asked for. */}
-          {/* WHO ADDED IT, ON HOVER, NOT ON THE PAGE.
-              Anir, Sep 2: "whenever a new offering is added it gives this
-              tagline, can this be removed? It's not really needed, so it's
-              added by who, on which date, at what time. None of this is
-              needed, just the offering name... or hide it somewhere so when I
-              hover over, it'll show up."
-
-              It is a provenance fact, not a headline: useful once, when
-              somebody asks who put this here, and noise on every other visit.
-              It sat on its own line under the title of every offering.
-
-              Kept, not deleted, because "who added this" is exactly the
-              question that comes up about a catalogue entry nobody recognises.
-              It now rides on a small mark beside the name and says itself on
-              hover. Not a question mark: he was explicit that a question mark
-              is the wrong glyph, and a question mark means "what is this
-              feature" everywhere else in this app. */}
-          {o.created_by ? (
-            <Tooltip
-              label={`Added by ${o.created_by}${
-                o.created_at
-                  ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}`
-                  : ""
-              }`}
-            >
-              <span className="ml-2 inline-flex h-5 w-5 cursor-default items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-secondary">
-                <Info size={13} strokeWidth={2.1} aria-hidden="true" />
-                <span className="sr-only">
-                  Added by {o.created_by}
-                  {o.created_at
-                    ? ` on ${new Date(o.created_at).toLocaleDateString()}`
-                    : ""}
-                </span>
-              </span>
-            </Tooltip>
-          ) : null}
+              THE ONE EXCEPTION IS AN AGENT'S OWN FACE (Saras, Sep 3: "avatar
+              icons to also show up on the respective FDL Component pages /
+              Offering pages on the left side of the name"). That is not a
+              reversal of the line above: the thing Anir removed was a mark
+              generated from the name that said nothing, on all 29 offerings.
+              This is Avni's designed portrait, and it appears on four. The
+              heading stays a plain block for everything else, so nothing
+              changes for the offerings he was looking at. */}
+          <h1 className="flex min-w-0 items-center gap-2.5 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
+            <AgentAvatar name={o.offering_name} size={40} />
+            <span className="min-w-0">{o.offering_name}</span>
+            </h1>
         </div>
 
         {/* All actions on one line (Anir: single line to save space) —
@@ -588,6 +549,73 @@ export default async function OfferingDetailPage({
               Awaiting details
             </span>
           )}
+          {/* WHO ADDED IT LIVES WITH THE OTHER METADATA (Anir, Sep 3: "I
+              don't like the eye you have... figure out a better place to put
+              that eye, because it just looks odd. It doesn't even look
+              centered").
+
+              It was beside the name. Two things were wrong with that. A
+              20px circle next to a 30px bold title is optically adrift
+              whatever you align it to, because the title's weight pulls the
+              eye to the cap height and the circle centres on the line box.
+              And it was the only non-name thing on the title line, so it read
+              as an orphan rather than as information.
+
+              This row already exists for exactly this: category, type and
+              availability, all small pills of context about the offering. In
+              a row of pills a small round mark is one of the family, and it
+              is centred by the same rule that centres them. Still on hover,
+              still not on its own line, still not a question mark. */}
+          {/* THE DATE ONLY WHEN SOMEBODY IS NAMED (Anir, Aug 25: "this new
+                thing pops up, the date the offering was added on — can we get
+                this removed? This isn't really needed. It comes up under all the
+                offerings").
+
+                He asked for who-and-when on Aug 23, and every offering predates
+                the field, so the line printed a bare seeded timestamp under every
+                title — provenance with the provenance missing. It appears again
+                the moment an offering is created by a real person, which is what
+                he actually asked for. */}
+            {/* WHO ADDED IT, ON HOVER, NOT ON THE PAGE.
+                Anir, Sep 2: "whenever a new offering is added it gives this
+                tagline, can this be removed? It's not really needed, so it's
+                added by who, on which date, at what time. None of this is
+                needed, just the offering name... or hide it somewhere so when I
+                hover over, it'll show up."
+
+                It is a provenance fact, not a headline: useful once, when
+                somebody asks who put this here, and noise on every other visit.
+                It sat on its own line under the title of every offering.
+
+                Kept, not deleted, because "who added this" is exactly the
+                question that comes up about a catalogue entry nobody recognises.
+                It now rides on a small mark beside the name and says itself on
+                hover. Not a question mark: he was explicit that a question mark
+                is the wrong glyph, and a question mark means "what is this
+                feature" everywhere else in this app. */}
+            {o.created_by ? (
+              <Tooltip
+                label={`Added by ${o.created_by}${
+                  o.created_at
+                    ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}`
+                    : ""
+                }`}
+              >
+                <span className="inline-flex h-[26px] w-[26px] cursor-default items-center justify-center rounded-full border border-border-light bg-surface text-text-tertiary transition-colors hover:border-blue-subtle hover:text-blue-primary">
+                  <Info size={13} strokeWidth={2.1} aria-hidden="true" />
+                  <span className="sr-only">
+                    Added by {o.created_by}
+                    {o.created_at
+                      ? ` on ${new Date(o.created_at).toLocaleDateString()}`
+                      : ""}
+                  </span>
+                </span>
+              </Tooltip>
+            ) : null}
         </div>
 
       {/* Reports remains implemented but hidden until real customer data makes
@@ -785,7 +813,7 @@ export default async function OfferingDetailPage({
                     {o.customerTypes.length === 0 ? (
                       admin ? (
                         <Link
-                          href={`/offerings/${o.id}/edit`}
+                          href={`/offerings/${o.id}/edit#sec-who-it-s-for`}
                           className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
                         >
                           <Plus size={13} strokeWidth={2} /> Add customer types
@@ -876,7 +904,7 @@ export default async function OfferingDetailPage({
                     {o.markets.length === 0 ? (
                       admin ? (
                         <Link
-                          href={`/offerings/${o.id}/edit`}
+                          href={`/offerings/${o.id}/edit#sec-where-it-s-available`}
                           className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
                         >
                           <Plus size={13} strokeWidth={2} /> Add markets

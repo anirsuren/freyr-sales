@@ -57,6 +57,8 @@ export function OfferingMaterialsTab({
             in the header rather than inside the (absent) list. */}
       </div>
       <MaterialsSection
+        /* This tab IS the screen, so the table gets the full width. */
+        inset={false}
         materials={o.materials}
         offeringId={o.id}
         offeringName={o.offering_name}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import { sectionId } from "@/lib/sectionId";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,48 @@ export function FormSection({
   const [open, setOpen] = useState(defaultOpen);
   const sectionSlug = sectionId(title);
   const panelId = `${sectionSlug}-panel`;
+
+  /**
+   * A LINK TO A SECTION LANDS *IN* THE SECTION.
+   *
+   * Anir, Sep 3: "when I press Add Customer Types, it doesn't even take me
+   * there. It takes me to this screen. It should auto-take me to wherever I
+   * need to be."
+   *
+   * "Add customer types" pointed at the edit page and stopped. Every section
+   * is closed by default, so he arrived at a wall of shut cards with The
+   * basics open and had to go hunting for the one he had just asked for.
+   *
+   * The anchor already existed — every section carries `id={sectionSlug}` and
+   * `scroll-mt-24` for the side rail — so nothing new is invented here: a
+   * matching hash simply opens the section as well as scrolling to it. It runs
+   * on mount and on hashchange, so following a second link from the rail while
+   * already on the page works the same way. Any screen built on FormSection
+   * gets this, not just offerings.
+   */
+  useEffect(() => {
+    const openIfMine = () => {
+      if (typeof window === "undefined") return;
+      if (window.location.hash.slice(1) !== sectionSlug) return;
+      setOpen(true);
+      /* TWO FRAMES, not one. The first commits the open state; the section's
+         body is only laid out after the paint that follows, and scrolling
+         before that measures a card that is still collapsed — which lands you
+         part of the way down the page instead of at the section. Measured at
+         510px from the top of the viewport with a single frame, ~96px (the
+         section's own scroll-mt) with two. */
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          document
+            .getElementById(sectionSlug)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        })
+      );
+    };
+    openIfMine();
+    window.addEventListener("hashchange", openIfMine);
+    return () => window.removeEventListener("hashchange", openIfMine);
+  }, [sectionSlug]);
 
   return (
     // NO overflow-hidden. It clipped every dropdown that opened inside the

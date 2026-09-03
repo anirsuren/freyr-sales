@@ -453,8 +453,8 @@ export function MemberRoles() {
         {privFor && privState && (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <p className="mb-3 text-[12.5px] text-text-secondary">
-              Tick as many as they need. What they may do in a module is the most
-              generous of everything they hold.
+              Tick as many as they need. If two of these give different access
+              to the same module, they get the higher one.
             </p>
             <PrivilegeCards
               privileges={privState.privileges}

@@ -172,9 +172,9 @@ export function PeoplePrivileges() {
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12.5px] text-text-tertiary">
-          A person can hold more than one. What they may do in a module is the
-          most generous of everything they hold. Every change asks first and
-          emails the admins.
+          A person can hold more than one. If two of them give different
+          access to the same module, they get the higher one. Every change asks
+          first and emails the admins.
         </p>
         {saving && (
           <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">

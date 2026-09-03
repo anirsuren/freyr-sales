@@ -84,7 +84,7 @@ export function PrivilegeCards({
                   : undefined
               }
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg border py-2 pl-2.5 pr-9 text-left",
+                "flex h-full w-full items-center gap-2.5 rounded-lg border py-2 pl-2.5 pr-9 text-left",
                 "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out",
                 "motion-reduce:transition-none",
                 locked
@@ -119,16 +119,27 @@ export function PrivilegeCards({
                   )}
                 />
               </span>
-              <span className="min-w-0 flex-1">
+              {/* ONE LINE, ALWAYS (Anir, Sep 3: "when I select one, I don't
+                  know why you're making it spaced out weird... between the
+                  first and the second, and the first column, there are some
+                  weird things").
+
+                  "From their role" was a second line that appeared only on the
+                  rows that have it, so a ticked card grew taller than the
+                  untouched card beside it and opened a gap down the other
+                  column. Provenance is a footnote on a label, not a line of
+                  its own: as a badge it says the same thing and every card in
+                  the grid stays exactly one row tall whatever is ticked. */}
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
                 <span
-                  className="block truncate text-[12.5px] font-semibold"
+                  className="min-w-0 truncate text-[12.5px] font-semibold"
                   style={{ color: on || viaRole ? color : undefined }}
                 >
                   {p.label}
                 </span>
                 {viaRole && (
-                  <span className="block text-[10px] text-text-tertiary">
-                    From their role
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-white/70 px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+                    From role
                   </span>
                 )}
               </span>
