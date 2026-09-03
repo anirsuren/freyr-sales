@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import {
   buildPlanDeviation,
   buildVersionComparison,
+  tabAccrualStatus,
+  type TabAccrualStatus,
   buildVersionHistory,
   latestActiveVersion,
   monthKey,
@@ -328,7 +330,19 @@ export function AccrualPlanDialog({
      deal before last. */
   const [editing, setEditing] = useState<Draft>(() => buildDraft(dealId));
 
-  /* ------------------------------------------------------------- deviating */
+  /** The terms a contract is actually written in (item 9). Not a cap: "Other"
+ *  keeps a free box for everything in between. */
+const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
+
+/** The Deviations tab's three colours, so the scheduler paints them the same
+ *  (item 20). Kept beside the helper that produces the words. */
+const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
+  Active: "#0F766E",
+  Deviated: "#7C3AED",
+  Inactive: "#B45309",
+};
+
+/* ------------------------------------------------------------- deviating */
 
   /**
    * DEVIATE MODE.
@@ -346,6 +360,15 @@ export function AccrualPlanDialog({
    * but saveDeviation() posts `deviate`.
    */
   const [deviating, setDeviating] = useState(false);
+  /**
+   * "Other…" IS A CHOICE, NOT A DERIVED STATE (item 9).
+   *
+   * Showing the typed box only when the count is off-list looked right and was
+   * a dead option: picking "Other…" while the count was 12 left it at 12, 12 is
+   * on the list, so nothing appeared and the choice did nothing at all. It has
+   * to be remembered as an intent.
+   */
+  const [customTerm, setCustomTerm] = useState(false);
   /** The revised figures, keyed by month. An empty pair is NOT a zero. */
   const [revised, setRevised] = useState<
     Record<string, { ots: string; arr: string }>
@@ -1057,16 +1080,60 @@ export function AccrualPlanDialog({
                 onChange={(e) => editFormula({ startMonth: e.target.value })}
               />
             </Field>
+            {/* ITEM 9 — "System should provide a suggested accrual schedule
+                based on number of months but provide an option to edit (a
+                drop-down maybe?)"
+
+                The suggestion already existed: pick a number and the contract
+                value spreads evenly across that many months from the first
+                one, and every amount stays editable afterwards. What was
+                missing is his drop-down — the count was a bare numeric box, so
+                the common terms were something you had to know rather than
+                something the form offered.
+
+                The list is the terms a contract is actually written in, and
+                "Other" keeps the box, because a 7-month schedule is nobody's
+                dropdown option and still has to be typeable. */}
             <Field label="Number of months">
-              <Input
-                value={editing.months}
-                inputMode="numeric"
-                disabled={deviating}
-                className={deviating ? "opacity-60" : undefined}
-                onChange={(e) =>
-                  editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
-                }
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={
+                    customTerm || !SUGGESTED_TERMS.includes(Number(editing.months))
+                      ? "custom"
+                      : editing.months
+                  }
+                  disabled={deviating}
+                  aria-label="Number of months"
+                  onChange={(e) => {
+                    if (e.target.value === "custom") {
+                      setCustomTerm(true);
+                      return;
+                    }
+                    setCustomTerm(false);
+                    editFormula({ months: e.target.value });
+                  }}
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-primary disabled:opacity-60"
+                >
+                  {SUGGESTED_TERMS.map((n) => (
+                    <option key={n} value={String(n)}>
+                      {n} months{n === 12 ? " (a year)" : ""}
+                    </option>
+                  ))}
+                  <option value="custom">Other…</option>
+                </select>
+                {(customTerm || !SUGGESTED_TERMS.includes(Number(editing.months))) && (
+                  <Input
+                    value={editing.months}
+                    inputMode="numeric"
+                    disabled={deviating}
+                    aria-label="Number of months, typed"
+                    className={cn("w-[74px]", deviating ? "opacity-60" : undefined)}
+                    onChange={(e) =>
+                      editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
+                    }
+                  />
+                )}
+              </div>
             </Field>
           </div>
           {/* The table moves on its own now, so this stopped being the way to
@@ -1408,6 +1475,28 @@ export function AccrualPlanDialog({
                     not a second set painted here. */}
                 {record && (
                   <div className="flex flex-wrap items-center gap-1.5">
+                    {/* ITEM 20 — "Have the Deviations tab in Revenue Accrual
+                        Scheduler page as well."
+
+                        The scheduler is this dialog: the standalone plan PAGE
+                        was retired on Sep 1 ("I don't want a different screen.
+                        It has to be consistent") and its route redirects here.
+                        A tab strip inside a dialog would be a screen inside a
+                        screen, so what "as well" means in practice is that the
+                        record's deviations read the SAME here as they do on
+                        the tab — same status word, same count. They now do:
+                        this chip is the tab's Accrual status, from the same
+                        `tabAccrualStatus`, so the two can never disagree about
+                        whether a record is Deviated. */}
+                    <span
+                      className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{
+                        background: `${TAB_STATUS_COLOR[tabAccrualStatus(record)]}18`,
+                        color: TAB_STATUS_COLOR[tabAccrualStatus(record)],
+                      }}
+                    >
+                      {tabAccrualStatus(record)}
+                    </span>
                     <AccrualStatusChip
                       status={record.status}
                       version={record.version}
@@ -1424,7 +1513,9 @@ export function AccrualPlanDialog({
               <p className="mt-1 text-[12px] text-text-secondary">
                 {history.length === 1
                   ? "Nobody has deviated this record yet. Version 1 is the plan as it was first written."
-                  : `${history.length} versions. Every report reads the newest one that has figures in it.`}
+                  : `${record?.deviationCount ?? history.length - 1} deviation${
+                      (record?.deviationCount ?? history.length - 1) === 1 ? "" : "s"
+                    } across ${history.length} versions. Every report reads the newest one that has figures in it.`}
               </p>
               <div className="mt-2 overflow-hidden rounded-lg border border-border-light">
                 <div className="max-h-[176px] overflow-y-auto">
