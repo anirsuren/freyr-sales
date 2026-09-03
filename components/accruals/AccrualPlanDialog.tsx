@@ -243,12 +243,19 @@ function exactUsd(n: number): string {
 export function AccrualPlanDialog({
   dealId,
   deals,
+  inline = false,
   pickable = [],
   plans = [],
   onClose,
   onSaved,
   onDelete,
 }: {
+  /**
+   * Render without the modal chrome, for the deal's Revenue Accrual card
+   * (Manoj, Sep 3: "that entire thing should come here as well"). Same
+   * component, same rules — see the note above `body`.
+   */
+  inline?: boolean;
   /**
    * The deal this opens on. "" opens the picker with nothing chosen, which is
    * what "Plan a deal" does from the module's header; a deal id fills the form
@@ -1076,40 +1083,25 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     : MONTH_COLUMNS;
   const monthColWidth = colWidth(monthColumns.length);
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={
-        editing.opportunityId
-          ? `Accrual plan · ${dealById.get(editing.opportunityId)?.name ?? "deal"}`
-          : "Plan a deal"
-      }
-      /* ONE SIZE FOR EVERY FORM DIALOG (Anir, Aug 26: "all the pop-ups,
-         let's just make it a set size"). These were "wide" (640px), which
-         is too narrow for a two-column form — the fields stacked and the
-         dialog came out tall and thin. "workflow" is 980px, the width the
-         Solutioning request dialog already uses, and the floor below stops
-         a short form collapsing into a strip. */
-      size="workflow"
-      /**
-       * THE FRAME DOES NOT MOVE (Anir, Aug 31: "stop changing the dimensions
-       * whenever I click on them. It has to stay the same").
-       *
-       * This dialog now has three states of very different heights: a picker
-       * with nothing chosen, a plan, and a plan with the deviation columns and
-       * a reason field open beside it. Without a pinned height, pressing
-       * Deviate would grow the box and re-centre it under the cursor. So the
-       * height is fixed, the middle scrolls, and revealing the revised columns
-       * or gaining a version in the history below changes nothing outside.
-       *
-       * `bodyClassName` makes the body a flex column so the picker stays at
-       * the top, the footer stays at the bottom and the form in between FILLS
-       * the space instead of leaving dead room under the buttons.
-       */
-      dialogClassName="!h-[min(760px,calc(100vh-3rem))]"
-      bodyClassName="flex flex-col"
-    >
+  /**
+   * THE SAME SCHEDULER, IN A CARD INSTEAD OF A DIALOG.
+   *
+   * Manoj, Sep 3: "you provide the start month, and then number of months,
+   * depending on that you get a calendar, right? Like month-on-month rows, and
+   * in each row you get the OTS and ARR and total... that entire thing should
+   * come here as well" — meaning inside the deal's Revenue Accrual card.
+   *
+   * WHY A PROP AND NOT A SECOND COMPONENT. Suren, Sep 1, having looked at two
+   * accrual screens side by side: "I don't want a different screen. It has to
+   * be consistent... both the screens have to be the same." A copy of this
+   * form in the deal card would be that second screen again, and it would
+   * drift on the first change either one gets. So this is the SAME component,
+   * rendered without the modal chrome: every rule below — the even spread,
+   * removing and adding months, the contract-value cap, the deviation confirm,
+   * the version history — is the one implementation, once.
+   */
+  const body = (
+    <>
       {/* THE DEAL IS A DROPDOWN, IN THIS SAME DIALOG (Anir, Aug 27:
           "maybe just make it a dropdown... you choose the deal, and then
           the other stuff shows up. It should be one pop-up").
@@ -1125,6 +1117,10 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
           shows which deal is being planned and offers no way to wander off it.
           Same field, same screen, one row in the menu. */}
       <div className="shrink-0">
+      {/* NO "WHICH DEAL" ON THE DEAL'S OWN PAGE. Inline, the question is
+          already answered by the page around it, and a picker offering one
+          option is a control that cannot do anything. */}
+      {!inline && (
       <Field label="Which deal">
         <ColorSelect
           value={editing.opportunityId}
@@ -1204,6 +1200,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
           ]}
         />
       </Field>
+      )}
       </div>
 
       {/* THE MIDDLE IS THE ONLY THING THAT SCROLLS. The frame is pinned above,
@@ -1348,7 +1345,11 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                     setCustomTerm(false);
                     editFormula({ months: e.target.value });
                   }}
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-primary disabled:opacity-60"
+                  /* A real width floor: inside the deal card this column is
+                     narrower than it is in the dialog, and `flex-1` alone let
+                     the select collapse to a bare chevron beside the typed
+                     box. */
+                  className="h-10 min-w-[132px] flex-1 rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-primary disabled:opacity-60"
                 >
                   {SUGGESTED_TERMS.map((n) => (
                     <option key={n} value={String(n)}>
@@ -1995,6 +1996,24 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
         confirmLabel="Accept"
         busy={busy}
       />
+    </>
+  );
+
+  if (inline) return <div className="flex flex-col">{body}</div>;
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={
+        editing.opportunityId
+          ? `Accrual plan · ${dealById.get(editing.opportunityId)?.name ?? "deal"}`
+          : "Plan a deal"
+      }
+      size="workflow"
+      dialogClassName="!h-[min(760px,calc(100vh-3rem))]"
+      bodyClassName="flex flex-col"
+    >
+      {body}
     </Modal>
   );
 }

@@ -593,6 +593,24 @@ export function OpportunityDetail({
             onOpenAccrual={
               accrual?.mayPlan ? () => setPlanningAccrual(true) : undefined
             }
+            /* THE WHOLE SCHEDULER, IN THE CARD (Manoj, Sep 3: "that entire
+               thing should come here as well"). The identical component the
+               module mounts, rendered without its modal chrome — not a copy,
+               so the two cannot drift. Only for somebody who may plan; a
+               reader still gets the read-only months above it. */
+            accrualScheduler={
+              accrual?.mayPlan ? (
+                <AccrualPlanDialog
+                  inline
+                  dealId={accrual.deal.id}
+                  deals={[accrual.deal]}
+                  pickable={[]}
+                  plans={accrual.plan ? [accrual.plan] : []}
+                  onClose={() => undefined}
+                  onSaved={() => router.refresh()}
+                />
+              ) : null
+            }
             onSave={saveField}
           >
             {meetings.length > 0 && (

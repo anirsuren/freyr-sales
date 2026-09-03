@@ -497,6 +497,7 @@ export function DealOverviewEditor({
   mayChangeOwner = false,
   accrualPlan = null,
   onOpenAccrual,
+  accrualScheduler = null,
   onSave,
   onSaved,
   children,
@@ -534,6 +535,9 @@ export function DealOverviewEditor({
   accrualPlan?: AccrualPlan | null;
   /** Opens that screen. Absent when this person may not plan. */
   onOpenAccrual?: () => void;
+  /** The scheduler itself, mounted in this card (Manoj, Sep 3). Null for a
+   *  reader, who gets the months read-only above it. */
+  accrualScheduler?: React.ReactNode;
   /** Returns null on success, or a message to show. Defaults to the same
    *  /api/opportunities update the rest of the deal page posts. */
   onSave?: (patch: Record<string, unknown>) => Promise<string | null>;
@@ -1464,7 +1468,10 @@ export function DealOverviewEditor({
                 ))}
               </span>
             )}
-            {onOpenAccrual && (
+            {/* NO "EDIT THE SCHEDULE" WHEN THE SCHEDULE IS RIGHT THERE. The
+                button existed to reach an editor somewhere else; with the
+                scheduler mounted in this card there is nowhere else to go. */}
+            {onOpenAccrual && !accrualScheduler && (
               <button
                 type="button"
                 onClick={onOpenAccrual}
@@ -1476,7 +1483,12 @@ export function DealOverviewEditor({
             )}
             </span>
           </div>
-          {!accrualPlan || accrualPlan.lines.length === 0 ? (
+          {/* THE SCHEDULER ITSELF, when this person may plan. The read-only
+              months below it are what a READER sees; an owner gets the real
+              thing and never has to open a dialog to change a month. */}
+          {accrualScheduler ? (
+            <div className="mt-3">{accrualScheduler}</div>
+          ) : !accrualPlan || accrualPlan.lines.length === 0 ? (
             <p className="mt-1.5 text-[12.5px] text-text-tertiary">
               {accrualPlan
                 ? "This plan has no months in it. Its sign date may have passed, which empties the schedule and flags it on the Deviations tab."
