@@ -8,8 +8,12 @@ import {
   Mail,
   ShieldCheck,
   UsersRound,
+  Grid3x3,
+  PanelsTopLeft,
 } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
+import { useStoredView } from "@/lib/useStoredView";
+import { PeoplePrivileges } from "./PeoplePrivileges";
 import { ADMIN_TABS } from "@/lib/adminTabs";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { InviteTeammate } from "@/components/team/InviteTeammate";
@@ -124,6 +128,15 @@ export function AdminTabs({
   live: boolean;
 }) {
   const me = useCurrentUserOrNull();
+  /* Split or matrix on Team members, remembered like every other view choice
+     in this app (Anir, Aug 9: "you have to save my preferences and apply this
+     everywhere"). The old "table" value is not in the list any more, so anyone
+     who had it saved lands on Split. */
+  const [peopleView, pickPeopleView] = useStoredView<"split" | "matrix">(
+    "freyr.teamMembers.view",
+    "split",
+    ["split", "matrix"] as const
+  );
   const router = useRouter();
   const tab = routeTab;
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
@@ -168,17 +181,53 @@ export function AdminTabs({
              Privileges tab is the other question entirely, module privileges,
              and keeping them apart is what he was untangling. */
           <>
-            {/* NO VIEW SWITCH: SPLIT IS THE SCREEN (Anir, Sep 3: "I just
-                realized we don't need a table view. The table view sucks. Just
-                have the split view for the admin workspace page").
+            {/* SPLIT OR MATRIX, AND NOTHING ELSE (Anir, Sep 3).
 
-                Two views existed because Table answered "who can do what"
-                across everybody while Split answered "what can THIS person
-                do". Table also carried the base-role dropdown, and that
-                control is gone, so what was left of it was a second, worse way
-                to read the same privileges. The cross-person question still
-                has a home on the Privileges tab. */}
+                He killed the old Table view — "the table view sucks" — and he
+                was right about that one: it was a roster with a base role
+                dropdown he had already asked me to remove. But the matrix that
+                lived UNDERNEATH it went with it, and that was the part he
+                wanted: "why would you kill the matrix, but I need the matrix?
+                You should have a split view, and then you should have another
+                view where it's just a matrix, because I didn't even know that
+                was below."
+
+                So the second view is the matrix and only the matrix. Split
+                answers "what can THIS person do"; Matrix answers "who can do
+                what" across everybody, which is the question you cannot ask
+                one person at a time. Nothing brings back the roster. */}
             <AdminTabActions active="members">
+              <div
+                role="group"
+                aria-label="How to show people"
+                className="flex items-center gap-0.5 rounded-full bg-surface p-0.5"
+              >
+                {(
+                  [
+                    { key: "split", label: "Split", icon: PanelsTopLeft },
+                    { key: "matrix", label: "Matrix", icon: Grid3x3 },
+                  ] as const
+                ).map((o) => {
+                  const Icon = o.icon;
+                  const on = peopleView === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => pickPeopleView(o.key)}
+                      aria-pressed={on}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all ${
+                        on
+                          ? "bg-white text-text-primary shadow-sm"
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
               {/* INVITING SOMEBODY BELONGS ON THE PAGE THAT LISTS EVERYBODY
                   (Anir, Aug 29: "also add an invite button, I don't know why
                   that's not there here"). It only existed on /team, which is
@@ -192,7 +241,16 @@ export function AdminTabs({
                 }
               />
             </AdminTabActions>
-            <PeopleSplit />
+            {/* Two different screens, so each announces itself on arrival. */}
+            {peopleView === "split" ? (
+              <div key="split" className="tab-panel">
+                <PeopleSplit />
+              </div>
+            ) : (
+              <div key="matrix" className="tab-panel">
+                <PeoplePrivileges />
+              </div>
+            )}
           </>
         ) : current.key === "groups" ? (
           <UserGroupsAdmin memberNames={memberNames} />

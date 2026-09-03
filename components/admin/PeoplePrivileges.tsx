@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Avatar } from "@/components/ui/Avatar";
@@ -44,6 +44,17 @@ type Person = {
 export function PeoplePrivileges() {
   const { toast } = useToast();
   const [state, setState] = useState<PrivilegeState | null>(null);
+  /**
+   * PICK A PERSON AND READ JUST THEM (Anir, Sep 3: "at the top, I can choose
+   * what person I want to see, and then I can see the metrics").
+   *
+   * A matrix is for the question you cannot ask one person at a time, but
+   * forty rows is also forty rows: when you already know whose ticks you came
+   * to check, scanning for their name is the whole task. Typing a name leaves
+   * their row and nothing else, and the privilege columns stay exactly where
+   * they were, so the answer is in the same place either way.
+   */
+  const [personQuery, setPersonQuery] = useState("");
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [people, setPeople] = useState<Person[] | null>(null);
@@ -168,19 +179,49 @@ export function PeoplePrivileges() {
 
   const privColor = (id: string) => privilegeColor(id);
 
+  const needle = personQuery.trim().toLowerCase();
+  const shownPeople = needle
+    ? people.filter((p) =>
+        `${p.name} ${p.email ?? ""}`.toLowerCase().includes(needle)
+      )
+    : people;
+
   return (
     <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="relative min-w-[220px] flex-1 sm:max-w-[320px]">
+          <Search
+            size={14}
+            strokeWidth={2}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+          />
+          <input
+            type="search"
+            value={personQuery}
+            onChange={(e) => setPersonQuery(e.target.value)}
+            placeholder="Search people…"
+            aria-label="Show only people whose name or email matches"
+            className="h-9 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none focus:ring-2 focus:ring-blue-primary/15"
+          />
+        </span>
+        {personQuery.trim() && (
+          <span className="text-[12px] text-text-tertiary">
+            {shownPeople.length} of {people.length}
+          </span>
+        )}
+        {saving && (
+          <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+            <Loader2 size={12} className="animate-spin" /> Saving…
+          </span>
+        )}
+      </div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12.5px] text-text-tertiary">
           A person can hold more than one. If two of them give different
           access to the same module, they get the higher one. Every change asks
           first and emails the admins.
         </p>
-        {saving && (
-          <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
-            <Loader2 size={12} className="animate-spin" /> Saving…
-          </span>
-        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
@@ -198,7 +239,7 @@ export function PeoplePrivileges() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
-            {people.map((person) => {
+            {shownPeople.map((person) => {
               const held = new Set(privilegesForPerson(state, person.name));
               return (
                 <tr key={person.id}>
