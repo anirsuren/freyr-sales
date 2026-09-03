@@ -419,7 +419,6 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * on the list, so nothing appeared and the choice did nothing at all. It has
    * to be remembered as an intent.
    */
-  const [customTerm, setCustomTerm] = useState(false);
 
   /**
    * ITEM 10 — READ THE SCHEDULE IN THE DEAL'S OWN MONEY.
@@ -797,6 +796,13 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    */
   const [addingMonth, setAddingMonth] = useState("");
 
+  /** The month after the last row on screen — what the plus adds. */
+  function nextMonthAfterLast(): string {
+    const rows = planRows(editing);
+    const last = rows[rows.length - 1]?.month ?? editing.startMonth;
+    return monthsFrom(last, 2)[1] ?? last;
+  }
+
   function addMonth(month: string) {
     if (!month) return;
     const rows = planRows(editing);
@@ -865,6 +871,12 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * commits what the person was looking at rather than re-reading a form that
    * may have re-rendered underneath.
    */
+  /** The month the × is asking about. Removing one re-splits every other
+   *  month's share, so it is not a keystroke to undo by eye (Anir, Sep 3:
+   *  "pressing the x on the month should ask for confirmation in popup").
+   *  Consistent with every other delete control in the app. */
+  const [pendingDrop, setPendingDrop] = useState<string | null>(null);
+
   const [pendingSave, setPendingSave] = useState<{
     lines: AccrualLine[];
     contractValue: number;
@@ -1351,49 +1363,34 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 "Other" keeps the box, because a 7-month schedule is nobody's
                 dropdown option and still has to be typeable. */}
             <Field label="Number of months">
-              <div className="flex items-center gap-2">
-                <select
-                  value={
-                    customTerm || !SUGGESTED_TERMS.includes(Number(editing.months))
-                      ? "custom"
-                      : editing.months
-                  }
-                  disabled={deviating}
-                  aria-label="Number of months"
-                  onChange={(e) => {
-                    if (e.target.value === "custom") {
-                      setCustomTerm(true);
-                      return;
-                    }
-                    setCustomTerm(false);
-                    editFormula({ months: e.target.value });
-                  }}
-                  /* A real width floor: inside the deal card this column is
-                     narrower than it is in the dialog, and `flex-1` alone let
-                     the select collapse to a bare chevron beside the typed
-                     box. */
-                  className="h-10 min-w-[132px] flex-1 rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none focus:border-blue-primary disabled:opacity-60"
-                >
-                  {SUGGESTED_TERMS.map((n) => (
-                    <option key={n} value={String(n)}>
-                      {n} months{n === 12 ? " (a year)" : ""}
-                    </option>
-                  ))}
-                  <option value="custom">Other…</option>
-                </select>
-                {(customTerm || !SUGGESTED_TERMS.includes(Number(editing.months))) && (
-                  <Input
-                    value={editing.months}
-                    inputMode="numeric"
-                    disabled={deviating}
-                    aria-label="Number of months, typed"
-                    className={cn("w-[74px]", deviating ? "opacity-60" : undefined)}
-                    onChange={(e) =>
-                      editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
-                    }
-                  />
+              {/* ONE BOX, NOT TWO. This was a dropdown of the usual terms plus
+                  an "Other…" option that revealed a second box beside it, so a
+                  4-month schedule read "Other…  4" — two controls arguing over
+                  one number, and the dropdown showing a word instead of the
+                  answer. The suggestions are worth keeping (Manoj's item 9),
+                  so they moved into the box's own list: click the box and the
+                  usual terms are there, or type 4 and it is 4. */}
+              <input
+                type="number"
+                min={1}
+                max={600}
+                list="accrual-term-suggestions"
+                value={editing.months}
+                disabled={deviating}
+                aria-label="Number of months"
+                className={cn(
+                  "h-10 w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] tnum outline-none focus:border-blue-primary disabled:opacity-60",
+                  deviating && "opacity-60"
                 )}
-              </div>
+                onChange={(e) =>
+                  editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
+                }
+              />
+              <datalist id="accrual-term-suggestions">
+                {SUGGESTED_TERMS.map((n) => (
+                  <option key={n} value={String(n)} />
+                ))}
+              </datalist>
             </Field>
           </div>
           {/* The table moves on its own now, so this stopped being the way to
@@ -1561,7 +1558,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               {!deviating && editingRows.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() => dropMonth(line.month)}
+                                  onClick={() => setPendingDrop(line.month)}
                                   aria-label={`Remove ${monthLabel(line.month)} from the schedule`}
                                   title="Remove this month. Its share goes back to the others."
                                   /* ALWAYS THERE, QUIETLY. Hover-only would
@@ -1642,6 +1639,47 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                         </tr>
                       );
                     })}
+                    {/* ADDING A MONTH IS A ROW OF THIS TABLE (Anir, Sep 3:
+                        "it should just be a normal plus sign that's already in
+                        a row, maybe with the table"). It used to be a label
+                        reading "Add a month" and a bare month picker floating
+                        under the table, which read as a stray control rather
+                        than the next line of the schedule.
+
+                        The plus takes the month after the last row, which is
+                        what adding one nearly always means. The picker stays
+                        for the other case and sits in the same row: the month
+                        somebody wants may be years outside the generated span,
+                        and no number of clicks on a plus should be the way to
+                        reach it. */}
+                    {!deviating && (
+                      <tr className="h-11">
+                        <td className="px-3" colSpan={monthColumns.length}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => addMonth(nextMonthAfterLast())}
+                              title="Add the month after the last one"
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/50"
+                            >
+                              <Plus size={14} strokeWidth={2.6} />
+                              Add month
+                            </button>
+                            <input
+                              type="month"
+                              value={addingMonth}
+                              aria-label="Add a specific month to the schedule"
+                              title="Or pick any month"
+                              onChange={(e) => {
+                                setAddingMonth(e.target.value);
+                                if (e.target.value) addMonth(e.target.value);
+                              }}
+                              className="h-7 rounded-md border border-transparent bg-transparent px-1 text-[12px] text-text-tertiary outline-none transition-colors hover:border-border-light focus:border-blue-primary focus:text-text-primary"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1724,21 +1762,6 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
             {/* PICK A MONTH THE SUGGESTION DID NOT OFFER (item 9's other
                 half). A month box rather than a list, because the month he
                 wants may be years outside the generated span. */}
-            {!deviating && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-[12px] text-text-tertiary">Add a month</span>
-                <input
-                  type="month"
-                  value={addingMonth}
-                  aria-label="Add a month to the schedule"
-                  onChange={(e) => {
-                    setAddingMonth(e.target.value);
-                    if (e.target.value) addMonth(e.target.value);
-                  }}
-                  className="h-8 rounded-lg border border-border-light bg-white px-2 text-[12.5px] outline-none focus:border-blue-primary"
-                />
-              </div>
-            )}
             {droppedRows.length > 0 && !deviating && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="text-[12px] text-text-tertiary">
@@ -2008,6 +2031,17 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
           else: no reason box, because his sheet does not ask for one — the
           reason is composed from what moved (see autoReason). Cancel leaves
           the dialog open on the edited figures, so nothing typed is lost. */}
+      <ConfirmDialog
+        open={pendingDrop !== null}
+        onClose={() => setPendingDrop(null)}
+        onConfirm={() => {
+          if (pendingDrop) dropMonth(pendingDrop);
+          setPendingDrop(null);
+        }}
+        title={pendingDrop ? `Remove ${monthLabel(pendingDrop)}?` : "Remove this month?"}
+        body="Its share goes back to the other months, so every figure you have not typed by hand will change. You can put the month back from 'Taken out' underneath."
+        confirmLabel="Remove"
+      />
       <ConfirmDialog
         open={pendingSave !== null}
         onClose={() => setPendingSave(null)}
