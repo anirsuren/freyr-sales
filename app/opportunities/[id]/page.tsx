@@ -226,6 +226,9 @@ export default async function OpportunityPage({
           value: deal.value ?? 0,
           ...(deal.status ? { status: deal.status } : {}),
           ...(accrualSignDate ? { estSignDate: accrualSignDate } : {}),
+          /* The deal's own currency, so the accrual can be READ in it
+             (item 10). Accruals stay stored in USD. */
+          ...(deal.currency ? { currency: deal.currency } : {}),
         },
       }}
       /* What the create dialogs need, resolved once on the server. Null when

@@ -85,6 +85,9 @@ export default async function RevenueAccrualsPage() {
           status: o.status,
           estSignDate: line?.estSignDate ?? o.estSignDate,
           owner: o.owner,
+          /* What this deal was agreed in, so the accrual can be READ in it
+             (item 10). Nothing is stored in it. */
+          currency: o.currency,
         };
       })}
     />

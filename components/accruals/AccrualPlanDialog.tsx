@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleDot, Coins, Trash2, UserPen } from "lucide-react";
 import {
@@ -9,6 +9,12 @@ import {
 } from "@/components/accruals/AccrualStatusChip";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Field, Input } from "@/components/ui/Input";
+import {
+  BASE_CURRENCY,
+  currencyMeta,
+  rateFor,
+  setFxRates,
+} from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Textarea";
@@ -73,6 +79,11 @@ export type DealOption = {
   status?: string;
   estSignDate?: string;
   owner?: string;
+  /**
+   * The money the DEAL was agreed in (item 10). Accruals are stored in USD and
+   * stay stored in USD; this is only what the toggle converts INTO.
+   */
+  currency?: string;
 };
 
 /**
@@ -369,6 +380,62 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * to be remembered as an intent.
    */
   const [customTerm, setCustomTerm] = useState(false);
+
+  /**
+   * ITEM 10 — READ THE SCHEDULE IN THE DEAL'S OWN MONEY.
+   *
+   * Manoj's sheet: "Under Revenue Accrual as well, provide an option for local
+   * currency. Provide a toggle button to see the values in USD vs local
+   * currency."
+   *
+   * THIS REVERSES SUREN, who was explicit on Sep 1: "we don't have to go to
+   * local currency. It automatically only picks up USD, and everywhere
+   * reporting will be USD. Only within the opportunities where we will capture
+   * the local currency." Every amount in this dialog is stored in USD and that
+   * has NOT changed — the toggle converts for reading and writes nothing. What
+   * gets saved is what the person typed, in dollars, exactly as before.
+   *
+   * The rate comes from /api/fx through lib/currency, the same seam the deal
+   * editor uses, keyed on the deal's sign date so the accrual and the deal
+   * convert at the same rate rather than two.
+   */
+  const [showLocal, setShowLocal] = useState(false);
+  const dealCurrency = (dealById.get(editing.opportunityId)?.currency || BASE_CURRENCY).toUpperCase();
+  const hasLocal = dealCurrency !== BASE_CURRENCY;
+  const localSignDate = dealById.get(editing.opportunityId)?.estSignDate;
+  const [fxReady, setFxReady] = useState<"off" | "loading" | "ready" | "failed">("off");
+
+  useEffect(() => {
+    if (!hasLocal || !showLocal) {
+      setFxReady("off");
+      return;
+    }
+    let running = true;
+    setFxReady("loading");
+    const query = localSignDate ? `?on=${encodeURIComponent(localSignDate)}` : "";
+    fetch(`/api/fx${query}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!running) return;
+        const day = data?.day;
+        if (!day?.date || !day?.rates) return setFxReady("failed");
+        setFxRates(localSignDate || undefined, day);
+        setFxReady("ready");
+      })
+      .catch(() => running && setFxReady("failed"));
+    return () => {
+      running = false;
+    };
+  }, [hasLocal, showLocal, localSignDate]);
+
+  /** A stored USD figure, read in whichever money the toggle is showing. */
+  function readMoney(usd: number): string {
+    if (!showLocal || !hasLocal || fxReady !== "ready") return exactUsd(usd);
+    const rate = rateFor(dealCurrency, localSignDate || undefined);
+    if (!rate) return exactUsd(usd);
+    const sym = currencyMeta(dealCurrency).symbol.trim();
+    return `${sym}${Math.round(usd * rate).toLocaleString("en-US")}`;
+  }
   /** The revised figures, keyed by month. An empty pair is NOT a zero. */
   const [revised, setRevised] = useState<
     Record<string, { ots: string; arr: string }>
@@ -1057,6 +1124,53 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               person can see what they are changing from". Moving the start
               month or the count while deviating would slide the very schedule
               the revised columns are being measured against. */}
+          {/* ITEM 10's TOGGLE. Only when there is another currency to show:
+              on a dollar deal there is nothing to switch between, and a
+              control with one meaningful position is noise. It changes what
+              you READ, never what is saved — every box below stays the dollar
+              figure the person typed. */}
+          {hasLocal && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[12px] font-semibold text-text-secondary">
+                Show amounts in
+              </span>
+              <div
+                role="group"
+                aria-label="Currency to read the schedule in"
+                className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
+              >
+                {[
+                  { key: false, label: "USD" },
+                  { key: true, label: dealCurrency },
+                ].map((o) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    aria-pressed={showLocal === o.key}
+                    onClick={() => setShowLocal(o.key)}
+                    className={cn(
+                      "cursor-pointer rounded-full px-2.5 py-1 text-[12px] font-semibold transition-all",
+                      showLocal === o.key
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              {/* HONEST WHEN IT CANNOT CONVERT, never a stale figure dressed
+                  as a fresh one. The dollars still read correctly. */}
+              {showLocal && fxReady === "loading" && (
+                <span className="text-[11.5px] text-text-tertiary">Getting the rate.</span>
+              )}
+              {showLocal && fxReady === "failed" && (
+                <span className="text-[11.5px] text-text-tertiary">
+                  No rate for that day, so these stay in dollars.
+                </span>
+              )}
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-3 gap-3">
             <Field label="Contract value (USD)">
               <Input
@@ -1243,7 +1357,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 style={{ width: monthColWidth }}
                                 className="px-3 py-1.5 text-[13px] tnum font-semibold text-text-primary"
                               >
-                                {exactUsd(line.amount)}
+                                {readMoney(line.amount)}
                               </td>
                               {(["ots", "arr"] as const).map((field, k) => (
                                 <td
@@ -1437,6 +1551,16 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
             <p className="mt-2 text-[12.5px]">
               The months add up to{" "}
               <b className="tnum text-text-primary">{formatMoney(editingTotal)}</b>
+              {/* ITEM 10 — the same figure in the deal's own money, beside the
+                  dollars rather than instead of them. Both at once is the
+                  honest shape: the schedule IS dollars, and this is what that
+                  comes to in the currency the contract was written in. */}
+              {showLocal && hasLocal && fxReady === "ready" && (
+                <span className="text-text-secondary">
+                  {" "}
+                  ({readMoney(editingTotal)})
+                </span>
+              )}
               {editingValue > 0 && Math.abs(editingTotal - editingValue) > 1 && (
                 <span className="font-semibold" style={{ color: ACCRUAL_AMBER }}>
                   {" "}
