@@ -368,7 +368,15 @@ export function MemberRoles() {
                           backgroundColor: `${privilegeColor(p.id)}1F`,
                           color: privilegeColor(p.id),
                         }}
-                        className="flex h-5 w-5 items-center justify-center rounded-md text-[9px] font-bold"
+                        /* SIZED TO THE TEXT, NOT TO A SQUARE (Anir, Sep 3:
+                           "these look horrible. The text is literally popping
+                           under the circle, and you can't have it like that").
+                           A fixed h-5 w-5 box with no padding is 20px wide,
+                           and "BDm" and "ADM" are wider than that at 9px, so
+                           every three-letter short spilled out of its own
+                           chip. A minimum width keeps a one-letter short
+                           square; padding lets the rest grow. */
+                        className="flex h-5 min-w-5 items-center justify-center whitespace-nowrap rounded-md px-1 text-[9px] font-bold"
                       >
                         {p.short}
                       </span>
@@ -405,17 +413,33 @@ export function MemberRoles() {
                   {isOnline(m.lastSeenAt) ? "Online" : "Offline"}
                 </span>
               </span>
-              <span className="hidden w-[92px] shrink-0 text-[11.5px] text-text-tertiary xl:block">
-                {lastSeenLabel(m.lastSeenAt)}
+              {/* EACH DATE SAYS WHICH DATE IT IS. There is no header row on
+                  this list — it is cards, not a table — so two bare dates sat
+                  side by side with nothing to tell you that one is the last
+                  time they were here and the other is the day they joined
+                  (Saras, Sep 2, asked for both as columns). A one-word label
+                  above each is the header row a card list cannot have. */}
+              <span className="hidden w-[96px] shrink-0 xl:block">
+                <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary/70">
+                  Last seen
+                </span>
+                <span className="block text-[11.5px] text-text-tertiary">
+                  {lastSeenLabel(m.lastSeenAt)}
+                </span>
               </span>
-              <span className="hidden w-[92px] shrink-0 text-[11.5px] text-text-tertiary xl:block">
-                {m.joinedAt
-                  ? new Date(m.joinedAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Not recorded"}
+              <span className="hidden w-[104px] shrink-0 xl:block">
+                <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary/70">
+                  Joined
+                </span>
+                <span className="block text-[11.5px] text-text-tertiary">
+                  {m.joinedAt
+                    ? new Date(m.joinedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Not recorded"}
+                </span>
               </span>
               {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in split
                   view is it different from the table view? That's a huge

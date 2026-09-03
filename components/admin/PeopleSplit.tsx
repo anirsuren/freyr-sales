@@ -36,7 +36,61 @@ type Member = {
   role: string;
   active: boolean;
   accountType?: string;
+  /* ALREADY IN THE RESPONSE. /api/settings/access has always returned these;
+     this screen simply did not declare them. */
+  lastSeenAt?: string | null;
+  joinedAt?: string | null;
 };
+
+/**
+ * WHEN THEY JOINED AND WHEN THEY WERE LAST HERE.
+ *
+ * Saras, Sep 2: "can you shift user joining date info from the 'Team' module
+ * to 'Admin' module > 'Team members' tab... No one other than Admin users need
+ * to see this info. Also add a column on 'Last Seen' showing the date / how
+ * many hours ago they were last online."
+ *
+ * These were built as columns on the Team members TABLE, and then the table
+ * was deleted (Anir, Sep 3: "the table view sucks"), which took her two facts
+ * with it. He asked for them here instead: "I don't want the table. I like this
+ * more. Just put it on the split view."
+ *
+ * The wording is lifted verbatim from that table, which had lifted it from the
+ * Settings directory this screen absorbed, so the same fact is never phrased
+ * three ways.
+ */
+function lastSeenLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not yet";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "Not yet";
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Online is "seen inside the last five minutes", the same rule everywhere. */
+function isOnline(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return !Number.isNaN(t) && Date.now() - t < 5 * 60 * 1000;
+}
+
+function joinedLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not recorded";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Not recorded";
+  return d.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 /**
  * SUSPENDED, IN THE COLOUR THIS APP RESERVES FOR IT.
@@ -308,6 +362,35 @@ export function PeopleSplit() {
                   })()}
                 </span>
 
+                {/* LAST SEEN, ON THE RIGHT OF THE ROW. It is the one fact
+                    you scan a list of people FOR — who is around — so it goes
+                    where the eye finishes rather than as a fourth line under
+                    the name. The dot is the same five-minute rule the rest of
+                    the app uses; the words say how long ago for everyone else. */}
+                {m.active && (
+                  <span
+                    title={`Last seen ${lastSeenLabel(m.lastSeenAt)}`}
+                    className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        isOnline(m.lastSeenAt) ? "bg-success" : "bg-border"
+                      )}
+                    />
+                    <span
+                      className={
+                        isOnline(m.lastSeenAt)
+                          ? "font-semibold text-success"
+                          : "text-text-tertiary"
+                      }
+                    >
+                      {isOnline(m.lastSeenAt) ? "Online" : lastSeenLabel(m.lastSeenAt)}
+                    </span>
+                  </span>
+                )}
+
                 {/* SAY IT IN RED, ON THE RIGHT (Anir, Aug 30: "if it's
                     suspended it should be more clear that it's suspended, but
                     like a red thing here, and it has to stay on the right side
@@ -340,6 +423,26 @@ export function PeopleSplit() {
               </p>
               <p className="truncate text-[12.5px] text-text-secondary">
                 {selected.email}
+              </p>
+              {/* SPELLED OUT HERE, ABBREVIATED IN THE LIST. The row has to fit
+                  forty of these so it says "3h ago"; the pane is about one
+                  person, so it can afford the whole sentence and the date they
+                  joined with it. */}
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-text-tertiary">
+                <span>Joined {joinedLabel(selected.joinedAt)}</span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  Last seen{" "}
+                  {isOnline(selected.lastSeenAt) ? (
+                    <b className="font-semibold text-success">just now</b>
+                  ) : (
+                    /* NOT lower-cased. It reads as a sentence, so the
+                       instinct is to fold the label into it, but the label is
+                       a date as often as it is a duration and "Last seen aug
+                       20" is just wrong. */
+                    lastSeenLabel(selected.lastSeenAt)
+                  )}
+                </span>
               </p>
             </div>
             {/* NO BASE ROLE CONTROL (Anir, Sep 1: "you can remove the base

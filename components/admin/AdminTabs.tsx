@@ -10,10 +10,12 @@ import {
   UsersRound,
   Grid3x3,
   PanelsTopLeft,
+  Rows3,
 } from "lucide-react";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { useStoredView } from "@/lib/useStoredView";
 import { PeoplePrivileges } from "./PeoplePrivileges";
+import { MemberRoles } from "./MemberRoles";
 import { ADMIN_TABS } from "@/lib/adminTabs";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { InviteTeammate } from "@/components/team/InviteTeammate";
@@ -132,11 +134,9 @@ export function AdminTabs({
      in this app (Anir, Aug 9: "you have to save my preferences and apply this
      everywhere"). The old "table" value is not in the list any more, so anyone
      who had it saved lands on Split. */
-  const [peopleView, pickPeopleView] = useStoredView<"split" | "matrix">(
-    "freyr.teamMembers.view",
-    "split",
-    ["split", "matrix"] as const
-  );
+  const [peopleView, pickPeopleView] = useStoredView<
+    "split" | "matrix" | "table"
+  >("freyr.teamMembers.view", "split", ["split", "matrix", "table"] as const);
   const router = useRouter();
   const tab = routeTab;
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
@@ -181,21 +181,26 @@ export function AdminTabs({
              Privileges tab is the other question entirely, module privileges,
              and keeping them apart is what he was untangling. */
           <>
-            {/* SPLIT OR MATRIX, AND NOTHING ELSE (Anir, Sep 3).
+            {/* THREE VIEWS, ONE QUESTION EACH (Anir, Sep 3).
 
-                He killed the old Table view — "the table view sucks" — and he
-                was right about that one: it was a roster with a base role
-                dropdown he had already asked me to remove. But the matrix that
-                lived UNDERNEATH it went with it, and that was the part he
-                wanted: "why would you kill the matrix, but I need the matrix?
-                You should have a split view, and then you should have another
-                view where it's just a matrix, because I didn't even know that
-                was below."
+                This landed in three steps and the order matters, because the
+                end state looks like the start.
 
-                So the second view is the matrix and only the matrix. Split
-                answers "what can THIS person do"; Matrix answers "who can do
-                what" across everybody, which is the question you cannot ask
-                one person at a time. Nothing brings back the roster. */}
+                It was Table + Split. He killed Table — "the table view sucks"
+                — but the privilege matrix lived UNDERNEATH Table and went out
+                with it, and that was the half he wanted: "why would you kill
+                the matrix, but I need the matrix? You should have a split view,
+                and then you should have another view where it's just a matrix,
+                because I didn't even know that was below." So Matrix became a
+                view of its own instead of a thing buried below a roster.
+
+                Then Suren asked for the roster back, so Table returns as the
+                third — no longer carrying the matrix, and no longer carrying
+                the base role dropdown either.
+
+                Split answers "what can THIS person do". Matrix answers "who
+                can do what" across everybody. Table is the roster: who joined
+                when, who was last here, what they hold at a glance. */}
             <AdminTabActions active="members">
               <div
                 role="group"
@@ -205,6 +210,7 @@ export function AdminTabs({
                 {(
                   [
                     { key: "split", label: "Split", icon: PanelsTopLeft },
+                    { key: "table", label: "Table", icon: Rows3 },
                     { key: "matrix", label: "Matrix", icon: Grid3x3 },
                   ] as const
                 ).map((o) => {
@@ -245,6 +251,10 @@ export function AdminTabs({
             {peopleView === "split" ? (
               <div key="split" className="tab-panel">
                 <PeopleSplit />
+              </div>
+            ) : peopleView === "table" ? (
+              <div key="table" className="tab-panel">
+                <MemberRoles />
               </div>
             ) : (
               <div key="matrix" className="tab-panel">
