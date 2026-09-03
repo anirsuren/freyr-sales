@@ -47,6 +47,9 @@ import {
   type LucideIcon,
   AlertTriangle,
   CalendarCheck,
+  ArrowUpDown,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide
 } from "lucide-react";
 import { PriorityTooltip } from "@/components/ui/SearchPriority";
 import { FormRoom } from "@/components/ui/FormRoom";
@@ -2422,10 +2425,33 @@ export function OpportunitiesBrowser({
                     dense
                     collapsible={false}
                     className="w-[150px] shrink-0"
+                    /* ARROWS THAT SAY WHICH WAY (Anir, Sep 3: "pick better
+                       icons for these arrows would suffice"). Three coloured
+                       dots told you there were three choices and nothing about
+                       what any of them did — and this is a SORT, the one
+                       control where the icon can state the answer outright:
+                       wide-to-narrow for high first, narrow-to-wide for low
+                       first, and the two-way arrow for the order the list
+                       arrived in. */
                     options={[
-                      { value: "none", label: "Default order", color: "#8E98A8" },
-                      { value: "desc", label: "Confidence, high", color: "#0F766E" },
-                      { value: "asc", label: "Confidence, low", color: "#B45309" },
+                      {
+                        value: "none",
+                        label: "Default order",
+                        color: "#8E98A8",
+                        icon: ArrowUpDown,
+                      },
+                      {
+                        value: "desc",
+                        label: "Confidence, high",
+                        color: "#0F766E",
+                        icon: ArrowDownWideNarrow,
+                      },
+                      {
+                        value: "asc",
+                        label: "Confidence, low",
+                        color: "#B45309",
+                        icon: ArrowUpNarrowWide,
+                      },
                     ]}
                   />
                   <ColorSelect
@@ -2575,6 +2601,12 @@ export function OpportunitiesBrowser({
       {dealView === "summary" && (
         <Card className="tab-panel mt-4 p-4">
           <OpportunitySummary
+            /* The folds survive going into a deal and pressing back. */
+            storageKey="freyr.opportunities.summaryOpen"
+            /* A DEAL YOU JUST MADE OPENS THE BOOK AT ITSELF. `flashId` already
+               walked the eye to the row in the TABLE view; in the tree that row
+               does not exist yet, because it is four collapsed folds down. */
+            revealDealId={flashId}
             deals={shown}
             /* ITEM 13 — the accrual, against the opportunity rows. */
             accrualPlans={accrualPlans}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useStoredSet } from "@/lib/useStoredView";
 import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -166,6 +167,22 @@ function fromDate(iso: string | undefined, timeline: Timeline): string | null {
 }
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/** "quarters", "months" — the unit the columns are actually in, so the line
+ *  can say what it is counting instead of the generic "periods". */
+function periodWord(timeline: Timeline, count: number): string {
+  const one =
+    timeline === "weekly"
+      ? "week"
+      : timeline === "monthly"
+        ? "month"
+        : timeline === "quarterly"
+          ? "quarter"
+          : timeline === "semiannual"
+            ? "half-year"
+            : "year";
+  return count === 1 ? one : `${one}s`;
+}
 
 export function periodLabel(key: string, timeline: Timeline): string {
   if (timeline === "monthly") {
@@ -361,8 +378,31 @@ export function OpportunitySummary({
   onOpenDeal,
   spread,
   toolbar,
+  storageKey,
+  revealDealId,
 }: {
   deals: Opportunity[];
+  /**
+   * WHERE THE OPEN ROWS ARE REMEMBERED (Anir, Sep 3: "when I go back on these
+   * pages it's too annoying that you reset it. I want to go back to exactly
+   * where I was").
+   *
+   * This tree lived in plain `useState`, so every navigation collapsed it —
+   * open a group, open a customer, open an offering, click a deal, press back,
+   * and you are staring at the top of the book again with four folds to redo.
+   * Scoped per surface because the same component draws the pipeline, the
+   * customer book and the accrual dashboard, and their trees are different
+   * questions.
+   */
+  storageKey?: string;
+  /**
+   * A DEAL TO OPEN THE BOOK AT ("when I just added a new opportunity I would
+   * like you to open the shit up so I can see exactly where it is"). Every
+   * ancestor row on the way down to it is unfolded and the row is scrolled to
+   * and briefly lit, so a deal you just created is not a thing you go hunting
+   * for through four collapsed levels.
+   */
+  revealDealId?: string | null;
   /**
    * ITEM 13 — "Revenue Accrual should go against the opportunity rows as
    * well." Keyed by opportunity id, the same map the browser already holds for
@@ -420,7 +460,27 @@ export function OpportunitySummary({
 }) {
   /** Only rows that have been OPENED live here: four dimensions over 88 deals
    *  is 290 rows if everything starts unfolded, which is the wall this replaced. */
-  const [open, setOpen] = useState<Set<string>>(new Set());
+  /* Remembered across navigations when the caller names a place to keep it;
+     an unnamed tree still works, it just forgets. */
+  const [storedOpen, setStoredOpen, openReady] = useStoredSet(
+    storageKey || "freyr.summary.open.anon"
+  );
+  const [open, setOpenState] = useState<Set<string>>(new Set());
+  const setOpen = (next: Set<string> | ((p: Set<string>) => Set<string>)) => {
+    setOpenState((prev) => {
+      const value = typeof next === "function" ? next(prev) : next;
+      if (storageKey) setStoredOpen([...value]);
+      return value;
+    });
+  };
+  /* The remembered folds arrive after hydration, so they are applied once and
+     only when the user has not already started opening things. */
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!openReady || restored.current || !storageKey) return;
+    restored.current = true;
+    if (storedOpen.length) setOpenState(new Set(storedOpen));
+  }, [openReady, storedOpen, storageKey]);
   /**
    * THE GRAPH STARTS CLOSED (Suren, Aug 30: "can you make this a closeable
    * thing? I don't want this to be seen"... "I don't want to see this there by
@@ -467,6 +527,39 @@ export function OpportunitySummary({
   }, [deals, timeline]);
 
   const tree = useMemo(() => buildTree(deals, order, valueFor), [deals, order, valueFor]);
+
+  /**
+   * OPEN THE BOOK AT A PARTICULAR DEAL.
+   *
+   * Row keys are cumulative — `${path}/${dim}:${label}` — so the ancestors of
+   * any deal are just the running prefixes of its own values down the
+   * dimension order. No searching the tree: the path is computed straight off
+   * the record.
+   */
+  useEffect(() => {
+    if (!revealDealId) return;
+    const deal = deals.find((d) => d.id === revealDealId);
+    if (!deal) return;
+    const keys: string[] = [];
+    let path = "";
+    for (const dim of order) {
+      path = `${path}/${dim}:${valueFor(deal, dim)}`;
+      keys.push(path);
+    }
+    setOpen((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) next.add(k);
+      return next;
+    });
+    /* After the rows those folds create have actually rendered. */
+    const t = setTimeout(() => {
+      document
+        .querySelector(`[data-deal-id="${CSS.escape(revealDealId)}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 260);
+    return () => clearTimeout(t);
+  }, [revealDealId, deals, order, valueFor]);
+
   const grand = useMemo(() => {
     if (!spread) return sumEstimates(deals, measure);
     let total = 0;
@@ -701,8 +794,15 @@ export function OpportunitySummary({
             out.push(
               <tr
                 key={`${node.key}/${d.id}`}
+                data-deal-id={d.id}
                 style={{ ["--row" as string]: i }}
-                className="tree-row-in border-b border-border-light last:border-b-0"
+                className={cn(
+                  "tree-row-in border-b border-border-light last:border-b-0",
+                  /* THE ONE YOU JUST MADE, LIT FOR A MOMENT. Opening the folds
+                     down to a deal still leaves you scanning a screen of rows
+                     for it; the tint says which one without moving anything. */
+                  revealDealId === d.id && "bg-blue-light/50"
+                )}
               >
                 <th
                   scope="row"
@@ -916,22 +1016,38 @@ export function OpportunitySummary({
                 aria-expanded={chartOpen}
                 className="group flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
               >
-                {/* One line, one size, open or closed. */}
+                {/* THE ICON SITS OUTSIDE THE BASELINE GROUP (Anir, Sep 3:
+                    "the text isn't aligned with each other"). It used to live
+                    INSIDE the title span, and that span was a flex with
+                    items-center — so the title's baseline became the flex
+                    box's, not its text's, and the 14px title and the 12.5px
+                    subtitle beside it sat on two different lines that were
+                    supposed to be one. Out here it is centred against the row
+                    and the two pieces of text share a real baseline. */}
+                <TrendingUp
+                  size={14}
+                  strokeWidth={2}
+                  className="mt-[3px] shrink-0 text-blue-primary"
+                />
+                {/* PLAIN WORDS (Anir: "I don't like the copy. What does 'where
+                    this money lands' mean"). It meant the money split across
+                    time — so it says that. The unit is the one actually on
+                    screen: four QUARTERS reads as four quarters, not as "4
+                    periods", which is a word for the code's benefit. */}
                 <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
-                  <span className="flex items-center gap-2 text-[14px] font-semibold text-text-primary">
-                    <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
-                    Where this money lands
+                  <span className="text-[14px] font-semibold text-text-primary">
+                    {spread ? "When the money is expected" : "When the money comes in"}
                   </span>
                   <span className="text-[12.5px] text-text-secondary">
-                    {money(grand.total)}{" "}
-                    {spread ? "accruing" : `of ${measureLabel}`} across{" "}
-                    {chart.length} {chart.length === 1 ? "period" : "periods"}
+                    {money(grand.total)} {spread ? "planned" : `of ${measureLabel}`},
+                    split across {chart.length}{" "}
+                    {periodWord(timeline, chart.length)}
                     {grand.entered < grand.of && (
                       <>
                         {" · "}
                         <b className="font-semibold">
                           {grand.entered} of {grand.of} deals{" "}
-                          {spread ? "are planned" : "carry a figure"}
+                          {spread ? "have a plan" : "have a figure"}
                         </b>
                       </>
                     )}

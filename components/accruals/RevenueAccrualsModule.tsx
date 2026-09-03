@@ -1616,6 +1616,7 @@ export function RevenueAccrualsModule({
               {tableOpen && (
               <div className="mt-3">
               <OpportunitySummary
+                storageKey="freyr.accruals.summaryOpen"
                 /* THE FILTERS ACT ON THE TABLE, not on a list underneath it.
                    That is what "same filters, give this here also" has to mean
                    now the rows are gone: pressing Customer or FY28 redraws the

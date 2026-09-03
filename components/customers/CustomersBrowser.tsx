@@ -819,6 +819,7 @@ export function CustomersBrowser({
           </div>
           <Card className="p-4">
             <OpportunitySummary
+              storageKey="freyr.customers.summaryOpen"
               deals={scoped}
               order={custDims}
               onReorder={setCustDims}
