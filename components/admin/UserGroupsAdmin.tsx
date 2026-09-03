@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import {
   ChevronRight,
   PanelsTopLeft,
@@ -293,38 +294,18 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       {/* THE CONTROLS RIDE THE TAB ROW (Anir, Aug 29: "the new group and the
           table and the split should go up to the top right"). */}
       <AdminTabActions active="groups">
-          <div
-            role="group"
-            aria-label="How to show groups"
-            className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
-          >
-            {(
+          <ViewSwitch
+            ariaLabel="How to show groups"
+            className="flex"
+            value={view}
+            onChange={pickView}
+            options={
               [
-                { key: "table", label: "Table", icon: Rows3 },
-                { key: "split", label: "Split", icon: PanelsTopLeft },
+              { key: "table", label: "Table", icon: Rows3 },
+              { key: "split", label: "Split", icon: PanelsTopLeft },
               ] as const
-            ).map((o) => {
-              const Icon = o.icon;
-              const on = view === o.key;
-              return (
-                <button
-                  key={o.key}
-                  type="button"
-                  onClick={() => pickView(o.key)}
-                  aria-pressed={on}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
-                    on
-                      ? "bg-white text-text-primary shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
+            }
+          />
           <Button onClick={openCreate}>
             <Plus size={14} strokeWidth={2.2} /> New group
           </Button>

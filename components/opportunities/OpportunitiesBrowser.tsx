@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -2466,38 +2467,18 @@ export function OpportunitiesBrowser({
                Only this page. Every other Summary/Table pair in the app is
                untouched — he was explicit that it was this one. */
             view={
-              <span
-                role="group"
-                aria-label="How to show the pipeline"
-                className="hidden shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
-              >
-                {(
+              <ViewSwitch
+                ariaLabel="How to show the pipeline"
+                className="hidden"
+                value={dealView}
+                onChange={setDealView}
+                options={
                   [
-                    { key: "summary", label: "Summary", icon: Table2 },
-                    { key: "table", label: "Table", icon: Rows3 },
+                  { key: "summary", label: "Summary", icon: Table2 },
+                  { key: "table", label: "Table", icon: Rows3 },
                   ] as const
-                ).map((o) => {
-                  const Icon = o.icon;
-                  const on = dealView === o.key;
-                  return (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onClick={() => setDealView(o.key)}
-                      aria-pressed={on}
-                      className={cn(
-                        "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
-                        on
-                          ? "bg-white text-text-primary shadow-sm"
-                          : "text-text-secondary hover:text-text-primary"
-                      )}
-                    >
-                      <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </span>
+                }
+              />
             }
             display={
               /* ONE button that knows which way it goes (Anir, Aug 19: "It

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
 import { CircleDot, Coins, Plus, Trash2, UserPen, X } from "lucide-react";
 import {
@@ -1288,37 +1289,16 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               <span className="text-[12px] font-semibold text-text-secondary">
                 Show amounts in
               </span>
-              <div
-                role="group"
-                aria-label="Currency to read the schedule in"
-                className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
-              >
-                {/* THE SYMBOL RIDES WITH THE CODE, same as the switcher on the
-                    deal (Anir, Sep 3: "you have to put the currency icon,
-                    whatever is called there, as well"). The column below reads
-                    $30 or €30; the control that swaps them shows the same mark
-                    rather than making you translate three letters. */}
-                {[
+              <ViewSwitch
+                ariaLabel="Currency to read the schedule in"
+                className="inline-flex"
+                value={showLocal}
+                onChange={setShowLocal}
+                options={[
                   { key: false, label: "USD", mark: "$" },
                   { key: true, label: dealCurrency, mark: currencyMeta(dealCurrency).symbol.trim() },
-                ].map((o) => (
-                  <button
-                    key={o.label}
-                    type="button"
-                    aria-pressed={showLocal === o.key}
-                    onClick={() => setShowLocal(o.key)}
-                    className={cn(
-                      "cursor-pointer rounded-full px-2.5 py-1 text-[12px] font-semibold transition-all",
-                      showLocal === o.key
-                        ? "bg-white text-text-primary shadow-sm"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <span className="mr-1 text-text-tertiary">{o.mark}</span>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
+                ] as const}
+              />
               {/* HONEST WHEN IT CANNOT CONVERT, never a stale figure dressed
                   as a fresh one. The dollars still read correctly. */}
               {showLocal && fxReady === "loading" && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import {
   Banknote,
   Briefcase,
@@ -1446,37 +1447,16 @@ export function DealOverviewEditor({
                 deal is in another currency: on a dollar deal there is nothing
                 to switch between. */}
             {!isBase && accrualPlan && accrualPlan.lines.length > 0 && (
-              <span
-                role="group"
-                aria-label="Read the schedule in"
-                className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
-              >
-                {/* THE SYMBOL RIDES WITH THE CODE (Anir, Sep 3: "you have
-                    to put the currency icon, whatever is called there, as
-                    well"). The column below reads $30 or €30, so the control
-                    that swaps them should show the same mark rather than
-                    making you read three letters and translate. */}
-                {[
-                  { on: false, label: "USD", mark: "$" },
-                  { on: true, label: currency, mark: localSymbol },
-                ].map((o) => (
-                  <button
-                    key={o.label}
-                    type="button"
-                    aria-pressed={scheduleLocal === o.on}
-                    onClick={() => setScheduleLocal(o.on)}
-                    className={cn(
-                      "cursor-pointer rounded-full px-2 py-1 text-[11.5px] font-semibold transition-all",
-                      scheduleLocal === o.on
-                        ? "bg-white text-text-primary shadow-sm"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <span className="mr-1 text-text-tertiary">{o.mark}</span>
-                    {o.label}
-                  </button>
-                ))}
-              </span>
+              <ViewSwitch
+                ariaLabel="Read the schedule in"
+                className="inline-flex"
+                value={scheduleLocal}
+                onChange={setScheduleLocal}
+                options={[
+                  { key: false, label: "USD", mark: "$" },
+                  { key: true, label: currency, mark: localSymbol },
+                ] as const}
+              />
             )}
             {/* NO "EDIT THE SCHEDULE" WHEN THE SCHEDULE IS RIGHT THERE. The
                 button existed to reach an editor somewhere else; with the

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
 import {
   KeyRound,
@@ -202,38 +203,19 @@ export function AdminTabs({
                 can do what" across everybody. Table is the roster: who joined
                 when, who was last here, what they hold at a glance. */}
             <AdminTabActions active="members">
-              <div
-                role="group"
-                aria-label="How to show people"
-                className="flex items-center gap-0.5 rounded-full bg-surface p-0.5"
-              >
-                {(
+              <ViewSwitch
+                ariaLabel="How to show people"
+                className="flex"
+                value={peopleView}
+                onChange={pickPeopleView}
+                options={
                   [
-                    { key: "split", label: "Split", icon: PanelsTopLeft },
-                    { key: "table", label: "Table", icon: Rows3 },
-                    { key: "matrix", label: "Matrix", icon: Grid3x3 },
+                  { key: "split", label: "Split", icon: PanelsTopLeft },
+                  { key: "table", label: "Table", icon: Rows3 },
+                  { key: "matrix", label: "Matrix", icon: Grid3x3 },
                   ] as const
-                ).map((o) => {
-                  const Icon = o.icon;
-                  const on = peopleView === o.key;
-                  return (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onClick={() => pickPeopleView(o.key)}
-                      aria-pressed={on}
-                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all ${
-                        on
-                          ? "bg-white text-text-primary shadow-sm"
-                          : "text-text-secondary hover:text-text-primary"
-                      }`}
-                    >
-                      <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
+                }
+              />
               {/* INVITING SOMEBODY BELONGS ON THE PAGE THAT LISTS EVERYBODY
                   (Anir, Aug 29: "also add an invite button, I don't know why
                   that's not there here"). It only existed on /team, which is

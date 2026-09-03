@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import Link from "next/link";
 import { ChevronRight, LayoutGrid, Package, Rows3 } from "lucide-react";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -79,38 +80,18 @@ export function RelatedOfferingsSection({
           reads as a property of this section and not of the page. */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">{heading}</div>
-        <div
-          role="group"
-          aria-label="How to show related offerings"
-          className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
-        >
-          {(
+        <ViewSwitch
+          ariaLabel="How to show related offerings"
+          className="flex"
+          value={view}
+          onChange={pick}
+          options={
             [
-              { key: "cards", label: "Cards", icon: LayoutGrid },
-              { key: "table", label: "Table", icon: Rows3 },
+            { key: "cards", label: "Cards", icon: LayoutGrid },
+            { key: "table", label: "Table", icon: Rows3 },
             ] as const
-          ).map((o) => {
-            const Icon = o.icon;
-            const on = view === o.key;
-            return (
-              <button
-                key={o.key}
-                type="button"
-                onClick={() => pick(o.key)}
-                aria-pressed={on}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
-                  on
-                    ? "bg-white text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
-                {o.label}
-              </button>
-            );
-          })}
-        </div>
+          }
+        />
       </div>
 
       {/* THE SWITCH IS AN ANIMATION, NOT A JUMP (Anir, Sep 3: "when I switch

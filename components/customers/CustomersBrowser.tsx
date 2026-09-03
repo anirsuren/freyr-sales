@@ -1,6 +1,7 @@
 "use client";
 
 import { StatTile } from "@/components/ui/StatTile";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { Card } from "@/components/ui/Card";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
@@ -743,38 +744,18 @@ export function CustomersBrowser({
             {/* SUMMARY OR THE LIST — the same choice Opportunities offers, so
                 the two pages answer "what is this worth" and "show me the
                 rows" the same way. */}
-            <span
-              role="group"
-              aria-label="How to show the customers"
-              className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface p-0.5"
-            >
-              {(
+            <ViewSwitch
+              ariaLabel="How to show the customers"
+              className="flex"
+              value={shape}
+              onChange={setShape}
+              options={
                 [
-                  { key: "summary", label: "Summary", icon: Table2 },
-                  { key: "list", label: "List", icon: LayoutList },
+                { key: "summary", label: "Summary", icon: Table2 },
+                { key: "list", label: "List", icon: LayoutList },
                 ] as const
-              ).map((o) => {
-                const Icon = o.icon;
-                const on = shape === o.key;
-                return (
-                  <button
-                    key={o.key}
-                    type="button"
-                    onClick={() => setShape(o.key)}
-                    aria-pressed={on}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-all",
-                      on
-                        ? "bg-white text-text-primary shadow-sm"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
-                    {o.label}
-                  </button>
-                );
-              })}
-            </span>
+              }
+            />
             {shape === "list" && (
               <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
             )}
