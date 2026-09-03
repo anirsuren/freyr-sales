@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { CalendarRange } from "lucide-react";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
+import {
+  monthLabel,
+  type AccrualPlan,
+} from "@/lib/revenueAccrualsShared";
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -309,7 +314,8 @@ function Field({
   fill = false,
   children,
 }: {
-  label: string;
+  /** A node, not just a string, so a required field can carry its star. */
+  label: React.ReactNode;
   hint?: string;
   state?: SaveState;
   error?: string;
@@ -405,6 +411,31 @@ function ReadValue({
 }
 
 /** A fact the deal carries but nobody types: assigned by the system. */
+/**
+ * THE MANDATORY MARK (Anir, Sep 3: "make sure the mandatory stuff is in btw
+ * (*)").
+ *
+ * Manoj's sheet stars ten fields on the deal and three on the accrual:
+ * Opportunity Name*, Customer*, Offering*, Opportunity ID*, Date Added*,
+ * Opportunity Category*, Confidence %*, Opportunity Status*, Opportunity
+ * Type*, Expected to sign* — and Project Currency*, Estimated TCV*, Revenue
+ * Accrual Schedule*. Revenue Type and Estimated ACV carry no star and do not
+ * get one here.
+ *
+ * IT SAYS WHICH ONES MATTER, IT DOES NOT BLOCK A SAVE. This form commits each
+ * field on blur, one at a time, so there is no single submit to refuse — and
+ * a deal being written down while somebody is still on the phone should not be
+ * unsaveable because the sign date is not known yet. The existing `missing`
+ * check on the deal is what actually chases the gaps.
+ */
+function Req() {
+  return (
+    <span aria-label="required" title="Required" className="text-[color:#DC2626]">
+      *
+    </span>
+  );
+}
+
 function StaticValue({ text, empty = false }: { text: string; empty?: boolean }) {
   return (
     <span
@@ -440,6 +471,8 @@ export function DealOverviewEditor({
   team = null,
   mayChangeTeam = false,
   mayChangeOwner = false,
+  accrualPlan = null,
+  onOpenAccrual,
   onSave,
   onSaved,
   children,
@@ -472,6 +505,11 @@ export function DealOverviewEditor({
    */
   mayChangeTeam?: boolean;
   mayChangeOwner?: boolean;
+  /** This deal's accrual schedule, shown inside the Revenue Accrual card
+   *  (items 3 and 5). Read here, edited in the one accrual screen. */
+  accrualPlan?: AccrualPlan | null;
+  /** Opens that screen. Absent when this person may not plan. */
+  onOpenAccrual?: () => void;
   /** Returns null on success, or a message to show. Defaults to the same
    *  /api/opportunities update the rest of the deal page posts. */
   onSave?: (patch: Record<string, unknown>) => Promise<string | null>;
@@ -756,7 +794,7 @@ export function DealOverviewEditor({
       >
         <div className="space-y-4">
           <Field
-            label="Opportunity name"
+            label={<>Opportunity name <Req /></>}
             state={state.name}
             error={errors.name}
           >
@@ -782,7 +820,7 @@ export function DealOverviewEditor({
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <Field label="Customer" state={state.customer} error={errors.customer}>
+            <Field label={<>Customer <Req /></>} state={state.customer} error={errors.customer}>
               {/* PICK FROM THE ACCOUNTS WE HAVE. Deliberately no free-text
                   escape hatch here, unlike the Add form: inventing a new
                   account name from inside an existing deal would re-parent a
@@ -827,7 +865,7 @@ export function DealOverviewEditor({
               )}
             </Field>
 
-            <Field label="Offering" state={state.offering} error={errors.offering}>
+            <Field label={<>Offering <Req /></>} state={state.offering} error={errors.offering}>
               {ro || offerings.length === 0 ? (
                 <ReadValue
                   text={offeringText}
@@ -876,13 +914,13 @@ export function DealOverviewEditor({
             {/* Nobody types either of these. They are assigned, so they are
                 shown rather than asked for, the same thing the Add a Deal form
                 does with the opportunity id. */}
-            <Field label="Opportunity id">
+            <Field label={<>Opportunity id <Req /></>}>
               <StaticValue
                 text={deal.externalId || "Assigned on save"}
                 empty={!deal.externalId}
               />
             </Field>
-            <Field label="Added">
+            <Field label={<>Added <Req /></>}>
               <StaticValue text={dayLabel(deal.createdAt)} />
             </Field>
           </div>
@@ -901,7 +939,7 @@ export function DealOverviewEditor({
           <div className="mt-5 border-t border-border-light pt-5">
             <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
           <Field
-            label="Confidence"
+            label={<>Confidence <Req /></>}
             hint="%"
             state={state.confidence}
             error={errors.confidence}
@@ -939,7 +977,7 @@ export function DealOverviewEditor({
             )}
           </Field>
           <Field
-            label="Expected to sign"
+            label={<>Expected to sign <Req /></>}
             state={state.estSignDate}
             error={errors.estSignDate}
           >
@@ -963,7 +1001,7 @@ export function DealOverviewEditor({
               />
             )}
           </Field>
-          <Field label="Status" state={state.status} error={errors.status}>
+          <Field label={<>Status <Req /></>} state={state.status} error={errors.status}>
             {ro ? (
               <ReadValue text={status || "Not set"} tone={STATUS_TONE} empty={!status} />
             ) : (
@@ -990,7 +1028,7 @@ export function DealOverviewEditor({
               />
             )}
           </Field>
-          <Field label="Opportunity category" state={state.level} error={errors.level}>
+          <Field label={<>Opportunity category <Req /></>} state={state.level} error={errors.level}>
             {ro ? (
               <ReadValue
                 text={level || "Not set"}
@@ -1021,7 +1059,7 @@ export function DealOverviewEditor({
               outright (Aug 31: "opportunity is missing one thing, what type of
               opportunity... new business, existing business, renewal"). */}
           <Field
-            label="Type of opportunity"
+            label={<>Type of opportunity <Req /></>}
             state={state.dealType}
             error={errors.dealType}
           >
@@ -1113,7 +1151,7 @@ export function DealOverviewEditor({
         hint="Entered in the money it was agreed in. The dollar figures underneath are worked out from the rate and never stored."
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Project currency" state={state.currency} error={errors.currency}>
+          <Field label={<>Project currency <Req /></>} state={state.currency} error={errors.currency}>
             {ro ? (
               <ReadValue text={`${currency} ${currencyMeta(currency).name}`} />
             ) : (
@@ -1162,7 +1200,7 @@ export function DealOverviewEditor({
               here is a claim that the deal is worth nothing; blank is the
               truth, which is that it has not been entered. */}
           <Field
-            label="Estimated TCV"
+            label={<>Estimated TCV <Req /></>}
             hint={localSymbol}
             state={state.estimatedTcv}
             error={errors.estimatedTcv}
@@ -1298,6 +1336,79 @@ export function DealOverviewEditor({
             </div>
           )}
         </div>
+
+        {/* THE SCHEDULE ITSELF (Manoj's sheet, item 3: "Under Revenue Accrual,
+            provide Revenue Accrual schedule"; item 5 lists "Revenue Accrual
+            Schedule*" among this card's fields).
+
+            READ HERE, EDITED IN ONE PLACE. Suren, Sep 1: "both the screens
+            have to be the same. It's just that same screen shows up here." So
+            this is the months and what they carry, and the button opens the
+            same planner the Revenue accruals module opens — not a second
+            editor over the same data, which is the thing he asked me to stop
+            building. */}
+        <div className="mt-5 border-t border-border-light pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-[13px] font-semibold text-text-primary">
+              Revenue accrual schedule <Req />
+            </h4>
+            {onOpenAccrual && (
+              <button
+                type="button"
+                onClick={onOpenAccrual}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+              >
+                <CalendarRange size={13} strokeWidth={2.2} />
+                {accrualPlan ? "Edit the schedule" : "Plan the schedule"}
+              </button>
+            )}
+          </div>
+          {!accrualPlan || accrualPlan.lines.length === 0 ? (
+            <p className="mt-1.5 text-[12.5px] text-text-tertiary">
+              {accrualPlan
+                ? "This plan has no months in it. Its sign date may have passed, which empties the schedule and flags it on the Deviations tab."
+                : "Nothing planned yet. The schedule says which months this deal's money is expected to land in."}
+            </p>
+          ) : (
+            <>
+              <div className="mt-2 overflow-hidden rounded-lg border border-border-light">
+                <table className="w-full table-fixed border-collapse text-left">
+                  <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    <tr>
+                      <th className="w-1/2 px-3 py-2">Month</th>
+                      <th className="w-1/2 px-3 py-2">Amount (USD)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {[...accrualPlan.lines]
+                      .sort((a, b) => a.month.localeCompare(b.month))
+                      .map((l) => (
+                        <tr key={l.month}>
+                          <td className="px-3 py-2 text-[12.5px] text-text-secondary">
+                            {monthLabel(l.month)}
+                          </td>
+                          <td className="px-3 py-2 text-[12.5px] font-semibold tnum text-text-primary">
+                            ${(l.amount || 0).toLocaleString("en-US")}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-1.5 text-[12px] text-text-secondary">
+                {accrualPlan.lines.length} month
+                {accrualPlan.lines.length === 1 ? "" : "s"}, adding up to{" "}
+                <b className="tnum text-text-primary">
+                  $
+                  {accrualPlan.lines
+                    .reduce((n, l) => n + (l.amount || 0), 0)
+                    .toLocaleString("en-US")}
+                </b>
+                .
+              </p>
+            </>
+          )}
+        </div>
       </Card>
 
 
@@ -1332,7 +1443,12 @@ export function DealOverviewEditor({
           type, which is a gain, whereas a picker floating in spare height is
           just a hole. So the row stretches, the People card keeps its content
           hard against the top, and only the note box fills. */}
-      <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      {/* NOTES SITS UNDER PEOPLE, FULL WIDTH (Anir, Sep 3: "and notes BELOW
+          people like normal"). They were side by side, which squeezed People
+          into 420px and gave the note box a column it did not need. Every
+          other section on this page is one full-width card stacked under the
+          last; these were the exception for no reason the page states. */}
+      <div className="grid grid-cols-1 items-stretch gap-5">
         <Card
           icon={UserRound}
           /* He asked for the plus button ON this section, so it cannot start

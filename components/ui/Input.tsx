@@ -22,7 +22,9 @@ export function Field({
   children,
   hint,
 }: {
-  label: string;
+  /** A node, not just a string, so a caller can mark a field required
+   *  (Manoj's sheet stars the mandatory ones). */
+  label: React.ReactNode;
   required?: boolean;
   children: React.ReactNode;
   hint?: string;

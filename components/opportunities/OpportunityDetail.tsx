@@ -583,6 +583,16 @@ export function OpportunityDetail({
             team={team}
             mayChangeTeam={mayChangeTeam}
             mayChangeOwner={mayChangeOwner}
+            /* THE SCHEDULE, INSIDE THE REVENUE ACCRUAL CARD (Manoj's sheet,
+               items 3 and 5: "Under Revenue Accrual, provide Revenue Accrual
+               schedule"). The card had the currency and the two estimates and
+               stopped there. Read-only here and edited in the one accrual
+               screen, because Suren was explicit on Sep 1 that there is only
+               one: "both the screens have to be the same." */
+            accrualPlan={accrual?.plan ?? null}
+            onOpenAccrual={
+              accrual?.mayPlan ? () => setPlanningAccrual(true) : undefined
+            }
             onSave={saveField}
           >
             {meetings.length > 0 && (
