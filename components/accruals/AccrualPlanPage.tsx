@@ -23,6 +23,7 @@
  */
 
 import { useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -369,7 +370,7 @@ export function AccrualPlanPage({
                 disabled={!canWrite}
                 inputMode="numeric"
                 onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9]/g, "");
+                  const v = expandMoneyShorthand(e.target.value, { integer: true });
                   setContractValue(v);
                   reshape({ contractValue: v });
                 }}
@@ -400,7 +401,7 @@ export function AccrualPlanPage({
                 disabled={!canWrite}
                 inputMode="numeric"
                 onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9]/g, "");
+                  const v = expandMoneyShorthand(e.target.value, { integer: true });
                   setCount(v);
                   /* NOT WHILE THE BOX IS EMPTY. Typing "12" over "6" passes
                      through the empty string, which used to reshape the plan
@@ -523,7 +524,7 @@ export function AccrualPlanPage({
                       const next = [...lines];
                       next[i] = {
                         ...next[i],
-                        amount: e.target.value.replace(/[^0-9]/g, ""),
+                        amount: expandMoneyShorthand(e.target.value, { integer: true }),
                         pinned: true,
                       };
                       setLines(next);

@@ -1,6 +1,7 @@
 "use client";
 
 import { TabActions } from "./TabActions";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useMemo, useState } from "react";
 import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, Trash2, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -882,7 +883,7 @@ export function TargetsTab({
                 <input
                   value={withCommas(draft.potential)}
                   onChange={(e) =>
-                    set({ potential: e.target.value.replace(/[^0-9]/g, "") })
+                    set({ potential: expandMoneyShorthand(e.target.value, { integer: true }) })
                   }
                   inputMode="numeric"
                   placeholder="e.g. 250,000"

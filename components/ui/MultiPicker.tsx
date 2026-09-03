@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIcon, Plus } from "lucide-react";
 import {
@@ -48,6 +49,15 @@ export type MultiPickerOption = {
    * the obvious prop.
    */
   avatarName?: string;
+  /**
+   * THE AGENT'S OWN FACE (Anir, Sep 3: "I think you're supposed to use the
+   * icons they gave"). Saras supplied artwork for the six Freya Fusion agents,
+   * and the offering picker was drawing all of them — Via, Pia, Mia, Ria, Cia,
+   * Fia — as the same generic sparkle, which is the thing the artwork exists
+   * to replace. Set to the offering's name; the agent is read out of it, so a
+   * name that is not an agent falls through to the icon as before.
+   */
+  agentName?: string;
   /** Category this option lives under in the dropdown variant. */
   group?: string;
 };
@@ -99,7 +109,9 @@ function OptionRow({
         ["--row" as string]: rowIndex,
       }}
     >
-      {o.avatarName ? (
+      {o.agentName ? (
+        <AgentAvatar name={o.agentName} size={24} className="shrink-0" />
+      ) : o.avatarName ? (
         <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
       ) : o.logoName ? (
         <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
@@ -390,7 +402,9 @@ function DropdownPicker({
                       icon, so the same person wore a face in the menu and
                       nothing at all once picked. All four sites read the same
                       three marks now, in the same order. */}
-                  {o?.avatarName ? (
+                  {o?.agentName ? (
+                    <AgentAvatar name={o.agentName} size={18} className="shrink-0" />
+                  ) : o?.avatarName ? (
                     <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                   ) : o?.logoName ? (
                     <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
@@ -654,7 +668,9 @@ export function MultiPicker({
                 className={cnChip(c)}
                 style={c ? { background: `${c}16`, color: c } : undefined}
               >
-                {o?.avatarName ? (
+                {o?.agentName ? (
+                  <AgentAvatar name={o.agentName} size={18} className="shrink-0" />
+                ) : o?.avatarName ? (
                   <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 ) : o?.logoName ? (
                   <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
@@ -716,7 +732,9 @@ export function MultiPicker({
                 }}
                 className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
               >
-                {o.avatarName ? (
+                {o.agentName ? (
+                  <AgentAvatar name={o.agentName} size={24} className="shrink-0" />
+                ) : o.avatarName ? (
                   <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
                 ) : o.logoName ? (
                   <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -248,7 +249,7 @@ export function EditableFact({
                   onChange={(e) =>
                     setDraft(
                       kind === "money" || kind === "percent"
-                        ? e.target.value.replace(/[^0-9]/g, "")
+                        ? expandMoneyShorthand(e.target.value, { integer: true })
                         : e.target.value
                     )
                   }
@@ -340,7 +341,7 @@ export function EditableFact({
                 onChange={(e) =>
                   setDraft(
                     kind === "money" || kind === "percent"
-                      ? e.target.value.replace(/[^0-9]/g, "")
+                      ? expandMoneyShorthand(e.target.value, { integer: true })
                       : e.target.value
                   )
                 }

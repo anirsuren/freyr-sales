@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { agentIn } from "@/components/ui/AgentAvatar";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -2748,7 +2750,7 @@ export function OpportunitiesBrowser({
              under it when only one room is open. */
           <div className="flex min-h-full flex-col gap-3.5 pb-2">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Opportunity name" hint="What this deal is called internally.">
+              <Field label="Opportunity name" required hint="What this deal is called internally.">
                 <input
                   value={editing.name}
                   onChange={(e) =>
@@ -2758,7 +2760,7 @@ export function OpportunitiesBrowser({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Customer" hint="The account. Pick one of ours, or type a name that is not on the list yet.">
+              <Field label="Customer" required hint="The account. Pick one of ours, or type a name that is not on the list yet.">
                 {/* The browser-native datalist looked nothing like the app
                     (Anir, Aug 17: "shitty dropdown fix it so its our
                     standards") — same ColorSelect as everywhere, logos and
@@ -2932,6 +2934,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Estimated TCV"
+                required
                 hint="What the whole contract is worth, adding up every year. Leave it blank and it uses the deal value above. Only fill it in if the contract total is actually different."
               >
                 <MoneyInput
@@ -3009,7 +3012,7 @@ export function OpportunitiesBrowser({
                   );
                 })()}
               </Field>
-              <Field label="Status">
+              <Field label="Status" required>
                 <ColorSelect
                   value={editing.status}
                   ariaLabel="Opportunity status"
@@ -3036,7 +3039,7 @@ export function OpportunitiesBrowser({
                   ]}
                 />
               </Field>
-              <Field label="Owner">
+              <Field label="Owner" required>
                 {/* A dropdown like everything else (Anir, Aug 17) — the
                     roster with faces, plus whatever name an imported deal
                     already carries so editing never loses it. */}
@@ -3449,16 +3452,34 @@ const inputCls =
 function Field({
   label,
   hint,
+  required = false,
   children,
 }: {
   label: string;
   hint?: string;
+  /**
+   * THE STAR, ON THE FORM THAT CREATES THE DEAL (Anir, Sep 3: "make sure the
+   * mandatory fields are clearly labelled with *").
+   *
+   * Manoj's item 4 is that the mandatory fields are mandatory "at the level
+   * where you're adding a new opportunity, and ALSO editing an opportunity".
+   * The edit screen has worn the stars since that call; this dialog never did,
+   * so the rule was enforced but invisible — the Add button simply stayed grey
+   * and you had to read the footer to learn which field it was waiting on.
+   * Same red asterisk, same meaning, on both screens.
+   */
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label className="block min-w-0">
       <span className="mb-1 flex items-center gap-1 text-[12px] font-semibold text-text-primary">
         {label}
+        {required && (
+          <span aria-label="required" title="Required" className="text-[color:#DC2626]">
+            *
+          </span>
+        )}
         {hint && <InfoHint text={hint} />}
       </span>
       {children}
@@ -3551,7 +3572,8 @@ function MoneyInput({
       </span>
       <input
         value={value ? withCommas(value.replace(/[^0-9]/g, "")) : ""}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ""))}
+        /* K AND M WORK HERE TOO — see lib/moneyShorthand. */
+        onChange={(e) => onChange(expandMoneyShorthand(e.target.value, { integer: true }))}
         inputMode="numeric"
         aria-label={ariaLabel}
         placeholder={placeholder}
@@ -3954,7 +3976,7 @@ function SingleOfferingEditor({
     <FormRoom icon={CircleDollarSign} title="What's being sold" defaultOpen>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
         <div className="min-w-0">
-          <label className={labelCls}>Offering</label>
+          <label className={labelCls}>Offering <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
           <div className="mt-1">
             <MultiPicker
               variant="dropdown"
@@ -3989,7 +4011,16 @@ function SingleOfferingEditor({
                 label: o.name,
                 group: o.type || "Other",
                 color: colorForOfferingId.get(o.id) ?? "#475569",
-                icon: Sparkles,
+                /* THE AGENTS WEAR THEIR OWN FACES (Anir, Sep 3: "I think
+                   you're supposed to use the icons they gave"). Saras drew the
+                   six Freya Fusion agents and this list rendered every one of
+                   them as the same sparkle — the exact glyph the artwork
+                   exists to replace, and no help at all when four of the rows
+                   are Agent.Fia, Agent.Cia, Agent.Via and Agent.Ria. Anything
+                   that is not an agent keeps the sparkle. */
+                ...(agentIn(o.name)
+                  ? { agentName: o.name }
+                  : { icon: Sparkles }),
               }))}
             />
           </div>
@@ -4032,7 +4063,7 @@ function SingleOfferingEditor({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Value</label>
+          <label className={labelCls}>Value <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
           {/* ONE amount, in whatever the client pays — USD is computed. */}
           <div className="mt-1 flex gap-1.5">
             <ColorSelect
@@ -4070,21 +4101,7 @@ function SingleOfferingEditor({
                    amount takes K/M/B shorthand; this box silently ate the
                    letter. The moment the letter lands, it expands — typing
                    2 5 0 k paints 250,000. */
-                const typed = e.target.value.replace(/\s|,/g, "");
-                const short = /^([0-9]*\.?[0-9]+)([kKmMbB])$/.exec(typed);
-                const text = short
-                  ? String(
-                      Math.round(
-                        Number(short[1]) *
-                          ({ k: 1e3, m: 1e6, b: 1e9 } as const)[
-                            short[2].toLowerCase() as "k" | "m" | "b"
-                          ]
-                      )
-                    )
-                  : /* A lone trailing dot is a number being typed, not a
-                       broken one — "2." has to survive long enough for the
-                       "5m" to arrive. */
-                    typed.replace(/[^0-9.]/g, "").replace(/\.(?=.*\.)/g, "");
+                const text = expandMoneyShorthand(e.target.value);
                 if (line.localCurrency) {
                   set({ localValue: text, value: usdFrom(text, line.localCurrency) });
                 } else {
@@ -4099,7 +4116,7 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Confidence</label>
+          <label className={labelCls}>Confidence <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
           <div className="mt-1">
             <ConfidenceSlider
               value={line.confidence}
@@ -4157,7 +4174,7 @@ function SingleOfferingEditor({
           })()}
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>Est. sign</label>
+          <label className={labelCls}>Est. sign <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
           <input
             type="date"
             value={line.estSignDate}

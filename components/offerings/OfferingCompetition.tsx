@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { parseCalendarDate } from "@/lib/utils";
 import Link from "next/link";
 import {
   BadgeDollarSign,
@@ -53,7 +54,7 @@ const VIEWS = ["tiles", "rows", "table"] as const;
 type View = (typeof VIEWS)[number];
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return (parseCalendarDate(iso) ?? new Date(iso)).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

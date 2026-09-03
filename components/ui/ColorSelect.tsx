@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
+import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { createPortal } from "react-dom";
 import { ChevronDown, Check, Crown, Plus, Search, type LucideIcon } from "lucide-react";
 import {
@@ -24,6 +25,13 @@ export type ColorOption = {
   icon?: LucideIcon;
   /** Render a real person avatar instead of a generic icon or colour dot. */
   avatarName?: string;
+  /**
+   * THE AGENT'S OWN FACE, same idea as `avatarName` (Anir, Sep 3, on the
+   * offering picker showing Agent.Via as a purple dot: "proper icon please").
+   * Saras drew the six Freya Fusion agents; a coloured dot beside four rows
+   * all named Agent.<something> tells you nothing about which one you picked.
+   */
+  agentName?: string;
   /** Render the company's own logo mark. Same idea as avatarName, for
    *  accounts (Anir, Aug 16: "here you need to have the company logo"). A
    *  filter listing sixty-five customers as sixty-five identical blue dots
@@ -438,6 +446,14 @@ export function ColorSelect({
     solo?: boolean;
   }) => {
     const Icon = o.icon;
+    if (o.agentName)
+      return (
+        <AgentAvatar
+          name={o.agentName}
+          size={prominent ? 32 : 20}
+          className="shrink-0"
+        />
+      );
     if (o.logoName)
       return (
         <CompanyLogo
@@ -1157,7 +1173,13 @@ export function MultiColorSelect({
           {/* This leading slot is always 20px wide. Swapping an unrestricted
               icon for one/two/three selection dots cannot move the label. */}
           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {picked.length === 1 && picked[0].logoName ? (
+            {picked.length === 1 && picked[0].agentName ? (
+              <AgentAvatar
+                name={picked[0].agentName!}
+                size={20}
+                className="shrink-0"
+              />
+            ) : picked.length === 1 && picked[0].logoName ? (
               <CompanyLogo
                 name={picked[0].logoName}
                 className="h-5 w-5 shrink-0 text-[7px]"
@@ -1329,7 +1351,9 @@ export function MultiColorSelect({
                 >
                   {on && <Check size={11} strokeWidth={3} />}
                 </span>
-                {o.logoName ? (
+                {o.agentName ? (
+                  <AgentAvatar name={o.agentName} size={20} className="shrink-0" />
+                ) : o.logoName ? (
                   <CompanyLogo
                     name={o.logoName}
                     className="h-5 w-5 shrink-0 text-[7px]"

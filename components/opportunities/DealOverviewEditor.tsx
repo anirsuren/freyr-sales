@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatDayLabel } from "@/lib/utils";
+import { agentIn } from "@/components/ui/AgentAvatar";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import {
   Banknote,
@@ -115,16 +117,13 @@ function usd(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
-/** "1 Sep 2026". A date belongs in a sentence, not as 2026-09-01. */
-function dayLabel(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return iso;
-  return new Date(t).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+/** "1 Sep 2026". A date belongs in a sentence, not as 2026-09-01.
+ *
+ *  THE PARSING LIVES IN lib/utils NOW. This built the date with `Date.parse`,
+ *  which reads a bare YYYY-MM-DD as UTC midnight and then printed it in the
+ *  local zone — so every date on this screen showed a day early anywhere west
+ *  of Greenwich. See `parseCalendarDate`. */
+const dayLabel = (iso: string) => formatDayLabel(iso);
 
 const INPUT =
   "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus";
@@ -1004,6 +1003,9 @@ export function DealOverviewEditor({
                       value: o.id,
                       label: o.name,
                       color: OFFERING_TONE,
+                      /* The six agents wear Saras's artwork; everything else
+                         keeps the offering tone dot. */
+                      ...(agentIn(o.name) ? { agentName: o.name } : {}),
                     })),
                   ]}
                 />
@@ -1279,7 +1281,14 @@ export function DealOverviewEditor({
               <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
                 <td>
                   {ro ? (
-                    <ReadValue text={`${currency} ${currencyMeta(currency).name}`} />
+                    <ReadValue
+                      /* THE SYMBOL, NOT JUST THE CODE (Anir, Sep 3: "in the
+                         currency show the actual ($) symbol"). Every figure in
+                         this card is written with the symbol, so the cell that
+                         names the currency should be readable in the same
+                         terms rather than making you translate USD into $. */
+                      text={`${currencyMeta(currency).symbol.trim()} ${currency} ${currencyMeta(currency).name}`}
+                    />
                   ) : (
                     <ColorSelect
                       value={currency}
@@ -1510,18 +1519,32 @@ export function DealOverviewEditor({
                         </tr>
                       ))}
                   </tbody>
+                  {/* THE TOTAL IS A ROW, NOT A SENTENCE (Anir, Sep 3: "remove
+                      the text at the bottom and put a total row at the
+                      bottom"). It was prose under the table — "6 months,
+                      adding up to $100,000,000." — so the one figure everybody
+                      checks sat outside the column of figures it belongs to,
+                      in a different typeface, unaligned with the numbers it
+                      sums. In the footer it lands under the column, in the
+                      same tabular figures, and the eye can add it up. */}
+                  <tfoot className="border-t-2 border-border-light bg-surface">
+                    <tr>
+                      <td className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        Total
+                        <span className="ml-1.5 font-normal normal-case tracking-normal">
+                          {accrualPlan.lines.length} month
+                          {accrualPlan.lines.length === 1 ? "" : "s"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-[13px] font-bold tnum text-text-primary">
+                        {scheduleMoney(
+                          accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-              <p className="mt-1.5 text-[12px] text-text-secondary">
-                {accrualPlan.lines.length} month
-                {accrualPlan.lines.length === 1 ? "" : "s"}, adding up to{" "}
-                <b className="tnum text-text-primary">
-                  {scheduleMoney(
-                    accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
-                  )}
-                </b>
-                .
-              </p>
             </>
           )}
         </div>

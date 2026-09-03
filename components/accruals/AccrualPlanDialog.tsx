@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
 import { CircleDot, Coins, Plus, Trash2, UserPen, X } from "lucide-react";
@@ -1320,7 +1321,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 className={deviating ? "opacity-60" : undefined}
                 onChange={(e) =>
                   editFormula({
-                    contractValue: e.target.value.replace(/[^0-9]/g, ""),
+                    contractValue: expandMoneyShorthand(e.target.value, { integer: true }),
                   })
                 }
               />
@@ -1602,7 +1603,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               tabIndex={split ? -1 : undefined}
                               aria-label={`Total for ${monthLabel(line.month)}`}
                               onChange={(e) =>
-                                editMonth(i, e.target.value.replace(/[^0-9]/g, ""))
+                                editMonth(i, expandMoneyShorthand(e.target.value, { integer: true }))
                               }
                               className={cn(
                                 "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",

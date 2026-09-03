@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -1265,7 +1266,7 @@ export function ContractsModule({
                    contract. Same three fields the accrual dialog uses: value,
                    start, count. */
                 onChange={(e) =>
-                  editSchedule({ value: e.target.value.replace(/[^0-9]/g, "") })
+                  editSchedule({ value: expandMoneyShorthand(e.target.value, { integer: true }) })
                 }
               />
             </Field>
@@ -1530,7 +1531,7 @@ export function ContractsModule({
                       inputMode="numeric"
                       aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
                       onChange={(e) =>
-                        editScheduleMonth(i, e.target.value.replace(/[^0-9]/g, ""))
+                        editScheduleMonth(i, expandMoneyShorthand(e.target.value, { integer: true }))
                       }
                       className={cn(
                         "h-8 min-w-0 flex-1 rounded-md border px-2 text-right text-[13px] tnum outline-none focus:border-blue-subtle",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import {
   Activity as ActivityIcon,
   CalendarClock,
@@ -682,7 +683,7 @@ export function OfferingActivities({
               <input
                 value={amount}
                 onChange={(event) =>
-                  setAmount(event.target.value.replace(/[^0-9]/g, ""))
+                  setAmount(expandMoneyShorthand(event.target.value, { integer: true }))
                 }
                 inputMode="numeric"
                 placeholder="250000"

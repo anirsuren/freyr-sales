@@ -223,3 +223,46 @@ export const POPOVER_SURFACE =
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * A DATE WITH NO TIME IS A CALENDAR DATE, NOT AN INSTANT.
+ *
+ * Anir, Sep 3, having typed 09/28/2026 and been shown "27 Sept 2026": "I said
+ * it's the 28th and when I press save it says the 27th."
+ *
+ * `Date.parse("2026-09-28")` is UTC midnight — that is the ECMAScript spec for
+ * a date-ONLY string, and it differs from how the same parser treats
+ * "2026-09-28T00:00". Render that instant anywhere behind UTC and it is still
+ * the previous evening, so the date reads a day early for everyone in the
+ * Americas and correct for everyone in Europe. An expected signing date has no
+ * time and no timezone: it is a square on a calendar, and it must survive
+ * being displayed.
+ *
+ * So a bare YYYY-MM-DD is built as LOCAL midnight and never converted.
+ * Anything carrying a time is left alone and parsed normally, because that
+ * genuinely is an instant.
+ */
+export function parseCalendarDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (plain) {
+    const [, y, m, d] = plain;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? null : new Date(t);
+}
+
+/** "28 Sept 2026" — a date in a sentence, never a day early. */
+export function formatDayLabel(
+  value: string | null | undefined,
+  locale = "en-GB"
+): string {
+  const d = parseCalendarDate(value);
+  if (!d) return value ?? "-";
+  return d.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}

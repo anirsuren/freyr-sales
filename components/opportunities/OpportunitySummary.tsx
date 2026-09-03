@@ -736,6 +736,26 @@ export function OpportunitySummary({
                     <span className="min-w-0 truncate" title={d.name}>
                       {d.name}
                     </span>
+                    {/* WHOSE DEAL IT IS, AS A FACE (Anir, Sep 3: "put the
+                        profile picture — not the name, just pfp is enough —
+                        somewhere on the row, in line, if I created it for
+                        example, or anyone else").
+
+                        The face and not the name: the name would cost a
+                        column's width on every row to repeat what one glance
+                        at a photo already says, and the owner is on the deal
+                        page in full for anybody who needs to read it. Nothing
+                        is drawn for the unowned deals — 97 of the book has no
+                        owner, and a placeholder head on all of them would say
+                        "somebody" where the truth is "nobody yet". */}
+                    {d.owner && (
+                      <Avatar
+                        name={d.owner}
+                        /* The component owns its own hover label. */
+                        tooltip
+                        className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                      />
+                    )}
                     {/* ONLY ON THE DEAL, never on the rows above it. A group's
                         confidence would have to be an average of the deals
                         under it, which is a number nobody typed and nobody can

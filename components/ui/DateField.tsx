@@ -39,6 +39,9 @@ function iso(d: Date): string {
  ).padStart(2, "0")}`;
 }
 
+/* Callers hand this a Date they built themselves, so the local-vs-UTC trap
+   lives at the point the STRING is parsed, not here. Any string entering this
+   file goes through parseCalendarDate for that reason. */
 function pretty(d: Date): string {
  return d.toLocaleDateString(undefined, {
  day: "numeric",
