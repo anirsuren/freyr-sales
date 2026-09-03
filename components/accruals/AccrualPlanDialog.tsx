@@ -9,6 +9,7 @@ import {
 } from "@/components/accruals/AccrualStatusChip";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Field, Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Textarea";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -424,11 +425,10 @@ export function AccrualPlanDialog({
    *  disagree about what moved. */
   const comparison = buildVersionComparison(deviateRows, deviationLines);
 
-  function startDeviating() {
-    setRevised({});
-    setReason("");
-    setDeviating(true);
-  }
+  /* startDeviating() went with the button (item 17). Deviate mode is no
+     longer something a person enters: any save that changes the schedule is
+     the deviation, and savePlan() asks first. The mode's own UI below is
+     unreachable and comes out next. */
 
   function stopDeviating() {
     setDeviating(false);
@@ -639,6 +639,104 @@ export function AccrualPlanDialog({
     setEditing(reshape({ ...editing, lines }));
   }
 
+
+  /**
+   * THE PENDING SAVE, held while the Accept/Cancel popup is up (item 17). It
+   * carries the exact lines that were about to be written, so pressing Accept
+   * commits what the person was looking at rather than re-reading a form that
+   * may have re-rendered underneath.
+   */
+  const [pendingSave, setPendingSave] = useState<{
+    lines: AccrualLine[];
+    contractValue: number;
+  } | null>(null);
+
+  /** Does this differ from the version that is current right now? */
+  function changedFromCurrent(
+    lines: AccrualLine[],
+    contractValue: number
+  ): boolean {
+    if (!savedPlan || !currentVersion) return false;
+    /* The contract value is part of the schedule's meaning: the same months
+       against a different total is a different plan, and item 14 counts a
+       change in Total Contract Value as a deviation in its own right. */
+    if (Math.round(savedPlan.contractValue || 0) !== contractValue) return true;
+    const before = currentVersion.lines;
+    if (before.length !== lines.length) return true;
+    const key = (l: AccrualLine) => `${l.month}:${Math.round(l.amount || 0)}`;
+    const a = [...before].map(key).sort();
+    const b = [...lines].map(key).sort();
+    return a.some((v, i) => v !== b[i]);
+  }
+
+  /**
+   * WHY, WRITTEN BY THE SYSTEM. The API refuses a reasonless deviation, and
+   * item 17's popup asks only Accept or Cancel — it never collects one. So the
+   * reason is composed from what actually moved, which is more use in the
+   * history than most typed ones: it names the months and the totals rather
+   * than saying "updated".
+   */
+  function autoReason(lines: AccrualLine[], contractValue: number): string {
+    const before = currentVersion?.lines ?? [];
+    const beforeBy = new Map(before.map((l) => [l.month, Math.round(l.amount || 0)]));
+    const afterBy = new Map(lines.map((l) => [l.month, Math.round(l.amount || 0)]));
+    const months = new Set([...beforeBy.keys(), ...afterBy.keys()]);
+    const moved = [...months].filter((m) => (beforeBy.get(m) ?? 0) !== (afterBy.get(m) ?? 0));
+    const wasTotal = before.reduce((n, l) => n + Math.round(l.amount || 0), 0);
+    const nowTotal = lines.reduce((n, l) => n + Math.round(l.amount || 0), 0);
+    const bits: string[] = [];
+    if (moved.length)
+      bits.push(
+        `${moved.length} month${moved.length === 1 ? "" : "s"} changed (${moved.sort().join(", ")})`
+      );
+    if (wasTotal !== nowTotal)
+      bits.push(`total ${formatMoney(wasTotal)} to ${formatMoney(nowTotal)}`);
+    if (Math.round(savedPlan?.contractValue || 0) !== contractValue)
+      bits.push(
+        `contract value ${formatMoney(Math.round(savedPlan?.contractValue || 0))} to ${formatMoney(contractValue)}`
+      );
+    return bits.length ? `Schedule edited: ${bits.join("; ")}.` : "Schedule edited.";
+  }
+
+  /** Accept on the popup: append the next version (item 18) and close. */
+  async function commitPendingSave() {
+    const pending = pendingSave;
+    setPendingSave(null);
+    if (!pending || !savedPlan) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/revenue-accruals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          op: "deviate",
+          opportunityId: savedPlan.opportunityId,
+          contractValue: pending.contractValue,
+          lines: pending.lines.map((l) => ({
+            month: l.month,
+            ...(l.ots === undefined && l.arr === undefined
+              ? { amount: l.amount }
+              : { ots: l.ots ?? 0, arr: l.arr ?? 0 }),
+          })),
+          reason: autoReason(pending.lines, pending.contractValue),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        toast(data?.error || "That didn't save.", "error");
+        return;
+      }
+      if (data.state) onSaved?.(data.state as RevenueAccrualsState);
+      toast("Saved. A deviation has been logged.");
+      router.refresh();
+      onClose();
+    } catch {
+      toast("That didn't save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function savePlan() {
     const deal = dealById.get(editing.opportunityId);
     if (!deal) {
@@ -660,6 +758,50 @@ export function AccrualPlanDialog({
       .filter((l) => l.month);
     if (!lines.length) {
       toast("Add at least one month, or press Spread evenly.", "error");
+      return;
+    }
+    /**
+     * ITEM 12 — "Revenue Accrual total should not exceed Total Contract
+     * Value."
+     *
+     * Refused, not rounded down and not warned about: a schedule that accrues
+     * more than the contract is worth is wrong in a way only the person
+     * typing it can fix, and every total downstream — the report, the frozen
+     * monthly sheet, the goal it feeds — would carry the error silently.
+     * Equal is fine; over is not.
+     */
+    const contractValue = Math.round(Number(editing.contractValue) || 0);
+    const scheduled = lines.reduce((sum, l) => sum + l.amount, 0);
+    if (contractValue > 0 && scheduled > contractValue) {
+      toast(
+        `The schedule adds up to ${formatMoney(scheduled)}, which is more than the contract value of ${formatMoney(contractValue)}. Take ${formatMoney(scheduled - contractValue)} off before saving.`,
+        "error"
+      );
+      return;
+    }
+    /**
+     * ITEMS 17 AND 18 — EVERY CHANGE IS A DEVIATION.
+     *
+     * Manoj's sheet, item 17: "Remove 'Deviate' button from Accrual plan
+     * scheduler. Any change should be treated as deviation. If the user
+     * changes anything and clicks on Save, a pop should appear which says
+     * 'Changes made to this revenue accrual schedule will be made current and
+     * Deviation will be logged'. Provide an option for 'Accept' or 'Cancel'."
+     * And item 18: "All changes made by the user to the Revenue Schedule
+     * should be logged as a latest up-version."
+     *
+     * This reverses the rule the dialog was built on. Deviating used to be a
+     * deliberate second act, so that the deviation count on his tab counted
+     * decisions rather than keystrokes; Manoj wants the opposite, and the
+     * confirm is what keeps it from counting keystrokes: nothing is appended
+     * until somebody presses Accept.
+     *
+     * A FIRST SAVE IS NOT A DEVIATION. There is nothing to deviate FROM until
+     * a version exists, so the first write still goes through `save` and
+     * becomes version 1.
+     */
+    if (currentVersion && changedFromCurrent(lines, contractValue)) {
+      setPendingSave({ lines, contractValue });
       return;
     }
     setBusy(true);
@@ -1411,45 +1553,19 @@ export function AccrualPlanDialog({
             >
               Cancel
             </button>
-            {/* DEVIATE SITS BESIDE THE SAVE (Suren, Sep 1: "Beside this
-                button, if he's going to change it, he has to put a button
-                called Deviate").
+            {/* NO DEVIATE BUTTON (Manoj's change sheet, item 17: "Remove
+                'Deviate' button from Accrual plan scheduler. Any change should
+                be treated as deviation").
 
-                IT IS NOT A SECOND SAVE. Saving writes into the version that is
-                already there; this one keeps that version and adds the next
-                one. A plan that has never been saved has nothing to branch
-                from, so the button says so instead of posting a deviate the
-                API would answer 404 to.
+                It used to sit here, beside Save, on Suren's Sep 1 instruction,
+                because a deviation was a deliberate second act. It is not one
+                any more: Save is the only button, and any save that actually
+                changes the schedule asks first and then logs the deviation
+                itself. See savePlan().
 
-                THE GATE IS UNCHANGED AND UNTOUCHED. This whole dialog is only
-                mounted for somebody who may write. The module checks canWrite
-                before mounting it and a deal page checks mayPlan before
-                offering the door, so a view-only account never reaches this
-                footer at all, and the API asks the same question again. */}
-            {editing.opportunityId ? (
-              currentVersion ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={startDeviating}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[color:rgba(109,40,217,0.4)] px-3.5 py-2 text-[13px] font-semibold text-[#6D28D9] transition-colors hover:bg-[rgba(139,92,246,0.10)] disabled:opacity-60 dark:border-[color:rgba(196,181,253,0.42)] dark:text-[#C4B5FD]"
-                >
-                  <UserPen size={14} strokeWidth={2.2} />
-                  Deviate
-                </button>
-              ) : (
-                <Tooltip label="A deviation changes a plan that already exists. Save this one first and the button opens.">
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-tertiary opacity-70"
-                  >
-                    <UserPen size={14} strokeWidth={2.2} />
-                    Deviate
-                  </button>
-                </Tooltip>
-              )
-            ) : null}
+                THE GATE IS UNCHANGED. This dialog is only mounted for somebody
+                who may write — the module checks canWrite, a deal page checks
+                mayPlan, and the API asks again. */}
             <button
               type="button"
               disabled={busy || !editing.opportunityId}
@@ -1461,6 +1577,22 @@ export function AccrualPlanDialog({
           </>
         )}
       </div>
+
+      {/* ITEM 17's POPUP, in his words exactly. Accept and Cancel, nothing
+          else: no reason box, because his sheet does not ask for one — the
+          reason is composed from what moved (see autoReason). Cancel leaves
+          the dialog open on the edited figures, so nothing typed is lost. */}
+      <ConfirmDialog
+        open={pendingSave !== null}
+        onClose={() => setPendingSave(null)}
+        onConfirm={() => void commitPendingSave()}
+        title="Save these changes?"
+        body="Changes made to this revenue accrual schedule will be made current and Deviation will be logged."
+        /* "Accept" is his word; the dialog's own cancel button already
+           reads "Cancel", which is the other one. */
+        confirmLabel="Accept"
+        busy={busy}
+      />
     </Modal>
   );
 }
