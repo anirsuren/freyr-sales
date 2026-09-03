@@ -660,6 +660,20 @@ export async function addOpportunity(input: OpportunityInput): Promise<Opportuni
   return created;
 }
 
+/** The starred fields on the deal screen, by the name they carry on the
+ *  record. Mirrors REQUIRED_FIELDS in DealOverviewEditor; the ones that live
+ *  on the offering line are guarded by normalizeLines, not here. */
+const REQUIRED_ON_UPDATE = [
+  "name",
+  "customer",
+  "customerId",
+  "status",
+  "level",
+  "dealType",
+  "currency",
+  "estimatedTcv",
+] as const;
+
 export async function updateOpportunity(
   id: string,
   patch: OpportunityInput
@@ -679,6 +693,38 @@ export async function updateOpportunity(
     updatedAt: new Date().toISOString(),
   });
   if (!merged) throw new Error("That opportunity could not be saved.");
+  /**
+   * A MANDATORY FIELD THAT HAD A VALUE NEVER COMES BACK EMPTY.
+   *
+   * Manoj's item 4 is that the starred fields "cannot be left blank", and
+   * `DealOverviewEditor` enforces exactly that in the browser: clear one that
+   * was filled and it reverts rather than saving. Nothing enforced it here,
+   * and `normalizeOne` answers `undefined` for a value it does not recognise
+   * — so an update carrying a status of "Prove" (not one of the eight) did not
+   * fail and did not keep "Qualify"; it wiped the status off the deal. Same
+   * for a currency of "XXX". `level` already behaved correctly by falling back
+   * to its previous value, which is what made the difference visible.
+   *
+   * Found by API, not by clicking: the selects on screen only offer real
+   * options, so a person cannot send these. A script, the agent, or an import
+   * can, and this route's own rule about the add path applies just as well
+   * here — a check that lives only in the browser is a suggestion.
+   *
+   * NOT A NEW REFUSAL. Valid input behaves exactly as before; the only change
+   * is that a rejected value leaves the old one standing instead of deleting
+   * it. Fields that were already empty stay editable, same as in the editor.
+   */
+  const prior = state.opportunities[idx];
+  for (const k of REQUIRED_ON_UPDATE) {
+    const before = (prior as Record<string, unknown>)[k];
+    const after = (merged as Record<string, unknown>)[k];
+    const empty = (v: unknown) =>
+      v === undefined || v === null || v === "" ||
+      (typeof v === "number" && !Number.isFinite(v));
+    if (empty(after) && !empty(before)) {
+      (merged as Record<string, unknown>)[k] = before;
+    }
+  }
   // A DEAL THAT PREDATES NUMBERING GETS ITS NUMBER THE MOMENT IT IS TOUCHED.
   // The form promises "OPP-0001 on save" on every record without one, and
   // assigning only on create left that promise unkept for the whole imported
