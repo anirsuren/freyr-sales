@@ -30,7 +30,6 @@ import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { PinnableTable } from "@/components/ui/PinnableTable";
-import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -704,11 +703,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <p className="text-[12px] text-text-secondary truncate">
                           {r.title}
                         </p>
-                        <CreatedStamp
-                          verb="Joined"
-                          at={r.joinedAt}
-                          className="mt-0.5 text-[11px] text-text-tertiary"
-                        />
+{/* NO JOIN DATE ON THE ROSTER (Saras, Sep 2: "can you shift user
+                            joining date info from the 'Team' module to 'Admin'
+                            module > 'Team members' tab... No one other than
+                            Admin users need to see this info", approved by
+                            Anir Sep 3).
+
+                            /team is the roster everybody reads: who somebody
+                            is, what they do, how to reach them. When they
+                            joined is an administrative fact, and it now lives
+                            on Admin > Team members, which only admins open, in
+                            all three views. */}
                       </div>
                       <span className="relative z-10 flex shrink-0 items-center gap-1.5">
                         <TeamsButton url={r.teamsUrl} name={r.name} />
@@ -1056,11 +1061,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                 would have shipped it where nobody looks.
                                 Silent for the synthetic roster, which has no
                                 real join date to report. */}
-                            <CreatedStamp
-                              verb="Joined"
-                              at={r.joinedAt}
-                              className="block whitespace-nowrap text-[11px] text-text-tertiary"
-                            />
+{/* NO JOIN DATE ON THE ROSTER (Saras, Sep 2: "can you shift user
+                            joining date info from the 'Team' module to 'Admin'
+                            module > 'Team members' tab... No one other than
+                            Admin users need to see this info", approved by
+                            Anir Sep 3).
+
+                            /team is the roster everybody reads: who somebody
+                            is, what they do, how to reach them. When they
+                            joined is an administrative fact, and it now lives
+                            on Admin > Team members, which only admins open, in
+                            all three views. */}
                           </span>
                         </span>
                     </td>

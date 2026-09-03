@@ -294,171 +294,153 @@ export function MemberRoles() {
               Nobody matches “{query}”.
             </p>
           ) : (
-          <div className="space-y-2">
-          {people.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
-            >
-              <Avatar name={m.name} className="h-8 w-8 shrink-0 text-[10px]" />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="truncate text-[13px] font-semibold text-text-primary">
-                    {m.name}
-                  </span>
-                  {/* WHICH ONE OF THESE IS ME (Anir, Aug 29: "whoever I am
-                      needs to have a proper label on this page, like it should
-                      say You, just like it does on the other pages"). Forty
-                      rows of names and one of them decides what he himself can
-                      do — the same pill the performance pickers and the
-                      offering owners use, so it reads as the app's one way of
-                      saying this rather than a new one invented here. */}
-                  {isMe(m) && (
-                    <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
-                      You
-                    </span>
-                  )}
-                  {!m.active && (
-                    <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-                      Suspended
-                    </span>
-                  )}
-                </span>
-                <span className="mt-0.5 block truncate text-[11.5px] text-text-secondary">
-                  {m.email}
-                </span>
-              </span>
-              {/* THE BASE ROLE DROPDOWN IS GONE. PRIVILEGES ARE THE SYSTEM.
-                  Anir, Sep 2: "you can remove the base role part itself, and
-                  you can just retain the privileges... like it's complicated,
-                  I just want to give privileges, that's it."
+          <div className="overflow-x-auto rounded-xl border border-border-light bg-white">
+            {/* AN ACTUAL TABLE (Anir, Sep 3: "it's so ugly. It should be like
+                an actual table. Why are you stuffing everything to the
+                right?").
 
-                  This reverses his own Aug 29 call to keep both, and he is
-                  right to reverse it: two controls answering "what can this
-                  person do" is one too many, and the base role was silently
-                  the one doing the work while the ticks below sat empty.
-
-                  DONE IN THE SAFE ORDER, which matters. Every one of the 40
-                  active people was first given the privilege their base role
-                  already resolved to (bd_owner 16, bd_member 20, admin 5, plus
-                  the 6 bo_owner already held), so removing this control took
-                  nobody's access away: the ticks below now say out loud what
-                  the role was saying quietly. Removing it BEFORE that backfill
-                  would have stripped 33 of 40 people, including 3 of the 4
-                  admins.
-
-                  The `role` field itself is untouched in the data and
-                  lib/privileges still falls back to it, so an invite that sets
-                  a role, and any row nobody has ticked yet, both still work. */}
-              {/* WHAT THEY HOLD, AT A GLANCE. Same badges the split roster
-                  draws, so a person reads the same on both screens. Capped so
-                  somebody with six does not push the controls off the row. */}
-              {(() => {
-                const b = badgesFor(m);
-                if (!b.length) return null;
-                const shown = b.slice(0, 4);
-                return (
-                  <span className="flex shrink-0 items-center gap-1">
-                    {shown.map((p) => (
-                      <span
-                        key={p.id}
-                        title={p.label}
-                        aria-label={p.label}
-                        style={{
-                          backgroundColor: `${privilegeColor(p.id)}1F`,
-                          color: privilegeColor(p.id),
-                        }}
-                        /* SIZED TO THE TEXT, NOT TO A SQUARE (Anir, Sep 3:
-                           "these look horrible. The text is literally popping
-                           under the circle, and you can't have it like that").
-                           A fixed h-5 w-5 box with no padding is 20px wide,
-                           and "BDm" and "ADM" are wider than that at 9px, so
-                           every three-letter short spilled out of its own
-                           chip. A minimum width keeps a one-letter short
-                           square; padding lets the rest grow. */
-                        className="flex h-5 min-w-5 items-center justify-center whitespace-nowrap rounded-md px-1 text-[9px] font-bold"
+                It was a stack of cards with the facts flexed to the right
+                edge, which is why nothing lined up: every row's dates sat
+                wherever that row's name happened to end, and each pair of
+                dates had to carry its own little label because there was no
+                header to carry it. A table has one header, one set of column
+                edges, and forty rows that agree with them. */}
+            <table className="w-full min-w-[820px] table-fixed border-collapse text-left">
+              <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <tr>
+                  <th className="w-[34%] px-4 py-2.5">Person</th>
+                  <th className="w-[16%] px-4 py-2.5">Privileges</th>
+                  <th className="w-[13%] px-4 py-2.5">Status</th>
+                  <th className="w-[13%] px-4 py-2.5">Last seen</th>
+                  <th className="w-[14%] px-4 py-2.5">Joined</th>
+                  {/* The button says what it does; a header over it would be
+                      a second label for one control. */}
+                  <th className="w-[10%] px-4 py-2.5">
+                    <span className="sr-only">Open privileges</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {people.map((m) => (
+                  <tr key={m.id} className="align-middle transition-colors hover:bg-surface/60">
+                    <td className="px-4 py-2.5">
+                      <span className="flex min-w-0 items-center gap-3">
+                        <Avatar name={m.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-2">
+                            <span className="truncate text-[13px] font-semibold text-text-primary">
+                              {m.name}
+                            </span>
+                            {/* WHICH ONE OF THESE IS ME (Anir, Aug 29:
+                                "whoever I am needs to have a proper label on
+                                this page, like it should say You"). */}
+                            {isMe(m) && (
+                              <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                                You
+                              </span>
+                            )}
+                            {!m.active && (
+                              <span className="shrink-0 rounded-full bg-[rgba(220,38,38,0.10)] px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-[color:#DC2626]">
+                                Suspended
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11.5px] text-text-secondary">
+                            {m.email}
+                          </span>
+                        </span>
+                      </span>
+                    </td>
+                    {/* WHAT THEY HOLD, AT A GLANCE. Same badges the split
+                        roster draws, so a person reads the same on both
+                        screens. Each chip sizes to its own text: a fixed 20px
+                        box cut "BDm" and "ADM" in half. */}
+                    <td className="px-4 py-2.5">
+                      {(() => {
+                        const b = badgesFor(m);
+                        if (!b.length)
+                          return <span className="text-[11.5px] text-text-tertiary">None</span>;
+                        const shown = b.slice(0, 4);
+                        return (
+                          <span className="flex flex-wrap items-center gap-1">
+                            {shown.map((p) => (
+                              <span
+                                key={p.id}
+                                title={p.label}
+                                aria-label={p.label}
+                                style={{
+                                  backgroundColor: `${privilegeColor(p.id)}1F`,
+                                  color: privilegeColor(p.id),
+                                }}
+                                className="flex h-5 min-w-5 items-center justify-center whitespace-nowrap rounded-md px-1 text-[9px] font-bold"
+                              >
+                                {p.short}
+                              </span>
+                            ))}
+                            {b.length > shown.length && (
+                              <span className="text-[10px] font-semibold text-text-tertiary">
+                                +{b.length - shown.length}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5">
+                      <span className="flex items-center gap-1.5 text-[11.5px]">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            isOnline(m.lastSeenAt) ? "bg-success" : "bg-border"
+                          )}
+                        />
+                        <span
+                          className={
+                            isOnline(m.lastSeenAt)
+                              ? "font-semibold text-success"
+                              : "text-text-tertiary"
+                          }
+                        >
+                          {isOnline(m.lastSeenAt) ? "Online" : "Offline"}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[11.5px] text-text-tertiary">
+                      {lastSeenLabel(m.lastSeenAt)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[11.5px] text-text-tertiary">
+                      {m.joinedAt
+                        ? new Date(m.joinedAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "Not recorded"}
+                    </td>
+                    {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in
+                        split view is it different from the table view? That's
+                        a huge problem"). This opens the ten privileges, which
+                        is where BO Owner, the one an offering owner actually
+                        needs, lives. */}
+                    <td className="px-4 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setPrivFor(m)}
+                        aria-label={`Privileges for ${m.name}`}
+                        className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
                       >
-                        {p.short}
-                      </span>
-                    ))}
-                    {b.length > shown.length && (
-                      <span className="text-[10px] font-semibold text-text-tertiary">
-                        +{b.length - shown.length}
-                      </span>
-                    )}
-                  </span>
-                );
-              })()}
-              {/* STATUS, LAST SEEN AND SIGNED UP, ABSORBED FROM SETTINGS.
-                  Anir, Sep 2: "this is useful information about whether a
-                  member is online or offline, when they were last seen, and
-                  the date when they made their account. If you just shift all
-                  of this to the main admin module, that will be good... if you
-                  merge the two, basically."
-
-                  It was on Settings > Team, a second screen listing the same
-                  people from the same endpoint. One list of members now, in
-                  the place where their access is set. Hidden below xl so the
-                  row does not crush on a narrow window; the facts are still on
-                  the person's own record. */}
-              <span className="hidden shrink-0 items-center gap-1.5 text-[11.5px] xl:flex">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    isOnline(m.lastSeenAt) ? "bg-success" : "bg-border"
-                  )}
-                />
-                <span className={isOnline(m.lastSeenAt) ? "font-semibold text-success" : "text-text-tertiary"}>
-                  {isOnline(m.lastSeenAt) ? "Online" : "Offline"}
-                </span>
-              </span>
-              {/* EACH DATE SAYS WHICH DATE IT IS. There is no header row on
-                  this list — it is cards, not a table — so two bare dates sat
-                  side by side with nothing to tell you that one is the last
-                  time they were here and the other is the day they joined
-                  (Saras, Sep 2, asked for both as columns). A one-word label
-                  above each is the header row a card list cannot have. */}
-              <span className="hidden w-[96px] shrink-0 xl:block">
-                <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary/70">
-                  Last seen
-                </span>
-                <span className="block text-[11.5px] text-text-tertiary">
-                  {lastSeenLabel(m.lastSeenAt)}
-                </span>
-              </span>
-              <span className="hidden w-[104px] shrink-0 xl:block">
-                <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary/70">
-                  Joined
-                </span>
-                <span className="block text-[11.5px] text-text-tertiary">
-                  {m.joinedAt
-                    ? new Date(m.joinedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "Not recorded"}
-                </span>
-              </span>
-              {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in split
-                  view is it different from the table view? That's a huge
-                  problem"). This opens the ten privileges, which is where BO
-                  Owner, the one an offering owner actually needs, lives. */}
-              <button
-                type="button"
-                onClick={() => setPrivFor(m)}
-                aria-label={`Privileges for ${m.name}`}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
-              >
-                <KeyRound size={13} strokeWidth={2.2} />
-                {(() => {
-                  const n = heldFor(m.name).size;
-                  return n ? `${n} privilege${n === 1 ? "" : "s"}` : "Privileges";
-                })()}
-              </button>
-            </div>
-          ))}
+                        <KeyRound size={13} strokeWidth={2.2} />
+                        {(() => {
+                          const n = heldFor(m.name).size;
+                          return n ? `${n}` : "Set";
+                        })()}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           )}
         </div>
