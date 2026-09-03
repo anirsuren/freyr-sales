@@ -138,7 +138,6 @@ const STATUS_COLOR: Record<string, string> = {
   Pilot: "#5E5CE6",
   Propose: "#0071E3",
   "Submitted to client": "#7C3AED",
-  "Create contract": "#4338CA",
   "Under review": "#B4318F",
   "On hold": "#8E98A8",
   Won: "#16A34A",

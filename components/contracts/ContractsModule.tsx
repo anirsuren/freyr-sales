@@ -188,14 +188,14 @@ export function ContractsModule({
   const drafts = contracts.filter((c) => c.status === "Draft");
   const contracted = signed.reduce((s, c) => s + c.value, 0);
 
-  /* Deals sitting at "Create contract" with nothing drafted — the whole point
+  /* Deals sitting at "Submitted to client" with nothing drafted — the whole point
      of adding that status was that somebody then does this. */
   const awaiting = useMemo(() => {
     const done = new Set(
       contracts.map((c) => c.opportunityId).filter(Boolean) as string[]
     );
     return deals.filter(
-      (d) => d.status === "Create contract" && !done.has(d.id)
+      (d) => d.status === "Submitted to client" && !done.has(d.id)
     );
   }, [deals, contracts]);
 
@@ -529,7 +529,7 @@ export function ContractsModule({
           value={String(awaiting.length)}
           color="#B45309"
           warn={awaiting.length > 0}
-          sub={'at "Create contract" with nothing drafted'}
+          sub={'at "Submitted to client" with nothing drafted'}
         />
       </div>
 
@@ -544,8 +544,8 @@ export function ContractsModule({
         <section className="mt-4 rounded-xl border border-[rgba(180,83,9,0.3)] bg-white p-5 shadow-card">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <AlertTriangle size={15} strokeWidth={2} style={{ color: "#B45309" }} />
-            Deals sitting at “Create contract”
-            <InfoHint text="These deals are marked “Create contract” and nobody has written the contract yet. That is the point where sales hands the deal to delivery. Every deal here is a handover still waiting." />
+            Deals sitting at “Submitted to client”
+            <InfoHint text="These deals are marked “Submitted to client” and nobody has written the contract yet. That is the point where sales hands the deal to delivery: press Convert to contract on the deal. Every deal here is a handover still waiting." />
           </h2>
           <div className="mt-2 divide-y divide-border-light">
             {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((d) => (
@@ -676,7 +676,7 @@ export function ContractsModule({
           }
           description={
             contracts.length === 0
-              ? "Nothing has been contracted yet. Use New contract, up in the corner, to write the first one. A deal that reaches “Create contract” also turns up here waiting for one."
+              ? "Nothing has been contracted yet. Use New contract, up in the corner, to write the first one. A deal at “Submitted to client” also turns up here waiting for one."
               : "Clear the search or the filter."
           }
         />

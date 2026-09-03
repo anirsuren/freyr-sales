@@ -96,7 +96,7 @@ const OFFERINGS = [
 ];
 
 const DEAL_STATUSES = [
-  "Qualify", "Pilot", "Propose", "Submitted to client", "Create contract",
+  "Qualify", "Pilot", "Propose", "Submitted to client", "Under review",
 ];
 const DEAL_LEVELS = ["Pipeline", "Go get", "High confidence"];
 const CONFIDENCE = [10, 25, 50, 75, 99];

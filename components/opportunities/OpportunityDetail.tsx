@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, CalendarClock, Package, Pencil, Plus, Target } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
@@ -434,19 +434,33 @@ export function OpportunityDetail({
               button already says it, and the access shield in the top bar
               answers it properly on hover — which is where he asked for the
               answer to live. */}
-          {/* WITH THE DEAL NAMED, so the list lands ON it (Anir, Aug 31: "it
+          {/* CONVERT TO CONTRACT, WHERE "OPEN IN THE PIPELINE" WAS (Manoj's
+              change sheet, item 8: "Remove 'Open in Pipeline' and have
+              'Convert to Contract' instead").
+
+              The two are not the same kind of thing, and that is the point.
+              "Open in the pipeline" navigated you back to the list you had
+              just come from; Anir had already said of it, Aug 31, that "it
               doesn't look like the button that says 'Open in the pipeline'
-              even does anything"). A bare /opportunities dropped you at the
-              top of a hundred rows with your deal folded away inside a shut
-              group — indistinguishable from nothing happening. `?deal=` is the
-              browser's own focus mechanism: it unfolds the group, scrolls to
-              the row and flashes it. */}
-          <Link
-            href={`/opportunities?deal=${encodeURIComponent(deal.id)}`}
-            className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-          >
-            Open in the pipeline
-          </Link>
+              even does anything". This is the hand-off itself, and it is now
+              the ONLY way a deal becomes a contract: item 7 removed "Create
+              contract" as a status, so parking the deal somewhere no longer
+              does it.
+
+              It opens the same dialog the Contracts module opens, with the
+              deal and its money already filled in. Owners and admins only —
+              the same rule that gates Edit deal, because writing a contract
+              off somebody else's deal is not a read. */}
+          {verdict.mayEdit ? (
+            <button
+              type="button"
+              onClick={() => setCreating("contracts")}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+            >
+              <FileSignature size={14} strokeWidth={2.2} />
+              Convert to contract
+            </button>
+          ) : null}
         </span>
       </div>
 

@@ -142,11 +142,21 @@ export const OPPORTUNITY_STATUSES = [
   "Pilot",
   "Propose",
   "Submitted to client",
-  /** Suren, Aug 25: "you can have one more status here — submitted to client,
-   *  and after that, create contract… so there you close the thing." This is
-   *  where sales logically hands off: the contract is drafted here and the
-   *  delivery side picks the package up. See lib/contracts.ts. */
-  "Create contract",
+  /**
+   * "CREATE CONTRACT" IS NOT A STATUS ANY MORE (Manoj's change sheet, item 7:
+   * "Remove 'Create Contract' from 'Opportunity Status'").
+   *
+   * It was one, on Suren's Aug 25 instruction: "you can have one more status
+   * here — submitted to client, and after that, create contract… so there you
+   * close the thing." Manoj reverses that, and item 8 says what replaces it:
+   * "Remove 'Open in Pipeline' and have 'Convert to Contract' instead." So the
+   * hand-off is now an ACTION a person takes on the deal, not a place the deal
+   * parks in.
+   *
+   * `lib/contracts.ts` and the Contracts module still work: the queue of deals
+   * waiting for a contract now reads "Submitted to client with nothing
+   * drafted", which is the same set of deals one status earlier.
+   */
   "Under review",
   "On hold",
   "Won",

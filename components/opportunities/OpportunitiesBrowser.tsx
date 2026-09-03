@@ -143,7 +143,6 @@ const STATUS_ICON: Record<string, LucideIcon> = {
   Pilot: FlaskConical,
   Propose: FileText,
   "Submitted to client": Send,
-  "Create contract": FileSignature,
   "Under review": Hourglass,
   "On hold": PauseCircle,
   Won: Trophy,
@@ -162,7 +161,6 @@ const STATUS_COLOR: Record<string, string> = {
   "Submitted to client": "#7C3AED",
   /* Deep indigo: the last sales step before delivery owns it. Not green —
      green is Won, and drafting a contract is not the same as signing one. */
-  "Create contract": "#4338CA",
   "Under review": "#B4318F",
   "On hold": "#8E98A8",
   Won: "#16A34A",

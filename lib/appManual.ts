@@ -110,9 +110,10 @@ future revenue that arrives in a later financial year. A deal carrying no
 confidence at all keeps whatever level it was imported with, because a blank
 cell is not a verdict.
 
-STATUSES: Qualify, Pilot, Propose, Submitted to client, Create contract, Under
-review, On hold, Won, Lost. "Create contract" is the hand-off point — a deal
-sitting there with no contract drafted shows in a queue on the Contracts page.
+STATUSES: Qualify, Pilot, Propose, Submitted to client, Under review, On hold,
+Won, Lost. "Submitted to client" is the hand-off point — a deal sitting there
+with no contract drafted shows in a queue on the Contracts page, and the
+"Convert to contract" button on the deal is how you draft one.
 
 WEIGHTED means value x confidence — the probability-adjusted figure. A $800K
 deal at 60% confidence shows $480K weighted. The tiles at the top give the

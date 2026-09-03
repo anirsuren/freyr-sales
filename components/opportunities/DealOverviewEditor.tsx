@@ -493,14 +493,16 @@ export function DealOverviewEditor({
    * answer about a deal nobody has a question about.
    */
   const [currency, setCurrency] = useState<string>(deal.currency ?? BASE_CURRENCY);
-  const [value, setValue] = useState(
-    deal.value === undefined ? "" : String(deal.value)
-  );
   const [acv, setAcv] = useState(
     deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)
   );
   const [tcv, setTcv] = useState(
-    deal.estimatedTcv === undefined ? "" : String(deal.estimatedTcv)
+    /* One box for both fields, so it opens on whichever has been said. */
+    deal.estimatedTcv !== undefined
+      ? String(deal.estimatedTcv)
+      : deal.value === undefined
+        ? ""
+        : String(deal.value)
   );
   const [confidence, setConfidence] = useState(
     deal.confidence === undefined ? "" : String(deal.confidence)
@@ -889,11 +891,16 @@ export function DealOverviewEditor({
         icon={Banknote}
         /* The figures people quote. Open. */
         startOpen
-        title="The money"
+        /* "REVENUE ACCRUAL", NOT "THE MONEY" (Manoj's change sheet, item 3:
+           "Change 'The Money' to 'Revenue Accrual'. Under Revenue Accrual,
+           provide Revenue Accrual schedule"), holding exactly the fields his
+           item 5 lists: Project Currency, Estimated TCV, Estimated ACV,
+           Revenue Accrual Schedule. */
+        title="Revenue Accrual"
         hint="Entered in the money it was agreed in. The dollar figures underneath are worked out from the rate and never stored."
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <Field label="Currency" state={state.currency} error={errors.currency}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Project currency" state={state.currency} error={errors.currency}>
             {ro ? (
               <ReadValue text={`${currency} ${currencyMeta(currency).name}`} />
             ) : (
@@ -918,36 +925,27 @@ export function DealOverviewEditor({
               />
             )}
           </Field>
-          <Field
-            label="Value"
-            hint={localSymbol}
-            state={state.value}
-            error={errors.value}
-          >
-            {ro ? (
-              <ReadValue
-                text={value === "" ? "Not entered" : `${localSymbol}${value}`}
-                empty={value === ""}
-              />
-            ) : (
-              <input
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onBlur={() =>
-                  commit("value", { value: num(value) ?? 0 }, () =>
-                    setValue(deal.value === undefined ? "" : String(deal.value))
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                inputMode="numeric"
-                className={INPUT}
-                placeholder="50000"
-              />
-            )}
-          </Field>
-          {/* BOTH START EMPTY AND STAY EMPTY UNTIL SOMEBODY SAYS THEM. A zero
+          {/* ONE MONEY NUMBER, NOT TWO (Manoj's change sheet, item 2: "Change
+              Value to 'Estimated TCV'. We don't need Value and Estimated TCV
+              separately").
+
+              There were two boxes and they meant the same thing. `value` was
+              the operative one — goals, weighting, contracts and every rollup
+              read it — while `estimatedTcv` was a second, optional number that
+              `estimatedTcvOf` preferred when somebody had typed it. Two fields
+              for one fact is how a deal ends up worth two different amounts on
+              two different screens.
+
+              So the Estimated TCV box below is now the only money input, and
+              it writes BOTH fields to the same number. Nothing is migrated and
+              no reader changes: whichever of the two a screen happens to read,
+              it gets the figure the person typed.
+
+              ACV stays its own field and stays optional. TCV is the whole
+              signed number, ACV is one year of it, and no divisor in the record
+              can turn one into the other.
+
+              ACV STARTS EMPTY AND STAYS EMPTY UNTIL SOMEBODY SAYS IT. A zero
               here is a claim that the deal is worth nothing; blank is the
               truth, which is that it has not been entered. */}
           <Field
@@ -999,12 +997,21 @@ export function DealOverviewEditor({
                 value={tcv}
                 onChange={(e) => setTcv(e.target.value)}
                 onBlur={() =>
-                  commit("estimatedTcv", { estimatedTcv: num(tcv) }, () =>
-                    setTcv(
-                      deal.estimatedTcv === undefined
-                        ? ""
-                        : String(deal.estimatedTcv)
-                    )
+                  /* BOTH FIELDS, ONE NUMBER. See the note above the ACV field:
+                     `value` is what the rollups read and `estimatedTcv` is what
+                     `estimatedTcvOf` prefers, so they have to agree or the deal
+                     is worth two amounts. */
+                  commit(
+                    "estimatedTcv",
+                    { estimatedTcv: num(tcv), value: num(tcv) ?? 0 },
+                    () =>
+                      setTcv(
+                        deal.estimatedTcv === undefined
+                          ? deal.value === undefined
+                            ? ""
+                            : String(deal.value)
+                          : String(deal.estimatedTcv)
+                      )
                   )
                 }
                 onKeyDown={(e) => {
@@ -1035,7 +1042,7 @@ export function DealOverviewEditor({
               This deal is already in US dollars, so there is nothing to convert.
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold text-text-primary">
                   In US dollars
@@ -1051,11 +1058,15 @@ export function DealOverviewEditor({
                 </p>
               </div>
               {fxState === "ready" ? (
-                [value, acv, tcv].map((typed, i) => {
+                /* THREE COLUMNS BECAME TWO, with the money box (item 2). The
+                   automatic row mirrors the typed row above it, so it carries
+                   one dollar figure per field that exists — and Value no
+                   longer does. */
+                [tcv, acv].map((typed, i) => {
                   const shown = asUsd(typed);
                   return (
                     <p
-                      key={["value", "acv", "tcv"][i]}
+                      key={["tcv", "acv"][i]}
                       className={
                         shown.known
                           ? "min-w-0 self-center truncate text-[13px] font-semibold text-text-primary"
