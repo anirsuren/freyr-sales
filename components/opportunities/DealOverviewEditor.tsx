@@ -26,6 +26,7 @@ import {
   CURRENCIES,
   convertToUsd,
   currencyMeta,
+  rateFor,
   setFxRates,
 } from "@/lib/currency";
 import {
@@ -428,6 +429,29 @@ function ReadValue({
  * unsaveable because the sign date is not known yet. The existing `missing`
  * check on the deal is what actually chases the gaps.
  */
+/**
+ * THE FIELDS MANOJ STARRED, by the key each one saves under. Revenue type and
+ * Estimated ACV are unstarred on his sheet and are absent here on purpose.
+ *
+ * `estimatedTcv` covers the money box, which writes `value` alongside it — the
+ * guard reads the patch, so clearing the box is caught whichever key it
+ * arrives under.
+ */
+const REQUIRED_FIELDS: Record<string, string> = {
+  name: "The opportunity name",
+  customerId: "The customer",
+  customer: "The customer",
+  offeringId: "The offering",
+  confidence: "The confidence",
+  status: "The status",
+  estSignDate: "The expected sign date",
+  level: "The opportunity category",
+  dealType: "The type of opportunity",
+  currency: "The project currency",
+  estimatedTcv: "The estimated TCV",
+  value: "The estimated TCV",
+};
+
 function Req() {
   return (
     <span aria-label="required" title="Required" className="text-[color:#DC2626]">
@@ -622,6 +646,40 @@ export function DealOverviewEditor({
     if (unchanged) return;
     if (!mayEdit) return;
 
+    /**
+     * A MANDATORY FIELD CANNOT BE EMPTIED.
+     *
+     * Manoj, Sep 3: "wherever there is an asterisk against those fields... the
+     * user should not go to the next page without filling it", and asked for
+     * it on both screens: "it is at the level where you're adding a new
+     * opportunity, and also editing an opportunity. Whenever you go there, you
+     * can't just leave it blank."
+     *
+     * The Add form already refuses to submit while anything starred is empty.
+     * This form has no submit to refuse — it commits each field on blur — so
+     * the equivalent is this: a starred field that HAS a value cannot be
+     * cleared. The box goes back to what it held and says why.
+     *
+     * IT REFUSES CLEARING, NOT EDITING. 97 of the 102 deals in the workspace
+     * arrived from the sheet with no owner, and several carry no sign date;
+     * demanding those be filled before anything else on the record can be
+     * corrected would trap somebody fixing a typo behind data nobody has. So a
+     * field that was already empty stays editable, and one that was filled
+     * cannot be un-filled.
+     */
+    const blank = (v: unknown) =>
+      v === "" || v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v));
+    for (const [k, v] of Object.entries(patch)) {
+      const label = REQUIRED_FIELDS[k];
+      if (!label) continue;
+      if (blank(v) && !blank(baseline[k])) {
+        revert();
+        setState((s) => ({ ...s, [key]: "error" }));
+        setErrors((e) => ({ ...e, [key]: `${label} is required and cannot be left blank.` }));
+        return;
+      }
+    }
+
     if (timers.current[key]) clearTimeout(timers.current[key]);
     setState((s) => ({ ...s, [key]: "saving" }));
     setErrors((e) => ({ ...e, [key]: "" }));
@@ -723,6 +781,29 @@ export function DealOverviewEditor({
    * Printing that day rather than the one we asked for is the difference
    * between a figure you can trust and a figure wearing somebody else's date.
    */
+  /**
+   * A SCHEDULE FIGURE, READ IN THE DEAL'S OWN MONEY.
+   *
+   * Manoj, Sep 3: "right next to edit the schedule, if you can give a toggle
+   * button. The toggle button is local currency versus USD. So if I see the
+   * local currency view, then I should see all the schedule revenue in the
+   * local currency of the project... because right now you can still select
+   * euros, but the schedule is showing in USD."
+   *
+   * Accruals are STORED in USD and stay stored in USD — his next sentence was
+   * "only here, okay? Outside everywhere else, it should be USD." So this
+   * multiplies for display and writes nothing. It runs off the same rate the
+   * boxes above already fetched, so the two conversions on this card can never
+   * disagree.
+   */
+  const [scheduleLocal, setScheduleLocal] = useState(false);
+  const scheduleMoney = (usd: number): string => {
+    if (!scheduleLocal || isBase) return `$${usd.toLocaleString("en-US")}`;
+    const rate = rateFor(currency, signs || undefined);
+    if (!rate) return `$${usd.toLocaleString("en-US")}`;
+    return `${localSymbol}${Math.round(usd * rate).toLocaleString("en-US")}`;
+  };
+
   const rateNote = (() => {
     if (fx.state !== "ready" || !fx.on) return "";
     if (!signs) return `No sign date yet, so this is the ${dayLabel(fx.on)} rate.`;
@@ -1352,6 +1433,37 @@ export function DealOverviewEditor({
             <h4 className="text-[13px] font-semibold text-text-primary">
               Revenue accrual schedule <Req />
             </h4>
+            <span className="flex flex-wrap items-center gap-2">
+            {/* LOCAL VERSUS USD, right where he asked for it. Only when the
+                deal is in another currency: on a dollar deal there is nothing
+                to switch between. */}
+            {!isBase && accrualPlan && accrualPlan.lines.length > 0 && (
+              <span
+                role="group"
+                aria-label="Read the schedule in"
+                className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
+              >
+                {[
+                  { on: false, label: "USD" },
+                  { on: true, label: currency },
+                ].map((o) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    aria-pressed={scheduleLocal === o.on}
+                    onClick={() => setScheduleLocal(o.on)}
+                    className={cn(
+                      "cursor-pointer rounded-full px-2 py-1 text-[11.5px] font-semibold transition-all",
+                      scheduleLocal === o.on
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </span>
+            )}
             {onOpenAccrual && (
               <button
                 type="button"
@@ -1362,6 +1474,7 @@ export function DealOverviewEditor({
                 {accrualPlan ? "Edit the schedule" : "Plan the schedule"}
               </button>
             )}
+            </span>
           </div>
           {!accrualPlan || accrualPlan.lines.length === 0 ? (
             <p className="mt-1.5 text-[12.5px] text-text-tertiary">
@@ -1376,7 +1489,9 @@ export function DealOverviewEditor({
                   <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     <tr>
                       <th className="w-1/2 px-3 py-2">Month</th>
-                      <th className="w-1/2 px-3 py-2">Amount (USD)</th>
+                      <th className="w-1/2 px-3 py-2">
+                        Amount ({scheduleLocal && !isBase ? currency : "USD"})
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
@@ -1388,7 +1503,7 @@ export function DealOverviewEditor({
                             {monthLabel(l.month)}
                           </td>
                           <td className="px-3 py-2 text-[12.5px] font-semibold tnum text-text-primary">
-                            ${(l.amount || 0).toLocaleString("en-US")}
+                            {scheduleMoney(l.amount || 0)}
                           </td>
                         </tr>
                       ))}
@@ -1399,10 +1514,9 @@ export function DealOverviewEditor({
                 {accrualPlan.lines.length} month
                 {accrualPlan.lines.length === 1 ? "" : "s"}, adding up to{" "}
                 <b className="tnum text-text-primary">
-                  $
-                  {accrualPlan.lines
-                    .reduce((n, l) => n + (l.amount || 0), 0)
-                    .toLocaleString("en-US")}
+                  {scheduleMoney(
+                    accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
+                  )}
                 </b>
                 .
               </p>

@@ -74,7 +74,7 @@ import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn, formatDate } from "@/lib/utils";
 import { ConfidenceSlider, snapConfidence } from "./ConfidenceSlider";
-import { fiscalLabel, fiscalYearOf } from "@/lib/performanceShared";
+import { fiscalYearEnding } from "./OpportunitySummary";
 import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredSet, useStoredView } from "@/lib/useStoredView";
 import {
@@ -678,6 +678,13 @@ export function OpportunitiesBrowser({
      the business plans in: Freyr's year runs April to March, and a deal
      closing in February belongs to the FY that started the previous April. */
   const [fyFilter, setFyFilter] = useState<string[]>([]);
+  /* Manoj, Sep 3: sort the pipeline by how likely the deals are. Remembered
+     like every other view choice on this page. */
+  const [confidenceSort, setConfidenceSort] = useStoredView<"none" | "desc" | "asc">(
+    "freyr.opportunities.confidenceSort",
+    "none",
+    ["none", "desc", "asc"] as const
+  );
   /* Recurring licence money vs one-time services (Suren, Aug 30: "it's ARR
      and OTS — this also you have to put it in the filter"). It is already a
      field on every deal and a column in his sheet; it just could not be
@@ -859,14 +866,26 @@ export function OpportunitiesBrowser({
     return "Under 25%";
   }, []);
 
-  /* Straight through `fiscalYearOf` and `fiscalLabel` from performanceShared,
-     so "FY 2026, 27" on this filter is the same year the Goals and Performance
-     pages mean by it. A second definition of the financial year is how two
-     screens end up disagreeing about which quarter a deal landed in. */
+  /**
+   * NAMED THE WAY THIS SCREEN NAMES IT: FY27 means April 2026 to March 2027.
+   *
+   * Manoj, Sep 3, looking at the filter under a column headed "Q1 FY27": "it
+   * clubbed both the years." He was right, and the cause was worse than the
+   * label — there are TWO fiscal conventions in this app. `fiscalLabel` in
+   * performanceShared names a year for the one it STARTS in ("FY 2026, 27");
+   * the quarterly columns three inches above this filter name it for the one
+   * it ENDS in ("FY27"). Reading one and printing the other on the same page
+   * is how a filter and a column disagree about the same deal.
+   *
+   * So this uses the summary's own `fiscalYearEnding`, which is what draws
+   * those columns. Goals and Performance keep their convention; the two are
+   * not reconciled here, and that difference is worth raising with Suren
+   * rather than silently picking a winner across the app.
+   */
   const fyBandOf = useCallback((deal: Opportunity) => {
     const iso = signDateOf(deal);
     if (!iso || Number.isNaN(Date.parse(iso))) return "No date";
-    return fiscalLabel(fiscalYearOf(iso));
+    return `FY${fiscalYearEnding(new Date(iso))}`;
   }, []);
 
   const closureBandOf = useCallback((deal: Opportunity) => {
@@ -2295,15 +2314,34 @@ export function OpportunitiesBrowser({
                 label: "Financial year",
                 values: fyFilter,
                 onChange: setFyFilter,
-                options: [...new Set(currentList.map(fyBandOf))]
-                  .sort((a, b) =>
-                    a === "No date" ? 1 : b === "No date" ? -1 : a.localeCompare(b)
-                  )
-                  .map((n) => ({
-                    value: n,
-                    label: n,
-                    color: n === "No date" ? "#8E98A8" : "#7C3AED",
-                  })),
+                /* EVERY FINANCIAL YEAR, not only the ones that happen to have
+                   a deal in them (Manoj, Sep 3: "we need a list of all the
+                   FYs, you know, all the financial years, whatever is there in
+                   the system"). Filtering to a year and getting nothing is an
+                   answer; not being offered the year at all is a gap.
+
+                   The span runs from the earliest sign date in the book to the
+                   latest, and always includes the current year even when the
+                   pipeline does not reach it, so "this year" is never missing
+                   from a filter about years. */
+                options: (() => {
+                  const years = currentList
+                    .map((o) => signDateOf(o))
+                    .filter((iso): iso is string => !!iso && !Number.isNaN(Date.parse(iso)))
+                    .map((iso) => fiscalYearEnding(new Date(iso)));
+                  const now = fiscalYearEnding(new Date());
+                  const lo = Math.min(now, ...(years.length ? years : [now]));
+                  const hi = Math.max(now, ...(years.length ? years : [now]));
+                  const span: string[] = [];
+                  for (let y = lo; y <= hi; y += 1) span.push(`FY${y}`);
+                  const hasUndated = currentList.some((o) => !signDateOf(o));
+                  return [
+                    ...span.map((n) => ({ value: n, label: n, color: "#7C3AED" })),
+                    ...(hasUndated
+                      ? [{ value: "No date", label: "No date", color: "#8E98A8" }]
+                      : []),
+                  ];
+                })(),
               },
               {
                 key: "revenueType",
@@ -2366,6 +2404,25 @@ export function OpportunitiesBrowser({
                        it is no longer something this page totals by. */
                     options={[
                       { value: "tcv", label: "Estimated TCV", color: "#0071E3" },
+                    ]}
+                  />
+                  {/* SORT BY CONFIDENCE (Manoj, Sep 3). Three states rather
+                      than a toggle, because "off" is a real answer: the
+                      default order groups deals the way the tree does, and
+                      somebody who has not asked for a confidence order should
+                      not silently get one. */}
+                  <ColorSelect
+                    value={confidenceSort}
+                    ariaLabel="Sort deals by confidence"
+                    onChange={(v) => setConfidenceSort(v as "none" | "desc" | "asc")}
+                    minWidth={150}
+                    dense
+                    collapsible={false}
+                    className="w-[150px] shrink-0"
+                    options={[
+                      { value: "none", label: "Default order", color: "#8E98A8" },
+                      { value: "desc", label: "Confidence, high", color: "#0F766E" },
+                      { value: "asc", label: "Confidence, low", color: "#B45309" },
                     ]}
                   />
                   <ColorSelect
@@ -2538,6 +2595,7 @@ export function OpportunitiesBrowser({
             deals={shown}
             /* ITEM 13 — the accrual, against the opportunity rows. */
             accrualPlans={accrualPlans}
+            confidenceSort={confidenceSort}
             order={dimOrder}
             onReorder={setDimOrder}
             measure={measure}

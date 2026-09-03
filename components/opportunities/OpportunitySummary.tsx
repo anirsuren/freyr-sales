@@ -105,7 +105,14 @@ function money(n: number): string {
  */
 const FY_START_MONTH = 3; // April, zero-based.
 
-/** The fiscal year a date falls in, named for the year it ends in. */
+/** The fiscal year a date falls in, named for the year it ends in.
+ *  Exported so the Financial year FILTER on this same screen names a year the
+ *  way the columns beside it do — Manoj, Sep 3, seeing "FY 2026, 27" under a
+ *  column headed "Q1 FY27": "it clubbed both the years." */
+export function fiscalYearEnding(d: Date): number {
+  return fiscalYear(d);
+}
+
 function fiscalYear(d: Date): number {
   return d.getUTCMonth() >= FY_START_MONTH
     ? d.getUTCFullYear() + 1
@@ -344,6 +351,7 @@ function ConfidencePill({ pct }: { pct: number }) {
 export function OpportunitySummary({
   deals,
   accrualPlans = {},
+  confidenceSort = "none",
   order,
   onReorder,
   measure,
@@ -361,6 +369,18 @@ export function OpportunitySummary({
    * the planned/invalid marks; this reads the total off it.
    */
   accrualPlans?: Record<string, { planned: boolean; total?: number }>;
+  /**
+   * ORDER THE DEALS UNDER A GROUP BY HOW LIKELY THEY ARE.
+   *
+   * Manoj, Sep 3: "there should be a way for me to sort it based on — let's
+   * say I want to see all the pipeline opportunities in the ascending order,
+   * or descending order, of confidence level."
+   *
+   * It sorts the DEALS, never the groups above them. A customer group has no
+   * confidence of its own — it would have to be an average of the deals under
+   * it, which is a number nobody typed.
+   */
+  confidenceSort?: "none" | "asc" | "desc";
   order: SummaryDimension[];
   onReorder: (next: SummaryDimension[]) => void;
   measure: EstimateMeasure;
@@ -655,7 +675,22 @@ export function OpportunitySummary({
            place here; a deal's own figures across the periods are the whole
            point of the row, and the panel buried them. The name still opens
            the deal for anyone who wants it. */
-        node.deals.forEach((d, i) => {
+        /* Deals with no confidence sink to the bottom whichever way it is
+           sorted: "not set" is not a low number, it is the absence of one, and
+           putting it first on ascending would bury the deals somebody actually
+           has doubts about. */
+        const leafDeals =
+          confidenceSort === "none"
+            ? node.deals
+            : [...node.deals].sort((a, b) => {
+                const ca = opportunityConfidence(a);
+                const cb = opportunityConfidence(b);
+                if (ca === undefined && cb === undefined) return 0;
+                if (ca === undefined) return 1;
+                if (cb === undefined) return -1;
+                return confidenceSort === "asc" ? ca - cb : cb - ca;
+              });
+        leafDeals.forEach((d, i) => {
           const own = estimateOf(d, measure);
           const p = periodByDeal.get(d.id);
           /* The same read the Opportunities list draws its own per-deal

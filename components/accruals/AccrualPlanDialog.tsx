@@ -775,6 +775,52 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     );
   }
 
+  /**
+   * ADD A MONTH THE SUGGESTION NEVER OFFERED.
+   *
+   * Manoj, Sep 3: "the user should have the ability to remove any rows if they
+   * don't want it, and add any rows if they want it, right? From a calendar
+   * point of view."
+   *
+   * Removing is a subtraction from the generated span; this is the other
+   * direction — a month OUTSIDE it, picked from a date box. Adding one before
+   * the first month moves the start; adding one after simply widens the count.
+   * Either way the span grows to include it and the months re-share the
+   * contract value, which is the same rule every other change here follows.
+   */
+  const [addingMonth, setAddingMonth] = useState("");
+
+  function addMonth(month: string) {
+    if (!month) return;
+    const rows = planRows(editing);
+    const first = rows[0]?.month ?? editing.startMonth;
+    const last = rows[rows.length - 1]?.month ?? editing.startMonth;
+    /* Already showing? Nothing to do. Previously taken out? Put it back rather
+       than widening the span around a month that is already in it. */
+    if (rows.some((r) => r.month === month)) return;
+    if (editing.dropped.includes(month)) return restoreMonth(month);
+
+    const start = month < first ? month : first;
+    const end = month > last ? month : last;
+    /* The count has to reach from the new start to the new end, and every
+       month in between that nobody asked for is dropped — otherwise adding
+       one month two years out would silently create 24 empty rows, which is
+       the exact thing he asked me to get rid of. */
+    const span = monthsFrom(start, 600);
+    const endIndex = span.indexOf(end);
+    const count = endIndex >= 0 ? endIndex + 1 : planMonthCount(editing);
+    const keep = new Set([...rows.map((r) => r.month), month]);
+    setEditing(
+      reshape({
+        ...editing,
+        startMonth: start,
+        months: String(count),
+        dropped: span.slice(0, count).filter((m) => !keep.has(m)),
+      })
+    );
+    setAddingMonth("");
+  }
+
   /** Every month the formula would generate that somebody took out, in order. */
   const droppedRows = monthsFrom(editing.startMonth, planMonthCount(editing)).filter(
     (m) => editing.dropped.includes(m)
@@ -1651,6 +1697,24 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 undoable in the same breath: without this the only way to
                 recover December is to reset the month count, which throws away
                 every figure typed since. */}
+            {/* PICK A MONTH THE SUGGESTION DID NOT OFFER (item 9's other
+                half). A month box rather than a list, because the month he
+                wants may be years outside the generated span. */}
+            {!deviating && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-[12px] text-text-tertiary">Add a month</span>
+                <input
+                  type="month"
+                  value={addingMonth}
+                  aria-label="Add a month to the schedule"
+                  onChange={(e) => {
+                    setAddingMonth(e.target.value);
+                    if (e.target.value) addMonth(e.target.value);
+                  }}
+                  className="h-8 rounded-lg border border-border-light bg-white px-2 text-[12.5px] outline-none focus:border-blue-primary"
+                />
+              </div>
+            )}
             {droppedRows.length > 0 && !deviating && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="text-[12px] text-text-tertiary">
