@@ -440,6 +440,29 @@ export function MeetingsModule({
                               · {formatDate(m.meetingAt)}
                             </span>
                           </span>
+                          {/* WHAT KIND OF MEETING IT WAS — the same chip the
+                              table draws (Anir, Sep 3: "as with every page make
+                              sure the data points in table and split are the
+                              same. For this one for example where it says
+                              Introductory I don't see that on split view").
+
+                              Two views of one list have to answer the same
+                              questions, or picking a view quietly decides what
+                              you are allowed to know. Same colour, same icon,
+                              same words as the table's. */}
+                          {(() => {
+                            const meta = meetingTypeMeta(String(m.type));
+                            const TypeIcon = meta.icon;
+                            return (
+                              <span
+                                className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold"
+                                style={{ background: `${meta.color}18`, color: meta.color }}
+                              >
+                                <TypeIcon size={9} strokeWidth={2.5} className="shrink-0" />
+                                {m.type}
+                              </span>
+                            );
+                          })()}
                         </span>
                       </button>
                     );

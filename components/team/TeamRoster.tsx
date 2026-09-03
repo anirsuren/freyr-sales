@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { shortName } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -677,8 +678,12 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           <Link
                             href={`/analytics/reps/${r.slug}`}
                             className="min-w-0 text-[14.5px] font-semibold text-text-primary truncate group-hover:text-blue-primary outline-none rounded-sm after:absolute after:inset-0 after:content-['']"
+                            /* The full name is still the accessible name and
+                               the hover title; only the drawn text is short. */
+                            title={r.name}
+                            aria-label={r.name}
                           >
-                            {r.name}
+                            {shortName(r.name)}
                           </Link>
                           <RoleTag role={r.role} size="sm" className="relative z-10 shrink-0" />
                           {r.pending && (
@@ -1006,9 +1011,15 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   <Link
                                     href={`/analytics/reps/${r.slug}`}
                                     onClick={(e) => e.stopPropagation()}
+                                    /* Short on the row, full on hover and to a
+                                       screen reader — the same rule as the
+                                       cards, so the two views name people
+                                       identically. */
+                                    title={r.name}
+                                    aria-label={r.name}
                                     className="truncate text-[14px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
                                   >
-                                    {r.name}
+                                    {shortName(r.name)}
                                   </Link>
                               </HoverCard>
                               <RoleTag role={r.role} size="sm" className="shrink-0" />

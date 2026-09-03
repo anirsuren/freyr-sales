@@ -266,3 +266,27 @@ export function formatDayLabel(
     year: "numeric",
   });
 }
+
+/**
+ * "Abhinaya Veeramally" → "Abhinaya V." (Anir, Sep 3: "for the sake of space
+ * just show first name and then initial for last name").
+ *
+ * The roster cards were truncating mid-surname — "Abhinaya Veera..." — which
+ * spends the width AND loses the name. A first name with an initial is shorter
+ * than the truncation was, and it is a name a person recognises rather than a
+ * word ending in an ellipsis.
+ *
+ * A single name is left exactly as it is: "Cher." would be an initial for a
+ * surname that does not exist. Middle names are dropped rather than initialled,
+ * because "Anir K. S." reads as a formal byline, not as somebody on a list.
+ */
+export function shortName(full: string | null | undefined): string {
+  const parts = String(full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? "";
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  /* A surname already down to an initial keeps its existing shape. */
+  return /^[A-Za-z]\.?$/.test(last)
+    ? `${first} ${last.replace(/\.?$/, ".")}`
+    : `${first} ${last[0].toUpperCase()}.`;
+}
