@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CircleDot, Coins, Trash2, UserPen } from "lucide-react";
+import { CircleDot, Coins, Plus, Trash2, UserPen, X } from "lucide-react";
 import {
   AccrualOriginChip,
   AccrualStatusChip,
@@ -131,6 +131,25 @@ type Draft = {
   /** `pinned` means a person typed this month's amount, so the even split
    *  works around it instead of overwriting it. */
   lines: DraftLine[];
+  /**
+   * MONTHS THE PERSON TOOK OUT OF THE SUGGESTION.
+   *
+   * Manoj, Sep 3, on the call: "why do you even want to see December to March
+   * as line items? They're just empty rows... imagine if it is a 5-year
+   * contract, so you said number of months are going to be 60. There will be
+   * 60 rows, and some of those rows may not be even entered with any value."
+   *
+   * The even spread STAYS the opening suggestion — "this is fine, they can see
+   * this first, because more often than not this will be the schedule, 80% of
+   * the time". This is what happens after: a schedule of $50K in November and
+   * $50K in April is two rows, not six with four zeroes.
+   *
+   * Kept as a list of removed months rather than as an explicit month list,
+   * because start + count is what GENERATES the suggestion and has to keep
+   * doing so. Removing is a subtraction from it, and putting one back is a
+   * subtraction undone.
+   */
+  dropped: string[];
   note: string;
 };
 
@@ -159,7 +178,10 @@ function planMonthCount(d: Draft): number {
  *  moving the start date slides the whole schedule instead of relabelling it. */
 function planRows(d: Draft): DraftLine[] {
   const count = planMonthCount(d);
-  return monthsFrom(d.startMonth, count).map((month, i) => {
+  /* The suggestion, minus what was taken out of it. */
+  return monthsFrom(d.startMonth, count)
+    .filter((month) => !d.dropped.includes(month))
+    .map((month, i) => {
     const l = d.lines[i];
     return {
       month,
@@ -285,6 +307,7 @@ export function AccrualPlanDialog({
         startMonth: monthKey(new Date()),
         months: "6",
         lines: [],
+        dropped: [],
         note: "",
       };
     }
@@ -332,6 +355,16 @@ export function AccrualPlanDialog({
           ...(l.arr === undefined ? {} : { arr: String(l.arr) }),
         }));
       })(),
+      /* A SAVED PLAN'S GAPS ARE DELIBERATE. If the formula would generate a
+         month the stored plan does not carry, somebody took it out — so it
+         opens taken out, rather than reappearing as an empty row the moment
+         the dialog is opened. */
+      dropped: existing?.lines?.length
+        ? monthsFrom(
+            existing.lines[0].month,
+            months
+          ).filter((k) => !existing.lines.some((l) => l.month === k))
+        : [],
       note: existing?.note ?? "",
     };
   }
@@ -657,7 +690,14 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    */
   function reshape(next: Draft): Draft {
     const count = planMonthCount(next);
-    const keys = monthsFrom(next.startMonth, count);
+    /* THE SUGGESTION MINUS WHAT WAS REMOVED. Everything below shares the
+       contract value across the months that are LEFT, which is what makes
+       taking December out put its money back into the months that remain
+       ("and then I can remove January, or remove February, and then it'll
+       auto-calculate" — yes). */
+    const keys = monthsFrom(next.startMonth, count).filter(
+      (k) => !next.dropped.includes(k)
+    );
     if (!keys.length) return { ...next, months: String(count) };
     const value = Number(next.contractValue) || 0;
 
@@ -665,8 +705,11 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
        somebody filled in its OTS/ARR. A split IS a typed number — it just
        arrived as two — so it claims its share of the contract value the same
        way, and the loose months absorb the rest. */
-    const locked = keys.map((_, i) => {
-      const l = next.lines[i];
+    const byMonth = new Map(next.lines.filter((l) => l.month).map((l) => [l.month, l]));
+    const locked = keys.map((k, i) => {
+      /* BY MONTH, NOT BY POSITION. Removing a month shifts every row after it,
+         so an index would hand April's typed figure to May. */
+      const l = byMonth.get(k) ?? next.lines[i];
       if (isSplit(l)) return Number(rowTotal(l)) || 0;
       return l?.pinned ? Number(l.amount) || 0 : null;
     });
@@ -684,7 +727,8 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
       /* A held month rides through whole — its typed total, its pin, and both
          halves of its split. Rebuilding the row from three named fields here
          is what would throw the split away on the very next keystroke. */
-      if (locked[i] !== null) return { ...next.lines[i], month };
+      if (locked[i] !== null)
+        return { ...(byMonth.get(month) ?? next.lines[i]), month };
       seen += 1;
       const share = seen === loose ? left - per * (loose - 1) : per;
       return { month, amount: String(share) };
@@ -695,7 +739,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
       months: String(count),
       /* Months past the visible count ride along untouched, ready for the
          moment the count goes back up. */
-      lines: [...lines, ...next.lines.slice(count)],
+      lines,
     };
   }
 
@@ -703,6 +747,38 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
   function editFormula(patch: Partial<Draft>) {
     setEditing(reshape({ ...editing, ...patch }));
   }
+
+  /**
+   * TAKE A MONTH OUT OF THE SCHEDULE, and put its money back into the rest.
+   *
+   * Manoj, Sep 3: "I want 50,000 in November, and 50,000 in April. Nothing in
+   * between. So why do you even want to see December to March as line items?"
+   *
+   * The month is dropped and its typed figure with it, so a row that comes
+   * back comes back loose rather than carrying a number nobody re-entered.
+   */
+  function dropMonth(month: string) {
+    setEditing(
+      reshape({
+        ...editing,
+        dropped: [...editing.dropped, month],
+        lines: editing.lines.filter((l) => l.month !== month),
+      })
+    );
+  }
+
+  /** Put one back. Removing has to be undoable in the same breath, or the only
+   *  way back is to reset the month count and lose every typed figure. */
+  function restoreMonth(month: string) {
+    setEditing(
+      reshape({ ...editing, dropped: editing.dropped.filter((m) => m !== month) })
+    );
+  }
+
+  /** Every month the formula would generate that somebody took out, in order. */
+  const droppedRows = monthsFrom(editing.startMonth, planMonthCount(editing)).filter(
+    (m) => editing.dropped.includes(m)
+  );
 
   /** Typing an amount locks that month; the loose ones re-split around it. */
   function editMonth(index: number, raw: string) {
@@ -1401,12 +1477,34 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                       : editingRows.map((line, i) => {
                       const split = isSplit(line);
                       return (
-                        <tr key={line.month || i} className="h-11">
+                        <tr key={line.month || i} className="group/row h-11">
                           <td
                             style={{ width: monthColWidth }}
                             className="px-3 py-1.5 text-[13px] font-semibold text-text-primary"
                           >
-                            {monthLabel(line.month)}
+                            <span className="flex items-center justify-between gap-2">
+                              {monthLabel(line.month)}
+                              {/* TAKE THIS MONTH OUT. Never offered on the last
+                                  one standing — a schedule with no months is
+                                  not a schedule, and Save already refuses it,
+                                  so the control should not walk you into it. */}
+                              {!deviating && editingRows.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => dropMonth(line.month)}
+                                  aria-label={`Remove ${monthLabel(line.month)} from the schedule`}
+                                  title="Remove this month. Its share goes back to the others."
+                                  /* ALWAYS THERE, QUIETLY. Hover-only would
+                                     be tidier and would not exist at all on a
+                                     touch screen, and a control nobody can
+                                     find is the same as a control that is not
+                                     built. */
+                                  className="cursor-pointer rounded p-0.5 text-text-tertiary/60 transition-colors hover:text-[color:#DC2626] focus-visible:text-[color:#DC2626]"
+                                >
+                                  <X size={13} strokeWidth={2.4} />
+                                </button>
+                              )}
+                            </span>
                           </td>
                           {/* THE TWO HALVES PEOPLE FILL IN. Same box and same
                               digits-only keystroke filter the amount has always
@@ -1548,6 +1646,30 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               </div>
             </>
           ) : (
+            <>
+            {/* WHAT WAS TAKEN OUT, AND THE WAY BACK. Removing has to be
+                undoable in the same breath: without this the only way to
+                recover December is to reset the month count, which throws away
+                every figure typed since. */}
+            {droppedRows.length > 0 && !deviating && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[12px] text-text-tertiary">
+                  Taken out:
+                </span>
+                {droppedRows.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => restoreMonth(m)}
+                    title={`Put ${monthLabel(m)} back into the schedule`}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+                  >
+                    <Plus size={11} strokeWidth={2.6} />
+                    {monthLabel(m)}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="mt-2 text-[12.5px]">
               The months add up to{" "}
               <b className="tnum text-text-primary">{formatMoney(editingTotal)}</b>
@@ -1570,6 +1692,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 </span>
               )}
             </p>
+            </>
           )}
 
           {/* EVERY VERSION OF THIS RECORD, NEWEST FIRST.
