@@ -882,7 +882,17 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     if (Math.round(savedPlan.contractValue || 0) !== contractValue) return true;
     const before = currentVersion.lines;
     if (before.length !== lines.length) return true;
-    const key = (l: AccrualLine) => `${l.month}:${Math.round(l.amount || 0)}`;
+    /* THE SPLIT IS PART OF THE CHANGE, NOT DECORATION ON IT. Item 17 says
+       "any change", and re-cutting a month's 83,333 into 50,000 one-time and
+       33,333 recurring changes what that money IS while leaving the total
+       exactly where it was. Keyed on the total alone it saved silently, with
+       no popup and no version — the one edit Manoj most wants logged.
+       Undefined and 0 have to collapse to the same thing here: `save` omits a
+       blank half and `deviate` writes it as 0, so a plan that came back
+       through the other path would otherwise read as changed while identical. */
+    const half = (n: number | undefined) => Math.round(Number(n) || 0);
+    const key = (l: AccrualLine) =>
+      `${l.month}:${Math.round(l.amount || 0)}:${half(l.ots)}:${half(l.arr)}`;
     const a = [...before].map(key).sort();
     const b = [...lines].map(key).sort();
     return a.some((v, i) => v !== b[i]);
@@ -903,10 +913,23 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     const moved = [...months].filter((m) => (beforeBy.get(m) ?? 0) !== (afterBy.get(m) ?? 0));
     const wasTotal = before.reduce((n, l) => n + Math.round(l.amount || 0), 0);
     const nowTotal = lines.reduce((n, l) => n + Math.round(l.amount || 0), 0);
+    /* A month whose total held still but whose split moved: named separately,
+       because "Schedule edited." alone would be the whole history entry. */
+    const splitBy = (ls: AccrualLine[]) =>
+      new Map(ls.map((l) => [l.month, `${Math.round(Number(l.ots) || 0)}/${Math.round(Number(l.arr) || 0)}`]));
+    const beforeSplit = splitBy(before);
+    const afterSplit = splitBy(lines);
+    const recut = [...months].filter(
+      (m) => !moved.includes(m) && (beforeSplit.get(m) ?? "0/0") !== (afterSplit.get(m) ?? "0/0")
+    );
     const bits: string[] = [];
     if (moved.length)
       bits.push(
         `${moved.length} month${moved.length === 1 ? "" : "s"} changed (${moved.sort().join(", ")})`
+      );
+    if (recut.length)
+      bits.push(
+        `one-time and recurring re-split for ${recut.length} month${recut.length === 1 ? "" : "s"} (${recut.sort().join(", ")})`
       );
     if (wasTotal !== nowTotal)
       bits.push(`total ${formatMoney(wasTotal)} to ${formatMoney(nowTotal)}`);
