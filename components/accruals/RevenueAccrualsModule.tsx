@@ -295,6 +295,36 @@ function DeviationsTable({
     Inactive: "#B45309",
   };
 
+  /**
+   * WHO IS DEVIATING A LOT, AND WHAT NEEDS A HUMAN.
+   *
+   * Manoj, Sep 3, on what this screen is FOR: "the goal here, Suren was
+   * mentioning, was I need to know who are the account owners — I mean, the
+   * owners — who are deviating a lot. So that is the key metric, or the key
+   * messaging that should come out of this screen."
+   *
+   * The table underneath answers "which records" one row at a time. Nobody
+   * reads forty rows and arrives at a name. So the names come first, ranked,
+   * with the count that ranks them — and the inactive tally beside them,
+   * because an expired record needs somebody whether or not anyone deviated
+   * it.
+   */
+  const byOwner = useMemo(() => {
+    const tally = new Map<string, number>();
+    for (const r of rows) {
+      const who = r.owner || "Unassigned";
+      tally.set(who, (tally.get(who) ?? 0) + r.summary.deviationCount);
+    }
+    return [...tally.entries()]
+      .filter(([, n]) => n > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [rows]);
+  const inactiveCount = useMemo(
+    () => rows.filter((r) => r.accrualStatus === "Inactive").length,
+    [rows]
+  );
+
   if (!rows.length) {
     return (
       <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
@@ -328,6 +358,54 @@ function DeviationsTable({
           className="h-9 w-full max-w-[280px] rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
         />
       </div>
+
+      {/* THE ANSWER BEFORE THE ROWS. See the note above `byOwner`: the table
+          says which records moved, this says who keeps moving them, which is
+          the sentence Suren wants out of this screen. */}
+      {(byOwner.length > 0 || inactiveCount > 0) && (
+        <div className="mt-3 flex flex-wrap items-stretch gap-2">
+          {inactiveCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setStatusFilter(["Inactive"])}
+              title="Show only these"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-[color:rgba(180,83,9,0.35)] bg-[rgba(180,83,9,0.07)] px-3 py-2 text-left transition-colors hover:border-[color:#B45309]"
+            >
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[color:#B45309] px-1.5 text-[12px] font-bold text-white">
+                {inactiveCount}
+              </span>
+              <span className="text-[12.5px] font-semibold text-[color:#B45309]">
+                {inactiveCount === 1 ? "record has" : "records have"} expired
+                unsigned
+              </span>
+            </button>
+          )}
+          {byOwner.length > 0 && (
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                Deviating most
+              </span>
+              {byOwner.map(([who, n]) => (
+                <button
+                  key={who}
+                  type="button"
+                  onClick={() => setOwnerFilter([who])}
+                  title={`Show only ${who}`}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light px-2 py-0.5 transition-colors hover:border-blue-primary"
+                >
+                  {who !== "Unassigned" && (
+                    <Avatar name={who} className="h-4 w-4 shrink-0 text-[7px]" />
+                  )}
+                  <span className="text-[12px] text-text-secondary">{who}</span>
+                  <span className="text-[12px] font-bold tnum text-[color:#7C3AED]">
+                    {n}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ITEM 15 — the app's own filter control, not a new one, so these
           behave and look like the filters on every other module. */}
@@ -750,6 +828,28 @@ export function RevenueAccrualsModule({
     return earlier.length ? earlier[earlier.length - 1] : null;
   }, [state.snapshots]);
 
+  /**
+   * HOW MANY RECORDS NEED A HUMAN RIGHT NOW.
+   *
+   * Manoj, Sep 3: "if it is hidden like this, under deviation, in revenue
+   * accruals tab, as a user, I'll probably not go there... something should
+   * draw the attention. So either you put a notification like how Teams gives
+   * the messaging — if someone messages you, there are 300 messages, it will
+   * give you a 3 with a red background on that circle."
+   *
+   * These are the ones whose sign date passed with no signature, which is the
+   * set his sentence ends on: "all those opportunities where the expected sign
+   * date has passed but the contract is not marked as won — those are the ones
+   * that need the attention."
+   */
+  const needsAttention = useMemo(
+    () =>
+      state.plans.filter(
+        (p) => tabAccrualStatus(buildPlanDeviation(p)) === "Inactive"
+      ).length,
+    [state.plans]
+  );
+
   const deviation = useMemo(
     () => buildDeviation(state.plans, snapshot),
     [state.plans, snapshot]
@@ -1134,6 +1234,20 @@ export function RevenueAccrualsModule({
             )}
           >
             {label}
+            {/* THE RED COUNT, on the tab that holds them. A number that only
+                appears when there is something to answer for: a permanent
+                zero is furniture, and furniture is what he is trying to get
+                past. */}
+            {key === "deviation" && needsAttention > 0 && (
+              <span
+                title={`${needsAttention} accrual ${
+                  needsAttention === 1 ? "record has" : "records have"
+                } passed their sign date unsigned`}
+                className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:#DC2626] px-1 text-[11px] font-bold text-white"
+              >
+                {needsAttention}
+              </span>
+            )}
           </button>
         ))}
       </div>
