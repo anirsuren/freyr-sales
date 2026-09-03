@@ -74,6 +74,7 @@ import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn, formatDate } from "@/lib/utils";
 import { ConfidenceSlider, snapConfidence } from "./ConfidenceSlider";
+import { fiscalLabel, fiscalYearOf } from "@/lib/performanceShared";
 import { refreshOpportunities } from "@/lib/useOpportunities";
 import { useStoredSet, useStoredView } from "@/lib/useStoredView";
 import {
@@ -670,6 +671,11 @@ export function OpportunitiesBrowser({
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [closureFilter, setClosureFilter] = useState<string[]>([]);
   const [confidenceFilter, setConfidenceFilter] = useState<string[]>([]);
+  /* ITEM 11 — "Need Financial Year filter in Opportunities" (Manoj's sheet).
+     Closure date already filtered by calendar quarter, which is not the year
+     the business plans in: Freyr's year runs April to March, and a deal
+     closing in February belongs to the FY that started the previous April. */
+  const [fyFilter, setFyFilter] = useState<string[]>([]);
   /* Recurring licence money vs one-time services (Suren, Aug 30: "it's ARR
      and OTS — this also you have to put it in the filter"). It is already a
      field on every deal and a column in his sheet; it just could not be
@@ -851,6 +857,16 @@ export function OpportunitiesBrowser({
     return "Under 25%";
   }, []);
 
+  /* Straight through `fiscalYearOf` and `fiscalLabel` from performanceShared,
+     so "FY 2026, 27" on this filter is the same year the Goals and Performance
+     pages mean by it. A second definition of the financial year is how two
+     screens end up disagreeing about which quarter a deal landed in. */
+  const fyBandOf = useCallback((deal: Opportunity) => {
+    const iso = signDateOf(deal);
+    if (!iso || Number.isNaN(Date.parse(iso))) return "No date";
+    return fiscalLabel(fiscalYearOf(iso));
+  }, []);
+
   const closureBandOf = useCallback((deal: Opportunity) => {
     /* Same both-places read as the summary: the form stores this on the
        offering row, the sheet import stored it on the deal. */
@@ -903,6 +919,7 @@ export function OpportunitiesBrowser({
           confidenceFilter.length === 0 ||
           confidenceFilter.includes(confidenceBandOf(o))
       )
+      .filter((o) => fyFilter.length === 0 || fyFilter.includes(fyBandOf(o)))
       .filter(
         (o) =>
           !q ||
@@ -964,6 +981,8 @@ export function OpportunitiesBrowser({
     groupFilter,
     closureFilter,
     confidenceFilter,
+    fyFilter,
+    fyBandOf,
     offeringName,
     offeringNameFor,
     groupNameFor,
@@ -1344,7 +1363,19 @@ export function OpportunitiesBrowser({
                       three columns asking the reader to compute it: the track
                       is the contract value, the fill is the weighted share,
                       the colour is the confidence verdict. */}
-                  <th className="w-[200px] px-4 py-2.5">Value · weighted</th>
+                  {/* CONFIDENCE IS ITS OWN COLUMN (Manoj's change sheet,
+                      item 1: "Show Confidence Percentage in the opportunities
+                      screen against all opportunities").
+
+                      The number was already on the page, but as a sub-line
+                      under the money bar — readable once you knew to look for
+                      it, invisible when scanning a hundred rows for the deals
+                      somebody is confident about. In its own column it lines
+                      up down the table and can be compared. */}
+                  <th className="w-[96px] px-4 py-2.5">Confidence</th>
+                  {/* "ESTIMATED TCV", NOT "VALUE" (item 2). One money number
+                      now, and this is its name. */}
+                  <th className="w-[200px] px-4 py-2.5">Estimated TCV · weighted</th>
                   <th className="w-[132px] px-4 py-2.5">Status</th>
                   <th className="w-[104px] px-4 py-2.5">Est. sign</th>
                   <th className="w-[84px] px-4 py-2.5 text-left">Actions</th>
@@ -1481,6 +1512,33 @@ export function OpportunitiesBrowser({
                                 </span>
                               )}
                             </span>
+                          )}
+                        </td>
+                        {/* THE PERCENTAGE, PLAINLY (item 1). Won and Lost do
+                            not have a confidence any more — one is signed and
+                            one is nothing — so they say that instead of
+                            printing a number that no longer means anything. */}
+                        <td className="whitespace-nowrap px-4 py-3.5">
+                          {o.status === "Won" || o.status === "Lost" ? (
+                            <span className="text-[12px] text-text-tertiary">
+                              {o.status === "Won" ? "signed" : "—"}
+                            </span>
+                          ) : (
+                            /* A DEAL WITH NO CONFIDENCE ENTERED SAYS SO. A
+                               zero would be a claim that it will never close;
+                               blank is the truth, that nobody has said yet. */
+                            shownConfidence === undefined ? (
+                              <span className="text-[12px] text-text-tertiary">
+                                not set
+                              </span>
+                            ) : (
+                              <span
+                                className="text-[14px] font-semibold tnum"
+                                style={{ color: confidenceColor(shownConfidence) }}
+                              >
+                                {shownConfidence}%
+                              </span>
+                            )
                           )}
                         </td>
                         {/* Value, weighted and confidence as ONE picture —
@@ -2223,6 +2281,26 @@ export function OpportunitiesBrowser({
                     value: n,
                     label: n,
                     color: n === "No date" ? "#8E98A8" : "#0F766E",
+                  })),
+              },
+              {
+                /* ITEM 11 — the financial year, beside the calendar quarter
+                   rather than instead of it. They answer different questions:
+                   "which quarter does this close in" and "does this land in
+                   the year we are being measured on". Oldest first, so the
+                   list reads forward in time. */
+                key: "financialYear",
+                label: "Financial year",
+                values: fyFilter,
+                onChange: setFyFilter,
+                options: [...new Set(currentList.map(fyBandOf))]
+                  .sort((a, b) =>
+                    a === "No date" ? 1 : b === "No date" ? -1 : a.localeCompare(b)
+                  )
+                  .map((n) => ({
+                    value: n,
+                    label: n,
+                    color: n === "No date" ? "#8E98A8" : "#7C3AED",
                   })),
               },
               {

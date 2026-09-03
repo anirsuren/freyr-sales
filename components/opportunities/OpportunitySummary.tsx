@@ -697,10 +697,27 @@ export function OpportunitySummary({
                     {/* ONLY ON THE DEAL, never on the rows above it. A group's
                         confidence would have to be an average of the deals
                         under it, which is a number nobody typed and nobody can
-                        act on. And a deal with none shows NOTHING rather than
-                        0%: a third of the book has never had one set, and a
-                        zero on those rows reads as "no chance". */}
-                    {confidence !== undefined && <ConfidencePill pct={confidence} />}
+                        act on.
+
+                        AGAINST EVERY DEAL, INCLUDING THE ONES WITHOUT ONE
+                        (Manoj's change sheet, item 1: "Show Confidence
+                        Percentage in the opportunities screen against all
+                        opportunities"). It used to render nothing at all when
+                        the deal had no confidence, and 28 of the 102 deals in
+                        the book have never had one set — so the column he was
+                        looking down had holes in it, and a hole reads as "this
+                        row is different" rather than "nobody has said yet".
+
+                        Still never 0%. A zero is a claim that the deal will
+                        not close; "not set" is the truth, which is that the
+                        question has not been answered. */}
+                    {confidence === undefined ? (
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border-light px-1.5 py-px text-[10px] font-semibold text-text-tertiary">
+                        not set
+                      </span>
+                    ) : (
+                      <ConfidencePill pct={confidence} />
+                    )}
                   </button>
                 </th>
                 <td className={cn(cellCls, "font-semibold text-text-primary")}>
