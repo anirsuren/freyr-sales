@@ -1987,7 +1987,7 @@ export function OpportunitiesBrowser({
                                   connected: an all-zero strip repeated down
                                   78 deals is noise, and the deal already says
                                   what it has in the panel above. */}
-                              {(bandsByDeal[o.id] ?? []).some((b) => b.count > 0) && (
+                              {(bandsByDeal[o.id] ?? []).some((b) => (b.count ?? b.items.length) > 0) && (
                                 <div className="border-t border-border-light pt-3.5 sm:col-span-2">
                                   <Customer360
                                     bands={bandsByDeal[o.id] ?? []}

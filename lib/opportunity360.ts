@@ -217,7 +217,12 @@ export async function buildOpportunity360(
       label: "Revenue accruals",
       icon: BAND_ICONS.revenueAccruals,
       color: "#0369A1",
-      count: lines.length,
+      /* NO NUMBER ON THIS BAND (Manoj's change sheet, item 21: "Remove number
+         against Revenue Accrual in dashboard"). It was `lines.length`, the
+         number of MONTHS in the schedule, so one plan spread over four months
+         read as "Revenue accruals 4" — four accruals, on a deal that has one.
+         Every other band counts records. The total below still says what the
+         plan is worth, which is the number anybody actually wanted. */
       /**
        * ACCRUALS ARE USD, FULL STOP (Suren, Sep 1: "we don't have to go to
        * local currency. It automatically only picks up USD, and everywhere

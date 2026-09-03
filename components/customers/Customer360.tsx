@@ -170,7 +170,9 @@ export function Customer360({
   /** The page is driving which band shows. */
   forceKey?: string;
 }) {
-  const live = bands.filter((b) => b.count > 0);
+  /* A band that deliberately carries no badge (item 21) is still live when it
+     has items — "no number" is not "nothing here". */
+  const live = bands.filter((b) => (b.count ?? b.items.length) > 0);
   /**
    * ONE TAB PER AREA (Anir, Aug 27, on the rep profile: "maybe have four
    * different tabs, just like you do on offerings, for each of these four
@@ -861,9 +863,9 @@ export function Customer360({
               ))}
             </ul>
             )}
-            {active.count > 8 && (
+            {(active.count ?? active.items.length) > 8 && (
               <p className="mt-2 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
-                and {active.count - 8} more
+                and {(active.count ?? active.items.length) - 8} more
               </p>
             )}
           </div>

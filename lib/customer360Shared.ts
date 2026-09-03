@@ -89,7 +89,17 @@ export type Customer360Band = {
    */
   icon: BandIconKey;
   color: string;
-  count: number;
+  /**
+   * OPTIONAL, because one band deliberately has no number.
+   *
+   * Manoj's change sheet, item 21: "Remove number against Revenue Accrual in
+   * dashboard." The accruals band was counting SCHEDULE ROWS — a single plan
+   * spread over four months read as "Revenue accruals 4", which says four
+   * accruals when there is one. Every other band counts records, so the same
+   * badge meant two different things depending on which tab you were looking
+   * at. A band that leaves this undefined shows its label and no badge.
+   */
+  count?: number;
   /** Money where money is the point — deals and contracts. */
   total?: number;
   items: Customer360Item[];
