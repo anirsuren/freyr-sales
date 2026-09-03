@@ -34,6 +34,8 @@ export function EditDealDialog({
   asPage = false,
   deal,
   mayEdit = true,
+  accrualPlan = null,
+  accrualScheduler = null,
   why = "",
   customers = [],
   offerings = [],
@@ -60,6 +62,10 @@ export function EditDealDialog({
   deal: Opportunity;
   /** The same verdict the page's own Edit gate reads. */
   mayEdit?: boolean;
+  /** The saved months, and the scheduler itself. Both live HERE now rather
+   *  than on the overview, which only shows. */
+  accrualPlan?: React.ComponentProps<typeof DealOverviewEditor>["accrualPlan"];
+  accrualScheduler?: React.ReactNode;
   why?: string;
   customers?: { id: string; name: string }[];
   offerings?: { id: string; name: string; type?: string }[];
@@ -108,6 +114,8 @@ export function EditDealDialog({
     <DealOverviewEditor
       deal={deal}
       mayEdit={mayEdit}
+      accrualPlan={accrualPlan}
+      accrualScheduler={accrualScheduler}
       why={why}
       customers={customers}
       offerings={offerings}

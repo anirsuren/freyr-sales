@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
+import { AccrualPlanDialog } from "@/components/accruals/AccrualPlanDialog";
 import type { DealTeam } from "./DealPeople";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 
@@ -28,6 +29,7 @@ export function DealEditScreen({
   mayChangeTeam = false,
   mayEdit,
   why,
+  accrual = null,
 }: {
   deal: Opportunity;
   customers?: { id: string; name: string }[];
@@ -40,6 +42,21 @@ export function DealEditScreen({
   mayChangeTeam?: boolean;
   mayEdit: boolean;
   why: string;
+  /**
+   * THE ACCRUAL SCHEDULE LIVES ON THIS SCREEN NOW.
+   *
+   * It was mounted on the deal's Overview tab, which is where Manoj asked for
+   * it (his item 5). Anir took editing off the overview entirely on Sep 3 —
+   * "I have to press edit deal to edit anything" — and Edit deal is this page.
+   * So the same component comes here: Manoj still gets the whole month-on-month
+   * scheduler beside the deal's own fields, on the screen you open to change
+   * something rather than the one you open to read.
+   */
+  accrual?: {
+    mayPlan: boolean;
+    plan: NonNullable<React.ComponentProps<typeof AccrualPlanDialog>["plans"]>[number] | null;
+    deal: NonNullable<React.ComponentProps<typeof AccrualPlanDialog>["deals"]>[number];
+  } | null;
 }) {
   const router = useRouter();
 
@@ -55,6 +72,23 @@ export function DealEditScreen({
       meName={meName}
       team={team}
       mayChangeTeam={mayChangeTeam}
+      accrualPlan={accrual?.plan ?? null}
+      /* THE SAME COMPONENT THE ACCRUALS MODULE MOUNTS, without its modal
+         chrome — not a copy, so the two cannot drift (Suren, Sep 1: "both the
+         screens have to be the same"). */
+      accrualScheduler={
+        accrual?.mayPlan && mayEdit ? (
+          <AccrualPlanDialog
+            inline
+            dealId={accrual.deal.id}
+            deals={[accrual.deal]}
+            pickable={[]}
+            plans={accrual.plan ? [accrual.plan] : []}
+            onClose={() => undefined}
+            onSaved={() => router.refresh()}
+          />
+        ) : null
+      }
       /* NOTHING NAVIGATES ON SAVE ANY MORE. Each field commits on its own, so
          a push back to the deal would fire the moment somebody left the first
          box and take the rest of the form away with it. */

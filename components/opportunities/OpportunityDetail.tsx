@@ -343,6 +343,26 @@ export function OpportunityDetail({
           deal={deal}
           bands={bands}
           onClose={() => setEditing(false)}
+          mayEdit={verdict.mayEdit}
+          /* THE MONTHS AND THE SCHEDULER, BOTH HERE NOW. Manoj still gets the
+             whole month-on-month thing beside the deal's own fields (his items
+             3 and 5); it is simply on the screen you open to change something,
+             not on the one you open to read. Still the identical component the
+             accruals module mounts, so the two cannot drift. */
+          accrualPlan={accrual?.plan ?? null}
+          accrualScheduler={
+            accrual?.mayPlan ? (
+              <AccrualPlanDialog
+                inline
+                dealId={accrual.deal.id}
+                deals={[accrual.deal]}
+                pickable={[]}
+                plans={accrual.plan ? [accrual.plan] : []}
+                onClose={() => undefined}
+                onSaved={() => router.refresh()}
+              />
+            ) : null
+          }
           /**
            * ADDING FROM A SECTION.
            *
@@ -572,6 +592,21 @@ export function OpportunityDetail({
                re-checked by the API route on every write. A view-only person
                gets every field as a value and no way to post one. */
             mayEdit={verdict.mayEdit}
+            /**
+             * THE OVERVIEW SHOWS. IT DOES NOT EDIT.
+             *
+             * Anir, Sep 3, looking at a Save plan button sitting at the bottom
+             * of a tab nobody scrolls: "I do not want the overview to have
+             * anything to do with editing. Remove that. I have to press edit
+             * deal to edit anything in the overview."
+             *
+             * So every field here reads as a value and the whole scheduler
+             * moved into Edit deal, which is the one place a change is made
+             * and the one place a Save button belongs. This is separate from
+             * `mayEdit` on purpose: somebody who may edit still sees a plain
+             * screen here rather than being told the deal is not theirs.
+             */
+            readOnly
             why={verdict.why}
             customers={customers}
             offerings={offerings}
@@ -590,27 +625,6 @@ export function OpportunityDetail({
                screen, because Suren was explicit on Sep 1 that there is only
                one: "both the screens have to be the same." */
             accrualPlan={accrual?.plan ?? null}
-            onOpenAccrual={
-              accrual?.mayPlan ? () => setPlanningAccrual(true) : undefined
-            }
-            /* THE WHOLE SCHEDULER, IN THE CARD (Manoj, Sep 3: "that entire
-               thing should come here as well"). The identical component the
-               module mounts, rendered without its modal chrome — not a copy,
-               so the two cannot drift. Only for somebody who may plan; a
-               reader still gets the read-only months above it. */
-            accrualScheduler={
-              accrual?.mayPlan ? (
-                <AccrualPlanDialog
-                  inline
-                  dealId={accrual.deal.id}
-                  deals={[accrual.deal]}
-                  pickable={[]}
-                  plans={accrual.plan ? [accrual.plan] : []}
-                  onClose={() => undefined}
-                  onSaved={() => router.refresh()}
-                />
-              ) : null
-            }
             onSave={saveField}
           >
             {meetings.length > 0 && (

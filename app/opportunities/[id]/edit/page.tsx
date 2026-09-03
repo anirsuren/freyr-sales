@@ -5,9 +5,12 @@ import { readOpportunities } from "@/lib/opportunities";
 import { listOfferings } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
 import {
+  canOpenModule,
+  moduleWriteRefusal,
   recordWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
+import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { readPrivileges } from "@/lib/privileges";
@@ -125,6 +128,29 @@ export default async function EditDealPage({
     verdict.mayEdit &&
     !(await recordWriteRefusal("/opportunities", { id: deal.id }));
 
+  /**
+   * THE ACCRUAL, FOR THE SCHEDULER ON THIS PAGE. Asked the same way the deal
+   * page asks it and the same way /api/revenue-accruals asks before it saves,
+   * so a person who may only read gets the months without a Save they cannot
+   * use. One offering per opportunity (Suren, Aug 17), so the first line is
+   * the line.
+   */
+  const mayPlanAccrual =
+    (await canOpenModule("/revenue-accruals")) &&
+    !(await moduleWriteRefusal("/revenue-accruals"));
+  const accrualPlan = (await canOpenModule("/revenue-accruals"))
+    ? ((await readRevenueAccruals().catch(() => null))?.plans.find(
+        (p) => p.opportunityId === deal.id
+      ) ?? null)
+    : null;
+  const accrualLine = (deal.lines ?? [])[0];
+  const accrualOfferingId = accrualLine?.offeringId ?? deal.offeringIds[0];
+  const accrualOfferingLabel = accrualOfferingId
+    ? (offerings.find((o) => o.id === accrualOfferingId)?.offering_name ??
+      accrualOfferingId)
+    : (accrualLine?.offeringLabel ?? deal.offeringLabels[0]);
+  const accrualSignDate = accrualLine?.estSignDate ?? deal.estSignDate;
+
   return (
     <div className="mx-auto max-w-[1100px]">
       <SmartBack
@@ -145,6 +171,24 @@ export default async function EditDealPage({
         <DealEditScreen
           deal={deal}
           mayEdit={verdict.mayEdit}
+          accrual={{
+            mayPlan: mayPlanAccrual,
+            plan: accrualPlan,
+            deal: {
+              id: deal.id,
+              name: deal.name || `${deal.customer} deal`,
+              customer: deal.customer,
+              ...(deal.customerId ? { customerId: deal.customerId } : {}),
+              ...(accrualOfferingId ? { offeringId: accrualOfferingId } : {}),
+              ...(accrualOfferingLabel
+                ? { offeringLabel: accrualOfferingLabel }
+                : {}),
+              value: deal.value ?? 0,
+              ...(deal.status ? { status: deal.status } : {}),
+              ...(accrualSignDate ? { estSignDate: accrualSignDate } : {}),
+              ...(deal.currency ? { currency: deal.currency } : {}),
+            },
+          }}
           why={verdict.why}
           meName={me.name}
           people={members}

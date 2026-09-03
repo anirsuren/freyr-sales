@@ -1174,7 +1174,16 @@ export function ContractsModule({
               two long forms in this app now read the same way: the first
               room open, the rest shut with a one-line summary of what is
               inside. */}
-          <div className="min-h-[420px] space-y-3">
+          {/* THE FRAME DOES NOT MOVE (Anir, Sep 3: "why are you shrinking the
+              pop-up based on the dropdowns? You never do that. I literally
+              told you this a million times").
+
+              `min-h` was the bug: a MINIMUM lets the panel grow every time a
+              room opens, so the dialog jumped taller and re-centred under the
+              cursor on every expand, and shrank again on every collapse. The
+              height is fixed now and the rooms scroll inside it, which is the
+              standing rule for every dialog in this app. */}
+          <div className="h-[min(560px,calc(100vh-13rem))] space-y-3 overflow-y-auto pr-0.5">
           <FormRoom
             icon={FileSignature}
             title="The contract"

@@ -487,6 +487,7 @@ function StaticValue({ text, empty = false }: { text: string; empty?: boolean })
 export function DealOverviewEditor({
   deal,
   mayEdit = false,
+  readOnly = false,
   why = "",
   customers = [],
   offerings = [],
@@ -505,6 +506,16 @@ export function DealOverviewEditor({
   deal: Opportunity;
   /** Exactly the verdict the page's own Edit gate reads. Absent means view only. */
   mayEdit?: boolean;
+  /**
+   * SHOW, DO NOT EDIT. Different from `mayEdit`, and the difference matters:
+   * `mayEdit` false means this person is NOT ALLOWED to change the deal and
+   * gets told so; `readOnly` means this PLACE does not edit, no matter who is
+   * looking. The overview is that place (Anir, Sep 3: "I do not want the
+   * overview to have anything to do with editing... I have to press edit deal
+   * to edit anything"), and a person who may edit must not be told the deal is
+   * not theirs to change just because they are standing on it.
+   */
+  readOnly?: boolean;
   /** Why not, in the server's own words, when mayEdit is false. */
   why?: string;
   /** The accounts this deal may be moved between. Empty leaves it read-only. */
@@ -648,7 +659,7 @@ export function DealOverviewEditor({
       ([k, v]) => JSON.stringify(v) === JSON.stringify(baseline[k])
     );
     if (unchanged) return;
-    if (!mayEdit) return;
+    if (!mayEdit || readOnly) return;
 
     /**
      * A MANDATORY FIELD CANNOT BE EMPTIED.
@@ -757,7 +768,9 @@ export function DealOverviewEditor({
   }, [isBase, signs]);
 
   const localSymbol = currencyMeta(currency).symbol.trim();
-  const ro = !mayEdit;
+  const ro = !mayEdit || readOnly;
+  /** The banner is about PERMISSION, so a read-only screen never shows it. */
+  const denied = !mayEdit;
 
   /**
    * One typed box, in dollars.
@@ -850,7 +863,7 @@ export function DealOverviewEditor({
     <div className="space-y-5">
       {/* SAID ONCE, AT THE TOP, rather than by a form that refuses every field
           one at a time. */}
-      {ro && (
+      {denied && (
         <div className="flex items-start gap-2.5 rounded-xl border border-border-light bg-blue-light/60 px-4 py-3">
           <ShieldAlert
             size={15}
@@ -1235,192 +1248,183 @@ export function DealOverviewEditor({
         title="Revenue Accrual"
         hint="Entered in the money it was agreed in. The dollar figures underneath are worked out from the rate and never stored."
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label={<>Project currency <Req /></>} state={state.currency} error={errors.currency}>
-            {ro ? (
-              <ReadValue text={`${currency} ${currencyMeta(currency).name}`} />
-            ) : (
-              <ColorSelect
-                value={currency}
-                ariaLabel="Currency"
-                fill
-                collapsible={false}
-                onChange={(v) => {
-                  setCurrency(v);
-                  void commit("currency", { currency: v }, () =>
-                    setCurrency(deal.currency ?? BASE_CURRENCY)
-                  );
-                }}
-                options={CURRENCIES.map((c) => ({
-                  value: c.code,
-                  label: `${c.code} ${c.name}`,
-                  color: c.code === BASE_CURRENCY ? "#0071E3" : "#0F766E",
-                  short: c.symbol.trim(),
-                  icon: currencyGlyph(c.symbol),
-                }))}
-              />
-            )}
-          </Field>
-          {/* ONE MONEY NUMBER, NOT TWO (Manoj's change sheet, item 2: "Change
-              Value to 'Estimated TCV'. We don't need Value and Estimated TCV
-              separately").
-
-              There were two boxes and they meant the same thing. `value` was
-              the operative one — goals, weighting, contracts and every rollup
-              read it — while `estimatedTcv` was a second, optional number that
-              `estimatedTcvOf` preferred when somebody had typed it. Two fields
-              for one fact is how a deal ends up worth two different amounts on
-              two different screens.
-
-              So the Estimated TCV box below is now the only money input, and
-              it writes BOTH fields to the same number. Nothing is migrated and
-              no reader changes: whichever of the two a screen happens to read,
-              it gets the figure the person typed.
-
-              ACV stays its own field and stays optional. TCV is the whole
-              signed number, ACV is one year of it, and no divisor in the record
-              can turn one into the other.
-
-              ACV STARTS EMPTY AND STAYS EMPTY UNTIL SOMEBODY SAYS IT. A zero
-              here is a claim that the deal is worth nothing; blank is the
-              truth, which is that it has not been entered. */}
-          <Field
-            label={<>Estimated TCV <Req /></>}
-            hint={localSymbol}
-            state={state.estimatedTcv}
-            error={errors.estimatedTcv}
-          >
-            {ro ? (
-              <ReadValue
-                text={tcv === "" ? "Not entered" : `${localSymbol}${tcv}`}
-                empty={tcv === ""}
-              />
-            ) : (
-              <input
-                value={tcv}
-                onChange={(e) => setTcv(e.target.value)}
-                onBlur={() =>
-                  /* BOTH FIELDS, ONE NUMBER. See the note above the ACV field:
-                     `value` is what the rollups read and `estimatedTcv` is what
-                     `estimatedTcvOf` prefers, so they have to agree or the deal
-                     is worth two amounts. */
-                  commit(
-                    "estimatedTcv",
-                    { estimatedTcv: num(tcv), value: num(tcv) ?? 0 },
-                    () =>
-                      setTcv(
-                        deal.estimatedTcv === undefined
-                          ? deal.value
-                            ? String(deal.value)
-                            : ""
-                          : String(deal.estimatedTcv)
-                      )
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                inputMode="numeric"
-                className={INPUT}
-                placeholder="the whole signed number"
-              />
-            )}
-          </Field>
-          <Field
-            label="Estimated ACV"
-            hint={localSymbol}
-            state={state.estimatedAcv}
-            error={errors.estimatedAcv}
-          >
-            {ro ? (
-              <ReadValue
-                text={acv === "" ? "Not entered" : `${localSymbol}${acv}`}
-                empty={acv === ""}
-              />
-            ) : (
-              <input
-                value={acv}
-                onChange={(e) => setAcv(e.target.value)}
-                onBlur={() =>
-                  commit("estimatedAcv", { estimatedAcv: num(acv) }, () =>
-                    setAcv(
-                      deal.estimatedAcv === undefined
-                        ? ""
-                        : String(deal.estimatedAcv)
-                    )
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                inputMode="numeric"
-                className={INPUT}
-                placeholder="one year of it"
-              />
-            )}
-          </Field>
-        </div>
-
         {/**
-         * THE AUTOMATIC ROW (Suren, Sep 1: "for US dollar value currency,
-         * there'll be another row here that'll be an automatic value. That will
-         * be auto-calculated... It's only in USD").
+         * ONE TABLE, TWO ROWS (Anir, Sep 3: "Just have it as a table. Why are
+         * you doing that weird blue thing? Literally you could just have euros
+         * and then USD... Don't have another section. Just have it in the
+         * second row as the table").
          *
-         * Read only, and never saved: the store keeps what was typed, in the
-         * local currency, and this is worked out again every time the form is
-         * opened. When the deal already IS in dollars it says so instead of
-         * reprinting the three numbers a centimetre below themselves.
+         * It was a row of three fields and then a blue-tinted panel underneath
+         * repeating the same two figures in dollars — a second section doing
+         * what a second ROW does, and tinted so it read as a warning about
+         * something. The dollars are not an aside about the money; they are
+         * the same money counted again, which is a row.
+         *
+         * The typed row still writes. Only the dollar row is worked out, and
+         * it is still never stored: the deal keeps what somebody typed, in the
+         * currency they agreed, and this is recomputed every time.
          */}
-        <div className="mt-4 rounded-lg border border-border-light bg-blue-light/60 px-3.5 py-2.5">
-          {isBase ? (
-            <p className="text-[12px] text-text-secondary">
-              <span className="font-semibold text-text-primary">In US dollars</span>{" "}
-              This deal is already in US dollars, so there is nothing to convert.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold text-text-primary">
-                  In US dollars
-                </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-text-secondary">
-                  {fxState === "loading" && "Getting the rate."}
-                  {/* HONEST WHEN IT CANNOT. Never a stale figure dressed as a
-                      fresh one, and never a blocked save: the numbers being
-                      saved are the ones the person typed, which need no rate. */}
-                  {fxState === "failed" &&
-                    "Cannot convert right now. What you typed still saves exactly as it is."}
-                  {fxState === "ready" && rateNote}
-                </p>
-              </div>
-              {fxState === "ready" ? (
-                /* THREE COLUMNS BECAME TWO, with the money box (item 2). The
-                   automatic row mirrors the typed row above it, so it carries
-                   one dollar figure per field that exists — and Value no
-                   longer does. */
-                [tcv, acv].map((typed, i) => {
-                  const shown = asUsd(typed);
-                  return (
-                    <p
-                      key={["tcv", "acv"][i]}
-                      className={
-                        shown.known
-                          ? "min-w-0 self-center truncate text-[13px] font-semibold text-text-primary"
-                          : "min-w-0 self-center truncate text-[13px] text-text-tertiary"
+        <div className="overflow-x-auto rounded-lg border border-border-light">
+          <table className="w-full min-w-[520px] table-fixed text-left">
+            <thead className="bg-surface">
+              <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
+                <th className="w-[38%]">Project currency <Req /></th>
+                <th>Estimated TCV <Req /></th>
+                <th>Estimated ACV</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {/* WHAT WAS AGREED, AND WHAT IS TYPED. */}
+              <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
+                <td>
+                  {ro ? (
+                    <ReadValue text={`${currency} ${currencyMeta(currency).name}`} />
+                  ) : (
+                    <ColorSelect
+                      value={currency}
+                      ariaLabel="Currency"
+                      fill
+                      collapsible={false}
+                      onChange={(v) => {
+                        setCurrency(v);
+                        void commit("currency", { currency: v }, () =>
+                          setCurrency(deal.currency ?? BASE_CURRENCY)
+                        );
+                      }}
+                      options={CURRENCIES.map((c) => ({
+                        value: c.code,
+                        label: `${c.code} ${c.name}`,
+                        color: c.code === BASE_CURRENCY ? "#0071E3" : "#0F766E",
+                        short: c.symbol.trim(),
+                        icon: currencyGlyph(c.symbol),
+                      }))}
+                    />
+                  )}
+                  {errors.currency && (
+                    <p className="mt-1 text-[11.5px] text-[color:#DC2626]">{errors.currency}</p>
+                  )}
+                </td>
+                {/* ONE MONEY NUMBER, NOT TWO (Manoj's item 2: "Change Value to
+                    'Estimated TCV'. We don't need Value and Estimated TCV
+                    separately"). This box writes BOTH fields to the same
+                    figure, so no reader has to be migrated and no deal is ever
+                    worth two amounts on two screens.
+
+                    ACV STAYS OPTIONAL AND STARTS EMPTY. A zero here would be a
+                    claim that a year of the deal is worth nothing; blank is
+                    the truth, which is that nobody has said. */}
+                <td>
+                  {ro ? (
+                    <ReadValue text={tcv === "" ? "Not entered" : `${localSymbol}${tcv}`} empty={tcv === ""} />
+                  ) : (
+                    <>
+                      <input
+                        value={tcv}
+                        aria-label="Estimated TCV"
+                        onChange={(e) => setTcv(e.target.value)}
+                        onBlur={() =>
+                          /* BOTH FIELDS, ONE NUMBER. `value` is what the
+                             rollups read and `estimatedTcv` is what
+                             `estimatedTcvOf` prefers, so they have to agree or
+                             the deal is worth two amounts. */
+                          commit(
+                            "estimatedTcv",
+                            { estimatedTcv: num(tcv), value: num(tcv) ?? 0 },
+                            () =>
+                              setTcv(
+                                deal.estimatedTcv === undefined
+                                  ? deal.value
+                                    ? String(deal.value)
+                                    : ""
+                                  : String(deal.estimatedTcv)
+                              )
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                        inputMode="numeric"
+                        className={INPUT}
+                        placeholder="the whole signed number"
+                      />
+                      {errors.estimatedTcv && (
+                        <p className="mt-1 text-[11.5px] text-[color:#DC2626]">{errors.estimatedTcv}</p>
+                      )}
+                    </>
+                  )}
+                </td>
+                <td>
+                  {ro ? (
+                    <ReadValue text={acv === "" ? "Not entered" : `${localSymbol}${acv}`} empty={acv === ""} />
+                  ) : (
+                    <input
+                      value={acv}
+                      aria-label="Estimated ACV"
+                      onChange={(e) => setAcv(e.target.value)}
+                      onBlur={() =>
+                        void commit(
+                          "estimatedAcv",
+                          { estimatedAcv: acv === "" ? null : Number(acv) },
+                          () =>
+                            setAcv(
+                              deal.estimatedAcv === undefined
+                                ? ""
+                                : String(deal.estimatedAcv)
+                            )
+                        )
                       }
-                    >
-                      {shown.text}
-                    </p>
-                  );
-                })
-              ) : (
-                <p className="self-center text-[13px] text-text-tertiary sm:col-span-3">
-                  {fxState === "loading" ? "Working it out" : "No figure to show"}
-                </p>
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                      inputMode="numeric"
+                      className={INPUT}
+                      placeholder="one year of it"
+                    />
+                  )}
+                </td>
+              </tr>
+              {/* THE SAME MONEY, COUNTED IN DOLLARS. Only when the deal is in
+                  something else: on a dollar deal this row would reprint the
+                  row above it. */}
+              {!isBase && (
+                <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
+                  <td className="text-[13px] text-text-secondary">
+                    USD US dollar
+                  </td>
+                  {fxState === "ready" ? (
+                    [tcv, acv].map((typed, i) => {
+                      const shown = asUsd(typed);
+                      return (
+                        <td
+                          key={["tcv", "acv"][i]}
+                          className={
+                            shown.known
+                              ? "text-[13px] font-semibold text-text-primary tnum"
+                              : "text-[13px] text-text-tertiary"
+                          }
+                        >
+                          {shown.text}
+                        </td>
+                      );
+                    })
+                  ) : (
+                    /* HONEST WHEN IT CANNOT. Never a stale figure dressed as a
+                       fresh one, and never a blocked save: what saves is what
+                       was typed, which needs no rate at all. */
+                    <td colSpan={2} className="text-[13px] text-text-tertiary">
+                      {fxState === "loading"
+                        ? "Getting the rate."
+                        : "Cannot convert right now. What you typed still saves exactly as it is."}
+                    </td>
+                  )}
+                </tr>
               )}
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
+        {!isBase && fxState === "ready" && rateNote && (
+          <p className="mt-1.5 text-[11.5px] text-text-tertiary">{rateNote}</p>
+        )}
 
         {/* THE SCHEDULE ITSELF (Manoj's sheet, item 3: "Under Revenue Accrual,
             provide Revenue Accrual schedule"; item 5 lists "Revenue Accrual
@@ -1447,9 +1451,14 @@ export function DealOverviewEditor({
                 aria-label="Read the schedule in"
                 className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
               >
+                {/* THE SYMBOL RIDES WITH THE CODE (Anir, Sep 3: "you have
+                    to put the currency icon, whatever is called there, as
+                    well"). The column below reads $30 or €30, so the control
+                    that swaps them should show the same mark rather than
+                    making you read three letters and translate. */}
                 {[
-                  { on: false, label: "USD" },
-                  { on: true, label: currency },
+                  { on: false, label: "USD", mark: "$" },
+                  { on: true, label: currency, mark: localSymbol },
                 ].map((o) => (
                   <button
                     key={o.label}
@@ -1463,6 +1472,7 @@ export function DealOverviewEditor({
                         : "text-text-secondary hover:text-text-primary"
                     )}
                   >
+                    <span className="mr-1 text-text-tertiary">{o.mark}</span>
                     {o.label}
                   </button>
                 ))}
@@ -1680,7 +1690,14 @@ export function DealOverviewEditor({
                  change this deal at all, and you must clear the record check
                  the route itself runs. Never widened here — a view-only person
                  sees the list and no plus button. */
-              mayChangeTeam={mayEdit && mayChangeTeam}
+              /* THE OVERVIEW SHOWS, HERE TOO. `ro` already covers every field
+                 in this form, but the team list owns its own control and read
+                 only `mayEdit`, so the plus that adds somebody to the deal
+                 survived on a screen that is not supposed to change anything
+                 (Anir, Sep 3: "I can still add people, though. That's a
+                 problem"). Adding a person to a deal decides who may edit it,
+                 which makes it the last control that should slip through. */
+              mayChangeTeam={!ro && mayChangeTeam}
             />
           </div>
           </div>

@@ -1293,9 +1293,14 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 aria-label="Currency to read the schedule in"
                 className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5"
               >
+                {/* THE SYMBOL RIDES WITH THE CODE, same as the switcher on the
+                    deal (Anir, Sep 3: "you have to put the currency icon,
+                    whatever is called there, as well"). The column below reads
+                    $30 or €30; the control that swaps them shows the same mark
+                    rather than making you translate three letters. */}
                 {[
-                  { key: false, label: "USD" },
-                  { key: true, label: dealCurrency },
+                  { key: false, label: "USD", mark: "$" },
+                  { key: true, label: dealCurrency, mark: currencyMeta(dealCurrency).symbol.trim() },
                 ].map((o) => (
                   <button
                     key={o.label}
@@ -1309,6 +1314,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                         : "text-text-secondary hover:text-text-primary"
                     )}
                   >
+                    <span className="mr-1 text-text-tertiary">{o.mark}</span>
                     {o.label}
                   </button>
                 ))}
