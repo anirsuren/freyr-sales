@@ -685,3 +685,33 @@ export function signDateOf(deal: {
   const fromRow = (deal.lines ?? []).find((l) => l.estSignDate)?.estSignDate;
   return fromRow ?? deal.estSignDate;
 }
+
+/**
+ * A COLOUR PER STATUS, IN ONE PLACE (Anir, Sep 3: "where you say 'under
+ * review' at the top or whatever else it could be, I think you should have
+ * colours for that" and "under review being blue doesn't make any sense").
+ *
+ * The deal screen painted EVERY status the same blue, so the chip carried a
+ * colour that said nothing and actively misled: blue is the app's "in
+ * progress" hue, and Lost wore it too. A map already existed inside the
+ * offerings module; it lives here now so every screen answers the same way.
+ *
+ * The reserved colours keep their meanings — green is Won, red is Lost, grey
+ * is a deal that has stopped — and nothing else may borrow them. The rest run
+ * cool-to-warm along the lifecycle so a column of chips reads as progress.
+ */
+export const OPPORTUNITY_STATUS_COLOR: Record<string, string> = {
+  Qualify: "#0891B2",
+  Pilot: "#5E5CE6",
+  Propose: "#0071E3",
+  "Submitted to client": "#7C3AED",
+  "Under review": "#B4318F",
+  "On hold": "#8E98A8",
+  Won: "#16A34A",
+  Lost: "#DC2626",
+};
+
+/** The colour for a status, or a neutral for anything unrecognised. */
+export function statusColor(status: string | null | undefined): string {
+  return OPPORTUNITY_STATUS_COLOR[String(status ?? "")] ?? "#8E98A8";
+}

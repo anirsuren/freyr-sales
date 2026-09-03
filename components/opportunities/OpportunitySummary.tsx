@@ -848,7 +848,15 @@ export function OpportunitySummary({
                         is drawn for the unowned deals — 97 of the book has no
                         owner, and a placeholder head on all of them would say
                         "somebody" where the truth is "nobody yet". */}
-                    {d.owner && (
+                    {/* NOT WHEN THE TREE IS ALREADY GROUPED BY OWNER (Anir,
+                        Sep 3: "you don't have to put the profile picture if
+                        the person's there, because I'm already clicked into
+                        the person"). Under an Owner row, every deal repeats
+                        the same face down the column — it answers a question
+                        the row above already answered, and the whole reason
+                        the face is here is to answer it where nothing else
+                        does. */}
+                    {d.owner && !order.includes("owner") && (
                       <Avatar
                         name={d.owner}
                         /* The component owns its own hover label. */

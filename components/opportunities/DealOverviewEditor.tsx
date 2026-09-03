@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { statusColor } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
-import { agentIn } from "@/components/ui/AgentAvatar";
+import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import {
   Banknote,
@@ -380,17 +381,27 @@ function ReadValue({
   empty?: boolean;
 }) {
   if (tone && !empty) {
+    /* THE AGENT'S FACE INSTEAD OF THE DOT (Anir, Sep 3: "offering still does
+       not have the icon"). The pickers learned this already; this is the
+       READ-ONLY chip, a separate renderer, and it kept drawing the generic
+       tone dot beside Agent.Via — which is the third place this same fix was
+       needed and the one that stayed visible on the deal itself. */
+    const agent = agentIn(text);
     return (
       <span className="flex h-10 items-center">
         <span
           className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
           style={{ background: `${tone}14`, color: tone }}
         >
-          <span
-            aria-hidden="true"
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ background: tone }}
-          />
+          {agent ? (
+            <AgentAvatar name={text} size={16} className="shrink-0" />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ background: tone }}
+            />
+          )}
           <span className="truncate">{text}</span>
         </span>
       </span>
@@ -1165,7 +1176,7 @@ export function DealOverviewEditor({
           </Field>
           <Field label={<>Status <Req /></>} state={state.status} error={errors.status}>
             {ro ? (
-              <ReadValue text={status || "Not set"} tone={STATUS_TONE} empty={!status} />
+              <ReadValue text={status || "Not set"} tone={statusColor(status)} empty={!status} />
             ) : (
               <ColorSelect
                 value={status}
@@ -1182,9 +1193,10 @@ export function DealOverviewEditor({
                 options={[
                   { value: "", label: "Not set", color: STATUS_TONE },
                   ...OPPORTUNITY_STATUSES.map((s) => ({
+                    /* Each status wears its own colour, not one shared blue. */
                     value: s,
                     label: s,
-                    color: STATUS_TONE,
+                    color: statusColor(s),
                   })),
                 ]}
               />

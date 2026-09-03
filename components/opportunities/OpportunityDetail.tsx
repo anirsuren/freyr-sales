@@ -41,6 +41,7 @@ import {
   estimatedTcvOf,
   weightedValue,
   type Opportunity,
+  statusColor,
 } from "@/lib/opportunitiesShared";
 import { cn } from "@/lib/utils";
 
@@ -415,7 +416,28 @@ export function OpportunityDetail({
               >
                 {level}
               </span>
-              {deal.status && <span>· {deal.status}</span>}
+              {/* THE STATUS IS A COLOURED PILL, like the category beside it
+                  (Anir, Sep 3: "where you say 'under review' at the top or
+                  whatever else it could be, I think you should have colours
+                  for that"). It was grey body text between two dots — the one
+                  fact on this line that changes as the deal moves, dressed as
+                  punctuation. */}
+              {deal.status && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold"
+                  style={{
+                    background: `${statusColor(deal.status)}14`,
+                    color: statusColor(deal.status),
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: statusColor(deal.status) }}
+                  />
+                  {deal.status}
+                </span>
+              )}
               {deal.externalId && (
                 <span className="tnum text-text-tertiary">· {deal.externalId}</span>
               )}
