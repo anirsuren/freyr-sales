@@ -10,6 +10,7 @@ import {
 import { offeringMark, serviceCardMark } from "@/components/ui/OfferingIcon";
 import type { ServiceCardStyle } from "@/lib/serviceCardStyle";
 import { componentGroupRank, componentNoun } from "@/lib/componentGroups";
+import { AgentAvatar, agentLeading } from "@/components/ui/AgentAvatar";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -305,6 +306,16 @@ function CapabilityCard({
           : undefined
       }
     >
+      {/* THE SIX AGENTS WEAR THEIR OWN FACE (Saras, Sep 2, forwarding Avni's
+          approved artwork: "any Agent related component cards"). This is the
+          one exception to the no-glyph rule below, and it is not a
+          reinstatement of it: these are six specific designed portraits on six
+          specific cards, not a generated mark on all of them. `agentLeading`
+          only fires when the card is ABOUT an agent, so an availability line
+          reading "delivered via Freyr-X" stays untouched. */}
+      {agentLeading(displayTitle) && (
+        <AgentAvatar name={displayTitle} size={28} lineHeight={1.625} />
+      )}
       {/* No glyph tile. The icons were decoration — they carried no meaning
           of their own and pulled the eye away from the sentence that does
           (Anir, Aug 7: "we don't really need them, you can just keep the

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "@/lib/accessControl";
 import {
   APP_SESSION_COOKIE,
@@ -145,6 +146,23 @@ function securityHeaders(response: NextResponse, requestId: string) {
   }
 }
 
+/**
+ * Expire the Mock-mode cookie on a response. Mirrors how `signInSession` and
+ * the data-mode endpoint clear it, so all three agree on what "off" looks
+ * like — a cookie cleared three different ways comes back on one of them.
+ */
+function leaveMockMode(response: NextResponse): NextResponse {
+  response.cookies.set(DATA_MODE_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(0),
+    maxAge: 0,
+  });
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
   /**
@@ -164,6 +182,62 @@ export async function middleware(request: NextRequest) {
   const pathname = rawPathname.startsWith("/mock-mode")
     ? rawPathname.slice("/mock-mode".length) || "/"
     : rawPathname;
+
+  /**
+   * THE SIGNED-OUT PAGES SHED THE LABEL.
+   *
+   * Anir, Sep 3, typing localhost:3006 and landing on /mock-mode/: "it's
+   * automatically pushing me to Mock-mode". Nothing was pushing him — Chrome
+   * had autocompleted a prefixed URL out of his history, the rewrite served
+   * the normal page, and the prefix simply stayed in the bar. But it stayed
+   * there FOREVER, because the label is written and erased by ModeUrlSync
+   * inside AppShell and these pages are not in AppShell. So the address kept
+   * announcing a workspace mode on the one screen where there is no workspace
+   * and no session, and it read exactly like a forced redirect.
+   *
+   * `ModeUrlSync.skip()` already says why: "you are not signed in yet, so
+   * there is no workspace to be in a mode of". These are the same routes, and
+   * a redirect is the only tool that reaches them. It strips a label off a
+   * public route and nothing more: the destination is the very page the
+   * rewrite was already serving, so no door moves.
+   */
+  if (rawPathname.startsWith("/mock-mode")) {
+    const signedOutPage =
+      pathname === "/" ||
+      pathname === "/login" ||
+      pathname.startsWith("/login/") ||
+      pathname.startsWith("/auth/");
+    if (signedOutPage) {
+      const bare = new URL(request.url);
+      bare.pathname = pathname;
+      return leaveMockMode(NextResponse.redirect(bare));
+    }
+  }
+
+  /**
+   * THE FRONT DOOR PUTS YOU BACK IN REAL.
+   *
+   * Anir, Sep 3: "When I go to this URL, it automatically chooses Mock-mode."
+   * He was right and the URL prefix was a side-show. `freyr_data_view_session`
+   * is a browser-session cookie, so a flip into Mock made hours ago on some
+   * other page was still in force, and typing localhost:3006 fresh dropped him
+   * into sample data with nothing but a banner to say so.
+   *
+   * dataMode.ts already states the intent: "an unlocked app always starts in
+   * Real mode. Mock mode is a temporary viewer choice." `signInSession`
+   * already enforces it at sign-in. This closes the other way in: arriving at
+   * the signed-out front door is starting over, so the temporary choice ends
+   * there too. Typing the bare URL now means what he expects it to mean.
+   *
+   * It clears ONLY on these signed-out pages. Mock is untouched everywhere
+   * inside the app: the toggle, the /mock-mode links he pastes to people, and
+   * every page he navigates to while in it all behave exactly as before.
+   */
+  if (pathname === "/" || pathname === "/login" || pathname.startsWith("/login/")) {
+    if (request.cookies.get(DATA_MODE_COOKIE)?.value === "mock") {
+      return leaveMockMode(NextResponse.next());
+    }
+  }
   const authMode = process.env.AUTH_MODE;
   const recognizedAuthMode =
     authMode === "entra" ||

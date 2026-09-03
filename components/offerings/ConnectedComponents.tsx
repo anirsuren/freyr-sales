@@ -31,6 +31,7 @@ import {
   VersionPill,
   withV,
 } from "@/components/fdl/FdlComponentsBrowser";
+import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useStoredView } from "@/lib/useStoredView";
 
@@ -297,7 +298,15 @@ export function ConnectedComponents({
                         )}`}
                         className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
                       >
-                        <OfferingIcon name={component.name} className="h-7 w-7 shrink-0" />
+                        {/* An agent component wears the agent's own face
+                            (Saras, Sep 2: "any Agent related component
+                            cards"). Everything else keeps the generated mark,
+                            which is what tells the two apart at a glance. */}
+                        {agentIn(component.name) ? (
+                          <AgentAvatar name={component.name} size={28} />
+                        ) : (
+                          <OfferingIcon name={component.name} className="h-7 w-7 shrink-0" />
+                        )}
                         {component.name}
                       </Link>
                     </td>
@@ -458,7 +467,14 @@ export function ConnectedComponents({
                 >
                   <div className="flex items-start justify-between gap-3 pr-8">
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <OfferingIcon name={component.name} className="h-8 w-8 shrink-0" />
+                      {/* Same rule as the table view above: the six agents
+                          wear their own face, everything else keeps the
+                          generated mark. */}
+                      {agentIn(component.name) ? (
+                        <AgentAvatar name={component.name} size={32} />
+                      ) : (
+                        <OfferingIcon name={component.name} className="h-8 w-8 shrink-0" />
+                      )}
                       <p className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
                         {component.name}
                       </p>

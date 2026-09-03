@@ -20,6 +20,7 @@ import {
   Crown,
   CircleDashed,
 } from "lucide-react";
+import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { Card } from "@/components/ui/Card";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -781,6 +782,17 @@ export function OfferingsBrowser({
                   </p>
                 )}
                 <h3 className="flex items-start gap-1.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
+                  {/* THE AGENT'S OWN FACE, on the four agent offerings only
+                      (Saras, Sep 2, forwarding Avni's approved artwork:
+                      "beside the offering name in the Offerings module, tile
+                      view, 4 agent offerings").
+
+                      This is not the generic gradient tile Anir had removed
+                      from offering names earlier the same day. That one was
+                      auto-generated from the name and said nothing; this is
+                      the designed avatar for a specific agent, and it renders
+                      on nothing except Via, Pia, Mia, Ria, Cia and Fia. */}
+                  <AgentAvatar name={o.offering_name} size={26} lineHeight={1.375} />
                   <span className="min-w-0">{o.offering_name}</span>
                   {/* YOURS, SAID OUT LOUD (Anir, Aug 21: "I just added myself
                       as an owner to Freya.Submit... it's not giving me any

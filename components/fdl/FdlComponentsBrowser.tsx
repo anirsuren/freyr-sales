@@ -17,6 +17,7 @@ import {
   CalendarRange,
   BellRing,
 } from "lucide-react";
+import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PinnableTable } from "@/components/ui/PinnableTable";
@@ -489,7 +490,11 @@ export function FdlComponentsBrowser({
                       eyebrow, the name as the headline, chevron on the right. */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <OfferingIcon name={component.name} className="h-9 w-9 shrink-0" />
+                      {agentIn(component.name) ? (
+                        <AgentAvatar name={component.name} size={36} />
+                      ) : (
+                        <OfferingIcon name={component.name} className="h-9 w-9 shrink-0" />
+                      )}
                       <div className="min-w-0">
                         <p
                           className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
@@ -618,10 +623,18 @@ export function FdlComponentsBrowser({
                             onClick={(event) => event.stopPropagation()}
                             className="flex min-w-0 items-center gap-2.5"
                           >
-                            <OfferingIcon
-                              name={component.name}
-                              className="h-8 w-8 shrink-0"
-                            />
+                            {/* An agent component wears the agent's own face (Saras,
+                            Sep 2: "for all components related to Via, Pia,
+                            Mia, Ria, Cia, Fia"). The generated mark stays on
+                            everything else. */}
+                            {agentIn(component.name) ? (
+                              <AgentAvatar name={component.name} size={32} />
+                            ) : (
+                              <OfferingIcon
+                                name={component.name}
+                                className="h-8 w-8 shrink-0"
+                              />
+                            )}
                             <span className="min-w-0 text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                               {component.name}
                             </span>
