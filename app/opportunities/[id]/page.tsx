@@ -300,6 +300,12 @@ export default async function OpportunityPage({
       /* Who is on this deal, read off the teams row this page already loaded. */
       team={teamFor(teams, "opportunity", deal.id)}
       mayChangeTeam={mayChangeTeam}
+      /* ITEM 6 — "Under People, Owner is the person who add the Opportunity.
+         Let it be System generated with Admin having the rights to change
+         it." So the owner picker is an admin control; everyone else reads the
+         name. Adding SUPPORT is unchanged and stays with the owner, which is
+         the second half of his sentence. */
+      mayChangeOwner={role === "admin"}
       customerId={customerId}
       meetings={meetingsForOpportunity(meetingState.meetings, deal.id)
         .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))

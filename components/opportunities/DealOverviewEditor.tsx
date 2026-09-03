@@ -439,6 +439,7 @@ export function DealOverviewEditor({
   meName = "",
   team = null,
   mayChangeTeam = false,
+  mayChangeOwner = false,
   onSave,
   onSaved,
   children,
@@ -470,6 +471,7 @@ export function DealOverviewEditor({
    * plus button, because putting somebody on a deal hands them the pen.
    */
   mayChangeTeam?: boolean;
+  mayChangeOwner?: boolean;
   /** Returns null on success, or a message to show. Defaults to the same
    *  /api/opportunities update the rest of the deal page posts. */
   onSave?: (patch: Record<string, unknown>) => Promise<string | null>;
@@ -496,12 +498,21 @@ export function DealOverviewEditor({
     deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv)
   );
   const [tcv, setTcv] = useState(
-    /* One box for both fields, so it opens on whichever has been said. */
+    /**
+     * One box for both fields, so it opens on whichever has been said — and
+     * BLANK WHEN NEITHER HAS.
+     *
+     * `value` is 0 on every deal nobody has priced, so falling back to it
+     * without this check printed "0" in the box on those deals (caught on
+     * OPP-0007, which has an ACV and no TCV). Zero is a claim that the deal is
+     * worth nothing; empty is the truth, that the number has not been said.
+     * Same rule the ACV box beside it has always followed.
+     */
     deal.estimatedTcv !== undefined
       ? String(deal.estimatedTcv)
-      : deal.value === undefined
-        ? ""
-        : String(deal.value)
+      : deal.value
+        ? String(deal.value)
+        : ""
   );
   const [confidence, setConfidence] = useState(
     deal.confidence === undefined ? "" : String(deal.confidence)
@@ -1176,9 +1187,9 @@ export function DealOverviewEditor({
                     () =>
                       setTcv(
                         deal.estimatedTcv === undefined
-                          ? deal.value === undefined
-                            ? ""
-                            : String(deal.value)
+                          ? deal.value
+                            ? String(deal.value)
+                            : ""
                           : String(deal.estimatedTcv)
                       )
                   )
@@ -1332,7 +1343,20 @@ export function DealOverviewEditor({
         >
           <div>
           <Field label="Owner" state={state.owner} error={errors.owner}>
-            {ro ? (
+            {/* ITEM 6 — THE OWNER IS SYSTEM SET, AND ONLY AN ADMIN MOVES IT.
+                Manoj's sheet: "Under People, Owner is the person who add the
+                Opportunity. Let it be System generated with Admin having the
+                rights to change it. However, Owner can add anyone to support
+                under Other people."
+
+                It was a free picker for anybody who could edit the deal, which
+                made ownership something a rep could hand to themselves or away
+                from themselves — and ownership is what decides who may edit
+                the record at all. The API already stamps the creator as owner
+                on `op: "add"`, so the system-generated half was already true;
+                this closes the other half. "Other people" below is untouched:
+                that is the owner's to manage, exactly as his sentence says. */}
+            {ro || !mayChangeOwner ? (
               /* WITH THEIR FACE ON, like every other person in the app — but
                  never for the placeholder, because Avatar resolves a photo from
                  the NAME and "Nobody yet" would go and find somebody's. */

@@ -83,6 +83,7 @@ export function OpportunityDetail({
   meName = "",
   team = null,
   mayChangeTeam = false,
+  mayChangeOwner = false,
   customerId,
   meetings,
 }: {
@@ -139,6 +140,8 @@ export function OpportunityDetail({
   team?: DealTeam;
   /** May this person change that list. The server's own answer. */
   mayChangeTeam?: boolean;
+  /** Only an admin may reassign a deal (item 6). */
+  mayChangeOwner?: boolean;
   customerId: string | null;
   meetings: {
     id: string;
@@ -579,6 +582,7 @@ export function OpportunityDetail({
                before it writes a single name. */
             team={team}
             mayChangeTeam={mayChangeTeam}
+            mayChangeOwner={mayChangeOwner}
             onSave={saveField}
           >
             {meetings.length > 0 && (

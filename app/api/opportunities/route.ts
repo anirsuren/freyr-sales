@@ -321,8 +321,21 @@ export async function POST(req: NextRequest) {
 
       const created = await addOpportunity({
         ...body(raw),
-        // An opportunity nobody owns is an opportunity nobody chases.
-        owner: body(raw).owner || me.name,
+        /**
+         * THE CREATOR IS THE OWNER. SYSTEM SET, NOT SUBMITTED.
+         *
+         * Manoj's change sheet, item 6: "Under People, Owner is the person who
+         * add the Opportunity. Let it be System generated with Admin having
+         * the rights to change it."
+         *
+         * It used to take `body(raw).owner` when the client sent one and fall
+         * back to the creator, so anybody creating a deal could name somebody
+         * else as its owner — and ownership is what decides who may edit the
+         * record afterwards. Now the creator is stamped and a submitted owner
+         * is ignored. An admin can reassign it after the fact, from the picker
+         * on the deal, which is the other half of his sentence.
+         */
+        owner: me.name,
       });
       const settled = await settleMetGoals(null, created, me.name);
       return NextResponse.json({ ok: true, opportunity: settled });
@@ -384,7 +397,24 @@ export async function POST(req: NextRequest) {
         await removeOpportunity(id);
         return NextResponse.json({ ok: true });
       }
-      const updated = await updateOpportunity(id, body(raw));
+      /**
+       * ONLY AN ADMIN REASSIGNS A DEAL (item 6). The picker is hidden from
+       * everybody else on the deal page, and this is the same question asked
+       * again where it counts: a hidden control is a courtesy, a dropped field
+       * is the rule. `me.role` is the identity's own role, not a claim in the
+       * body, so this cannot be talked around.
+       *
+       * Silently dropped rather than refused, because every other field in the
+       * same patch is legitimate — a rep editing the value of their own deal
+       * should not have the save fail because the form also echoed the owner
+       * back unchanged.
+       */
+      const patch = body(raw);
+      if (patch.owner !== undefined && me.role !== "admin") {
+        const before = target?.owner ?? "";
+        if (patch.owner !== before) delete patch.owner;
+      }
+      const updated = await updateOpportunity(id, patch);
       const settled = await settleMetGoals(target, updated, me.name);
       return NextResponse.json({ ok: true, opportunity: settled });
     }
