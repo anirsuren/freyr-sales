@@ -339,7 +339,17 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
             "overflow-auto bg-white",
             fullScreen
               ? "min-h-0 flex-1"
-              : "-mb-28 rounded-xl border border-border-light"
+              : /* NO NEGATIVE MARGIN (Anir, Sep 3: "what the fuck is this
+                   text in the middle of this page"). This carried `-mb-28`,
+                   which pulls whatever FOLLOWS it up by 112px — and what
+                   follows is the "click any version" footnote, so the caption
+                   was dragged bodily on top of the last rows of the calendar
+                   and printed across them.
+
+                   Nothing needs the pull. `useFillHeight(96, …)` already sizes
+                   this grid to the viewport MINUS a 96px gap, and that gap is
+                   there precisely so the line underneath has somewhere to sit. */
+                "rounded-xl border border-border-light"
           )}
         >
           <table
