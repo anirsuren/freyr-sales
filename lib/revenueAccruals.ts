@@ -218,9 +218,35 @@ function normalizePlan(v: unknown): AccrualPlan | null {
      A plan with no stored versions keeps its lines exactly as they are: it IS
      version 1 and nothing about it is rewritten. That is the whole no-migration
      promise, and it is why `versions` is written back only when it exists. */
-  const lines = versions.length
-    ? latestActiveVersion({ lines: stored, versions, updatedBy, updatedAt }).lines
-    : stored;
+  /**
+   * ITEM 19 REVERSES WHAT THIS USED TO DO, AND THE REVERSAL IS THE POINT.
+   *
+   * Manoj's change sheet: "System should remove all entries in the Revenue
+   * Accrual Schedule if the Expected to Sign Date is passed. Show those
+   * respective entries as Inactive in Deviation tab."
+   *
+   * Suren said the opposite on Sep 1, and his words are two paragraphs up:
+   * "it's not removing, you can invalidate... but there has to be a flag which
+   * says it is not validating and you go and fix it." So the sweep opened a
+   * blank inactive version, `latestActiveVersion` skipped past it, and the
+   * money stayed on every report until a human fixed it.
+   *
+   * Manoj wants the money gone. When the NEWEST version is the system's own
+   * inactive one, the schedule now reads empty — the report stops carrying a
+   * plan whose sign date has passed unsigned.
+   *
+   * NOTHING IS DESTROYED. The previous version keeps its months in
+   * `versions`, the Deviations tab shows the record as Inactive with its full
+   * history, and filling the record in again clears the flag. So "removed"
+   * means removed from every forward total, not erased.
+   */
+  const newest = versions.length ? versions[versions.length - 1] : null;
+  const expiredUnsigned = !!newest?.inactive;
+  const lines = !versions.length
+    ? stored
+    : expiredUnsigned
+      ? []
+      : latestActiveVersion({ lines: stored, versions, updatedBy, updatedAt }).lines;
 
   return {
     id,
