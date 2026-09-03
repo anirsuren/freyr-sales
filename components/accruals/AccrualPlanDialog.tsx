@@ -441,8 +441,21 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * convert at the same rate rather than two.
    */
   const [showLocal, setShowLocal] = useState(false);
+  /**
+   * THE SYMBOL ON EVERY CELL, NOT ONLY IN THE HEADER (Anir, Sep 3: "can you
+   * show the currency on the individual cells — goes for everywhere in app").
+   *
+   * A column headed "TOTAL (USD)" over rows of bare 16666666 makes you carry
+   * the unit in your head from the header down, and the moment the schedule is
+   * being READ in euros the number and the header are the only things that say
+   * so. The mark rides on the figure it belongs to.
+   */
   const dealCurrency = (dealById.get(editing.opportunityId)?.currency || BASE_CURRENCY).toUpperCase();
   const hasLocal = dealCurrency !== BASE_CURRENCY;
+  /** The mark for whichever currency the table is being READ in right now. */
+  const cellSymbol = showLocal && hasLocal
+    ? currencyMeta(dealCurrency).symbol.trim()
+    : "$";
   const localSignDate = dealById.get(editing.opportunityId)?.estSignDate;
   const [fxReady, setFxReady] = useState<"off" | "loading" | "ready" | "failed">("off");
 
@@ -1570,6 +1583,13 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               style={{ width: monthColWidth }}
                               className="px-3 py-1.5"
                             >
+                              <span className="relative flex items-center">
+                              <span
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-2 text-[12px] font-semibold text-text-tertiary"
+                              >
+                                {cellSymbol}
+                              </span>
                               <input
                                 value={line[field] ?? ""}
                                 placeholder="0"
@@ -1579,11 +1599,11 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                   editSplit(
                                     i,
                                     field,
-                                    e.target.value.replace(/[^0-9]/g, "")
+                                    expandMoneyShorthand(e.target.value, { integer: true })
                                   )
                                 }
                                 className={cn(
-                                  "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",
+                                  "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-blue-subtle",
                                   /* A filled-in half is somebody's own number,
                                      so it wears the held look a typed total has
                                      always worn. */
@@ -1592,9 +1612,17 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                     : "border-border-light"
                                 )}
                               />
+                              </span>
                             </td>
                           ))}
                           <td style={{ width: monthColWidth }} className="px-3 py-1.5">
+                            <span className="relative flex items-center">
+                            <span
+                              aria-hidden="true"
+                              className="pointer-events-none absolute left-2 text-[12px] font-semibold text-text-tertiary"
+                            >
+                              {cellSymbol}
+                            </span>
                             <input
                               value={rowTotal(line)}
                               placeholder="0"
@@ -1606,7 +1634,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 editMonth(i, expandMoneyShorthand(e.target.value, { integer: true }))
                               }
                               className={cn(
-                                "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-blue-subtle",
+                                "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-blue-subtle",
                                 split
                                   ? /* Once the split is filled in the total is
                                        arithmetic, not a field, so it reads as a
@@ -1622,6 +1650,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                     : "border-border-light"
                               )}
                             />
+                            </span>
                           </td>
                         </tr>
                       );
@@ -1668,6 +1697,38 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                       </tr>
                     )}
                   </tbody>
+                  {/* THE TOTAL, UNDER THE COLUMN IT SUMS. Each money column
+                      carries its own total so the split is checkable at a
+                      glance: OTS and ARR have to come to the same figure the
+                      TOTAL column does, and when they do not, this row is
+                      where you see it. */}
+                  <tfoot className="border-t-2 border-border-light bg-surface">
+                    <tr className="h-10">
+                      <td className="px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        Total
+                        <span className="ml-1.5 font-normal normal-case tracking-normal">
+                          {editingRows.length} month{editingRows.length === 1 ? "" : "s"}
+                        </span>
+                      </td>
+                      {!deviating && (
+                        <>
+                          <td className="px-3 text-[12.5px] font-semibold tnum text-text-secondary">
+                            {readMoney(
+                              editingRows.reduce((n, l) => n + (Number(l.ots) || 0), 0)
+                            )}
+                          </td>
+                          <td className="px-3 text-[12.5px] font-semibold tnum text-text-secondary">
+                            {readMoney(
+                              editingRows.reduce((n, l) => n + (Number(l.arr) || 0), 0)
+                            )}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-3 text-[13px] font-bold tnum text-text-primary">
+                        {readMoney(editingTotal)}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -1768,19 +1829,17 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 ))}
               </div>
             )}
+            {/* THE MISMATCH WARNING STAYS PROSE, because it is a sentence
+                about the plan rather than a figure in a column. The TOTAL
+                itself moved into the table's own footer row (Anir, Sep 3:
+                "remove the 'the months add up to...' and just have a final row
+                saying total") — it belongs under the column it sums, in the
+                same tabular figures, not in a different typeface beneath. */}
             <p className="mt-2 text-[12.5px]">
-              The months add up to{" "}
-              <b className="tnum text-text-primary">{formatMoney(editingTotal)}</b>
               {/* ITEM 10 — the same figure in the deal's own money, beside the
                   dollars rather than instead of them. Both at once is the
                   honest shape: the schedule IS dollars, and this is what that
                   comes to in the currency the contract was written in. */}
-              {showLocal && hasLocal && fxReady === "ready" && (
-                <span className="text-text-secondary">
-                  {" "}
-                  ({readMoney(editingTotal)})
-                </span>
-              )}
               {editingValue > 0 && Math.abs(editingTotal - editingValue) > 1 && (
                 <span className="font-semibold" style={{ color: ACCRUAL_AMBER }}>
                   {" "}

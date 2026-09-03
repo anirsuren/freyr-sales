@@ -648,6 +648,29 @@ export function DealOverviewEditor({
     offeringLabels: deal.offeringLabels ?? [],
   };
 
+  /**
+   * NOTHING IS WRITTEN UNTIL YOU PRESS SAVE.
+   *
+   * Anir, Sep 3, after an edit toasted "Saved" while a Save button sat at the
+   * bottom of the same screen: "why are you saying save. The user has to press
+   * save I think. And it should be sticky at the bottom." He is right that the
+   * screen was telling him two different things — the deal's fields committed
+   * on blur, while the accrual scheduler underneath them kept an explicit Save
+   * plan. One screen, two contradictory promises about when your typing counts.
+   *
+   * So the fields stage here and go out together. `commit()` keeps its exact
+   * signature — all sixteen controls call it unchanged — it simply banks the
+   * patch instead of posting it.
+   *
+   * THE MANDATORY-FIELD GUARD STILL FIRES IMMEDIATELY, on the spot, rather
+   * than waiting for Save. Clearing a starred field is not a change to be
+   * reviewed later; it is a thing the form does not accept, and saying so
+   * three fields later would leave you hunting for which one it meant.
+   */
+  const [pending, setPending] = useState<Record<string, unknown>>({});
+  const [saving, setSaving] = useState(false);
+  const dirtyCount = Object.keys(pending).length;
+
   async function commit(
     key: string,
     patch: Record<string, unknown>,
@@ -658,7 +681,19 @@ export function DealOverviewEditor({
     const unchanged = Object.entries(patch).every(
       ([k, v]) => JSON.stringify(v) === JSON.stringify(baseline[k])
     );
-    if (unchanged) return;
+    if (unchanged) {
+      /* TYPING IT BACK IS AN UNDO. This returned early — correct when the
+         function POSTED, because there was nothing to send — but now that it
+         banks, an early return leaves the old staged value sitting in the bank
+         and the save bar offering to write a change that no longer exists. */
+      setPending((prev) => {
+        if (!Object.keys(patch).some((k) => k in prev)) return prev;
+        const next = { ...prev };
+        for (const k of Object.keys(patch)) delete next[k];
+        return next;
+      });
+      return;
+    }
     if (!mayEdit || readOnly) return;
 
     /**
@@ -696,26 +731,52 @@ export function DealOverviewEditor({
     }
 
     if (timers.current[key]) clearTimeout(timers.current[key]);
-    setState((s) => ({ ...s, [key]: "saving" }));
     setErrors((e) => ({ ...e, [key]: "" }));
-
-    const message = onSave
-      ? await onSave(patch)
-      : await postUpdate(deal.id, patch);
-    if (!alive.current) return;
-
-    if (message) {
-      revert();
-      setState((s) => ({ ...s, [key]: "error" }));
-      setErrors((e) => ({ ...e, [key]: message }));
-      return;
-    }
-    setState((s) => ({ ...s, [key]: "saved" }));
-    timers.current[key] = setTimeout(() => {
-      if (alive.current) setState((s) => ({ ...s, [key]: "idle" }));
-    }, 2600);
-    onSaved?.();
+    /* BANKED, NOT SENT. A field edited back to what it started as leaves the
+       bank entirely, so the footer disappears rather than offering to save
+       nothing. */
+    setPending((prev) => {
+      const next = { ...prev, ...patch };
+      for (const k of Object.keys(next)) {
+        if (JSON.stringify(next[k]) === JSON.stringify(baseline[k])) delete next[k];
+      }
+      return next;
+    });
+    setState((s) => ({ ...s, [key]: "idle" }));
   }
+
+  /** Send everything banked, in one write. */
+  async function saveAll() {
+    if (!dirtyCount || saving) return;
+    setSaving(true);
+    try {
+      const patch = { ...pending };
+      const message = onSave ? await onSave(patch) : await postUpdate(deal.id, patch);
+      if (!alive.current) return;
+      if (message) {
+        setErrors((e) => ({ ...e, __form: message }));
+        return;
+      }
+      setPending({});
+      setErrors((e) => ({ ...e, __form: "" }));
+      onSaved?.();
+    } finally {
+      if (alive.current) setSaving(false);
+    }
+  }
+
+  /* LEAVING WITH UNSAVED WORK SHOULD COST A CLICK, not a shrug. The whole
+     point of an explicit Save is that closing the tab must not quietly bin
+     what you typed. */
+  useEffect(() => {
+    if (!dirtyCount) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirtyCount]);
 
   /**
    * THE RATE FOR THIS DEAL'S OWN DAY (Suren, Sep 1: "based on that date,
@@ -1752,6 +1813,56 @@ export function DealOverviewEditor({
       </div>
 
       {children}
+
+      {/* THE SAVE BAR, PINNED (Anir, Sep 3: "it should be sticky at the
+          bottom — you do this well on some other page").
+
+          IT ONLY EXISTS WHEN THERE IS SOMETHING TO SAVE. A bar that is always
+          there, permanently greyed, is a piece of furniture you stop seeing;
+          one that arrives the moment you change something is the screen
+          answering you. It also keeps the read-only overview exactly as it
+          was — nothing to stage there, so nothing appears.
+
+          It counts what is actually banked rather than saying "unsaved
+          changes", because "3 changes" tells you whether you have edited what
+          you think you edited. */}
+      {!ro && dirtyCount > 0 && (
+        <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
+            <span className="text-[13px] font-semibold text-text-primary">
+              {dirtyCount} unsaved change{dirtyCount === 1 ? "" : "s"}
+            </span>
+            {errors.__form && (
+              <span className="text-[12.5px] text-[color:#DC2626]">{errors.__form}</span>
+            )}
+            <span className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  /* Putting the record back is the parent's job — it holds the
+                     server's copy. Re-reading it is both the discard and the
+                     proof that the discard worked. */
+                  setPending({});
+                  setErrors((e) => ({ ...e, __form: "" }));
+                  onSaved?.();
+                }}
+                className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveAll()}
+                className="cursor-pointer rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 
