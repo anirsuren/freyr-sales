@@ -563,6 +563,33 @@ export function buildPlanDeviation(
   };
 }
 
+/**
+ * ACCRUAL STATUS AS THE DEVIATIONS TAB SAYS IT: Active, Deviated, Inactive.
+ *
+ * Manoj's change sheet, item 14, in its notes: "Accrual Status': Active,
+ * Deviated, Inactive."
+ *
+ * THIS IS NOT A REPLACEMENT FOR `AccrualStatus`, and the difference matters.
+ * The app-wide three — Active and Filled, Non Filled, Inactive — are Suren's,
+ * settled on Sep 1, and they answer "has anybody entered numbers": a plan with
+ * no figures is Non Filled whether or not it has ever been deviated. Manoj's
+ * three answer a different question, on a tab that only lists records that HAVE
+ * been deviated: has this record expired, has it been changed, or is it running
+ * as first written.
+ *
+ * So this is a view of the record for one column on one tab, and nothing else
+ * reads it. Inactive wins over Deviated, because an expired record needs a
+ * human whether or not somebody edited it on the way.
+ */
+export type TabAccrualStatus = "Active" | "Deviated" | "Inactive";
+
+export function tabAccrualStatus(
+  summary: Pick<PlanDeviationSummary, "status" | "deviated">
+): TabAccrualStatus {
+  if (summary.status === "Inactive") return "Inactive";
+  return summary.deviated ? "Deviated" : "Active";
+}
+
 /* --------------------------------------------------------------- verdicts */
 
 export type PlanProblem =

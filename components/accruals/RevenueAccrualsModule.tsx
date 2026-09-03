@@ -28,7 +28,11 @@ import {
   Trash2,
   Unlock,
   Briefcase,
-  ScanLine,} from "lucide-react";
+  ScanLine,
+  UserPen,
+  History as HistoryIcon,
+} from "lucide-react";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
 import { PageToolbar } from "@/components/ui/PageToolbar";
@@ -52,12 +56,16 @@ import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import {
   buildDeviation,
+  buildPlanDeviation,
+  buildVersionHistory,
   judgePlan,
   monthKey,
   monthLabel,
   planTotal,
+  tabAccrualStatus,
   type AccrualPlan,
   type RevenueAccrualsState,
+  type TabAccrualStatus,
 } from "@/lib/revenueAccrualsShared";
 /* THE PLANNER ITSELF, in a file of its own so a deal's page can mount exactly
    the same screen (Suren, Sep 1: "it's just that same screen shows up here").
@@ -176,6 +184,335 @@ function accentFor(name: string): string {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return ACCENTS[h % ACCENTS.length];
 }
+
+
+/**
+ * ITEM 14 — THE DEVIATIONS TAB, WITH MANOJ'S COLUMNS.
+ *
+ * His sheet: "Under Deviation tab, we need the following data: Customer Name,
+ * Opportunity ID, Opportunity Name, Current Version, Owner, # of Deviations,
+ * Opportunity Status, Total Contract Value, Accrual Status, History." And in
+ * the notes: "Only Deviated opportunities should appear in the Deviated Tab."
+ *
+ * WHAT COUNTS AS A DEVIATION, in his words: "Any change in Total Contract
+ * Value, Revenue Accrual Schedule/Amount, Expected to Sign Date." The first
+ * two are what `savePlan` now appends a version for (items 17 and 18); the
+ * third is what the system sweep opens a version for when a sign date passes
+ * unsigned. So "has this record more than one version" is exactly his
+ * definition, and `buildPlanDeviation().deviated` already answers it.
+ *
+ * THIS DOES NOT NEED A FROZEN SHEET. The month-on-month comparison below it
+ * does — it is a diff against a snapshot — and that gated the whole tab, so
+ * with no snapshot taken the tab said "nothing to compare" and showed none of
+ * this. These are different questions and only one of them needs a snapshot.
+ */
+function DeviationsTable({
+  plans,
+  deals,
+  opportunities,
+  onOpen,
+}: {
+  plans: AccrualPlan[];
+  deals: DealOption[];
+  opportunities: Opportunity[];
+  onOpen: (plan: AccrualPlan) => void;
+}) {
+  const [statusFilter, setStatusFilter] = useState<TabAccrualStatus[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [dealStatusFilter, setDealStatusFilter] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
+  const [historyFor, setHistoryFor] = useState<AccrualPlan | null>(null);
+
+  const dealById = useMemo(() => {
+    const m = new Map<string, DealOption>();
+    for (const d of deals) m.set(d.id, d);
+    return m;
+  }, [deals]);
+  const oppById = useMemo(() => {
+    const m = new Map<string, Opportunity>();
+    for (const o of opportunities) m.set(o.id, o);
+    return m;
+  }, [opportunities]);
+
+  const rows = useMemo(() => {
+    return plans
+      .map((plan) => {
+        const summary = buildPlanDeviation(plan);
+        const deal = dealById.get(plan.opportunityId);
+        const opp = oppById.get(plan.opportunityId);
+        return {
+          plan,
+          summary,
+          /* His "Opportunity ID" is the one people quote — OPP-0011 — not the
+             internal row id. Falls back to the row id when a deal predates
+             external ids, rather than printing an empty cell. */
+          externalId: opp?.externalId || plan.opportunityId,
+          owner: opp?.owner || deal?.owner || "",
+          dealStatus: opp?.status || deal?.status || "",
+          contractValue: plan.contractValue || 0,
+          accrualStatus: tabAccrualStatus(summary),
+        };
+      })
+      /* ONLY DEVIATED RECORDS, which is the whole point of the tab. A record
+         running as first written has nothing to report here. */
+      .filter((r) => r.summary.deviated)
+      .sort((a, b) =>
+        (b.summary.lastDeviatedAt || "").localeCompare(a.summary.lastDeviatedAt || "")
+      );
+  }, [plans, dealById, oppById]);
+
+  /* ITEM 15 — "Include all filters relevant filters in Deviations Tab." The
+     relevant ones are the columns somebody would narrow by: who owns it, what
+     the deal's status is, and what the accrual's status is. Plus a search,
+     because a name is how anybody looks for one record. */
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter(
+      (r) =>
+        (statusFilter.length === 0 || statusFilter.includes(r.accrualStatus)) &&
+        (ownerFilter.length === 0 || ownerFilter.includes(r.owner || "Unassigned")) &&
+        (dealStatusFilter.length === 0 ||
+          dealStatusFilter.includes(r.dealStatus || "Not set")) &&
+        (!q ||
+          r.plan.opportunityName.toLowerCase().includes(q) ||
+          r.plan.customer.toLowerCase().includes(q) ||
+          r.externalId.toLowerCase().includes(q))
+    );
+  }, [rows, statusFilter, ownerFilter, dealStatusFilter, query]);
+
+  const owners = useMemo(
+    () => [...new Set(rows.map((r) => r.owner || "Unassigned"))].sort(),
+    [rows]
+  );
+  const dealStatuses = useMemo(
+    () => [...new Set(rows.map((r) => r.dealStatus || "Not set"))].sort(),
+    [rows]
+  );
+
+  const STATUS_COLOR: Record<TabAccrualStatus, string> = {
+    Active: "#0F766E",
+    Deviated: "#7C3AED",
+    Inactive: "#B45309",
+  };
+
+  if (!rows.length) {
+    return (
+      <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+        <h2 className="text-[15px] font-semibold text-text-primary">
+          Deviated records
+        </h2>
+        <p className="mt-1 text-[13px] text-text-secondary">
+          Nothing has been deviated yet. A record turns up here the first time
+          its schedule, its contract value or its expected sign date changes.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+          <UserPen size={15} strokeWidth={2} className="text-[#7C3AED]" />
+          Deviated records
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">
+            {shown.length}
+            {shown.length !== rows.length ? ` of ${rows.length}` : ""}
+          </span>
+        </h2>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by deal, customer or ID…"
+          aria-label="Search deviated records"
+          className="h-9 w-full max-w-[280px] rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+        />
+      </div>
+
+      {/* ITEM 15 — the app's own filter control, not a new one, so these
+          behave and look like the filters on every other module. */}
+      <div className="mt-3">
+        <FilterMenu
+          ariaLabel="Filter deviated records"
+          onClearAll={() => {
+            setStatusFilter([]);
+            setOwnerFilter([]);
+            setDealStatusFilter([]);
+          }}
+          groups={[
+            {
+              key: "accrualStatus",
+              label: "Accrual status",
+              values: statusFilter,
+              onChange: (v) => setStatusFilter(v as TabAccrualStatus[]),
+              options: (["Active", "Deviated", "Inactive"] as const).map((v) => ({
+                value: v,
+                label: v,
+                color: STATUS_COLOR[v],
+              })),
+            },
+            {
+              key: "owner",
+              label: "Owner",
+              values: ownerFilter,
+              onChange: setOwnerFilter,
+              options: owners.map((o) => ({
+                value: o,
+                label: o,
+                avatarName: o === "Unassigned" ? undefined : o,
+                color: "#0071E3",
+              })),
+            },
+            {
+              key: "oppStatus",
+              label: "Opportunity status",
+              values: dealStatusFilter,
+              onChange: setDealStatusFilter,
+              options: dealStatuses.map((o) => ({
+                value: o,
+                label: o,
+                color: "#0F766E",
+              })),
+            },
+          ]}
+        />
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
+        <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
+          <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            <tr>
+              <th className="w-[15%] px-3 py-2.5">Customer</th>
+              <th className="w-[10%] px-3 py-2.5">Opportunity ID</th>
+              <th className="w-[19%] px-3 py-2.5">Opportunity</th>
+              <th className="w-[8%] px-3 py-2.5">Version</th>
+              <th className="w-[12%] px-3 py-2.5">Owner</th>
+              <th className="w-[8%] px-3 py-2.5">Deviations</th>
+              <th className="w-[11%] px-3 py-2.5">Opp status</th>
+              <th className="w-[10%] px-3 py-2.5">Contract value</th>
+              <th className="w-[10%] px-3 py-2.5">Accrual status</th>
+              <th className="w-[7%] px-3 py-2.5">History</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-light">
+            {shown.map((r) => (
+              <tr key={r.plan.opportunityId} className="align-middle hover:bg-surface/60">
+                <td className="truncate px-3 py-2.5 text-[12.5px] text-text-secondary" title={r.plan.customer}>
+                  {r.plan.customer}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-[12px] tnum text-text-tertiary">
+                  {r.externalId}
+                </td>
+                <td className="px-3 py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => onOpen(r.plan)}
+                    className="w-fit max-w-full truncate text-left text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                    title={r.plan.opportunityName}
+                  >
+                    {r.plan.opportunityName}
+                  </button>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[#7E22CE]">
+                  v{r.summary.version}
+                </td>
+                <td className="px-3 py-2.5">
+                  {r.owner ? (
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Avatar name={r.owner} className="h-5 w-5 shrink-0 text-[8px]" />
+                      <span className="truncate text-[12.5px] text-text-secondary">{r.owner}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[12px] text-text-tertiary">Unassigned</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] tnum text-text-secondary">
+                  {r.summary.deviationCount}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className="truncate text-[12.5px] text-text-secondary">
+                    {r.dealStatus || "Not set"}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-text-primary">
+                  {formatMoney(r.contractValue)}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span
+                    className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
+                    style={{
+                      background: `${STATUS_COLOR[r.accrualStatus]}18`,
+                      color: STATUS_COLOR[r.accrualStatus],
+                    }}
+                  >
+                    {r.accrualStatus}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5">
+                  {/* ITEM 16 — "Store all versions of Revenue Accrual as single
+                      Deviation entry and show them in history." One row per
+                      record on this table, however many versions it carries;
+                      the versions themselves are behind this. */}
+                  <button
+                    type="button"
+                    onClick={() => setHistoryFor(r.plan)}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border-light px-2 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
+                  >
+                    <HistoryIcon size={12} strokeWidth={2.2} />
+                    {r.summary.version}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal
+        open={historyFor !== null}
+        onClose={() => setHistoryFor(null)}
+        title={historyFor ? `Versions of ${historyFor.opportunityName}` : "History"}
+        size="workflow"
+      >
+        {historyFor && (
+          <div className="space-y-2">
+            {buildVersionHistory(historyFor).map((h) => (
+              <div
+                key={h.version}
+                className="rounded-xl border border-border-light bg-white p-3.5"
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="rounded-full bg-[rgba(168,85,247,0.12)] px-2 py-0.5 text-[11.5px] font-bold text-[#7E22CE]">
+                    v{h.version}
+                  </span>
+                  <span className="text-[13px] font-semibold text-text-primary">
+                    {h.origin === "original"
+                      ? "As first written"
+                      : h.origin === "system"
+                        ? "Opened by the system"
+                        : "Edited"}
+                  </span>
+                  <span className="text-[12px] text-text-tertiary">
+                    {h.by} · {formatDate(h.at)}
+                  </span>
+                  <span className="ml-auto text-[12.5px] font-semibold tnum text-text-primary">
+                    {formatMoney(h.total)}
+                  </span>
+                </div>
+                {h.reason && (
+                  <p className="mt-1.5 text-[12.5px] italic text-text-secondary">
+                    &ldquo;{h.reason}&rdquo;
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+    </section>
+  );
+}
+
 
 export function RevenueAccrualsModule({
   state: initial,
@@ -1410,7 +1747,20 @@ export function RevenueAccrualsModule({
           )}
         </div>
       ) : (
-        <div key="deviation" className="tab-panel mt-4">
+        <div key="deviation" className="tab-panel mt-4 space-y-4">
+          {/* MANOJ'S TABLE FIRST, and outside the snapshot gate. His question
+              — which records have been deviated, by whom, how many times — has
+              nothing to do with whether a month has been frozen. The
+              month-on-month comparison below IS a diff against a snapshot, so
+              it keeps its own empty state. */}
+          <DeviationsTable
+            plans={state.plans}
+            deals={deals}
+            opportunities={opportunities}
+            /* Straight into the planner on that deal, the same door the
+               table rows and the pencil use. */
+            onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
+          />
           {!deviation.againstMonth ? (
             <EmptyState
               icon={Lock}
