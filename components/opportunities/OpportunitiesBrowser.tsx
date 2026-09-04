@@ -116,6 +116,7 @@ import {
 } from "@/components/ui/OfferingChip";
 import { typeMeta } from "@/components/performance/bits";
 import { CURRENCIES, convert, currencyMeta, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
+import { fetchFxDay } from "@/lib/fxClient";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 import { Customer360 } from "@/components/customers/Customer360";
@@ -4207,13 +4208,12 @@ function SingleOfferingEditor({
     /* Keyed to the sign date when there is one, so a deal signing in March
        converts at March's rate; the latest close otherwise, because a deal
        with no date still has to show a number today. */
-    const on = line.estSignDate ? `?on=${encodeURIComponent(line.estSignDate)}` : "";
-    fetch(`/api/fx${on}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (running && d?.day?.rates) setLiveRates(d.day.rates as CurrencyRates);
-      })
-      .catch(() => undefined);
+    /* fetchFxDay retries and de-duplicates (Sep 4) — the single silent fetch
+       here is what left the form converting against a USD-only table every
+       time one request blipped. */
+    fetchFxDay(line.estSignDate || undefined).then((day) => {
+      if (running && day?.rates) setLiveRates(day.rates as CurrencyRates);
+    });
     return () => {
       running = false;
     };

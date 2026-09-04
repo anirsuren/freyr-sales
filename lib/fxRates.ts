@@ -256,3 +256,28 @@ export async function usdRatesOn(onIso?: string): Promise<FxDayRates | null> {
   await writeCache(key, fetched);
   return toDayRates(fetched);
 }
+
+/**
+ * A RATE TABLE THAT IS NEVER EMPTY WHEN THE WORLD HAS ONE.
+ *
+ * Live ECB rates UNDERNEATH whatever the admin table holds: a rate somebody
+ * typed is a deliberate statement about a contract and still wins, but the
+ * live close fills every code the table does not mention. The performance
+ * route grew this privately on Sep 4 because a stored table holding only
+ * {USD: 1} was silently zeroing every non-dollar goal; it lives here now so
+ * every server page that hands a form its starting rates can use the same
+ * merge — the deal form was still handing out the bare stored table, which is
+ * why its conversion had nothing to fall back on the moment /api/fx failed.
+ */
+export async function ratesWithLiveFallback<
+  T extends Partial<Record<string, number>> | undefined
+>(stored: T): Promise<Partial<Record<string, number>>> {
+  try {
+    const live = await usdRatesOn();
+    if (!live?.rates) return stored ?? {};
+    return { ...live.rates, ...(stored ?? {}) };
+  } catch {
+    /* Never let the network cost anyone the table they already have. */
+    return stored ?? {};
+  }
+}

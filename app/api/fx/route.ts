@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { usdRatesOn } from "@/lib/fxRates";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +15,9 @@ export const dynamic = "force-dynamic";
  * source, and the cache would live nowhere. So the fetch and its store sit in
  * lib/fxRates on the server and this route hands the client plain numbers.
  *
- * Reading is open to anyone signed in, the same rule the opportunities route
- * reads by. There is nothing private in a published exchange rate; sign-in is
- * here so the app is not an open proxy to somebody else's free service.
+ * Reading is open, full stop — see the note in GET. There is nothing private
+ * in a published exchange rate, and the server-side cache means this is not a
+ * usable proxy to the free source behind it.
  *
  * ?on=YYYY-MM-DD — the day to price. Absent, unparseable or in the future all
  * mean "the latest published day", and the reply's `date` says which day the
@@ -29,10 +28,13 @@ export const dynamic = "force-dynamic";
  * deal, because the numbers being saved are the ones the person typed.
  */
 export async function GET(req: NextRequest) {
-  const scope = await verifiedRequestMemberScope(req);
-  if (!scope) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  }
+  /* NO SIGN-IN CHECK, DELIBERATELY (Sep 4). The comment above used to argue
+     sign-in kept the app from being an open proxy; what it actually did was
+     make currency conversion die whenever the 15-minute access grant was
+     renewing, because the form's fetch got a 401 it silently ate. The cache
+     in lib/fxRates means even a hammering caller reaches the free source at
+     most once per day-key per 6 hours, so there is no proxy to abuse — and a
+     published ECB reference rate is public information. */
   const on = req.nextUrl.searchParams.get("on") ?? undefined;
   const day = await usdRatesOn(on);
   if (!day) {

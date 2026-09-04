@@ -9,6 +9,7 @@ import { listOfferings } from "@/lib/offerings";
 import { readCustomerGroups } from "@/lib/customerGroups";
 import { listOfferingTypes } from "@/lib/offerings";
 import { readPerformance } from "@/lib/performance";
+import { ratesWithLiveFallback } from "@/lib/fxRates";
 import { readActivityMaster } from "@/lib/activityMaster";
 import {
   moduleCreateRefusal,
@@ -148,7 +149,11 @@ export default async function OpportunitiesPage() {
         label: a.label,
         color: a.color,
       }))}
-      rates={perf.rates ?? {}}
+      /* LIVE UNDER STORED (Sep 4): the bare admin table holds only USD, so a
+         non-dollar deal opened while /api/fx hiccupped had nothing to convert
+         with. The page now arrives with today's close already in hand and the
+         client fetch only refines it for a specific sign date. */
+      rates={await ratesWithLiveFallback(perf.rates)}
       people={visiblePeople(perf, me.name, me.role)}
       meName={me.name}
       /**

@@ -18,6 +18,7 @@ import {
   withCommas,
   setFxRates,
 } from "@/lib/currency";
+import { fetchFxDay } from "@/lib/fxClient";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -600,17 +601,14 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     }
     let running = true;
     setFxReady("loading");
-    const query = localSignDate ? `?on=${encodeURIComponent(localSignDate)}` : "";
-    fetch(`/api/fx${query}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!running) return;
-        const day = data?.day;
-        if (!day?.date || !day?.rates) return setFxReady("failed");
-        setFxRates(localSignDate || undefined, day);
-        setFxReady("ready");
-      })
-      .catch(() => running && setFxReady("failed"));
+    /* fetchFxDay retries and de-duplicates (Sep 4) — same reliability the two
+       deal forms got, same reason. */
+    fetchFxDay(localSignDate || undefined).then((day) => {
+      if (!running) return;
+      if (!day?.date || !day?.rates) return setFxReady("failed");
+      setFxRates(localSignDate || undefined, day);
+      setFxReady("ready");
+    });
     return () => {
       running = false;
     };

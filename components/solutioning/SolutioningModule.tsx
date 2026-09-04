@@ -977,13 +977,16 @@ function RequestRow({
               overdue ? "font-bold text-[color:var(--status-red)]" : "text-text-secondary"
             )}
           >
-            {/* THE APP'S DATE, NOT THE STORE'S (found in the loop, Sep 4:
-                this table read "2026-08-31" while every other screen reads
-                "31 Aug 2026" — and this very file already formats its activity
-                dates that way twenty lines down). The comparison above still
-                uses the raw ISO string, which is what a comparison wants. */}
-            {formatDate(r.neededBy)}
-            {overdue ? " · overdue" : ""}
+            {/* TWO LINES, NO DOT (Anir, Sep 4: "it should be on two lines:
+                the date, overdue or whatever. You don't need the bullet point
+                because it's going to be on another line"). The column is
+                narrow, so date-dot-overdue wrapped wherever it liked — the
+                dot ending up alone at a line end. The date owns a line and
+                never breaks; the verdict owns the next. The comparison above
+                still uses the raw ISO string, which is what a comparison
+                wants. */}
+            <span className="block whitespace-nowrap">{formatDate(r.neededBy)}</span>
+            {overdue && <span className="block">overdue</span>}
           </span>
         ) : (
           <span className="text-[12px] text-text-tertiary">-</span>

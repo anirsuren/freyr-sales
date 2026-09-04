@@ -13,6 +13,15 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
   "/",
   "/api/health",
+  /* PUBLISHED EXCHANGE RATES ARE NOT A SECRET (Anir, Sep 4: "it has to be up
+     to date 24/7 no bullshit"). This endpoint serves the ECB's public daily
+     reference rates from our own cache — nothing about the workspace, nothing
+     about any deal. It sat behind the session gate, and every time an access
+     grant was mid-renewal the deal form's fetch bounced, swallowed the error,
+     and fell back to a stored table holding only USD — which read as "Cannot
+     convert right now" while the rate source was up the whole time. A number
+     printed in the newspaper does not need a login. */
+  "/api/fx",
   "/api/auth/access",
   // Decides whether the login page asks for a new password or an existing one.
   // Must be reachable before anyone is signed in, like register and session.

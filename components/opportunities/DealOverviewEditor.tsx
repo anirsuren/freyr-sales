@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { setLeaveAsker } from "@/lib/unsavedGuard";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { signDateOf, statusColor } from "@/lib/opportunitiesShared";
+import { fetchFxDay } from "@/lib/fxClient";
 import { formatDayLabel } from "@/lib/utils";
 import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
@@ -918,25 +919,21 @@ export function DealOverviewEditor({
     }
     let running = true;
     setFx({ state: "loading" });
-    const query = signs ? `?on=${encodeURIComponent(signs)}` : "";
-    fetch(`/api/fx${query}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!running) return;
-        const day = data?.day;
-        if (!day?.date || !day?.rates) {
-          setFx({ state: "failed" });
-          return;
-        }
-        /* Hand the numbers to lib/currency, which is the only place allowed
-           to look a rate up. Keyed by the day we ASKED for, so rateFor finds
-           them again with the same argument the row converts with. */
-        setFxRates(signs || undefined, day);
-        setFx({ state: "ready", on: day.date });
-      })
-      .catch(() => {
-        if (running) setFx({ state: "failed" });
-      });
+    /* fetchFxDay retries with backoff and shares one flight per day (Sep 4) —
+       the bare fetch it replaces failed once and stayed failed for the life
+       of the screen. */
+    fetchFxDay(signs || undefined).then((day) => {
+      if (!running) return;
+      if (!day?.date || !day?.rates) {
+        setFx({ state: "failed" });
+        return;
+      }
+      /* Hand the numbers to lib/currency, which is the only place allowed
+         to look a rate up. Keyed by the day we ASKED for, so rateFor finds
+         them again with the same argument the row converts with. */
+      setFxRates(signs || undefined, day);
+      setFx({ state: "ready", on: day.date });
+    });
     return () => {
       running = false;
     };

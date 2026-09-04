@@ -1,6 +1,7 @@
 "use client";
 
 import { EditableFact } from "@/components/opportunities/EditableFact";
+import { useAccountEditMode } from "@/components/customers/AccountEditMode";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
@@ -338,7 +339,10 @@ export function CustomerTabs({
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
   /** Whether the About card is live. Off by default: this is a page people
    *  come to read, and every value on it used to be one click from changing. */
-  const [editingAbout, setEditingAbout] = useState(false);
+  /* Flipped from the page header's Edit account button (Anir, Sep 4: "the
+     edit button should be at the top right... keep it consistent"). The card
+     no longer carries its own toggle. */
+  const { editing: editingAbout } = useAccountEditMode();
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -982,20 +986,13 @@ export function CustomerTabs({
                     changed, on a card people come to READ. Editing is a thing
                     you turn on now, and the fields go back to being text the
                     moment you turn it off. */}
-                {canEditFacts && (
-                  <button
-                    type="button"
-                    onClick={() => setEditingAbout((v) => !v)}
-                    className={cn(
-                      "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-                      editingAbout
-                        ? "border-blue-primary bg-blue-light text-blue-primary"
-                        : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
-                    )}
-                  >
-                    <Pencil size={13} strokeWidth={2.2} />
-                    {editingAbout ? "Done" : "Edit"}
-                  </button>
+                {/* The toggle moved to the page header (Sep 4) — one Edit
+                    for the account, top right, like the deal page. A quiet
+                    reminder appears here only while editing is on. */}
+                {canEditFacts && editingAbout && (
+                  <span className="text-[11.5px] font-semibold text-blue-primary">
+                    Editing — click a value to change it
+                  </span>
                 )}
                 {false && (
                   <span className="text-[11.5px] text-text-tertiary">

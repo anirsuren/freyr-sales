@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { usdRatesOn } from "@/lib/fxRates";
+import { ratesWithLiveFallback } from "@/lib/fxRates";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
@@ -82,34 +82,9 @@ function callerScope(
 
 /** A copy of the state with other people's numbers removed. The goal catalog
  *  itself stays whole — the Goal Master is how anyone picks up more goals. */
-/**
- * THE FX TABLE, WITH THE LIVE RATE UNDERNEATH IT.
- *
- * Anir, Sep 4, after the opportunity form refused to save a Canadian deal:
- * "Why did you expect the admin to set every currency?" Goals had the same
- * defect one layer down and it was quieter, so it survived the first fix: a
- * non-USD actual whose currency nobody had typed a rate for converted to
- * nothing and contributed ZERO to its goal, which reads on screen as a rep
- * who has not delivered rather than as a rate that is missing.
- *
- * The European Central Bank's daily close is already fetched for the deal form
- * (lib/fxRates), so the rate exists — it simply was not offered here. Live
- * rates go UNDERNEATH the stored table, never over it: a rate an admin typed
- * is a deliberate statement about a contract and still wins.
- */
-async function ratesWithLiveFallback(
-  stored: PerformanceState["rates"]
-): Promise<PerformanceState["rates"]> {
-  try {
-    const live = await usdRatesOn();
-    if (!live?.rates) return stored;
-    return { ...live.rates, ...(stored ?? {}) };
-  } catch {
-    /* A rate somebody typed beats no rate; never let the network cost them
-       the table they already have. */
-    return stored;
-  }
-}
+/* ratesWithLiveFallback moved to lib/fxRates (Sep 4) so the opportunities
+   page can hand the deal form the same live-merged table this route already
+   served. One merge, one rule: live underneath, stored wins. */
 
 function scopeState(state: PerformanceState, visible: Set<string>): PerformanceState {
   const has = (name: string) => visible.has(name.trim());

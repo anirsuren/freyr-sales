@@ -1,4 +1,5 @@
 import { orderBands } from "@/lib/connectionOrder";
+import { AccountEditProvider, AccountEditButton } from "@/components/customers/AccountEditMode";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { RecordTeamButton } from "@/components/team/RecordTeamButton";
 import type { Customer360Band } from "@/lib/customer360Shared";
@@ -281,6 +282,7 @@ export default async function CustomerDetailPage({
 
 
   return (
+    <AccountEditProvider>
     <div>
       <RecordView
         type="Customer"
@@ -341,6 +343,11 @@ export default async function CustomerDetailPage({
           {/* Start a pitch session for THIS account — the button first explains
               what a session is (Suren #89), then prefills the intake with the
               company + primary contact. */}
+          {/* One Edit for the account, top right, like the deal page's Edit
+              deal (Anir, Sep 4). It flips the About card below into its
+              editable state; same permission that used to gate the card's own
+              button. */}
+          <AccountEditButton canEdit={mayEditThisAccount} />
           <NewSessionButton
             company={customer.company_name}
             intakeHref={`/intake?company=${encodeURIComponent(customer.company_name)}${
@@ -435,5 +442,6 @@ export default async function CustomerDetailPage({
         canEditComponents={canEditComponents}
       />
     </div>
+    </AccountEditProvider>
   );
 }
