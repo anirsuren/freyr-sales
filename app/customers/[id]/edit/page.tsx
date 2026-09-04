@@ -6,6 +6,7 @@ import { CustomerEditForm } from "@/components/customers/CustomerEditForm";
 import { getDb } from "@/lib/db";
 import { resolveScope, canEditRecord } from "@/lib/recordScope";
 import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { listCustomerTypes } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,10 @@ export default async function EditCustomerPage({
         title={`Edit ${customer.company_name}`}
         subtitle="Update the account's facts. Contacts, the team and activities are edited where they live."
       />
-      <CustomerEditForm customer={customer} />
+      <CustomerEditForm
+        customer={customer}
+        customerTypes={listCustomerTypes().map((t) => t.name)}
+      />
     </div>
   );
 }
