@@ -1353,13 +1353,36 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * typed AFTER the scheduler mounts it stayed at 0 and the schedule could
    * never reconcile. This keeps them in step.
    */
-  const dealValue = deals.find((d) => d.id === dealId)?.value ?? 0;
+  /* THE DEAL ON SCREEN, NOT THE ONE THE DIALOG WAS OPENED WITH. `dealId` is
+     the prop, which is only set when the planner is opened FROM a deal. In the
+     standalone "Plan a deal" dialog the deal is chosen inside the dialog and
+     lands in editing.opportunityId, so this read returned undefined, the value
+     fell back to 0, and the whole follow-the-TCV rule below quietly switched
+     itself off on the one path that plans the other 98 deals. */
+  const dealValue =
+    deals.find((d) => d.id === (editing.opportunityId || dealId))?.value ?? 0;
+  /**
+   * ...AND OUTSIDE A DRAFT TOO (found in the loop, Sep 4).
+   *
+   * The rule above was gated on `draft`, so it held on the ONE path where the
+   * contract value is not even typed — the new-deal form — and not on the
+   * dialog that plans the other 98 deals. On that path you could pick GRI —
+   * Takeda (ARR), a $500K deal, type 400,000 over its contract value, watch
+   * the schedule re-spread to $400,000, and Save was enabled and blue with no
+   * warning anywhere. That is precisely "it cannot be more, it cannot be
+   * less", unenforced.
+   *
+   * It follows the deal whenever the deal HAS a figure. When it does not —
+   * 97 of the deals arrived from the sheet with no TCV — the box stays
+   * typeable, because otherwise those deals could never be planned at all.
+   */
+  const followsDeal = dealValue > 0;
   useEffect(() => {
-    if (!draft) return;
+    if (!followsDeal) return;
     const want = String(Math.round(dealValue) || 0);
     setEditing((prev) => (prev.contractValue === want ? prev : reshape({ ...prev, contractValue: want })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, dealValue]);
+  }, [followsDeal, dealValue]);
 
   /* In draft mode the form owns the save, so it needs the schedule and the
      reason it is not yet valid. Reported after render, never during one. */
@@ -1599,14 +1622,18 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               /* IN A DRAFT IT IS THE DEAL'S ESTIMATED TCV, NOT A SECOND NUMBER.
                  Typing it here as well would let the two disagree, which is the
                  very thing the schedule is supposed to reconcile against. */
-              hint={draft ? "Follows the estimated TCV on this deal." : undefined}
+              hint={
+                followsDeal
+                  ? "Follows the estimated TCV on this deal. The schedule has to add up to exactly that."
+                  : "This deal carries no estimated TCV, so say what the contract is worth."
+              }
             >
               <Input
                 value={withCommas(editing.contractValue)}
                 inputMode="numeric"
-                disabled={deviating || draft}
-                readOnly={draft}
-                className={deviating || draft ? "opacity-60" : undefined}
+                disabled={deviating || followsDeal}
+                readOnly={followsDeal}
+                className={deviating || followsDeal ? "opacity-60" : undefined}
                 onChange={(e) =>
                   editFormula({
                     contractValue: expandMoneyShorthand(e.target.value, { integer: true }),
