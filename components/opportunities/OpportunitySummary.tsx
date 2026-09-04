@@ -358,7 +358,7 @@ function ConfidencePill({ pct }: { pct: number }) {
   const c = confidenceTint(pct);
   return (
     <span
-      className="shrink-0 rounded-full border px-1.5 py-[1px] text-[10px] font-bold tnum"
+      className="shrink-0 rounded-full border px-1.5 py-[1px] text-[11px] font-bold tnum"
       style={{ color: c.fg, background: c.bg, borderColor: c.border }}
       title={`${pct}% confidence`}
     >
@@ -696,7 +696,7 @@ export function OpportunitySummary({
   };
 
   const cellCls =
-    "whitespace-nowrap px-3 py-2 text-right text-[12.5px] tabular-nums";
+    "whitespace-nowrap px-3 py-2 text-right text-[14px] tabular-nums";
 
   /**
    * THE NAME COLUMN DOES NOT MOVE (Anir, Aug 30: "when I click on Go Get, it
@@ -865,8 +865,8 @@ export function OpportunitySummary({
                   className={cn(
                     "min-w-0 truncate",
                     depth === 0
-                      ? "text-[12.5px] font-bold text-text-primary"
-                      : "text-[12.5px] font-semibold text-text-secondary",
+                      ? "text-[14px] font-bold text-text-primary"
+                      : "text-[14px] font-semibold text-text-secondary",
                     href && "underline-offset-2 hover:text-blue-primary hover:underline"
                   )}
                   title={node.label}
@@ -896,7 +896,7 @@ export function OpportunitySummary({
                 </span>
               );
             })()}
-            <span className="shrink-0 text-[11px] text-text-tertiary tnum">
+            <span className="shrink-0 text-[12px] text-text-tertiary tnum">
               {node.deals.length}
             </span>
           </button>
@@ -972,7 +972,7 @@ export function OpportunitySummary({
                   <button
                     type="button"
                     onClick={() => onOpenDeal(d.id)}
-                    className="flex w-full cursor-pointer items-center gap-2 text-left text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
+                    className="flex w-full cursor-pointer items-center gap-2 text-left text-[13px] text-text-secondary transition-colors hover:text-blue-primary"
                   >
                     {/* THE DEAL GETS A MARK LIKE EVERY ROW ABOVE IT.
                         Anir, Sep 1: "there should be an icon for the
@@ -1096,14 +1096,14 @@ export function OpportunitySummary({
                       return (
                         <span
                           title={`Revenue accrual planned: ${money(acc.total ?? 0)}`}
-                          className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(3,105,161,0.10)] px-1.5 py-px text-[10px] font-semibold text-[color:#0369A1]"
+                          className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(3,105,161,0.10)] px-1.5 py-px text-[11px] font-semibold text-[color:#0369A1]"
                         >
                           accrual {money(acc.total ?? 0)}
                         </span>
                       );
                     })()}
                     {confidence === undefined ? (
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border-light px-1.5 py-px text-[10px] font-semibold text-text-tertiary">
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border-light px-1.5 py-px text-[11px] font-semibold text-text-tertiary">
                         not set
                       </span>
                     ) : (
@@ -1134,7 +1134,7 @@ export function OpportunitySummary({
 
   if (deals.length === 0) {
     return (
-      <p className="rounded-xl bg-surface px-4 py-8 text-center text-[12.5px] text-text-secondary">
+      <p className="rounded-xl bg-surface px-4 py-8 text-center text-[14px] text-text-secondary">
         No opportunities match these filters.
       </p>
     );
@@ -1166,10 +1166,10 @@ export function OpportunitySummary({
 
       {grand.entered === 0 ? (
         <section className="rounded-xl border border-border-light bg-white px-5 py-8 text-center shadow-card">
-          <p className="text-[14px] font-semibold text-text-primary">
+          <p className="text-[15.5px] font-semibold text-text-primary">
             No {measureLabel} has been entered yet
           </p>
-          <p className="mx-auto mt-1 max-w-[520px] text-[12.5px] text-text-secondary">
+          <p className="mx-auto mt-1 max-w-[520px] text-[14px] text-text-secondary">
             {deals.length} {deals.length === 1 ? "deal is" : "deals are"} on screen and
             none of them carries {measure === "acv" ? "an annual" : "a total"} contract
             value. Open a deal and fill in {measureLabel} — this fills in as they land.
@@ -1208,17 +1208,17 @@ export function OpportunitySummary({
                 <tr className="border-b border-border-light bg-surface">
                   <th
                     style={nameCol}
-                    className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
+                    className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-left text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
                   >
                     {order.length ? DIMENSION_LABEL[order[0]] : "Opportunity"}
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+                  <th className="whitespace-nowrap px-3 py-2 text-right text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                     Total
                   </th>
                   {periods.map((p) => (
                     <th
                       key={p}
-                      className="whitespace-nowrap px-3 py-2 text-right text-[11px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
+                      className="whitespace-nowrap px-3 py-2 text-right text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
                     >
                       {periodLabel(p, timeline)}
                     </th>
@@ -1231,7 +1231,7 @@ export function OpportunitySummary({
                   <th
                     scope="row"
                     style={nameCol}
-                    className="sticky left-0 z-[1] whitespace-nowrap bg-[color:rgba(0,113,227,0.06)] px-3 py-2 text-left text-[12.5px] font-bold text-text-primary"
+                    className="sticky left-0 z-[1] whitespace-nowrap bg-[color:rgba(0,113,227,0.06)] px-3 py-2 text-left text-[14px] font-bold text-text-primary"
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
                   </th>
@@ -1277,7 +1277,7 @@ export function OpportunitySummary({
                                 className="h-5 w-5 shrink-0"
                               />
                               <span
-                                className="min-w-0 truncate text-[12px] text-text-secondary"
+                                className="min-w-0 truncate text-[13px] text-text-secondary"
                                 title={d.name}
                               >
                                 {d.name}
@@ -1369,10 +1369,10 @@ export function OpportunitySummary({
                     screen: four QUARTERS reads as four quarters, not as "4
                     periods", which is a word for the code's benefit. */}
                 <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
-                  <span className="text-[14px] font-semibold text-text-primary">
+                  <span className="text-[15.5px] font-semibold text-text-primary">
                     {spread ? "When the money is expected" : "When the money comes in"}
                   </span>
-                  <span className="text-[12.5px] text-text-secondary">
+                  <span className="text-[14px] text-text-secondary">
                     {money(grand.total)} {spread ? "planned" : `of ${measureLabel}`},
                     split across {chart.length}{" "}
                     {periodWord(timeline, chart.length)}
