@@ -98,7 +98,16 @@ export type Customer360Column = {
   /** Matches a key in an item's `cells`. */
   key: string;
   label: string;
-  align?: "left" | "right";
+  /**
+   * LEFT, ALWAYS (Anir, Sep 4: "make sure your columns, by the way, in every
+   * single table that you just made are left-aligned").
+   *
+   * A right-aligned column in a row of left-aligned ones breaks the reading
+   * edge — the eye has to jump back and forth across the row instead of
+   * running down a single column of starts. It is the same rule the Actions
+   * column has carried since Aug 30. The property is gone rather than
+   * defaulted, so nothing can quietly set it again.
+   */
 };
 
 export type Customer360Band = {

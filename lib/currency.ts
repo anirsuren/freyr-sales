@@ -129,6 +129,27 @@ function trim1(n: number): string {
 }
 
 /** The same compact shape the app already uses for dollars, any currency. */
+/**
+ * DIGITS WITH THOUSAND SEPARATORS, AND NOTHING ELSE.
+ *
+ * Anir, Sep 4: "Can we please have commas? Wherever there's a currency, I need
+ * commas. everywhere in the app." He was looking at "$45000" on a deal — a
+ * figure the eye has to count digits on to read as forty-five thousand.
+ *
+ * This is for the places that show a number a person TYPED, next to its own
+ * currency symbol, and so cannot use `fmtMoney` (which decides the symbol, the
+ * rounding and the locale for itself). It only groups; it never rounds, never
+ * adds a symbol, and leaves a half-typed "45000." alone so a controlled input
+ * can keep using it while somebody is still typing.
+ */
+export function withCommas(value: string | number | null | undefined): string {
+  const raw = String(value ?? "");
+  if (!raw) return "";
+  const [whole, ...rest] = raw.split(".");
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return rest.length ? `${grouped}.${rest.join(".")}` : grouped;
+}
+
 export function fmtMoney(value: number, code: CurrencyCode = BASE_CURRENCY): string {
   const { symbol } = currencyMeta(code);
   const v = Math.abs(value);

@@ -157,8 +157,8 @@ export async function buildOpportunity360(
         columns: [
           { key: "status", label: "Status" },
           { key: "owner", label: "Owner" },
-          { key: "docs", label: "Documents", align: "right" },
-          { key: "needed", label: "Needed by", align: "right" },
+          { key: "docs", label: "Documents" },
+          { key: "needed", label: "Needed by" },
         ],
         label,
         icon: BAND_ICONS[key],

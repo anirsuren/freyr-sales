@@ -33,6 +33,7 @@ import {
   BASE_CURRENCY,
   CURRENCIES,
   convertToUsd,
+  withCommas,
   currencyMeta,
   rateFor,
   setFxRates,
@@ -1489,7 +1490,7 @@ export function DealOverviewEditor({
                     the truth, which is that nobody has said. */}
                 <td>
                   {ro ? (
-                    <ReadValue text={tcv === "" ? "Not entered" : `${localSymbol}${tcv}`} empty={tcv === ""} />
+                    <ReadValue text={tcv === "" ? "Not entered" : `${localSymbol}${withCommas(tcv)}`} empty={tcv === ""} />
                   ) : (
                     <>
                       <input
@@ -1533,7 +1534,7 @@ export function DealOverviewEditor({
                 </td>
                 <td>
                   {ro ? (
-                    <ReadValue text={acv === "" ? "Not entered" : `${localSymbol}${acv}`} empty={acv === ""} />
+                    <ReadValue text={acv === "" ? "Not entered" : `${localSymbol}${withCommas(acv)}`} empty={acv === ""} />
                   ) : (
                     <input
                       value={acv}

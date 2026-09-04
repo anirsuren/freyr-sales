@@ -158,7 +158,7 @@ export async function buildPerson360(
         { key: "customer", label: "Customer" },
         { key: "level", label: "Stage" },
         { key: "status", label: "Status" },
-        { key: "confidence", label: "Confidence", align: "right" },
+        { key: "confidence", label: "Confidence" },
       ],
       label: "Opportunities",
       icon: "opportunities",

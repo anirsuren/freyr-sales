@@ -674,9 +674,6 @@ export function TopBar({
                       );
                     })}
                   </div>
-                  <p className="mt-1.5 text-[11px] text-text-secondary">
-                    Saved on this device
-                  </p>
                 </div>
                 <div className="p-1.5">
                   {/* Settings is ALWAYS here, in every mode. It was inside the

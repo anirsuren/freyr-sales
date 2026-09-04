@@ -15,6 +15,7 @@ import {
   BASE_CURRENCY,
   currencyMeta,
   rateFor,
+  withCommas,
   setFxRates,
 } from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -1555,7 +1556,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               hint={draft ? "Follows the estimated TCV on this deal." : undefined}
             >
               <Input
-                value={editing.contractValue}
+                value={withCommas(editing.contractValue)}
                 inputMode="numeric"
                 disabled={deviating || draft}
                 readOnly={draft}
@@ -1855,7 +1856,13 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 {cellSymbol}
                               </span>
                               <input
-                                value={line[field] ?? ""}
+                                /* GROUPED WHILE YOU TYPE (Anir, Sep 4:
+                                   "wherever there's a currency, I need
+                                   commas"). Safe in a live input because
+                                   expandMoneyShorthand strips separators on
+                                   the way back in, so the stored value is
+                                   always bare digits. */
+                                value={withCommas(line[field] ?? "")}
                                 placeholder="0"
                                 inputMode="numeric"
                                 aria-label={`${field === "ots" ? "OTS" : field === "arr" ? "ARR" : "Monthly"} for ${monthLabel(line.month)}`}
@@ -1901,7 +1908,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 money is entered in the split columns to the
                                 left and this adds them up. */}
                             <input
-                              value={rowTotal(line)}
+                              value={withCommas(rowTotal(line))}
                               placeholder="0"
                               inputMode="numeric"
                               readOnly

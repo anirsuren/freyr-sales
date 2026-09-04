@@ -683,10 +683,7 @@ export function Customer360({
                         ? cols.map((c) => (
                             <th
                               key={c.key}
-                              className={cn(
-                                "pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
-                                c.align === "right" && "text-right"
-                              )}
+                              className="pb-2 pr-4 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
                             >
                               {c.label}
                             </th>
@@ -763,10 +760,7 @@ export function Customer360({
                           ? cols.map((c) => (
                               <td
                                 key={c.key}
-                                className={cn(
-                                  "py-3 pr-4 text-[12.5px] text-text-secondary",
-                                  c.align === "right" && "text-right tnum"
-                                )}
+                                className="py-3 pr-4 text-left text-[12.5px] text-text-secondary"
                               >
                                 {item.cells?.[c.key] || "—"}
                               </td>

@@ -112,9 +112,9 @@ export async function buildCustomer360(
       columns: [
         { key: "level", label: "Stage" },
         { key: "status", label: "Status" },
-        { key: "confidence", label: "Confidence", align: "right" },
+        { key: "confidence", label: "Confidence" },
         { key: "owner", label: "Owner" },
-        { key: "signs", label: "Expected to sign", align: "right" },
+        { key: "signs", label: "Expected to sign" },
       ],
       items: [...myDeals]
         .sort((a, b) => (b.value || 0) - (a.value || 0))
@@ -174,7 +174,7 @@ export async function buildCustomer360(
           { key: "type", label: "Type" },
           { key: "status", label: "Status" },
           { key: "owner", label: "Owner" },
-          { key: "asked", label: "Requested", align: "right" },
+          { key: "asked", label: "Requested" },
         ],
         items: [...rows]
           .sort((a, b) => (b.requestedAt || "").localeCompare(a.requestedAt || ""))
@@ -249,7 +249,7 @@ export async function buildCustomer360(
       columns: [
         { key: "source", label: "Source" },
         { key: "status", label: "Status" },
-        { key: "came", label: "Came in", align: "right" },
+        { key: "came", label: "Came in" },
       ],
       items: [...myLeads]
         .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
@@ -437,7 +437,7 @@ export async function buildCustomer360(
       columns: [
         { key: "status", label: "Status" },
         { key: "owner", label: "Owner" },
-        { key: "starts", label: "Starts", align: "right" },
+        { key: "starts", label: "Starts" },
       ],
       items: [...myContracts]
         .sort((a, b) => b.value - a.value)
