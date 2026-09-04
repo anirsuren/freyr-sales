@@ -482,6 +482,18 @@ export function MeetingsModule({
                     className="h-8 w-8 shrink-0 text-[10px]"
                   />
                   <span className="min-w-0 flex-1">
+                    {/* THE REFERENCE, WHICH ONLY THE TABLE HAD (Anir, Sep 3:
+                        "as with every page make sure the data points in table
+                        and split are the same"). MTG-0001 is how a meeting is
+                        named in conversation and in search, and picking the
+                        split view used to hide it completely — not tucked into
+                        a detail pane, absent from the whole view. It sits above
+                        the title here, in the same quiet tabular figures the
+                        table uses, rather than in the 300px list column where
+                        it would crowd the title it identifies. */}
+                    <span className="block text-[10.5px] font-bold tnum text-text-tertiary">
+                      {picked.ref}
+                    </span>
                     <span className="block truncate text-[14px] font-semibold text-text-primary">
                       {picked.title}
                     </span>
