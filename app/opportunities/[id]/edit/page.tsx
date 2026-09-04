@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { estimatedTcvOf } from "@/lib/opportunitiesShared";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
@@ -183,7 +184,16 @@ export default async function EditDealPage({
               ...(accrualOfferingLabel
                 ? { offeringLabel: accrualOfferingLabel }
                 : {}),
-              value: deal.value ?? 0,
+              /* THE DEAL'S ACTUAL MONEY, NOT ITS LEGACY COLUMN.
+                 Found in the loop: a deal created with Estimated TCV and no
+                 `value` reached the scheduler with a contract value of ZERO,
+                 so Spread evenly divided nothing across the months and the
+                 over-value cap — which only applies when the value is above 0
+                 — never fired. Estimated TCV is the MANDATORY money field
+                 since Manoj's item 2; `value` is the column it replaced.
+                 `estimatedTcvOf` is the one helper that knows the order:
+                 typed TCV first, the pipeline value behind it. */
+              value: estimatedTcvOf(deal) ?? deal.value ?? 0,
               ...(deal.status ? { status: deal.status } : {}),
               ...(accrualSignDate ? { estSignDate: accrualSignDate } : {}),
               ...(deal.currency ? { currency: deal.currency } : {}),

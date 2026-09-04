@@ -325,7 +325,18 @@ export function AccrualPlanDialog({
       existing?.lines[0]?.month ??
       (deal?.estSignDate ? monthKey(deal.estSignDate) : monthKey(new Date()));
     const months = existing?.lines.length || 6;
-    const contractValue = existing?.contractValue ?? deal?.value ?? 0;
+    /* ZERO IS NOT AN ANSWER, IT IS THE ABSENCE OF ONE.
+       `??` only falls through on null and undefined, so a plan saved before
+       anybody typed the money — which the planner allows, it opens already
+       spread — pinned its contract value at 0 for good. Reopening it divided
+       nothing across the months, the over-value cap never fired (it only
+       applies above 0), and no amount of filling in the deal afterwards could
+       shift it. Found in the loop by saving an empty plan and coming back to
+       a scheduler that had forgotten the deal was worth 600,000.
+
+       A schedule for a deal worth nothing is not a thing anybody plans, so a
+       stored 0 falls through to the deal's own figure. */
+    const contractValue = existing?.contractValue || deal?.value || 0;
     return {
       opportunityId: id,
       contractValue: String(contractValue),
