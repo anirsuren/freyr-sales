@@ -428,6 +428,22 @@ export function ContractsModule({
     setEditing(reshapeSchedule({ ...editing, schedule: [] }));
   }
 
+  /**
+   * WHY THE SAVE IS NOT AVAILABLE YET, in the words the person needs, or null
+   * when it is. Read beside the button rather than fired at them after they
+   * press it (Anir, Sep 4). Same two conditions save() enforces, so the two
+   * can never disagree about what is required.
+   */
+  const contractProblem: string | null = !editing
+    ? null
+    : !editing.name.trim() && !editing.customer.trim()
+      ? "Give it a name and say which customer it is with."
+      : !editing.name.trim()
+        ? "Give the contract a name."
+        : !editing.customer.trim()
+          ? "Say which customer this contract is with."
+          : null;
+
   async function save() {
     if (!editing) return;
     if (!editing.name.trim() || !editing.customer.trim()) {
@@ -1382,9 +1398,9 @@ export function ContractsModule({
             title="Dates and signature"
             summary={
               editing.signedOn
-                ? `Signed ${editing.signedOn}`
+                ? `Signed ${formatDate(editing.signedOn)}`
                 : editing.startDate
-                  ? `Starts ${editing.startDate}`
+                  ? `Starts ${formatDate(editing.startDate)}`
                   : "No dates yet"
             }
           >
@@ -1624,7 +1640,24 @@ export function ContractsModule({
           />
           </div>
 
-          <div className="mt-4 flex items-center justify-end gap-2">
+          {/* SAY WHAT IS MISSING, DO NOT LET IT BE PRESSED (Anir, Sep 4:
+              "don't make it like u can press the button and then it throws
+              error. just dont let them click in the first place and give
+              reason").
+
+              This button was live on an empty form and save() answered with a
+              toast — "A contract needs a name and a customer" — which is the
+              press-then-scold shape he asked me to stop building. The accrual
+              planner already does it the other way round, so this is that
+              shape: the reason sits beside the button and the button waits.
+              The guard inside save() stays as a backstop; it is simply no
+              longer how anybody finds out. */}
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+            {contractProblem && (
+              <span className="text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+                {contractProblem}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setEditing(null)}
@@ -1634,9 +1667,9 @@ export function ContractsModule({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !!contractProblem}
               onClick={save}
-              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {editing.id ? "Save changes" : "Create contract"}
             </button>
