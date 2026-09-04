@@ -40,7 +40,15 @@ export function expandMoneyShorthand(
   const short = /^([0-9]*\.?[0-9]+)([kKmMbB])$/.exec(typed);
   if (short) {
     const scaled = Number(short[1]) * SCALE[short[2].toLowerCase() as keyof typeof SCALE];
-    if (Number.isFinite(scaled)) return String(Math.round(scaled));
+    /* PAST SAFE INTEGERS, EXPANDING HIDES THE TYPO INSTEAD OF SHOWING IT.
+       "999999999b" is 9.99e17 — beyond Number.MAX_SAFE_INTEGER, so the digits
+       past the sixteenth are invented by the float. Nobody means that, and a
+       money field that silently rounds a number it cannot hold is worse than
+       one that leaves the nonsense on screen for you to see and correct. The
+       comment above this function promised this ceiling; the code did not have
+       it until the loop typed the number in. */
+    if (Number.isSafeInteger(Math.round(scaled))) return String(Math.round(scaled));
+    return typed.replace(/[^0-9.]/g, "");
   }
   /* Not shorthand: keep the digits, and keep a SINGLE decimal point. A lone
      trailing dot is a number being typed, not a broken one. */
