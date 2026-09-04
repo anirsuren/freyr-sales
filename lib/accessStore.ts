@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AuthenticatedUser } from "./auth";
 import { isTestAccountEmail } from "./testAccounts";
+import { recordAccessEvents } from "./accessHistory";
 import {
   isBootstrapOwner,
   normalizedEmail,
@@ -945,6 +946,19 @@ export async function touchMemberPresence(workspace: string, memberId: string) {
     .eq("workspace_id", workspace);
 }
 
+/** The words a person recognises, not the keys the column stores. The same
+ *  four RoleTag prints, so the history and the badge agree. */
+function roleWord(raw: unknown): string {
+  const key = String(raw ?? "").trim();
+  const words: Record<string, string> = {
+    bd_member: "BD Member",
+    bd_owner: "BD Owner",
+    sol_member: "Solutioning Member",
+    admin: "Admin",
+  };
+  return words[key] ?? (key || "no role");
+}
+
 export async function updateWorkspaceMember(
   workspace: string,
   memberId: string,
@@ -983,6 +997,33 @@ export async function updateWorkspaceMember(
   /* SAME RULE AS JOINING: a reserved claude-check- account is a testing
      account, and cycling its role through ten privileges to see what each one
      sees must not put ten emails in an admin's inbox. */
+  if (who) {
+    const name = (who.display_name || who.email || "Somebody").trim();
+    /* HISTORY IS KEPT FOR EVERY ACCOUNT, INCLUDING THE TEST ONES. The
+       test-account rule below exists to stop an inbox filling up while
+       somebody cycles claude-check-1 through ten privileges; it is not a
+       reason to lose the record of what was done. An audit trail with
+       deliberate holes in it is not an audit trail (Anir, Sep 4: "I want to
+       see all their history"). */
+    const trail: { actor: string; subject: string; kind: "role" | "active"; detail: string }[] = [];
+    if (patch.role && patch.role !== who.app_role) {
+      trail.push({
+        actor: changedBy || "An admin",
+        subject: name,
+        kind: "role",
+        detail: `${roleWord(who.app_role)} to ${roleWord(patch.role)}`,
+      });
+    }
+    if (typeof patch.active === "boolean" && patch.active !== who.active) {
+      trail.push({
+        actor: changedBy || "An admin",
+        subject: name,
+        kind: "active",
+        detail: patch.active ? "access restored" : "access removed",
+      });
+    }
+    void recordAccessEvents(trail);
+  }
   if (who && !isTestAccountEmail(who.email)) {
     const name = (who.display_name || who.email || "Somebody").trim();
     if (patch.role && patch.role !== who.app_role) {

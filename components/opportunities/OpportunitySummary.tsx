@@ -1288,7 +1288,12 @@ export function OpportunitySummary({
               pushed the rows people actually read down the page. Still closed
               by default, per Suren's Aug 30 note above. */}
           {chart.length > 0 && (
-            <section className="rounded-xl border border-border-light bg-white px-4 py-3 shadow-card">
+            /* AIR BETWEEN THE TABLE AND THE GRAPH (Anir, Sep 4: "why are the
+               two things literally touching each other: where the money comes
+               in and then the customer group thing?"). Moving the chart below
+               the table on Sep 3 left the two cards flush, so they read as one
+               object with a stray line through it. */
+            <section className="mt-3 rounded-xl border border-border-light bg-white px-4 py-3 shadow-card">
               {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
                   show the graph thing, just make it a drop-down like you do
                   this somewhere else"). A labelled button beside the heading

@@ -16,6 +16,7 @@ import {
   type PrivilegeState,
 } from "@/lib/privileges";
 import { tint } from "@/lib/tint";
+import { AccessHistory } from "@/components/admin/AccessHistory";
 
 /**
  * ONE PERSON AT A TIME: names down the left, everything about them on the right.
@@ -497,6 +498,9 @@ export function PeopleSplit() {
                 setPendingPriv({ person: selected.name, privId, privLabel, to })
               }
             />
+            {/* WHO GAVE THEM THIS, AND WHEN (Anir, Sep 4). Under the ticks,
+                because the question it answers is about the ticks. */}
+            <AccessHistory subject={selected.name} />
           </div>
         </div>
       </div>

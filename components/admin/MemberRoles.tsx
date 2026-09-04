@@ -18,6 +18,7 @@ import {
 import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { tint } from "@/lib/tint";
+import { AccessHistory } from "@/components/admin/AccessHistory";
 
 
 type Member = {
@@ -473,6 +474,9 @@ export function MemberRoles() {
                 setPendingPriv({ person: privFor.name, privId, privLabel, to })
               }
             />
+            {/* Same trail as the split view — one component, so the two ways
+                into a person's privileges cannot disagree about their past. */}
+            <AccessHistory subject={privFor.name} />
           </div>
         )}
       </Modal>

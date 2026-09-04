@@ -9,6 +9,7 @@ import {
   type Access,
   type PrivilegeState,
 } from "@/lib/privileges";
+import { recordAccessEvents } from "@/lib/accessHistory";
 import { notifyPrivilegesChanged } from "@/lib/adminNotify";
 import { isTestAccountName } from "@/lib/testAccounts";
 
@@ -72,6 +73,14 @@ export async function POST(req: NextRequest) {
       void notifyPrivilegesChanged({ changedBy: me.name, lines });
     }
 
+    /* AND KEPT, NOT ONLY SENT (Anir, Sep 4: "I want to see all their past
+       history... who assigned what role to them"). The diff above has always
+       existed; it went into an email and nowhere else, so the app could not
+       answer who granted somebody their access. Person-scoped entries only —
+       a change to what BO Owner means workspace-wide is not something that
+       happened to any one person. */
+    void recordAccessEvents(personChanges(before, state, me.name));
+
     return NextResponse.json({ ok: true, state });
   } catch (error) {
     return NextResponse.json(
@@ -79,6 +88,49 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+}
+
+/**
+ * WHAT CHANGED FOR EACH PERSON, as history entries rather than email lines.
+ *
+ * Separate from `diffLines` because the two answer different questions: the
+ * email says what moved anywhere in the table, and this says what happened to
+ * one named person, which is the only thing their own panel can show.
+ */
+function personChanges(
+  before: PrivilegeState,
+  after: PrivilegeState,
+  actor: string
+): { actor: string; subject: string; kind: "privileges"; detail: string }[] {
+  const nameOf = (id: string) =>
+    after.privileges.find((p) => p.id === id)?.label ?? id;
+  const people = new Set([
+    ...Object.keys(before.peoplePrivileges),
+    ...Object.keys(after.peoplePrivileges),
+  ]);
+  const out: { actor: string; subject: string; kind: "privileges"; detail: string }[] = [];
+  for (const person of people) {
+    const wasIds = (before.peoplePrivileges[person] ?? []).slice().sort();
+    const nowIds = (after.peoplePrivileges[person] ?? []).slice().sort();
+    if (wasIds.join("|") === nowIds.join("|")) continue;
+    const was = wasIds.map(nameOf);
+    const now = nowIds.map(nameOf);
+    const gained = now.filter((n) => !was.includes(n));
+    const lost = was.filter((w) => !now.includes(w));
+    /* Say what MOVED, then what they hold now — "who assigned what" needs the
+       verb, and "what do they have" needs the list. */
+    const moved = [
+      gained.length ? `gained ${gained.join(", ")}` : "",
+      lost.length ? `lost ${lost.join(", ")}` : "",
+    ].filter(Boolean).join(" and ");
+    out.push({
+      actor,
+      subject: person,
+      kind: "privileges",
+      detail: `${moved || "privileges changed"} — now ${now.length ? now.join(", ") : "no privileges"}`,
+    });
+  }
+  return out;
 }
 
 /** One line per cell that moved: "Customers · BO Owner: Read to Write". */

@@ -428,7 +428,23 @@ export function PinnableTable({
        pad its own Actions column. */
     <div className={cn("freyr-pinned-table relative", className)}>
       <PinCorner id={id} />
-      <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
+      {/* A SCROLLBAR INSIDE A SCROLLBAR (Anir, Sep 4: "why is it a scrollbar
+          within a scrollbar?").
+
+          `overflow-x: auto` alone leaves the vertical axis computing to `auto`
+          as well — the spec turns `visible` into `auto` the moment the other
+          axis is non-visible. Then the horizontal scrollbar's own ~10px of
+          height eats into this box, the content is suddenly 10px taller than
+          the space left for it, and a vertical scrollbar appears to scroll
+          those ten pixels. Measured exactly that: client 1071, scroll 1081.
+
+          Naming the vertical axis stops the browser inferring it. This box has
+          no business scrolling up and down in any case: it grows with its rows
+          and the page is what scrolls. */}
+      <div
+        ref={scrollerRef}
+        className={cn("overflow-x-auto overflow-y-hidden", wrapperClassName)}
+      >
         {children}
       </div>
 

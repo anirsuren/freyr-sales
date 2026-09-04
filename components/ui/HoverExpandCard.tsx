@@ -64,7 +64,22 @@ export function HoverExpandCard({
     // Press-down on click: navigation from these cards had no feedback at
     // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no
     // animation when I click"). 0.97 matches the app-wide button press.
-    "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75"
+    "group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75",
+    /**
+     * SCALE ONLY WHEN THE CARD IS NOT ALSO GROWING (Anir, Sep 4: "you can see
+     * the animation is all fucked up when I hover over it").
+     *
+     * Measured on a customer card: hovering took it from 173px to 469px —
+     * nearly three times its height — while ALSO scaling it 1.03 from its top
+     * edge. Two transforms of the same box at once, one of them enormous, so
+     * every edge moved in a direction the eye could not follow and it read as
+     * a glitch rather than a card opening. The lift is already said by the
+     * shadow and the z-index.
+     *
+     * A card with nothing to reveal does not grow, so there the 1.03 is the
+     * whole effect and it stays.
+     */
+    !extra && "group-hover:scale-[1.03]"
   );
 
   const accentStyle = accent ? ({ borderColor: accent } as CSSProperties) : undefined;

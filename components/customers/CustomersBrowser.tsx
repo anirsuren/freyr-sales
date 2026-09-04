@@ -712,6 +712,15 @@ export function CustomersBrowser({
                 thing should be last. The download button and the select
                 button: you don't have to see what they are. Just have the
                 icons, to the left of that"). */}
+            {/* SELECTING IS A LIST THING (Anir, Sep 4: "what the fuck does
+                this button do? This checkmark button? Is it useless?").
+
+                It turns on the row checkboxes so accounts can be bulk-assigned,
+                analysed or exported — real work, but only in the list, which is
+                the only view with rows to tick. Offered in Summary it did
+                nothing visible at all, which is exactly what made it look
+                useless. */}
+            {shape === "list" && (
             <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
               <button
                 onClick={() => {
@@ -734,6 +743,7 @@ export function CustomersBrowser({
                 <CheckSquare size={15} strokeWidth={1.8} />
               </button>
             </PriorityTooltip>
+            )}
             <PriorityTooltip label="Export CSV">
               <button
                 onClick={exportCsv}
@@ -800,7 +810,16 @@ export function CustomersBrowser({
             .map((d) => d.customer.trim().toLowerCase())
         );
         return (
-        <div className="mb-4">
+        /* SWITCHING VIEWS SHOULD LOOK LIKE SOMETHING HAPPENED (Anir, Sep 4:
+           "I need proper animations when I switch from list to summary. You
+           have it when I go to list, but not when I go to summary").
+
+           The list carried `stagger` on its rows and this branch carried
+           nothing, so List faded in and Summary appeared instantly — which
+           reads as a glitch rather than a change of view. `key` is the shape,
+           so React remounts on the switch and the entrance actually replays
+           instead of only firing on first paint. */
+        <div key={shape} className="tab-panel mb-4">
           {/* THE TILES STAY. Item 22 read "remove opportunities, tiles, and
               all other data and filters", and they came out — then Manoj, Sep
               4, looking at the page without them: "Number of customers, uh,
@@ -1002,7 +1021,7 @@ filtered.length === 0 ? (
         />
         )
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 stagger">
+        <div key={`grid-${shape}`} className="tab-panel grid grid-cols-1 md:grid-cols-2 gap-5 stagger">
           {paged.map((c) => (
             <CustomerCard
               key={c.id}
