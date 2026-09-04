@@ -299,14 +299,19 @@ export default async function CustomerDetailPage({
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All customers
       </SmartBack>
+      {/* SAME RULE AS THE DEAL HEADER: the name gives way, the buttons hold
+          their corner. Without `min-w-0` the left block refuses to shrink
+          below its own text, and a name like "GlaxoSmithkline Consumer Private
+          Limited/ GSK Cx Services Co. Inc" squeezes the actions off the edge
+          rather than truncating itself. */}
       <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <CompanyLogo
             name={customer.company_name}
-            className="w-12 h-12 text-[16px]"
+            className="w-12 h-12 shrink-0 text-[16px]"
           />
-          <div>
-            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+          <div className="min-w-0">
+            <h1 className="truncate text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {customer.company_name}
             </h1>
             {/* Identity only, directly under the name: what this account IS —
@@ -327,7 +332,7 @@ export default async function CustomerDetailPage({
             />
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4">
           {/* No health bar in the header: the same score already leads the
               Account snapshot rail AND the Relationship health card below, so a
               third copy beside the buttons was pure duplication (Anir, Jul 27:

@@ -389,7 +389,20 @@ export function OpportunityDetail({
         <ArrowLeft size={15} strokeWidth={1.8} /> All opportunities
       </SmartBack>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      {/* THE ACTIONS STAY ON THE RIGHT (Anir, Sep 4: "why is the button here?
+          The request solutioning, the edit deal, and the convert to contract
+          button should always be where it was before").
+
+          `flex-wrap` and `truncate` were fighting: the title block has
+          `min-w-0` and truncates, but a wrapping row lets it keep its natural
+          width and pushes the buttons onto a line of their own instead. A deal
+          called "GRI — GlaxoSmithkline Consumer Private Limited/ GSK Cx
+          Services Co. Inc" is wide enough to do it every time.
+
+          One row from `sm` up, so the name truncates and the buttons hold
+          their corner; stacked below that, where there genuinely is not room
+          for both. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <CompanyLogo name={deal.customer} className="mt-0.5 h-11 w-11 shrink-0" />
           <div className="min-w-0">
