@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { statusColor } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
@@ -827,6 +829,40 @@ export function DealOverviewEditor({
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
+  }, [dirtyCount]);
+
+  /**
+   * AND THE SAME FOR A CLICK ON THE SIDEBAR.
+   *
+   * `beforeunload` only fires when the BROWSER leaves the document. Every link
+   * in this app navigates through the router without one, so with staged edits
+   * on screen a click on "Opportunities" in the rail took them away and threw
+   * the work out in silence — found in the loop by clicking exactly that. A
+   * full reload warned; the thing people actually do did not, which is the
+   * worst shape for a promise that nothing is written until you press Save.
+   *
+   * The listener runs in the CAPTURE phase so it sees the click before the
+   * router does, and it only speaks for in-app links going somewhere else —
+   * a new tab, an external host, a download or an anchor on this page all pass
+   * straight through.
+   */
+  const router = useRouter();
+  const [leavingTo, setLeavingTo] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dirtyCount) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a) return;
+      const href = a.getAttribute("href") || "";
+      if (!href.startsWith("/") || a.target === "_blank" || a.hasAttribute("download")) return;
+      if (href === window.location.pathname) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeavingTo(href);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
   }, [dirtyCount]);
 
   /**
@@ -1869,6 +1905,20 @@ export function DealOverviewEditor({
       </div>
 
       {children}
+
+      <ConfirmDialog
+        open={leavingTo !== null}
+        onClose={() => setLeavingTo(null)}
+        onConfirm={() => {
+          const to = leavingTo;
+          setPending({});
+          setLeavingTo(null);
+          if (to) router.push(to);
+        }}
+        title={`Leave with ${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}?`}
+        body="Nothing on this deal has been written yet. Leaving now throws those edits away."
+        confirmLabel="Leave without saving"
+      />
 
       {/* THE SAVE BAR, PINNED (Anir, Sep 3: "it should be sticky at the
           bottom — you do this well on some other page").
