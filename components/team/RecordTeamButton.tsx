@@ -85,7 +85,11 @@ export function RecordTeamButton({
         className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
       >
         <UserCog size={14} strokeWidth={2.2} />
-        {team?.owner || team?.members.length ? "Change the team" : "Set the team"}
+        {/* "Edit", like everything else (Anir, Sep 4: "I don't know why you
+            have to say 'set the team'. Just have an edit button"). The tab
+            already says Team; the button only needs to say what kind of
+            control it is. */}
+        Edit the team
       </button>
 
       <Modal

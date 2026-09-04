@@ -1,7 +1,6 @@
 "use client";
 
 import { EditableFact } from "@/components/opportunities/EditableFact";
-import { useAccountEditMode } from "@/components/customers/AccountEditMode";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
@@ -339,10 +338,12 @@ export function CustomerTabs({
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
   /** Whether the About card is live. Off by default: this is a page people
    *  come to read, and every value on it used to be one click from changing. */
-  /* Flipped from the page header's Edit account button (Anir, Sep 4: "the
-     edit button should be at the top right... keep it consistent"). The card
-     no longer carries its own toggle. */
-  const { editing: editingAbout } = useAccountEditMode();
+  /* THE CARD READS; THE EDIT PAGE WRITES (Anir, Sep 4, pointing at the
+     offering page: "that is what it's supposed to be when I press edit. Copy
+     that everywhere"). An offering's detail is read-only and Edit walks you
+     to /offerings/[id]/edit; this page now works the same way, so the inline
+     editing mode is gone rather than toggled. */
+  const editingAbout = false;
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -986,14 +987,8 @@ export function CustomerTabs({
                     changed, on a card people come to READ. Editing is a thing
                     you turn on now, and the fields go back to being text the
                     moment you turn it off. */}
-                {/* The toggle moved to the page header (Sep 4) — one Edit
-                    for the account, top right, like the deal page. A quiet
-                    reminder appears here only while editing is on. */}
-                {canEditFacts && editingAbout && (
-                  <span className="text-[11.5px] font-semibold text-blue-primary">
-                    Editing — click a value to change it
-                  </span>
-                )}
+                {/* No control here: Edit account in the page header opens
+                    the edit page, the same road the offering page takes. */}
                 {false && (
                   <span className="text-[11.5px] text-text-tertiary">
                     Click a value to change it
@@ -1259,11 +1254,15 @@ export function CustomerTabs({
                       opened it. */}
                   {canEditFacts && (
                     <Tooltip label="Log a call, email, meeting or note">
+                      {/* Blue square, white plus (Anir, Sep 4) — the app's
+                          own primary-action mark, not a grey ghost. */}
                       <button
                         type="button"
                         onClick={() => setNoteModalOpen(true)}
                         aria-label="Log an interaction"
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                        /* rounded-md, not -lg: at 28px an 8px radius reads as a
+                            circle, and he asked for a SQUARE. */
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-opacity hover:opacity-90"
                       >
                         <Plus size={14} strokeWidth={2.4} />
                       </button>
@@ -2396,101 +2395,6 @@ export function CustomerTabs({
               </div>
             )}
 
-            {/* Add-note popup — log a real interaction (#96) */}
-            <Modal
-              open={noteModalOpen}
-              onClose={() => setNoteModalOpen(false)}
-              title="Log an interaction"
-            >
-              <div className="space-y-3.5">
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                    Type
-                  </label>
-                  <div className="inline-flex rounded-lg bg-surface p-1 flex-wrap gap-1">
-                    {NOTE_KINDS.map((k) => {
-                      const KIcon = k.icon;
-                      const on = noteKind === k.key;
-                      return (
-                        <button
-                          key={k.key}
-                          onClick={() => setNoteKind(k.key)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-md transition-colors",
-                            on
-                              ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
-                              : "text-text-secondary hover:text-text-primary"
-                          )}
-                        >
-                          <KIcon size={14} strokeWidth={1.9} />
-                          {k.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                    {noteKind === "note" ? "Note" : "What happened"}
-                  </label>
-                  <textarea
-                    value={noteDraft}
-                    onChange={(e) => setNoteDraft(e.target.value)}
-                    placeholder={
-                      noteKind === "call"
-                        ? "Summary of the call…"
-                        : noteKind === "email"
-                        ? "What you sent / their reply…"
-                        : noteKind === "meeting"
-                        ? "Meeting notes and decisions…"
-                        : "Internal context…"
-                    }
-                    rows={4}
-                    autoFocus
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                      Next step
-                    </label>
-                    <input
-                      value={noteNext}
-                      onChange={(e) => setNoteNext(e.target.value)}
-                      placeholder="e.g. Send the proposal"
-                      className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                      Follow-up date
-                    </label>
-                    <input
-                      type="date"
-                      value={noteFollow}
-                      onChange={(e) => setNoteFollow(e.target.value)}
-                      className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                    />
-                    <DateEcho value={noteFollow} />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 mt-5">
-                <Button
-                  onClick={async () => {
-                    await addNote();
-                    setNoteModalOpen(false);
-                  }}
-                  loading={busy}
-                  disabled={!noteDraft.trim()}
-                  className="px-4 py-2 text-[13px]"
-                >
-                  <Plus size={15} strokeWidth={2.2} />
-                  {noteKind === "note" ? "Save note" : "Log it"}
-                </Button>
-              </div>
-            </Modal>
 
             <Card>
               <h3 className="text-[15px] font-semibold text-text-primary mb-1">
@@ -3069,6 +2973,108 @@ export function CustomerTabs({
               Add contact
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* ALWAYS MOUNTED, WHATEVER TAB IS OPEN (Anir, Sep 4: "the button
+          doesn't work"). This dialog lived inside the notes tab's branch, so
+          the + on the Overview's touches card flipped the flag and nothing
+          appeared — the modal it opens was not rendered on that tab at all.
+          A dialog opened from three tabs belongs to the page, not to one
+          branch of it. */}
+      {/* Add-note popup — log a real interaction (#96) */}
+      <Modal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        title="Log an interaction"
+      >
+        <div className="space-y-3.5">
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+              Type
+            </label>
+            <div className="inline-flex rounded-lg bg-surface p-1 flex-wrap gap-1">
+              {NOTE_KINDS.map((k) => {
+                const KIcon = k.icon;
+                const on = noteKind === k.key;
+                return (
+                  <button
+                    key={k.key}
+                    onClick={() => setNoteKind(k.key)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-md transition-colors",
+                      on
+                        ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <KIcon size={14} strokeWidth={1.9} />
+                    {k.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+              {noteKind === "note" ? "Note" : "What happened"}
+            </label>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder={
+                noteKind === "call"
+                  ? "Summary of the call…"
+                  : noteKind === "email"
+                  ? "What you sent / their reply…"
+                  : noteKind === "meeting"
+                  ? "Meeting notes and decisions…"
+                  : "Internal context…"
+              }
+              rows={4}
+              autoFocus
+              className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                Next step
+              </label>
+              <input
+                value={noteNext}
+                onChange={(e) => setNoteNext(e.target.value)}
+                placeholder="e.g. Send the proposal"
+                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                Follow-up date
+              </label>
+              <input
+                type="date"
+                value={noteFollow}
+                onChange={(e) => setNoteFollow(e.target.value)}
+                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+              />
+              <DateEcho value={noteFollow} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <Button
+            onClick={async () => {
+              await addNote();
+              setNoteModalOpen(false);
+            }}
+            loading={busy}
+            disabled={!noteDraft.trim()}
+            className="px-4 py-2 text-[13px]"
+          >
+            <Plus size={15} strokeWidth={2.2} />
+            {noteKind === "note" ? "Save note" : "Log it"}
+          </Button>
         </div>
       </Modal>
 

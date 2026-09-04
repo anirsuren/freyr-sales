@@ -1,11 +1,11 @@
 import { orderBands } from "@/lib/connectionOrder";
-import { AccountEditProvider, AccountEditButton } from "@/components/customers/AccountEditMode";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { RecordTeamButton } from "@/components/team/RecordTeamButton";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
-import { ClipboardList,
+import {
+  Pencil, ClipboardList,
   FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
@@ -282,7 +282,6 @@ export default async function CustomerDetailPage({
 
 
   return (
-    <AccountEditProvider>
     <div>
       <RecordView
         type="Customer"
@@ -343,11 +342,19 @@ export default async function CustomerDetailPage({
           {/* Start a pitch session for THIS account — the button first explains
               what a session is (Suren #89), then prefills the intake with the
               company + primary contact. */}
-          {/* One Edit for the account, top right, like the deal page's Edit
-              deal (Anir, Sep 4). It flips the About card below into its
-              editable state; same permission that used to gate the card's own
-              button. */}
-          <AccountEditButton canEdit={mayEditThisAccount} />
+          {/* One Edit for the account, top right — and it is a DOOR, not a
+              switch (Anir, Sep 4, pointing at the offering page: "that is
+              what it's supposed to be when I press edit"). Same idiom as
+              /offerings/[id]/edit: this page reads, the edit page writes. */}
+          {mayEditThisAccount && (
+            <Link
+              href={`/customers/${customer.id}/edit`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              <Pencil size={15} strokeWidth={1.7} />
+              Edit account
+            </Link>
+          )}
           <NewSessionButton
             company={customer.company_name}
             intakeHref={`/intake?company=${encodeURIComponent(customer.company_name)}${
@@ -442,6 +449,5 @@ export default async function CustomerDetailPage({
         canEditComponents={canEditComponents}
       />
     </div>
-    </AccountEditProvider>
   );
 }
