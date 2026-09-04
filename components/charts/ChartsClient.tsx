@@ -2394,7 +2394,7 @@ export function BarChart({
                   style={{ top: labelRoom }}
                 >
                   <span
-                    className="h-full w-[72%] min-w-[14px] rounded-t-md"
+                    className="h-full w-[72%] min-w-[14px] rounded-t-lg"
                     style={{ maxWidth: maxBarWidth, background: d.color || VIZ.blue, opacity: 0.07 }}
                   />
                 </span>
@@ -2403,16 +2403,26 @@ export function BarChart({
                   so when the bar lifts under the cursor the number rides up
                   with it, exactly as far, at exactly the same speed (Suren:
                   "the number does not go up when the bar chart goes up"). */}
-              {/* IT SHINES LIKE THE OTHERS (Anir, Aug 30: "when I hover over
-                  the green thing, everything does the animation properly
-                  except the bar chart at the top — the bar does not do it, it
-                  doesn't shine"). Every other bar in this app carries .bar-lit
-                  on hover; this one only lifted. */}
+              {/* THE SHINE GOES ON THE BAR, NOT ON THE BOX AROUND IT (Anir,
+                  Sep 4: "I thought you fixed this bar. The shine is fine, the
+                  rectangle edges so sharp is not").
+
+                  It was fixed, on Sep 1, and the Aug 30 shine fix put it back
+                  by a different door: .bar-lit landed on THIS wrapper, which
+                  has no radius, and .bar-lit opens with `0 0 0 1px
+                  rgba(255,255,255,.9)` — zero blur by definition, so it can
+                  only ever be a hard outline, and on a square parent it traced
+                  a square outline right over the bar's rounded top.
+
+                  Moved down onto .chart-bar below, which is rounded and
+                  already clips its own overflow. That keeps everything he
+                  likes about .bar-lit — the travelling sheen and the lift in
+                  saturation — and drops the line, because .chart-bar sets its
+                  own blurred glow inline and an inline box-shadow beats the
+                  class's. The lift stays here, on the wrapper, so the label
+                  still rides up with the bar. */}
               <div
-                className={cn(
-                  "group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none",
-                  lit === i && "bar-lit"
-                )}
+                className="group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none"
                 style={{
                   ["--bar-glow" as string]: `${tint(d.color || VIZ.blue, 75)}`,
                   maxWidth: maxBarWidth,
@@ -2456,7 +2466,10 @@ export function BarChart({
                     space of its own, so nothing above or below moves. */}
 
                 <div
-                  className="chart-bar relative h-full w-full overflow-hidden rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105"
+                  className={cn(
+                    "chart-bar relative h-full w-full overflow-hidden rounded-t-lg transition-[filter,box-shadow] group-hover/bar:brightness-105",
+                    lit === i && "bar-lit"
+                  )}
                   style={{
                     animationDelay: `${i * 45}ms`,
                     background:

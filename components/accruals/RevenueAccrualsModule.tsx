@@ -462,27 +462,42 @@ function DeviationsTable({
         ]}
       />
 
+      {/* WIDE ENOUGH FOR THE HEADINGS, AND IT SCROLLS (Anir, Sep 4: "make
+          these so that it's on one line... I need there to be the ability to
+          scroll horizontally because you're going to make the column headers on
+          one line, so it's okay to spread it out a bit more").
+
+          At 1080px "Opportunity ID", "Contract value" and "Accrual status" each
+          folded onto a second line, which pushed the header band taller than
+          every other table in the app and made three columns look like six. The
+          headings now refuse to wrap and the table is given the room they need;
+          past that the wrapper scrolls sideways rather than the page. */}
       <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
-        <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
-          <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+        <table className="w-full min-w-[1440px] table-fixed border-collapse text-left">
+          <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>tr>th]:whitespace-nowrap">
             <tr>
-              <th className="w-[15%] px-3 py-2.5">Customer</th>
+              <th className="w-[14%] px-3 py-2.5">Customer</th>
               <th className="w-[10%] px-3 py-2.5">Opportunity ID</th>
-              <th className="w-[19%] px-3 py-2.5">Opportunity</th>
-              <th className="w-[8%] px-3 py-2.5">Version</th>
+              <th className="w-[16%] px-3 py-2.5">Opportunity</th>
+              <th className="w-[6%] px-3 py-2.5">Version</th>
               <th className="w-[12%] px-3 py-2.5">Owner</th>
               <th className="w-[8%] px-3 py-2.5">Deviations</th>
-              <th className="w-[11%] px-3 py-2.5">Opp status</th>
-              <th className="w-[10%] px-3 py-2.5">Contract value</th>
-              <th className="w-[10%] px-3 py-2.5">Accrual status</th>
-              <th className="w-[7%] px-3 py-2.5">History</th>
+              <th className="w-[10%] px-3 py-2.5">Opp status</th>
+              <th className="w-[9%] px-3 py-2.5">Contract value</th>
+              <th className="w-[9%] px-3 py-2.5">Accrual status</th>
+              <th className="w-[6%] px-3 py-2.5">History</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
             {shown.map((r) => (
               <tr key={r.plan.opportunityId} className="align-middle hover:bg-surface/60">
-                <td className="truncate px-3 py-2.5 text-[12.5px] text-text-secondary" title={r.plan.customer}>
-                  {r.plan.customer}
+                <td className="px-3 py-2.5" title={r.plan.customer}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+                    <span className="truncate text-[12.5px] text-text-secondary">
+                      {r.plan.customer}
+                    </span>
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-[12px] tnum text-text-tertiary">
                   {r.externalId}

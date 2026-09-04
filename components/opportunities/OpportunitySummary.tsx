@@ -896,8 +896,18 @@ export function OpportunitySummary({
                 </span>
               );
             })()}
-            <span className="shrink-0 text-[12px] text-text-tertiary tnum">
-              {node.deals.length}
+            {/* SAY WHAT THE NUMBER IS (Anir, Sep 4: "what does this '4' mean?
+                Next to the people the numbers. This is in revenue accrual.
+                What does that mean?").
+
+                It is how many deals sit under that branch, and it was a bare
+                numeral with no noun anywhere near it — beside a person's name
+                it could as easily have been a rank, a version or a count of
+                anything else on the row. The root of this same tree already
+                reads "All 104 deals"; the branches now match it. */}
+            <span className="shrink-0 whitespace-nowrap text-[12px] text-text-tertiary">
+              <span className="tnum">{node.deals.length}</span>{" "}
+              {node.deals.length === 1 ? "deal" : "deals"}
             </span>
           </button>
         </th>

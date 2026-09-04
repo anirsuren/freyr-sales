@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
-import { CircleDot, Coins, Plus, Trash2, UserPen, X } from "lucide-react";
+import { CircleDot, Plus, Trash2, UserPen, X } from "lucide-react";
 import {
   AccrualOriginChip,
   AccrualStatusChip,
@@ -1644,13 +1644,26 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               /* Sits in a Field so its top edge lines up with the three labels
                  beside it and the button lines up with the three boxes. */
               <Field label="Split it out">
-                <Tooltip label="Share the contract value out evenly across the months. Any month you have already typed is left alone and the rest split what is left.">
+                {/* w-full ON THE TOOLTIP, NOT JUST THE BUTTON. Tooltip renders
+                    a `relative inline-flex` span, so the button's `w-full` was
+                    resolving against a shrink-to-fit parent instead of the grid
+                    column: the box came out narrower than the three beside it
+                    and "Spread evenly" ran out through its own right border.
+                    The span has to fill the column first for w-full to mean
+                    anything.
+
+                    And no icon. It was a Coins glyph that read as an unnamed
+                    blob at 14px, the same complaint as the spinner arrow next
+                    door, and it was the width the label needed. */}
+                <Tooltip
+                  className="w-full"
+                  label="Share the contract value out evenly across the months. Any month you have already typed is left alone and the rest split what is left."
+                >
                   <button
                     type="button"
                     onClick={applySpread}
-                    className="flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-white text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                    className="flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-border bg-surface px-3 text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
                   >
-                    <Coins size={14} strokeWidth={2.2} />
                     {editingRows.some((l) => l.pinned)
                       ? "Start over"
                       : "Spread evenly"}
@@ -1667,18 +1680,14 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               rewrite the planned side a deviation is being measured against.
               The row keeps its height either way so the table below does not
               jump up the moment the columns appear. */}
-          <div className="mt-3 flex min-h-[30px] flex-wrap items-center justify-end gap-x-3 gap-y-1">
-            {deviating ? (
+          {deviating && (
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
               <span className="text-[12px] text-text-secondary">
                 Leave a month blank to carry it forward exactly as it is. Type
                 0 in both boxes to say that month now brings nothing.
               </span>
-            ) : (
-              <>
-                
-              </>
-            )}
-          </div>
+            </div>
+          )}
 
           {(deviating ? deviateRows.length : editingRows.length) > 0 && (
             /* THE SCROLL BOX ENDS ON A ROW, NOT THROUGH ONE. The header used

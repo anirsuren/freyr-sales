@@ -255,6 +255,14 @@ export async function buildOpportunity360(
     const lines = [...(plan?.lines ?? [])].sort((a, b) =>
       a.month.localeCompare(b.month)
     );
+    const planTotal = lines.reduce((sum, l) => sum + (l.amount || 0), 0);
+    /* Which split columns this plan actually uses. Offering type decides it
+       upstream — License writes OTS and ARR, Services writes Monthly — and a
+       plan written before the split existed uses none of them. */
+    const anyOts = lines.some((l) => (l.ots || 0) > 0);
+    const anyArr = lines.some((l) => (l.arr || 0) > 0);
+    const anyMrr = lines.some((l) => (l.mrr || 0) > 0);
+    let running = 0;
     bands.push({
       key: "revenueAccruals",
       label: "Revenue accruals",
@@ -276,17 +284,51 @@ export async function buildOpportunity360(
        * wear the app's own money format on the other side. No conversion, no
        * currency code, nothing for a second rate table to disagree with.
        */
-      total: lines.reduce((sum, l) => sum + (l.amount || 0), 0),
+      total: planTotal,
+      /* MONTH AND AMOUNT WITH A CANYON BETWEEN THEM (Anir, Sep 4: "on the
+         left, it's too far from the right. You either have to add stuff like
+         more columns or figure out another way").
+
+         The band had no columns at all, so it fell back to title-on-the-left,
+         money-on-the-right and a schedule read as two lonely edges. These are
+         the columns a schedule is actually read with — what share of the
+         contract this month carries, and what has landed by the end of it —
+         plus the split, but ONLY the parts this plan uses: a Services plan
+         has no OTS and a License plan has no monthly, and a column of dots is
+         worse than no column. */
+      columns: [
+        ...(anyOts ? [{ key: "ots", label: "One-time" }] : []),
+        ...(anyArr ? [{ key: "arr", label: "Recurring" }] : []),
+        ...(anyMrr ? [{ key: "mrr", label: "Monthly" }] : []),
+        { key: "share", label: "Share of plan" },
+        { key: "running", label: "Landed by then" },
+      ],
       href: "/revenue-accruals",
       hrefLabel: "Revenue accruals",
       empty:
         "No accrual plan on this deal yet. Make one in Revenue accruals to say which months its money lands in.",
-      items: lines.map<Customer360Item>((line) => {
+      items: lines.map<Customer360Item>((line, i) => {
         const split = accrualSplit(line);
+        running += line.amount || 0;
         return {
           id: `${opportunityId}:${line.month}`,
           title: monthLabel(line.month),
           amount: line.amount,
+          cells: {
+            ...(anyOts ? { ots: line.ots ? formatMoney(line.ots) : "·" } : {}),
+            ...(anyArr ? { arr: line.arr ? formatMoney(line.arr) : "·" } : {}),
+            ...(anyMrr ? { mrr: line.mrr ? formatMoney(line.mrr) : "·" } : {}),
+            share:
+              planTotal > 0
+                ? `${Math.round(((line.amount || 0) / planTotal) * 100)}%`
+                : "·",
+            /* The last month reads "all of it" rather than repeating the
+               contract value a third time on the same screen. */
+            running:
+              i === lines.length - 1 && planTotal > 0
+                ? "All of it"
+                : formatMoney(running),
+          },
           /* NO href, deliberately. This used to point at
              `/revenue-accruals/{deal}`, which was that deal's own plan page.
              That page is gone: Suren, Sep 1, looking at it beside the dialog,
