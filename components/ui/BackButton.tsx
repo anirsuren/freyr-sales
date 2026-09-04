@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { askBeforeLeaving } from "@/lib/unsavedGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -100,6 +101,15 @@ export function SmartBack({
 }) {
   const router = useRouter();
   const onClick = () => {
+    /* A SCREEN WITH UNSAVED WORK GETS TO ASK FIRST. This is a BUTTON, so the
+       editor's own link listener never sees it — "Back to deal" used to walk
+       off with staged edits in silence. `askBeforeLeaving` returns true when
+       nothing is staged anywhere, which is the ordinary case and costs a
+       function call. */
+    if (!askBeforeLeaving(() => go())) return;
+    go();
+  };
+  const go = () => {
     try {
       const here = window.location.pathname + window.location.search;
       const stack = readStack();

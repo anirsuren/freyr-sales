@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { setLeaveAsker } from "@/lib/unsavedGuard";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { statusColor } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
@@ -847,7 +848,8 @@ export function DealOverviewEditor({
    * straight through.
    */
   const router = useRouter();
-  const [leavingTo, setLeavingTo] = useState<string | null>(null);
+  /* The navigation being held back, whatever kind of control started it. */
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
   useEffect(() => {
     if (!dirtyCount) return;
     const onClick = (e: MouseEvent) => {
@@ -859,10 +861,22 @@ export function DealOverviewEditor({
       if (href === window.location.pathname) return;
       e.preventDefault();
       e.stopPropagation();
-      setLeavingTo(href);
+      setLeaving(() => () => router.push(href));
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
+  }, [dirtyCount, router]);
+
+  /* AND FOR CONTROLS THAT ARE NOT LINKS. SmartBack is a button and pushes
+     through the router, so no click listener can recognise it as navigation.
+     It asks instead — see lib/unsavedGuard. */
+  useEffect(() => {
+    if (!dirtyCount) return;
+    setLeaveAsker((go) => {
+      setLeaving(() => go);
+      return false;
+    });
+    return () => setLeaveAsker(null);
   }, [dirtyCount]);
 
   /**
@@ -1907,13 +1921,16 @@ export function DealOverviewEditor({
       {children}
 
       <ConfirmDialog
-        open={leavingTo !== null}
-        onClose={() => setLeavingTo(null)}
+        open={leaving !== null}
+        onClose={() => setLeaving(null)}
         onConfirm={() => {
-          const to = leavingTo;
+          const go = leaving;
+          /* Clear the bank BEFORE navigating, so the guard is not still armed
+             when the next screen mounts. */
           setPending({});
-          setLeavingTo(null);
-          if (to) router.push(to);
+          setLeaveAsker(null);
+          setLeaving(null);
+          go?.();
         }}
         title={`Leave with ${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}?`}
         body="Nothing on this deal has been written yet. Leaving now throws those edits away."
