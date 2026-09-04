@@ -97,6 +97,12 @@ export async function buildPerson360(
     };
     bands.push({
       key: "meetings",
+      columns: [
+        { key: "customer", label: "Customer" },
+        { key: "type", label: "Type" },
+        { key: "role", label: "Their part" },
+        { key: "status", label: "Status" },
+      ],
       label: "Meetings",
       icon: BAND_ICONS.meetings,
       color: "var(--ink-magenta)",
@@ -112,6 +118,12 @@ export async function buildPerson360(
           code: m.ref,
           logo: m.customer,
           sub: [roleOn(m), m.type, m.customer].filter(Boolean).join(" · "),
+          cells: {
+            customer: m.customer || "",
+            type: m.type || "",
+            role: roleOn(m) || "",
+            status: m.status === "completed" ? "Completed" : "Planned",
+          },
           when: m.meetingAt,
           href: `/meetings/${m.id}`,
         })),
@@ -142,6 +154,12 @@ export async function buildPerson360(
     const mine = opps.filter((o) => same(o.owner, personName));
     bands.push({
       key: "opportunities",
+      columns: [
+        { key: "customer", label: "Customer" },
+        { key: "level", label: "Stage" },
+        { key: "status", label: "Status" },
+        { key: "confidence", label: "Confidence", align: "right" },
+      ],
       label: "Opportunities",
       icon: "opportunities",
       color: "var(--ink-bright-blue)",
@@ -156,6 +174,13 @@ export async function buildPerson360(
           id: o.id,
           title: o.name,
           sub: [o.customer, o.level, o.status].filter(Boolean).join(" · "),
+          cells: {
+            customer: o.customer || "",
+            level: o.level || "",
+            status: o.status || "Not set",
+            confidence:
+              typeof o.confidence === "number" ? `${Math.round(o.confidence)}%` : "",
+          },
           amount: o.value,
           logo: o.customer,
           href: `/opportunities?deal=${encodeURIComponent(o.id)}`,
@@ -257,6 +282,11 @@ export async function buildPerson360(
     const mine = leads.filter((l) => same(l.owner, personName));
     bands.push({
       key: "leads",
+      columns: [
+        { key: "company", label: "Company" },
+        { key: "source", label: "Source" },
+        { key: "status", label: "Status" },
+      ],
       label: "Leads",
       icon: "leads",
       color: "#4338CA",
@@ -270,6 +300,11 @@ export async function buildPerson360(
         code: l.ref || undefined,
         logo: l.company || undefined,
         sub: [l.company, l.status].filter(Boolean).join(" · "),
+        cells: {
+          company: l.company || "",
+          source: l.source || "",
+          status: l.status || "",
+        },
         when: l.createdAt,
         href: "/leads",
       })),
@@ -280,6 +315,10 @@ export async function buildPerson360(
     const mine = contracts.filter((c) => same(c.owner, personName));
     bands.push({
       key: "contracts",
+      columns: [
+        { key: "customer", label: "Customer" },
+        { key: "status", label: "Status" },
+      ],
       label: "Contracts",
       icon: "contracts",
       color: "#16A34A",
@@ -294,6 +333,10 @@ export async function buildPerson360(
         code: c.reference || undefined,
         logo: c.customer || undefined,
         sub: [c.customer, c.status].filter(Boolean).join(" · "),
+        cells: {
+          customer: c.customer || "",
+          status: c.status || "",
+        },
         amount: c.value,
         href: "/contracts",
       })),

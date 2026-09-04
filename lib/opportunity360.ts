@@ -1,3 +1,4 @@
+import { formatDate } from "./utils";
 import { cache } from "react";
 import { orderDealBands } from "./connectionOrder";
 import { canAccessModuleWith } from "./moduleAccess";
@@ -153,6 +154,12 @@ export async function buildOpportunity360(
       const rows = mine.filter((r) => solutioningShelf(r) === key);
       bands.push({
         key,
+        columns: [
+          { key: "status", label: "Status" },
+          { key: "owner", label: "Owner" },
+          { key: "docs", label: "Documents", align: "right" },
+          { key: "needed", label: "Needed by", align: "right" },
+        ],
         label,
         icon: BAND_ICONS[key],
         color,
@@ -177,6 +184,12 @@ export async function buildOpportunity360(
           ]
             .filter(Boolean)
             .join(" · "),
+          cells: {
+            status: r.status.replace(/_/g, " "),
+            owner: r.owner || "Unassigned",
+            docs: r.docs.length ? String(r.docs.length) : "",
+            needed: r.neededBy ? formatDate(r.neededBy) : "",
+          },
         })),
       });
     }
@@ -186,6 +199,11 @@ export async function buildOpportunity360(
     const mine = meetings.filter((m) => against(m.opportunityIds));
     bands.push({
       key: "meetings",
+      columns: [
+        { key: "type", label: "Type" },
+        { key: "owner", label: "Who ran it" },
+        { key: "status", label: "Status" },
+      ],
       label: "Meetings",
       icon: BAND_ICONS.meetings,
       color: "var(--ink-magenta)",
@@ -200,6 +218,11 @@ export async function buildOpportunity360(
           title: m.title,
           code: m.ref,
           sub: `${m.type} · ${m.owner} · ${m.status}`,
+          cells: {
+            type: m.type || "",
+            owner: m.owner || "Unassigned",
+            status: m.status === "completed" ? "Completed" : "Planned",
+          },
           when: m.meetingAt,
           href: `/meetings/${m.id}`,
         })),
@@ -296,6 +319,7 @@ export async function buildOpportunity360(
     });
     bands.push({
       key: "contracts",
+      columns: [{ key: "status", label: "Status" }],
       label: "Contracts",
       icon: BAND_ICONS.contracts,
       color: "var(--ink-teal-deep)",
@@ -307,6 +331,7 @@ export async function buildOpportunity360(
         id: c.id,
         title: c.name,
         sub: [c.reference, c.status].filter(Boolean).join(" · "),
+        cells: { status: c.status || "" },
         amount: c.value,
         href: "/contracts",
       })),

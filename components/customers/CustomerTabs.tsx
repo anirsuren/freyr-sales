@@ -29,6 +29,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   CustomerOfferingsTab,
@@ -335,6 +336,9 @@ export function CustomerTabs({
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
+  /** Whether the About card is live. Off by default: this is a page people
+   *  come to read, and every value on it used to be one click from changing. */
+  const [editingAbout, setEditingAbout] = useState(false);
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -969,7 +973,31 @@ export function CustomerTabs({
                     of them. The fields themselves were always honest, see
                     EditableFact, so this was the last thing on the card still
                     promising an edit. */}
+                {/* AN EDIT BUTTON, NOT A CARD THAT IS ALWAYS LIVE (Anir,
+                    Sep 4: "there should be an edit button here. In the
+                    overview, it shouldn't be editing like this. Why can I
+                    still edit this stuff?").
+
+                    Every value on this card was one stray click from being
+                    changed, on a card people come to READ. Editing is a thing
+                    you turn on now, and the fields go back to being text the
+                    moment you turn it off. */}
                 {canEditFacts && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingAbout((v) => !v)}
+                    className={cn(
+                      "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
+                      editingAbout
+                        ? "border-blue-primary bg-blue-light text-blue-primary"
+                        : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
+                    )}
+                  >
+                    <Pencil size={13} strokeWidth={2.2} />
+                    {editingAbout ? "Done" : "Edit"}
+                  </button>
+                )}
+                {false && (
                   <span className="text-[11.5px] text-text-tertiary">
                     Click a value to change it
                   </span>
@@ -979,7 +1007,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Company name"
                   value={customer.company_name ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   onSave={async (v) =>
                     (await patchCustomer({ company_name: v })) ? null : "That didn't save."
                   }
@@ -987,7 +1015,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Industry"
                   value={customer.industry ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   renderValue={(v) => (
                     <AttributeTag
                       value={v}
@@ -1004,7 +1032,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Size"
                   value={customer.size_tier ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   /* THE STORED WORDS, NOT INVENTED ONES. Every account holds
                      "small" / "mid" / "large" (lib/utils SIZE_TIER_LABEL), and
                      this picker shipped offering Small / Medium / Large /
@@ -1030,7 +1058,7 @@ export function CustomerTabs({
                      Same field, the name people use for it. */
                   label="Locations"
                   value={customer.geography ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   renderValue={(v) => <GeographyValue value={v} />}
                   onSave={async (v) =>
                     (await patchCustomer({ geography: v })) ? null : "That didn't save."
@@ -1039,7 +1067,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Website"
                   value={customer.website_url ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   format={(v) => v.replace(/^https?:\/\//, "")}
                   onSave={async (v) =>
                     (await patchCustomer({ website_url: v })) ? null : "That didn't save."
@@ -1048,7 +1076,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Customer type"
                   value={customer.customer_type ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   onSave={async (v) =>
                     (await patchCustomer({ customer_type: v })) ? null : "That didn't save."
                   }
@@ -1066,7 +1094,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Ownership"
                   value={customer.ownership ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   onSave={async (v) =>
                     (await patchCustomer({ ownership: v })) ? null : "That didn't save."
                   }
@@ -1074,7 +1102,7 @@ export function CustomerTabs({
                 <EditableFact
                   label="Revenue"
                   value={customer.revenue ?? ""}
-                  canEdit={canEditFacts}
+                  canEdit={canEditFacts && editingAbout}
                   onSave={async (v) =>
                     (await patchCustomer({ revenue: v })) ? null : "That didn't save."
                   }
@@ -1224,6 +1252,26 @@ export function CustomerTabs({
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     How touches have landed
                   </h3>
+                  <span className="flex shrink-0 items-center gap-1">
+                  {/* ADD ONE FROM HERE (Anir, Sep 4: "Shouldn't I be able to
+                      add activities here? Throw in a plus at the top right").
+
+                      The card said "No activity yet — the first call, email,
+                      meeting or note will build this", and then gave you no
+                      way to log one. The dialog existed; nothing on this card
+                      opened it. */}
+                  {canEditFacts && (
+                    <Tooltip label="Log a call, email, meeting or note">
+                      <button
+                        type="button"
+                        onClick={() => setNoteModalOpen(true)}
+                        aria-label="Log an interaction"
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                      >
+                        <Plus size={14} strokeWidth={2.4} />
+                      </button>
+                    </Tooltip>
+                  )}
                   {outcomeMix.length > 0 && (
                     <ExpandedChartModal
                       title="How touches have landed"
@@ -1237,6 +1285,7 @@ export function CustomerTabs({
                       className="h-8 px-2.5 text-[11px]"
                     />
                   )}
+                  </span>
                 </div>
                 <p className="text-[12px] text-text-tertiary mb-4">
                   Every logged touch with {customer.company_name}, by outcome.
