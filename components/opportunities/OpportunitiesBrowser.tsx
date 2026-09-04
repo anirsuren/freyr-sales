@@ -4468,9 +4468,24 @@ function SingleOfferingEditor({
         </div>
       </div>
 
-      {line.localCurrency && (
+      {/* NOTHING TYPED IS NOT A BROKEN RATE (Anir, Sep 4: "how many fucking
+          times do I have to tell you to fix this? ... It's just a simple rate
+          conversion").
+
+          He was right to be angry and the rate was never the problem: GBP is
+          in the feed at 0.7409 and converts exactly. The condition was
+          `line.value ? conversion : rateWarning`, and `line.value` is the
+          CONVERTED figure — so picking a currency and typing nothing put
+          "Couldn't reach the GBP rate" on screen before a single digit had
+          been entered. It looked like the fix had never landed. It had; this
+          line was accusing the network of the user's blank box.
+
+          Three states now, and they are actually different: no amount says
+          nothing at all, a converted amount shows the dollars, and an amount
+          we genuinely cannot convert says so. */}
+      {line.localCurrency && Number(line.localValue) > 0 && (
         <p className="text-[11.5px] leading-snug">
-          {line.value ? (
+          {Number(line.value) > 0 ? (
             <span className="text-text-secondary">
               ≈ <b className="text-text-primary tnum">{money(Number(line.value))}</b>{" "}
               {/* SAY WHOSE RATE IT IS AND WHEN. "At the admin rate" was both

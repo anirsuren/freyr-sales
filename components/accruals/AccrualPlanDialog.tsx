@@ -1547,7 +1547,11 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               )}
             </div>
           )}
-          <div className="mt-3 grid grid-cols-3 gap-3">
+          {/* FOUR ACROSS, NOT THREE AND A STRAY (Anir, Sep 4: "I do not want
+              the 'spread evenly' button there. Just put it as a thing on the
+              same line as the three values that you put on top... It'll be the
+              fourth thing in there"). */}
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field
               label="Contract value (USD)"
               /* IN A DRAFT IT IS THE DEAL'S ESTIMATED TCV, NOT A SECOND NUMBER.
@@ -1599,10 +1603,20 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                   answer. The suggestions are worth keeping (Manoj's item 9),
                   so they moved into the box's own list: click the box and the
                   usual terms are there, or type 4 and it is 4. */}
+              {/* TEXT, NOT NUMBER (Anir, Sep 4: "I don't know what this arrow
+                  is. What is that arrow supposed to be?").
+
+                  `type="number"` draws its own up/down spinner, and `list=`
+                  draws a datalist chevron — two native controls stacked in one
+                  corner, neither of which the design asked for, and the pair
+                  read as a glyph nobody could name. inputMode keeps the numeric
+                  keypad on a phone and the onChange already strips anything
+                  that is not a digit, so nothing is lost by dropping the
+                  spinner. The suggestions stay: the list still opens on focus,
+                  it just no longer wears a second arrow. */}
               <input
-                type="number"
-                min={1}
-                max={600}
+                type="text"
+                inputMode="numeric"
                 list="accrual-term-suggestions"
                 value={editing.months}
                 disabled={deviating}
@@ -1626,6 +1640,24 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 ))}
               </datalist>
             </Field>
+            {!deviating && (
+              /* Sits in a Field so its top edge lines up with the three labels
+                 beside it and the button lines up with the three boxes. */
+              <Field label="Split it out">
+                <Tooltip label="Share the contract value out evenly across the months. Any month you have already typed is left alone and the rest split what is left.">
+                  <button
+                    type="button"
+                    onClick={applySpread}
+                    className="flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-white text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                  >
+                    <Coins size={14} strokeWidth={2.2} />
+                    {editingRows.some((l) => l.pinned)
+                      ? "Start over"
+                      : "Spread evenly"}
+                  </button>
+                </Tooltip>
+              </Field>
+            )}
           </div>
           {/* The table moves on its own now, so this stopped being the way to
               fill it in and became the way BACK: it lets go of every month
@@ -1635,13 +1667,6 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               rewrite the planned side a deviation is being measured against.
               The row keeps its height either way so the table below does not
               jump up the moment the columns appear. */}
-          {/* THE ACTION BELONGS TO THE TABLE, SO IT SITS ON THE TABLE'S EDGE
-              (Anir, Sep 4: "i dont like the way the spread evenly button is
-              situated"). It floated on a line of its own between the three
-              fields and the schedule, with a loose question mark beside it —
-              reading as a fourth field rather than as a thing you do to the
-              months below. Right-aligned, tight to the table it acts on, and
-              the explanation moved onto the button itself. */}
           <div className="mt-3 flex min-h-[30px] flex-wrap items-center justify-end gap-x-3 gap-y-1">
             {deviating ? (
               <span className="text-[12px] text-text-secondary">
@@ -1650,18 +1675,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               </span>
             ) : (
               <>
-                <Tooltip label="Share the contract value out evenly across the months. Any month you have already typed is left alone and the rest split what is left.">
-                  <button
-                    type="button"
-                    onClick={applySpread}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                  >
-                    <Coins size={13} strokeWidth={2.2} />
-                    {editingRows.some((l) => l.pinned)
-                      ? "Start over, even split"
-                      : "Spread evenly"}
-                  </button>
-                </Tooltip>
+                
               </>
             )}
           </div>
