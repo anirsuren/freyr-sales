@@ -115,7 +115,7 @@ import {
   offeringTypeColors,
 } from "@/components/ui/OfferingChip";
 import { typeMeta } from "@/components/performance/bits";
-import { CURRENCIES, convert, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
+import { CURRENCIES, convert, currencyMeta, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 import { Customer360 } from "@/components/customers/Customer360";
@@ -4468,46 +4468,51 @@ function SingleOfferingEditor({
         </div>
       </div>
 
-      {/* BOTH CURRENCIES, SIDE BY SIDE, UNDER THE BOX THEY BELONG TO (Anir,
-          Sep 4: "I don't know why you're giving so much gap. Just show me the
-          USD amount right below. It should be kind of a table... a good table
-          that shows the value in both currencies").
+      {/* THE SAME TABLE THE DEAL OVERVIEW ALREADY USES (Anir, Sep 4: "just
+          look at the other page. This is not what I wanted").
 
-          It was a sentence stretched across the whole room, three fields wide,
-          under a box in the left third — so the answer to "what is this worth
-          in dollars" sat nowhere near the number it converted. Two rows,
-          contract currency then dollars, directly beneath the amount.
+          I invented a third shape — label, figure, sentence — when the app had
+          settled this months ago on the deal's own Revenue Accrual card: a
+          header row naming the columns, the agreed currency on one line, and
+          the SAME MONEY COUNTED IN DOLLARS on the line under it. The dollars
+          are not an aside about the money, they are the money again, which is
+          a row. Same markup, same widths, same words, so the two screens
+          cannot drift.
 
-          NOTHING TYPED IS NOT A BROKEN RATE. The earlier version keyed on
-          `line.value`, which is the CONVERTED figure, so picking a currency
-          and typing nothing printed "Couldn't reach the GBP rate" before a
-          digit existed. The rate was never the problem. */}
+          Only shown once there is an amount to convert. Keying it on
+          `line.value` — the CONVERTED figure — is what used to print a rate
+          error over an empty box. */}
       {line.localCurrency && Number(line.localValue) > 0 && (
-        <div className="mt-2 w-fit overflow-hidden rounded-lg border border-border-light bg-white">
-          <table className="text-left text-[12.5px]">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border-light">
+          <table className="w-full min-w-[420px] table-fixed text-left">
+            <thead className="bg-surface">
+              <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
+                <th className="w-[45%]">Project currency</th>
+                <th>Deal value</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-border-light">
-              <tr>
-                <td className="py-1.5 pl-3 pr-4 font-semibold text-text-tertiary">
-                  {line.localCurrency}
+              <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
+                <td className="text-[13px] text-text-secondary">
+                  {currencyMeta(line.localCurrency).symbol.trim()} {line.localCurrency}{" "}
+                  {currencyMeta(line.localCurrency).name}
                 </td>
-                <td className="py-1.5 pr-3 font-semibold tnum text-text-primary">
+                <td className="text-[13px] font-semibold tnum text-text-primary">
                   {fmtMoney(Number(line.localValue), line.localCurrency as CurrencyCode)}
                 </td>
-                <td className="py-1.5 pr-3 text-[11.5px] text-text-tertiary">
-                  what the client pays
-                </td>
               </tr>
-              <tr>
-                <td className="py-1.5 pl-3 pr-4 font-semibold text-text-tertiary">
-                  USD
-                </td>
-                <td className="py-1.5 pr-3 font-semibold tnum text-text-primary">
-                  {Number(line.value) > 0 ? money(Number(line.value)) : "—"}
-                </td>
-                <td className="py-1.5 pr-3 text-[11.5px] text-text-tertiary">
+              <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
+                <td className="text-[13px] text-text-secondary">$ USD US dollar</td>
+                <td
+                  className={
+                    Number(line.value) > 0
+                      ? "text-[13px] font-semibold tnum text-text-primary"
+                      : "text-[13px] text-text-tertiary"
+                  }
+                >
                   {Number(line.value) > 0
-                    ? `at the ${line.estSignDate ? "rate on the sign date" : "latest published rate"} — what goals count`
-                    : "rate not in yet"}
+                    ? money(Number(line.value))
+                    : "Cannot convert right now. What you typed still saves exactly as it is."}
                 </td>
               </tr>
             </tbody>
