@@ -1678,11 +1678,11 @@ export function DealOverviewEditor({
                     {[...accrualPlan.lines]
                       .sort((a, b) => a.month.localeCompare(b.month))
                       .map((l) => (
-                        <tr key={l.month}>
-                          <td className="px-3 py-2 text-[12.5px] text-text-secondary">
+                        <tr key={l.month} className="h-11">
+                          <td className="px-3 text-[13px] text-text-secondary">
                             {monthLabel(l.month)}
                           </td>
-                          <td className="px-3 py-2 text-[12.5px] font-semibold tnum text-text-primary">
+                          <td className="px-3 text-[13px] font-semibold tnum text-text-primary">
                             {scheduleMoney(l.amount || 0)}
                           </td>
                         </tr>
@@ -1696,16 +1696,27 @@ export function DealOverviewEditor({
                       in a different typeface, unaligned with the numbers it
                       sums. In the footer it lands under the column, in the
                       same tabular figures, and the eye can add it up. */}
-                  <tfoot className="border-t-2 border-border-light bg-surface">
-                    <tr>
-                      <td className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                  {/* THE SAME TOTAL ROW THE PLANNER HAS (Anir, Sep 4: "here,
+                      can you highlight the total properly, just like you did in
+                      the other place? Just make the table look the same").
+
+                      The planner's total got the blue wash on Sep 4 after the
+                      same complaint ("can you highlight the total better? It's
+                      kind of hard to see"); this one, the READ-ONLY copy of the
+                      identical schedule, kept the old grey-on-grey and so the
+                      one line that answers "does this add up" read as another
+                      row. Two views of one plan should not disagree about which
+                      line is the answer, so this is that markup, verbatim. */}
+                  <tfoot className="border-t-2 border-blue-subtle bg-blue-light/40">
+                    <tr className="h-12">
+                      <td className="px-3 text-[12px] font-bold uppercase tracking-[0.05em] text-blue-primary">
                         Total
-                        <span className="ml-1.5 font-normal normal-case tracking-normal">
+                        <span className="ml-1.5 text-[12px] font-semibold normal-case tracking-normal text-text-secondary">
                           {accrualPlan.lines.length} month
                           {accrualPlan.lines.length === 1 ? "" : "s"}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-[13px] font-bold tnum text-text-primary">
+                      <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
                         {scheduleMoney(
                           accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
                         )}
