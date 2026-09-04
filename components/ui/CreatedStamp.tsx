@@ -45,7 +45,14 @@ export function CreatedStamp({
           <span className="font-semibold text-text-secondary">{who}</span>
         </>
       ) : null}
-      {when ? <span>{`${who ? "on " : ""}${when}`}</span> : null}
+      {/* THE CLOCK IS THE READER'S. `stampedAt` renders "3 September 2026 at
+          2:14 PM" in whatever timezone does the rendering, so a server-rendered
+          stamp and the reader's browser disagree and React re-hydrates the
+          tree. That local reading is the point of the line, so it is marked as
+          deliberately client-varying rather than flattened to a bare date. */}
+      {when ? (
+        <span suppressHydrationWarning>{`${who ? "on " : ""}${when}`}</span>
+      ) : null}
     </p>
   );
 }

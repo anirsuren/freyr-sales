@@ -1636,7 +1636,22 @@ function GoalRows({
                     {/* AND WHEN (Anir, Aug 23). A target set last quarter and
                         one set this morning used to read identically. */}
                     {goalCreatedOn(goal.createdAt) && (
-                      <span className="whitespace-nowrap tnum">
+                      /* THE TIME OF DAY IS THE VIEWER'S, AND THAT IS THE POINT.
+                         `stampedAt` prints "3 September 2026 at 2:14 PM" from an
+                         instant, in whatever timezone is doing the rendering —
+                         so the server's clock and the reader's disagree and React
+                         threw a hydration mismatch and re-rendered the whole
+                         table. Found in the loop: the error fired on /performance
+                         in every browser timezone I tried, which is what ruled
+                         out a date-parsing bug and pointed at a real local-time
+                         value.
+
+                         Unlike a signing date, this one SHOULD be local — "who
+                         set this, and when" is read in the reader's own clock.
+                         So it is marked as deliberately client-varying rather
+                         than flattened to a date, which would throw away the
+                         time this line exists to show. */
+                      <span className="whitespace-nowrap tnum" suppressHydrationWarning>
                         on {goalCreatedOn(goal.createdAt)}
                       </span>
                     )}

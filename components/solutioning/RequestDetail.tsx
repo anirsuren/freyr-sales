@@ -696,7 +696,7 @@ export function RequestDetail({
           <Avatar name={r.requestedBy} className="h-[16px] w-[16px] text-[6px]" />
           {r.requestedBy}
         </span>
-        on {stampedAt(r.requestedAt)}
+        <span suppressHydrationWarning>on {stampedAt(r.requestedAt)}</span>
       </p>
 
       {/* ------------------- the tab bar, offering-styled ------------------- */}
@@ -965,7 +965,7 @@ export function RequestDetail({
                 />
                 <div className="mt-4 space-y-2.5 pl-11">
                   <p className="text-[13.5px] font-semibold text-text-primary">
-                    {r.meetingAt ? stampedAt(r.meetingAt) : "Not scheduled yet"}
+                    <span suppressHydrationWarning>{r.meetingAt ? stampedAt(r.meetingAt) : "Not scheduled yet"}</span>
                   </p>
                   {r.attendees && r.attendees.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
@@ -1029,7 +1029,7 @@ export function RequestDetail({
                     </span>
                     {r.pickedUpAt && (
                       <span className="block text-[11.5px] text-text-tertiary">
-                        picked it up {stampedAt(r.pickedUpAt)}
+                        <span suppressHydrationWarning>picked it up {stampedAt(r.pickedUpAt)}</span>
                       </span>
                     )}
                   </span>
@@ -1066,7 +1066,7 @@ export function RequestDetail({
                 <p className="mt-2.5 border-t border-border-light pt-2.5 text-[12px] text-text-secondary">
                   Completed by <b>{r.completedBy}</b>
                   <span className="block text-[11px] text-text-tertiary">
-                    {stampedAt(r.completedAt)}
+                    <span suppressHydrationWarning>{stampedAt(r.completedAt)}</span>
                   </span>
                 </p>
               )}
@@ -1180,7 +1180,7 @@ export function RequestDetail({
                           <Avatar name={a.by} className="h-[15px] w-[15px] text-[6px]" />
                           <span className="font-medium text-text-secondary">{a.by}</span>
                           <span aria-hidden="true">·</span>
-                          {stampedAt(a.at)}
+                          <span suppressHydrationWarning>{stampedAt(a.at)}</span>
                         </span>
                       </span>
                     </li>
