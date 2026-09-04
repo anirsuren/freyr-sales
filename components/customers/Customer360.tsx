@@ -229,6 +229,11 @@ export function Customer360({
      else, and it drew six rows of em-dashes under a heading — the exact thing
      the note on this table says a column must not be. */
   const anySub = !!active?.items.some((i) => !!i.sub);
+  /* Only the columns this band actually fills. A column of em-dashes is the
+     thing the note above says a table must never grow. */
+  const cols = (active?.columns ?? []).filter((c) =>
+    active?.items.some((i) => !!i.cells?.[c.key])
+  );
 
   return (
     <section
@@ -671,11 +676,26 @@ export function Customer360({
                       <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         {singularLabel(active.label)}
                       </th>
-                      {anySub && (
-                        <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                          Detail
-                        </th>
-                      )}
+                      {/* A BAND'S OWN COLUMNS, when it names them. "Detail"
+                          was one column holding everything a row knew, which
+                          is why it could not be labelled honestly. */}
+                      {cols.length > 0
+                        ? cols.map((c) => (
+                            <th
+                              key={c.key}
+                              className={cn(
+                                "pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                                c.align === "right" && "text-right"
+                              )}
+                            >
+                              {c.label}
+                            </th>
+                          ))
+                        : anySub && (
+                            <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                              Detail
+                            </th>
+                          )}
                       {anyAmount && (
                         <th className="pb-2 pr-4 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           Value
@@ -739,11 +759,23 @@ export function Customer360({
                             </span>
                           </span>
                         </td>
-                        {anySub && (
-                          <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
-                            {item.sub || "—"}
-                          </td>
-                        )}
+                        {cols.length > 0
+                          ? cols.map((c) => (
+                              <td
+                                key={c.key}
+                                className={cn(
+                                  "py-3 pr-4 text-[12.5px] text-text-secondary",
+                                  c.align === "right" && "text-right tnum"
+                                )}
+                              >
+                                {item.cells?.[c.key] || "—"}
+                              </td>
+                            ))
+                          : anySub && (
+                              <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
+                                {item.sub || "—"}
+                              </td>
+                            )}
                         {anyAmount && (
                           <td className="py-3 pr-4 text-right">
                             {item.amount !== undefined && item.amount > 0 ? (

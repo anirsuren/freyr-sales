@@ -69,6 +69,21 @@ export type Customer360Item = {
   face?: string;
   code?: string;
   goalType?: string;
+  /**
+   * THE ROW'S REAL COLUMNS (Anir, Sep 4, looking at a lone "Detail" column
+   * holding "Pipeline · Submitted to client": "what does that detail even
+   * mean? It should be a proper table that has at least 3, 4, 5 columns. This
+   * goes for every single page").
+   *
+   * `sub` mashed everything a row knew into one string, so a deal's stage, its
+   * status and its owner arrived as one grey sentence under a heading that
+   * said nothing. Keyed to the band's own `columns` below, so each tab decides
+   * what its rows are made of instead of every tab getting the same three.
+   *
+   * `sub` still works and is still drawn where a band has not been given
+   * columns — nothing had to be migrated to keep reading correctly.
+   */
+  cells?: Record<string, string>;
   /** Everything the goals page's own GoalZoom needs to run in the row's
       fold — a state trimmed to this person's entries on this goal. */
   goalDrill?: {
@@ -76,6 +91,14 @@ export type Customer360Item = {
     person: string;
     state: PerformanceState;
   };
+};
+
+/** One column of a band's table. */
+export type Customer360Column = {
+  /** Matches a key in an item's `cells`. */
+  key: string;
+  label: string;
+  align?: "left" | "right";
 };
 
 export type Customer360Band = {
@@ -103,6 +126,8 @@ export type Customer360Band = {
   /** Money where money is the point — deals and contracts. */
   total?: number;
   items: Customer360Item[];
+  /** What this band's table is made of. Omitted keeps the old three columns. */
+  columns?: Customer360Column[];
   href?: string;
   hrefLabel?: string;
   /** Shown instead of the list when the band is empty. */

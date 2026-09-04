@@ -1,4 +1,5 @@
 import { readRecordTeams, teamFor } from "./recordTeams";
+import { formatDate } from "./utils";
 import { orderBands } from "./connectionOrder";
 import "server-only";
 
@@ -103,14 +104,37 @@ export async function buildCustomer360(
       href: `/opportunities?customer=${encodeURIComponent(companyName)}`,
       hrefLabel: "All deals",
       empty: "No opportunity on this account yet.",
+      /* REAL COLUMNS, NOT ONE CALLED "DETAIL" (Anir, Sep 4: "what does that
+         detail even mean? It should be a proper table that has at least 3, 4,
+         5 columns"). Stage, status, confidence, owner and the signing date are
+         five different questions, and joining them with a middot answered none
+         of them under a heading that could not be labelled. */
+      columns: [
+        { key: "level", label: "Stage" },
+        { key: "status", label: "Status" },
+        { key: "confidence", label: "Confidence", align: "right" },
+        { key: "owner", label: "Owner" },
+        { key: "signs", label: "Expected to sign", align: "right" },
+      ],
       items: [...myDeals]
         .sort((a, b) => (b.value || 0) - (a.value || 0))
         .map<Customer360Item>((d) => ({
           id: d.id,
           title: d.name,
+          code: d.externalId || undefined,
+          /* Kept so anything still reading `sub` — a narrow layout, an older
+             band renderer — does not go blank. */
           sub: [d.level, d.status].filter(Boolean).join(" · "),
+          cells: {
+            level: d.level || "",
+            status: d.status || "Not set",
+            confidence:
+              typeof d.confidence === "number" ? `${Math.round(d.confidence)}%` : "",
+            owner: d.owner || "Unassigned",
+            signs: d.estSignDate ? formatDate(d.estSignDate) : "",
+          },
           amount: d.value,
-          href: `/opportunities?deal=${encodeURIComponent(d.id)}`,
+          href: `/opportunities/${encodeURIComponent(d.id)}`,
         })),
     });
   }
@@ -146,14 +170,27 @@ export async function buildCustomer360(
         href: `/solutioning?customer=${encodeURIComponent(customerId)}`,
         hrefLabel: "Solutioning",
         empty: `No ${label.toLowerCase()} on this account yet.`,
+        columns: [
+          { key: "type", label: "Type" },
+          { key: "status", label: "Status" },
+          { key: "owner", label: "Owner" },
+          { key: "asked", label: "Requested", align: "right" },
+        ],
         items: [...rows]
           .sort((a, b) => (b.requestedAt || "").localeCompare(a.requestedAt || ""))
           .map<Customer360Item>((r) => ({
             id: r.id,
             title: r.title,
+            code: r.ref || undefined,
             sub: [r.ref, r.subtype, r.status.replace("_", " ")]
               .filter(Boolean)
               .join(" · "),
+            cells: {
+              type: r.subtype || "",
+              status: r.status.replace(/_/g, " "),
+              owner: r.owner || "Unassigned",
+              asked: r.requestedAt ? formatDate(r.requestedAt) : "",
+            },
             when: r.meetingAt || r.requestedAt,
             href: `/solutioning?open=${encodeURIComponent(r.id)}`,
           })),
@@ -172,6 +209,11 @@ export async function buildCustomer360(
       href: "/meetings",
       hrefLabel: "All meetings",
       empty: "No meeting has been held with this account yet.",
+      columns: [
+        { key: "type", label: "Type" },
+        { key: "status", label: "Status" },
+        { key: "owner", label: "Who ran it" },
+      ],
       items: [...myMeetings]
         .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
         .map<Customer360Item>((m) => ({
@@ -183,6 +225,11 @@ export async function buildCustomer360(
           sub: [m.type, m.owner, m.status === "completed" ? "completed" : "planned"]
             .filter(Boolean)
             .join(" · "),
+          cells: {
+            type: m.type || "",
+            status: m.status === "completed" ? "Completed" : "Planned",
+            owner: m.owner || "Unassigned",
+          },
           when: m.meetingAt,
           href: `/meetings/${m.id}`,
         })),
@@ -199,12 +246,23 @@ export async function buildCustomer360(
       href: "/leads",
       hrefLabel: "All leads",
       empty: "No lead came in from this company.",
+      columns: [
+        { key: "source", label: "Source" },
+        { key: "status", label: "Status" },
+        { key: "came", label: "Came in", align: "right" },
+      ],
       items: [...myLeads]
         .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
         .map<Customer360Item>((l) => ({
           id: l.id,
           title: l.name || l.company,
+          code: l.ref || undefined,
           sub: [l.ref, l.source, l.status].filter(Boolean).join(" · "),
+          cells: {
+            source: l.source || "",
+            status: l.status || "",
+            came: l.createdAt ? formatDate(l.createdAt) : "",
+          },
           when: l.createdAt,
           href: "/leads",
         })),
@@ -376,12 +434,25 @@ export async function buildCustomer360(
       href: "/contracts",
       hrefLabel: "All contracts",
       empty: "Nothing signed with this account yet.",
+      columns: [
+        { key: "status", label: "Status" },
+        { key: "owner", label: "Owner" },
+        { key: "starts", label: "Starts", align: "right" },
+      ],
       items: [...myContracts]
         .sort((a, b) => b.value - a.value)
         .map<Customer360Item>((c) => ({
           id: c.id,
           title: c.name,
+          code: c.reference || undefined,
           sub: [c.reference, c.status].join(" · "),
+          cells: {
+            status: c.status || "",
+            owner: (c as { owner?: string }).owner || "Unassigned",
+            starts: (c as { startDate?: string }).startDate
+              ? formatDate((c as { startDate?: string }).startDate as string)
+              : "",
+          },
           amount: c.value,
           href: "/contracts",
         })),

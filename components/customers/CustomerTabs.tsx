@@ -788,10 +788,21 @@ export function CustomerTabs({
         // Activity tables take the entire width instead of being squeezed by
         // the snapshot/owner cards (Anir, Aug 12: "the table has to take up
         // the entire space... move it to Mock-mode").
-        includeDemoTeam && "lg:grid-cols-[1fr_280px]"
+        includeDemoTeam && "lg:grid-cols-[minmax(0,1fr)_280px]"
       )}
     >
-      <div>
+      {/* `min-w-0`, AND THE COLUMN DECLARED AS minmax(0,1fr) (Anir, Sep 4:
+          "why am I scrolling? ... I didn't even know there was all this stuff
+          on the right side. It wasn't even visible").
+
+          A grid item's min-width is `auto`, which means it refuses to shrink
+          below its own content — and this column's content is a tab strip
+          nineteen tabs long. So the column grew to fit it, the grid grew past
+          the window, the whole PAGE scrolled sideways, and the right rail went
+          off the edge of the screen with the Account snapshot on it. The strip
+          has had `overflow-x-auto` all along; it never got the chance to use
+          it because nothing ever bounded its width. */}
+      <div className="min-w-0">
         {/* Tabs */}
         {/* ONE LINE, SCROLLED — never wrapped (Suren, Aug 28: "all the tabs
             have to be on one line... obviously you have to scroll left and
@@ -2523,7 +2534,13 @@ export function CustomerTabs({
           then the working cards. One glance, no wall of boxes (Anir, Jul 3).
           Mock only — see the grid above. */}
       {includeDemoTeam && (
-      <aside className="space-y-4">
+      /* AND IT STAYS PUT (Anir, Sep 4: "It's fine if I scroll, but the right
+         side has to stay there. The account snapshot and stuff is important
+         information"). Sticky under the header, so scrolling a long tab keeps
+         the health, the owner and the competitor on screen. `self-start` so
+         the aside is its own height and not stretched by the grid row, which
+         is what makes sticky do nothing. */
+      <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
         {/* Per-account agent entry — opens the account-scoped drawer (chat +
             quick actions) over the page, reachable from any tab. The global
             dock stays for cross-app asks; this one is pre-loaded with THIS
