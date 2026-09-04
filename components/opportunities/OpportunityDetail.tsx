@@ -45,7 +45,7 @@ import {
   type Opportunity,
   statusColor,
 } from "@/lib/opportunitiesShared";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDayLabel } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 
 /**
@@ -586,7 +586,15 @@ export function OpportunityDetail({
             <StatTile
               icon={CalendarCheck}
               label="Expected to sign"
-              value={formatDate(iso)}
+              /* formatDayLabel, NOT formatDate, because the deal's own
+                 "Expected to sign" field sits a few hundred pixels below this
+                 tile and uses it. Two spellings of one date on one screen
+                 ("Sep 18, 2026" up here, "18 Sept 2026" down there) is the
+                 kind of thing that reads as two different dates at a glance.
+                 The app is split 88 sites to 7 on which of the two it uses;
+                 that is worth settling deliberately, not by whichever helper
+                 a new tile happened to import. */
+              value={formatDayLabel(iso)}
               warn={late}
               color={late ? "var(--ink-amber)" : undefined}
               sub={

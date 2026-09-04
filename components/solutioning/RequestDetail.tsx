@@ -45,7 +45,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import type {
   DocCategory,
@@ -686,7 +686,7 @@ export function RequestDetail({
             )}
           >
             <CalendarDays size={12} strokeWidth={2} />
-            needed by {r.neededBy}
+            needed by {formatDate(r.neededBy)}
             {overdue ? " · overdue" : ""}
           </span>
         )}

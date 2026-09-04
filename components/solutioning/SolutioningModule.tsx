@@ -964,7 +964,7 @@ function RequestRow({
               {r.requestedBy}
             </span>
             <span className="block text-[10.5px] text-text-tertiary">
-              {r.requestedAt.slice(0, 10)}
+              {formatDate(r.requestedAt)}
             </span>
           </span>
         </span>
@@ -977,7 +977,12 @@ function RequestRow({
               overdue ? "font-bold text-[color:var(--status-red)]" : "text-text-secondary"
             )}
           >
-            {r.neededBy}
+            {/* THE APP'S DATE, NOT THE STORE'S (found in the loop, Sep 4:
+                this table read "2026-08-31" while every other screen reads
+                "31 Aug 2026" — and this very file already formats its activity
+                dates that way twenty lines down). The comparison above still
+                uses the raw ISO string, which is what a comparison wants. */}
+            {formatDate(r.neededBy)}
             {overdue ? " · overdue" : ""}
           </span>
         ) : (
