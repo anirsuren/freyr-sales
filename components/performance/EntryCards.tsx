@@ -42,7 +42,7 @@ import { EvidencePicker } from "./EvidencePicker";
 import { SegmentBrackets } from "./bits";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
 import { tint } from "@/lib/tint";
@@ -336,14 +336,30 @@ export function StatusPill({
  * a day someone picked, not a moment — have no clock to show and say so by
  * omission rather than by inventing midnight.
  */
-export function stamp(iso?: string): { day?: string; time?: string } {
+export function stamp(iso?: string): {
+  day?: string;
+  /** The same day, spelled the way the rest of the app spells a date. */
+  label?: string;
+  time?: string;
+} {
   if (!iso) return {};
   const day = iso.slice(0, 10);
-  if (iso.length <= 10) return { day };
+  /* TWO FIELDS, BECAUSE THIS ONE IS BOTH READ AND COMPARED (found in the loop,
+     Sep 4: the goal hover card printed "2026-08-17" where the rest of the app
+     writes "Aug 17, 2026" -- the same raw-ISO leak already fixed in
+     Solutioning).
+
+     `day` cannot simply be formatted in place: callers build a Date out of it
+     and test it against other ISO date strings, so reformatting it here would
+     break the logic quietly rather than loudly. `label` is its display twin,
+     and every site that only PRINTS the date now uses that. */
+  const label = formatDate(day);
+  if (iso.length <= 10) return { day, label };
   const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return { day };
+  if (Number.isNaN(t.getTime())) return { day, label };
   return {
     day,
+    label,
     time: t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
   };
 }
@@ -837,7 +853,7 @@ export function SentBackCard({
               )}
               {a.sentBackAt && (
                 <span className="shrink-0 text-[11.5px] tnum text-text-tertiary">
-                  {stamp(a.sentBackAt).day}
+                  {stamp(a.sentBackAt).label}
                   {stamp(a.sentBackAt).time
                     ? ` at ${stamp(a.sentBackAt).time}`
                     : ""}
@@ -1088,7 +1104,7 @@ export function MyEntriesCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        <span className="block">{stamp(lastMoved(a)).day}</span>
+                        <span className="block">{stamp(lastMoved(a)).label}</span>
                         <span className="block text-[10.5px] text-text-tertiary">
                           {/* THE CLOCK GOES UNDER THE DAY (Anir, Aug 20: "I
                               need the time too... The time should be right
@@ -1295,7 +1311,7 @@ export function MyEntriesCard({
                                     {a.sentBackAt && (
                                       <span className="tnum text-text-tertiary">
                                         {a.sentBackBy ? "· " : ""}
-                                        {stamp(a.sentBackAt).day}
+                                        {stamp(a.sentBackAt).label}
                                         {stamp(a.sentBackAt).time
                                           ? ` at ${stamp(a.sentBackAt).time}`
                                           : ""}
@@ -1492,7 +1508,7 @@ export function MyEntriesCard({
             >
               <p className="text-[12.5px] text-text-secondary">
                 {goal?.name ?? "This goal"} · logged{" "}
-                {stamp(a.addedAt).day ?? a.date}
+                {stamp(a.addedAt).label ?? formatDate(a.date)}
                 {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}.
                 {awaitingTheirFix(a)
                   ? ` ${a.sentBackBy ?? "Your group owner"} sees it again as soon as you send it.`
@@ -1960,7 +1976,7 @@ export function VerifyQueueCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        <span className="block">{a.date}</span>
+                        <span className="block">{formatDate(a.date)}</span>
                         {/* When it actually landed in your queue. Same
                             reason as the rep's table: on a day with two
                             claims, the day alone says nothing. */}
@@ -1969,7 +1985,7 @@ export function VerifyQueueCard({
                             logged{" "}
                             {stamp(a.addedAt).day === a.date
                               ? ""
-                              : `${stamp(a.addedAt).day} `}
+                              : `${stamp(a.addedAt).label} `}
                             {stamp(a.addedAt).time ?? ""}
                           </span>
                         )}
@@ -2357,7 +2373,7 @@ export function ClaimReviewDialog({
                   {a.person}
                 </span>
                 <span className="block text-[12px] text-text-secondary">
-                  claimed on {a.date}
+                  claimed on {formatDate(a.date)}
                 </span>
               </span>
               <span className="shrink-0 text-right">

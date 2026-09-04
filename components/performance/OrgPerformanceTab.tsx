@@ -38,7 +38,7 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { useStoredView } from "@/lib/useStoredView";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import {
   PERIODS,
   actualValue,
@@ -1017,7 +1017,11 @@ export function OrgPerformanceTab({
                             },
                           ],
                           // Who and when stay as plain text under the chips.
-                          sub: [entry.person, entry.date].join(" · "),
+                          /* formatDate, not the raw record (found in the loop,
+                             Sep 4: this hover card printed "2026-08-17" under
+                             the Verified chip while the rest of the app writes
+                             "Aug 17, 2026"). */
+                          sub: [entry.person, formatDate(entry.date)].join(" · "),
                         };
                       }),
                   };
@@ -2118,7 +2122,7 @@ function GoalRows({
                                     )}
                                     {a.assignedAt ? (
                                       <span className="tnum">
-                                        · {a.assignedAt.slice(0, 10)}
+                                        · {formatDate(a.assignedAt)}
                                       </span>
                                     ) : null}
                                   </span>
