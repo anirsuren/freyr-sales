@@ -100,7 +100,7 @@ export function DisplayCurrencyPicker({
             aria-label="Exchange rates"
             className={cn(
               "flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white transition-colors hover:text-text-primary",
-              missing > 0 ? "text-[color:#C2410C]" : "text-text-tertiary"
+              missing > 0 ? "text-[color:var(--ink-orange)]" : "text-text-tertiary"
             )}
           >
             <Info size={15} strokeWidth={2.2} />

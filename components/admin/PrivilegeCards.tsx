@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { privilegeColor, type PrivilegeDef } from "@/lib/privileges";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * THE PRIVILEGE TICK GRID, IN ONE PLACE.
@@ -80,7 +81,7 @@ export function PrivilegeCards({
                  and the tint is deep enough to see against white. */
               style={
                 on || viaRole
-                  ? { borderColor: color, backgroundColor: `${color}1A` }
+                  ? { borderColor: color, backgroundColor: tint(color, 10) }
                   : undefined
               }
               className={cn(

@@ -13,6 +13,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /** The default floor for a trigger's width. Named so `dense` can tell a
  *  caller-set floor from the one it inherited. */
@@ -480,7 +481,7 @@ export function ColorSelect({
             <Crown
               size={prominent ? 9 : 7}
               strokeWidth={2.8}
-              className="text-[color:#7C3AED]"
+              className="text-[color:var(--ink-violet-soft)]"
             />
           </span>
         </span>
@@ -499,8 +500,8 @@ export function ColorSelect({
         <span
           className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold tnum"
           style={{
-            background: o.color || "#0071E3",
-            color: iconForeground(o.color || "#0071E3"),
+            background: o.color || "var(--ink-bright-blue)",
+            color: iconForeground(o.color || "var(--ink-bright-blue)"),
           }}
         >
           {o.short}
@@ -649,7 +650,7 @@ export function ColorSelect({
                     "--semantic-color":
                       selected.badgeColor || selected.color || "#59616E",
                     "--semantic-bg":
-                      `${selected.badgeColor || selected.color || "#8E98A8"}14`,
+                      tint(selected.badgeColor || selected.color || "#8E98A8", 8),
                   } as CSSProperties
                 }
               >
@@ -737,7 +738,7 @@ export function ColorSelect({
             const on = o.value === value;
             // Selected look = a whisper of the option's own color (Suren: the old
             // solid-blue fill + left notch looked bad). No bar, no heavy fill.
-            const accent = o.color || "#0071E3";
+            const accent = o.color || "var(--ink-bright-blue)";
             /* A CATEGORY HEADING WHEN THE CATEGORY CHANGES. Purely derived
                from the order the caller passed, so grouping is the caller's
                job and this only draws the divider. */
@@ -776,7 +777,7 @@ export function ColorSelect({
                   !on && "hover:bg-surface active:scale-[0.99]"
                 )}
                 style={{
-                  ...(on ? { background: `${accent}0D` } : null),
+                  ...(on ? { background: tint(accent, 5) } : null),
                   ["--row" as string]: rowIndex,
                 }}
               >
@@ -808,7 +809,7 @@ export function ColorSelect({
                         "block leading-snug",
                         o.descriptionAccent
                           ? "shrink-0 rounded-full bg-blue-light px-1.5 py-[1px] text-[10.5px] font-bold text-blue-primary"
-                          : "font-normal text-text-tertiary/70",
+                          : "font-normal text-text-tertiary",
                         inlineDescription
                           ? cn("min-w-0", !o.descriptionAccent && "truncate text-[11.5px]")
                           : "mt-1 whitespace-normal text-[10.5px]"
@@ -847,7 +848,7 @@ export function ColorSelect({
                         "--semantic-color":
                           o.badgeColor || o.color || "#59616E",
                         "--semantic-bg":
-                          `${o.badgeColor || o.color || "#8E98A8"}14`,
+                          tint(o.badgeColor || o.color || "#8E98A8", 8),
                       } as CSSProperties
                     }
                   >
@@ -895,7 +896,7 @@ export function MultiColorSelect({
   minWidth = 170,
   ariaLabel,
   allIcon: AllIcon,
-  allColor = "#0071E3",
+  allColor = "var(--ink-bright-blue)",
   collapsible = true,
   triggerLabel,
   width,
@@ -1323,7 +1324,7 @@ export function MultiColorSelect({
           </button>
           {visibleOptions.map((o, rowIndex) => {
             const on = values.includes(o.value);
-            const accent = o.color || "#0071E3";
+            const accent = o.color || "var(--ink-bright-blue)";
             const Icon = o.icon;
             return (
               <button
@@ -1337,7 +1338,7 @@ export function MultiColorSelect({
                   !on && "hover:bg-surface"
                 )}
                 style={{
-                  ...(on ? { background: `${accent}0D` } : null),
+                  ...(on ? { background: tint(accent, 5) } : null),
                   ["--row" as string]: rowIndex,
                 }}
               >

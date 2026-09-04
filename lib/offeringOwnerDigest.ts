@@ -173,7 +173,7 @@ export function renderOwnerDigest(digest: OwnerDigest): {
     .map((f) => {
       const stale = f.daysAgo !== null && f.daysAgo >= 90;
       const empty = f.fileCount === 0;
-      const tone = empty || stale ? "#B45309" : "#1D1D1F";
+      const tone = empty || stale ? "var(--ink-amber)" : "#1D1D1F";
       return `<tr>
         <td style="padding:7px 12px;border-bottom:1px solid #E8E8ED">${esc(f.folder)}</td>
         <td style="padding:7px 12px;border-bottom:1px solid #E8E8ED;text-align:right;color:#6E6E73">${f.fileCount}</td>

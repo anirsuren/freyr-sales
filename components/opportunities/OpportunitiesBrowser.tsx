@@ -49,10 +49,14 @@ import {
   CalendarCheck,
   ArrowUpDown,
   ArrowDownWideNarrow,
-  ArrowUpNarrowWide
+  ArrowUpNarrowWide,
+  KeyRound,
+  UserRound,
+  CalendarRange,
 } from "lucide-react";
 import { PriorityTooltip } from "@/components/ui/SearchPriority";
 import { FormRoom } from "@/components/ui/FormRoom";
+import { AccrualPlanDialog } from "@/components/accruals/AccrualPlanDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -116,6 +120,7 @@ import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
+import { tint } from "@/lib/tint";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -127,10 +132,10 @@ import type { Customer360Band } from "@/lib/customer360Shared";
  */
 
 const LEVEL_COLOR: Record<string, string> = {
-  Pipeline: "#0071E3",
-  "Go get": "#B4318F",
-  "High confidence": "#0F766E",
-  Future: "#7C3AED",
+  Pipeline: "var(--ink-bright-blue)",
+  "Go get": "var(--ink-magenta)",
+  "High confidence": "var(--ink-teal-deep)",
+  Future: "var(--ink-violet-soft)",
 };
 
 /**
@@ -157,18 +162,18 @@ const STATUS_ICON: Record<string, LucideIcon> = {
 };
 
 const REVENUE_TYPE_META: Record<string, { color: string; icon: LucideIcon }> = {
-  ARR: { color: "#0F766E", icon: Repeat },
-  OTS: { color: "#C2410C", icon: Zap },
+  ARR: { color: "var(--ink-teal-deep)", icon: Repeat },
+  OTS: { color: "var(--ink-orange)", icon: Zap },
 };
 
 const STATUS_COLOR: Record<string, string> = {
   Qualify: "#0891B2",
   Pilot: "#5E5CE6",
-  Propose: "#0071E3",
-  "Submitted to client": "#7C3AED",
+  Propose: "var(--ink-bright-blue)",
+  "Submitted to client": "var(--ink-violet-soft)",
   /* Deep indigo: the last sales step before delivery owns it. Not green —
      green is Won, and drafting a contract is not the same as signing one. */
-  "Under review": "#B4318F",
+  "Under review": "var(--ink-magenta)",
   "On hold": "#8E98A8",
   Won: "#16A34A",
   Lost: "#DC2626",
@@ -183,7 +188,7 @@ const STATUS_COLOR: Record<string, string> = {
  * solid blue for the weighted share, washed blue for the rest of the total.
  * The dropdown's per-row confidence keeps a quiet blue too.
  */
-const MONEY_BLUE = "#0071E3";
+const MONEY_BLUE = "var(--ink-bright-blue)";
 function confidenceColor(_pct: number): string {
   return MONEY_BLUE;
 }
@@ -210,6 +215,8 @@ type DraftLine = {
   /** What the client pays in their own money — display only, USD counts. */
   localValue: string;
   localCurrency: string;
+  /** Services or License (Manoj, Sep 4). Decides the accrual columns. */
+  offeringKind?: string;
   status: string;
   confidence: string;
   estSignDate: string;
@@ -301,9 +308,9 @@ function blankActivity(): DraftActivity {
 /** Suren's three words for where an activity stands ("is it initiated, is it
  *  in progress, is it completed"), on the stored vocabulary. */
 const ACT_STATUS_OPTIONS = [
-  { value: "initiated", label: "Initiated", color: "#0071E3", icon: Play },
-  { value: "under_progress", label: "In progress", color: "#7C3AED", icon: Loader },
-  { value: "completed", label: "Completed", color: "#0F766E", icon: CheckCircle2 },
+  { value: "initiated", label: "Initiated", color: "var(--ink-bright-blue)", icon: Play },
+  { value: "under_progress", label: "In progress", color: "var(--ink-violet-soft)", icon: Loader },
+  { value: "completed", label: "Completed", color: "var(--ink-teal-deep)", icon: CheckCircle2 },
 ];
 
 let lineSeq = 0;
@@ -369,6 +376,7 @@ function toDraft(
           value: l.value ? String(l.value) : "",
           localValue: l.localValue ? String(l.localValue) : "",
           localCurrency: l.localCurrency ?? "",
+          offeringKind: l.offeringKind ?? "",
           status: l.status ?? "",
           confidence: l.confidence === undefined ? "" : String(l.confidence),
           estSignDate: l.estSignDate ?? "",
@@ -483,7 +491,7 @@ function AccrualMark({ badge }: { badge?: AccrualBadge }) {
           broken ? "Accrual plan needs re-doing" : "Accrual months planned"
         }
         className="inline-flex h-4 w-4 shrink-0 cursor-default items-center justify-center"
-        style={{ color: broken ? "#B45309" : "#16A34A" }}
+        style={{ color: broken ? "var(--ink-amber)" : "#16A34A" }}
       >
         <Icon size={13} strokeWidth={2.3} />
       </span>
@@ -767,6 +775,20 @@ export function OpportunitiesBrowser({
   }, [editing !== null, editing?.id]);
   const [confirmRemove, setConfirmRemove] = useState<Opportunity | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * THE SCHEDULE THE NEW DEAL WILL CARRY (Manoj, Sep 4: "include revenue
+   * accrual in the opportunity stage itself... it should be mandatory. At the
+   * point of creating an opportunity itself").
+   *
+   * A deal has no id until it is saved, so the plan cannot be written while
+   * the form is open. The scheduler runs in draft mode and reports here; the
+   * plan is POSTed straight after the deal is created, against its new id.
+   */
+  const [draftPlan, setDraftPlan] = useState<{
+    lines: { month: string; amount: number; ots?: number; arr?: number; mrr?: number }[];
+    contractValue: number;
+    problem: string | null;
+  } | null>(null);
 
   const offeringName = useMemo(
     () => new Map(offerings.map((o) => [o.id, o.name])),
@@ -793,7 +815,7 @@ export function OpportunitiesBrowser({
       // "Freyr Services" vs the master's spelling left GRI colourless in
       // Real (Anir, Aug 17: "that has to be color-coded with the tag and
       // the pill and stuff"). Only truly untyped offerings stay neutral.
-      const c = o.type ? (typeColor[o.type] ?? "#7C3AED") : undefined;
+      const c = o.type ? (typeColor[o.type] ?? "var(--ink-violet-soft)") : undefined;
       if (c) map.set(o.id, c);
     }
     return map;
@@ -803,7 +825,7 @@ export function OpportunitiesBrowser({
   const colorForOfferingLabel = useMemo(() => {
     const map = new Map<string, string>();
     for (const o of offerings) {
-      const c = o.type ? (typeColor[o.type] ?? "#7C3AED") : undefined;
+      const c = o.type ? (typeColor[o.type] ?? "var(--ink-violet-soft)") : undefined;
       if (c) map.set(o.name.trim().toLowerCase(), c);
     }
     return map;
@@ -1174,13 +1196,40 @@ export function OpportunitiesBrowser({
         // Value is demanded on rows ADDED here and now — five of his real
         // imported deals genuinely carry no value yet, and editing those must
         // not trap him behind a rule about a number nobody has.
+        /* A VALUE TYPED IN CANADIAN DOLLARS IS A VALUE (Manoj, Sep 4, on the
+           call, after the Add button refused him twice: "it's not letting me
+           save in other currency... that's one bug that you need to fix").
+
+           `r.value` is the USD figure, and it is DERIVED — a currency with no
+           rate to hand left it empty, so a fully filled-in 100,000 CAD deal
+           read to this check as a deal with no value at all, and the only way
+           out was to switch the currency back to USD. The person had already
+           said what the deal is worth; the app not being able to convert it
+           yet is the app's problem, not theirs.
+
+           The local amount is stored on the row either way (`localValue` +
+           `localCurrency` above), so nothing is lost by accepting it, and the
+           dollar figure fills itself in from the live rate. */
         editing.rows.some(
           (r) =>
             r.key.startsWith("new-") &&
             (r.offeringId || r.offeringLabel.trim()) &&
-            (r.value === "" || !(Number(r.value) > 0))
+            !(Number(r.value) > 0) &&
+            !(Number(r.localValue) > 0)
         )
           ? "a value on the offering"
+          : "",
+        /* MANDATORY AT CREATION (Manoj, Sep 4: "it should be mandatory. At the
+           point of creating an opportunity itself"). New deals only: 97 of the
+           deals already in the book have no plan, and holding their edits to a
+           rule invented today would stop anybody correcting a record they
+           already have. The scheduler reports its own reason — an unscheduled
+           remainder, or a schedule that overshoots — and it is repeated here
+           so the form has ONE answer to "what is still missing". */
+        !editing.id && (!draftPlan || draftPlan.problem)
+          ? draftPlan?.problem
+            ? `the revenue schedule (${draftPlan.problem.replace(/\.$/, "")})`
+            : "a revenue schedule"
           : "",
         /* SUREN'S FOUR, ON NEW DEALS ONLY (Sep 1, going down the form field by
            field: "you have to make everything mandatory... Estimated TCV is
@@ -1228,6 +1277,7 @@ export function OpportunitiesBrowser({
           offeringId: r.offeringId || undefined,
           offeringLabel: r.offeringId ? undefined : r.offeringLabel || undefined,
           revenueType: r.revenueType || undefined,
+          offeringKind: r.offeringKind || undefined,
           /* Whole dollars. The box now tolerates a decimal point so "2.5m"
              can be typed a character at a time; a half-finished "2.5" that
              never got its suffix must not land as a $2.50 deal. */
@@ -1315,6 +1365,35 @@ export function OpportunitiesBrowser({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "That didn't save.");
       const saved: Opportunity = data.opportunity;
+      /* THE SCHEDULE, NOW THAT THERE IS AN ID TO HANG IT ON. A new deal cannot
+         carry a plan while the form is open, so this is the first moment the
+         two can be joined. A failure here is reported and does NOT undo the
+         deal: the opportunity is real and saved, and the plan can be written
+         again from Revenue accruals. */
+      if (!editing.id && draftPlan && !draftPlan.problem) {
+        const planRes = await fetch("/api/revenue-accruals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          /* THE ROUTE'S OWN SHAPE: an `op`, and the plan nested under `plan`.
+             Posting the plan's fields at the top level answers
+             `Unknown op ""` and the schedule is silently lost — found by
+             round-tripping a real deal rather than by reading this back. */
+          body: JSON.stringify({
+            op: "save",
+            plan: {
+              opportunityId: saved.id,
+              contractValue: draftPlan.contractValue,
+              lines: draftPlan.lines,
+            },
+          }),
+        });
+        if (!planRes.ok) {
+          toast(
+            "The deal saved, but its revenue schedule did not. Add it from Revenue accruals.",
+            "error"
+          );
+        }
+      }
       if (!editing.id) justAdded.current = saved.id;
       setList((prev) =>
         editing.id
@@ -1322,6 +1401,16 @@ export function OpportunitiesBrowser({
           : [saved, ...prev]
       );
       refreshOpportunities();
+      /* THE SERVER-RENDERED PAGES HAVE TO HEAR ABOUT IT TOO (Anir, Sep 4:
+         "make sure i dont have to reload for it to show up").
+
+         `setList` above fixes THIS page, and `refreshOpportunities` fixes every
+         client that reads the shared store — but the customer page, the goal
+         pages and the reports are server components sitting in the router
+         cache, so a deal created here was invisible there until a hard reload.
+         Manoj went looking for the deal he had just made and had to reload to
+         find it. */
+      router.refresh();
       toast(editing.id ? `${saved.name} saved` : `${saved.name} added`);
       delete draftStash.current[editing.id || "new"];
       setEditing(null);
@@ -1352,6 +1441,9 @@ export function OpportunitiesBrowser({
       if (!res.ok) throw new Error(data.error || "That didn't delete.");
       setList((prev) => prev.filter((x) => x.id !== o.id));
       refreshOpportunities();
+      /* Deleting has the same problem in reverse: a deal removed here stayed
+         on the customer page until a reload. */
+      router.refresh();
       toast(`${o.name} removed`);
       setConfirmRemove(null);
     } catch (error) {
@@ -1460,7 +1552,7 @@ export function OpportunitiesBrowser({
                               <span
                                 className="rounded-full px-1.5 py-0.5 text-[9.5px] font-bold"
                                 style={{
-                                  background: `${LEVEL_COLOR[o.level]}18`,
+                                  background: tint(LEVEL_COLOR[o.level], 9),
                                   color: LEVEL_COLOR[o.level],
                                 }}
                               >
@@ -1626,11 +1718,11 @@ export function OpportunitiesBrowser({
                                    confident" under a Won badge — confidence is
                                    a forecast word and the forecast is over.
                                    Say what happened instead. */
-                                <span className="font-semibold text-[color:#0058B0]">
+                                <span className="font-semibold text-[color:var(--ink-blue-soft)]">
                                   {o.status === "Won" ? "signed, counts in full" : "lost, counts as nothing"}
                                 </span>
                               ) : (
-                                <span className="font-semibold text-[color:#0058B0]">
+                                <span className="font-semibold text-[color:var(--ink-blue-soft)]">
                                   {shownConfidence}% confident
                                 </span>
                               )}
@@ -1647,7 +1739,7 @@ export function OpportunitiesBrowser({
                             <span
                               className="whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-bold"
                               style={{
-                                background: `${STATUS_COLOR[o.status]}18`,
+                                background: tint(STATUS_COLOR[o.status], 9),
                                 color: STATUS_COLOR[o.status],
                               }}
                             >
@@ -1711,7 +1803,7 @@ export function OpportunitiesBrowser({
                                     e.stopPropagation();
                                     setConfirmRemove(o);
                                   }}
-                                  className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                                  className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                                 >
                                   <Trash2 size={13} strokeWidth={2.2} />
                                 </button>
@@ -1767,7 +1859,7 @@ export function OpportunitiesBrowser({
                                         size="xs"
                                       />
                                       {line.revenueType && (
-                                        <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#0058B0]">
+                                        <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:var(--ink-blue-soft)]">
                                           {line.revenueType}
                                         </span>
                                       )}
@@ -1840,7 +1932,7 @@ export function OpportunitiesBrowser({
                                         <span
                                           className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
                                           style={{
-                                            background: `${STATUS_COLOR[line.status]}18`,
+                                            background: tint(STATUS_COLOR[line.status], 9),
                                             color: STATUS_COLOR[line.status],
                                           }}
                                         >
@@ -2121,8 +2213,8 @@ export function OpportunitiesBrowser({
           live && "hidden"
         )}>
           {([
-            { key: "current" as const, label: "Current pipeline", count: currentList.length, icon: Workflow, color: "#0071E3" },
-            { key: "future" as const, label: "Future", count: futures.length, icon: CalendarClock, color: "#7C3AED" },
+            { key: "current" as const, label: "Current pipeline", count: currentList.length, icon: Workflow, color: "var(--ink-bright-blue)" },
+            { key: "future" as const, label: "Future", count: futures.length, icon: CalendarClock, color: "var(--ink-violet-soft)" },
           ]).map((t) => {
             const Icon = t.icon;
             const active = pipeView === t.key;
@@ -2150,8 +2242,8 @@ export function OpportunitiesBrowser({
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
                     t.key === "future"
-                      ? "bg-[rgba(124,58,237,0.12)] text-[color:#7C3AED]"
-                      : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
+                      ? "bg-[rgba(124,58,237,0.12)] text-[color:var(--ink-violet-soft)]"
+                      : "bg-[rgba(0,113,227,0.10)] text-[color:var(--ink-blue-soft)]"
                   )}
                 >
                   {t.count}
@@ -2174,8 +2266,8 @@ export function OpportunitiesBrowser({
           offeringName={offeringName}
           colorForOffering={(o) =>
             o.offeringIds[0]
-              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "#7C3AED")
-              : "#7C3AED"
+              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "var(--ink-violet-soft)")
+              : "var(--ink-violet-soft)"
           }
           onEdit={(o) => setEditing(draftStash.current[o.id] ?? toDraft(o, offerings, masterActivities))}
           onRemove={(o) => setConfirmRemove(o)}
@@ -2183,15 +2275,73 @@ export function OpportunitiesBrowser({
       ) : (
       <>
 
-      {/* THE TOOLBAR STANDS ON ITS OWN, exactly as it does on Offerings
-          (Anir, Aug 21: "you have a big white rectangle, then a gray
-          rectangle, then also a search bar rectangle — remove the outer
-          rectangle... whatever you have on the offerings page, put that on
-          the opportunities page"). It used to live INSIDE the results card,
-          which made the grey band a box in a box and pushed it in by the
-          card's own padding so it no longer lined up with anything else on
-          the page. Out here it is full width and the card below holds only
-          results. */}
+
+      {/* THE THREE VALUES OPEN THE PAGE (Anir, Sep 4, moving the toolbar down
+          to the table: "it has to be above the table").
+
+          This reverses the Aug 30 arrangement, so the reasoning behind that
+          one is worth keeping: Suren asked, relayed by Anir, that the values
+          sit BELOW the controls "because the filters should affect the three
+          cards" — reading them above the filter bar made them look like page
+          totals nothing underneath could touch.
+
+          They are still summed from the filtered list, never from the whole
+          pipeline, so narrowing to one owner still moves them. What changed is
+          that the search box now sits on the rows it searches instead of five
+          hundred pixels above them. If the cards ever read as untouchable
+          again, that Aug 30 note is the reason why, and the answer is to say
+          so on the cards rather than to move the toolbar back. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile
+          icon={Briefcase}
+          label="Opportunities"
+          value={String(totals.count)}
+          sub={
+            levelFilter.length === 0
+              ? "in the pipeline"
+              : levelFilter.map((l) => l.toLowerCase()).join(", ")
+          }
+        />
+        {/* TCV LEADS, ACV SITS BESIDE IT (Suren, Sep 1: "estimated ACV is
+            not important, it can go on the right side. Estimated TCV is
+            important, so make sure of that"). TCV is the booked number people
+            quote; ACV is the optional yearly slice kept for reporting. */}
+        <StatTile
+          icon={TrendingUp}
+          label="Estimated TCV"
+          value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
+          sub={
+            totals.tcv.entered === 0
+              ? "nobody has entered one yet"
+              : totals.tcv.entered < totals.tcv.of
+                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
+                : "total contract value"
+          }
+        />
+        {/* NO ACV TILE EITHER (same instruction): "here you don't show ACV
+            at all... the whole idea is only about booking". It read "nobody
+            has entered one yet" on every deal in the workspace, so it was an
+            empty box arguing for a number he does not want totalled here. */}
+        <StatTile
+          icon={CalendarClock}
+          label={totals.quarter.label ? `Signing ${totals.quarter.label}` : "Signing this quarter"}
+          value={totals.quarter.count === 0 ? "·" : money(totals.quarter.total)}
+          sub={
+            totals.quarter.count === 0
+              ? "nothing is due to sign this quarter"
+              : `${totals.quarter.count} ${totals.quarter.count === 1 ? "deal" : "deals"} expected to sign`
+          }
+        />
+      </div>
+
+      {/* THE CONTROLS SIT DIRECTLY ON THE TABLE THEY DRIVE (Anir, Sep 4:
+          "this search bar is way too high... it has to be above the table").
+          It used to open the page, above the three values, which put roughly
+          five hundred pixels of tiles and summary between the search box and
+          the rows it searches. The three values keep their own explanation
+          below; they are still summed from the filtered list, so the filters
+          still reach them, they simply now sit above the controls rather than
+          under them. */}
       <PageToolbar
         className="mt-4"
 
@@ -2294,7 +2444,7 @@ export function OpportunitiesBrowser({
                   .map((n) => ({
                     value: n,
                     label: n,
-                    color: n === "No offering" ? "#8E98A8" : "#B4318F",
+                    color: n === "No offering" ? "#8E98A8" : "var(--ink-magenta)",
                   })),
               },
               {
@@ -2307,7 +2457,7 @@ export function OpportunitiesBrowser({
                   .map((n) => ({
                     value: n,
                     label: n,
-                    color: n === "No date" ? "#8E98A8" : "#0F766E",
+                    color: n === "No date" ? "#8E98A8" : "var(--ink-teal-deep)",
                   })),
               },
               {
@@ -2342,7 +2492,7 @@ export function OpportunitiesBrowser({
                   for (let y = lo; y <= hi; y += 1) span.push(`FY${y}`);
                   const hasUndated = currentList.some((o) => !signDateOf(o));
                   return [
-                    ...span.map((n) => ({ value: n, label: n, color: "#7C3AED" })),
+                    ...span.map((n) => ({ value: n, label: n, color: "var(--ink-violet-soft)" })),
                     ...(hasUndated
                       ? [{ value: "No date", label: "No date", color: "#8E98A8" }]
                       : []),
@@ -2355,8 +2505,8 @@ export function OpportunitiesBrowser({
                 values: revenueTypeFilter,
                 onChange: setRevenueTypeFilter,
                 options: [
-                  { value: "ARR", label: "ARR — recurring", color: "#0F766E" },
-                  { value: "OTS", label: "OTS — one-time", color: "#B4318F" },
+                  { value: "ARR", label: "ARR — recurring", color: "var(--ink-teal-deep)" },
+                  { value: "OTS", label: "OTS — one-time", color: "var(--ink-magenta)" },
                   { value: "", label: "Not set", color: "#8E98A8" },
                 ],
               },
@@ -2384,7 +2534,7 @@ export function OpportunitiesBrowser({
                   .map((band) => ({
                     value: band,
                     label: band,
-                    color: band === "Not set" ? "#8E98A8" : "#7C3AED",
+                    color: band === "Not set" ? "#8E98A8" : "var(--ink-violet-soft)",
                   })),
               },
             ]}
@@ -2409,7 +2559,7 @@ export function OpportunitiesBrowser({
                        stays on the deal, where he wants it kept for reporting;
                        it is no longer something this page totals by. */
                     options={[
-                      { value: "tcv", label: "Estimated TCV", color: "#0071E3" },
+                      { value: "tcv", label: "Estimated TCV", color: "var(--ink-bright-blue)" },
                     ]}
                   />
                   {/* SORT BY CONFIDENCE (Manoj, Sep 3). Three states rather
@@ -2443,13 +2593,13 @@ export function OpportunitiesBrowser({
                       {
                         value: "desc",
                         label: "Confidence, high",
-                        color: "#0F766E",
+                        color: "var(--ink-teal-deep)",
                         icon: ArrowDownWideNarrow,
                       },
                       {
                         value: "asc",
                         label: "Confidence, low",
-                        color: "#B45309",
+                        color: "var(--ink-amber)",
                         icon: ArrowUpNarrowWide,
                       },
                     ]}
@@ -2465,7 +2615,7 @@ export function OpportunitiesBrowser({
                     options={TIMELINES.map((t) => ({
                       value: t.key,
                       label: t.label,
-                      color: "#7C3AED",
+                      color: "var(--ink-violet-soft)",
                     }))}
                   />
                 </span>
@@ -2480,8 +2630,8 @@ export function OpportunitiesBrowser({
                 className="w-[180px] shrink-0"
                 options={[
                   { value: "none", label: "No grouping", color: "#8E98A8" },
-                  { value: "customer", label: "Group by customer", color: "#0071E3", icon: Briefcase },
-                  { value: "offering", label: "Group by offering", color: "#B4318F", icon: Sparkles },
+                  { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)", icon: Briefcase },
+                  { value: "offering", label: "Group by offering", color: "var(--ink-magenta)", icon: Sparkles },
                 ]}
               />
               )
@@ -2536,58 +2686,6 @@ export function OpportunitiesBrowser({
           }
         />
 
-      {/* THE THREE VALUES SIT UNDER THE FILTERS THAT DRIVE THEM (Suren,
-          Aug 30, relayed by Anir: they belong below the search bar and the
-          filters, "because the filters should affect the three cards").
-
-          They always did — each one is summed from the filtered list, never
-          from the whole pipeline. But sitting ABOVE the filter bar they read
-          as page totals the controls underneath could not touch, so narrowing
-          to one owner and watching $14M change was a surprise rather than the
-          obvious consequence. Underneath, the cause is above the effect. */}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile
-          icon={Briefcase}
-          label="Opportunities"
-          value={String(totals.count)}
-          sub={
-            levelFilter.length === 0
-              ? "in the pipeline"
-              : levelFilter.map((l) => l.toLowerCase()).join(", ")
-          }
-        />
-        {/* TCV LEADS, ACV SITS BESIDE IT (Suren, Sep 1: "estimated ACV is
-            not important, it can go on the right side. Estimated TCV is
-            important, so make sure of that"). TCV is the booked number people
-            quote; ACV is the optional yearly slice kept for reporting. */}
-        <StatTile
-          icon={TrendingUp}
-          label="Estimated TCV"
-          value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
-          sub={
-            totals.tcv.entered === 0
-              ? "nobody has entered one yet"
-              : totals.tcv.entered < totals.tcv.of
-                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
-                : "total contract value"
-          }
-        />
-        {/* NO ACV TILE EITHER (same instruction): "here you don't show ACV
-            at all... the whole idea is only about booking". It read "nobody
-            has entered one yet" on every deal in the workspace, so it was an
-            empty box arguing for a number he does not want totalled here. */}
-        <StatTile
-          icon={CalendarClock}
-          label={totals.quarter.label ? `Signing ${totals.quarter.label}` : "Signing this quarter"}
-          value={totals.quarter.count === 0 ? "·" : money(totals.quarter.total)}
-          sub={
-            totals.quarter.count === 0
-              ? "nothing is due to sign this quarter"
-              : `${totals.quarter.count} ${totals.quarter.count === 1 ? "deal" : "deals"} expected to sign`
-          }
-        />
-      </div>
-
       {/* The card now holds RESULTS ONLY, so when the rows have gone off into
           their own group cards below there is nothing left for it to draw and
           it does not render an empty frame. */}
@@ -2607,6 +2705,20 @@ export function OpportunitiesBrowser({
                walked the eye to the row in the TABLE view; in the tree that row
                does not exist yet, because it is four collapsed folds down. */
             revealDealId={flashId}
+            /* A SEARCH THAT FINDS A DEAL SHOULD SHOW THE DEAL. The tree is
+               collapsed on arrival by design; once the list has been narrowed
+               to a handful, staying collapsed hides the very thing that was
+               asked for (Anir, Sep 4: "again, here you have to open it, bro,
+               when I search it up"). */
+            filtering={
+              query.trim().length > 0 ||
+              levelFilter.length > 0 ||
+              statusFilter.length > 0 ||
+              customerFilter.length > 0 ||
+              ownerFilter.length > 0 ||
+              offeringFilter.length > 0 ||
+              revenueTypeFilter.length > 0
+            }
             deals={shown}
             /* ITEM 13 — the accrual, against the opportunity rows. */
             accrualPlans={accrualPlans}
@@ -2702,7 +2814,7 @@ export function OpportunitiesBrowser({
                       <b className="text-[13px] text-text-primary">{key}</b>
                     </>
                   ) : (
-                    <OfferingChip name={key} color={lineColor({ id: "g", offeringLabel: key, value: 0 }) ?? "#B4318F"} size="xs" />
+                    <OfferingChip name={key} color={lineColor({ id: "g", offeringLabel: key, value: 0 }) ?? "var(--ink-magenta)"} size="xs" />
                   )}
                   <span className="text-[11px] font-semibold text-text-tertiary tnum">
                     {sectionRows.length} {sectionRows.length === 1 ? "deal" : "deals"}
@@ -2731,7 +2843,7 @@ export function OpportunitiesBrowser({
                             />
                           )}
                         </span>
-                        <span className="text-[11px] font-bold tnum text-[color:#0058B0]">
+                        <span className="text-[11px] font-bold tnum text-[color:var(--ink-blue-soft)]">
                           {money(weighted)}
                         </span>
                         <span className="text-[11px] tnum text-text-tertiary">
@@ -2885,7 +2997,7 @@ export function OpportunitiesBrowser({
                               {
                                 value: "__custom",
                                 label: editing.customer.trim(),
-                                color: "#0071E3",
+                                color: "var(--ink-bright-blue)",
                                 icon: Tag,
                               },
                             ]
@@ -2934,7 +3046,7 @@ export function OpportunitiesBrowser({
             <FormRoom
               icon={CircleDollarSign}
               title="What it is worth over time"
-              hint="One year of the contract, and the whole of it. Both are typed and both may be left empty until the number is known."
+              
               summary={
                 editing.estimatedAcv || editing.estimatedTcv
                   ? [
@@ -3034,8 +3146,29 @@ export function OpportunitiesBrowser({
                         className="flex h-10 w-full items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-semibold"
                         style={{ color: LEVEL_COLOR[derived] }}
                       >
-                        {Icon ? <Icon size={14} strokeWidth={2.2} /> : null}
-                        {derived}
+                        {/* CENTRED ON THE LETTERS, NOT ON THE LINE BOX (Anir,
+                            Sep 4: "that doesnt look aligned look at the target
+                            icon"). `items-center` centres against the text's
+                            full line box, which includes the descender — and
+                            "Go get" has two of them, so the visible letters sit
+                            higher than the box they are in and the icon read
+                            0.75px low against them. `leading-none` shrinks the
+                            line box to the glyphs, so centre means centre. */}
+                        {Icon ? (
+                          <Icon
+                            size={14}
+                            strokeWidth={2.2}
+                            /* The last half-pixel. `leading-none` got the line
+                               box down to the glyph box, but a glyph box still
+                               reserves room under the baseline for descenders
+                               that the icon has none of — so dead centre of the
+                               box is still slightly below dead centre of the
+                               ink. This is that difference, and it is the whole
+                               reason the crosshair read low next to "Go get". */
+                            className="shrink-0 -translate-y-[0.5px]"
+                          />
+                        ) : null}
+                        <span className="leading-none">{derived}</span>
                       </span>
                       <p className="text-[11px] leading-snug text-text-tertiary">
                         Follows the confidence bar. {revenueTypeRule(derived)}.
@@ -3130,6 +3263,54 @@ export function OpportunitiesBrowser({
                 against [the goal], and also put the person name. Let it be
                 manual right now."). Rows come from the Goal Master; nothing
                 touches performance until Met is on and the form is saved. */}
+            {/* WHEN THE MONEY LANDS — ASKED FOR AT CREATION, NOT AFTER
+                (Manoj, Sep 4: "it is letting me enter the opportunity without
+                accrual revenue. So that should not be the case... Even at the
+                stage of creating a new opportunity, it should ask for accrual
+                revenue so that it is appearing here. Otherwise it's an empty
+                field here").
+
+                The SAME scheduler the Revenue Accruals page uses, in draft
+                mode — Suren, Sep 1: "I don't want a different screen. It has to
+                be consistent." It reports its months up and the deal's own Add
+                button saves them, because there is no deal id to attach a plan
+                to until the deal exists. */}
+            {!editing.id && (
+              <FormRoom
+                icon={CalendarRange}
+                title="When the money lands"
+                hint="Spread the contract value across the months you expect it in, so the schedule adds up to the estimated TCV. Nothing here reschedules itself later: if the closing date passes the plan is flagged and you come back and change it."
+                summary={
+                  draftPlan && !draftPlan.problem
+                    ? `${draftPlan.lines.length} month${draftPlan.lines.length === 1 ? "" : "s"}`
+                    : "Not scheduled yet"
+                }
+                defaultOpen
+              >
+                <AccrualPlanDialog
+                  inline
+                  draft
+                  onDraftChange={setDraftPlan}
+                  dealId="__draft__"
+                  deals={[
+                    {
+                      id: "__draft__",
+                      name: editing.name || "This opportunity",
+                      customer: editing.customer || "",
+                      customerId: editing.customerId || undefined,
+                      value: Number(editing.estimatedTcv) || Number(editing.rows[0]?.value) || 0,
+                      estimatedTcv: Number(editing.estimatedTcv) || undefined,
+                      estSignDate: editing.rows[0]?.estSignDate || undefined,
+                      currency: editing.rows[0]?.localCurrency || undefined,
+                      offeringKind: editing.rows[0]?.offeringKind || undefined,
+                      owner: editing.owner || undefined,
+                    },
+                  ]}
+                  onClose={() => undefined}
+                />
+              </FormRoom>
+            )}
+
             <FormRoom
               icon={TargetIcon}
               title="Goals this deal feeds"
@@ -3263,7 +3444,7 @@ export function OpportunitiesBrowser({
                           goalRows: editing.goalRows.filter((x) => x.key !== r.key),
                         })
                       }
-                      className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
+                      className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[color:#DC2626]/10"
                     >
                       <Trash2 size={14} strokeWidth={2} />
                     </button>
@@ -3388,7 +3569,7 @@ export function OpportunitiesBrowser({
                           activities: editing.activities.filter((x) => x.key !== a.key),
                         })
                       }
-                      className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
+                      className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[color:#DC2626]/10"
                     >
                       <Trash2 size={14} strokeWidth={2} />
                     </button>
@@ -3428,15 +3609,30 @@ export function OpportunitiesBrowser({
                     const full = list.find((x) => x.id === editing.id);
                     if (full) setConfirmRemove(full);
                   }}
-                  className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                  className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                 >
                   <Trash2 size={13} strokeWidth={2.2} /> Remove this opportunity
                 </button>
               )}
+              {/* A COUNT, NOT A PARAGRAPH (Anir, Sep 4: "I can't even see what
+                  the full thing is at the bottom. You see the '...'... I don't
+                  want a ton of text there with everything that they're
+                  missing").
+
+                  Seven outstanding fields ran to a sentence far wider than the
+                  footer, so it truncated — the one thing a person needs from
+                  it, WHAT is missing, was the half that got cut. The number is
+                  the glanceable part and it always fits; the list is on the
+                  question mark beside it, in full, one item per line. */}
               {missing.length > 0 && (
-                <p className="min-w-0 flex-1 truncate text-right text-[12px] text-text-tertiary">
-                  Still needed: {missing.join(", ")}.
-                </p>
+                <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-[color:var(--ink-amber)]">
+                  {missing.length} still needed
+                  <InfoHint
+                    text={missing
+                      .map((m) => `• ${m.charAt(0).toUpperCase()}${m.slice(1)}`)
+                      .join("\n")}
+                  />
+                </span>
               )}
               <Button variant="secondary" onClick={() => closeEditor(true)}>
                 Cancel
@@ -3508,7 +3704,7 @@ function Field({
       <span className="mb-1 flex items-center gap-1 text-[12px] font-semibold text-text-primary">
         {label}
         {required && (
-          <span aria-label="required" title="Required" className="text-[color:#DC2626]">
+          <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">
             *
           </span>
         )}
@@ -3736,14 +3932,14 @@ function FutureSection({
           label="Future deals"
           value={String(futures.length)}
           sub="not pitched yet. No money, honestly"
-          color="#7C3AED"
+          color="var(--ink-violet-soft)"
         />
         <StatTile
           icon={Target}
           label="With a pitch date"
           value={`${dated.length} of ${futures.length}`}
           sub="the rest only name a quarter"
-          color="#7C3AED"
+          color="var(--ink-violet-soft)"
         />
         <StatTile
           icon={TrendingUp}
@@ -3757,7 +3953,7 @@ function FutureSection({
               : "None"
           }
           sub={nextPitch ? "the soonest planned pitch" : "no upcoming date set"}
-          color="#7C3AED"
+          color="var(--ink-violet-soft)"
         />
       </div>
 
@@ -3794,7 +3990,7 @@ function FutureSection({
                   options: quarters.map((qt) => ({
                     value: qt,
                     label: qt,
-                    color: "#7C3AED",
+                    color: "var(--ink-violet-soft)",
                   })),
                 },
               ]}
@@ -3876,7 +4072,7 @@ function FutureSection({
                       </td>
                       <td className="px-2 py-2.5">
                         {o.targetQuarter ? (
-                          <span className="rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#7C3AED]">
+                          <span className="rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-violet-soft)]">
                             {o.targetQuarter}
                           </span>
                         ) : (
@@ -3947,7 +4143,7 @@ function FutureSection({
                               type="button"
                               title={`Remove ${o.name}`}
                               onClick={() => onRemove(o)}
-                              className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                              className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                             >
                               <Trash2 size={13} strokeWidth={2.2} />
                             </button>
@@ -3970,9 +4166,8 @@ function FutureSection({
 /**
  * THE ONE OFFERING ON THE DEAL (Suren, Aug 17 call: "make it one offering on
  * an opportunity… a very simple screen"). Flat fields, always open — the
- * offering with its category fly-out, ARR/OTS, and the money row where the
- * amount is typed in whatever the client pays and USD is computed by the
- * admin rates.
+ * offering with its category fly-out, and the money row where the amount is
+ * typed in whatever the client pays and USD is worked out from the live rate.
  */
 function SingleOfferingEditor({
   line,
@@ -3990,12 +4185,48 @@ function SingleOfferingEditor({
   const labelCls =
     "flex items-center gap-1 text-[12px] font-semibold text-text-primary";
   const set = (patch: Partial<DraftLine>) => onChange({ ...line, ...patch });
-  /** The USD figure a local amount is worth, by the admin-entered rate.
-   *  "" when no rate exists — never a silent 1:1 (lib/currency's rule). */
+
+  /**
+   * THE RATE IS FETCHED, NOT TYPED (Anir, Sep 4, on being told an admin had to
+   * add a CAD rate before his deal could have a dollar value: "it should
+   * calculate automatically what the fuck").
+   *
+   * He is right, and the app already did it — just not here. `lib/fxRates`
+   * pulls the European Central Bank's daily reference rates through
+   * /api/fx, and the DEAL EDITOR has used them since they landed. This form
+   * was still converting with the hand-typed admin table, so a currency
+   * nobody had got round to typing read as "no USD value" while the real rate
+   * (CAD 1.3792 on the day this was found) sat one fetch away.
+   *
+   * The admin table stays as the fallback: it is the only thing that answers
+   * when the machine is offline, and a rate somebody typed beats no rate.
+   */
+  const [liveRates, setLiveRates] = useState<CurrencyRates | null>(null);
+  useEffect(() => {
+    let running = true;
+    /* Keyed to the sign date when there is one, so a deal signing in March
+       converts at March's rate; the latest close otherwise, because a deal
+       with no date still has to show a number today. */
+    const on = line.estSignDate ? `?on=${encodeURIComponent(line.estSignDate)}` : "";
+    fetch(`/api/fx${on}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (running && d?.day?.rates) setLiveRates(d.day.rates as CurrencyRates);
+      })
+      .catch(() => undefined);
+    return () => {
+      running = false;
+    };
+  }, [line.estSignDate]);
+
+  const effectiveRates: CurrencyRates = { ...rates, ...(liveRates ?? {}) };
+
+  /** The USD figure a local amount is worth. "" when no rate exists at all —
+   *  never a silent 1:1 (lib/currency's rule). */
   const usdFrom = (amountText: string, cur: string): string => {
     const n = Number(amountText);
     if (!Number.isFinite(n) || n <= 0) return "";
-    const c = convert(n, cur as CurrencyCode, "USD", rates);
+    const c = convert(n, cur as CurrencyCode, "USD", effectiveRates);
     return c.exact ? String(Math.round(c.value)) : "";
   };
   return (
@@ -4006,9 +4237,23 @@ function SingleOfferingEditor({
     /* The one room that opens with the form — it is the first thing you fill
        in and the only one that is empty on a new deal. */
     <FormRoom icon={CircleDollarSign} title="What's being sold" defaultOpen>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+      {/* WHAT IS BEING SOLD, NOT HOW IT BILLS (Manoj, Sep 4).
+
+          This slot held ARR / OTS. He asked for it to go — "we should just get
+          rid of this entirely" — and then, working through a services deal,
+          said what belongs here instead: "Change this ARR OTS to offering
+          type. In that offering type, you'll have two options. Services or
+          license."
+
+          ARR and OTS describe how a LICENCE bills, so every services deal
+          answered "Not set". Services-or-licence is a question the person
+          always knows, and the answer decides which columns the accrual plan
+          offers: licences schedule as OTS + ARR, services as one monthly
+          figure. `revenueType` is untouched on records that already carry
+          one. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
         <div className="min-w-0">
-          <label className={labelCls}>Offering <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
+          <label className={labelCls}>Offering <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="Which product or service this deal is for. Not in the catalogue yet? pick the last option in the list and type its name." /></label>
           <div className="mt-1">
             <MultiPicker
               variant="dropdown"
@@ -4058,23 +4303,29 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>ARR / OTS</label>
+          <label className={labelCls}>Offering type<InfoHint text="Services or a licence. It decides how the money is scheduled below: a licence is billed as a one-time setup (OTS) plus an annual fee (ARR), a services contract as a monthly figure." /></label>
           <div className="mt-1">
             <ColorSelect
-              value={line.revenueType}
-              ariaLabel="ARR or OTS"
+              value={line.offeringKind ?? ""}
+              ariaLabel="Offering type: services or license"
               collapsible={false}
-              minWidth={140}
+              minWidth={160}
               className="w-full"
-              onChange={(val) => set({ revenueType: val })}
+              onChange={(val) => set({ offeringKind: val })}
               options={[
                 { value: "", label: "Not set", color: "#8E98A8" },
-                ...REVENUE_TYPES.map((t) => ({
-                  value: t,
-                  label: t,
-                  color: REVENUE_TYPE_META[t].color,
-                  icon: REVENUE_TYPE_META[t].icon,
-                })),
+                {
+                  value: "Services",
+                  label: "Services",
+                  color: "var(--cat-teal)",
+                  icon: UserRound,
+                },
+                {
+                  value: "License",
+                  label: "License",
+                  color: "var(--ink-violet-soft)",
+                  icon: KeyRound,
+                },
               ]}
             />
           </div>
@@ -4095,7 +4346,7 @@ function SingleOfferingEditor({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Value <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
+          <label className={labelCls}>Value <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="What the client pays, in their own currency. The dollar figure underneath is worked out from the published rate on the signing date and is what every total and goal counts." /></label>
           {/* ONE amount, in whatever the client pays — USD is computed. */}
           <div className="mt-1 flex gap-1.5">
             <ColorSelect
@@ -4118,7 +4369,7 @@ function SingleOfferingEditor({
               options={CURRENCIES.map((c) => ({
                 value: c.code,
                 label: c.code,
-                color: c.code === "USD" ? "#0071E3" : "#0F766E",
+                color: c.code === "USD" ? "var(--ink-bright-blue)" : "var(--ink-teal-deep)",
                 short: c.symbol.trim(),
                 icon: currencyGlyph(c.symbol),
               }))}
@@ -4148,7 +4399,7 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Confidence <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
+          <label className={labelCls}>Confidence <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="How likely this is to close, 0 to 100. It also sets the revenue type on its own: 95 and up is High confidence, 99 and up is Go get, anything below is Pipeline." /></label>
           <div className="mt-1">
             <ConfidenceSlider
               value={line.confidence}
@@ -4193,7 +4444,7 @@ function SingleOfferingEditor({
                 <span
                   className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-bold"
                   style={{
-                    background: `${LEVEL_COLOR[derived]}18`,
+                    background: tint(LEVEL_COLOR[derived], 9),
                     color: LEVEL_COLOR[derived],
                   }}
                 >
@@ -4206,7 +4457,7 @@ function SingleOfferingEditor({
           })()}
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>Est. sign <span aria-label="required" title="Required" className="text-[color:#DC2626]">*</span></label>
+          <label className={labelCls}>Est. sign <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="When you expect the contract to be signed. It decides which quarter the deal lands in on every report, and it is the date the currency is converted on." /></label>
           <input
             type="date"
             value={line.estSignDate}
@@ -4221,11 +4472,22 @@ function SingleOfferingEditor({
         <p className="text-[11.5px] leading-snug">
           {line.value ? (
             <span className="text-text-secondary">
-              ≈ <b className="text-text-primary tnum">{money(Number(line.value))}</b> at the admin rate — goals and totals count the USD figure.
+              ≈ <b className="text-text-primary tnum">{money(Number(line.value))}</b>{" "}
+              {/* SAY WHOSE RATE IT IS AND WHEN. "At the admin rate" was both
+                  wrong and useless: wrong because the number now comes from
+                  the ECB's published close, and useless because a conversion
+                  you cannot date is a conversion you cannot check. */}
+              at the {line.estSignDate ? "rate on that sign date" : "latest published rate"} — goals and totals count the USD figure.
             </span>
           ) : (
-            <span className="font-semibold text-[color:#B45309]">
-              No {line.localCurrency} rate set yet — an admin adds it on the Goals page; until then this deal has no USD value.
+            /* NOT A JOB FOR AN ADMIN. This used to read "an admin adds it on
+               the Goals page", which sent people off to do by hand something
+               the app fetches by itself, and made a momentary network failure
+               look like a missing configuration. The only way to get here now
+               is that neither the live source nor the stored table could
+               answer, so it says exactly that and asks for nothing. */
+            <span className="font-semibold text-[color:var(--ink-amber)]">
+              Couldn&apos;t reach the {line.localCurrency} rate just now — the USD figure will fill in once it loads.
             </span>
           )}
         </p>

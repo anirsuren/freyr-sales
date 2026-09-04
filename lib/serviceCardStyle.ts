@@ -14,10 +14,10 @@ export const SERVICE_CARD_ICON_OPTIONS = [
 ] as const;
 
 export const SERVICE_CARD_COLOR_OPTIONS = [
-  { value: "blue", label: "Blue", color: "#0071E3", light: "#4AA3FF" },
+  { value: "blue", label: "Blue", color: "var(--ink-bright-blue)", light: "#4AA3FF" },
   { value: "indigo", label: "Indigo", color: "#5E5CE6", light: "#8A88FF" },
   { value: "teal", label: "Teal", color: "#0F9E8E", light: "#2DD4BF" },
-  { value: "violet", label: "Violet", color: "#7C3AED", light: "#A78BFA" },
+  { value: "violet", label: "Violet", color: "var(--ink-violet-soft)", light: "#A78BFA" },
   { value: "cyan", label: "Cyan", color: "#0891B2", light: "#22D3EE" },
   { value: "sky", label: "Sky", color: "#0EA5E9", light: "#7DD3FC" },
   { value: "pink", label: "Pink", color: "#DB2777", light: "#F472B6" },

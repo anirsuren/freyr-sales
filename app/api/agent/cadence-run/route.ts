@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
-import { buildDeals, ROTTING_DAYS } from "@/lib/pipeline";
+import { buildDeals, dealsFromOpportunities, ROTTING_DAYS } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import type { AgentRunStep } from "@/lib/types";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
@@ -89,7 +90,14 @@ export async function POST(req: NextRequest) {
       .filter((x) => x.sequence_id === sequenceId)
       .map((x) => x.customer_id)
   );
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  const opportunities = (await readOpportunities()).opportunities;
+  /* BOTH PIPELINES: Mock is pitch sessions, Real is opportunities and has no
+     sessions at all. Reading only the former is what made the agent answer
+     "$0 open" over a $112.0M book. */
+  const deals = [
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(opportunities, customers),
+  ];
   const candSeen = new Set<string>();
   const cooling = deals.filter(
     (d) =>

@@ -51,7 +51,7 @@ const LOOK: Record<
   /* Not red/amber/green as a scale — these are states, not health. Blue is the
      app's "this is yours to use", teal its quieter cousin, and the muted one
      reads as closed without shouting. */
-  create: { icon: ShieldCheck, tint: "text-[color:#1A7A35]", word: "Full access" },
+  create: { icon: ShieldCheck, tint: "text-[color:var(--ink-green)]", word: "Full access" },
   edit: { icon: ShieldCheck, tint: "text-blue-primary", word: "Can edit" },
   view: { icon: ShieldAlert, tint: "text-text-tertiary", word: "View only" },
   none: { icon: ShieldX, tint: "text-text-tertiary", word: "No access" },

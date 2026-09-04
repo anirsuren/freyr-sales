@@ -53,6 +53,7 @@ import {
 } from "@/lib/performanceShared";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * THE WHOLE ACCOUNT, IN ONE SHOT (Suren, Aug 25).
@@ -710,7 +711,7 @@ export function Customer360({
                                 aria-hidden="true"
                                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                                 style={{
-                                  background: `${item.tone ?? active.color}1A`,
+                                  background: tint(item.tone ?? active.color, 10),
                                   color: item.tone ?? active.color,
                                 }}
                               >
@@ -806,7 +807,7 @@ export function Customer360({
                     <span
                       aria-hidden="true"
                       className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                      style={{ background: `${item.tone}1A`, color: item.tone }}
+                      style={{ background: tint(item.tone, 10), color: item.tone }}
                     >
                       <Package size={14} strokeWidth={2.2} />
                     </span>
@@ -820,7 +821,7 @@ export function Customer360({
                         <span
                           className="rounded-md px-1.5 py-0.5 text-[10.5px] font-bold tnum"
                           style={{
-                            background: `${item.tone ?? active.color}14`,
+                            background: tint(item.tone ?? active.color, 8),
                             color: item.tone ?? active.color,
                           }}
                         >

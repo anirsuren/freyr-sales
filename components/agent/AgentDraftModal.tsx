@@ -222,7 +222,7 @@ export function AgentDraftModal({
                       value: sn.id,
                       label: sn.title,
                       icon: StickyNote,
-                      color: "#7C3AED",
+                      color: "var(--ink-violet-soft)",
                     })),
                   ]}
                 />

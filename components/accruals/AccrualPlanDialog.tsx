@@ -19,6 +19,7 @@ import {
 } from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { Textarea } from "@/components/ui/Textarea";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
@@ -39,6 +40,7 @@ import {
   type AccrualPlan,
   type RevenueAccrualsState,
 } from "@/lib/revenueAccrualsShared";
+import { tint } from "@/lib/tint";
 
 /**
  * THE ONE SCREEN AN ACCRUAL IS WRITTEN ON.
@@ -86,6 +88,16 @@ export type DealOption = {
    * stay stored in USD; this is only what the toggle converts INTO.
    */
   currency?: string;
+  /**
+   * Services or License (Manoj, Sep 4). It decides which split columns this
+   * plan offers: "if I select license, then within the revenue accrual, it
+   * should show me ARR and OTS. If it is services, then you can just put one
+   * column. Which is that monthly cost."
+   */
+  offeringKind?: string;
+  /** What the deal is estimated to be worth in total. The schedule has to add
+   *  up to this: "it should always total up to the total estimated TCV". */
+  estimatedTcv?: number;
 };
 
 /**
@@ -93,7 +105,7 @@ export type DealOption = {
  * Exported because the module paints its flags and its "Need a plan" chip with
  * the same one, and two literals of a single reserved colour drift.
  */
-export const ACCRUAL_AMBER = "#B45309";
+export const ACCRUAL_AMBER = "var(--ink-amber)";
 
 /**
  * ONE MONTH ON THE FORM. `amount` is that month's TOTAL, which is the number
@@ -121,8 +133,11 @@ type DraftLine = {
   pinned?: boolean;
   /** One-time revenue, as typed. */
   ots?: string;
-  /** Recurring revenue, as typed. */
+  /** Annual recurring revenue, as typed. */
   arr?: string;
+  /** Monthly recurring revenue, as typed (Manoj, Sep 4: "this is not an
+   *  annual recurring revenue. This is a monthly recurring revenue"). */
+  mrr?: string;
 };
 
 type Draft = {
@@ -158,7 +173,7 @@ type Draft = {
 /** Has somebody filled in a split for this month? An empty box is not a split
  *  — clearing both is how you hand the month back to the formula. */
 function isSplit(l: DraftLine | undefined): boolean {
-  return !!l && (!!l.ots || !!l.arr);
+  return !!l && (!!l.ots || !!l.arr || !!l.mrr);
 }
 
 /** THE TOTAL THIS MONTH SHOWS: the two halves added up once either is filled
@@ -167,7 +182,7 @@ function isSplit(l: DraftLine | undefined): boolean {
  *  month is worth. */
 function rowTotal(l: DraftLine): string {
   return isSplit(l)
-    ? String((Number(l.ots) || 0) + (Number(l.arr) || 0))
+    ? String((Number(l.ots) || 0) + (Number(l.arr) || 0) + (Number(l.mrr) || 0))
     : l.amount;
 }
 
@@ -191,6 +206,7 @@ function planRows(d: Draft): DraftLine[] {
       ...(l?.pinned ? { pinned: true } : {}),
       ...(l?.ots === undefined ? {} : { ots: l.ots }),
       ...(l?.arr === undefined ? {} : { arr: l.arr }),
+      ...(l?.mrr === undefined ? {} : { mrr: l.mrr }),
     };
   });
 }
@@ -207,7 +223,56 @@ function planRows(d: Draft): DraftLine[] {
  * columns here and the width falls out of the count; the header row and every
  * cell read it from the same place.
  */
-const MONTH_COLUMNS = ["Month", "OTS (USD)", "ARR (USD)", "Total (USD)"] as const;
+/**
+ * WHICH SPLIT COLUMNS A PLAN SHOWS, AND WHY IT DEPENDS ON THE DEAL.
+ *
+ * Manoj, Sep 4: "OTS and ARR typically is applicable for licenses kind of
+ * deal. But if it is not license, if it is services deal, then the monthly tab
+ * should be used." Showing all three to everybody would put two dead columns
+ * on every services plan and one on every licence plan, and a column you must
+ * leave at zero is worse than a column that is not there.
+ *
+ * A deal with no offering type yet gets all three, because we cannot know
+ * which two to hide and hiding the wrong one would lose a number somebody
+ * already typed.
+ */
+type SplitField = "ots" | "arr" | "mrr";
+
+function splitFieldsFor(kind: string | undefined): SplitField[] {
+  const k = String(kind ?? "").toLowerCase();
+  if (k === "license") return ["ots", "arr"];
+  if (k === "services") return ["mrr"];
+  return ["ots", "arr", "mrr"];
+}
+
+const SPLIT_LABEL: Record<SplitField, string> = {
+  ots: "OTS",
+  arr: "ARR",
+  mrr: "Monthly",
+};
+
+/** Plain English for the words on the header row. */
+const COLUMN_HINT: Record<string, string> = {
+  "OTS (USD)":
+    "One-time setup. The fee charged once at the start to get the customer up and running, before any subscription begins.",
+  "ARR (USD)":
+    "Annual recurring revenue. The fee billed once a year for as long as the customer keeps the licence.",
+  "Monthly (USD)":
+    "Money billed every month. This is how a services contract is charged, where you are supplying people rather than a licence.",
+  "Total (USD)":
+    "The three columns to the left, added up. It is not typed: enter the money in those and this follows.",
+  "Revised OTS (USD)": "The new one-time figure for this month, if you are changing it.",
+  "Revised ARR (USD)": "The new annual figure for this month, if you are changing it.",
+  "Revised Monthly (USD)": "The new monthly figure for this month, if you are changing it.",
+};
+
+function monthColumnsFor(kind: string | undefined): string[] {
+  return [
+    "Month",
+    ...splitFieldsFor(kind).map((f) => `${SPLIT_LABEL[f]} (USD)`),
+    "Total (USD)",
+  ];
+}
 
 /**
  * THE PAIR THAT REPEATS FOR A DEVIATION.
@@ -224,7 +289,9 @@ const MONTH_COLUMNS = ["Month", "OTS (USD)", "ARR (USD)", "Total (USD)"] as cons
  * The revised total is reported under the table instead, where it is
  * arithmetic rather than a field.
  */
-const DEVIATION_COLUMNS = ["Revised OTS (USD)", "Revised ARR (USD)"] as const;
+function deviationColumnsFor(kind: string | undefined): string[] {
+  return splitFieldsFor(kind).map((f) => `Revised ${SPLIT_LABEL[f]} (USD)`);
+}
 
 /** Every column takes an equal share, so the header keeps sitting over its own
  *  column whether there are four of them or six. */
@@ -246,6 +313,8 @@ export function AccrualPlanDialog({
   dealId,
   deals,
   inline = false,
+  draft = false,
+  onDraftChange,
   pickable = [],
   plans = [],
   onClose,
@@ -258,6 +327,30 @@ export function AccrualPlanDialog({
    * component, same rules — see the note above `body`.
    */
   inline?: boolean;
+  /**
+   * A SCHEDULE FOR A DEAL THAT DOES NOT EXIST YET.
+   *
+   * Manoj, Sep 4: "include revenue accrual in the opportunity stage itself...
+   * it should be mandatory. At the point of creating an opportunity itself."
+   *
+   * A new opportunity has no id until it is saved, so there is nothing to
+   * attach a plan to while the form is open. In draft mode this component
+   * stops persisting: it reports its lines upward and the FORM saves them,
+   * once the deal it belongs to has an id.
+   *
+   * It is a mode rather than a second component on purpose (Suren, Sep 1: "I
+   * don't want a different screen. It has to be consistent... both the screens
+   * have to be the same") — the even spread, the split columns, the contract
+   * reconciliation and the month controls are the one implementation.
+   */
+  draft?: boolean;
+  /** Called whenever the draft schedule changes. `problem` is null when the
+   *  schedule is complete and reconciles; the form gates its own save on it. */
+  onDraftChange?: (next: {
+    lines: AccrualLine[];
+    contractValue: number;
+    problem: string | null;
+  }) => void;
   /**
    * The deal this opens on. "" opens the picker with nothing chosen, which is
    * what "Plan a deal" does from the module's header; a deal id fills the form
@@ -373,6 +466,7 @@ export function AccrualPlanDialog({
              splits in it still cannot be flattened by the formula. */
           ...(l.ots === undefined ? {} : { ots: String(l.ots) }),
           ...(l.arr === undefined ? {} : { arr: String(l.arr) }),
+          ...(l.mrr === undefined ? {} : { mrr: String(l.mrr) }),
         }));
       })(),
       /* A SAVED PLAN'S GAPS ARE DELIBERATE. If the formula would generate a
@@ -401,9 +495,9 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
 /** The Deviations tab's three colours, so the scheduler paints them the same
  *  (item 20). Kept beside the helper that produces the words. */
 const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
-  Active: "#0F766E",
-  Deviated: "#7C3AED",
-  Inactive: "#B45309",
+  Active: "var(--ink-teal-deep)",
+  Deviated: "var(--ink-violet-soft)",
+  Inactive: "var(--ink-amber)",
 };
 
 /* ------------------------------------------------------------- deviating */
@@ -503,7 +597,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
   }
   /** The revised figures, keyed by month. An empty pair is NOT a zero. */
   const [revised, setRevised] = useState<
-    Record<string, { ots: string; arr: string }>
+    Record<string, { ots: string; arr: string; mrr: string }>
   >({});
   const [reason, setReason] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
@@ -550,12 +644,12 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
   /** The months a deviation is offered against: the current version's own. */
   const deviateRows: AccrualLine[] = currentVersion?.lines ?? [];
 
-  function revisedOf(month: string): { ots: string; arr: string } {
-    return revised[month] ?? { ots: "", arr: "" };
+  function revisedOf(month: string): { ots: string; arr: string; mrr: string } {
+    return revised[month] ?? { ots: "", arr: "", mrr: "" };
   }
   function isRevised(month: string): boolean {
     const r = revisedOf(month);
-    return r.ots !== "" || r.arr !== "";
+    return r.ots !== "" || r.arr !== "" || r.mrr !== "";
   }
   const touchedMonths = deviateRows.filter((l) => isRevised(l.month));
 
@@ -573,7 +667,8 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     const r = revisedOf(l.month);
     const ots = Math.round(Number(r.ots) || 0);
     const arr = Math.round(Number(r.arr) || 0);
-    return { month: l.month, amount: ots + arr, ots, arr };
+    const mrr = Math.round(Number(r.mrr) || 0);
+    return { month: l.month, amount: ots + arr + mrr, ots, arr, mrr };
   });
 
   /** One shared subtraction, so the table and its own footer can never
@@ -591,10 +686,10 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     setReason("");
   }
 
-  function editRevised(month: string, field: "ots" | "arr", raw: string) {
+  function editRevised(month: string, field: "ots" | "arr" | "mrr", raw: string) {
     setRevised((prev) => ({
       ...prev,
-      [month]: { ...(prev[month] ?? { ots: "", arr: "" }), [field]: raw },
+      [month]: { ...(prev[month] ?? { ots: "", arr: "", mrr: "" }), [field]: raw },
     }));
   }
 
@@ -776,8 +871,42 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
   }
 
   /** Edit one of the three formula fields and let the table follow. */
+  /**
+   * A HALF-TYPED MONTH IS NOT A MONTH (Anir, Sep 4: "im trying to enter values
+   * here but it keeps fucking glitching idk whats going on and where the fuck
+   * did the thing actually go").
+   *
+   * `<input type="month">` fires on every keystroke, so typing 2027-03 walks
+   * through 0002-03 on the way. The schedule regenerated from year 2, every
+   * real month fell outside the new span and landed in "Taken out", and the
+   * table emptied itself while he was still typing the year.
+   *
+   * So a start month is only acted on once it is a plausible one. Anything
+   * else is kept in the box — the person is mid-keystroke — and the schedule
+   * below is left exactly as it was.
+   */
+  function plausibleMonth(v: string): boolean {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(v || ""));
+    if (!m) return false;
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
+  }
+
   function editFormula(patch: Partial<Draft>) {
-    setEditing(reshape({ ...editing, ...patch }));
+    if (patch.startMonth !== undefined && !plausibleMonth(patch.startMonth)) {
+      /* Show what they typed, change nothing underneath it. */
+      setEditing({ ...editing, startMonth: patch.startMonth });
+      return;
+    }
+    /* MOVING THE START CLEARS WHAT WAS TAKEN OUT. Those chips are months a
+       person deliberately removed from the OLD span; carrying them into a new
+       one silently removes months they never touched. */
+    const movingStart =
+      patch.startMonth !== undefined && patch.startMonth !== editing.startMonth;
+    setEditing(
+      reshape({ ...editing, ...patch, ...(movingStart ? { dropped: [] } : {}) })
+    );
   }
 
   /**
@@ -860,19 +989,9 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
     setAddingMonth("");
   }
 
-  /** Every month the formula would generate that somebody took out, in order. */
-  const droppedRows = monthsFrom(editing.startMonth, planMonthCount(editing)).filter(
-    (m) => editing.dropped.includes(m)
-  );
-
-  /** Typing an amount locks that month; the loose ones re-split around it. */
-  function editMonth(index: number, raw: string) {
-    const lines = [...editing.lines];
-    while (lines.length <= index)
-      lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
-    lines[index] = { ...lines[index], amount: raw, pinned: true };
-    setEditing(reshape({ ...editing, lines }));
-  }
+  /* editMonth is gone with the typeable total. The only way to set a month's
+     figure now is through its OTS / ARR / Monthly boxes, which is the point:
+     a total nobody can type is a total that always equals its parts. */
 
   /**
    * Typing an OTS or ARR figure. The total for that month becomes their sum
@@ -882,7 +1001,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * Emptying both boxes hands the month back to the formula, so there is a way
    * out that is not "start over".
    */
-  function editSplit(index: number, field: "ots" | "arr", raw: string) {
+  function editSplit(index: number, field: "ots" | "arr" | "mrr", raw: string) {
     const lines = [...editing.lines];
     while (lines.length <= index)
       lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
@@ -1051,14 +1170,11 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
      * Equal is fine; over is not.
      */
     const contractValue = Math.round(Number(editing.contractValue) || 0);
-    const scheduled = lines.reduce((sum, l) => sum + l.amount, 0);
-    if (contractValue > 0 && scheduled > contractValue) {
-      toast(
-        `The schedule adds up to ${formatMoney(scheduled)}, which is more than the contract value of ${formatMoney(contractValue)}. Take ${formatMoney(scheduled - contractValue)} off before saving.`,
-        "error"
-      );
-      return;
-    }
+    /* The over/under check has moved OUT of this function and into
+       `planProblem` below, which disables the button instead of letting it be
+       pressed and then refusing (Anir, Sep 4: "dont make it like u can press
+       the button and then it throws error. just dont let them click in the
+       first place and give reason"). */
     /**
      * ITEMS 17 AND 18 — EVERY CHANGE IS A DEVIATION.
      *
@@ -1137,12 +1253,95 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
   );
   const editingValue = Number(editing.contractValue) || 0;
 
-  /* THE COLUMNS ON SCREEN. Four normally, six while deviating, and the width
-     falls out of the count so the header and the body cannot drift apart. */
+  /* THE COLUMNS ON SCREEN. How many depends on what is being sold — a licence
+     schedules as OTS + ARR, a service as one monthly figure — and doubles
+     while deviating. The width falls out of the count so the header and the
+     body cannot drift apart. */
+  const dealKind = dealById.get(editing.opportunityId)?.offeringKind;
+  const splitFields = splitFieldsFor(dealKind);
+  const baseColumns = monthColumnsFor(dealKind);
   const monthColumns: readonly string[] = deviating
-    ? [...MONTH_COLUMNS, ...DEVIATION_COLUMNS]
-    : MONTH_COLUMNS;
+    ? [...baseColumns, ...deviationColumnsFor(dealKind)]
+    : baseColumns;
   const monthColWidth = colWidth(monthColumns.length);
+
+  /**
+   * THE SCHEDULE HAS TO ADD UP TO THE CONTRACT. NOT MORE, NOT LESS.
+   *
+   * Manoj, Sep 4, looking at a $200 deal with $110 scheduled: "the other 90
+   * dollars is unaccounted for... we don't know when we are going to get that
+   * money", and then the rule in his own words: "it should always total up to
+   * the total estimated TCV. It cannot be more. It cannot be less."
+   *
+   * A schedule that does not reconcile is a forecast with a hole in it, and
+   * every total downstream — the report, the frozen monthly sheet, the goal it
+   * feeds — carries the hole silently.
+   *
+   * RETURNED AS A SENTENCE, NOT A BOOLEAN, and used to DISABLE the button
+   * rather than to refuse a click (Anir, Sep 4: "dont make it like u can press
+   * the button and then it throws error. just dont let them click in the first
+   * place and give reason"). The old check did exactly that, and only caught
+   * "more".
+   */
+  const planProblem: string | null = (() => {
+    if (!editing.opportunityId) return "Pick which deal this plan belongs to.";
+    const contract = Math.round(Number(editing.contractValue) || 0);
+    if (contract <= 0) return "Enter what the contract is worth.";
+    const scheduled = planRows(editing).reduce(
+      (sum, l) => sum + (Number(rowTotal(l)) || 0),
+      0
+    );
+    const gap = contract - scheduled;
+    if (gap === 0) return null;
+    return gap > 0
+      ? `${formatMoney(gap)} of the ${formatMoney(contract)} contract is not scheduled yet. Every month has to add up to the contract value.`
+      : `The schedule adds up to ${formatMoney(scheduled)}, which is ${formatMoney(-gap)} more than the ${formatMoney(contract)} contract.`;
+  })();
+
+  /**
+   * IN DRAFT MODE THE CONTRACT VALUE IS THE DEAL'S, AND IT FOLLOWS IT.
+   *
+   * Manoj, Sep 4: "it should always total up to the total estimated TCV. It
+   * cannot be more. It cannot be less." If the scheduler kept its own typed
+   * figure, the form would ask for the same number twice and let the two
+   * disagree — which is the exact defect he was pointing at, one level up.
+   *
+   * Seeding happens once when a deal is picked, so on a form where the TCV is
+   * typed AFTER the scheduler mounts it stayed at 0 and the schedule could
+   * never reconcile. This keeps them in step.
+   */
+  const dealValue = deals.find((d) => d.id === dealId)?.value ?? 0;
+  useEffect(() => {
+    if (!draft) return;
+    const want = String(Math.round(dealValue) || 0);
+    setEditing((prev) => (prev.contractValue === want ? prev : reshape({ ...prev, contractValue: want })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, dealValue]);
+
+  /* In draft mode the form owns the save, so it needs the schedule and the
+     reason it is not yet valid. Reported after render, never during one. */
+  useEffect(() => {
+    if (!draft || !onDraftChange) return;
+    onDraftChange({
+      lines: planRows(editing).map((l) => {
+        const total = Number(rowTotal(l)) || 0;
+        const split = isSplit(l);
+        return {
+          month: l.month,
+          amount: total,
+          ...(split && l.ots !== undefined ? { ots: Number(l.ots) || 0 } : {}),
+          ...(split && l.arr !== undefined ? { arr: Number(l.arr) || 0 } : {}),
+          ...(split && l.mrr !== undefined ? { mrr: Number(l.mrr) || 0 } : {}),
+        };
+      }),
+      contractValue: Math.round(Number(editing.contractValue) || 0),
+      problem: planProblem,
+    });
+    /* planProblem is derived from `editing`, so `editing` is the real trigger
+       and listing it alone keeps this from firing on every parent render. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, editing, planProblem]);
+
 
   /**
    * THE SAME SCHEDULER, IN A CARD INSTEAD OF A DIALOG.
@@ -1264,10 +1463,15 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
       )}
       </div>
 
-      {/* THE MIDDLE IS THE ONLY THING THAT SCROLLS. The frame is pinned above,
-          the footer is pinned below, and everything a person is working on
-          moves inside this box. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* THE MIDDLE IS THE ONLY THING THAT SCROLLS — IN THE DIALOG. The frame
+          is pinned above, the footer below, and the work moves inside this box.
+
+          NOT WHEN EMBEDDED. Inside the opportunity form this box would be a
+          second scrolling region inside a dialog that already scrolls, so the
+          month table sat in its own little window and you had to scroll one
+          thing inside another to read a schedule (Anir, Sep 4: "I don't want
+          this to be in a scroll bar"). Embedded, it just grows. */}
+      <div className={inline ? "min-w-0" : "min-h-0 flex-1 overflow-y-auto"}>
       {!editing.opportunityId ? (
         /* THE DIALOG OPENS AT ITS WORKING SIZE (Anir, Aug 27: "why is
            the pop-up so small? It looks bad, but once I pick a deal, it
@@ -1282,7 +1486,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
         </p>
       ) : (
         <>
-          <p className="mt-4 text-[12.5px] text-text-secondary">
+          <p className={cn("text-[12.5px] text-text-secondary", !(inline && !deviating) && "mt-4")}>
             {deviating ? (
               <>
                 The months on the left are what version{" "}
@@ -1291,11 +1495,17 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 two revised columns and say why. Saving keeps this version and
                 adds the next one beside it.
               </>
+            ) : inline ? (
+              /* NOTHING. Embedded, the room's own title carries the
+                 explanation (Anir, Sep 4: "this is useless tuck it in the
+                 first question mark above") — a line of prose directly under a
+                 heading that already has a question mark is the same sentence
+                 twice. */
+              null
             ) : (
               <>
-                Spread the contract value across the months you expect it to
-                land. Nothing here reschedules itself later: if the close date
-                passes, the plan is flagged and you come back and change it.
+                Spread the contract value across the months you expect it in.
+                <InfoHint text="Nothing here reschedules itself later. If the closing date passes, the plan is flagged and you come back and change it." />
               </>
             )}
           </p>
@@ -1337,12 +1547,19 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
             </div>
           )}
           <div className="mt-3 grid grid-cols-3 gap-3">
-            <Field label="Contract value (USD)">
+            <Field
+              label="Contract value (USD)"
+              /* IN A DRAFT IT IS THE DEAL'S ESTIMATED TCV, NOT A SECOND NUMBER.
+                 Typing it here as well would let the two disagree, which is the
+                 very thing the schedule is supposed to reconcile against. */
+              hint={draft ? "Follows the estimated TCV on this deal." : undefined}
+            >
               <Input
                 value={editing.contractValue}
                 inputMode="numeric"
-                disabled={deviating}
-                className={deviating ? "opacity-60" : undefined}
+                disabled={deviating || draft}
+                readOnly={draft}
+                className={deviating || draft ? "opacity-60" : undefined}
                 onChange={(e) =>
                   editFormula({
                     contractValue: expandMoneyShorthand(e.target.value, { integer: true }),
@@ -1350,7 +1567,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 }
               />
             </Field>
-            <Field label="First month">
+            <Field label="First month" hint="The month the first payment lands. Moving it slides the whole schedule rather than relabelling it.">
               <Input
                 type="month"
                 value={editing.startMonth}
@@ -1373,7 +1590,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 The list is the terms a contract is actually written in, and
                 "Other" keeps the box, because a 7-month schedule is nobody's
                 dropdown option and still has to be typeable. */}
-            <Field label="Number of months">
+            <Field label="Number of months" hint="How long the money is spread over. Change it and the contract re-spreads evenly across the new span, leaving any month you have typed alone.">
               {/* ONE BOX, NOT TWO. This was a dropdown of the usual terms plus
                   an "Other…" option that revealed a second box beside it, so a
                   4-month schedule read "Other…  4" — two controls arguing over
@@ -1390,7 +1607,12 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 disabled={deviating}
                 aria-label="Number of months"
                 className={cn(
-                  "h-10 w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] tnum outline-none focus:border-blue-primary disabled:opacity-60",
+                  /* h-11 and the shared box styling, so this sits level with
+                     Contract value and First month beside it (Anir, Sep 4:
+                     "make sure the text field boxes are same size"). It was
+                     h-10 with its own border colour and font size, so the row
+                     of three lined up at the top and not at the bottom. */
+                  "h-11 w-full rounded-md border border-border bg-surface px-3.5 text-[15px] tnum outline-none transition focus:border-blue-primary focus:shadow-focus disabled:opacity-60",
                   deviating && "opacity-60"
                 )}
                 onChange={(e) =>
@@ -1412,7 +1634,14 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               rewrite the planned side a deviation is being measured against.
               The row keeps its height either way so the table below does not
               jump up the moment the columns appear. */}
-          <div className="mt-2 flex min-h-[30px] flex-wrap items-center gap-x-3 gap-y-1">
+          {/* THE ACTION BELONGS TO THE TABLE, SO IT SITS ON THE TABLE'S EDGE
+              (Anir, Sep 4: "i dont like the way the spread evenly button is
+              situated"). It floated on a line of its own between the three
+              fields and the schedule, with a loose question mark beside it —
+              reading as a fourth field rather than as a thing you do to the
+              months below. Right-aligned, tight to the table it acts on, and
+              the explanation moved onto the button itself. */}
+          <div className="mt-3 flex min-h-[30px] flex-wrap items-center justify-end gap-x-3 gap-y-1">
             {deviating ? (
               <span className="text-[12px] text-text-secondary">
                 Leave a month blank to carry it forward exactly as it is. Type
@@ -1420,20 +1649,18 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
               </span>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={applySpread}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                >
-                  <Coins size={13} strokeWidth={2.2} />
-                  {editingRows.some((l) => l.pinned)
-                    ? "Start over, even split"
-                    : "Spread evenly"}
-                </button>
-                <span className="text-[12px] text-text-secondary">
-                  Type a total to hold that month, or fill in OTS and ARR and
-                  the total adds itself up. The rest share what is left.
-                </span>
+                <Tooltip label="Share the contract value out evenly across the months. Any month you have already typed is left alone and the rest split what is left.">
+                  <button
+                    type="button"
+                    onClick={applySpread}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                  >
+                    <Coins size={13} strokeWidth={2.2} />
+                    {editingRows.some((l) => l.pinned)
+                      ? "Start over, even split"
+                      : "Spread evenly"}
+                  </button>
+                </Tooltip>
               </>
             )}
           </div>
@@ -1442,16 +1669,25 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
             /* THE SCROLL BOX ENDS ON A ROW, NOT THROUGH ONE. The header used
                to sit inside the scrolling element, so its height ate into the
                budget and a twelve-month plan was cut off across the middle of
-               April. Header outside, body inside, and the cap is exactly six
-               rows of `h-11`, 264px, so the seventh is either fully there or
-               fully below the fold.
+               April. Header outside, body inside — and since Sep 4 the body
+               has no cap at all, because a table hiding its own rows behind a
+               nested scrollbar is the thing that made this confusing.
 
                THE COLUMNS ARE THE SAME TABLE GAINING A PAIR (Suren, Sep 1:
                "there should be another column that shows up against all of
                this"). Both tables are `table-fixed` on a width derived from
                the column count, so the header keeps sitting over its own
-               column when the deviation pair appears. */
-            <div className="mt-3 overflow-hidden rounded-lg border border-border-light">
+               column when the deviation pair appears.
+
+               THE TABLE'S OWN EDGE, NOT A HAIRLINE (Anir, Sep 4: "I need to
+               see the edges more distinctly, especially the round edges at the
+               very edge of the table, not the individual separations"). The
+               outer border used to be the same weight and colour as the line
+               between two rows, so the table had no outline of its own and its
+               rounded corners disappeared into the panel. The frame is darker
+               than the row rules now and a step rounder, on a white ground, so
+               the block reads as one object. */
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               <table className="w-full table-fixed text-left">
                 <thead className="bg-surface">
                   <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
@@ -1463,18 +1699,36 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                           /* The revised pair is a group, so it is fenced off
                              from the planned figures rather than reading as
                              two more of them. */
-                          i === MONTH_COLUMNS.length &&
+                          i === baseColumns.length &&
                             "border-l border-border-light",
-                          i >= MONTH_COLUMNS.length && "text-[#6D28D9] dark:text-[#C4B5FD]"
+                          i >= baseColumns.length && "text-[var(--ink-violet)] dark:text-[#C4B5FD]"
                         )}
                       >
-                        {label}
+                        {/* THESE THREE WORDS NEED EXPLAINING AND NEVER HAD IT.
+                            Manoj spent a minute of the Sep 4 call teaching Anir
+                            what OTS meant — "so for example, OTS is one-time
+                            setup" — and Anir's answer was "I don't even really
+                            know what it means". A column heading that has to be
+                            explained on a call is a column heading that should
+                            carry its own explanation. */}
+                        <span className="inline-flex items-center gap-1">
+                          {label}
+                          {COLUMN_HINT[label] && <InfoHint text={COLUMN_HINT[label]} />}
+                        </span>
                       </th>
                     ))}
                   </tr>
                 </thead>
               </table>
-              <div className="max-h-[264px] overflow-y-auto border-t border-border-light">
+              {/* NO SCROLLBAR INSIDE THE TABLE (Anir, Sep 4: "why are you not showing the
+                  whole thing? I want to see the whole thing. I don't want this to be
+                  in a scroll bar").
+
+                  It was capped at 264px, so a twelve-month contract showed four
+                  rows and hid the rest behind a scrollbar nested inside the
+                  dialog's own — two scrollbars for one list. The dialog already
+                  scrolls; the table just draws all of its months. */}
+              <div className="border-t border-border-light">
                 <table className="w-full table-fixed text-left">
                   <tbody className="divide-y divide-border-light">
                     {deviating
@@ -1492,7 +1746,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               >
                                 {monthLabel(line.month)}
                               </td>
-                              {(["ots", "arr"] as const).map((field) => (
+                              {splitFields.map((field) => (
                                 <td
                                   key={field}
                                   style={{ width: monthColWidth }}
@@ -1513,7 +1767,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               >
                                 {readMoney(line.amount)}
                               </td>
-                              {(["ots", "arr"] as const).map((field, k) => (
+                              {splitFields.map((field, k) => (
                                 <td
                                   key={`revised-${field}`}
                                   style={{ width: monthColWidth }}
@@ -1526,7 +1780,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                     value={r[field]}
                                     placeholder="0"
                                     inputMode="numeric"
-                                    aria-label={`Revised ${field === "ots" ? "OTS" : "ARR"} for ${monthLabel(line.month)}`}
+                                    aria-label={`Revised ${field === "ots" ? "OTS" : field === "arr" ? "ARR" : "Monthly"} for ${monthLabel(line.month)}`}
                                     onChange={(e) =>
                                       editRevised(
                                         line.month,
@@ -1553,7 +1807,6 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                           );
                         })
                       : editingRows.map((line, i) => {
-                      const split = isSplit(line);
                       return (
                         <tr key={line.month || i} className="group/row h-11">
                           <td
@@ -1577,7 +1830,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                      touch screen, and a control nobody can
                                      find is the same as a control that is not
                                      built. */
-                                  className="cursor-pointer rounded p-0.5 text-text-tertiary/60 transition-colors hover:text-[color:#DC2626] focus-visible:text-[color:#DC2626]"
+                                  className="cursor-pointer rounded p-0.5 text-text-tertiary/60 transition-colors hover:text-[color:var(--status-red)] focus-visible:text-[color:var(--status-red)]"
                                 >
                                   <X size={13} strokeWidth={2.4} />
                                 </button>
@@ -1588,7 +1841,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                               digits-only keystroke filter the amount has always
                               had; the only difference is that filling either one
                               takes the total out of your hands. */}
-                          {(["ots", "arr"] as const).map((field) => (
+                          {splitFields.map((field) => (
                             <td
                               key={field}
                               style={{ width: monthColWidth }}
@@ -1605,7 +1858,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 value={line[field] ?? ""}
                                 placeholder="0"
                                 inputMode="numeric"
-                                aria-label={`${field === "ots" ? "OTS" : "ARR"} for ${monthLabel(line.month)}`}
+                                aria-label={`${field === "ots" ? "OTS" : field === "arr" ? "ARR" : "Monthly"} for ${monthLabel(line.month)}`}
                                 onChange={(e) =>
                                   editSplit(
                                     i,
@@ -1634,32 +1887,27 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                             >
                               {cellSymbol}
                             </span>
+                            {/* THE TOTAL IS ARITHMETIC, NEVER A FIELD (Manoj,
+                                Sep 4: "the formula under total — so total
+                                should not be editable. It should be a
+                                calculation. It should be a sum of both these
+                                items... automate this total field. So that we
+                                don't enter it manually here in the total
+                                field").
+
+                                It used to be typeable whenever the split was
+                                empty, which is how a month could end up with a
+                                total that none of its columns explained. The
+                                money is entered in the split columns to the
+                                left and this adds them up. */}
                             <input
                               value={rowTotal(line)}
                               placeholder="0"
                               inputMode="numeric"
-                              readOnly={split}
-                              tabIndex={split ? -1 : undefined}
+                              readOnly
+                              tabIndex={-1}
                               aria-label={`Total for ${monthLabel(line.month)}`}
-                              onChange={(e) =>
-                                editMonth(i, expandMoneyShorthand(e.target.value, { integer: true }))
-                              }
-                              className={cn(
-                                "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-blue-subtle",
-                                split
-                                  ? /* Once the split is filled in the total is
-                                       arithmetic, not a field, so it reads as a
-                                       number on the row instead of a box that
-                                       lies about being typeable. */
-                                    "cursor-default border-transparent bg-surface font-semibold text-text-primary"
-                                  : line.pinned
-                                    ? /* A locked month is the one number on the
-                                         table that is not the app's arithmetic,
-                                         so it says so rather than looking
-                                         identical to a share. */
-                                      "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
-                                    : "border-border-light"
-                              )}
+                              className="h-8 w-full cursor-default rounded-md border border-transparent bg-surface pl-5 pr-2 text-[13px] font-semibold tnum text-text-primary outline-none"
                             />
                             </span>
                           </td>
@@ -1713,29 +1961,38 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                       glance: OTS and ARR have to come to the same figure the
                       TOTAL column does, and when they do not, this row is
                       where you see it. */}
-                  <tfoot className="border-t-2 border-border-light bg-surface">
-                    <tr className="h-10">
-                      <td className="px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  {/* THE TOTAL HAS TO LOOK LIKE A TOTAL (Anir, Sep 4: "can you
+                      highlight the total better? It's kind of hard to see. It
+                      doesn't seem like it's a total").
+
+                      It wore the same grey as a column heading on the same pale
+                      surface as the rows, so the one line that answers "does
+                      this add up" read as another row. It gets the blue wash,
+                      a heavier rule above it, and the figure in full size. */}
+                  <tfoot className="border-t-2 border-blue-subtle bg-blue-light/40">
+                    <tr className="h-12">
+                      <td className="px-3 text-[12px] font-bold uppercase tracking-[0.05em] text-blue-primary">
                         Total
-                        <span className="ml-1.5 font-normal normal-case tracking-normal">
+                        <span className="ml-1.5 text-[12px] font-semibold normal-case tracking-normal text-text-secondary">
                           {editingRows.length} month{editingRows.length === 1 ? "" : "s"}
                         </span>
                       </td>
-                      {!deviating && (
-                        <>
-                          <td className="px-3 text-[12.5px] font-semibold tnum text-text-secondary">
+                      {!deviating &&
+                        /* ONE CELL PER SPLIT COLUMN ON SCREEN. This summed ots
+                           and arr and nothing else, so the Monthly column added
+                           on Sep 4 had a blank under it and the row stopped
+                           adding up across. */
+                        splitFields.map((f) => (
+                          <td
+                            key={f}
+                            className="px-3 text-[13px] font-semibold tnum text-text-primary"
+                          >
                             {readMoney(
-                              editingRows.reduce((n, l) => n + (Number(l.ots) || 0), 0)
+                              editingRows.reduce((n, l) => n + (Number(l[f]) || 0), 0)
                             )}
                           </td>
-                          <td className="px-3 text-[12.5px] font-semibold tnum text-text-secondary">
-                            {readMoney(
-                              editingRows.reduce((n, l) => n + (Number(l.arr) || 0), 0)
-                            )}
-                          </td>
-                        </>
-                      )}
-                      <td className="px-3 text-[13px] font-bold tnum text-text-primary">
+                        ))}
+                      <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
                         {readMoney(editingTotal)}
                       </td>
                     </tr>
@@ -1764,7 +2021,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     Revised total
                   </span>
-                  <b className="mt-0.5 block text-[15px] tnum text-[#6D28D9] dark:text-[#C4B5FD]">
+                  <b className="mt-0.5 block text-[15px] tnum text-[var(--ink-violet)] dark:text-[#C4B5FD]">
                     {formatMoney(comparison.revisedTotal)}
                   </b>
                 </div>
@@ -1821,25 +2078,16 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
             {/* PICK A MONTH THE SUGGESTION DID NOT OFFER (item 9's other
                 half). A month box rather than a list, because the month he
                 wants may be years outside the generated span. */}
-            {droppedRows.length > 0 && !deviating && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="text-[12px] text-text-tertiary">
-                  Taken out:
-                </span>
-                {droppedRows.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => restoreMonth(m)}
-                    title={`Put ${monthLabel(m)} back into the schedule`}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
-                  >
-                    <Plus size={11} strokeWidth={2.6} />
-                    {monthLabel(m)}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* NO "TAKEN OUT" STRIP (Anir, Sep 4: "i dont care about taken out
+                i thought i told u to remove this its useless").
+
+                It listed every month removed from the schedule as a chip you
+                could press to put back — a second, weaker way to do what "Add
+                month" on the last row already does, and it grew a row of
+                clutter under the table exactly when the table was at its
+                busiest. Taking a month out still works (the x on its row) and
+                putting one back still works (Add month); this only ever
+                narrated what had happened. */}
             {/* THE MISMATCH WARNING STAYS PROSE, because it is a sentence
                 about the plan rather than a figure in a column. The TOTAL
                 itself moved into the table's own footer row (Anir, Sep 3:
@@ -1906,7 +2154,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                     <span
                       className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
                       style={{
-                        background: `${TAB_STATUS_COLOR[tabAccrualStatus(record)]}18`,
+                        background: tint(TAB_STATUS_COLOR[tabAccrualStatus(record)], 9),
                         color: TAB_STATUS_COLOR[tabAccrualStatus(record)],
                       }}
                     >
@@ -2015,7 +2263,12 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
       </div>
 
       {/* THE BUTTONS ARE PINNED TO THE BOTTOM of a dialog whose height does not
-          move, so they sit in the same place in every state of the form. */}
+          move, so they sit in the same place in every state of the form.
+
+          NO FOOTER AT ALL IN DRAFT MODE: the schedule is part of a form that
+          has its own Add button, and a second Save inside it would be two
+          buttons claiming to save the same thing. */}
+      {!draft && (
       <div className="mt-4 flex shrink-0 items-center gap-2 border-t border-border-light pt-3">
         {/* A DELETE STANDS APART FROM THE THING THAT SAVES, on the left, red,
             and it asks the caller first. Nothing passes it today; see the prop
@@ -2025,7 +2278,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[color:rgba(220,38,38,0.35)] px-3.5 py-2 text-[13px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[color:rgba(220,38,38,0.35)] px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
           >
             <Trash2 size={14} strokeWidth={2.2} /> Delete plan
           </button>
@@ -2072,17 +2325,26 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 THE GATE IS UNCHANGED. This dialog is only mounted for somebody
                 who may write — the module checks canWrite, a deal page checks
                 mayPlan, and the API asks again. */}
+            {/* The reason sits BESIDE the button it disables, so the answer to
+                "why can't I press this" is already on screen. */}
+            {planProblem && (
+              <span className="max-w-[420px] text-right text-[12px] font-medium leading-snug text-[color:var(--ink-amber)]">
+                {planProblem}
+              </span>
+            )}
             <button
               type="button"
-              disabled={busy || !editing.opportunityId}
+              disabled={busy || planProblem !== null}
+              title={planProblem ?? undefined}
               onClick={savePlan}
-              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Save plan
             </button>
           </>
         )}
       </div>
+      )}
 
       {/* ITEM 17's POPUP, in his words exactly. Accept and Cancel, nothing
           else: no reason box, because his sheet does not ask for one — the
@@ -2096,7 +2358,7 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
           setPendingDrop(null);
         }}
         title={pendingDrop ? `Remove ${monthLabel(pendingDrop)}?` : "Remove this month?"}
-        body="Its share goes back to the other months, so every figure you have not typed by hand will change. You can put the month back from 'Taken out' underneath."
+        body="Its share goes back to the other months, so every figure you have not typed by hand will change. You can put the month back with Add month."
         confirmLabel="Remove"
       />
       <ConfirmDialog

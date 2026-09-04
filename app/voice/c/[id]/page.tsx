@@ -248,7 +248,7 @@ export default async function ConversationPage({
         <div className="flex min-w-0 items-center gap-3">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white"
-            style={{ background: vm.personaColor || "#0071E3" }}
+            style={{ background: vm.personaColor || "var(--ink-bright-blue)" }}
           >
             <PhoneCall size={19} strokeWidth={1.9} />
           </span>
@@ -299,9 +299,9 @@ export default async function ConversationPage({
             <span className="inline-flex items-center gap-1.5">
               <span
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ background: vm.personaColor || "#0071E3" }}
+                style={{ background: vm.personaColor || "var(--ink-bright-blue)" }}
               />
-              {agentLabel} <span className="text-text-tertiary/70">· AI agent</span>
+              {agentLabel} <span className="text-text-tertiary">· AI agent</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-primary" />
@@ -341,7 +341,7 @@ export default async function ConversationPage({
                         ? "text-white"
                         : "bg-surface text-text-secondary border border-border-light"
                     )}
-                    style={t.role === "agent" ? { background: vm.personaColor || "#0071E3" } : undefined}
+                    style={t.role === "agent" ? { background: vm.personaColor || "var(--ink-bright-blue)" } : undefined}
                   >
                     {t.role === "agent" ? (
                       <Bot size={14} strokeWidth={1.9} />
@@ -457,7 +457,7 @@ export default async function ConversationPage({
                   <span className="inline-flex items-center gap-1.5 font-medium text-text-primary">
                     <span
                       className="w-2 h-2 rounded-full"
-                      style={{ background: vm.personaColor || "#0071E3" }}
+                      style={{ background: vm.personaColor || "var(--ink-bright-blue)" }}
                     />
                     {vm.personaName}
                   </span>

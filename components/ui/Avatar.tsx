@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
@@ -222,6 +223,11 @@ export function Avatar({
     teamPhotos[name.trim().toLowerCase()] ||
     REAL_PHOTOS[name.trim().toLowerCase()] ||
     (dataMode === "mock" ? photoFor(name) : null);
+  /* Reset when the source changes: the same Avatar instance is reused as a
+     list re-renders, so a face that failed once must not blank out the next
+     person to occupy that slot. */
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [photo]);
   const words = name.split(/\s+/).filter(Boolean);
   const nameWords = words.filter((w) => NAME_WORD.test(w));
   const initials =
@@ -229,11 +235,17 @@ export function Avatar({
       .slice(0, 2)
       .map((w) => w[0]?.toUpperCase())
       .join("") || "?";
-  const badge = photo ? (
+  /* A PICTURE THAT FAILS FALLS BACK TO INITIALS (Anir, Sep 4, on 198 empty
+     grey squares across Market Intel). The initials branch below already
+     existed but only fired when there was NO photo — a photo that 404s or
+     expires left an empty box, because nothing was listening for the failure.
+     MiLogo one folder over has always done this correctly. */
+  const badge = photo && !broken ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={photo}
       alt={name}
+      onError={() => setBroken(true)}
       className={cn(
         // Some uploaded/generated portraits contain transparent pixels around
         // the subject. Give the image its own opaque surface so a neighbouring

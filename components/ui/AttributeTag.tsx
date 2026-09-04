@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * A colour-coded, icon-carrying tag for an account attribute — industry,
@@ -62,7 +63,7 @@ export function AttributeTag({
       )}
       // Inline because the palette is a runtime value, not a Tailwind class.
       // 1A ≈ 10% alpha: a tint that stays readable in both themes.
-      style={{ color, background: `${color}1A` }}
+      style={{ color, background: tint(color, 10) }}
       title={label ? `${label}: ${value}` : value}
     >
       {label && <span className="sr-only">{label}: </span>}

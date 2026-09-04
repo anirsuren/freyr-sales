@@ -244,6 +244,24 @@ Rules:
       const target = String(deal?.target ?? "").trim();
       const division = String(deal?.division ?? "");
       if (!acquirer || !target) continue;
+      /* A COMPANY IS NOT A PRICE OR A DESCRIPTION (Anir, Sep 4: a row read
+         acquirer "home care business", target "$360m"). A headline shaped
+         "…sells its home care business for $360m" was read as a deal between
+         two companies. The money is already carried separately in valueLabel,
+         so anything that looks like an amount in a name slot is a mis-parse by
+         definition; and a bare category word with no proper noun beside it is
+         a description lifted from the headline, not a party to the deal. */
+      const looksLikeMoney = (v: string) =>
+        /^[^A-Za-z]*[$£€¥]?\s*\d[\d.,]*\s*(m|bn?|k|mn|million|billion)?[^A-Za-z]*$/i.test(v);
+      if (looksLikeMoney(acquirer) || looksLikeMoney(target)) continue;
+      /* NO CATEGORY-WORD FILTER. I tried rejecting names containing "business",
+         "firm", "company" and the like, to catch "home care business" and
+         "Medical Device Development Firm". It also rejected "Becton, Dickinson
+         and Company" and "3M Company", which are real parties to real deals.
+         Dropping a genuine acquisition is worse than showing one clumsy label,
+         so only the unambiguous case is filtered: a name slot that holds
+         nothing but a number is a mis-parse, because the money already has its
+         own field. */
       if (!["Medicinal Products", "Medical Devices", "Consumer"].includes(division)) continue;
       out.push({
         acquirer: acquirer.slice(0, 60),

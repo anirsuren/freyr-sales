@@ -21,6 +21,7 @@ import {
 } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
+import { tint } from "@/lib/tint";
 
 /** Which account's report. A static "Account report" was indistinguishable
  *  across open tabs, the same way the customer page itself was (found Aug 14
@@ -50,12 +51,12 @@ export const dynamic = "force-dynamic";
  * outside the funnel falls back to blue rather than to gray.
  */
 function StageChip({ stage }: { stage: string }) {
-  const color = STAGE_COLOR[stage as Stage] || "#0071E3";
+  const color = STAGE_COLOR[stage as Stage] || "var(--ink-bright-blue)";
   const Icon = STAGE_ICON[stage as Stage] || CircleDot;
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full py-0.5 pl-1 pr-2 text-[11px] font-semibold leading-tight"
-      style={{ color, background: `${color}14` }}
+      style={{ color, background: tint(color, 8) }}
     >
       <span
         className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full text-white"

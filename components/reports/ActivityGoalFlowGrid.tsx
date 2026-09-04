@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { typeMeta } from "@/components/performance/bits";
 import { fmtAmount, type GoalUnit } from "@/lib/performanceShared";
+import { tint } from "@/lib/tint";
 
 /**
  * ACTIVITIES × GOALS, GLOWING BY REAL MONEY (Anir, Aug 17: the heat-map
@@ -39,7 +40,7 @@ export function ActivityGoalFlowGrid({
                 <th key={c.activity.id} className="border-l border-border-light px-3 py-2.5">
                   <span
                     className="inline-flex items-center rounded-lg px-2 py-1 text-[12px] font-semibold normal-case tracking-normal"
-                    style={{ background: `${c.activity.color}16`, color: c.activity.color }}
+                    style={{ background: tint(c.activity.color, 9), color: c.activity.color }}
                   >
                     {c.activity.label}
                   </span>

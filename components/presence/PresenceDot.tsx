@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRESENCE_META, presenceOf, type PresenceKey } from "@/lib/presence";
+import { tint } from "@/lib/tint";
 
 /**
  * A person's live presence, everywhere it is shown — the Settings member
@@ -86,7 +87,7 @@ export function MemberPresence({
         "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold",
         className
       )}
-      style={{ background: `${meta.color}1A`, color: meta.color }}
+      style={{ background: tint(meta.color, 10), color: meta.color }}
       title={meta.title}
     >
       <span

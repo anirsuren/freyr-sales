@@ -203,7 +203,7 @@ export function ServiceCatalog({
                         <button
                           onClick={() => setConfirmIdx(idx)}
                           aria-label="Delete service"
-                          className="p-1.5 rounded-md text-[color:#DC2626] hover:text-error hover:bg-surface transition-colors"
+                          className="p-1.5 rounded-md text-[color:var(--status-red)] hover:text-error hover:bg-surface transition-colors"
                         >
                           <Trash2 size={16} strokeWidth={1.5} />
                         </button>

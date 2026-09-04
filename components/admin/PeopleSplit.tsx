@@ -15,6 +15,7 @@ import {
   privilegesForPerson,
   type PrivilegeState,
 } from "@/lib/privileges";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE PERSON AT A TIME: names down the left, everything about them on the right.
@@ -101,7 +102,7 @@ function joinedLabel(iso: string | null | undefined): string {
  */
 function SuspendedPill() {
   return (
-    <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#DC2626]">
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:var(--status-red)]">
       Suspended
     </span>
   );
@@ -349,7 +350,7 @@ export function PeopleSplit() {
                             title={p.label}
                             aria-label={p.label}
                             style={{
-                              backgroundColor: `${privilegeColor(p.id)}1F`,
+                              backgroundColor: tint(privilegeColor(p.id), 12),
                               color: privilegeColor(p.id),
                             }}
                             className="rounded px-1.5 py-[1px] text-[9.5px] font-bold"
@@ -477,7 +478,7 @@ export function PeopleSplit() {
               ) : (
                 /* WHY IT IS LOCKED, not just that it is. */
                 <>
-                  <b className="font-semibold text-[color:#DC2626]">
+                  <b className="font-semibold text-[color:var(--status-red)]">
                     {selected.name} is suspended
                   </b>{" "}
                   and cannot sign in, so what they hold is frozen. Bring them

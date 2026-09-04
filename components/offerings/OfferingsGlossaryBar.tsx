@@ -24,13 +24,13 @@ const ENTRIES = [
     href: "/offerings/offering-types",
     label: "Offering types",
     icon: Package,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
   },
   {
     href: "/offerings/offering-categories",
     label: "Categories",
     icon: Layers,
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
   },
   {
     href: "/offerings/customer-types",

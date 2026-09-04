@@ -52,8 +52,20 @@ export type AccrualLine = {
   amount: number;
   /** One-time revenue in this month. */
   ots?: number;
-  /** Recurring revenue in this month. */
+  /** Annual recurring revenue in this month. */
   arr?: number;
+  /**
+   * MONTHLY RECURRING REVENUE (Manoj, Sep 4, pricing a resource contract:
+   * "OTS is one-time setup, and ARR is annual recurring revenue. But this is
+   * not an annual recurring revenue. This is a monthly recurring revenue,
+   * right? So can we have one more column here... call it monthly").
+   *
+   * A services contract that bills every month is neither a setup fee nor an
+   * annual licence, and with only two columns it had to be squeezed into one
+   * of them or left out of the split entirely. Optional and additive like the
+   * other two: nothing already saved changes.
+   */
+  mrr?: number;
 };
 
 /**
@@ -179,7 +191,7 @@ export type AccrualPlan = {
    * gap, the contract schedule that aliases AccrualLine.
    *
    * With versions in play this mirrors the LAST FILLED version, and the
-   * normaliser enforces that the same way it enforces amount = ots + arr. A
+   * normaliser enforces that the same way it enforces amount = ots + arr + mrr. A
    * system version being blank therefore does NOT blank the plan: that is rule
    * 2 above, in his own words, "it's not removing, you can invalidate... but
    * there has to be a flag which says it is not validating and you go and fix

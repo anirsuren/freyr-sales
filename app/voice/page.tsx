@@ -59,10 +59,10 @@ const OUTCOME_META: Record<
   { label: string; color: string; chip: string; icon: LucideIcon }
 > = {
   interested: { label: "Interested", color: "#34C759", chip: "text-success bg-success/10", icon: ThumbsUp },
-  follow_up: { label: "Follow-up", color: "#0071E3", chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
+  follow_up: { label: "Follow-up", color: "var(--ink-bright-blue)", chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
   // colour must track the `chip` beside it — both are now the burnt-orange
   // warning token, and donut legends render this colour as chip TEXT.
-  no_answer: { label: "No answer", color: "#C2410C", chip: "text-warning bg-warning/10", icon: PhoneMissed },
+  no_answer: { label: "No answer", color: "var(--ink-orange)", chip: "text-warning bg-warning/10", icon: PhoneMissed },
 };
 const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer"];
 
@@ -390,8 +390,8 @@ export default async function VoicePage() {
             // I need more graphs there — not just calls").
             const OUT_COLORS: Record<string, string> = {
               interested: "#34C759",
-              follow_up: "#0071E3",
-              no_answer: "#C2410C", // matches OUTCOME_META, donut legend rows are colour-on-tint text
+              follow_up: "var(--ink-bright-blue)",
+              no_answer: "var(--ink-orange)", // matches OUTCOME_META, donut legend rows are colour-on-tint text
             };
             const OUT_LABELS: Record<string, string> = {
               interested: "Interested",

@@ -192,7 +192,7 @@ export function VerifyGoalModal({
         // door the moment nothing was logged (Anir, Aug 19: "I can't even
         // verify it again"). The pill stays alive; the warning moved here,
         // where it can be read and overruled.
-        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:var(--ink-orange)]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
             Nothing is logged against this yet, so this approves zero. It only
@@ -207,7 +207,7 @@ export function VerifyGoalModal({
           already made stays made — so it gets a calm note instead of an
           error dressed as one. */}
       {waiting - sentBack > 0 && !undoing && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:var(--ink-orange)]">
           <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
           <span>
             {fmtAmount(goal.unit, waiting - sentBack)} below has not been
@@ -313,7 +313,7 @@ export function VerifyGoalModal({
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-1 flex items-center gap-1.5 pl-8 text-[11.5px] text-[color:#C2410C]">
+                  <p className="mt-1 flex items-center gap-1.5 pl-8 text-[11.5px] text-[color:var(--ink-orange)]">
                     <Paperclip size={11} strokeWidth={2.4} />
                     Nothing attached. There is no proof to read for this one.
                   </p>

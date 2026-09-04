@@ -14,7 +14,7 @@ function RelevanceDots({ score }: { score: number }) {
         <span
           key={i}
           className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: i < filled ? "#0071E3" : "#D2D2D7" }}
+          style={{ backgroundColor: i < filled ? "var(--ink-bright-blue)" : "#D2D2D7" }}
         />
       ))}
     </div>
@@ -75,7 +75,7 @@ export function EnrichmentPanel({
               <Badge
                 label={contact.role_bucket}
                 bg="rgba(0,113,227,0.10)"
-                color="#0040A0"
+                color="var(--ink-blue)"
                 className="!normal-case tracking-normal"
               />
             )}

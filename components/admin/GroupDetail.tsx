@@ -269,7 +269,7 @@ export function GroupDetail({
               the group read as "Admin" — which is a different fact about a
               different thing. */}
           <span className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary">
-            <Crown size={11} strokeWidth={2.6} className="text-[color:#7C3AED]" />
+            <Crown size={11} strokeWidth={2.6} className="text-[color:var(--ink-violet-soft)]" />
             Group owner
             <Avatar name={group.head} className="h-5 w-5 text-[7.5px]" />
             <b className="font-semibold text-text-primary">{group.head}</b>
@@ -290,7 +290,7 @@ export function GroupDetail({
       <section className="mb-4 rounded-2xl border border-border-light bg-white px-5 pb-5 pt-3.5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <UsersRound size={15} strokeWidth={2.2} className="text-[color:#7C3AED]" />
+            <UsersRound size={15} strokeWidth={2.2} className="text-[color:var(--ink-violet-soft)]" />
             In this group
           </h2>
           {/* ONLY THE GROUP OWNER PUTS PEOPLE IN (Suren, Aug 29: "when you
@@ -336,7 +336,7 @@ export function GroupDetail({
                 {m}
               </span>
               {m === group.head ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)]">
                   <Crown size={9} strokeWidth={2.6} />
                   Group owner
                 </span>
@@ -352,7 +352,7 @@ export function GroupDetail({
                     title={`Take ${m} out of ${group.name}`}
                     aria-label={`Take ${m} out of ${group.name}`}
                     onClick={() => setConfirmDropPerson(m)}
-                    className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:#DC2626]"
+                    className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:var(--status-red)]"
                   >
                     <X size={13} strokeWidth={2.4} />
                   </button>
@@ -547,7 +547,7 @@ export function GroupDetail({
                               e.stopPropagation();
                               setConfirmDrop(g);
                             }}
-                            className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                            className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                           >
                             <Trash2 size={13} strokeWidth={2.2} />
                           </button>
@@ -894,7 +894,7 @@ export function GroupDetail({
                   {m}
                 </span>
                 {isHead && (
-                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-[color:#7C3AED]">
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-[color:var(--ink-violet-soft)]">
                     Group owner
                   </span>
                 )}

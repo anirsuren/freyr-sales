@@ -9,7 +9,8 @@ import {
   focusActions,
   openValueByAccount,
 } from "@/lib/agent";
-import { buildDeals } from "@/lib/pipeline";
+import { buildDeals, dealsFromOpportunities } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
@@ -51,9 +52,11 @@ export async function POST(req: NextRequest) {
     db.agentPrefs.get(scope),
   ]);
 
+  const opportunities = (await readOpportunities()).opportunities;
+
   const kinds = goalActionKinds(goal); // null = all kinds
   const { actions: focused } = focusActions(
-    nextBestActions({ sessions, customers, contacts, interactions }),
+    nextBestActions({ sessions, customers, contacts, interactions, opportunities }),
     customers,
     prefs,
     actor.name,
@@ -64,9 +67,14 @@ export async function POST(req: NextRequest) {
   // High-value guardrail (#75): an action can only be auto-handled if it's
   // draftable AND its account's open pipeline is under the rep's ceiling.
   const ceiling = prefs?.autopilot_max_value ?? null;
-  const openVal = openValueByAccount(
-    buildDeals(sessions, customers, contacts, interactions)
-  );
+  /* THE CEILING ONLY GUARDS ANYTHING IF IT CAN SEE THE MONEY. Reading pitch
+     sessions alone put every Real account at $0 open, so no account ever
+     exceeded the ceiling and the escalation this guardrail exists to trigger
+     never fired once. */
+  const openVal = openValueByAccount([
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(opportunities, customers),
+  ]);
   const canAutoHandle = (a: (typeof actions)[number]) =>
     DRAFTABLE.includes(a.kind) &&
     !(ceiling != null && (openVal.get(a.customerId) || 0) > ceiling);

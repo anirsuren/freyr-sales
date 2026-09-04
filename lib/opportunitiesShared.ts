@@ -169,6 +169,30 @@ export const REVENUE_TYPES = ["ARR", "OTS"] as const;
 export type RevenueType = (typeof REVENUE_TYPES)[number];
 
 /**
+ * WHAT KIND OF THING IS BEING SOLD, WHICH DECIDES HOW THE MONEY IS SCHEDULED.
+ *
+ * Manoj, Sep 4: "Change this ARR OTS to offering type. In that offering type,
+ * you'll have two options. Services or license." And then the reason it
+ * matters: "if I select license, then within the revenue accrual, it should
+ * show me ARR and OTS. If it is services, then you can just put one column.
+ * Which is that monthly cost."
+ *
+ * ARR and OTS were the wrong question to ask at this point in the form. They
+ * describe how a LICENCE bills — an implementation fee and then a subscription
+ * — and a services contract is neither, so every services deal answered "Not
+ * set". Asking what is being sold instead is a question the person always
+ * knows the answer to, and it is the answer that tells the accrual plan which
+ * columns to offer.
+ */
+export const OFFERING_KINDS = ["Services", "License"] as const;
+export type OfferingKind = (typeof OFFERING_KINDS)[number];
+
+export function normalizeOfferingKind(raw: unknown): OfferingKind | undefined {
+  const s = String(raw ?? "").trim().toLowerCase();
+  return OFFERING_KINDS.find((k) => k.toLowerCase() === s);
+}
+
+/**
  * WHERE THE MONEY COMES FROM, WHICH IS NOT THE SAME AS HOW IT RECURS.
  *
  * Suren, Aug 31, reading an opportunity: "opportunity is missing one thing,
@@ -216,6 +240,8 @@ export type OpportunityLine = {
   /** Free text for an offering that is not in the catalogue yet. */
   offeringLabel?: string;
   revenueType?: RevenueType;
+  /** Services or License. Drives which columns the accrual plan offers. */
+  offeringKind?: OfferingKind;
   /** ALWAYS USD — totals, weighting and goals run on this number only
    *  (Suren, Aug 17: "every connection is only in USD"). */
   value: number;
@@ -295,6 +321,8 @@ export type Opportunity = {
   level: OpportunityLevel;
   status?: OpportunityStatus;
   revenueType?: RevenueType;
+  /** Services or License. Drives which columns the accrual plan offers. */
+  offeringKind?: OfferingKind;
   /** New business / Existing business / Renewal. Suren, Aug 31. */
   dealType?: DealType;
   value: number;
@@ -376,9 +404,21 @@ export type Opportunity = {
   updatedAt: string;
 };
 
-export type OpportunitiesState = { opportunities: Opportunity[] };
+export type OpportunitiesState = {
+  opportunities: Opportunity[];
+  /**
+   * The highest deal number ever issued, kept even after that deal is deleted.
+   *
+   * Without it the next number was `highest currently existing + 1`, so
+   * deleting OPP-0029 handed OPP-0029 to the next deal created — two different
+   * opportunities carrying one reference, in emails and spreadsheets that
+   * outlive both. Proven live on Sep 4: created, deleted, created again, same
+   * number.
+   */
+  lastOpportunityNo?: number;
+};
 
-export const EMPTY_OPPORTUNITIES: OpportunitiesState = { opportunities: [] };
+export const EMPTY_OPPORTUNITIES: OpportunitiesState = { opportunities: [], lastOpportunityNo: 0 };
 
 export function normalizeLevel(raw: unknown): OpportunityLevel {
   const s = String(raw ?? "").trim().toLowerCase();
@@ -703,9 +743,9 @@ export function signDateOf(deal: {
 export const OPPORTUNITY_STATUS_COLOR: Record<string, string> = {
   Qualify: "#0891B2",
   Pilot: "#5E5CE6",
-  Propose: "#0071E3",
-  "Submitted to client": "#7C3AED",
-  "Under review": "#B4318F",
+  Propose: "var(--ink-bright-blue)",
+  "Submitted to client": "var(--ink-violet-soft)",
+  "Under review": "var(--ink-magenta)",
   "On hold": "#8E98A8",
   Won: "#16A34A",
   Lost: "#DC2626",

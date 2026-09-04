@@ -55,13 +55,13 @@ export const GROUP_TYPE_META: Record<
   business_development: {
     label: "Business development",
     short: "BD",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     blurb: "Sales. Chases accounts, opens opportunities, carries the number.",
   },
   business_offering: {
     label: "Business offering",
     short: "BO",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     blurb: "Owns an offering and what it can do, not the accounts buying it.",
   },
   solutioning: {
@@ -173,9 +173,9 @@ export type Access = "none" | "view" | "edit" | "create";
 
 export const ACCESS_META: Record<Access, { label: string; color: string }> = {
   none: { label: "No access", color: "#8E98A8" },
-  view: { label: "View", color: "#0071E3" },
-  edit: { label: "Edit", color: "#7C3AED" },
-  create: { label: "Create", color: "#1A7A35" },
+  view: { label: "View", color: "var(--ink-bright-blue)" },
+  edit: { label: "Edit", color: "var(--ink-violet-soft)" },
+  create: { label: "Create", color: "var(--ink-green)" },
 };
 
 /** Weakest to strongest. The one list every picker builds itself from. */
@@ -257,15 +257,15 @@ export const VIEW_ALL = "view_all";
  * own copy, which is a drift waiting to happen.
  */
 export const PRIVILEGE_COLORS: Record<string, string> = {
-  bd_owner: "#0071E3",
+  bd_owner: "var(--ink-bright-blue)",
   bd_member: "#2C7FD0",
-  bo_owner: "#7C3AED",
+  bo_owner: "var(--ink-violet-soft)",
   bo_member: "#6D4BC4",
   sol_owner: "#DB2777",
   sol_member: "#B02066",
-  delivery_owner: "#C2410C",
+  delivery_owner: "var(--ink-orange)",
   delivery_member: "#9A4A16",
-  admin: "#0F766E",
+  admin: "var(--ink-teal-deep)",
   view_all: "#475569",
 };
 
@@ -312,7 +312,7 @@ export function privilegeShort(id: string): string {
 }
 
 export function privilegeColor(id: string): string {
-  return PRIVILEGE_COLORS[id] ?? "#0071E3";
+  return PRIVILEGE_COLORS[id] ?? "var(--ink-bright-blue)";
 }
 
 export type PrivilegeState = {

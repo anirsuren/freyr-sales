@@ -95,13 +95,13 @@ export const OUTCOME_META: Record<
   interested: {
     label: "Interested",
     bg: "rgba(52,199,89,0.12)",
-    color: "#1A7A35",
+    color: "var(--ink-green)",
     icon: ThumbsUp,
   },
   not_interested: {
     label: "Not Interested",
     bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
+    color: "var(--ink-red)",
     icon: ThumbsDown,
   },
   in_progress: {
@@ -123,25 +123,25 @@ export const OUTCOME_META: Record<
     // a chart fill, so the chip and the segment finally agree.
     label: "No Response",
     bg: "rgba(124,58,237,0.12)",
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     icon: CircleSlash,
   },
   meeting_booked: {
     label: "Meeting Booked",
     bg: "rgba(0,113,227,0.12)",
-    color: "#0040A0",
+    color: "var(--ink-blue)",
     icon: CalendarCheck,
   },
   ai_call_completed: {
     label: "AI Call Completed",
     bg: "rgba(0,113,227,0.12)",
-    color: "#0040A0",
+    color: "var(--ink-blue)",
     icon: PhoneCall,
   },
   ai_call_failed: {
     label: "AI Call Failed",
     bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
+    color: "var(--ink-red)",
     icon: PhoneMissed,
   },
   // How a VOICE call ended (lib/voice VoiceOutcome). These lived only as local
@@ -152,7 +152,7 @@ export const OUTCOME_META: Record<
   follow_up: {
     label: "Follow-up",
     bg: "rgba(0,113,227,0.12)",
-    color: "#0040A0",
+    color: "var(--ink-blue)",
     icon: CalendarClock,
   },
   no_answer: {
@@ -160,13 +160,13 @@ export const OUTCOME_META: Record<
     // yellow band (#F59E0B / #EAB308 / #CA8A04 / #D97706).
     label: "No answer",
     bg: "rgba(194,65,12,0.12)",
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     icon: PhoneMissed,
   },
   declined: {
     label: "Declined",
     bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
+    color: "var(--ink-red)",
     icon: ThumbsDown,
   },
 };

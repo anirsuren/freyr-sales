@@ -17,6 +17,7 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 import { formatDateTime } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    FORECAST RISK, rebuilt to the standard of the By-stage block directly above
@@ -72,11 +73,11 @@ import { formatDateTime } from "@/lib/utils";
 --------------------------------------------------------------------------- */
 
 /** The measure. Every dollar in this section is weighted commit, drawn blue. */
-const MEASURE = "#0071E3";
+const MEASURE = "var(--ink-bright-blue)";
 /** Real red, EARNED only once a deal has actually gone past the quiet line. */
-const RISK = "#C2410C";
+const RISK = "var(--ink-orange)";
 /** The all-clear. Only ever shown when there is genuinely nothing exposed. */
-const CLEAR = "#1A7A35";
+const CLEAR = "var(--ink-green)";
 
 /** Panel shell — the same parts DealFacts and DealSnapshot are built from, so
  *  the bands across the app can't drift apart. */
@@ -128,7 +129,7 @@ function StageChip({ stage }: { stage: Stage }) {
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-full py-0.5 pl-1 pr-2 text-[10px] font-semibold leading-tight"
-      style={{ color, background: `${color}14` }}
+      style={{ color, background: tint(color, 8) }}
     >
       <span
         className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full text-white"
@@ -420,7 +421,7 @@ export function ForecastRisk({
               style={{
                 left: `${thresholdPct}%`,
                 color: RISK,
-                background: `${RISK}14`,
+                background: tint(RISK, 8),
               }}
             >
               {rottingDays}-day threshold
@@ -473,7 +474,7 @@ export function ForecastRisk({
                       left: `${pct}%`,
                       marginLeft: -7,
                       background: tone,
-                      boxShadow: `0 0 0 4px ${tone}26`,
+                      boxShadow: `0 0 0 4px ${tint(tone, 15)}`,
                     }}
                   />
                 </span>
@@ -593,7 +594,7 @@ export function ForecastRisk({
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
           style={{
             color: clear ? CLEAR : RISK,
-            background: `${clear ? CLEAR : RISK}14`,
+            background: tint(clear ? CLEAR : RISK, 8),
           }}
         >
           {clear ? <CircleCheck size={13} /> : <ShieldAlert size={13} />}
@@ -810,7 +811,7 @@ export function ForecastRisk({
                   <div className="relative mb-1 h-[17px]">
                     <span
                       className="absolute top-0 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold leading-tight tnum"
-                      style={{ left: axisX(quietFrac), color: RISK, background: `${RISK}14` }}
+                      style={{ left: axisX(quietFrac), color: RISK, background: tint(RISK, 8) }}
                     >
                       {rottingDays}-day threshold
                     </span>
@@ -875,7 +876,7 @@ export function ForecastRisk({
                                   left: `${pct}%`,
                                   marginLeft: -5.5,
                                   background: tone,
-                                  boxShadow: `0 0 0 3px ${tone}26`,
+                                  boxShadow: `0 0 0 3px ${tint(tone, 15)}`,
                                 }}
                               />
                             </span>
@@ -1139,7 +1140,7 @@ export function ForecastRisk({
                           <StageChip stage={deal.stage} />
                           <span
                             className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tnum"
-                            style={{ color: RISK, background: `${RISK}14` }}
+                            style={{ color: RISK, background: tint(RISK, 8) }}
                           >
                             <Clock3 size={10} strokeWidth={2.4} />
                             {deal.staleDays} days quiet
@@ -1192,7 +1193,7 @@ export function ForecastRisk({
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
               <span
                 className="flex h-10 w-10 items-center justify-center rounded-full"
-                style={{ color: CLEAR, background: `${CLEAR}14` }}
+                style={{ color: CLEAR, background: tint(CLEAR, 8) }}
               >
                 <CircleCheck size={20} strokeWidth={2} />
               </span>

@@ -43,6 +43,7 @@ import {
   type SequenceChannel,
   type SequenceStep,
 } from "@/lib/sequences";
+import { tint } from "@/lib/tint";
 
 export type Enrollment = {
   customerId: string;
@@ -72,7 +73,7 @@ const CHANNEL_META: Record<
 function stageStyle(stage: string) {
   const key = stage.toLowerCase();
   if (key.includes("meeting")) return { color: "#047857", bg: "rgba(5,150,105,0.11)" };
-  if (key.includes("qualified")) return { color: "#6D28D9", bg: "rgba(109,40,217,0.10)" };
+  if (key.includes("qualified")) return { color: "var(--ink-violet)", bg: "rgba(109,40,217,0.10)" };
   if (key.includes("engaged")) return { color: "#0066CC", bg: "rgba(0,113,227,0.10)" };
   return { color: "#475569", bg: "rgba(100,116,139,0.10)" };
 }
@@ -127,7 +128,7 @@ const SEQUENCE_TEMPLATES: Array<{
     description: "Restart an inactive conversation without repeating the original pitch.",
     useCase: "Revive an inactive opportunity",
     icon: RefreshCcw,
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     bg: "#FFF7ED",
     border: "#FED7AA",
     steps: [
@@ -277,8 +278,8 @@ export function SequencesView({
     { icon: Users, label: "Accounts enrolled", value: String(enrollments.length), sub: "across all plans" },
     // StatTile paints this colour SOLID behind a white icon — white on amber was
     // 2.1:1. Burnt orange is 5.2:1 and still reads as "needs attention".
-    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "#C2410C" },
-    { icon: CircleDotDashed, label: "Re-engage", value: String(candidateCount), sub: candidateCount === 1 ? "stalled account" : "stalled accounts", color: "#7C3AED" },
+    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "var(--ink-orange)" },
+    { icon: CircleDotDashed, label: "Re-engage", value: String(candidateCount), sub: candidateCount === 1 ? "stalled account" : "stalled accounts", color: "var(--ink-violet-soft)" },
   ];
 
   function openEditor(sequence?: Sequence) {
@@ -722,9 +723,9 @@ export function SequencesView({
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success"><CheckCircle2 size={14} /> Done</span>
                             ) : enrollment.managed && enrollment.enrollmentId ? (
                               <>
-                                <button onClick={() => advance({ enrollmentId: enrollment.enrollmentId }, enrollment.enrollmentId!, `${enrollment.company} advanced`)} disabled={busy !== null || active.status === "paused"} className="text-[color:#DC2626] inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-blue-primary hover:bg-blue-light disabled:opacity-40"><Play size={11} /> Advance</button>
+                                <button onClick={() => advance({ enrollmentId: enrollment.enrollmentId }, enrollment.enrollmentId!, `${enrollment.company} advanced`)} disabled={busy !== null || active.status === "paused"} className="text-[color:var(--status-red)] inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-blue-primary hover:bg-blue-light disabled:opacity-40"><Play size={11} /> Advance</button>
                                 <Tooltip label="Remove from sequence" align="right">
-                                  <button onClick={() => setConfirmEnrollment({ id: enrollment.enrollmentId!, company: enrollment.company })} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-[color:#DC2626] hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
+                                  <button onClick={() => setConfirmEnrollment({ id: enrollment.enrollmentId!, company: enrollment.company })} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
                                 </Tooltip>
                               </>
                             ) : (
@@ -863,7 +864,7 @@ export function SequencesView({
                       style={{
                         borderColor: selected ? template.color : template.border,
                         background: selected ? template.bg : "#FFFFFF",
-                        boxShadow: selected ? `0 0 0 3px ${template.color}18` : undefined,
+                        boxShadow: selected ? `0 0 0 3px ${tint(template.color, 9)}` : undefined,
                       }}
                     >
                       {selected && <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: template.color }}><Check size={13} /></span>}
@@ -954,10 +955,10 @@ export function SequencesView({
                             </div>
                           </div>
                           <label><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">2. Set day</span><input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-9 w-full rounded-md border border-border bg-white px-2 text-[12px] font-semibold outline-none focus:border-blue-primary" /></label>
-                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-[color:#DC2626]">3. Describe the action</span><input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
+                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-[color:var(--status-red)]">3. Describe the action</span><input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
                         </div>
                       </div>
-                      <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-[color:#DC2626] hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
+                      <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
                     </div>
                   );
                 })}

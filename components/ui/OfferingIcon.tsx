@@ -40,6 +40,7 @@ import {
   type ServiceCardIcon,
   type ServiceCardStyle,
 } from "@/lib/serviceCardStyle";
+import { tint } from "@/lib/tint";
 
 // A branded mark for an offering — a curated glyph on a deterministic gradient,
 // so every offering reads as its own product (Anir, Jul 8: "every offering
@@ -69,10 +70,10 @@ const ICON_LABELS = [
 // signifying something else." Purple, blue, indigo, teal, cyan, sky, pink,
 // fuchsia and slate all carry no status meaning, so they are safe here.
 const GRADIENTS: [string, string][] = [
-  ["#0071E3", "#4AA3FF"], // blue
+  ["var(--ink-bright-blue)", "#4AA3FF"], // blue
   ["#5E5CE6", "#8A88FF"], // indigo
   ["#0F9E8E", "#2DD4BF"], // teal
-  ["#7C3AED", "#A78BFA"], // violet
+  ["var(--ink-violet-soft)", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
   ["#4338CA", "#818CF8"], // deep indigo
   ["#0EA5E9", "#7DD3FC"], // sky
@@ -190,7 +191,7 @@ export function ServiceTag({
       style={
         {
           "--semantic-color": color,
-          "--semantic-bg": `${color}14`,
+          "--semantic-bg": tint(color, 8),
         } as CSSProperties
       }
     >

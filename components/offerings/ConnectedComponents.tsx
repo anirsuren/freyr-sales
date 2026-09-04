@@ -334,11 +334,11 @@ export function ConnectedComponents({
                           value={versions[component.id] || ""}
                           onChange={(value) => void saveVersion(component.id, value)}
                           options={[
-                            { value: "", label: "Not pinned", color: "#0071E3", icon: Clock },
+                            { value: "", label: "Not pinned", color: "var(--ink-bright-blue)", icon: Clock },
                             ...component.releases.map((release) => ({
                               value: release.id,
                               label: withV(release.version),
-                              color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+                              color: release.status === "released" ? "var(--ink-green)" : "var(--ink-violet)",
                               icon: release.status === "released" ? CircleCheck : Clock,
                             })),
                           ]}
@@ -522,11 +522,11 @@ export function ConnectedComponents({
                       value={versions[component.id] || ""}
                       onChange={(value) => void saveVersion(component.id, value)}
                       options={[
-                        { value: "", label: "Not pinned", color: "#0071E3", icon: Clock },
+                        { value: "", label: "Not pinned", color: "var(--ink-bright-blue)", icon: Clock },
                         ...component.releases.map((release) => ({
                           value: release.id,
                           label: withV(release.version),
-                          color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+                          color: release.status === "released" ? "var(--ink-green)" : "var(--ink-violet)",
                           icon: release.status === "released" ? CircleCheck : Clock,
                         })),
                       ]}

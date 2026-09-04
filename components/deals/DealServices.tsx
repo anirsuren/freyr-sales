@@ -4,6 +4,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { OfferingIcon, offeringMark } from "@/components/ui/OfferingIcon";
 import type { RecommendedService } from "@/lib/types";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    RECOMMENDED SERVICES.
@@ -97,7 +98,7 @@ export function DealServices({
                   {isThisDeal && (
                     <span
                       className="mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                      style={{ background: `${color}1A`, color }}
+                      style={{ background: tint(color, 10), color }}
                     >
                       <Sparkle size={10} strokeWidth={2.4} />
                       This deal
@@ -118,7 +119,7 @@ export function DealServices({
                 <span className="block w-full">
                   <span
                     className="block h-2 w-full overflow-hidden rounded-full"
-                    style={{ background: `${color}1F` }}
+                    style={{ background: tint(color, 12) }}
                   >
                     <span
                       className="chart-grow-x block h-full rounded-full"
@@ -146,7 +147,7 @@ export function DealServices({
                     >
                       <span
                         className="mt-[1px] flex h-4 w-4 shrink-0 items-center justify-center rounded"
-                        style={{ background: `${color}1A`, color }}
+                        style={{ background: tint(color, 10), color }}
                       >
                         <r.Icon size={10} strokeWidth={2.3} />
                       </span>
@@ -167,7 +168,7 @@ export function DealServices({
                     <span
                       key={p}
                       className="inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium"
-                      style={{ background: `${color}14`, color }}
+                      style={{ background: tint(color, 8), color }}
                     >
                       {p}
                     </span>

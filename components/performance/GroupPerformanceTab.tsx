@@ -293,7 +293,7 @@ export function GroupPerformanceTab({
                   <Crown
                     size={11}
                     strokeWidth={2.6}
-                    className="text-[color:#7C3AED]"
+                    className="text-[color:var(--ink-violet-soft)]"
                     aria-label="You own this group"
                   />
                 )}
@@ -310,7 +310,7 @@ export function GroupPerformanceTab({
                   size={10}
                   strokeWidth={2.8}
                   aria-label="Group owner"
-                  className="shrink-0 text-[color:#7C3AED]"
+                  className="shrink-0 text-[color:var(--ink-violet-soft)]"
                 />
                 <span className="shrink-0 text-text-tertiary">
                   · {count} {count === 1 ? "person" : "people"}
@@ -396,7 +396,7 @@ export function GroupPerformanceTab({
         noun: "goals in this group",
         picker,
         jumps,
-        accent: "#0F766E",
+        accent: "var(--ink-teal-deep)",
         exportLabel: `group-${group?.name ?? "all"}`,
         // Every heading names the group, so this screen can never be mistaken
         // for Org or People (Anir, Aug 15: "they have to know which one
@@ -591,7 +591,7 @@ export function GroupPerformanceTab({
                       {goalsLine}
                     </span>
                     {owner && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[9.5px] font-semibold text-[color:#7C3AED]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[9.5px] font-semibold text-[color:var(--ink-violet-soft)]">
                         <Crown size={9} strokeWidth={2.6} />
                         Owner
                       </span>
@@ -616,7 +616,7 @@ export function GroupPerformanceTab({
                         <Crown
                           size={11}
                           strokeWidth={2.6}
-                          className="shrink-0 text-[color:#7C3AED]"
+                          className="shrink-0 text-[color:var(--ink-violet-soft)]"
                           aria-label="Group owner"
                         />
                       )}
@@ -644,7 +644,7 @@ export function GroupPerformanceTab({
                     </span>
                   </span>
                   {owner && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)]">
                       <Crown size={9} strokeWidth={2.6} />
                       Group owner
                     </span>

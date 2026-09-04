@@ -374,9 +374,9 @@ export function RecordingsWorkspace() {
               value={sortBy}
               onChange={(v) => setSortBy(v as typeof sortBy)}
               options={[
-                { value: "recent", label: "Recent", icon: CalendarClock, color: "#0F766E" },
-                { value: "score", label: "Top score", icon: Trophy, color: "#7C3AED" },
-                { value: "duration", label: "Longest", icon: Timer, color: "#0071E3" },
+                { value: "recent", label: "Recent", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+                { value: "score", label: "Top score", icon: Trophy, color: "var(--ink-violet-soft)" },
+                { value: "duration", label: "Longest", icon: Timer, color: "var(--ink-bright-blue)" },
               ]}
             />
           </div>
@@ -663,8 +663,8 @@ export function RecordingsWorkspace() {
                           className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap"
                           style={
                             l.speaker === "Freyr"
-                              ? { background: "rgba(0,113,227,0.12)", color: "#0040A0" }
-                              : { background: "rgba(15,158,142,0.14)", color: "#0F766E" }
+                              ? { background: "rgba(0,113,227,0.12)", color: "var(--ink-blue)" }
+                              : { background: "rgba(15,158,142,0.14)", color: "var(--ink-teal-deep)" }
                           }
                         >
                           <Avatar
@@ -764,7 +764,7 @@ export function RecordingsWorkspace() {
               {rec.keyMoments.map((m, i) => {
                 // "warn" moment marker: burnt orange, not amber — a yellow dot on
                 // the white timeline rail all but disappeared.
-                const c = m.tone === "good" ? "#34C759" : m.tone === "warn" ? "#C2410C" : "#8E8E93";
+                const c = m.tone === "good" ? "#34C759" : m.tone === "warn" ? "var(--ink-orange)" : "#8E8E93";
                 return (
                   <button
                     key={i}
@@ -814,7 +814,7 @@ export function RecordingsWorkspace() {
                         id: "score",
                         label: "Score",
                         value: rec.score,
-                        color: "#0071E3",
+                        color: "var(--ink-bright-blue)",
                       },
                       {
                         id: "gap",
@@ -857,7 +857,7 @@ export function RecordingsWorkspace() {
                 <div className="flex flex-col items-center">
                   <DonutChart
                     segments={[
-                      { label: "Score", value: rec.score, color: "#0071E3" },
+                      { label: "Score", value: rec.score, color: "var(--ink-bright-blue)" },
                       {
                         label: "Gap",
                         value: 100 - rec.score,

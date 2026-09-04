@@ -60,7 +60,7 @@ export function emailTemplates(): EmailTemplate[] {
       name: "Remind an offering owner",
       hint: "Their offering's shelf, folder by folder, and what has gone stale.",
       icon: FolderOpen,
-      color: "#B45309",
+      color: "var(--ink-amber)",
       perOwner: true,
       subject: "Your offering needs a refresh",
       body: "",
@@ -70,7 +70,7 @@ export function emailTemplates(): EmailTemplate[] {
       name: "Announce a new offering",
       hint: "Tell the team something new is in the catalogue and ready to sell.",
       icon: Megaphone,
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       subject: "New in the catalogue: [offering name]",
       body: `<p>Hi all,</p>
 <p><b>[Offering name]</b> is now in the catalogue and ready to take to customers.</p>
@@ -85,7 +85,7 @@ export function emailTemplates(): EmailTemplate[] {
       name: "Ask for a pipeline update",
       hint: "A nudge to bring deals up to date before a review.",
       icon: TrendingUp,
-      color: "#7C3AED",
+      color: "var(--ink-violet-soft)",
       subject: "Bring your pipeline up to date before [day]",
       body: `<p>Hi,</p>
 <p>We are reviewing the pipeline on <b>[day]</b>. Before then, please make sure your

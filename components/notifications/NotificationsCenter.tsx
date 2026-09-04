@@ -53,7 +53,7 @@ const URGENCY_TILES: {
     urgency: "overdue",
     label: "Overdue",
     icon: AlarmClock,
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     sub: "past their date",
     empty: "nothing late",
   },
@@ -61,7 +61,7 @@ const URGENCY_TILES: {
     urgency: "today",
     label: "Today",
     icon: Clock3,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     sub: "due today",
     empty: "nothing due today",
   },
@@ -69,7 +69,7 @@ const URGENCY_TILES: {
     urgency: "week",
     label: "This week",
     icon: CalendarDays,
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     sub: "in the next few days",
     empty: "clear this week",
   },
@@ -77,7 +77,7 @@ const URGENCY_TILES: {
     urgency: "later",
     label: "Later",
     icon: Inbox,
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     sub: "no date pressing",
     empty: "nothing queued",
   },
@@ -198,12 +198,12 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
             instead of two bordered boxes from an older era of this app. */}
         <PageTabs
           tabs={[
-            { key: "all", label: `All (${items.length})`, icon: Inbox, color: "#0071E3" },
+            { key: "all", label: `All (${items.length})`, icon: Inbox, color: "var(--ink-bright-blue)" },
             {
               key: "unread",
               label: `Unread (${unreadCount})`,
               icon: BellDot,
-              color: "#C2410C",
+              color: "var(--ink-orange)",
             },
           ]}
           active={filter}

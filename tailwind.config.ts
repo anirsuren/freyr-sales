@@ -33,7 +33,10 @@ const config: Config = {
           primary: "#1D1D1F",
           secondary: "#6E6E73",
           // darkened from #AEAEB2 for WCAG AA contrast on white (#98)
-          tertiary: "#8A8A8E",
+          /* Was #8A8A8E, which read 3.44:1 on white and 3.29:1 on the
+             surface — under the 4.5:1 floor at the 11-13px this is used at
+             (Anir, Sep 4). #6E6E73 is the same quiet grey, one step darker. */
+          tertiary: "#6E6E73",
         },
         success: "#34C759",
         // Burnt orange, not amber. `text-warning` is used as chip TEXT on

@@ -40,6 +40,7 @@ import {
 import { getDataMode } from "@/lib/dataMode";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getCurrentUser } from "@/lib/currentUser";
+import { tint } from "@/lib/tint";
 
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
@@ -485,7 +486,7 @@ export default async function ForecastPage() {
                                 <div
                                   className="chart-bar h-full w-full rounded-t-lg flex items-end justify-center"
                                   style={{
-                                    background: `${color}33`,
+                                    background: tint(color, 20),
                                     animationDelay: `${i * 70}ms`,
                                   }}
                                 >
@@ -787,7 +788,7 @@ export default async function ForecastPage() {
                     className="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold"
                     style={{
                       color: STAGE_COLOR[deal.stage],
-                      background: `${STAGE_COLOR[deal.stage]}14`,
+                      background: tint(STAGE_COLOR[deal.stage], 8),
                     }}
                   >
                     {/* The stage's own glyph, not a bullet — a category chip
@@ -835,7 +836,7 @@ export default async function ForecastPage() {
                     </span>
                     <span
                       className="mt-0.5 block text-[9.5px] font-medium"
-                      style={{ color: stale ? "#C2410C" : "#1A7A35" }}
+                      style={{ color: stale ? "var(--ink-orange)" : "var(--ink-green)" }}
                     >
                       {stale ? `${deal.staleDays} days stale` : "Recently active"}
                     </span>
@@ -877,7 +878,7 @@ export default async function ForecastPage() {
                 label: "Commit confidence",
                 value: forecastConfidence,
                 detail: "The realistic number as a share of the full open value",
-                color: "#0071E3",
+                color: "var(--ink-bright-blue)",
               },
               {
                 label: "Late-stage share",
@@ -889,7 +890,7 @@ export default async function ForecastPage() {
                 label: "Top-three concentration",
                 value: concentrationPct,
                 detail: "Commit carried by three deals",
-                color: "#C2410C",
+                color: "var(--ink-orange)",
               },
             ].map((signal) => (
               <div key={signal.label}>
@@ -909,7 +910,7 @@ export default async function ForecastPage() {
           </div>
 
           <div className="mt-5 flex gap-2.5 border-t border-border-light pt-4">
-            <ShieldAlert size={15} className="mt-0.5 shrink-0" style={{ color: "#C2410C" }} />
+            <ShieldAlert size={15} className="mt-0.5 shrink-0" style={{ color: "var(--ink-orange)" }} />
             <p className="text-[10.5px] leading-relaxed text-text-secondary">
               <span className="font-semibold text-text-primary">{formatMoney(gap)} remains to quota.</span>{" "}
               {staleOpen.length > 0

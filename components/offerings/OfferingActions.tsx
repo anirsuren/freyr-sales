@@ -186,7 +186,7 @@ export function OfferingActions({
                 >
                   {added ? (
                     <div className="flex items-center gap-2.5 px-4 py-5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(52,199,89,0.14)] text-[#1A7A35]">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(52,199,89,0.14)] text-[var(--ink-green)]">
                         <Check size={16} strokeWidth={2.6} />
                       </span>
                       <p className="text-[13px] leading-snug text-text-primary">

@@ -49,6 +49,7 @@ import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
 import { cn, formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
+import { tint } from "@/lib/tint";
 
 export type MaterialRow = {
   material: OfferingMaterial;
@@ -177,6 +178,12 @@ export function AllMaterialsBrowser({
      under six offerings meant a rep landed in the middle of a list instead of
      on a menu of it. */
   const [openOfferings, setOpenOfferings] = useState<Set<string>>(new Set());
+  /** Groups the reader has deliberately SHUT while a filter is on. Filtering
+   *  opens every match; this remembers the ones they closed again, so the
+   *  toggle still works instead of springing back open. */
+  const [openClosedWhileFiltering, setClosedWhileFiltering] = useState<Set<string>>(
+    new Set()
+  );
 
   const ordered = useMemo(() => {
     const arr = [...visible];
@@ -243,7 +250,7 @@ export function AllMaterialsBrowser({
    * ONE horizontal scroller, so they move together and align by construction.
    */
 const TABLE_CLASS =
-    "w-full min-w-[1710px] table-fixed border-collapse text-[13px]";
+    "w-full min-w-[1790px] table-fixed border-collapse text-[13px]";
 
   const clearAll = () => {
     setQuery("");
@@ -406,7 +413,7 @@ const TABLE_CLASS =
                         )}
                         style={{
                           color: ACCESS_LEVEL_META[level].color,
-                          background: `${ACCESS_LEVEL_META[level].color}14`,
+                          background: tint(ACCESS_LEVEL_META[level].color, 8),
                         }}
                       >
                         {ACCESS_LEVEL_META[level].label}
@@ -448,7 +455,7 @@ const TABLE_CLASS =
                               key={d}
                               title={meta.label}
                               className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                              style={{ color: meta.color, background: `${meta.color}14` }}
+                              style={{ color: meta.color, background: tint(meta.color, 8) }}
                             >
                               {meta.short}
                             </span>
@@ -584,12 +591,12 @@ const TABLE_CLASS =
                   files was uploaded? Here only, specifically when we are
                   trying to access the sales material through the sidebar").
                   The offering's own tab is deliberately untouched. */}
-              <th className="w-[105px] px-3 py-2.5">Upload date</th>
+              <th className="w-[160px] px-3 py-2.5">Upload date</th>
               {/* ACTIONS, AND LEFT (Anir, Aug 25: "the last column has to be
                   actions, and it has to be aligned left"). "Open" named one of
                   the two buttons under it and centred them, so the header sat
                   over the gap between them. */}
-              <th className="w-[95px] px-3 py-2.5">Actions</th>
+              <th className="w-[120px] px-3 py-2.5">Actions</th>
             </tr>
           </thead>
   );
@@ -710,13 +717,24 @@ const TABLE_CLASS =
           {sort === "offering" && offeringGroups.length > 0 && (
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                /* Filtering flips what the sets mean, so the one button has to
+                   flip with them: closing all while filtered means recording
+                   every visible group as shut. */
+                if (anyFilter) {
+                  setClosedWhileFiltering(
+                    openClosedWhileFiltering.size > 0
+                      ? new Set()
+                      : new Set(offeringGroups.map((g) => g.id))
+                  );
+                  return;
+                }
                 setOpenOfferings(
                   openOfferings.size > 0
                     ? new Set()
                     : new Set(offeringGroups.map((g) => g.id))
-                )
-              }
+                );
+              }}
               className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
             >
               <ChevronDown
@@ -724,10 +742,18 @@ const TABLE_CLASS =
                 strokeWidth={2.3}
                 className={cn(
                   "transition-transform",
-                  openOfferings.size === 0 && "-rotate-90"
+                  (anyFilter
+                    ? openClosedWhileFiltering.size >= offeringGroups.length
+                    : openOfferings.size === 0) && "-rotate-90"
                 )}
               />
-              {openOfferings.size > 0 ? "Close all" : "Open all"}
+              {(
+                anyFilter
+                  ? openClosedWhileFiltering.size < offeringGroups.length
+                  : openOfferings.size > 0
+              )
+                ? "Close all"
+                : "Open all"}
             </button>
           )}
           <ColorSelect
@@ -739,16 +765,16 @@ const TABLE_CLASS =
             collapsible={false}
             className="w-[150px] shrink-0"
             options={[
-              { value: "offering", label: "By offering", color: "#0071E3", icon: SortLayers },
-              { value: "name", label: "Name (A, Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "offering", label: "By offering", color: "var(--ink-bright-blue)", icon: SortLayers },
+              { value: "name", label: "Name (A, Z)", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
               { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
-              { value: "recent", label: "Newest first", color: "#C2410C", icon: Clock3 },
+              { value: "recent", label: "Newest first", color: "var(--ink-orange)", icon: Clock3 },
               /* Sorting by the column that was just added (Anir, Aug 26: "when
                  that is done, you can also add a sorting by that, so sort by
                  upload date"). Oldest-first is the useful half of the pair:
                  newest already exists above, and the question this page gets
                  asked is which material has gone stale. */
-              { value: "oldest", label: "Oldest upload", color: "#B45309", icon: Clock3 },
+              { value: "oldest", label: "Oldest upload", color: "var(--ink-amber)", icon: Clock3 },
             ]}
           />
         </div>
@@ -776,9 +802,20 @@ const TABLE_CLASS =
            width as a NUMBER — max-content sizing would let one long one-line
            description stretch the whole run off the screen. */
         <div className="mt-4 overflow-x-auto pb-1">
-          <div className="space-y-6 [&>div]:min-w-[1710px]">
+          <div className="space-y-6 [&>div]:min-w-[1790px]">
           {offeringGroups.map((group) => {
-            const shut = !openOfferings.has(group.id);
+            /* A SEARCH THAT FINDS ONE FILE SHOULD SHOW YOU THE FILE.
+               Collapsed-on-arrival is right when you are browsing all
+               forty-six; it is wrong the moment you have typed a name, because
+               then the answer is "1 of 46" and one more click on a group you
+               did not choose to close (Anir, Sep 4, having searched "kenvue":
+               "when I search something up, you have to actually expand it").
+               Filtering already decided which groups survive, so every
+               survivor is a match — open them, and leave the manual toggle
+               above still able to close one. */
+            const shut = anyFilter
+              ? openClosedWhileFiltering.has(group.id)
+              : !openOfferings.has(group.id);
             return (
               <div
                 key={group.id}
@@ -800,14 +837,27 @@ const TABLE_CLASS =
               >
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    /* While filtering, open is the default, so the toggle
+                       records what was CLOSED. Two sets rather than one
+                       inverted flag: leaving the filter has to restore the
+                       browsing state exactly as it was left. */
+                    if (anyFilter) {
+                      setClosedWhileFiltering((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.id)) next.delete(group.id);
+                        else next.add(group.id);
+                        return next;
+                      });
+                      return;
+                    }
                     setOpenOfferings((current) => {
                       const next = new Set(current);
                       if (next.has(group.id)) next.delete(group.id);
                       else next.add(group.id);
                       return next;
-                    })
-                  }
+                    });
+                  }}
                   aria-expanded={!shut}
                   className={cn(
                     "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",

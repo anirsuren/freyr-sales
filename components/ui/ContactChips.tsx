@@ -2,6 +2,7 @@ import { Mail, Phone } from "lucide-react";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * EVERY WAY TO REACH ONE PERSON, AS A ROW OF FLOATING CHIPS.
@@ -23,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 // Brand and channel accents. Blue-family only, kept clear of status hues.
 const EMAIL = "#2563EB"; // blue
-const PHONE = "#7C3AED"; // violet
+const PHONE = "var(--ink-violet-soft)"; // violet
 const TEAMS = "#5059C9"; // Microsoft Teams purple
 const LINKEDIN = "#0A66C2"; // LinkedIn blue
 
@@ -42,7 +43,7 @@ function Chip({
     <span
       // 1A ≈ 10% alpha — the same tint AttributeTag uses, so a chip reads the
       // same way in both themes without a second set of dark-mode classes.
-      style={{ color: accent, background: `${accent}1A` }}
+      style={{ color: accent, background: tint(accent, 10) }}
       className={cn(
         "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-[3px] text-[11px] font-semibold",
         className

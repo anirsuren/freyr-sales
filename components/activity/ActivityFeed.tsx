@@ -27,6 +27,7 @@ import {
   OUTCOME_CHART_COLOR,
   OUTCOME_META,
 } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 export type ActivityItem = {
   id: string;
@@ -258,7 +259,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
       value: String(items.length),
       context: "total touches",
       icon: MessageSquareText,
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       bg: "#EAF4FF",
     },
     {
@@ -274,7 +275,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
       value: String(meetings),
       context: "booked",
       icon: UsersRound,
-      color: "#6D28D9",
+      color: "var(--ink-violet)",
       bg: "#F3EEFF",
     },
     {
@@ -465,9 +466,9 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                     color: selected
                       ? "#FFFFFF"
                       : OUTCOME_META[key]?.color || accent,
-                    background: selected ? accent : `${accent}1A`,
-                    borderColor: selected ? accent : `${accent}55`,
-                    boxShadow: selected ? `0 2px 8px ${accent}33` : undefined,
+                    background: selected ? accent : tint(accent, 10),
+                    borderColor: selected ? accent : `${tint(accent, 33)}`,
+                    boxShadow: selected ? `0 2px 8px ${tint(accent, 20)}` : undefined,
                   }}
                 >
                   {selected ? (
@@ -611,7 +612,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                             style={
                               {
                                 "--semantic-color": meta?.color || accent,
-                                "--semantic-bg": meta?.bg || `${accent}1A`,
+                                "--semantic-bg": meta?.bg || tint(accent, 10),
                               } as CSSProperties
                             }
                           >

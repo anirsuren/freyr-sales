@@ -12,6 +12,7 @@ import {
   UploadCloud,
   type LucideIcon,
 } from "lucide-react";
+import { tint } from "@/lib/tint";
 
 /**
  * ATTACH DOCUMENTS TO THE THING YOU ARE CREATING.
@@ -45,7 +46,7 @@ const KINDS: { match: RegExp; color: string; icon: LucideIcon }[] = [
 
 function kindOf(name: string) {
   return (
-    KINDS.find((k) => k.match.test(name)) ?? { color: "#0071E3", icon: File }
+    KINDS.find((k) => k.match.test(name)) ?? { color: "var(--ink-bright-blue)", icon: File }
   );
 }
 
@@ -202,7 +203,7 @@ export function DocumentDrop({
                 <div key={d.key} className="flex items-center gap-2.5 px-1.5 py-1.5">
                   <span
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                    style={{ background: `${meta.color}14`, color: meta.color }}
+                    style={{ background: tint(meta.color, 8), color: meta.color }}
                   >
                     <Icon size={13} strokeWidth={2} />
                   </span>

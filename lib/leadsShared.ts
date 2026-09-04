@@ -112,22 +112,22 @@ export function leadStatusColor(status: LeadStatus): string {
     : status === "Disqualified"
       ? "#DC2626"
       : status === "Qualifying"
-        ? "#0071E3"
+        ? "var(--ink-bright-blue)"
         : status === "Contacted"
           ? "#0891B2"
           : status === "Nurturing"
-            ? "#7C3AED"
+            ? "var(--ink-violet-soft)"
             : "#4338CA";
 }
 
 export function leadSourceColor(source: LeadSource): string {
   const map: Record<LeadSource, string> = {
-    Website: "#0071E3",
-    Conference: "#B4318F",
-    Referral: "#0F766E",
-    Campaign: "#7C3AED",
+    Website: "var(--ink-bright-blue)",
+    Conference: "var(--ink-magenta)",
+    Referral: "var(--ink-teal-deep)",
+    Campaign: "var(--ink-violet-soft)",
     "Inbound email": "#0891B2",
-    Partner: "#C2410C",
+    Partner: "var(--ink-orange)",
     Outbound: "#4338CA",
     Other: "#8E98A8",
   };

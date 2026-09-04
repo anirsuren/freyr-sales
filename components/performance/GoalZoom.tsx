@@ -57,6 +57,7 @@ import { EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
 import type { RunOp } from "./PerformanceModule";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE GOAL DONE PROPERLY — the screen Suren approved on Aug 13: the composite
@@ -105,18 +106,18 @@ const RAIL_MAX = 900;
 const COMPONENT_META: Record<string, { icon: string; color: string; blurb: string }> = {
   "pg-org-booked-new": {
     icon: "🚀",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     blurb: "Brand-new customers signing their first contract.",
   },
   "pg-org-booked-existing": {
     icon: "📈",
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     blurb:
       "A current customer adding a new service. The expansion signal: they see more in us.",
   },
   "pg-org-renewals": {
     icon: "🔁",
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     blurb:
       "Contracts ending their term and signing again. The customer-is-happy signal.",
   },
@@ -181,10 +182,10 @@ function inRange(a: PerfActual, [s, e]: [number, number]): boolean {
 /** A mark per window size, widest to narrowest. */
 const GRAN_META: Record<Granularity, { color: string; icon: typeof CalendarDays }> = {
   weeks: { color: "#0891B2", icon: CalendarRange },
-  months: { color: "#0071E3", icon: CalendarDays },
-  quarters: { color: "#7C3AED", icon: CalendarClock },
-  halves: { color: "#B4318F", icon: CalendarCheck },
-  years: { color: "#0F766E", icon: CalendarFold },
+  months: { color: "var(--ink-bright-blue)", icon: CalendarDays },
+  quarters: { color: "var(--ink-violet-soft)", icon: CalendarClock },
+  halves: { color: "var(--ink-magenta)", icon: CalendarCheck },
+  years: { color: "var(--ink-teal-deep)", icon: CalendarFold },
 };
 
 /**
@@ -760,7 +761,7 @@ export function GoalZoom({
       <div className="flex items-start gap-3">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: `${meta.color}1F`, color: meta.color }}
+          style={{ background: tint(meta.color, 12), color: meta.color }}
         >
           <meta.icon size={20} strokeWidth={2} />
         </span>
@@ -874,7 +875,7 @@ export function GoalZoom({
                       "flex h-8 w-8 items-center justify-center rounded-lg text-[15px]",
                       away && "grayscale opacity-60"
                     )}
-                    style={{ background: `${cColor}1F`, color: cColor }}
+                    style={{ background: tint(cColor, 12), color: cColor }}
                   >
                     {cm ? (
                       cm.icon
@@ -911,7 +912,7 @@ export function GoalZoom({
                 <p className="mt-2.5 text-[21px] font-extrabold tnum">
                   {fmtAmount(c.unit, cVerified)}
                   {cAwaiting > 0 && (
-                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:#0058B0] tnum">
+                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:var(--ink-blue-soft)] tnum">
                       +{fmtAmount(c.unit, cAwaiting)} waiting
                     </span>
                   )}
@@ -1217,7 +1218,7 @@ export function GoalZoom({
                         {opp ? (
                           <>
                             {opp.status && (
-                              <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-1.5 py-0.5 font-bold text-[color:#0058B0]">
+                              <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-1.5 py-0.5 font-bold text-[color:var(--ink-blue-soft)]">
                                 {opp.status}
                               </span>
                             )}
@@ -1784,7 +1785,7 @@ export function GoalZoom({
                                         size={8}
                                         strokeWidth={2.8}
                                         aria-label="Group owner"
-                                        className="ml-1 inline text-[color:#7C3AED]"
+                                        className="ml-1 inline text-[color:var(--ink-violet-soft)]"
                                       />
                                     )}
                                   </span>
@@ -2039,7 +2040,7 @@ export function GoalZoom({
                             /* The SAME owner mark as the Admin page and the
                                group cards: purple with the crown (Anir,
                                Aug 15). It was magenta and crownless here. */
-                            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:#7C3AED]">
+                            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:var(--ink-violet-soft)]">
                               <Crown size={8} strokeWidth={2.8} />
                               owner
                             </span>
@@ -2192,7 +2193,7 @@ export function GoalZoom({
           </b>
           {waiting.length > 0 &&
             pill(
-              "bg-[rgba(0,113,227,0.12)] text-[color:#0058B0]",
+              "bg-[rgba(0,113,227,0.12)] text-[color:var(--ink-blue-soft)]",
               String(waiting.length)
             )}
           <span className="ml-auto text-[10.5px] text-text-tertiary">
@@ -2221,7 +2222,7 @@ export function GoalZoom({
                       return (
                         <span
                           className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                          style={{ background: `${color}1A`, color }}
+                          style={{ background: tint(color, 10), color }}
                         >
                           {cm ? `${cm.icon} ` : ""}
                           {components[ci].name.replace("Booked ", "")}

@@ -137,13 +137,13 @@ export function PasskeySetup() {
           </p>
           {on && setUpAt && (
             <p className="mt-1 text-[11.5px] text-text-tertiary tnum">
-              Set up {setUpAt.toLocaleDateString()}
-              {lastUsedAt ? ` · last used ${lastUsedAt.toLocaleDateString()}` : " · not used yet"}
+              Set up {setUpAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+              {lastUsedAt ? ` · last used ${lastUsedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : " · not used yet"}
             </p>
           )}
         </div>
         {on ? (
-          <div className="text-[color:#DC2626] flex shrink-0 items-center gap-2">
+          <div className="text-[color:var(--status-red)] flex shrink-0 items-center gap-2">
             <Button
               onClick={() => void resetAll()}
               loading={busy}

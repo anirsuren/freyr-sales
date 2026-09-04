@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InfoHint } from "@/components/ui/InfoHint";
 
 /**
  * Shared: the opportunity form's rooms, now the contract form's too
@@ -46,16 +47,23 @@ export function FormRoom({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-xl border border-[rgba(0,113,227,0.16)] bg-[rgba(0,113,227,0.03)] px-3.5 py-3">
+      {/* THE HINT SITS BESIDE THE TOGGLE, NOT INSIDE IT. A question mark is a
+          <button>, the room header is a <button>, and a button inside a button
+          is invalid HTML — React refuses to hydrate it and the whole form
+          falls back to client rendering. Found the moment it shipped. */}
+      <div className="flex w-full items-center gap-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2 text-left"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
       >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
           <Icon size={13} strokeWidth={2.2} aria-hidden="true" />
         </span>
-        <span className="text-[12.5px] font-bold text-text-primary">{title}</span>
+        <span className="shrink-0 text-[12.5px] font-bold text-text-primary">
+          {title}
+        </span>
         <span className="h-px min-w-4 flex-1 bg-[rgba(0,113,227,0.14)]" aria-hidden />
         {!open && summary && (
           <span className="shrink-0 truncate text-[11.5px] font-semibold text-text-secondary">
@@ -72,9 +80,13 @@ export function FormRoom({
           )}
         />
       </button>
+        {/* THE ROOM'S EXPLANATION, one hover away instead of a paragraph
+            printed inside it (Anir, Sep 4: "so much fucking text, bro. If it
+            can be put in a question mark, put it in a question mark"). */}
+        {hint && <InfoHint text={hint} className="shrink-0" />}
+      </div>
       {open && (
         <div className="mt-3 space-y-3">
-          {hint && <p className="text-[11.5px] text-text-secondary">{hint}</p>}
           {children}
         </div>
       )}

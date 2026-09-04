@@ -13,6 +13,7 @@ import { fmtAmount, type GoalUnit } from "@/lib/performanceShared";
 import { CUSTOMER_OFFERING_ACTIVITIES } from "@/lib/customerOfferingHeatMap";
 import type { CustomerOfferingActivity } from "@/lib/types";
 import type { MasterActivity } from "@/lib/activityMasterShared";
+import { tint } from "@/lib/tint";
 
 export type PromptGoal = {
   id: string;
@@ -158,7 +159,7 @@ export function ActivityGoalPrompt({
         You just completed
         <span
           className="rounded-full px-2 py-0.5 text-[11.5px] font-bold"
-          style={{ background: `${color}16`, color }}
+          style={{ background: tint(color, 9), color }}
         >
           {label}
         </span>

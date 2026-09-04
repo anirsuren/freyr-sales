@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ChartInspector } from "@/components/charts/ChartInspector";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { tint } from "@/lib/tint";
 
 type Turn = { role: "agent" | "user"; message: string; time?: number };
 
@@ -56,7 +57,7 @@ export function CallAnalytics({
   outcome,
   agentLabel,
   contactFirst,
-  personaColor = "#0071E3",
+  personaColor = "var(--ink-bright-blue)",
 }: {
   turns: Turn[];
   outcome: string | null;
@@ -93,7 +94,7 @@ export function CallAnalytics({
   // "Neutral" is rendered as text on a 9% tint of this colour, so the middle
   // band is burnt orange rather than amber (banned yellow, Suren Jul 27).
   const overallColor =
-    overall >= 62 ? "#1A7A35" : overall >= 45 ? "#C2410C" : "#B02020";
+    overall >= 62 ? "var(--ink-green)" : overall >= 45 ? "var(--ink-orange)" : "var(--ink-red)";
 
   // Talk ratio (words spoken).
   const words = (arr: Turn[]) =>
@@ -158,7 +159,7 @@ export function CallAnalytics({
   moments.push({
     label: outcome === "interested" || outcome === "meeting_booked" ? "Next step agreed" : "Wrap-up",
     turn: turns.length,
-    color: drift > 0 ? "#1A7A35" : "#64748B",
+    color: drift > 0 ? "var(--ink-green)" : "#64748B",
   });
 
   const TrendIcon = overall >= 62 ? TrendingUp : overall >= 45 ? Minus : TrendingDown;
@@ -190,7 +191,7 @@ export function CallAnalytics({
         style={
           {
             "--semantic-color": overallColor,
-            "--semantic-bg": `${overallColor}18`,
+            "--semantic-bg": tint(overallColor, 9),
           } as CSSProperties
         }
       >
@@ -207,7 +208,7 @@ export function CallAnalytics({
             <Card key={s.label} className="h-[104px] flex flex-col justify-between">
               <span
                 className="w-8 h-8 rounded-md flex items-center justify-center"
-                style={{ color: s.color || "#0071E3", background: `${s.color || "#0071E3"}14` }}
+                style={{ color: s.color || "var(--ink-bright-blue)", background: tint(s.color || "var(--ink-bright-blue)", 8) }}
               >
                 <Icon size={16} strokeWidth={1.9} />
               </span>

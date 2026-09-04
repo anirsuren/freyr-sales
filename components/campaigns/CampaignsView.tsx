@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { Campaign, CampaignObjective } from "@/lib/campaigns";
+import { tint } from "@/lib/tint";
 
 type MiniOffering = { id: string; name: string };
 type MiniContact = {
@@ -51,8 +52,8 @@ const OBJECTIVES: {
   color: string;
   icon: LucideIcon;
 }[] = [
-  { value: "pipeline", label: "Create pipeline", detail: "Start qualified sales conversations.", color: "#0071E3", icon: Target },
-  { value: "awareness", label: "Build awareness", detail: "Introduce an offering to the right market.", color: "#7C3AED", icon: Megaphone },
+  { value: "pipeline", label: "Create pipeline", detail: "Start qualified sales conversations.", color: "var(--ink-bright-blue)", icon: Target },
+  { value: "awareness", label: "Build awareness", detail: "Introduce an offering to the right market.", color: "var(--ink-violet-soft)", icon: Megaphone },
   { value: "event_follow_up", label: "Follow up after an event", detail: "Continue a timely shared conversation.", color: "#EA580C", icon: CalendarClock },
   { value: "expansion", label: "Expand an account", detail: "Reach new stakeholders in existing customers.", color: "#059669", icon: TrendingUp },
 ];
@@ -622,7 +623,7 @@ export function CampaignsView({
                         className="rounded-md border p-3"
                         style={
                           item.color
-                            ? { borderColor: `${item.color}33`, background: `${item.color}0D` }
+                            ? { borderColor: tint(item.color, 20), background: tint(item.color, 5) }
                             : undefined
                         }
                       >
@@ -667,7 +668,7 @@ export function CampaignsView({
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input value={audienceQuery} onChange={(event) => setAudienceQuery(event.target.value)} placeholder="Search people, accounts, titles, or industries..." className="h-9 w-full rounded-md border border-border pl-8 pr-3 text-[12px] outline-none focus:border-blue-primary" />
                   </div>
-                  <MultiColorSelect ariaLabel="Filter campaign audience by role" collapsible={false} minWidth={180} values={roleFilter} onChange={setRoleFilter} allLabel="All roles" allIcon={ListFilter} options={roles.map((role) => ({ value: role, label: role, icon: BadgeCheck, color: "#7C3AED" }))} />
+                  <MultiColorSelect ariaLabel="Filter campaign audience by role" collapsible={false} minWidth={180} values={roleFilter} onChange={setRoleFilter} allLabel="All roles" allIcon={ListFilter} options={roles.map((role) => ({ value: role, label: role, icon: BadgeCheck, color: "var(--ink-violet-soft)" }))} />
                   <button onClick={() => setPicked((current) => visibleAudience.every((contact) => current.has(contact.id)) ? new Set(Array.from(current).filter((id) => !visibleAudience.some((contact) => contact.id === id))) : new Set([...Array.from(current), ...visibleAudience.map((contact) => contact.id)]))} className="h-9 rounded-md border border-border px-3 text-[11.5px] font-semibold text-blue-primary hover:bg-blue-light">
                     {visibleAudience.length && visibleAudience.every((contact) => picked.has(contact.id)) ? "Clear visible" : "Select visible"}
                   </button>

@@ -110,11 +110,11 @@ export function CustomerDigitalComponents({
     // rendered as an ellipsis. The status already has its own colour and glyph
     // in the option, so repeating it in words bought nothing.
     return [
-      { value: "", label: "None yet", color: "#0071E3", icon: Clock },
+      { value: "", label: "None yet", color: "var(--ink-bright-blue)", icon: Clock },
       ...component.releases.map((release) => ({
         value: release.id,
         label: withV(release.version),
-        color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+        color: release.status === "released" ? "var(--ink-green)" : "var(--ink-violet)",
         icon: release.status === "released" ? CircleCheck : Clock,
       })),
     ];
@@ -353,17 +353,17 @@ export function CustomerDigitalComponents({
                           )
                         }
                         options={[
-                          { value: "", label: "Not set", color: "#0071E3", icon: Clock },
+                          { value: "", label: "Not set", color: "var(--ink-bright-blue)", icon: Clock },
                           {
                             value: "released",
                             label: "Released",
-                            color: "#1A7A35",
+                            color: "var(--ink-green)",
                             icon: CircleCheck,
                           },
                           {
                             value: "expected",
                             label: "Expected",
-                            color: "#6D28D9",
+                            color: "var(--ink-violet)",
                             icon: Clock,
                           },
                         ]}
@@ -431,7 +431,7 @@ export function CustomerDigitalComponents({
                       <span className="tnum">Live since {formatDate(live.date)}</span>
                     ))}
                   {behind && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 font-semibold text-[color:#C2410C]">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 font-semibold text-[color:var(--ink-orange)]">
                       <Rocket size={10} strokeWidth={2.4} /> {latest} is out
                     </span>
                   )}

@@ -21,6 +21,7 @@ import { Modal } from "@/components/ui/Modal";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { useToast } from "@/components/ui/Toast";
 import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
+import { tint } from "@/lib/tint";
 
 // Ownership is a category, so Public and Private each get their own colour AND
 // their own icon — never the same gray tile with different words in it (Suren,
@@ -30,7 +31,7 @@ import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
 // clear of the banned yellow band.
 const OWNERSHIP_META: Record<string, { color: string; icon: LucideIcon }> = {
   Public: { color: "#0F9E8E", icon: Landmark },
-  Private: { color: "#7C3AED", icon: Lock },
+  Private: { color: "var(--ink-violet-soft)", icon: Lock },
 };
 
 // The house chip: colour + icon on a 10%-alpha tint of itself, same shape as
@@ -51,7 +52,7 @@ function FactChip({
     <span
       className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-normal break-words text-left"
       // Inline because the colour is a runtime value, not a Tailwind class.
-      style={{ color, background: `${color}1A` }}
+      style={{ color, background: tint(color, 10) }}
       title={`${label}: ${value}`}
     >
       <span className="sr-only">{label}: </span>
@@ -195,7 +196,7 @@ export function CustomerAnalyzePanel({
     <div className="flex items-start gap-2.5">
       <span
         className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ color, background: `${color}14` }}
+        style={{ color, background: tint(color, 8) }}
       >
         <Icon size={15} strokeWidth={1.8} aria-hidden="true" />
       </span>
@@ -418,7 +419,7 @@ export function CustomerAnalyzePanel({
             <Fact
               icon={Layers}
               label="Customer type"
-              color={customerType ? segmentColor(customerType) : "#0071E3"}
+              color={customerType ? segmentColor(customerType) : "var(--ink-bright-blue)"}
             >
               {customerType ? (
                 <FactChip
@@ -450,7 +451,7 @@ export function CustomerAnalyzePanel({
             {/* Revenue is a figure, not a category — it stays a number (tnum so
                 the digits line up), with a tile that matches the chips beside
                 it rather than the old gray square. */}
-            <Fact icon={DollarSign} label="Revenue" color="#1A7A35">
+            <Fact icon={DollarSign} label="Revenue" color="var(--ink-green)">
               {revenue ? (
                 <p className="text-[15px] font-semibold text-text-primary tnum break-words">
                   {revenue}

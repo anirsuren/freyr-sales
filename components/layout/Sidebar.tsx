@@ -152,6 +152,12 @@ export function Sidebar({
         className={cn(
           "flex items-center gap-3 py-1.5 rounded-md text-[14px] border-l-[3px] transition-colors",
           collapsed ? "justify-center px-0" : "pl-3 pr-3",
+          /* AGENT IS NOT ONE OF THE MODULES (Anir, Sep 4: "when you say Agent,
+             you have to bold it or something, make it stand out a little bit
+             more"). It sits above every heading because it is the way IN to
+             all of them, and drawn at the same weight as Leads or Contracts it
+             read as the first item of a list it does not belong to. */
+          item.href === "/agent" && !active && "font-semibold text-text-primary",
           active
             ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
             : "border-transparent text-text-secondary hover:bg-surface"
@@ -320,8 +326,39 @@ export function Sidebar({
       {/* Nav */}
       <nav aria-label="Primary" className="flex-1 px-3 overflow-y-auto">
         <div className="space-y-0.5">
-          {navItems.map((item) => (
+          {navItems.map((item, i) => (
             <Fragment key={item.href}>
+              {/* THE GROUP HEADING, drawn once where the section changes
+                  (Anir, Sep 4, with the grouping drawn out). Fourteen items in
+                  one column read as an undifferentiated list; the headings say
+                  what a module is FOR before you read its name.
+
+                  Hidden while the rail is collapsed, where a label over a
+                  column of icons is noise. Agent carries no section, so it
+                  sits above the first heading — which is right, it is not one
+                  of the modules. */}
+              {!collapsed &&
+                item.section &&
+                item.section !== navItems[i - 1]?.section && (
+                  <div className="pt-5 pb-1">
+                    {/* PADDING, NOT MARGIN. The list sets `space-y-0.5`,
+                        which writes a 2px margin-top onto every child after
+                        the first and beat `mt-5` outright — so the headings
+                        sat exactly as close to the item above them as two
+                        items sit to each other, and the grouping stopped
+                        reading. Padding is untouched by that utility. */}
+                    {/* NEVER TWO LINES (Anir, Sep 4: "the categories have to be
+                        on one line. For example, Knowledge and Sales Material
+                        are on two lines"). A wrapped heading reads as a nav
+                        item that lost its icon. `nowrap` guarantees it for any
+                        future label, and the tracking is eased so the longest
+                        one clears the rail's width rather than only just
+                        failing to. */}
+                    <p className="whitespace-nowrap px-3 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      {item.section}
+                    </p>
+                  </div>
+                )}
               {navLink(item)}
               {/* SALES MATERIALS IS A SUBPAGE OF OFFERINGS (Anir, Aug 21, on
                   the call, answering the reps' most repeated ask — "is there a

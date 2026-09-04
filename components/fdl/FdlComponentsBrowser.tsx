@@ -38,19 +38,19 @@ export const FDL_TYPE_META: Record<
   { color: string; bg: string; border: string; Icon: typeof Layers }
 > = {
   Module: {
-    color: "#0040A0",
+    color: "var(--ink-blue)",
     bg: "rgba(0,113,227,0.10)",
     border: "rgba(0,113,227,0.25)",
     Icon: Layers,
   },
   Agent: {
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     bg: "rgba(124,58,237,0.10)",
     border: "rgba(124,58,237,0.25)",
     Icon: Bot,
   },
   Platform: {
-    color: "#0E7490",
+    color: "var(--ink-teal)",
     bg: "rgba(14,116,144,0.10)",
     border: "rgba(14,116,144,0.25)",
     Icon: Server,
@@ -92,20 +92,20 @@ export function versionTone(release: {
 }): VersionTone {
   if (release.current)
     return {
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       bg: "rgba(0,113,227,0.10)",
       border: "rgba(0,113,227,0.28)",
       label: "Current",
     };
   if (release.status === "next")
     return {
-      color: "#6D28D9",
+      color: "var(--ink-violet)",
       bg: "rgba(124,58,237,0.10)",
       border: "rgba(124,58,237,0.28)",
       label: "Expected",
     };
   return {
-    color: "#1A7A35",
+    color: "var(--ink-green)",
     bg: "rgba(26,122,53,0.10)",
     border: "rgba(26,122,53,0.28)",
     label: "Released",
@@ -419,7 +419,7 @@ export function FdlComponentsBrowser({
                 {
                   value: UNCONNECTED,
                   label: "Not in an offering yet",
-                  color: "#6D28D9",
+                  color: "var(--ink-violet)",
                 },
               ],
             },
@@ -429,9 +429,9 @@ export function FdlComponentsBrowser({
               values: stateFilter ? [stateFilter] : [],
               onChange: (next) => setStateFilter(next[next.length - 1] ?? ""),
               options: [
-                { value: "shipping", label: "Has a current version", color: "#1A7A35" },
-                { value: "unreleased", label: "No version yet", color: "#6D28D9" },
-                { value: "next", label: "Next version planned", color: "#0E7490" },
+                { value: "shipping", label: "Has a current version", color: "var(--ink-green)" },
+                { value: "unreleased", label: "No current version", color: "var(--ink-violet)" },
+                { value: "next", label: "Next version planned", color: "var(--ink-teal)" },
               ],
             },
           ]}
@@ -535,12 +535,12 @@ export function FdlComponentsBrowser({
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {current ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-green)]">
                         <CircleCheck size={11} strokeWidth={2.2} /> Current {withV(current)}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
-                        <Clock size={11} strokeWidth={2.2} /> No version yet
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet)]">
+                        <Clock size={11} strokeWidth={2.2} /> No current version
                       </span>
                     )}
                   </div>
@@ -684,7 +684,7 @@ export function FdlComponentsBrowser({
                               <CircleCheck size={11} strokeWidth={2.2} /> {withV(current)}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet)]">
                               <Clock size={11} strokeWidth={2.2} /> None yet
                             </span>
                           )}
@@ -789,7 +789,7 @@ export function FdlComponentsBrowser({
                                     // should read as dangerous before you reach
                                     // it (Anir, Aug 9: "the delete button should
                                     // be red, obviously").
-                                    className="text-[color:#DC2626] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                                    className="text-[color:var(--status-red)] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                                   >
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>

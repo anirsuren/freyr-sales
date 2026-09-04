@@ -26,6 +26,7 @@ import {
 } from "@/lib/pipeline";
 import type { RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
+import { tint } from "@/lib/tint";
 
 export const metadata = { title: "Deal" };
 export const dynamic = "force-dynamic";
@@ -203,7 +204,7 @@ export default async function DealDetailPage({
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
                 style={{
-                  background: `${STAGE_COLOR[stage]}1A`,
+                  background: tint(STAGE_COLOR[stage], 10),
                   color: STAGE_COLOR[stage],
                 }}
               >

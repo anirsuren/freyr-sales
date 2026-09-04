@@ -118,14 +118,16 @@ function normalizeLine(v: unknown): AccrualLine | null {
   if (!m) return null;
   const ots = r.ots === undefined ? undefined : num(r.ots);
   const arr = r.arr === undefined ? undefined : num(r.arr);
+  const mrr = r.mrr === undefined ? undefined : num(r.mrr);
   /* A split, when present, IS the total — so a plan cannot store a total that
-     disagrees with the two numbers a person typed underneath it. */
-  const split = ots !== undefined || arr !== undefined;
+     disagrees with the numbers a person typed underneath it. */
+  const split = ots !== undefined || arr !== undefined || mrr !== undefined;
   return {
     month: m,
-    amount: split ? (ots ?? 0) + (arr ?? 0) : num(r.amount),
+    amount: split ? (ots ?? 0) + (arr ?? 0) + (mrr ?? 0) : num(r.amount),
     ...(ots === undefined ? {} : { ots }),
     ...(arr === undefined ? {} : { arr }),
+    ...(mrr === undefined ? {} : { mrr }),
   };
 }
 
@@ -151,6 +153,9 @@ function dedupeLines(raw: unknown): AccrualLine[] {
             ...(existing.arr === undefined && line.arr === undefined
               ? {}
               : { arr: (existing.arr ?? 0) + (line.arr ?? 0) }),
+            ...(existing.mrr === undefined && line.mrr === undefined
+              ? {}
+              : { mrr: (existing.mrr ?? 0) + (line.mrr ?? 0) }),
           }
         : line
     );
@@ -210,7 +215,7 @@ function normalizePlan(v: unknown): AccrualPlan | null {
 
   const stored = dedupeLines(r.lines);
   /* `lines` MIRRORS THE LATEST ACTIVE VERSION, enforced here the same way
-     amount = ots + arr is enforced above, so the report, the editor and the
+     amount = ots + arr + mrr is enforced above, so the report, the editor and the
      history can never be reading three different sets of months (Suren, Sep 1:
      "when the user enters, it's always whichever is the latest active
      version").

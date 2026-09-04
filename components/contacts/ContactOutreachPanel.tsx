@@ -260,7 +260,7 @@ export function ContactOutreachPanel({
                   value: o.id,
                   label: o.name,
                   icon: Package,
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                   // The match strength rides as a badge instead of being glued
                   // into the label text.
                   badge: o.score >= 2 ? "Strong match" : undefined,

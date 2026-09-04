@@ -20,6 +20,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 type ReviewTask = {
   id: string;
@@ -69,11 +70,11 @@ const DUE_STYLE: Record<
   { cls: string; icon: typeof AlertTriangle }
 > = {
   overdue: { cls: "bg-red-50 text-red-700", icon: AlertTriangle },
-  today: { cls: "bg-[#C2410C]/10 text-[#C2410C]", icon: AlarmClock },
+  today: { cls: "bg-[#C2410C]/10 text-[var(--ink-orange)]", icon: AlarmClock },
   tomorrow: { cls: "bg-blue-light text-blue-primary", icon: Timer },
   week: { cls: "bg-emerald-50 text-emerald-700", icon: CalendarClock },
   later: { cls: "bg-violet-50 text-violet-700", icon: CalendarDays },
-  review: { cls: "bg-[#C2410C]/10 text-[#C2410C]", icon: ClipboardCheck },
+  review: { cls: "bg-[#C2410C]/10 text-[var(--ink-orange)]", icon: ClipboardCheck },
 };
 
 export function TasksWorkspace({
@@ -176,10 +177,10 @@ export function TasksWorkspace({
     color: string;
     icon: typeof Inbox;
   }[] = [
-    { key: "all", label: "All", count: queue.length, color: "#0071E3", icon: Inbox },
-    { key: "review", label: "Reviews", count: reviewTasks.length, color: "#6D28D9", icon: ClipboardCheck },
+    { key: "all", label: "All", count: queue.length, color: "var(--ink-bright-blue)", icon: Inbox },
+    { key: "review", label: "Reviews", count: reviewTasks.length, color: "var(--ink-violet)", icon: ClipboardCheck },
     { key: "followup", label: "Follow-ups", count: followUps.length, color: "#047857", icon: CalendarClock },
-    { key: "overdue", label: "Overdue", count: overdue, color: "#B02020", icon: AlertTriangle },
+    { key: "overdue", label: "Overdue", count: overdue, color: "var(--ink-red)", icon: AlertTriangle },
   ];
 
   return (
@@ -239,8 +240,8 @@ export function TasksWorkspace({
                     style={
                       on
                         ? {
-                            background: `${item.color}14`,
-                            borderColor: `${item.color}59`,
+                            background: tint(item.color, 8),
+                            borderColor: tint(item.color, 35),
                             color: item.color,
                           }
                         : undefined
@@ -261,7 +262,7 @@ export function TasksWorkspace({
                     <span
                       className="tnum rounded-full px-1.5 py-px text-[11px] font-bold"
                       style={{
-                        background: on ? `${item.color}1F` : "rgba(0,0,0,0.05)",
+                        background: on ? tint(item.color, 12) : "rgba(0,0,0,0.05)",
                         color: on ? item.color : undefined,
                       }}
                     >

@@ -211,7 +211,7 @@ export function EditableFact({
           <p className="truncate text-[11px] leading-4 text-text-tertiary">{hint}</p>
         )}
         {error && !editing && (
-          <p className="text-[11px] font-semibold text-[color:#DC2626]">{error}</p>
+          <p className="text-[11px] font-semibold text-[color:var(--status-red)]">{error}</p>
         )}
         {asDialog && editing && (
           <Modal
@@ -360,7 +360,7 @@ export function EditableFact({
               onClick={() => void commit()}
               disabled={busy}
               aria-label={`Save ${label}`}
-              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:#1A7A35] transition-colors hover:bg-[rgba(26,122,53,0.10)]"
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-green)] transition-colors hover:bg-[rgba(26,122,53,0.10)]"
             >
               {busy ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -415,7 +415,7 @@ export function EditableFact({
         )}
       </div>
       {error && (
-        <p className="mt-1 text-right text-[11px] font-semibold text-[color:#DC2626]">
+        <p className="mt-1 text-right text-[11px] font-semibold text-[color:var(--status-red)]">
           {error}
         </p>
       )}

@@ -13,6 +13,7 @@ import { SizeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { daysLabel, daysSince } from "./dealTime";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    THE FACTS BAND.
@@ -38,17 +39,17 @@ const NOTE = "text-[11.5px] leading-snug text-text-secondary";
 const VALUE = "text-[14.5px] font-semibold leading-snug text-text-primary";
 
 /** The measure blue the snapshot uses for "your number today". */
-const MEASURE = "#0071E3";
+const MEASURE = "var(--ink-bright-blue)";
 /** Real red, earned only once the deal has actually gone quiet — the same rule
  *  and the same hex the snapshot's runway track follows, and the app's one
  *  "this is a problem" red everywhere else (tasks, analytics, account cards). */
-const RISK = "#B02020";
+const RISK = "var(--ink-red)";
 
 function Tile({ color, Icon }: { color: string; Icon: LucideIcon }) {
   return (
     <span
       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-      style={{ background: `${color}1A`, color }}
+      style={{ background: tint(color, 10), color }}
     >
       <Icon size={15} strokeWidth={1.95} />
     </span>

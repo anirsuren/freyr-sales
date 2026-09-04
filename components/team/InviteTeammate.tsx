@@ -18,8 +18,8 @@ import { useToast } from "@/components/ui/Toast";
    exists once you have decided to use it. */
 
 const ROLE_OPTIONS: ColorOption[] = [
-  { value: "BD Member", label: "BD Member", color: "#0071E3", icon: UserRound },
-  { value: "Owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
+  { value: "BD Member", label: "BD Member", color: "var(--ink-bright-blue)", icon: UserRound },
+  { value: "Owner", label: "Owner", color: "var(--ink-violet-soft)", icon: UsersRound },
   /* THE FOURTH ROLE (Suren, Aug 24: "It is a new role") — the solution team
      has to be invitable from the same door as everyone else. */
   {
@@ -28,7 +28,7 @@ const ROLE_OPTIONS: ColorOption[] = [
     color: "#DB2777",
     icon: PencilRuler,
   },
-  { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
+  { value: "Admin", label: "Admin", color: "var(--ink-teal-deep)", icon: ShieldCheck },
 ];
 
 const ACCESS_ROLE: Record<string, string> = {
@@ -168,7 +168,7 @@ export function InviteTeammate({
               onChange={(e) => setName(e.target.value)}
             />
             {name.trim() !== "" && !isFullName(name) && (
-              <span className="mt-1 block text-[11px] text-[color:#C2410C]">
+              <span className="mt-1 block text-[11px] text-[color:var(--ink-orange)]">
                 {FULL_NAME_HINT}
               </span>
             )}

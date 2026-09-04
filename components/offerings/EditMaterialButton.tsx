@@ -234,7 +234,7 @@ export function EditMaterialButton({
                     value: f,
                     label: materialFolderLabel(f),
                     icon: Folder,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                   }))}
                 />
           </div>
@@ -249,7 +249,7 @@ export function EditMaterialButton({
                 options={STAGE_OPTIONS}
                 allLabel="Choose one or more stages"
                 allIcon={Route}
-                allColor="#7C3AED"
+                allColor="var(--ink-violet-soft)"
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
                 collapsible={false}
@@ -268,7 +268,7 @@ export function EditMaterialButton({
                 allLabel="Any division"
                 placeholder="Choose one or more divisions"
                 allIcon={Building2}
-                allColor="#0071E3"
+                allColor="var(--ink-bright-blue)"
                 ariaLabel="Division"
                 minWidth={0}
                 collapsible={false}

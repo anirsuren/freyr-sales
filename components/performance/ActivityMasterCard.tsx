@@ -39,6 +39,7 @@ import {
   type ActivityMasterState,
   type MasterActivity,
 } from "@/lib/activityMasterShared";
+import { tint } from "@/lib/tint";
 
 /**
  * THE ACTIVITY MASTER, on the Goal Master tab.
@@ -72,18 +73,18 @@ const CONTRIBUTION_STYLE: Record<
   string,
   { color: string; icon: LucideIcon }
 > = {
-  dollar: { color: "#0071E3", icon: DollarSign },
-  count: { color: "#7C3AED", icon: Hash },
-  typed: { color: "#0F766E", icon: PenLine },
+  dollar: { color: "var(--ink-bright-blue)", icon: DollarSign },
+  count: { color: "var(--ink-violet-soft)", icon: Hash },
+  typed: { color: "var(--ink-teal-deep)", icon: PenLine },
   none: { color: "#8E98A8", icon: MinusCircle },
 };
 
 /** When the activity starts counting — Suren's "a pilot in progress should
  *  count as one" lives in this control. */
 const COUNTS_FROM_STYLE: Record<string, { color: string; icon: LucideIcon }> = {
-  initiated: { color: "#0071E3", icon: Play },
-  under_progress: { color: "#7C3AED", icon: Loader },
-  completed: { color: "#0F766E", icon: CheckCircle2 },
+  initiated: { color: "var(--ink-bright-blue)", icon: Play },
+  under_progress: { color: "var(--ink-violet-soft)", icon: Loader },
+  completed: { color: "var(--ink-teal-deep)", icon: CheckCircle2 },
 };
 
 export function ActivityMasterCard({
@@ -200,7 +201,7 @@ export function ActivityMasterCard({
                   <div className="flex items-center gap-2">
                     <span
                       className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12.5px] font-semibold"
-                      style={{ background: `${a.color}16`, color: a.color }}
+                      style={{ background: tint(a.color, 9), color: a.color }}
                     >
                       <Icon size={13} strokeWidth={2.4} aria-hidden="true" />
                       {a.label}
@@ -212,7 +213,7 @@ export function ActivityMasterCard({
                         aria-label={`Remove ${a.label}`}
                         disabled={busy}
                         onClick={() => setConfirmRemove(a)}
-                        className="ml-auto cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                        className="ml-auto cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                       >
                         <Trash2 size={13} strokeWidth={2.2} />
                       </button>
@@ -248,7 +249,7 @@ export function ActivityMasterCard({
                     ) : (
                       <span
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                        style={{ background: `${cMeta.color}16`, color: cMeta.color }}
+                        style={{ background: tint(cMeta.color, 9), color: cMeta.color }}
                       >
                         <cMeta.icon size={11} strokeWidth={2.6} aria-hidden="true" />
                         {CONTRIBUTION_META[a.contribution].label}
@@ -291,7 +292,7 @@ export function ActivityMasterCard({
                         ) : (
                           <span
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                            style={{ background: `${fMeta.color}16`, color: fMeta.color }}
+                            style={{ background: tint(fMeta.color, 9), color: fMeta.color }}
                           >
                             {(() => {
                               const I = fMeta.icon;
@@ -325,7 +326,7 @@ export function ActivityMasterCard({
                                     : `${g.name} is ${pct}% filled overall. All sources, not just ${a.label}`
                                 }
                                 className="inline-flex max-w-full flex-col gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
-                                style={{ background: `${t.color}14`, color: t.color }}
+                                style={{ background: tint(t.color, 8), color: t.color }}
                               >
                                 <span className="flex items-center gap-1">
                                   <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />

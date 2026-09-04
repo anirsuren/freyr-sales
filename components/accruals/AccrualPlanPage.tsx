@@ -346,12 +346,12 @@ export function AccrualPlanPage({
         </span>
         <span className="flex-1" />
         {off === 0 ? (
-          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:#1A7A35]">
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--ink-green)]">
             <Check size={15} strokeWidth={2.6} />
             The months add up
           </span>
         ) : (
-          <span className="text-[13px] font-semibold text-[color:#B45309]">
+          <span className="text-[13px] font-semibold text-[color:var(--ink-amber)]">
             {off > 0 ? "Over by" : "Short by"} {money(Math.abs(off))} &mdash;
             the months do not add up to the contract
           </span>
@@ -498,7 +498,7 @@ export function AccrualPlanPage({
                              much as a typed total is, so it wears the same
                              held colour rather than looking like a share the
                              formula worked out. */
-                          background: l.pinned || split ? "#0071E3" : "#7C3AED",
+                          background: l.pinned || split ? "var(--ink-bright-blue)" : "var(--ink-violet-soft)",
                         }}
                       />
                     </span>

@@ -12,6 +12,7 @@ import {
   type Access,
   type PrivilegeState,
 } from "@/lib/privileges";
+import { tint } from "@/lib/tint";
 
 /**
  * WHAT EACH ROLE ACTUALLY GETS.
@@ -173,14 +174,14 @@ export function RolesGuide({ className }: { className?: string }) {
                         return (
                           <td key={p.id} className="px-2 py-2 text-center">
                             {level === "none" ? (
-                              <span className="text-[12px] text-text-tertiary/60">
+                              <span className="text-[12px] text-text-tertiary">
                                 ·
                               </span>
                             ) : (
                               <span
                                 className="inline-block rounded-full px-2 py-0.5 text-[11px] font-bold"
                                 style={{
-                                  background: `${meta.color}14`,
+                                  background: tint(meta.color, 8),
                                   color: meta.color,
                                 }}
                               >

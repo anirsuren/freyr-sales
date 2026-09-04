@@ -26,7 +26,7 @@ export const RECORD_ACTION_NEUTRAL =
  * outlined because it is not the thing you came here to do.
  */
 export const RECORD_ACTION_UNDO =
-  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50";
 
 /**
  * Finish it.
@@ -40,11 +40,11 @@ export const RECORD_ACTION_UNDO =
  * been taken.
  */
 export const RECORD_ACTION_DONE =
-  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(26,122,53,0.4)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:#1A7A35] transition-colors hover:border-[color:#1A7A35] hover:bg-[rgba(26,122,53,0.07)] disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-[rgba(26,122,53,0.4)] bg-white px-4 py-2 text-[13px] font-semibold text-[color:var(--ink-green)] transition-colors hover:border-[color:#1A7A35] hover:bg-[rgba(26,122,53,0.07)] disabled:opacity-50";
 
 /** The icon square at the end of the row. */
 export const RECORD_ACTION_DELETE =
-  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-[color:#DC2626] transition-colors hover:border-[rgba(220,38,38,0.4)] hover:bg-[rgba(220,38,38,0.06)]";
+  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-[color:var(--status-red)] transition-colors hover:border-[rgba(220,38,38,0.4)] hover:bg-[rgba(220,38,38,0.06)]";
 
 /** Icon size inside these buttons, so the glyphs match too. */
 export const RECORD_ACTION_ICON = 14;

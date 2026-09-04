@@ -95,15 +95,43 @@ export function DealEditScreen({
       onClose={() => router.push(`/opportunities/${deal.id}`)}
       onSaved={() => router.refresh()}
       onSave={async (patch) => {
-        const res = await fetch("/api/opportunities", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          /* SPREAD, NOT NESTED. The route reads the changed fields off the
-             TOP LEVEL of the body (`body(raw)` in app/api/opportunities), so a
-             `patch` object was never looked at and every field arrived
-             undefined: the page navigated back cheerfully and saved nothing. */
-          body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
-        });
+        const send = () =>
+          fetch("/api/opportunities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            /* SPREAD, NOT NESTED. The route reads the changed fields off the
+               TOP LEVEL of the body (`body(raw)` in app/api/opportunities), so
+               a `patch` object was never looked at and every field arrived
+               undefined: the page navigated back cheerfully and saved nothing. */
+            body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
+          });
+
+        let res = await send();
+
+        /**
+         * A TIMED-OUT PASS IS NOT A REFUSAL (Anir, Sep 4).
+         *
+         * The workspace pass lasts fifteen minutes and every navigation
+         * quietly renews it — but this screen is one somebody SITS on, staging
+         * edits without saving. Take a call, come back, press Save, and the
+         * pass has lapsed: the route answered 403 "Workspace owner approval
+         * required", which reads as a permissions problem and sends people
+         * hunting for an admin. Pressing Save again did nothing, because
+         * nothing on this page renewed it. The only thing that did was
+         * reloading, and reloading throws away everything typed.
+         *
+         * So: on that one specific answer, renew the pass and send the save
+         * again. A real permission refusal (a deal that is not yours) says
+         * something else and is passed straight through untouched.
+         */
+        if (res.status === 403) {
+          const body = await res.clone().json().catch(() => ({}));
+          if (/approval required/i.test(String(body?.error ?? ""))) {
+            await fetch("/api/auth/access", { method: "POST" }).catch(() => undefined);
+            res = await send();
+          }
+        }
+
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) return data?.error || "That did not save.";
         return null;

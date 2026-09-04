@@ -11,10 +11,10 @@ import { useToast } from "@/components/ui/Toast";
 import type { DataMode } from "@/lib/dataMode";
 
 const TYPES = [
-  { value: "bug", label: "Bug", color: "#B02020" },
-  { value: "product_feedback", label: "Product feedback", color: "#0071E3" },
-  { value: "feature_request", label: "Feature request", color: "#7C3AED" },
-  { value: "question", label: "Question", color: "#0F766E" },
+  { value: "bug", label: "Bug", color: "var(--ink-red)" },
+  { value: "product_feedback", label: "Product feedback", color: "var(--ink-bright-blue)" },
+  { value: "feature_request", label: "Feature request", color: "var(--ink-violet-soft)" },
+  { value: "question", label: "Question", color: "var(--ink-teal-deep)" },
 ];
 
 const MAX_SCREENSHOT_DATA_URL = 2_700_000;
@@ -434,7 +434,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
               </button>
             </div>
             {voiceError && (
-              <p role="alert" className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+              <p role="alert" className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:var(--ink-orange)]">
                 {voiceError}
               </p>
             )}
@@ -446,7 +446,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
               <span className="inline-flex items-center gap-1 text-[10.5px] text-text-tertiary"><ClipboardPaste size={12} /> Paste anywhere in this dialog</span>
             </div>
             {captureError && (
-              <p className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#C2410C]">
+              <p className="mb-2 rounded-lg border border-[rgba(194,65,12,0.30)] bg-[rgba(194,65,12,0.07)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:var(--ink-orange)]">
                 {captureError}
               </p>
             )}

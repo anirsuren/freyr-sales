@@ -67,15 +67,15 @@ export const DOCUMENT_TYPES = [
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 export const DOCUMENT_TYPE_META: Record<DocumentType, { label: string; color: string }> = {
-  proposal: { label: "Proposal / RFP response", color: "#0071E3" },
-  client_testimonial: { label: "Client testimonial", color: "#0F766E" },
-  case_study: { label: "Success story / case study", color: "#7C3AED" },
-  intro_email: { label: "Introductory email", color: "#C2410C" },
+  proposal: { label: "Proposal / RFP response", color: "var(--ink-bright-blue)" },
+  client_testimonial: { label: "Client testimonial", color: "var(--ink-teal-deep)" },
+  case_study: { label: "Success story / case study", color: "var(--ink-violet-soft)" },
+  intro_email: { label: "Introductory email", color: "var(--ink-orange)" },
   product_demo: { label: "Product demo", color: "#DB2777" },
   product_brief: { label: "Product sheet / brief", color: "#4338CA" },
   sales_deck: { label: "Sales deck", color: "#0891B2" },
   thought_leadership: { label: "Thought leadership", color: "#65A30D" },
-  battle_card: { label: "Battle card", color: "#B45309" },
+  battle_card: { label: "Battle card", color: "var(--ink-amber)" },
   training: { label: "Training material", color: "#475569" },
   other: { label: "Something else", color: "#64748B" },
 };
@@ -327,10 +327,10 @@ export const MATERIAL_FORMAT_META: Record<
   // information here — and four hues down one column fought with the journey
   // and access pills beside them, which DO use colour to mean something. One
   // family, four glyphs, calmer row.
-  video: { label: "Video", color: "#0071E3", icon: Video },
-  presentation: { label: "Presentation", color: "#0071E3", icon: LayoutTemplate },
-  document: { label: "Document", color: "#0071E3", icon: FileText },
-  other: { label: "Others", color: "#0071E3", icon: Paperclip },
+  video: { label: "Video", color: "var(--ink-bright-blue)", icon: Video },
+  presentation: { label: "Presentation", color: "var(--ink-bright-blue)", icon: LayoutTemplate },
+  document: { label: "Document", color: "var(--ink-bright-blue)", icon: FileText },
+  other: { label: "Others", color: "var(--ink-bright-blue)", icon: Paperclip },
 };
 
 /**
@@ -501,17 +501,17 @@ export const MATERIAL_ICON: Record<MaterialKind, LucideIcon> = {
 // colour to carry actual meaning (Anir, Jul 29). The legacy nine kinds fold
 // into the same blue for the same reason.
 export const MATERIAL_COLOR: Record<MaterialKind, string> = {
-  presentation: "#0071E3",
-  video: "#0071E3",
-  document: "#0071E3",
-  other: "#0071E3",
-  whitepaper: "#0071E3",
-  case_study: "#0071E3",
-  one_pager: "#0071E3",
-  datasheet: "#0071E3",
-  pricing: "#0071E3",
-  competition: "#0071E3",
-  reference: "#0071E3",
+  presentation: "var(--ink-bright-blue)",
+  video: "var(--ink-bright-blue)",
+  document: "var(--ink-bright-blue)",
+  other: "var(--ink-bright-blue)",
+  whitepaper: "var(--ink-bright-blue)",
+  case_study: "var(--ink-bright-blue)",
+  one_pager: "var(--ink-bright-blue)",
+  datasheet: "var(--ink-bright-blue)",
+  pricing: "var(--ink-bright-blue)",
+  competition: "var(--ink-bright-blue)",
+  reference: "var(--ink-bright-blue)",
 };
 
 // Narrow an untrusted string (legacy/imported rows) to a MaterialKind.
@@ -527,7 +527,7 @@ export const JOURNEY_STAGE_META: Record<
   { label: string; short: string; color: string; icon: LucideIcon }
 > = {
   awareness: { label: "Awareness Stage", short: "Awareness", color: "#0284C7", icon: Lightbulb }, // sky
-  evaluation: { label: "Evaluation Stage", short: "Evaluation", color: "#7C3AED", icon: Scale }, // violet
+  evaluation: { label: "Evaluation Stage", short: "Evaluation", color: "var(--ink-violet-soft)", icon: Scale }, // violet
   decision: { label: "Decision Stage", short: "Decision", color: "#059669", icon: Handshake }, // green
 };
 
@@ -539,9 +539,9 @@ export const DIVISION_META: Record<
   Division,
   { label: string; short: string; color: string; icon: LucideIcon }
 > = {
-  MPR: { label: "Medicinal Products", short: "MPR", color: "#0071E3", icon: Pill },
-  MDV: { label: "Medical Devices", short: "MDV", color: "#0F766E", icon: Stethoscope },
-  CON: { label: "Consumer", short: "CON", color: "#C2410C", icon: ShoppingBag },
+  MPR: { label: "Medicinal Products", short: "MPR", color: "var(--ink-bright-blue)", icon: Pill },
+  MDV: { label: "Medical Devices", short: "MDV", color: "var(--ink-teal-deep)", icon: Stethoscope },
+  CON: { label: "Consumer", short: "CON", color: "var(--ink-orange)", icon: ShoppingBag },
 };
 
 /** Tolerant reader: unknown or malformed values are dropped rather than
@@ -559,9 +559,9 @@ export const ACCESS_LEVEL_META: Record<
   AccessLevel,
   { label: string; short: string; color: string; icon: LucideIcon }
 > = {
-  client_facing: { label: "Client Facing", short: "Client facing", color: "#0F766E", icon: Users }, // teal
-  internal_only: { label: "Internal Only", short: "Internal only", color: "#C2410C", icon: Lock }, // burnt orange, #B45309 read as brown in the pill
-  agent_only: { label: "Freyr AI Only", short: "AI only", color: "#6D28D9", icon: Bot }, // violet, never a status hue
+  client_facing: { label: "Client Facing", short: "Client facing", color: "var(--ink-teal-deep)", icon: Users }, // teal
+  internal_only: { label: "Internal Only", short: "Internal only", color: "var(--ink-orange)", icon: Lock }, // burnt orange, #B45309 read as brown in the pill
+  agent_only: { label: "Freyr AI Only", short: "AI only", color: "var(--ink-violet)", icon: Bot }, // violet, never a status hue
 };
 
 /**

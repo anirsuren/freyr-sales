@@ -24,6 +24,7 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import type { MnaBoard, MnaItem } from "@/lib/marketIntelFeed";
+import { tint } from "@/lib/tint";
 
 /**
  * THE M&A TRACKER (Aug 11 call): mergers and acquisitions across the
@@ -34,14 +35,14 @@ import type { MnaBoard, MnaItem } from "@/lib/marketIntelFeed";
  */
 
 const DIVISIONS: { key: MnaItem["division"]; icon: LucideIcon; color: string }[] = [
-  { key: "Medicinal Products", icon: Pill, color: "#0071E3" },
-  { key: "Medical Devices", icon: Stethoscope, color: "#0F766E" },
-  { key: "Consumer", icon: ShoppingBag, color: "#C2410C" },
+  { key: "Medicinal Products", icon: Pill, color: "var(--ink-bright-blue)" },
+  { key: "Medical Devices", icon: Stethoscope, color: "var(--ink-teal-deep)" },
+  { key: "Consumer", icon: ShoppingBag, color: "var(--ink-orange)" },
 ];
 
 const STATUS_META = {
-  announced: { label: "Announced", color: "#0071E3" },
-  completed: { label: "Completed", color: "#1A7A35" },
+  announced: { label: "Announced", color: "var(--ink-bright-blue)" },
+  completed: { label: "Completed", color: "var(--ink-green)" },
 } as const;
 
 /** Date, plus the time when the record actually carries one. */
@@ -122,18 +123,24 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
         <span className="flex shrink-0 items-center gap-1.5">
           <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.07)] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary tnum">
             <Handshake size={11} strokeWidth={2.4} className="text-blue-primary" />
-            {items.length} deals
+            {/* SAY WHAT IS HELD BACK (Anir, Sep 4). The list is capped, so
+                "40 deals" read as the size of the market rather than the size
+                of the page. Notifications sets the pattern: cap, then name the
+                remainder. */}
+            {board?.total && board.total > items.length
+              ? `${items.length} of ${board.total} deals`
+              : `${items.length} deals`}
           </span>
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
-            style={{ color: "#0071E3", background: "rgba(0,113,227,0.10)" }}
+            style={{ color: "var(--ink-bright-blue)", background: "rgba(0,113,227,0.10)" }}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-[#0071E3]" />
             {announced} announced
           </span>
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
-            style={{ color: "#1A7A35", background: "rgba(26,122,53,0.10)" }}
+            style={{ color: "var(--ink-green)", background: "rgba(26,122,53,0.10)" }}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
             {completed} completed
@@ -162,8 +169,8 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             allLabel="All statuses"
             allIcon={Handshake}
             options={[
-              { value: "announced", label: "Announced", color: "#0071E3", icon: Megaphone },
-              { value: "completed", label: "Completed", color: "#1A7A35", icon: CheckCircle2 },
+              { value: "announced", label: "Announced", color: "var(--ink-bright-blue)", icon: Megaphone },
+              { value: "completed", label: "Completed", color: "var(--ink-green)", icon: CheckCircle2 },
             ]}
           />
           <MultiColorSelect
@@ -174,9 +181,9 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             allLabel="All divisions"
             allIcon={Layers}
             options={[
-              { value: "Medicinal Products", label: "Medicinal Products", color: "#0071E3", icon: Pill },
-              { value: "Medical Devices", label: "Medical Devices", color: "#0F766E", icon: Stethoscope },
-              { value: "Consumer", label: "Consumer", color: "#C2410C", icon: ShoppingBag },
+              { value: "Medicinal Products", label: "Medicinal Products", color: "var(--ink-bright-blue)", icon: Pill },
+              { value: "Medical Devices", label: "Medical Devices", color: "var(--ink-teal-deep)", icon: Stethoscope },
+              { value: "Consumer", label: "Consumer", color: "var(--ink-orange)", icon: ShoppingBag },
             ]}
           />
           <ColorSelect
@@ -186,9 +193,9 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             minWidth={150}
             options={[
               { value: "all", label: "All time", icon: CalendarClock },
-              { value: "30", label: "Last 30 days", color: "#0071E3", icon: CalendarClock },
-              { value: "90", label: "Last 90 days", color: "#6D28D9", icon: CalendarClock },
-              { value: "year", label: "This year", color: "#0F766E", icon: CalendarClock },
+              { value: "30", label: "Last 30 days", color: "var(--ink-bright-blue)", icon: CalendarClock },
+              { value: "90", label: "Last 90 days", color: "var(--ink-violet)", icon: CalendarClock },
+              { value: "year", label: "This year", color: "var(--ink-teal-deep)", icon: CalendarClock },
             ]}
           />
           <MultiColorSelect
@@ -199,8 +206,8 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             allLabel="Any deal size"
             allIcon={BadgeDollarSign}
             options={[
-              { value: "big", label: "$1B and up", color: "#0F766E", icon: BadgeDollarSign },
-              { value: "small", label: "Under $1B", color: "#0071E3", icon: BadgeDollarSign },
+              { value: "big", label: "$1B and up", color: "var(--ink-teal-deep)", icon: BadgeDollarSign },
+              { value: "small", label: "Under $1B", color: "var(--ink-bright-blue)", icon: BadgeDollarSign },
               { value: "undisclosed", label: "Undisclosed", color: "#8AB4E8", icon: BadgeDollarSign },
             ]}
           />
@@ -214,7 +221,7 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             options={sources.map((src) => ({
               value: src,
               label: src,
-              color: "#6D28D9",
+              color: "var(--ink-violet)",
               icon: Newspaper,
             }))}
           />
@@ -254,13 +261,13 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
                 <p className="mt-1.5 flex flex-wrap items-center gap-2">
                   <span
                     className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-                    style={{ color: divisionMeta.color, background: `${divisionMeta.color}14` }}
+                    style={{ color: divisionMeta.color, background: tint(divisionMeta.color, 8) }}
                   >
                     <DIcon size={10.5} strokeWidth={2.2} /> {deal.division}
                   </span>
                   <span
                     className="rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-                    style={{ color: meta.color, background: `${meta.color}14` }}
+                    style={{ color: meta.color, background: tint(meta.color, 8) }}
                   >
                     {meta.label}
                   </span>

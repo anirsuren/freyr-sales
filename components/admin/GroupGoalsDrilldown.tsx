@@ -22,6 +22,7 @@ import {
   type PerformanceState,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
+import { tint } from "@/lib/tint";
 
 /**
  * WHAT THIS GROUP IS ACTUALLY CARRYING, TWO CLICKS DEEP (Anir, Aug 25: "I
@@ -114,7 +115,7 @@ export function GroupGoalsDrilldown({
           {goals.length}
         </span>
         {waitingAll.length > 0 && (
-          <span className="rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
+          <span className="rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-amber)] tnum">
             {waitingAll.length} to verify
           </span>
         )}
@@ -262,7 +263,7 @@ export function GroupGoalsDrilldown({
                             same reason. */}
                         <span
                           className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full sm:flex"
-                          style={{ background: `${typeMeta(goal.type).color}24` }}
+                          style={{ background: tint(typeMeta(goal.type).color, 14) }}
                         >
                           <span
                             className="block h-full rounded-full"
@@ -286,7 +287,7 @@ export function GroupGoalsDrilldown({
                       </>
                     )}
                     {goalWaiting > 0 && (
-                      <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
+                      <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-amber)] tnum">
                         {goalWaiting} to verify
                       </span>
                     )}
@@ -394,7 +395,7 @@ export function GroupGoalsDrilldown({
                                     {r.share > 0 && <> of {money(r.share, goal.unit)}</>}
                                   </span>
                                   {r.waiting.length > 0 && (
-                                    <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
+                                    <span className="shrink-0 rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-amber)] tnum">
                                       {r.waiting.length} to verify
                                     </span>
                                   )}

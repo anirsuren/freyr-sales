@@ -518,9 +518,9 @@ export function talkRatio(rec: Recording): {
 }
 
 export function scoreColor(score: number): string {
-  if (score >= 80) return "#1A7A35";
+  if (score >= 80) return "var(--ink-green)";
   if (score >= 65) return "#7A4A00";
-  return "#B02020";
+  return "var(--ink-red)";
 }
 export function scoreBg(score: number): string {
   if (score >= 80) return "rgba(52,199,89,0.12)";

@@ -6,6 +6,7 @@ import { emailTemplates } from "@/lib/emailTemplates";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * PICKING AN OFFERING OWNER TO REMIND (Saras, Aug 25: "an automated email draft
@@ -227,7 +228,7 @@ export function OwnerDigestPicker({
                     >
                       <span
                         className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                        style={{ background: `${tpl.color}1F`, color: tpl.color }}
+                        style={{ background: tint(tpl.color, 12), color: tpl.color }}
                       >
                         <Icon size={14} strokeWidth={2.1} />
                       </span>
@@ -307,7 +308,7 @@ export function OwnerDigestPicker({
                         </span>
                       </span>
                       {empties > 0 && (
-                        <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11.5px] font-bold text-[color:#B45309] tnum">
+                        <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11.5px] font-bold text-[color:var(--ink-amber)] tnum">
                           {empties} empty
                         </span>
                       )}
@@ -352,7 +353,7 @@ export function OwnerDigestPicker({
                         </span>
                       </span>
                       {needsIt && (
-                        <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11.5px] font-bold text-[color:#B45309] tnum">
+                        <span className="shrink-0 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[11.5px] font-bold text-[color:var(--ink-amber)] tnum">
                           {r.emptyFolders > 0
                             ? `${r.emptyFolders} empty`
                             : `${r.stalestDays}d old`}

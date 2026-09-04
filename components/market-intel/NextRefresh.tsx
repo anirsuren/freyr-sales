@@ -128,7 +128,7 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
               right, and a marker for where in the cycle we are now. */}
           <div className="mt-3 flex items-end justify-between gap-3">
             <span className="min-w-0">
-              <span className="flex items-center gap-1 text-[11px] font-medium text-[color:#0071E3]">
+              <span className="flex items-center gap-1 text-[11px] font-medium text-[color:var(--ink-bright-blue)]">
                 <History size={12} strokeWidth={2.2} /> Refreshed
               </span>
               <span className="mt-0.5 block text-[14px] font-bold text-text-primary tnum">
@@ -136,7 +136,7 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
               </span>
             </span>
             <span className="min-w-0 text-right">
-              <span className="flex items-center justify-end gap-1 text-[11px] font-medium text-[color:#6D28D9]">
+              <span className="flex items-center justify-end gap-1 text-[11px] font-medium text-[color:var(--ink-violet)]">
                 {due ? (
                   <Loader2 size={12} strokeWidth={2.2} className="animate-spin" />
                 ) : (

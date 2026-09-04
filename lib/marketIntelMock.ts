@@ -25,11 +25,11 @@ export const SIGNAL_META: Record<
   { label: string; color: string }
 > = {
   hiring: { label: "Hiring surge", color: "#0891B2" },
-  leadership: { label: "Leadership change", color: "#7C3AED" },
-  competitor: { label: "Competitor move", color: "#B4318F" },
-  regulatory: { label: "Regulatory filing", color: "#0071E3" },
-  expansion: { label: "Market expansion", color: "#0F766E" },
-  deal: { label: "Deal or partnership", color: "#C2410C" },
+  leadership: { label: "Leadership change", color: "var(--ink-violet-soft)" },
+  competitor: { label: "Competitor move", color: "var(--ink-magenta)" },
+  regulatory: { label: "Regulatory filing", color: "var(--ink-bright-blue)" },
+  expansion: { label: "Market expansion", color: "var(--ink-teal-deep)" },
+  deal: { label: "Deal or partnership", color: "var(--ink-orange)" },
 };
 
 export type MiPerson = {

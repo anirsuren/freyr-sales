@@ -125,7 +125,7 @@ export function PeoplePicker({
                       toggle(name);
                     }
                   }}
-                  className="cursor-pointer rounded p-0.5 text-text-tertiary hover:text-[color:#B02020]"
+                  className="cursor-pointer rounded p-0.5 text-text-tertiary hover:text-[color:var(--ink-red)]"
                 >
                   <X size={11} strokeWidth={2.4} />
                 </span>

@@ -76,6 +76,7 @@ import {
   AccrualPlanDialog,
   type DealOption,
 } from "@/components/accruals/AccrualPlanDialog";
+import { tint } from "@/lib/tint";
 
 /**
  * REVENUE ACCRUALS (Suren, Aug 25): the month-by-month plan for money that has
@@ -137,16 +138,16 @@ function fyLabelOf(key: string): string {
  * exported, delete these and import them.
  */
 const LEVEL_COLOR: Record<string, string> = {
-  Pipeline: "#0071E3",
-  "Go get": "#B4318F",
-  "High confidence": "#0F766E",
+  Pipeline: "var(--ink-bright-blue)",
+  "Go get": "var(--ink-magenta)",
+  "High confidence": "var(--ink-teal-deep)",
 };
 const STATUS_COLOR: Record<string, string> = {
   Qualify: "#0891B2",
   Pilot: "#5E5CE6",
-  Propose: "#0071E3",
-  "Submitted to client": "#7C3AED",
-  "Under review": "#B4318F",
+  Propose: "var(--ink-bright-blue)",
+  "Submitted to client": "var(--ink-violet-soft)",
+  "Under review": "var(--ink-magenta)",
   "On hold": "#8E98A8",
   Won: "#16A34A",
   Lost: "#DC2626",
@@ -171,13 +172,13 @@ function closureBandOf(deal: Opportunity | undefined): string {
  * reserves for months that have already gone by.
  */
 const ACCENTS = [
-  "#0071E3", // blue
-  "#7C3AED", // violet
+  "var(--ink-bright-blue)", // blue
+  "var(--ink-violet-soft)", // violet
   "#0891B2", // cyan
-  "#B4318F", // magenta
+  "var(--ink-magenta)", // magenta
   "#4F46E5", // indigo
-  "#0F766E", // deep teal
-  "#C2410C", // burnt orange
+  "var(--ink-teal-deep)", // deep teal
+  "var(--ink-orange)", // burnt orange
 ];
 function accentFor(name: string): string {
   let h = 0;
@@ -290,9 +291,9 @@ function DeviationsTable({
   );
 
   const STATUS_COLOR: Record<TabAccrualStatus, string> = {
-    Active: "#0F766E",
-    Deviated: "#7C3AED",
-    Inactive: "#B45309",
+    Active: "var(--ink-teal-deep)",
+    Deviated: "var(--ink-violet-soft)",
+    Inactive: "var(--ink-amber)",
   };
 
   /**
@@ -343,20 +344,14 @@ function DeviationsTable({
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-          <UserPen size={15} strokeWidth={2} className="text-[#7C3AED]" />
+          <UserPen size={15} strokeWidth={2} className="text-[var(--ink-violet-soft)]" />
           Deviated records
           <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">
             {shown.length}
             {shown.length !== rows.length ? ` of ${rows.length}` : ""}
           </span>
         </h2>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by deal, customer or ID…"
-          aria-label="Search deviated records"
-          className="h-9 w-full max-w-[280px] rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-        />
+
       </div>
 
       {/* THE ANSWER BEFORE THE ROWS. See the note above `byOwner`: the table
@@ -374,7 +369,7 @@ function DeviationsTable({
               <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[color:#B45309] px-1.5 text-[12px] font-bold text-white">
                 {inactiveCount}
               </span>
-              <span className="text-[12.5px] font-semibold text-[color:#B45309]">
+              <span className="text-[12.5px] font-semibold text-[color:var(--ink-amber)]">
                 {inactiveCount === 1 ? "record has" : "records have"} expired
                 unsigned
               </span>
@@ -397,7 +392,7 @@ function DeviationsTable({
                     <Avatar name={who} className="h-4 w-4 shrink-0 text-[7px]" />
                   )}
                   <span className="text-[12px] text-text-secondary">{who}</span>
-                  <span className="text-[12px] font-bold tnum text-[color:#7C3AED]">
+                  <span className="text-[12px] font-bold tnum text-[color:var(--ink-violet-soft)]">
                     {n}
                   </span>
                 </button>
@@ -407,17 +402,29 @@ function DeviationsTable({
         </div>
       )}
 
-      {/* ITEM 15 — the app's own filter control, not a new one, so these
-          behave and look like the filters on every other module. */}
-      <div className="mt-3">
-        <FilterMenu
-          ariaLabel="Filter deviated records"
-          onClearAll={() => {
-            setStatusFilter([]);
-            setOwnerFilter([]);
-            setDealStatusFilter([]);
-          }}
-          groups={[
+      {/* ONE TOOLBAR, THE SAME ONE EVERY OTHER LIST HAS (Anir, Sep 4: "why is
+          the filter like that. the ui is all fucked up here please clean it up
+          so its in standards with all other pages").
+
+          This tab had a hand-rolled search input floating in the heading row
+          and a bare Filter button on a line of its own underneath — two halves
+          of a toolbar, neither of them looking like the toolbar. PageToolbar is
+          what the Accrual dashboard beside it already uses, so it puts the
+          search and the filter on one row and this tab stops being the odd one
+          out. */}
+      <PageToolbar
+        className="mt-3"
+        query={query}
+        onQuery={setQuery}
+        placeholder="Search by deal, customer or ID…"
+        searchAriaLabel="Search deviated records"
+        onClearAll={() => {
+          setQuery("");
+          setStatusFilter([]);
+          setOwnerFilter([]);
+          setDealStatusFilter([]);
+        }}
+        groups={[
             {
               key: "accrualStatus",
               label: "Accrual status",
@@ -438,7 +445,7 @@ function DeviationsTable({
                 value: o,
                 label: o,
                 avatarName: o === "Unassigned" ? undefined : o,
-                color: "#0071E3",
+                color: "var(--ink-bright-blue)",
               })),
             },
             {
@@ -449,12 +456,11 @@ function DeviationsTable({
               options: dealStatuses.map((o) => ({
                 value: o,
                 label: o,
-                color: "#0F766E",
+                color: "var(--ink-teal-deep)",
               })),
             },
-          ]}
-        />
-      </div>
+        ]}
+      />
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
         <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
@@ -519,7 +525,7 @@ function DeviationsTable({
                   <span
                     className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
                     style={{
-                      background: `${STATUS_COLOR[r.accrualStatus]}18`,
+                      background: tint(STATUS_COLOR[r.accrualStatus], 9),
                       color: STATUS_COLOR[r.accrualStatus],
                     }}
                   >
@@ -809,7 +815,6 @@ export function RevenueAccrualsModule({
     return deals.filter(
       (d) =>
         !planned.has(d.id) &&
-        d.value > 0 &&
         d.status !== "Won" &&
         d.status !== "Lost"
     );
@@ -938,7 +943,7 @@ export function RevenueAccrualsModule({
         pending: v.flagged || undefined,
         /* A month already behind us wears amber whatever else is true: that
            money was supposed to have landed by now. */
-        color: month < thisMonth ? AMBER : "#0071E3",
+        color: month < thisMonth ? AMBER : "var(--ink-bright-blue)",
         tip: [
           { name: "On plan", value: formatMoney(v.total - v.flagged) },
           ...(v.flagged
@@ -1195,6 +1200,10 @@ export function RevenueAccrualsModule({
           value={String(missing.length)}
           color={AMBER}
           warn={missing.length > 0}
+          /* EVERY OPEN DEAL WITHOUT A PLAN, not just the ones carrying a
+             figure (Anir, Sep 4). The count filtered on `value > 0` without
+             saying so, which hid 28 deals — and a deal with no value entered
+             is exactly the one most likely to need planning. */
           sub="open deals with nothing planned"
         />
         {/* NO FIFTH CARD. Four fit the row; the fifth wrapped onto a line
@@ -1302,7 +1311,7 @@ export function RevenueAccrualsModule({
                 options: filterOptions.years.map((k) => ({
                   value: k,
                   label: fyLabelOf(k),
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                 })),
               },
               {
@@ -1378,7 +1387,7 @@ export function RevenueAccrualsModule({
                 options: filterOptions.offerings.map((n) => ({
                   value: n,
                   label: n,
-                  color: n === "No offering" ? "#8E98A8" : "#B4318F",
+                  color: n === "No offering" ? "#8E98A8" : "var(--ink-magenta)",
                 })),
               },
               {
@@ -1389,7 +1398,7 @@ export function RevenueAccrualsModule({
                 options: filterOptions.closures.map((n) => ({
                   value: n,
                   label: n,
-                  color: n === "No date" ? "#8E98A8" : "#0F766E",
+                  color: n === "No date" ? "#8E98A8" : "var(--ink-teal-deep)",
                 })),
               },
               {
@@ -1398,8 +1407,8 @@ export function RevenueAccrualsModule({
                 values: revenueTypeFilter,
                 onChange: setRevenueTypeFilter,
                 options: [
-                  { value: "ARR", label: "ARR — recurring", color: "#0F766E" },
-                  { value: "OTS", label: "OTS — one-time", color: "#B4318F" },
+                  { value: "ARR", label: "ARR — recurring", color: "var(--ink-teal-deep)" },
+                  { value: "OTS", label: "OTS — one-time", color: "var(--ink-magenta)" },
                   { value: "", label: "Not set", color: "#8E98A8" },
                 ],
               },
@@ -1444,7 +1453,7 @@ export function RevenueAccrualsModule({
                     options={TIMELINES.map((t) => ({
                       value: t.key,
                       label: t.label,
-                      color: "#7C3AED",
+                      color: "var(--ink-violet-soft)",
                     }))}
                   />
                 {/* NO "DELETE A PLAN" HERE.
@@ -1621,6 +1630,17 @@ export function RevenueAccrualsModule({
                    That is what "same filters, give this here also" has to mean
                    now the rows are gone: pressing Customer or FY28 redraws the
                    dashboard itself. */
+                /* Same rule as Opportunities: once the filters have narrowed
+                   this to a few rows, they are the answer and must be open. */
+                filtering={
+                  query.trim().length > 0 ||
+                  fyFilter.length > 0 ||
+                  groupFilter.length > 0 ||
+                  customerFilter.length > 0 ||
+                  levelFilter.length > 0 ||
+                  statusFilter.length > 0 ||
+                  ownerFilter.length > 0
+                }
                 deals={shownOpportunities}
                 order={accrDims}
                 onReorder={setAccrDims}

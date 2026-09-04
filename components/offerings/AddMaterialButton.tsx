@@ -46,13 +46,14 @@ import {
   type Division,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 // The two CR-3 tag dropdowns — colour-coded options, never a gray <select>.
 const STAGE_OPTIONS: ColorOption[] = [
   {
     value: "",
     label: "Pick a journey stage",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: Route,
   },
   ...JOURNEY_STAGES.map((s) => ({
@@ -72,7 +73,7 @@ const ACCESS_OPTIONS: ColorOption[] = [
   {
     value: "",
     label: "Choose who can view it",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: ShieldCheck,
   },
   ...ACCESS_LEVELS.map((l) => ({
@@ -1149,13 +1150,13 @@ export function AddMaterialButton({
                     }`}
                     style={
                       active
-                        ? { borderColor: color, background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}` }
+                        ? { borderColor: color, background: tint(color, 7), boxShadow: `inset 0 0 0 1px ${color}` }
                         : undefined
                     }
                   >
                     <span
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: `${color}1A`, color }}
+                      style={{ background: tint(color, 10), color }}
                     >
                       <Icon size={16} strokeWidth={1.9} />
                     </span>
@@ -1181,7 +1182,7 @@ export function AddMaterialButton({
                   when it was complete (Anir, Aug 14). The badge now asks the
                   real question: is any file still without one? */}
               {files.some((f) => !(fileOverrides[fileKey(f)]?.folder || folder)) && (
-                <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                   Required
                 </span>
               )}
@@ -1217,7 +1218,7 @@ export function AddMaterialButton({
                 <span>Buyer&apos;s journey stage</span>
                 <InfoHint text="Select Awareness, Evaluation, Decision, or any combination." />
                 {!journeyStages.length && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
                   </span>
                 )}
@@ -1228,7 +1229,7 @@ export function AddMaterialButton({
                 onChange={(values) => setJourneyStages(values as JourneyStage[])}
                 allLabel="Choose one or more stages"
                 allIcon={Route}
-                allColor="#7C3AED"
+                allColor="var(--ink-violet-soft)"
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
                 collapsible={false}
@@ -1241,7 +1242,7 @@ export function AddMaterialButton({
                 <span>Who can view this file?</span>
                 <InfoHint text="Freyr AI reads every file you upload. This choice only controls who can open it." />
                 {!accessLevel && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
                   </span>
                 )}
@@ -1269,7 +1270,7 @@ export function AddMaterialButton({
                 <span>Division</span>
                 <InfoHint text="Which Freyr division this file is for. Pick any combination." />
                 {!divisions.length && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
                   </span>
                 )}
@@ -1281,7 +1282,7 @@ export function AddMaterialButton({
                 allLabel="Any division"
                 placeholder="Choose one or more divisions"
                 allIcon={Building2}
-                allColor="#0071E3"
+                allColor="var(--ink-bright-blue)"
                 ariaLabel="Division"
                 minWidth={0}
                 collapsible={false}
@@ -1317,7 +1318,7 @@ export function AddMaterialButton({
               Material Description
               {isProposalFolder(folder) ? (
                 !description.trim() && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
                   </span>
                 )
@@ -1406,7 +1407,7 @@ export function AddMaterialButton({
                     <span
                       role="button"
                       tabIndex={0}
-                      className="font-semibold text-[color:#B02020]"
+                      className="font-semibold text-[color:var(--ink-red)]"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1496,7 +1497,7 @@ export function AddMaterialButton({
                           onClick={() => removeFile(selected)}
                           aria-label={`Remove ${selected.name}`}
                           title={`Remove ${selected.name}`}
-                          className="text-[color:#DC2626] flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
+                          className="text-[color:var(--status-red)] flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
                         >
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
@@ -1516,7 +1517,7 @@ export function AddMaterialButton({
                               // unpicked control that reads "Video" is a lie.
                               ...((fileOverrides[key]?.kind || kind)
                                 ? []
-                                : [{ value: "", label: "Pick a format", color: "#B02020", icon: FileQuestion }]),
+                                : [{ value: "", label: "Pick a format", color: "var(--ink-red)", icon: FileQuestion }]),
                               ...FORMATS.map((format) => ({
                                 value: format,
                                 label: MATERIAL_FORMAT_META[format].label,
@@ -1597,7 +1598,7 @@ export function AddMaterialButton({
                             onChange={(values) => updateFileOverride(selected, { journeyStages: values as JourneyStage[] })}
                             allLabel="Journey stages"
                             allIcon={Route}
-                            allColor="#7C3AED"
+                            allColor="var(--ink-violet-soft)"
                             ariaLabel={`Buyer journey stages for ${selected.name}`}
                             minWidth={0}
                             collapsible={false}
@@ -1614,7 +1615,7 @@ export function AddMaterialButton({
                             options={[
                               ...((fileOverrides[key]?.accessLevel || accessLevel)
                                 ? []
-                                : [{ value: "", label: "Choose who can view it", color: "#B02020", icon: ShieldCheck }]),
+                                : [{ value: "", label: "Choose who can view it", color: "var(--ink-red)", icon: ShieldCheck }]),
                               ...ACCESS_OPTIONS.filter((option) => option.value),
                             ]}
                             onChange={(value) => updateFileOverride(selected, { accessLevel: value as AccessLevel })}

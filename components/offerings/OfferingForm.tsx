@@ -109,6 +109,7 @@ import {
   type JourneyStage,
   type MaterialKind,
 } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 type MaterialRow = Omit<OfferingMaterial, "id"> & { id?: string };
 
@@ -177,10 +178,10 @@ type AvailMode = "" | "current" | "date" | "tbd";
 // the pill it produces are obviously the same thing.
 const AVAIL_META: Record<AvailMode, { color: string; icon: LucideIcon }> = {
   "": { color: "#8A8A8E", icon: CircleHelp },
-  current: { color: "#1A7A35", icon: CircleCheck },
+  current: { color: "var(--ink-green)", icon: CircleCheck },
   // Orange-700 is the app-wide "caution / upcoming" token; the yellow band is
   // banned as text or a chip accent.
-  date: { color: "#C2410C", icon: Clock },
+  date: { color: "var(--ink-orange)", icon: Clock },
   tbd: { color: "#4338CA", icon: CircleHelp },
 };
 
@@ -228,7 +229,7 @@ const YEAR_OPTIONS: ColorOption[] = [
 // Markets carry a flag + their own colour here for the same reason they do on
 // the offering page: a chip is never plain gray.
 const MARKET_STYLE: { match: RegExp; color: string; flag: string }[] = [
-  { match: /usa|united states/i, color: "#0071E3", flag: "🇺🇸" },
+  { match: /usa|united states/i, color: "var(--ink-bright-blue)", flag: "🇺🇸" },
   { match: /europe|^eu$/i, color: "#5E5CE6", flag: "🇪🇺" },
   { match: /japan/i, color: "#C81E67", flag: "🇯🇵" },
   { match: /china/i, color: "#C0362C", flag: "🇨🇳" },
@@ -351,8 +352,8 @@ function composeDescription(intro: string, rows: CapRow[]): string {
  */
 const GROUP_MARK: Record<ComponentGroup, { color: string; icon: LucideIcon }> = {
   Modules: { color: "#1683EA", icon: Boxes },
-  "Module Agents": { color: "#7C3AED", icon: Bot },
-  "Add-on Agents": { color: "#0E7490", icon: PlusCircle },
+  "Module Agents": { color: "var(--ink-violet-soft)", icon: Bot },
+  "Add-on Agents": { color: "var(--ink-teal)", icon: PlusCircle },
   Services: { color: "#4338CA", icon: Briefcase },
 };
 
@@ -735,7 +736,7 @@ function SelectField({
     >
       <span
         className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-        style={{ background: `${accent}1F`, color: accent }}
+        style={{ background: tint(accent, 12), color: accent }}
       >
         <Icon size={13} strokeWidth={2.1} />
       </span>
@@ -770,7 +771,7 @@ function FieldShell({
     <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 transition-[border-color] hover:border-blue-subtle focus-within:border-blue-primary">
       <span
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-        style={{ background: `${accent}1F`, color: accent }}
+        style={{ background: tint(accent, 12), color: accent }}
       >
         <Icon size={13} strokeWidth={2.1} />
       </span>
@@ -1241,11 +1242,11 @@ export function OfferingForm({
 
   const categoryAccent = (() => {
     const i = offeringCategories.findIndex((c) => c.name === offeringCategory);
-    return i >= 0 ? FILTER_PALETTE[i % FILTER_PALETTE.length] : "#0071E3";
+    return i >= 0 ? FILTER_PALETTE[i % FILTER_PALETTE.length] : "var(--ink-bright-blue)";
   })();
   const typeAccent = (() => {
     const i = existingTypes.indexOf(offeringType);
-    return i >= 0 ? FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length] : "#0071E3";
+    return i >= 0 ? FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length] : "var(--ink-bright-blue)";
   })();
   const availAccent = AVAIL_META[availMode].color;
 
@@ -1437,7 +1438,7 @@ export function OfferingForm({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
             >
               <Trash2 size={14} strokeWidth={1.8} /> Delete offering
             </button>
@@ -1728,7 +1729,7 @@ export function OfferingForm({
                     >
                       <span
                         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                        style={{ background: `${accent}1F`, color: accent }}
+                        style={{ background: tint(accent, 12), color: accent }}
                       >
                         <GroupIcon size={14} strokeWidth={2.1} />
                       </span>
@@ -1782,7 +1783,7 @@ export function OfferingForm({
                         }}
                         aria-label={`Remove the ${name} group`}
                         title="Remove this group. Its cards stay."
-                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                       >
                         <Trash2 size={14} strokeWidth={1.9} />
                       </button>
@@ -1933,7 +1934,7 @@ export function OfferingForm({
                                     });
                                   }}
                                   aria-label={`Remove ${fields.heading || `component ${cardNo}`}`}
-                                  className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                                  className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                                 >
                                   <Trash2 size={14} strokeWidth={1.9} />
                                 </button>
@@ -2453,7 +2454,7 @@ export function OfferingForm({
                   style={
                     on
                       ? {
-                          background: `${st.color}14`,
+                          background: tint(st.color, 8),
                           color: st.color,
                           borderColor: st.color,
                         }
@@ -2594,7 +2595,7 @@ export function OfferingForm({
                     <span
                       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
                       style={{
-                        background: `${kindOption.color}14`,
+                        background: tint(kindOption.color, 8),
                         color: kindOption.color,
                       }}
                     >
@@ -2607,7 +2608,7 @@ export function OfferingForm({
                       {materialFolderLabel(m.folder || "Others")}
                     </span>
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[color:#7C3AED] [background:#7C3AED14]">
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-violet-soft)] [background:#7C3AED14]">
                     <Route size={10} strokeWidth={2.2} />
                     {stages.length === 1
                       ? STAGE_OPTIONS.find((o) => o.value === stages[0])?.label ?? stages[0]
@@ -2616,7 +2617,7 @@ export function OfferingForm({
                   {access && (
                     <span
                       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-                      style={{ background: `${access.color}14`, color: access.color }}
+                      style={{ background: tint(access.color, 8), color: access.color }}
                     >
                       {access.label}
                     </span>
@@ -2635,7 +2636,7 @@ export function OfferingForm({
                       setConfirmRemoveMaterial(i);
                     }}
                     aria-label={`Remove ${m.label || "material"}`}
-                    className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                    className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                   >
                     <Trash2 size={14} strokeWidth={1.8} />
                   </button>
@@ -2690,7 +2691,7 @@ export function OfferingForm({
                       <label className={LABEL}>Folder</label>
                       <ColorSelect
                         value={m.folder || "Others"}
-                        options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+                        options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "var(--ink-bright-blue)", icon: Folder }))}
                         onChange={(folder) => setMaterials((list) => list.map((item, index) => index === i ? { ...item, folder } : item))}
                         ariaLabel="Material folder"
                         fill
@@ -2704,7 +2705,7 @@ export function OfferingForm({
                         onChange={(values) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, journeyStage: values[0] as JourneyStage, journeyStages: values as JourneyStage[] } : x))}
                         allLabel="Journey stages"
                         allIcon={Route}
-                        allColor="#7C3AED"
+                        allColor="var(--ink-violet-soft)"
                         ariaLabel="Buyer's journey stage"
                         fluid
                       />
@@ -2837,7 +2838,7 @@ export function OfferingForm({
                           setConfirmRow({ kind: "related", id: x.id, label: x.name })
                         }
                         aria-label={`Remove ${x.name} from related offerings`}
-                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[color:#DC2626]/10"
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[color:#DC2626]/10"
                       >
                         <Trash2 size={14} strokeWidth={2} />
                       </button>
@@ -3045,7 +3046,7 @@ export function OfferingForm({
                 }
                 allLabel="Journey stages"
                 allIcon={Route}
-                allColor="#7C3AED"
+                allColor="var(--ink-violet-soft)"
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
                 fluid
@@ -3071,7 +3072,7 @@ export function OfferingForm({
             <label className={LABEL}>Folder</label>
             <ColorSelect
               value={draftMaterial.folder || "Others"}
-              options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+              options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "var(--ink-bright-blue)", icon: Folder }))}
               onChange={(folder) => setDraftMaterial((draft) => ({ ...draft, folder }))}
               ariaLabel="Material folder"
               minWidth={0}

@@ -63,17 +63,17 @@ import {
 const PRIORITY_TONE: Record<string, string> = {
   High: "#B42318",
   Medium: "#B54708",
-  Low: "#0F766E",
+  Low: "var(--ink-teal-deep)",
 };
 
 /* The deliverable's own six states, walking from not-started to out-the-door.
    Cancelled is the only red: it is the one that ends the work. */
 const DELIVERABLE_TONE: Record<string, string> = {
   Draft: "#64748B",
-  "In progress": "#6D28D9",
-  "Ready for review": "#0071E3",
-  Finalized: "#1A7A35",
-  "Submitted to customer": "#0F766E",
+  "In progress": "var(--ink-violet)",
+  "Ready for review": "var(--ink-bright-blue)",
+  Finalized: "var(--ink-green)",
+  "Submitted to customer": "var(--ink-teal-deep)",
   Cancelled: "#B42318",
 };
 import { NeededByTimeline } from "@/components/solutioning/NeededByTimeline";
@@ -83,6 +83,7 @@ import {
 } from "@/components/solutioning/recordActions";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 /**
  * Which mark a timeline event wears, read off the sentence the store wrote.
@@ -92,21 +93,21 @@ import type { OfferingMaterial } from "@/lib/offeringMaterials";
 /** Shared with the module's row-fold, so the two timelines cannot disagree. */
 export function timelineMark(what: string): { icon: LucideIcon; color: string } {
   const w = what.toLowerCase();
-  if (w.startsWith("requested")) return { icon: ClipboardList, color: "#0071E3" };
+  if (w.startsWith("requested")) return { icon: ClipboardList, color: "var(--ink-bright-blue)" };
   if (w.startsWith("picked it up") || w.startsWith("took this up"))
     return { icon: Hand, color: "#4338CA" };
   if (w.startsWith("started this") || w.startsWith("created this"))
     return { icon: Hand, color: "#4338CA" };
   if (w.startsWith("copied ")) return { icon: ClipboardList, color: "#0891B2" };
   if (w.startsWith("handed it back") || w.startsWith("took it off"))
-    return { icon: Undo2, color: "#B45309" };
+    return { icon: Undo2, color: "var(--ink-amber)" };
   if (w.includes("completed")) return { icon: CheckCircle2, color: "#16A34A" };
-  if (w.startsWith("reopened")) return { icon: RotateCcw, color: "#7C3AED" };
+  if (w.startsWith("reopened")) return { icon: RotateCcw, color: "var(--ink-violet-soft)" };
   if (w.startsWith("added")) return { icon: FilePlus2, color: "#0891B2" };
   if (w.startsWith("linked")) return { icon: Link2, color: "#0891B2" };
   if (w.startsWith("removed") || w.includes("deleted"))
     return { icon: Trash2, color: "#DC2626" };
-  if (w.startsWith("assigned")) return { icon: UserRound, color: "#7C3AED" };
+  if (w.startsWith("assigned")) return { icon: UserRound, color: "var(--ink-violet-soft)" };
   return { icon: FileText, color: "#64748B" };
 }
 
@@ -390,7 +391,7 @@ export function RequestDetail({
         <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: `${kindMeta.color}14`, color: kindMeta.color }}
+            style={{ background: tint(kindMeta.color, 8), color: kindMeta.color }}
           >
             <KindIcon size={20} strokeWidth={1.9} />
           </span>
@@ -652,7 +653,7 @@ export function RequestDetail({
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
           style={{
-            background: `${r.priority ? PRIORITY_TONE[r.priority] : "#64748B"}14`,
+            background: tint(r.priority ? PRIORITY_TONE[r.priority] : "#64748B", 8),
             color: r.priority ? PRIORITY_TONE[r.priority] : "#64748B",
           }}
         >
@@ -680,7 +681,7 @@ export function RequestDetail({
             className={cn(
               "tnum ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold",
               overdue
-                ? "bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                ? "bg-[rgba(220,38,38,0.08)] text-[color:var(--status-red)]"
                 : "bg-surface text-text-secondary"
             )}
           >
@@ -1056,7 +1057,7 @@ export function RequestDetail({
                       ? "Put it back so somebody else can take it up"
                       : `Take it off ${r.owner}`
                   }
-                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] px-3 py-2 text-[12.5px] font-semibold text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
+                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
                 >
                   <Undo2 size={13.5} strokeWidth={2.2} />
                   {iOwn ? "Hand it back" : `Take it off ${r.owner.split(" ")[0]}`}
@@ -1147,7 +1148,7 @@ export function RequestDetail({
                      from a person is never mistaken for something the app
                      did. */
                   const mark = a.comment
-                    ? { icon: MessageSquare, color: "#0071E3" }
+                    ? { icon: MessageSquare, color: "var(--ink-bright-blue)" }
                     : timelineMark(a.what);
                   const MarkIcon = mark.icon;
                   return (
@@ -1161,7 +1162,7 @@ export function RequestDetail({
                       <span
                         aria-hidden="true"
                         className="absolute left-0 top-0 grid h-[26px] w-[26px] place-items-center rounded-full"
-                        style={{ background: `${mark.color}1A`, color: mark.color }}
+                        style={{ background: tint(mark.color, 10), color: mark.color }}
                       >
                         <MarkIcon size={13} strokeWidth={2.3} />
                       </span>
@@ -1700,7 +1701,7 @@ function DocRow({
             disabled={busy}
             onClick={onRemove}
             aria-label={`Remove ${d.name}`}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)] disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)] disabled:opacity-50"
           >
             <Trash2 size={13.5} strokeWidth={2} />
           </button>
@@ -1874,7 +1875,7 @@ function AddDocForm({
                       e.stopPropagation();
                       setFile(null);
                     }}
-                    className="font-semibold text-[color:#B02020]"
+                    className="font-semibold text-[color:var(--ink-red)]"
                   >
                     remove it
                   </span>
@@ -1893,7 +1894,7 @@ function AddDocForm({
           </label>
 
           {uploadError && (
-            <p className="text-[11.5px] font-medium text-[color:#DC2626]">
+            <p className="text-[11.5px] font-medium text-[color:var(--status-red)]">
               {uploadError}
             </p>
           )}
@@ -2018,7 +2019,7 @@ function AddDocForm({
               ...(home?.docs ?? []).map((d) => ({
                 value: d.id,
                 label: `${d.name} v${d.version}`,
-                color: "#0071E3",
+                color: "var(--ink-bright-blue)",
                 icon: FileText,
               })),
             ]}

@@ -84,6 +84,7 @@ import type {
   OfferingUsage,
 } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 type DisplayMode =
   | "activity"
@@ -123,11 +124,11 @@ const STATUS_ICONS: Record<CustomerOfferingStatus, LucideIcon> = {
 const PIN_STATES = ["on", "off"] as const;
 
 const DISPLAY_OPTIONS: ColorOption[] = [
-  { value: "activity", label: "Show the activity", color: "#0071E3", icon: Activity },
+  { value: "activity", label: "Show the activity", color: "var(--ink-bright-blue)", icon: Activity },
   {
     value: "dollar_value",
     label: "Show dollar value",
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     icon: BadgeDollarSign,
   },
   // "Key dates" was one option covering two different questions, and it read
@@ -137,13 +138,13 @@ const DISPLAY_OPTIONS: ColorOption[] = [
   {
     value: "start_date",
     label: "Show the start date",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     icon: CalendarClock,
   },
   {
     value: "end_date",
     label: "Show the end date",
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     icon: CalendarClock,
   },
 ];
@@ -190,12 +191,12 @@ const STATUS_OPTIONS: ColorOption[] = [
 
 const CURRENCY_OPTIONS: ColorOption[] = [
   { value: "USD", label: "$ USD", color: "#2563EB", icon: Coins },
-  { value: "EUR", label: "€ EUR", color: "#7C3AED", icon: Coins },
-  { value: "GBP", label: "£ GBP", color: "#C2410C", icon: Coins },
-  { value: "CHF", label: "CHF", color: "#0F766E", icon: Coins },
+  { value: "EUR", label: "€ EUR", color: "var(--ink-violet-soft)", icon: Coins },
+  { value: "GBP", label: "£ GBP", color: "var(--ink-orange)", icon: Coins },
+  { value: "CHF", label: "CHF", color: "var(--ink-teal-deep)", icon: Coins },
   { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },
   { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
-  { value: "JPY", label: "¥ JPY", color: "#C2410C", icon: Coins },
+  { value: "JPY", label: "¥ JPY", color: "var(--ink-orange)", icon: Coins },
   { value: "CNY", label: "¥ CNY", color: "#B91C1C", icon: Coins },
   { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
   { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
@@ -204,7 +205,7 @@ const CURRENCY_OPTIONS: ColorOption[] = [
   { value: "SEK", label: "kr SEK", color: "#1D4ED8", icon: Coins },
   { value: "NOK", label: "kr NOK", color: "#BE123C", icon: Coins },
   { value: "DKK", label: "kr DKK", color: "#DC2626", icon: Coins },
-  { value: "NZD", label: "NZ$ NZD", color: "#0F766E", icon: Coins },
+  { value: "NZD", label: "NZ$ NZD", color: "var(--ink-teal-deep)", icon: Coins },
   { value: "ZAR", label: "R ZAR", color: "#CA8A04", icon: Coins },
   { value: "BRL", label: "R$ BRL", color: "#16A34A", icon: Coins },
   { value: "MXN", label: "MX$ MXN", color: "#4D7C0F", icon: Coins },
@@ -417,7 +418,11 @@ export function CustomerOfferingHeatMap({
   const [draftIsNew, setDraftIsNew] = useState(false);
   /** The pipeline, so an activity can name the deal it belongs to — and, since
    *  Aug 23, so the matrix itself is built from it (see resolveHeatMapCell). */
-  const { opportunities: pipeline } = useOpportunities();
+  /* `loading` matters here: the money tile is summed from the pipeline, and
+     rendering it before the pipeline arrives showed $370K for a beat and then
+     jumped to $102.3M — a 276x correction, long enough to read and to
+     screenshot (Anir, Sep 4). */
+  const { opportunities: pipeline, loading: pipelineLoading } = useOpportunities();
   /** The pipeline in the shape the resolver wants. Memoised: every cell in a
    *  16 × 31 matrix asks for it. */
   const heatMapDeals = useMemo(
@@ -1394,7 +1399,7 @@ export function CustomerOfferingHeatMap({
                         <span
                           className={cn("hidden w-fit max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold text-text-primary", !fullScreen && "lg:inline-flex")}
                           style={{
-                            background: `${versionStatus.color}1F`,
+                            background: tint(versionStatus.color, 12),
                           }}
                         >
                           <VersionStatusIcon
@@ -1440,7 +1445,7 @@ export function CustomerOfferingHeatMap({
                             title="Delete this activity"
                             aria-label="Delete this activity"
                             onClick={() => setConfirmUnlink(version.id)}
-                            className="text-[color:#DC2626] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            className="text-[color:var(--status-red)] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
@@ -1781,7 +1786,9 @@ export function CustomerOfferingHeatMap({
           },
           {
             label: "Recorded value",
-            value: formatMoney(summary.value),
+            /* Nothing rather than a wrong number while the deals are still
+               on their way. */
+            value: pipelineLoading ? "—" : formatMoney(summary.value),
             sub: "across reported activities",
             icon: BadgeDollarSign,
           },
@@ -2145,7 +2152,7 @@ export function CustomerOfferingHeatMap({
                                 passes && meta && !isBaseline
                                   ? meta.color
                                   : passes && isBaseline
-                                    ? `${meta?.color || "#94A3B8"}0D`
+                                    ? tint(meta?.color || "#94A3B8", 5)
                                     : "var(--surface)",
                               color:
                                 passes && meta

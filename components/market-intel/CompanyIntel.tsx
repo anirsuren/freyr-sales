@@ -44,6 +44,7 @@ import {
 } from "@/lib/marketIntelMock";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
 import { useStoredView } from "@/lib/useStoredView";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE COMPANY'S BRIEFING (Anir, Aug 10: "I can see the employees, it'll track
@@ -133,10 +134,10 @@ export function CompanyIntel({
   );
 
   const lenses: { key: Lens; label: string; icon: LucideIcon; color: string; count: number }[] = [
-    { key: "all", label: "Everything", icon: Radar, color: "#0071E3", count: feed.length },
-    { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "#0071E3", count: company.posts.length },
-    { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: company.news.length },
-    { key: "signals", label: "Signals", icon: Radar, color: "#7C3AED", count: company.signals.length },
+    { key: "all", label: "Everything", icon: Radar, color: "var(--ink-bright-blue)", count: feed.length },
+    { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "var(--ink-bright-blue)", count: company.posts.length },
+    { key: "news", label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: company.news.length },
+    { key: "signals", label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: company.signals.length },
   ];
 
   return (
@@ -160,7 +161,7 @@ export function CompanyIntel({
             <span
               className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tnum"
               style={{
-                color: up ? "#1A7A35" : "#DC2626",
+                color: up ? "var(--ink-green)" : "#DC2626",
                 background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
               }}
             >
@@ -273,7 +274,7 @@ export function CompanyIntel({
                       .map((item, index) => (
                         <tr key={index} className="transition-colors hover:bg-surface">
                           <td className="px-4 py-3 align-top">
-                            <span className="flex w-max items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+                            <span className="flex w-max items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
                               <Newspaper size={10.5} strokeWidth={2.2} />
                               {item.source}
                             </span>
@@ -310,7 +311,7 @@ export function CompanyIntel({
                 .map((item, index) => (
                   <Card key={index} className="flex flex-col p-4">
                     <p className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+                      <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
                         <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
                       </span>
                       <span className="text-[11.5px] text-text-tertiary">
@@ -357,7 +358,7 @@ export function CompanyIntel({
                           <span className="flex items-center gap-1 tnum">
                             <MessageSquare size={12} strokeWidth={2} /> {item.comments}
                           </span>
-                          <span className="ml-auto flex items-center gap-1 text-[color:#0071E3]">
+                          <span className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)]">
                             <LinkedInIcon size={12} /> LinkedIn
                           </span>
                         </p>
@@ -370,7 +371,7 @@ export function CompanyIntel({
                 return (
                   <Card key={`n-${index}`} className="p-4">
                     <p className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+                      <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
                         <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
                       </span>
                       <span className="text-[11.5px] text-text-tertiary">
@@ -405,7 +406,7 @@ export function CompanyIntel({
                   <p className="flex flex-wrap items-center gap-2">
                     <span
                       className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-                      style={{ color: meta.color, background: `${meta.color}14` }}
+                      style={{ color: meta.color, background: tint(meta.color, 8) }}
                     >
                       <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
                     </span>
@@ -468,7 +469,7 @@ export function CompanyIntel({
                       {person.role}
                     </span>
                   </span>
-                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
+                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
                     {person.posts90d} posts
                   </span>
                 </li>
@@ -492,7 +493,7 @@ export function CompanyIntel({
                   <li key={kind} className="flex items-center gap-2">
                     <span
                       className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                      style={{ color: meta.color, background: `${meta.color}14` }}
+                      style={{ color: meta.color, background: tint(meta.color, 8) }}
                     >
                       <SIcon size={11} strokeWidth={2.2} /> {meta.label}
                     </span>
@@ -514,7 +515,7 @@ export function CompanyIntel({
               {company.competitors.map((name) => (
                 <span
                   key={name}
-                  className="rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:#B4318F]"
+                  className="rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)]"
                 >
                   {name}
                 </span>

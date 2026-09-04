@@ -27,6 +27,7 @@ import { cn, formatDate } from "@/lib/utils";
 import type { AdminEmailRecord } from "@/lib/adminEmail";
 import { RichTextBox } from "./RichTextBox";
 import { OwnerDigestPicker } from "./OwnerDigestPicker";
+import { tint } from "@/lib/tint";
 
 /**
  * WRITING AND SENDING AN EMAIL FROM THE APP (Anir, Aug 25: "have you added
@@ -82,7 +83,7 @@ const AUTOMATED_EMAILS: {
     when: "On a major release",
     what: "Tells everyone what changed when a release is marked major.",
     who: "every active member",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: Send,
     kind: "release",
   },
@@ -91,7 +92,7 @@ const AUTOMATED_EMAILS: {
     when: "Monthly",
     what: "The month's numbers, plus a nudge to whoever owns something that has gone quiet.",
     who: "offering owners and members",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     icon: CalendarClock,
     kind: "monthly",
   },
@@ -348,7 +349,7 @@ function RecipientField({
                   onChange(chosen.filter((a) => a !== address).join(", "));
                 }}
                 aria-label={`Remove ${person ? person.name : address}`}
-                className="shrink-0 cursor-pointer rounded-full p-0.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
+                className="shrink-0 cursor-pointer rounded-full p-0.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:var(--status-red)]"
               >
                 <X size={11} strokeWidth={2.6} />
               </button>
@@ -662,7 +663,7 @@ export function EmailComposer() {
             somebody actually wonders it. */}
 
         {!live && (
-          <p className="mt-2 flex items-start gap-2 rounded-lg bg-[rgba(124,58,237,0.10)] px-3 py-2 text-[12.5px] font-medium text-[color:#7C3AED]">
+          <p className="mt-2 flex items-start gap-2 rounded-lg bg-[rgba(124,58,237,0.10)] px-3 py-2 text-[12.5px] font-medium text-[color:var(--ink-violet-soft)]">
             <FlaskConical size={14} strokeWidth={2} className="mt-0.5 shrink-0" />
             Sample mode. You can write and press Send to see the whole flow, but
             nothing leaves the building. Switch to Real to deliver.
@@ -749,7 +750,7 @@ export function EmailComposer() {
                 title="Sets the headers Outlook reads to draw its red exclamation mark"
                 className={`mb-1 inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors ${
                   important
-                    ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]"
+                    ? "border-[color:#DC2626] bg-[rgba(220,38,38,0.08)] text-[color:var(--status-red)]"
                     : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
                 }`}
               >
@@ -921,7 +922,7 @@ export function EmailComposer() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                  style={{ background: `${mail.color}1F`, color: mail.color }}
+                  style={{ background: tint(mail.color, 12), color: mail.color }}
                 >
                   <mail.icon size={13} strokeWidth={2.1} />
                 </span>
@@ -930,7 +931,7 @@ export function EmailComposer() {
                 </span>
                 <span
                   className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                  style={{ background: `${mail.color}14`, color: mail.color }}
+                  style={{ background: tint(mail.color, 8), color: mail.color }}
                 >
                   {mail.when}
                 </span>
@@ -1220,7 +1221,7 @@ export function EmailComposer() {
                         <AlertTriangle size={11} strokeWidth={2.4} /> Failed
                       </span>
                     ) : (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#7C3AED]">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)]">
                         <FlaskConical size={11} strokeWidth={2.4} /> Sample
                       </span>
                     )}

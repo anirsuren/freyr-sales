@@ -141,14 +141,14 @@ export async function buildOpportunity360(
      */
 
     for (const [key, label, color] of [
-      ["submissions", "Submissions", "#7C3AED"],
-      ["presentations", "Presentations", "#0F766E"],
+      ["submissions", "Submissions", "var(--ink-violet-soft)"],
+      ["presentations", "Presentations", "var(--ink-teal-deep)"],
       /* Named as a REQUEST, the same correction the customer page needed:
          a meeting asked of the Solutioning team is not a meeting held. */
-      ["meetingRequests", "Meeting requests", "#B4318F"],
+      ["meetingRequests", "Meeting requests", "var(--ink-magenta)"],
       /* What sales has asked for on this deal and nobody has turned into work
          yet — the half of Solutioning that was invisible from the deal. */
-      ["solutionRequests", "Solution requests", "#C2410C"],
+      ["solutionRequests", "Solution requests", "var(--ink-orange)"],
     ] as const) {
       const rows = mine.filter((r) => solutioningShelf(r) === key);
       bands.push({
@@ -188,7 +188,7 @@ export async function buildOpportunity360(
       key: "meetings",
       label: "Meetings",
       icon: BAND_ICONS.meetings,
-      color: "#B4318F",
+      color: "var(--ink-magenta)",
       count: mine.length,
       href: "/meetings",
       hrefLabel: "All meetings",
@@ -298,7 +298,7 @@ export async function buildOpportunity360(
       key: "contracts",
       label: "Contracts",
       icon: BAND_ICONS.contracts,
-      color: "#0F766E",
+      color: "var(--ink-teal-deep)",
       count: mine.length,
       href: "/contracts",
       hrefLabel: "Contracts",

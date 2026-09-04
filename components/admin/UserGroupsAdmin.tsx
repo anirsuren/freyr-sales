@@ -363,7 +363,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group owner
-                <Crown size={12} strokeWidth={2.4} className="text-[color:#7C3AED]" />
+                <Crown size={12} strokeWidth={2.4} className="text-[color:var(--ink-violet-soft)]" />
                 <InfoHint text="The owner runs this group's performance. They see their people's numbers and can verify them." />
               </label>
               <div className="mt-1">
@@ -423,7 +423,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     <Avatar name={m} className="h-5 w-5 text-[8px]" />
                     {m}
                     {m === head && (
-                      <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
+                      <Crown size={10} strokeWidth={2.6} className="text-[color:var(--ink-violet-soft)]" />
                     )}
                     <button
                       type="button"
@@ -723,7 +723,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                               <Crown
                                 size={11}
                                 strokeWidth={2.6}
-                                className="shrink-0 text-[color:#7C3AED]"
+                                className="shrink-0 text-[color:var(--ink-violet-soft)]"
                               />
                               <Avatar
                                 name={g.head}
@@ -757,7 +757,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                   {r.held} {r.held === 1 ? "goal" : "goals"}
                                 </span>
                                 {r.waiting > 0 && (
-                                  <span className="whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#B45309] tnum">
+                                  <span className="whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-amber)] tnum">
                                     {r.waiting} to verify
                                   </span>
                                 )}
@@ -768,7 +768,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                           </td>
                           <td className="px-4 py-3.5">
                             {r && r.target > 0 ? (
-                              <span className="whitespace-nowrap text-[12.5px] font-semibold text-[color:#0F766E] tnum">
+                              <span className="whitespace-nowrap text-[12.5px] font-semibold text-[color:var(--ink-teal-deep)] tnum">
                                 {chipMoney(r.achieved)} of {chipMoney(r.target)}
                               </span>
                             ) : (
@@ -811,7 +811,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                   e.stopPropagation();
                                   setConfirmRemove(g);
                                 }}
-                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
                               </button>
@@ -866,7 +866,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                            head's workspace role is a different
                                            fact and reading "Admin" here was
                                            the confusion he pointed at. */
-                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:#7C3AED]">
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)]">
                                           <Crown size={9} strokeWidth={2.6} />
                                           Group owner
                                         </span>

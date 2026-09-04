@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { tint } from "@/lib/tint";
 
 // Icons arrive as KEY STRINGS, never as components — the page that feeds this
 // card is a server component and React can't serialise a function across the
@@ -169,7 +170,7 @@ export function CallQualityCard({
               >
                 <span
                   className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md"
-                  style={{ color: bucket.color, background: `${bucket.color}24` }}
+                  style={{ color: bucket.color, background: tint(bucket.color, 14) }}
                   aria-hidden="true"
                 >
                   <Timer size={12} strokeWidth={2.2} />

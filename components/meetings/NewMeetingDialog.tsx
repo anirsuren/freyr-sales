@@ -372,7 +372,7 @@ export function NewMeetingDialog({
                   value: c.id,
                   label: c.name,
                   logoName: c.name,
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                   description: parts.length ? parts.join(" · ") : "nothing yet",
                   descriptionAccent: parts.length > 0,
                 };

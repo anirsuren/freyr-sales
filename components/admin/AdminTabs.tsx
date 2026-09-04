@@ -55,7 +55,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     key: "members",
     label: "Team members",
     icon: ShieldCheck,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     detail:
       "Everyone in the workspace, and what each of them is allowed to do. One person can hold several privileges at once. Only an admin can change somebody's role or their privileges.",
   },
@@ -63,7 +63,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     key: "groups",
     label: "User groups",
     icon: UsersRound,
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     detail:
       "The departments people belong to. Each group has one owner and the people in it. Open a group to set the goals it carries and each person's target.\n\nThe kind of group decides what work it can be given. A business development group takes customers, contracts and opportunities. A solutioning group takes solution requests, submissions, presentations and meetings.",
   },
@@ -76,7 +76,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     key: "privileges",
     label: "Privileges",
     icon: KeyRound,
-    color: "#B45309",
+    color: "var(--ink-amber)",
     detail:
       "What each role is allowed to do in each module. View means look only. Edit means change something that is already there. Create means make new ones, and it is the only one that can delete.\n\nAll of this applies only to records a person created or was given. View all is the one privilege that shows somebody everybody else's records, and it never lets them change one.\n\nEvery change happens straight away, asks you first, and emails the admins. Who holds which role is on Team members.",
   },
@@ -84,7 +84,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     key: "activity",
     label: "Activity master",
     icon: ListChecks,
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     detail:
       "What an activity is worth, and which goal it counts toward. When somebody logs a pilot or a contract, these rules decide what it adds and where it lands. Set them once and every log in the app follows them.",
   },
@@ -95,7 +95,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     key: "email",
     label: "Email",
     icon: Mail,
-    color: "#B45309",
+    color: "var(--ink-amber)",
     detail:
       "Write and send an email from the app. Recipients do not need an account here, so customers and colleagues who never sign in receive it the same way, CC included. Everything sent is kept below.",
   },

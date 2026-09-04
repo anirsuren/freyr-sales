@@ -5,6 +5,7 @@ import { ArrowLeft, Check, File, FileSpreadsheet, FileText, Loader2, Plus, Prese
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { Opportunity } from "@/lib/opportunitiesShared";
+import { tint } from "@/lib/tint";
 
 /**
  * A CONTRACT, MADE WHERE THE DEAL IS.
@@ -37,7 +38,7 @@ const KINDS: { match: RegExp; color: string; icon: LucideIcon }[] = [
 ];
 function kindOf(name: string) {
   return (
-    KINDS.find((k) => k.match.test(name)) ?? { color: "#0071E3", icon: File }
+    KINDS.find((k) => k.match.test(name)) ?? { color: "var(--ink-bright-blue)", icon: File }
   );
 }
 const ACCEPT = ".pdf,.doc,.docx,.rtf,.txt,.xls,.xlsx,.csv,.ppt,.pptx,.key,.zip";
@@ -258,9 +259,9 @@ export function NewContractDialog({
                 {
                   value: "Ready for delivery",
                   label: "Ready for delivery",
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                 },
-                { value: "Signed", label: "Signed", color: "#1A7A35" },
+                { value: "Signed", label: "Signed", color: "var(--ink-green)" },
                 { value: "Cancelled", label: "Cancelled", color: "#B42318" },
               ]}
             />
@@ -366,7 +367,7 @@ export function NewContractDialog({
                     <div key={d.key} className="flex items-center gap-2.5 px-1.5 py-1.5">
                       <span
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                        style={{ background: `${meta.color}14`, color: meta.color }}
+                        style={{ background: tint(meta.color, 8), color: meta.color }}
                       >
                         <Icon size={13} strokeWidth={2} />
                       </span>

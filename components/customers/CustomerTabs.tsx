@@ -3,6 +3,8 @@
 import { EditableFact } from "@/components/opportunities/EditableFact";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
+import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
+import { splitPhone, joinPhone } from "@/lib/countries";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -85,6 +87,7 @@ import type {
   AccountDeal,
 } from "@/lib/types";
 import type { FdlComponent } from "@/lib/offerings";
+import { tint } from "@/lib/tint";
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -144,16 +147,16 @@ const NOTE_KIND_META: Record<
   string,
   { label: string; icon: typeof Phone; color: string }
 > = {
-  call: { label: "Call", icon: Phone, color: "#0071E3" },
+  call: { label: "Call", icon: Phone, color: "var(--ink-bright-blue)" },
   email: { label: "Email", icon: Mail, color: "#19C3B1" },
-  meeting: { label: "Meeting", icon: Users, color: "#7C3AED" },
+  meeting: { label: "Meeting", icon: Users, color: "var(--ink-violet-soft)" },
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
 // Last slot renders as chip TEXT on a 6% tint of itself — amber was the banned
 // yellow there (Suren, Jul 27). Burnt orange is the only warm hue in the set,
 // so it still reads distinct from the rose beside it, and it is legible.
-const SERVICE_TAG_COLORS = ["#0071E3", "#0D9488", "#7C3AED", "#E11D48", "#C2410C"];
+const SERVICE_TAG_COLORS = ["var(--ink-bright-blue)", "#0D9488", "var(--ink-violet-soft)", "#E11D48", "var(--ink-orange)"];
 
 // No DELIVERABLES tiles here any more. "Account Brief / Market Report / ABM
 // Plan / Slide Outline — one click, the agent drafts it right in your chat" was
@@ -193,6 +196,7 @@ function GeographyValue({ value }: { value: string }) {
 }
 
 export function CustomerTabs({
+  intelligence,
   canEditFacts,
   customer,
   contacts,
@@ -206,6 +210,15 @@ export function CustomerTabs({
   bands = [],
   bandActions,
 }: {
+  /** The Market Intel briefing for this account, when one is tracked. */
+  intelligence?: {
+    name: string;
+    href: string;
+    tldr: string | null;
+    posts: number;
+    news: number;
+    updatedAt: string | null;
+  } | null;
   /**
    * MAY THEY CHANGE THE ACCOUNT'S OWN FACTS.
    *
@@ -893,6 +906,38 @@ export function CustomerTabs({
           <div className="space-y-6">
             {/* Identity FIRST (Anir's audit): who this account IS leads the
                 page; the agent's read follows right after, kept, not cut. */}
+            {/* CUSTOMER INTELLIGENCE, ON THE CUSTOMER (Manoj, Sep 3). Market
+                Intel has been writing a rundown for this account all along and
+                it was only readable from its own module; the account page is
+                where somebody asks what is going on with them. */}
+            {intelligence && (
+              <Card>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Customer intelligence
+                  </h3>
+                  <Link
+                    href={intelligence.href}
+                    className="text-[12.5px] font-semibold text-blue-primary hover:underline"
+                  >
+                    Open the full briefing →
+                  </Link>
+                </div>
+                {intelligence.tldr ? (
+                  <p className="text-[13.5px] leading-relaxed text-text-secondary">
+                    {intelligence.tldr}
+                  </p>
+                ) : (
+                  <p className="text-[13.5px] text-text-tertiary">
+                    Tracked, with nothing written up yet.
+                  </p>
+                )}
+                <p className="mt-3 text-[12px] text-text-tertiary">
+                  {intelligence.posts} LinkedIn post{intelligence.posts === 1 ? "" : "s"} ·{" "}
+                  {intelligence.news} article{intelligence.news === 1 ? "" : "s"}, past 3 months
+                </p>
+              </Card>
+            )}
             <Card>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-[15px] font-semibold text-text-primary">
@@ -969,7 +1014,10 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
-                  label="Geography"
+                  /* "Locations", his word (Manoj, Sep 3: "Customer logo,
+                     About, Locations, Key contacts, customer intelligence").
+                     Same field, the name people use for it. */
+                  label="Locations"
                   value={customer.geography ?? ""}
                   canEdit={canEditFacts}
                   renderValue={(v) => <GeographyValue value={v} />}
@@ -994,6 +1042,32 @@ export function CustomerTabs({
                     (await patchCustomer({ customer_type: v })) ? null : "That didn't save."
                   }
                 />
+                {/* PUBLIC OR PRIVATE, AND HOW BIG (Manoj, Sep 4, on what he
+                    wants when he clicks an account: "what is this company
+                    into? Are they a biopharmaceutical company or a medical
+                    device company? And where are they headquartered... what
+                    kind of product portfolio?").
+
+                    Both are already on the record — "Analyze the customer"
+                    fills them from public sources — and neither was on this
+                    card, so the page held the answers and showed the reader
+                    two of them. */}
+                <EditableFact
+                  label="Ownership"
+                  value={customer.ownership ?? ""}
+                  canEdit={canEditFacts}
+                  onSave={async (v) =>
+                    (await patchCustomer({ ownership: v })) ? null : "That didn't save."
+                  }
+                />
+                <EditableFact
+                  label="Revenue"
+                  value={customer.revenue ?? ""}
+                  canEdit={canEditFacts}
+                  onSave={async (v) =>
+                    (await patchCustomer({ revenue: v })) ? null : "That didn't save."
+                  }
+                />
               </div>
               {/* THE CHIPS MOVED UP, ONTO THE FACTS THEMSELVES.
                   Industry, Geography and Website used to be printed twice:
@@ -1012,6 +1086,71 @@ export function CustomerTabs({
               <p className="text-[14px] text-text-secondary leading-relaxed">
                 {customer.enrichment_summary}
               </p>
+            </Card>
+
+            {/* KEY CONTACTS, ON THE PAGE YOU LAND ON.
+                Manoj's change sheet, item 23: "If user clicks on the Customer
+                name, we will need all customer intelligence. Customer logo,
+                About, Locations, Key contacts, customer intelligence." Four of
+                those five were already here; the people were one tab away, so
+                the one thing a rep actually rings was the one thing you had to
+                go looking for.
+
+                A summary, not the Contacts tab moved up: six faces, and the
+                tab is still where you go to work with all of them. */}
+            {/* ALWAYS ON THE PAGE, EVEN AT ZERO. Manoj asked for key contacts
+                as one of the five things a customer page must show; rendering
+                the card only when contacts exist meant the account that most
+                needs the prompt — the one with nobody on it — was the one that
+                said nothing at all. */}
+            <Card>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Key contacts
+                  </h3>
+                  {contacts.length > 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setTab("contacts")}
+                      className="cursor-pointer text-[13px] font-semibold text-blue-primary transition-colors hover:text-blue-hover"
+                    >
+                      All {contacts.length} contacts →
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {contacts.slice(0, 6).map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/contacts/${c.id}`}
+                      className="flex min-w-0 items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface"
+                    >
+                      <Avatar name={c.full_name} className="h-[34px] w-[34px] shrink-0 text-[12px]" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                          {c.full_name}
+                        </span>
+                        {/* Title, then the number, because a rep scanning this
+                            is looking for the right ROLE first and the way to
+                            reach them second. */}
+                        <span className="block truncate text-[12.5px] text-text-secondary">
+                          {c.job_title || "Title not set"}
+                        </span>
+                        {c.phone && (
+                          <span className="block truncate text-[12px] text-text-tertiary tnum">
+                            {formatPhoneNumber(c.phone)}
+                          </span>
+                        )}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                {contacts.length === 0 && (
+                  <p className="text-[13px] text-text-secondary">
+                    Nobody is on this account yet. Add the people you deal with
+                    and they show up here and on every deal.
+                  </p>
+                )}
             </Card>
 
             {/* Account analytics — what a rep needs to read the relationship at a
@@ -1209,7 +1348,7 @@ export function CustomerTabs({
                       <span className="flex min-w-0 items-center gap-2">
                         <span
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-                          style={{ color, background: `${color}14` }}
+                          style={{ color, background: tint(color, 8) }}
                         >
                           <Sparkles size={14} strokeWidth={1.9} />
                         </span>
@@ -1302,7 +1441,7 @@ export function CustomerTabs({
                   label: stage,
                   value: ds.reduce((s, d) => s + d.value, 0),
                   count: ds.length,
-                  color: STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "#0071E3",
+                  color: STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "var(--ink-bright-blue)",
                   tip: ds.map(
                     (d): TipItem => ({
                       logo: d.company,
@@ -1414,7 +1553,7 @@ export function CustomerTabs({
                           subtitle={`${customer.company_name} open value accumulated over the last 12 weeks.`}
                           chart={{
                             kind: "line",
-                            series: [{ label: "Open pipeline", color: "#0071E3", points: pipelineTrend }],
+                            series: [{ label: "Open pipeline", color: "var(--ink-bright-blue)", points: pipelineTrend }],
                             format: "money",
                             pointLabels: pipelinePointLabels,
                             xLabels: [pipelinePointLabels[0], pipelinePointLabels[5], pipelinePointLabels[11]],
@@ -1425,7 +1564,7 @@ export function CustomerTabs({
                       </div>
                     </div>
                     <LineChart
-                      series={[{ label: "Open pipeline", color: "#0071E3", points: pipelineTrend }]}
+                      series={[{ label: "Open pipeline", color: "var(--ink-bright-blue)", points: pipelineTrend }]}
                       height={220}
                       format="money"
                       pointLabels={pipelinePointLabels}
@@ -1581,7 +1720,7 @@ export function CustomerTabs({
                             chart={{
                               kind: "area",
                               label: "Touches",
-                              color: "#0071E3",
+                              color: "var(--ink-bright-blue)",
                               data: activity,
                               format: "number",
                               unit: "touches",
@@ -1681,7 +1820,7 @@ export function CustomerTabs({
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   {c.role_bucket ? (
-                    <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="#0040A0" className="!normal-case tracking-normal shrink-0" />
+                    <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="var(--ink-blue)" className="!normal-case tracking-normal shrink-0" />
                   ) : (
                     <span />
                   )}
@@ -1829,7 +1968,7 @@ export function CustomerTabs({
                         subtitle={`${customer.company_name} cumulative open value as opportunities entered the account.`}
                         chart={{
                           kind: "line",
-                          series: [{ label: "Open pipeline", color: "#0071E3", points: valueTimeline }],
+                          series: [{ label: "Open pipeline", color: "var(--ink-bright-blue)", points: valueTimeline }],
                           format: "money",
                           pointLabels: dealPointLabels,
                           xLabels: [dealPointLabels[0], dealPointLabels[dealPointLabels.length - 1]],
@@ -1840,7 +1979,7 @@ export function CustomerTabs({
                     </div>
                   </div>
                   <LineChart
-                    series={[{ label: "Open pipeline", color: "#0071E3", points: valueTimeline }]}
+                    series={[{ label: "Open pipeline", color: "var(--ink-bright-blue)", points: valueTimeline }]}
                     height={118}
                     format="money"
                     pointLabels={dealPointLabels}
@@ -2012,7 +2151,7 @@ export function CustomerTabs({
                                   "--semantic-color":
                                     SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length],
                                   "--semantic-bg":
-                                    `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}0F`,
+                                    tint(SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length], 6),
                                 } as CSSProperties}
                               >
                                 {/* Name only (Anir, Sep 2: "can you just
@@ -2160,7 +2299,7 @@ export function CustomerTabs({
                       {n.kind && n.kind !== "note" && (
                         <span
                           className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5"
-                          style={{ background: `${meta.color}1A`, color: meta.color }}
+                          style={{ background: tint(meta.color, 10), color: meta.color }}
                         >
                           <KIcon size={11} strokeWidth={2.2} />
                           {meta.label}
@@ -2433,9 +2572,9 @@ export function CustomerTabs({
                 style={{
                   color:
                     healthSeries.delta > 0
-                      ? "#1A7A35"
+                      ? "var(--ink-green)"
                       : healthSeries.delta < 0
-                      ? "#B02020"
+                      ? "var(--ink-red)"
                       : "#8A8A8E",
                 }}
               >
@@ -2474,7 +2613,7 @@ export function CustomerTabs({
                 <span className="text-text-secondary">{f.label}</span>
                 <span
                   className="font-semibold tnum"
-                  style={{ color: f.delta > 0 ? "#1A7A35" : "#B02020" }}
+                  style={{ color: f.delta > 0 ? "var(--ink-green)" : "var(--ink-red)" }}
                 >
                   {f.delta > 0 ? "+" : ""}
                   {f.delta}
@@ -2637,7 +2776,7 @@ export function CustomerTabs({
                       value: o.name,
                       label: o.name,
                       icon: Package,
-                      color: "#0071E3",
+                      color: "var(--ink-bright-blue)",
                     })),
                   ]}
                 />
@@ -2809,18 +2948,39 @@ export function CustomerTabs({
               />
             </Field>
             <Field label="Phone">
+              {/* SAME RULES AS THE LEAD FORM (Anir, Sep 4: "for all phone
+                  number fields"). This box has no separate code picker — the
+                  dialling code lives in the string — so it is split on the way
+                  in, grouped for reading, and put back together for storage. */}
               <Input
                 type="tel"
-                value={contactForm.phone}
-                onChange={(event) =>
+                inputMode="tel"
+                value={(() => {
+                  const { dial, number } = splitPhone(contactForm.phone);
+                  const grouped = formatPhoneNumber(number);
+                  return dial ? `${dial} ${grouped}`.trim() : grouped;
+                })()}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  /* A leading + is the only non-digit that carries meaning. */
+                  const plus = raw.trimStart().startsWith("+");
+                  const { dial, number } = splitPhone(
+                    plus ? raw : `+${phoneDigits(raw)}`
+                  );
+                  const capped = phoneDigits(number).slice(0, nationalDigitBudget(dial));
                   setContactForm((form) => ({
                     ...form,
-                    phone: event.target.value,
-                  }))
-                }
+                    phone: plus && dial ? joinPhone(dial, capped) : capped,
+                  }));
+                }}
                 placeholder="+44 20 0000 0000"
                 maxLength={60}
               />
+              {(() => {
+                const { dial, number } = splitPhone(contactForm.phone);
+                const why = phoneProblem(dial, number);
+                return why ? <p className="mt-1 text-[12px] text-error">{why}</p> : null;
+              })()}
             </Field>
             <Field label="LinkedIn URL">
               <Input

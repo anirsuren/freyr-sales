@@ -50,6 +50,7 @@ import {
   resultWhenParts,
 } from "@/lib/performanceShared";
 import { BarChart } from "@/components/charts/Charts";
+import { tint } from "@/lib/tint";
 
 /**
  * Shared chips, pills and bars for the Performance module. Goal types are
@@ -61,15 +62,15 @@ type TypeMeta = { color: string; icon: LucideIcon };
 
 const TYPE_META_BY_NAME: Record<string, TypeMeta> = {
   "financial and revenue performance": {
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     icon: BadgeDollarSign,
   },
-  "lead generation and outreach": { color: "#0071E3", icon: Magnet },
-  "sales activity & engagement": { color: "#B4318F", icon: Activity },
-  "proposal & deal execution": { color: "#C2410C", icon: Handshake },
+  "lead generation and outreach": { color: "var(--ink-bright-blue)", icon: Magnet },
+  "sales activity & engagement": { color: "var(--ink-magenta)", icon: Activity },
+  "proposal & deal execution": { color: "var(--ink-orange)", icon: Handshake },
 };
 
-const FALLBACK_TYPE_COLORS = ["#6D28D9", "#0EA5E9", "#DB2777", "#4F46E5"];
+const FALLBACK_TYPE_COLORS = ["var(--ink-violet)", "#0EA5E9", "#DB2777", "#4F46E5"];
 
 export function typeMeta(type: string): TypeMeta {
   const hit = TYPE_META_BY_NAME[type.trim().toLowerCase()];
@@ -99,7 +100,7 @@ export function TypeIconTile({
         "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
         className
       )}
-      style={{ color: meta.color, background: `${meta.color}14` }}
+      style={{ color: meta.color, background: tint(meta.color, 8) }}
     >
       <Icon size={18} strokeWidth={2} />
     </span>
@@ -127,7 +128,7 @@ export function TypeChip({
         size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]",
         className
       )}
-      style={{ color: meta.color, background: `${meta.color}14` }}
+      style={{ color: meta.color, background: tint(meta.color, 8) }}
     >
       <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.2} className="shrink-0" />
       <span className="truncate">{type}</span>
@@ -439,15 +440,15 @@ export function TrackSwitch({
 export function UnitChip({ unit }: { unit: GoalUnit }) {
   const meta =
     unit === "currency"
-      ? { label: "Money", color: "#0F766E", icon: BadgeDollarSign }
+      ? { label: "Money", color: "var(--ink-teal-deep)", icon: BadgeDollarSign }
       : unit === "percent"
-        ? { label: "Percentage", color: "#6D28D9", icon: Percent }
-        : { label: "Count", color: "#0071E3", icon: Hash };
+        ? { label: "Percentage", color: "var(--ink-violet)", icon: Percent }
+        : { label: "Count", color: "var(--ink-bright-blue)", icon: Hash };
   const Icon = meta.icon;
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-      style={{ color: meta.color, background: `${meta.color}12` }}
+      style={{ color: meta.color, background: tint(meta.color, 7) }}
     >
       <Icon size={10} strokeWidth={2.2} />
       {meta.label}
@@ -461,7 +462,7 @@ const PACE_META: Record<
 > = {
   met: { label: "Target met", color: "#16A34A", icon: CheckCircle2 },
   ahead: { label: "Ahead", color: "#16A34A", icon: TrendingUp },
-  ontrack: { label: "On track", color: "#0071E3", icon: Activity },
+  ontrack: { label: "On track", color: "var(--ink-bright-blue)", icon: Activity },
   lagging: { label: "Lagging", color: "#DC2626", icon: TrendingDown },
   unset: null,
   /* A target with no schedule cannot be behind or ahead of anything. Saying
@@ -497,7 +498,7 @@ export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md"
         "inline-flex items-center gap-1 rounded-full font-bold",
         size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
       )}
-      style={{ color: meta.color, background: `${meta.color}14` }}
+      style={{ color: meta.color, background: tint(meta.color, 8) }}
     >
       <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
       {meta.label}
@@ -553,7 +554,7 @@ export function VerifiedPill({
         style={
           verified
             ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
-            : { color: "#0058B0", background: "rgba(0,113,227,0.10)" }
+            : { color: "var(--ink-blue-soft)", background: "rgba(0,113,227,0.10)" }
         }
       >
         <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
@@ -596,7 +597,7 @@ export function VerifiedPill({
           // Fills light blue under the cursor rather than only swapping its
           // words (Anir, Aug 19: "should be light filled in blue when I hover
           // over it").
-          : "border-[rgba(0,113,227,0.35)] text-[#0058B0] hover:border-blue-primary hover:bg-blue-light",
+          : "border-[rgba(0,113,227,0.35)] text-[var(--ink-blue-soft)] hover:border-blue-primary hover:bg-blue-light",
         size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
       )}
     >
@@ -634,7 +635,7 @@ export function MetPill({ met, size = "md" }: { met: boolean; size?: "sm" | "md"
       style={
         met
           ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
-          : { color: "#0071E3", background: "rgba(0,113,227,0.08)" }
+          : { color: "var(--ink-bright-blue)", background: "rgba(0,113,227,0.08)" }
       }
     >
       {met ? <CheckCircle2 size={size === "sm" ? 10 : 11} strokeWidth={2.4} /> : null}
@@ -668,7 +669,7 @@ export function GoalBar({
   const pct = Math.min(100, pctMet(actual, target));
   const expected = Math.min(100, yearElapsed(year) * 100);
   const color =
-    pace === "lagging" ? "#DC2626" : pace === "ontrack" ? "#0071E3" : "#16A34A";
+    pace === "lagging" ? "#DC2626" : pace === "ontrack" ? "var(--ink-bright-blue)" : "#16A34A";
   return (
     <div className={cn("min-w-0", className)}>
       <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
@@ -711,9 +712,9 @@ export function GoalBar({
  * something here.
  */
 const ROLE_META: Record<string, { label: string; color: string; icon: LucideIcon }> = {
-  admin: { label: "Admin", color: "#7C3AED", icon: ShieldCheck },
-  bd_owner: { label: "Owner", color: "#0071E3", icon: UsersRound },
-  bd_member: { label: "BD Member", color: "#0F766E", icon: UserRound },
+  admin: { label: "Admin", color: "var(--ink-violet-soft)", icon: ShieldCheck },
+  bd_owner: { label: "Owner", color: "var(--ink-bright-blue)", icon: UsersRound },
+  bd_member: { label: "BD Member", color: "var(--ink-teal-deep)", icon: UserRound },
   sol_member: { label: "Solutioning Member", color: "#DB2777", icon: UserRound },
 };
 
@@ -726,7 +727,7 @@ export function RoleChip({ role }: { role: string }) {
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
-      style={{ background: `${meta.color}14`, color: meta.color }}
+      style={{ background: tint(meta.color, 8), color: meta.color }}
     >
       <Icon size={9} strokeWidth={2.6} />
       {meta.label}
@@ -849,7 +850,7 @@ export function PaceTimeline({
   target,
   expectedPct,
   unit,
-  accent = "#0071E3",
+  accent = "var(--ink-bright-blue)",
   compact = false,
   expected,
   expectedDueLabel,
@@ -1798,7 +1799,7 @@ export function PersonProgress({
             <span
               style={{
                 color:
-                  donePct >= 85 ? "#15803D" : donePct >= 55 ? "#0071E3" : "#DC2626",
+                  donePct >= 85 ? "#15803D" : donePct >= 55 ? "var(--ink-bright-blue)" : "#DC2626",
               }}
             >
               {donePct}%

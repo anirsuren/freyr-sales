@@ -55,8 +55,8 @@ function tel(phone: string) {
 // the role bucket so it's resilient to naming ("Regulatory Affairs",
 // "Reg Ops", etc.). Each entry is a soft tinted bg + a saturated text color.
 const ROLE_STYLES: { test: RegExp; bg: string; color: string }[] = [
-  { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9" }, // violet, leadership
-  { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0" }, // blue, regulatory
+  { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "var(--ink-violet)" }, // violet, leadership
+  { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "var(--ink-blue)" }, // blue, regulatory
   { test: /medical|clinical|scientific/i, bg: "rgba(5,150,105,0.12)", color: "#047857" }, // emerald, medical
   { test: /quality|qa|cmc|manufactur/i, bg: "rgba(249,115,22,0.12)", color: "#EA580C" }, // clean orange, quality (no brown-amber, Suren)
   { test: /complian|legal|audit/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C" }, // rose, compliance
@@ -210,7 +210,7 @@ export function ContactsBrowser({
             options={[
               // "All roles" carries its own colour + icon so the collapsed
               // square reads as people, never as a gray blank.
-              { value: "all", label: "All roles", color: "#0071E3", icon: Users },
+              { value: "all", label: "All roles", color: "var(--ink-bright-blue)", icon: Users },
               ...roles.map<ColorOption>((r) => ({
                 value: r,
                 label: r,
@@ -225,8 +225,8 @@ export function ContactsBrowser({
             options={[
               // One icon for both sorts made them identical once collapsed —
               // each sort now owns a distinct glyph and colour.
-              { value: "name", label: "Name A, Z", icon: ArrowDownAZ, color: "#0071E3" },
-              { value: "company", label: "Company A, Z", icon: Building2, color: "#7C3AED" },
+              { value: "name", label: "Name A, Z", icon: ArrowDownAZ, color: "var(--ink-bright-blue)" },
+              { value: "company", label: "Company A, Z", icon: Building2, color: "var(--ink-violet-soft)" },
             ]}
           />
           {/* Grid ↔ list view (Suren: "we need a grid view on this or whatever

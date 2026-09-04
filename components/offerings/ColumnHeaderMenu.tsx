@@ -206,7 +206,7 @@ export function ColumnHeaderMenu({
                     <button
                       type="button"
                       onClick={() => onValues?.([])}
-                      className="ml-auto inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1 text-[11px] font-medium normal-case tracking-normal text-text-tertiary transition-colors hover:text-[color:#DC2626]"
+                      className="ml-auto inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1 text-[11px] font-medium normal-case tracking-normal text-text-tertiary transition-colors hover:text-[color:var(--status-red)]"
                     >
                       <X size={11} strokeWidth={2.4} />
                       Clear

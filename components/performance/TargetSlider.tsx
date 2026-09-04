@@ -76,8 +76,8 @@ export function TargetSlider({
             className={cn(
               "ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-bold tnum",
               over
-                ? "bg-[rgba(194,65,12,0.10)] text-[color:#C2410C]"
-                : "bg-[rgba(0,113,227,0.10)] text-[color:#0058B0]"
+                ? "bg-[rgba(194,65,12,0.10)] text-[color:var(--ink-orange)]"
+                : "bg-[rgba(0,113,227,0.10)] text-[color:var(--ink-blue-soft)]"
             )}
           >
             {fmtAmount(unit, amount)} · {Math.round(pct(amount))}% of the goal
@@ -176,7 +176,7 @@ export function TargetSlider({
               parsed === null
                 ? "text-error"
                 : over
-                  ? "text-[color:#C2410C]"
+                  ? "text-[color:var(--ink-orange)]"
                   : "text-text-tertiary"
             )}
           >
@@ -195,7 +195,7 @@ export function TargetSlider({
       {max > 0 && (
         <p
           className={cn(
-            "mt-1.5 min-h-[16px] text-[11px] font-medium text-[color:#C2410C]",
+            "mt-1.5 min-h-[16px] text-[11px] font-medium text-[color:var(--ink-orange)]",
             !over && "invisible"
           )}
         >

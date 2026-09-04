@@ -409,7 +409,7 @@ export function OfferingOwners({
               </OwnerHoverCard>
               <Tooltip label="Offering Owner: can edit this offering" side="top">
                 <span
-                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#6D28D9]"
+                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-violet)]"
                 >
                   <Crown size={11.5} strokeWidth={2.2} fill="currentColor" />
                   Owner
@@ -429,7 +429,7 @@ export function OfferingOwners({
                 <button
                   onClick={() => setConfirmOwner(o)}
                   disabled={busy === o.memberId}
-                  className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-[color:#B02020] disabled:opacity-50"
+                  className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-[color:var(--ink-red)] disabled:opacity-50"
                   aria-label={
                     o.memberId === myMemberId
                       ? "Give up your ownership"
@@ -456,7 +456,7 @@ export function OfferingOwners({
               <span className="break-words text-[12.5px] font-semibold text-text-primary">
                 {o.name}
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] text-[color:#C2410C]">
+              <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--ink-orange)]">
                 <Clock3 size={10} strokeWidth={2.2} />
                 Asked {formatDate(o.claimed_at)}, waiting on an admin
               </span>
@@ -473,7 +473,7 @@ export function OfferingOwners({
               <button
                 onClick={() => setConfirmOwner(o)}
                 disabled={busy === o.memberId}
-                className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:#B02020] disabled:opacity-50"
+                className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:var(--ink-red)] disabled:opacity-50"
                 aria-label={`Decline ${o.name}`}
               >
                 <X size={14} strokeWidth={2} />
@@ -492,7 +492,7 @@ export function OfferingOwners({
         <button
           onClick={() => setConfirmOwner(mine)}
           disabled={busy === mine.memberId}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:#B02020] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:var(--ink-red)] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
         >
           <X size={14} strokeWidth={2.2} />
           Give up ownership
@@ -635,7 +635,7 @@ export function OfferingOwners({
       </Modal>
 
       {error && !granting && (
-        <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
+        <p className="text-[12px] font-medium text-[color:var(--ink-red)]">{error}</p>
       )}
     </SectionCard>
   );

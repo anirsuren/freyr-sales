@@ -159,7 +159,7 @@ export function OfferingOverviewMain({
     .map(([type, value]) => ({
       label: REVENUE_TYPE_META[type as keyof typeof REVENUE_TYPE_META]?.short || type,
       value,
-      color: REV_TYPE_COLOR[type] || "#0071E3",
+      color: REV_TYPE_COLOR[type] || "var(--ink-bright-blue)",
       tip: allLines
         .filter((entry) => entry.line.revenue_type === type)
         .map((entry) => ({

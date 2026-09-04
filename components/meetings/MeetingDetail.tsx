@@ -45,6 +45,7 @@ import {
   RECORD_ACTION_ICON,
   RECORD_ACTION_NEUTRAL,
 } from "@/components/solutioning/recordActions";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE MEETING.
@@ -69,13 +70,13 @@ const NOTE_META: Record<
   brief: {
     label: "Brief",
     icon: FileText,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     placeholder: "What this meeting needs to achieve, written before it happens…",
   },
   transcript: {
     label: "Transcript",
     icon: Mic,
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     placeholder: "Paste the transcript…",
   },
   /* NEITHER OF THESE MAY WEAR WHAT IT WAS WEARING (found in the browser,
@@ -223,7 +224,7 @@ export function MeetingDetail({
               return (
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                  style={{ background: `${meta.color}18`, color: meta.color }}
+                  style={{ background: tint(meta.color, 9), color: meta.color }}
                 >
                   <TypeIcon size={11} strokeWidth={2.4} />
                   {m.type}
@@ -350,7 +351,7 @@ export function MeetingDetail({
                       <div className="flex items-center gap-2">
                         <span
                           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
-                          style={{ background: `${meta.color}18`, color: meta.color }}
+                          style={{ background: tint(meta.color, 9), color: meta.color }}
                         >
                           <Icon size={10} strokeWidth={2.6} />
                           {meta.label}
@@ -366,7 +367,7 @@ export function MeetingDetail({
                           type="button"
                           onClick={() => setConfirmNote(n.id)}
                           aria-label="Remove this note"
-                          className="ml-auto rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                          className="ml-auto rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                         >
                           <Trash2 size={12} strokeWidth={2.2} />
                         </button>
@@ -408,7 +409,7 @@ export function MeetingDetail({
               The deck that was shown, and anything handed over.
             </p>
             {uploadError && (
-              <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">
+              <p className="mt-2 text-[11.5px] font-medium text-[color:var(--status-red)]">
                 {uploadError}
               </p>
             )}
@@ -496,7 +497,7 @@ export function MeetingDetail({
                       type="button"
                       onClick={() => setConfirmDoc(d.id)}
                       aria-label={`Remove ${d.label}`}
-                      className="shrink-0 rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                      className="shrink-0 rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
                       <Trash2 size={13} strokeWidth={2.2} />
                     </button>
@@ -840,7 +841,7 @@ export function MeetingDetail({
             )}
           </label>
           {uploadError && (
-            <p className="mt-2 text-[11.5px] font-medium text-[color:#DC2626]">
+            <p className="mt-2 text-[11.5px] font-medium text-[color:var(--status-red)]">
               {uploadError}
             </p>
           )}

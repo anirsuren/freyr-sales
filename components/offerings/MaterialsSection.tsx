@@ -70,6 +70,7 @@ import {
   type MaterialFormat,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 // Rows run Video → Presentation → Document → Others, and within a format they
 // keep the order the offering owner put them in. A sort (not a per-kind loop)
@@ -122,8 +123,8 @@ function TagPill({
   // a padlock — without shouting over the file it belongs to.
   const style =
     variant === "outline"
-      ? { color, borderColor: `${color}66` }
-      : { background: `${color}14`, color };
+      ? { color, borderColor: tint(color, 40) }
+      : { background: tint(color, 8), color };
   return (
     <span
       title={title}
@@ -1500,7 +1501,7 @@ export function MaterialsSection({
                                   size={11}
                                   strokeWidth={2.6}
                                   aria-label="Offering owner"
-                                  className="text-[color:#7C3AED]"
+                                  className="text-[color:var(--ink-violet-soft)]"
                                 />
                               </span>
                             )}
@@ -1682,7 +1683,7 @@ export function MaterialsSection({
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-md"
                   style={{
-                    background: `${formatMeta.color}14`,
+                    background: tint(formatMeta.color, 8),
                     color: formatMeta.color,
                   }}
                 >
@@ -1764,7 +1765,7 @@ export function MaterialsSection({
                           Added by {material.addedBy}
                           {uploaderIsOwner(material.addedBy) && (
                             <span title="Offering owner" className="inline-flex shrink-0">
-                              <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:#7C3AED]" />
+                              <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:var(--ink-violet-soft)]" />
                             </span>
                           )}
                         </span>
@@ -1868,7 +1869,7 @@ export function MaterialsSection({
                           setPendingRemoval(material);
                         }
                       }}
-                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:var(--ink-red)]"
                     >
                       <X size={14} strokeWidth={2} />
                     </span>

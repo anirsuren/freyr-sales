@@ -115,9 +115,9 @@ export function LiveCompanyGrid({
           ariaLabel="Filter by activity"
           minWidth={168}
           options={[
-            { value: "all", label: "All activity", icon: Layers, color: "#0071E3" },
-            { value: "busy", label: "Busy this month", icon: Flame, color: "#C2410C" },
-            { value: "quiet", label: "Quiet this month", icon: Moon, color: "#6D28D9" },
+            { value: "all", label: "All activity", icon: Layers, color: "var(--ink-bright-blue)" },
+            { value: "busy", label: "Busy this month", icon: Flame, color: "var(--ink-orange)" },
+            { value: "quiet", label: "Quiet this month", icon: Moon, color: "var(--ink-violet)" },
           ]}
         />
         <ColorSelect
@@ -126,9 +126,9 @@ export function LiveCompanyGrid({
           ariaLabel="Sort companies"
           minWidth={150}
           options={[
-            { value: "active", label: "Most items", icon: ArrowDownWideNarrow, color: "#0071E3" },
-            { value: "month", label: "This month", icon: CalendarClock, color: "#0F766E" },
-            { value: "az", label: "A to Z", icon: ArrowDownAZ, color: "#B4318F" },
+            { value: "active", label: "Most items", icon: ArrowDownWideNarrow, color: "var(--ink-bright-blue)" },
+            { value: "month", label: "This month", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+            { value: "az", label: "A to Z", icon: ArrowDownAZ, color: "var(--ink-magenta)" },
           ]}
         />
       </SearchPriority>
@@ -172,7 +172,7 @@ export function LiveCompanyGrid({
                       </span>
                     </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3]">
+                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)]">
                     New
                   </span>
                 </div>
@@ -180,11 +180,11 @@ export function LiveCompanyGrid({
                   Collecting the first weeks of activity
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+                  <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
                     <Users size={10.5} strokeWidth={2.2} />
                     {peopleCount} {peopleCount === 1 ? "person" : "people"} followed
                   </span>
-                  <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B4318F]">
+                  <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-magenta)]">
                     <Swords size={10.5} strokeWidth={2.2} />
                     {company.competitors.length}{" "}
                     {company.competitors.length === 1

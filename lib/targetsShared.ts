@@ -18,9 +18,9 @@ export const TARGET_DOMAIN_META: Record<
   TargetDomain,
   { label: string; color: string; icon: LucideIcon }
 > = {
-  MPR: { label: "Pharma (MPR)", color: "#0071E3", icon: FlaskConical },
-  MDV: { label: "Medical devices (MDV)", color: "#7C3AED", icon: HeartPulse },
-  CON: { label: "Consumer (CON)", color: "#B4318F", icon: ShoppingBag },
+  MPR: { label: "Pharma (MPR)", color: "var(--ink-bright-blue)", icon: FlaskConical },
+  MDV: { label: "Medical devices (MDV)", color: "var(--ink-violet-soft)", icon: HeartPulse },
+  CON: { label: "Consumer (CON)", color: "var(--ink-magenta)", icon: ShoppingBag },
 };
 
 export type TargetAccount = {
@@ -46,8 +46,8 @@ export type TargetsState = { targets: TargetAccount[] };
 
 export function tierColor(tier: string | undefined): string {
   const t = (tier ?? "").toLowerCase();
-  if (t.includes("1")) return "#0F766E";
-  if (t.includes("2")) return "#0071E3";
-  if (t.includes("3")) return "#7C3AED";
+  if (t.includes("1")) return "var(--ink-teal-deep)";
+  if (t.includes("2")) return "var(--ink-bright-blue)";
+  if (t.includes("3")) return "var(--ink-violet-soft)";
   return "#8E98A8";
 }

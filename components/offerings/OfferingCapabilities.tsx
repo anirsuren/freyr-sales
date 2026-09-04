@@ -12,6 +12,7 @@ import type { ServiceCardStyle } from "@/lib/serviceCardStyle";
 import { componentGroupRank, componentNoun } from "@/lib/componentGroups";
 import { AgentAvatar, agentLeading } from "@/components/ui/AgentAvatar";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 // ---------------------------------------------------------------------------
 // The parser
@@ -356,7 +357,7 @@ function CapabilityCard({
                 <span
                   key={`${si}-${sub}`}
                   className="inline-block break-words rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-snug"
-                  style={{ background: `${color}14`, color }}
+                  style={{ background: tint(color, 8), color }}
                 >
                   {renderBriefInline(sub, `capability-pill-${si}`)}
                 </span>
@@ -428,7 +429,7 @@ export function OfferingCapabilities({
       <div className={cn("flex items-center gap-2", parsed.intro && "mt-5")}>
         <span
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-          style={{ background: `${accent}1F`, color: accent }}
+          style={{ background: tint(accent, 12), color: accent }}
         >
           <ListChecks size={13} strokeWidth={2.1} aria-hidden="true" />
         </span>
@@ -437,7 +438,7 @@ export function OfferingCapabilities({
         </h3>
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          style={{ background: `${accent}14`, color: accent }}
+          style={{ background: tint(accent, 8), color: accent }}
         >
           {parsed.count} {componentNoun(parsed.count)}
         </span>

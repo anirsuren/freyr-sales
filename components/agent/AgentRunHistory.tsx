@@ -54,15 +54,15 @@ const OUTCOME_STYLE: Record<AgentRun["outcome"], string> = {
 // (colour + icon, never a gray list). Outcome hues reuse the pill styles
 // above: handled=blue, sent=green (a real success), escalated=warning.
 const KIND_ACCENT: Record<AgentRun["kind"], { color: string; icon: LucideIcon }> = {
-  act: { color: "#0071E3", icon: PenLine },
-  play: { color: "#7C3AED", icon: Send },
-  autopilot: { color: "#0F766E", icon: Rocket },
-  plan: { color: "#C2410C", icon: Target },
+  act: { color: "var(--ink-bright-blue)", icon: PenLine },
+  play: { color: "var(--ink-violet-soft)", icon: Send },
+  autopilot: { color: "var(--ink-teal-deep)", icon: Rocket },
+  plan: { color: "var(--ink-orange)", icon: Target },
 };
 const OUTCOME_ACCENT: Record<AgentRun["outcome"], { color: string; icon: LucideIcon }> = {
-  handled: { color: "#0071E3", icon: CheckCircle2 },
+  handled: { color: "var(--ink-bright-blue)", icon: CheckCircle2 },
   sent: { color: "#059669", icon: Send },
-  escalated: { color: "#C2410C", icon: AlertTriangle },
+  escalated: { color: "var(--ink-orange)", icon: AlertTriangle },
   mixed: { color: "#59616E", icon: CircleDot },
 };
 

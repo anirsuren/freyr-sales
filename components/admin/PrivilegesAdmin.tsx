@@ -14,6 +14,7 @@ import {
   type Access,
   type PrivilegeState,
 } from "@/lib/privileges";
+import { tint } from "@/lib/tint";
 
 /**
  * PRIVILEGE MANAGEMENT — the grid off Suren's sheet, editable.
@@ -224,8 +225,8 @@ export function PrivilegesAdmin() {
                             ["--cell-tint" as string]:
                               value === "none"
                                 ? "transparent"
-                                : `${ACCESS_META[value].color}14`,
-                            ["--cell-edge" as string]: `${ACCESS_META[value].color}59`,
+                                : tint(ACCESS_META[value].color, 8),
+                            ["--cell-edge" as string]: tint(ACCESS_META[value].color, 35),
                             ["--cell-ink" as string]: ACCESS_META[value].color,
                           }}
                         >

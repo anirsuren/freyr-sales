@@ -396,7 +396,7 @@ export function FilterMenu({
                     onClearAll();
                     setOpen(false);
                   }}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-secondary transition-colors hover:text-[color:#DC2626]"
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-secondary transition-colors hover:text-[color:var(--status-red)]"
                 >
                   <X size={13} strokeWidth={2.4} />
                   Clear all

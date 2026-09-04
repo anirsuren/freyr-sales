@@ -25,7 +25,7 @@ const TABS = [
     label: "Solution requests",
     href: "/solutioning",
     icon: Inbox,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     subtitle:
       "What sales has asked the Solutioning team for: a submission, a presentation or a meeting.",
   },
@@ -42,7 +42,7 @@ const TABS = [
     label: "Presentations",
     href: "/solutioning?tab=presentations",
     icon: LayoutTemplate,
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     subtitle: "Decks and demos being prepared for a customer meeting.",
   },
   /* THE FOURTH ROOM (Anir, Aug 28: "you added the meetings thing, but there's
@@ -55,7 +55,7 @@ const TABS = [
     label: "Meetings",
     href: "/meetings",
     icon: CalendarClock,
-    color: "#B4318F",
+    color: "var(--ink-magenta)",
     subtitle: "Customer meetings: who was in the room, and what came out of it.",
   },
 ];

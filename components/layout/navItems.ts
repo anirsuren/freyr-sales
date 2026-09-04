@@ -30,7 +30,27 @@ import {
   Settings,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon };
+/**
+ * The rail's own headings (Anir, Sep 4, with the grouping drawn out). The flat
+ * list had grown to fourteen items and read as one undifferentiated column;
+ * these say what a module is FOR before you read its name. Order matters: this
+ * is the order the sections appear in.
+ */
+export const NAV_SECTIONS = [
+  "Knowledge & materials",
+  "Sales",
+  "Performance",
+  "Administration",
+] as const;
+export type NavSection = (typeof NAV_SECTIONS)[number];
+
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Which heading it sits under. Agent has none — it stands above them all. */
+  section?: NavSection;
+};
 
 /**
  * THE MODULE LIST. ONE COPY, BECAUSE TWO COPIES DRIFT.
@@ -54,45 +74,37 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
  * Order is the rail's order: the work as it actually flows.
  */
 export const ALL_NAV_ITEMS: NavItem[] = [
+  /* ORDERED BY SECTION (Anir, Sep 4). The sections are declared in
+     NAV_SECTIONS above and the rail draws a heading wherever the section
+     changes, so this order IS the rail's order — moving an item between
+     groups means moving its line here. */
   { href: "/agent", label: "Agent", icon: Sparkles },
+  { href: "/offerings", label: "Offerings", icon: Package, section: "Knowledge & materials"  },
+  { href: "/components", label: "FDL Components", icon: Boxes, section: "Knowledge & materials"  },
+  { href: "/market-intel", label: "Market Intel", icon: Radar, section: "Knowledge & materials"  },
+  { href: "/leads", label: "Leads", icon: UserPlus, section: "Sales"  },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase, section: "Sales"  },
+  { href: "/solutioning", label: "Solutioning", icon: ClipboardList, section: "Sales"  },
+  { href: "/contracts", label: "Contracts", icon: FileSignature, section: "Sales"  },
+  { href: "/customers", label: "Customers", icon: Building2, section: "Sales"  },
+  { href: "/performance", label: "Goals", icon: Gauge, section: "Performance"  },
+  { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange, section: "Performance"  },
+  { href: "/reports", label: "Reports", icon: FileBarChart, section: "Performance"  },
+  { href: "/team", label: "Team", icon: UsersRound, section: "Administration"  },
+  { href: "/admin", label: "Admin", icon: ShieldCheck, section: "Administration"  },
+  /* Not on the rail today: unreleased modules the gate filters out, kept
+     so search can still jump to them where they are released. */
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/offerings", label: "Offerings", icon: Package },
-  { href: "/components", label: "FDL Components", icon: Boxes },
   { href: "/pipeline", label: "Pipeline", icon: Columns3 },
   { href: "/forecast", label: "Forecast", icon: Target },
-  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
-  // Requests for presentations, submissions and meetings — sales asks, the
-  // Solutioning Member fulfils (Suren, Aug 24). Sits by Opportunities because
-  // that is what most requests are against.
-  { href: "/solutioning", label: "Solutioning", icon: ClipboardList },
-  /* THE AUG 25 MODULES, in the order the work actually flows: a lead becomes
-     an opportunity, an opportunity plans its accrued revenue, and a contract
-     is where sales closes it. All three are admin-only for now
-     (lib/moduleAccess NEW_MODULES_ADMIN_ONLY). */
-  { href: "/leads", label: "Leads", icon: UserPlus },
-  { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange },
-  { href: "/contracts", label: "Contracts", icon: FileSignature },
-  { href: "/customers", label: "Customers", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Contact },
-  { href: "/team", label: "Team", icon: UsersRound },
   { href: "/sessions", label: "Sessions", icon: CalendarClock },
   { href: "/sequences", label: "Sequences", icon: Zap },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/voice", label: "Voice agents", icon: PhoneCall },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
-  { href: "/reports", label: "Reports", icon: FileBarChart },
-  /* Suren, Aug 25: "we are calling it Performance but I don't want to call
-     it performance — it's a goal view, the view is based on goals, it's
-     actually Goals." The URL stays /performance so every bookmark, deep
-     link and shared goal URL keeps working; /goals redirects here. */
-  { href: "/performance", label: "Goals", icon: Gauge },
-  { href: "/market-intel", label: "Market Intel", icon: Radar },
   { href: "/activity", label: "Activity", icon: Rss },
-  // Running the workspace — user groups and system status. Its own page in
-  // the nav, not buried in the account menu (Anir, Aug 12: "there has to be
-  // an admin tab, like a page").
-  { href: "/admin", label: "Admin", icon: ShieldCheck },
 ];
 
 /**

@@ -53,11 +53,11 @@ const SIZES = [
 
 const INK = [
   "#1D1D1F",
-  "#0071E3",
+  "var(--ink-bright-blue)",
   "#16a34a",
   "#dc2626",
-  "#B45309",
-  "#7C3AED",
+  "var(--ink-amber)",
+  "var(--ink-violet-soft)",
   "#6E6E73",
 ];
 

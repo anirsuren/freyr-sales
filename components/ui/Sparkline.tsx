@@ -1,6 +1,6 @@
 export function Sparkline({
   points,
-  color = "#0071E3",
+  color = "var(--ink-bright-blue)",
   width = 132,
   height = 34,
 }: {

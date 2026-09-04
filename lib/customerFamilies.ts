@@ -48,12 +48,12 @@ export const CUSTOMER_FAMILY_META: Record<
 > = {
   // The singular and plural spellings of a family are the SAME family wearing
   // the same colour and glyph — an admin adding an S must not repaint it.
-  Pharmaceutical: { color: "#0071E3", icon: Pill },
-  Pharmaceuticals: { color: "#0071E3", icon: Pill },
+  Pharmaceutical: { color: "var(--ink-bright-blue)", icon: Pill },
+  Pharmaceuticals: { color: "var(--ink-bright-blue)", icon: Pill },
   Biologics: { color: "#DB2777", icon: Dna },
-  "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
-  "Bio Pharmaceuticals": { color: "#7C3AED", icon: FlaskConical },
-  "Medical Devices": { color: "#0F766E", icon: Stethoscope },
+  "Bio Pharmaceutical": { color: "var(--ink-violet-soft)", icon: FlaskConical },
+  "Bio Pharmaceuticals": { color: "var(--ink-violet-soft)", icon: FlaskConical },
+  "Medical Devices": { color: "var(--ink-teal-deep)", icon: Stethoscope },
   // Was #C2410C, a rust orange. A customer type is an identity, and warm
   // orange/amber is reserved for status in this app (Anir, Aug 14). Cyan is
   // the one hue left that is neither a status colour nor a neighbour of the
@@ -66,7 +66,7 @@ export const CUSTOMER_FAMILY_META: Record<
  *  a family (Aug 24), and every renamed family collapsing onto the same blue
  *  would make two different segments look like one. Same name in, same colour
  *  out, forever. */
-const FAMILY_FALLBACK_HUES = ["#2563EB", "#DB2777", "#0D9488", "#7C3AED", "#0891B2", "#9E1A72"];
+const FAMILY_FALLBACK_HUES = ["#2563EB", "#DB2777", "#0D9488", "var(--ink-violet-soft)", "#0891B2", "#9E1A72"];
 export function customerFamilyColor(family: string): string {
   const known = CUSTOMER_FAMILY_META[family as CustomerFamily]?.color;
   if (known) return known;

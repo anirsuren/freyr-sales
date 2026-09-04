@@ -17,6 +17,7 @@ import {
 } from "@/lib/privileges";
 import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { tint } from "@/lib/tint";
 
 
 type Member = {
@@ -340,7 +341,7 @@ export function MemberRoles() {
                               </span>
                             )}
                             {!m.active && (
-                              <span className="shrink-0 rounded-full bg-[rgba(220,38,38,0.10)] px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-[color:#DC2626]">
+                              <span className="shrink-0 rounded-full bg-[rgba(220,38,38,0.10)] px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--status-red)]">
                                 Suspended
                               </span>
                             )}
@@ -369,7 +370,7 @@ export function MemberRoles() {
                                 title={p.label}
                                 aria-label={p.label}
                                 style={{
-                                  backgroundColor: `${privilegeColor(p.id)}1F`,
+                                  backgroundColor: tint(privilegeColor(p.id), 12),
                                   color: privilegeColor(p.id),
                                 }}
                                 className="flex h-5 min-w-5 items-center justify-center whitespace-nowrap rounded-md px-1 text-[9px] font-bold"

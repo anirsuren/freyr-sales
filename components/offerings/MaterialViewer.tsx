@@ -42,6 +42,7 @@ import {
   materialJourneyStages,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 /**
  * THE FILE AS IT WAS UPLOADED — not a summary of it.
@@ -1037,7 +1038,7 @@ export function MaterialViewer({
 
           {status === "error" && (
             <p className="flex items-start gap-2 py-8 text-[13px] text-text-secondary">
-              <FileWarning size={16} className="mt-0.5 shrink-0 text-[color:#C2410C]" />
+              <FileWarning size={16} className="mt-0.5 shrink-0 text-[color:var(--ink-orange)]" />
               {message}
             </p>
           )}
@@ -1653,7 +1654,7 @@ export function MaterialViewer({
                       <span
                         key={stage}
                         className="rounded-full px-2 py-0.5 font-semibold"
-                        style={{ color: meta.color, backgroundColor: `${meta.color}14` }}
+                        style={{ color: meta.color, backgroundColor: tint(meta.color, 8) }}
                       >
                         {meta.short}
                       </span>
@@ -1671,7 +1672,7 @@ export function MaterialViewer({
                 {access ? (
                   <span
                     className="rounded-full px-2 py-0.5 font-semibold"
-                    style={{ color: access.color, backgroundColor: `${access.color}14` }}
+                    style={{ color: access.color, backgroundColor: tint(access.color, 8) }}
                   >
                     {access.short}
                   </span>

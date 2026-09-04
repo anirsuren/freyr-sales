@@ -34,6 +34,7 @@ import {
   type Meeting,
   type MeetingsState,
 } from "@/lib/meetings";
+import { tint } from "@/lib/tint";
 
 export type CustomerOption = { id: string; name: string };
 export type ContactOption = {
@@ -205,6 +206,14 @@ export function MeetingsModule({
   const all = state.meetings;
   const planned = all.filter((m) => m.status === "planned");
   const completed = all.filter((m) => m.status === "completed");
+  /* A DAY THAT HAS PASSED IS NOT "STILL TO HAPPEN" (Anir, Sep 4). The Planned
+     tile counted anything carrying the status, and nothing ages out of it, so
+     two meetings from last month read "2 still to happen" directly beside
+     "Next one: None, nothing scheduled". The date test below already existed
+     for `nextUp`; the tile simply was not using it. */
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = planned.filter((m) => (m.meetingAt ?? "") >= today);
+  const overdue = planned.filter((m) => (m.meetingAt ?? "") < today);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -261,20 +270,30 @@ export function MeetingsModule({
       >
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile icon={CalendarClock} label="Planned" value={String(planned.length)} color="#0071E3" sub="still to happen" />
+        <StatTile
+          icon={CalendarClock}
+          label="Planned"
+          value={String(upcoming.length)}
+          color="var(--ink-bright-blue)"
+          sub={
+            overdue.length
+              ? `still to happen · ${overdue.length} past their date`
+              : "still to happen"
+          }
+        />
         <StatTile icon={CheckCircle2} label="Completed" value={String(completed.length)} color="#16A34A" sub="written up" />
         <StatTile
           icon={CalendarDays}
           label="Next one"
           value={nextUp ? formatDate(nextUp.meetingAt) : "None"}
-          color="#7C3AED"
+          color="var(--ink-violet-soft)"
           sub={nextUp ? nextUp.customer : "nothing scheduled"}
         />
         <StatTile
           icon={Users}
           label="Accounts met"
           value={String(new Set(all.map((m) => m.customer)).size)}
-          color="#B4318F"
+          color="var(--ink-magenta)"
           sub="distinct customers"
         />
       </div>
@@ -334,8 +353,8 @@ export function MeetingsModule({
             minWidth={150}
             onChange={(v) => setPeriod(v as "week" | "month")}
             options={[
-              { value: "month", label: "By month", color: "#0071E3", icon: CalendarDays },
-              { value: "week", label: "By week", color: "#7C3AED", icon: CalendarClock },
+              { value: "month", label: "By month", color: "var(--ink-bright-blue)", icon: CalendarDays },
+              { value: "week", label: "By week", color: "var(--ink-violet-soft)", icon: CalendarClock },
             ]}
           />
         }
@@ -456,7 +475,7 @@ export function MeetingsModule({
                             return (
                               <span
                                 className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold"
-                                style={{ background: `${meta.color}18`, color: meta.color }}
+                                style={{ background: tint(meta.color, 9), color: meta.color }}
                               >
                                 <TypeIcon size={9} strokeWidth={2.5} className="shrink-0" />
                                 {m.type}
@@ -590,7 +609,7 @@ export function MeetingsModule({
                               return (
                                 <span
                                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-                                  style={{ background: `${meta.color}18`, color: meta.color }}
+                                  style={{ background: tint(meta.color, 9), color: meta.color }}
                                 >
                                   <TypeIcon size={10} strokeWidth={2.5} />
                                   {m.type}

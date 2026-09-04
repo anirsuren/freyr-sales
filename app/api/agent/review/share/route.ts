@@ -3,7 +3,8 @@ import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { buildWeeklyReview } from "@/lib/agent";
 import { narrateReview } from "@/lib/claude";
-import { buildDeals, formatMoney } from "@/lib/pipeline";
+import { buildDeals, dealsFromOpportunities, formatMoney } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import { accountHealth } from "@/lib/health";
 import { canManageReviewQueue } from "@/lib/role";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
@@ -30,7 +31,14 @@ export async function POST() {
     db.interactions.list(),
     db.agentRuns.list(),
   ]);
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  const opportunities = (await readOpportunities()).opportunities;
+  /* BOTH PIPELINES: Mock is pitch sessions, Real is opportunities and has no
+     sessions at all. Reading only the former is what made the agent answer
+     "$0 open" over a $112.0M book. */
+  const deals = [
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(opportunities, customers),
+  ];
   const atRisk = customers.filter(
     (c) =>
       accountHealth({

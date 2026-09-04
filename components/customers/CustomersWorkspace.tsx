@@ -65,12 +65,12 @@ export function CustomersWorkspace({
   const view = routeTab;
 
   const pills = [
-    { key: "customers" as const, label: "Customers", icon: Building2, color: "#0071E3" },
+    { key: "customers" as const, label: "Customers", icon: Building2, color: "var(--ink-bright-blue)" },
     /* Groups sits between the two because that is the order of the thought:
        these are our accounts, this is how we cut them up, and those are the
        ones we do not have yet. */
     { key: "groups" as const, label: "Customer groups", icon: Layers, color: "#0D9488" },
-    { key: "targets" as const, label: "Targets", icon: Crosshair, color: "#B4318F" },
+    { key: "targets" as const, label: "Targets", icon: Crosshair, color: "var(--ink-magenta)" },
   ];
 
   return (
@@ -106,7 +106,7 @@ export function CustomersWorkspace({
                 />
                 {p.label}
                 {p.key === "targets" && (
-                  <span className="rounded-full bg-[rgba(180,49,143,0.12)] px-1.5 py-0.5 text-[10.5px] font-bold text-[color:#B4318F] tnum">
+                  <span className="rounded-full bg-[rgba(180,49,143,0.12)] px-1.5 py-0.5 text-[10.5px] font-bold text-[color:var(--ink-magenta)] tnum">
                     {targets.length}
                   </span>
                 )}

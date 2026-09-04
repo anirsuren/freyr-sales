@@ -7,6 +7,7 @@ import {
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import type { RequestStatus, SolutioningKind } from "@/lib/solutioning";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE VOCABULARY FOR THE WHOLE MODULE — every chip is colour + icon (standing
@@ -19,13 +20,13 @@ export const KIND_META: Record<
   submission: {
     label: "Submission",
     plural: "Submissions",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: FileText,
   },
   presentation: {
     label: "Presentation",
     plural: "Presentations",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     icon: Presentation,
   },
   meeting: {
@@ -46,13 +47,13 @@ export const STATUS_META: Record<
   RequestStatus,
   { label: string; color: string }
 > = {
-  initiated: { label: "Request initiated", color: "#0071E3" },
+  initiated: { label: "Request initiated", color: "var(--ink-bright-blue)" },
   /* SOL-013's Assigned: leads are chosen, work has not started. Its own state
      because "leads picked" and "somebody is writing" are different answers to
      "where is this?". */
   assigned: { label: "Assigned", color: "#0891B2" },
-  in_progress: { label: "Work in progress", color: "#6D28D9" },
-  completed: { label: "Completed", color: "#1A7A35" },
+  in_progress: { label: "Work in progress", color: "var(--ink-violet)" },
+  completed: { label: "Completed", color: "var(--ink-green)" },
   /* Discontinued, and kept (SOL-033: cancelled records stay in history rather
      than being deleted). Red is a status colour here, which is what it is for. */
   cancelled: { label: "Cancelled", color: "#B42318" },
@@ -87,7 +88,7 @@ export function KindChip({
       style={
         {
           "--semantic-color": meta.color,
-          "--semantic-bg": `${meta.color}1A`,
+          "--semantic-bg": tint(meta.color, 10),
         } as CSSProperties
       }
       title={iconOnly ? meta.label : undefined}
@@ -125,7 +126,7 @@ export function StatusPill({
       style={
         {
           "--semantic-color": meta.color,
-          "--semantic-bg": `${meta.color}17`,
+          "--semantic-bg": `${tint(meta.color, 9)}`,
         } as CSSProperties
       }
       className={cn(

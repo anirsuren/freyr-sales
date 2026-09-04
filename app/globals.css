@@ -25,7 +25,11 @@
 
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
-  --text-tertiary: #8a8a8e;
+  /* #8a8a8e read 3.44:1 on white and 3.29:1 on the surface — under the
+     4.5:1 floor at the 11-13px this token is used at. #6e6e73 keeps the same
+     quiet grey and clears it on both (Anir, Sep 4: "you can't really have
+     gray text, right?"). */
+  --text-tertiary: #6e6e73;
 
   --success: #34c759;
   /* Burnt orange — the old #ff9f0a rendered warning text at 2.1:1 (banned
@@ -95,6 +99,68 @@ body {
    structural utility classes here rather than editing every component — blue
    chrome and `text-white` are intentionally left untouched.
 ---------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------- accents
+   THE CATEGORY COLOURS, AS TOKENS SO DARK MODE CAN HAVE ITS OWN (Anir, Sep 4:
+   "I can barely read the module text in dark mode where it says module").
+
+   These are the chip and badge inks — the blue on MODULE, the violet on an
+   agent, the green on a shipped version. They were hardcoded hex inline, so
+   they kept their light-mode value on a near-black card: the Module blue sat
+   at 1.82:1 where 4.5:1 is the floor, which is why it looked like a smudge.
+
+   A variable rather than a `.dark` rule because these are applied with
+   style={{ color }} from a lookup table, and CSS cannot override an inline
+   style. The light values are unchanged, so nothing moves in light mode. */
+:root {
+  --ink-blue: #0040A0;
+  --ink-blue-soft: #0058B0;
+  --ink-violet: #6D28D9;
+  --ink-violet-soft: #7C3AED;
+  --ink-teal: #0E7490;
+  --ink-teal-deep: #0F766E;
+  --ink-green: #1A7A35;
+  --ink-amber: #B45309;
+  --ink-magenta: #B4318F;
+  --ink-red: #B02020;
+  --ink-bright-blue: #0071E3;
+  --ink-orange: #C2410C;
+  /* THE CATEGORY PALETTE, AS TOKENS.
+     components/offerings/filterPalette.ts holds ten identity hues and its own
+     rule says every one must clear 4.5:1 — but that rule was written against
+     WHITE only, so in dark mode the blue, pink, olive and cyan slots sat at
+     3.3-3.7 on the near-black card and the eyebrow they colour stopped being
+     readable (measured Sep 4 across ten pages). Two slots were already tokens
+     and lifted correctly; these are the rest of them, so the whole palette
+     behaves the same way. Light values are the exact hexes that were there. */
+  /* NOTE FOR ANYONE REACHING FOR text-text-tertiary/70: don't. Tertiary is
+     already the quietest text the palette has and sits just above the 4.5:1
+     floor; knocking another 30% off it lands at 2.8 in light and 2.3 in dark,
+     which is unreadable rather than quiet. Six such spans were found and
+     un-faded on Sep 4. Disabled controls are the exception — WCAG exempts
+     them, so the /40s on those stay. */
+  /* THE STATUS RED, AS A TOKEN.
+     `text-[color:#DC2626]` appears 92 times and is the app's "this is late /
+     this was sent back" red. Because it is an arbitrary Tailwind value it
+     never picked up the `.dark .text-error` lift below, so in dark mode every
+     one of those reads 3.52:1 on the dark ground — an "overdue" stamp that is
+     harder to read than the text it is warning about. Light is the exact hex
+     it always was, so nothing moves in the theme most people are in. */
+  --status-red: #DC2626;
+  --cat-blue: #2563EB;
+  --cat-pink: #DB2777;
+  /* WAS #0D9488, WHICH THE PALETTE'S OWN RULE SAID CLEARED 4.5:1 ON WHITE AND
+     DID NOT — it measures 3.74 behind a 9px eyebrow. Same hue family, one step
+     darker, and it matches --ink-teal-deep, which the app already uses. */
+  --cat-teal: #0F766E;
+  --cat-olive: #4D7C0F;
+  /* #0891B2 measured 3.68 for the same reason. --ink-teal's value, so the two
+     cool slots stay a hue apart while both clearing the floor. */
+  --cat-cyan: #0E7490;
+  --cat-magenta: #9E1A72;
+  --cat-slate: #475569;
+  --cat-purple: #5B21B6;
+}
+
 .dark {
   /* The card colour, so a veiled bar reads as a paler version of its own
      colour instead of a bright white block on a near-black card. */
@@ -107,9 +173,44 @@ body {
   --border-light: #2e2e31;
   --text-primary: #f5f5f7;
   --text-secondary: #a1a1a6;
-  --text-tertiary: #76767b;
+  /* Lifted from #76767b, which sat at 3.34:1 on a card and 3.77:1 on a
+     raised surface — under the 4.5:1 floor at the 11-13px this token is
+     used at. #8E8E96 keeps the same grey character and clears it. */
+  --text-tertiary: #8E8E96;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
+/* The same inks, lifted for a dark ground. Each is the light hue taken up in
+   lightness until it clears 4.5:1 on #1c1c1e, so a chip keeps its identity —
+   blue is still blue — and becomes readable. */
+.dark {
+  --ink-blue: #7FB0FF;
+  --ink-blue-soft: #8FBBFF;
+  --ink-violet: #C4B5FD;
+  --ink-violet-soft: #CDBFFE;
+  --ink-teal: #6FD8DC;
+  --ink-teal-deep: #6FD5C4;
+  --ink-green: #7CD8A0;
+  --ink-amber: #F0BE6A;
+  --ink-magenta: #F0A6D8;
+  --ink-red: #FFB4AB;
+  --ink-bright-blue: #7FB0FF;
+  --ink-orange: #F2A57A;
+  /* Same hue, lifted until it clears 4.5:1 on the dark card. Kept far enough
+     apart that the palette's "neighbours must not look alike" rule still
+     holds in this theme as well as in light. */
+  /* The same red as `.dark .text-error` already uses, so the two ways the app
+     says "wrong" finally agree with each other in this theme. */
+  --status-red: #FF7B74;
+  --cat-blue: #7FB0FF;
+  --cat-pink: #F7A8CE;
+  --cat-teal: #5FD3C4;
+  --cat-olive: #B6D96A;
+  --cat-cyan: #6FD0E8;
+  --cat-magenta: #F0A6D8;
+  --cat-slate: #B6C0CE;
+  --cat-purple: #C4B5FD;
+}
+
 html.dark,
 html.dark body {
   background: #0b0b0d;
@@ -143,7 +244,9 @@ html.dark body {
   color: #a1a1a6 !important;
 }
 .dark .text-text-tertiary {
-  color: #76767b !important;
+  /* Lifted from #76767b (3.34:1 on a card, 3.77:1 raised) to clear the 4.5:1
+     floor at the 11-13px this token is used at (Anir, Sep 4). */
+  color: #8e8e96 !important;
 }
 .dark .border-border-light {
   border-color: #2e2e31 !important;
@@ -1141,7 +1244,7 @@ input {
     color: #6e6e73 !important;
   }
   .dark .text-text-tertiary {
-    color: #86868b !important;
+    color: #8e8e96 !important;
   }
   .dark .border-border-light {
     border-color: #e8e8ed !important;

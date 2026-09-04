@@ -111,7 +111,7 @@ export function TrackedPeopleList({
                         {person.role || "Tracked for posts"}
                       </span>
                     </span>
-                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
+                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
                       {posts === undefined
                         ? "pending"
                         : `${posts.length} ${posts.length === 1 ? "post" : "posts"}`}
@@ -124,7 +124,7 @@ export function TrackedPeopleList({
                       rel="noreferrer"
                       title={`${person.name} on LinkedIn`}
                       aria-label={`${person.name} on LinkedIn`}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[color:#0071E3] transition-colors hover:bg-[rgba(0,113,227,0.10)]"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[color:var(--ink-bright-blue)] transition-colors hover:bg-[rgba(0,113,227,0.10)]"
                     >
                       <LinkedInIcon size={13} />
                     </a>
@@ -197,7 +197,7 @@ export function TrackedPeopleList({
                   >
                     <p className="flex items-center text-[11.5px] font-medium text-text-tertiary">
                       <span
-                        className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0071E3]"
+                        className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-bright-blue)]"
                         suppressHydrationWarning
                       >
                         {fmtDate(post.date)}
@@ -208,7 +208,7 @@ export function TrackedPeopleList({
                         rel="noreferrer"
                         aria-label="Open on LinkedIn"
                         title="Open on LinkedIn"
-                        className="ml-auto flex items-center gap-1 text-[color:#0071E3] transition-opacity hover:opacity-70"
+                        className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)] transition-opacity hover:opacity-70"
                       >
                         <LinkedInIcon size={12} />
                         <ExternalLink size={11} strokeWidth={2.2} />
@@ -264,7 +264,7 @@ export function TrackedPeopleList({
                   </p>
                 )}
                 <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-                  <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
+                  <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)]">
                     Followed since{" "}
                     {new Date(open.addedAt).toLocaleDateString("en-US", {
                       month: "short",
@@ -273,7 +273,7 @@ export function TrackedPeopleList({
                     })}
                   </span>
                   {open.followerCount != null && (
-                    <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0F766E] tnum">
+                    <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)] tnum">
                       {open.followerCount.toLocaleString("en-US")} followers
                     </span>
                   )}

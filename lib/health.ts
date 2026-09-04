@@ -127,6 +127,6 @@ export function accountHealthSeries(
 // read as orange rather than the muddy brown that darkened amber becomes.
 export const HEALTH_COLOR: Record<HealthBand, { bg: string; color: string }> = {
   healthy: { bg: "rgba(34,197,94,0.14)", color: "#16A34A" },
-  watch: { bg: "rgba(194,65,12,0.12)", color: "#C2410C" },
+  watch: { bg: "rgba(194,65,12,0.12)", color: "var(--ink-orange)" },
   at_risk: { bg: "rgba(239,68,68,0.12)", color: "#DC2626" },
 };

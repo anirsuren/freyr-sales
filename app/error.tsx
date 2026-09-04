@@ -83,7 +83,7 @@ export default function AppError({
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-6">
       <div className="w-full max-w-[420px] text-center">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[rgba(220,38,38,0.08)] text-[color:#DC2626]">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[rgba(220,38,38,0.08)] text-[color:var(--status-red)]">
           <AlertTriangle size={22} strokeWidth={2} />
         </span>
         <h1 className="mt-4 text-[19px] font-semibold tracking-[-0.01em] text-text-primary">

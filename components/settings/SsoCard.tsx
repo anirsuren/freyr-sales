@@ -77,7 +77,7 @@ export function SsoCard({
           {status === null ? (
             <span className="text-[11px] text-text-tertiary">could not check</span>
           ) : status.passwordLogin ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[color:#1A7A35]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[color:var(--ink-green)]">
               <CheckCircle2 size={11.5} strokeWidth={2.6} /> Active
             </span>
           ) : (
@@ -104,7 +104,7 @@ export function SsoCard({
           {status === null ? (
             <span className="text-[11px] text-text-tertiary">could not check</span>
           ) : status.connected ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[color:#1A7A35]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[color:var(--ink-green)]">
               <CheckCircle2 size={11.5} strokeWidth={2.6} /> Connected
             </span>
           ) : (
@@ -123,7 +123,7 @@ export function SsoCard({
         </p>
       )}
       {error && (
-        <p className="mt-2 text-[11.5px] font-semibold text-[color:#DC2626]">{error}</p>
+        <p className="mt-2 text-[11.5px] font-semibold text-[color:var(--status-red)]">{error}</p>
       )}
     </div>
   );

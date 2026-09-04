@@ -133,9 +133,30 @@ export function fmtMoney(value: number, code: CurrencyCode = BASE_CURRENCY): str
   const { symbol } = currencyMeta(code);
   const v = Math.abs(value);
   const sign = value < 0 ? "-" : "";
-  if (v >= 1e9) return `${sign}${symbol}${trim1(v / 1e9)}B`;
-  if (v >= 1e6) return `${sign}${symbol}${trim1(v / 1e6)}M`;
-  if (v >= 1e3) return `${sign}${symbol}${trim1(v / 1e3)}K`;
+  /**
+   * THE SAME SHAPE AS formatMoney, INCLUDING THE CARRY (Anir, Sep 4: the same
+   * figure read "$2K" on one screen and "$1.5K" on another).
+   *
+   * Two differences had crept in. The first is rounding: lib/pipeline's
+   * formatMoney takes thousands whole ("$2K" for 1,500) and this one kept a
+   * decimal. The second is worse — there was no carry check, so 999,999 came
+   * out as "$1000K" and 999,999,999 as "$1000M", which nobody writes.
+   *
+   * Both now follow pipeline's rule, because that is the one on 274 screens.
+   */
+  const unit = (n: number, digits: number) => Number(n.toFixed(digits));
+  if (v >= 1e9) {
+    const b = unit(v / 1e9, 1);
+    return `${sign}${symbol}${b >= 1000 ? `${unit(v / 1e12, 1)}T` : `${b}B`}`;
+  }
+  if (v >= 1e6) {
+    const m = unit(v / 1e6, 1);
+    return `${sign}${symbol}${m >= 1000 ? `${unit(v / 1e9, 1)}B` : `${m}M`}`;
+  }
+  if (v >= 1e3) {
+    const k = Math.round(v / 1e3);
+    return `${sign}${symbol}${k >= 1000 ? `${unit(v / 1e6, 1)}M` : `${k}K`}`;
+  }
   return `${sign}${symbol}${Math.round(v).toLocaleString("en-US")}`;
 }
 

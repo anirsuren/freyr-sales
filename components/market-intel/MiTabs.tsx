@@ -22,7 +22,7 @@ const TABS = [
     label: "Customer Intelligence",
     href: "/market-intel",
     icon: Building2,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     subtitle:
       "What the market is saying about the customers you track. Real LinkedIn activity, news and signals from the past 3 months.",
   },
@@ -31,7 +31,7 @@ const TABS = [
     label: "Competitor Intelligence",
     href: "/market-intel?tab=competitors",
     icon: Swords,
-    color: "#B4318F",
+    color: "var(--ink-magenta)",
     subtitle:
       "What your competitors are up to: their LinkedIn activity, news and signals from the past 3 months.",
   },
@@ -40,7 +40,7 @@ const TABS = [
     label: "Market Intelligence",
     href: "/market-intel?tab=market",
     icon: Globe2,
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     subtitle:
       "What's moving across the regulated industries: mergers and acquisitions, classified by status and division.",
   },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useStoredSet } from "@/lib/useStoredView";
 import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
 import { BarChart } from "@/components/charts/Charts";
@@ -64,11 +65,11 @@ export const DIMENSION_LABEL: Record<SummaryDimension, string> = {
 };
 
 export const DIMENSION_COLOR: Record<SummaryDimension, string> = {
-  group: "#0071E3",
-  customer: "#0F766E",
-  offering: "#B4318F",
-  owner: "#C2410C",
-  revenue: "#7C3AED",
+  group: "var(--ink-bright-blue)",
+  customer: "var(--ink-teal-deep)",
+  offering: "var(--ink-magenta)",
+  owner: "var(--ink-orange)",
+  revenue: "var(--ink-violet-soft)",
 };
 
 /** Suren's list, in his words: "weekly, monthly, quarterly, sem annual, yearly". */
@@ -337,7 +338,7 @@ function DimensionMark({ dim, label }: { dim: SummaryDimension; label: string })
  * there you are setting one number and the gradient is the instrument; a table
  * of a hundred rows is a different job.
  */
-const CONFIDENCE_BLUE = "#0071E3";
+const CONFIDENCE_BLUE = "var(--ink-bright-blue)";
 function confidenceTint(_pct: number): { fg: string; bg: string; border: string } {
   return {
     fg: CONFIDENCE_BLUE,
@@ -379,6 +380,10 @@ export function OpportunitySummary({
   onOpenDeal,
   spread,
   toolbar,
+  filtering = false,
+  dimensions,
+  hideDealRows = false,
+  rowHref,
   storageKey,
   revealDealId,
 }: {
@@ -444,6 +449,39 @@ export function OpportunitySummary({
    */
   toolbar?: React.ReactNode;
   /**
+   * TRUE WHILE A SEARCH OR FILTER IS NARROWING THE DEALS.
+   *
+   * The tree is collapsed on arrival on purpose — four dimensions over a
+   * hundred deals is a wall of rows. But once you have typed something the
+   * answer is one or two rows, and leaving them shut means the search tells
+   * you a match exists and then hides it behind a chevron (Anir, Sep 4,
+   * having searched "test" and been shown a folded "Anir Suren · 1": "again,
+   * here you have to open it, bro, when I search it up").
+   *
+   * The filtering itself is the caller's job; this only needs to know that it
+   * happened.
+   */
+  filtering?: boolean;
+  /**
+   * WHICH DIMENSIONS THIS SCREEN MAY CUT BY. Omitted means all of them.
+   *
+   * Manoj, Sep 4, on the customer page: "Even the filters, it should be only
+   * customer group, customer, and owner." Restricting the ACTIVE order is not
+   * enough — the stack offers every dimension it knows as a chip you can add
+   * back, so Offering and Opportunity category were one click from returning.
+   */
+  dimensions?: SummaryDimension[];
+  /**
+   * STOP AT THE LAST GROUP INSTEAD OF LISTING THE DEALS UNDERNEATH IT.
+   *
+   * Manoj, Sep 4: "We don't want opportunities in this screen at all." On the
+   * customer page the tree exists to total the book by account, and unfolding
+   * an account into its deals turned it back into the opportunities list.
+   */
+  hideDealRows?: boolean;
+  /** Where a row at this dimension should link instead of opening a deal. */
+  rowHref?: (dimension: SummaryDimension, label: string) => string | null;
+  /**
    * HOW ONE DEAL'S MONEY LANDS ACROSS PERIODS, when it does not all land at
    * once. The pipeline puts a deal's whole figure in the period its closure
    * date falls in; Revenue Accruals spreads it over the months of its plan
@@ -467,6 +505,19 @@ export function OpportunitySummary({
     storageKey || "freyr.summary.open.anon"
   );
   const [open, setOpenState] = useState<Set<string>>(new Set());
+  /** Rows deliberately SHUT while filtering. Filtering opens everything, so
+   *  the toggle has to record the opposite or it would spring back open on
+   *  the next render. Separate from `open` so leaving the filter restores the
+   *  browsing state exactly as it was left. */
+  const [shutWhileFiltering, setShutWhileFiltering] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  /* Clearing the search, or starting a different one, forgets what was shut
+     during the last one — otherwise a row you folded away while looking for
+     one thing stays folded while you look for the next, and the new search
+     silently hides its own answer. */
+  useEffect(() => {
+    if (!filtering) setShutWhileFiltering(new Set());
+  }, [filtering]);
   const setOpen = (next: Set<string> | ((p: Set<string>) => Set<string>)) => {
     setOpenState((prev) => {
       const value = typeof next === "function" ? next(prev) : next;
@@ -691,7 +742,7 @@ export function OpportunitySummary({
         size={13}
         strokeWidth={2.2}
         aria-hidden="true"
-        className="shrink-0 text-[color:#7C3AED]"
+        className="shrink-0 text-[color:var(--ink-violet-soft)]"
       />
     );
   }
@@ -711,7 +762,9 @@ export function OpportunitySummary({
     rowIndex = 0
   ): React.ReactNode[] {
     const { total, byPeriod } = cellsOf(node.deals);
-    const shown = open.has(node.key);
+    /* While filtering, EVERY surviving row is a match, so open is the default
+       and the set records what the reader shut again. */
+    const shown = filtering ? !shutWhileFiltering.has(node.key) : open.has(node.key);
     const faded = !onOpenPath(node.key);
     const out: React.ReactNode[] = [];
 
@@ -744,14 +797,23 @@ export function OpportunitySummary({
         >
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              if (filtering) {
+                setShutWhileFiltering((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(node.key)) next.delete(node.key);
+                  else next.add(node.key);
+                  return next;
+                });
+                return;
+              }
               setOpen((prev) => {
                 const next = new Set(prev);
                 if (next.has(node.key)) next.delete(node.key);
                 else next.add(node.key);
                 return next;
-              })
-            }
+              });
+            }}
             aria-expanded={shown}
             className="flex w-full cursor-pointer items-center gap-2 text-left"
           >
@@ -765,17 +827,51 @@ export function OpportunitySummary({
               )}
             />
             <DimensionMark dim={node.dimension} label={node.label} />
-            <span
-              className={cn(
-                "min-w-0 truncate",
-                depth === 0
-                  ? "text-[12.5px] font-bold text-text-primary"
-                  : "text-[12.5px] font-semibold text-text-secondary"
-              )}
-              title={node.label}
-            >
-              {node.label}
-            </span>
+            {/* THE NAME CAN BE A DOOR (Manoj, Sep 4, clicking an account here
+                and landing on a deal: "It should not take us to opportunities
+                in customer. It should take us to the information about
+                Galderma"). `rowHref` decides, per dimension, so the tree keeps
+                folding on the chevron and the name goes where the screen says
+                it should. Rendered as a span with a click rather than a nested
+                <a>, because this row is already a <button>. */}
+            {(() => {
+              const href = rowHref?.(node.dimension, node.label) ?? null;
+              const text = (
+                <span
+                  className={cn(
+                    "min-w-0 truncate",
+                    depth === 0
+                      ? "text-[12.5px] font-bold text-text-primary"
+                      : "text-[12.5px] font-semibold text-text-secondary",
+                    href && "underline-offset-2 hover:text-blue-primary hover:underline"
+                  )}
+                  title={node.label}
+                >
+                  {node.label}
+                </span>
+              );
+              if (!href) return text;
+              return (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(href);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(href);
+                    }
+                  }}
+                  className="min-w-0 cursor-pointer truncate"
+                >
+                  {text}
+                </span>
+              );
+            })()}
             <span className="shrink-0 text-[11px] text-text-tertiary tnum">
               {node.deals.length}
             </span>
@@ -797,6 +893,9 @@ export function OpportunitySummary({
         node.children.forEach((c, childIndex) =>
           out.push(...renderNode(c, depth + 1, childIndex))
         );
+      } else if (hideDealRows) {
+        /* Nothing under the last group. The customer page totals the book by
+           account and stops there — see `hideDealRows`. */
       } else {
         /* THE LOWEST LEVEL IS THE VALUE, AND NOTHING ELSE (Suren, Aug 30:
            "when I click on that, I don't want to see all of this. Just this
@@ -1026,7 +1125,15 @@ export function OpportunitySummary({
           <DimensionStack
             order={order}
             onReorder={onReorder}
-            label={DIMENSION_LABEL}
+            /* The stack offers whatever this map holds, so narrowing the map
+               narrows the chips too. */
+            label={
+              dimensions
+                ? (Object.fromEntries(
+                    dimensions.map((d) => [d, DIMENSION_LABEL[d]])
+                  ) as Record<SummaryDimension, string>)
+                : DIMENSION_LABEL
+            }
             color={DIMENSION_COLOR}
           />
         </div>
@@ -1060,106 +1167,6 @@ export function OpportunitySummary({
               One line, one size, one padding, open or closed. Opening adds the
               chart underneath and moves nothing above it — the one-line header
               is what made it thin, and the shrinking never was. */}
-          {chart.length > 0 && (
-            <section className="rounded-xl border border-border-light bg-white px-4 py-3 shadow-card">
-              {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
-                  show the graph thing, just make it a drop-down like you do
-                  this somewhere else"). A labelled button beside the heading
-                  was a second control saying what a chevron already says, and
-                  it is not how anything else in this app folds — the goal
-                  categories, the deal form and the summary rows are all a
-                  heading you press with a chevron that turns. */}
-              {/* THE HINT SITS BESIDE THE FOLD, NOT INSIDE IT. InfoHint renders
-                  its own <button>, and a button nested in a button is invalid
-                  HTML — React threw "Hydration failed" on every load of this
-                  page while it was in there. The standing rule in this repo is
-                  to place hints BESIDE a heading rather than within it, and
-                  this is exactly why. My own doing, Sep 1. */}
-              {/* The chevron and the hint are ONE cluster, not two loose marks.
-                  Before this they were a 16px chevron flung to the far right by
-                  the button's justify-between, and a 20px circled question mark
-                  after it on a different vertical offset (mt-0.5 against
-                  mt-[3px]). Anir, Sep 1: "look at all the elements inside it,
-                  the dropdown arrow especially, and then the spacing."
-
-                  Now both sit in matched 24px round targets on a shared centre
-                  line, so they line up with each other and the chevron has a
-                  hover state the same shape as the hint's. The button still
-                  spans the row, so clicking anywhere on the line still folds
-                  it. */}
-              <div className="flex w-full items-start gap-0.5">
-              <button
-                type="button"
-                onClick={() => setChartOpen((v) => !v)}
-                aria-expanded={chartOpen}
-                className="group flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
-              >
-                {/* THE ICON SITS OUTSIDE THE BASELINE GROUP (Anir, Sep 3:
-                    "the text isn't aligned with each other"). It used to live
-                    INSIDE the title span, and that span was a flex with
-                    items-center — so the title's baseline became the flex
-                    box's, not its text's, and the 14px title and the 12.5px
-                    subtitle beside it sat on two different lines that were
-                    supposed to be one. Out here it is centred against the row
-                    and the two pieces of text share a real baseline. */}
-                <TrendingUp
-                  size={14}
-                  strokeWidth={2}
-                  className="mt-[3px] shrink-0 text-blue-primary"
-                />
-                {/* PLAIN WORDS (Anir: "I don't like the copy. What does 'where
-                    this money lands' mean"). It meant the money split across
-                    time — so it says that. The unit is the one actually on
-                    screen: four QUARTERS reads as four quarters, not as "4
-                    periods", which is a word for the code's benefit. */}
-                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
-                  <span className="text-[14px] font-semibold text-text-primary">
-                    {spread ? "When the money is expected" : "When the money comes in"}
-                  </span>
-                  <span className="text-[12.5px] text-text-secondary">
-                    {money(grand.total)} {spread ? "planned" : `of ${measureLabel}`},
-                    split across {chart.length}{" "}
-                    {periodWord(timeline, chart.length)}
-                    {grand.entered < grand.of && (
-                      <>
-                        {" · "}
-                        <b className="font-semibold">
-                          {grand.entered} of {grand.of} deals{" "}
-                          {spread ? "have a plan" : "have a figure"}
-                        </b>
-                      </>
-                    )}
-                  </span>
-                </span>
-                <span className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors group-hover:bg-blue-light">
-                  <ChevronDown
-                    size={15}
-                    strokeWidth={2.2}
-                    aria-hidden="true"
-                    className={cn(
-                      "text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary",
-                      chartOpen && "rotate-180"
-                    )}
-                  />
-                </span>
-              </button>
-              <div className="flex h-6 shrink-0 items-center">
-                <InfoHint text="Each column is the period a deal is expected to SIGN in, taken from its Expected to sign date. The year runs April to March, so Q1 is April to June. A deal with no expected sign date is in the total but in none of the columns, which is why the count of deals carrying a figure can be lower than the deal count." />
-              </div>
-              </div>
-              {chartOpen && (
-                <div className="mt-3">
-                  <BarChart
-                    data={chart}
-                    height={180}
-                    format="money"
-                    maxBarWidth={72}
-                    hideFullHeightGhost
-                  />
-                </div>
-              )}
-            </section>
-          )}
 
           {/* THE TABLE IS THE ANSWER (Suren, Aug 30: "in the first column you
               show the total, and then the rest of the things you show the
@@ -1275,6 +1282,111 @@ export function OpportunitySummary({
               </tbody>
             </table>
           </div>
+
+          {/* THE GRAPH SITS UNDER THE NUMBERS (Manoj, Sep 3: "bring the bar
+              graph below everything"). It was above the table, so opening it
+              pushed the rows people actually read down the page. Still closed
+              by default, per Suren's Aug 30 note above. */}
+          {chart.length > 0 && (
+            <section className="rounded-xl border border-border-light bg-white px-4 py-3 shadow-card">
+              {/* THE WHOLE HEADER IS THE FOLD (Anir, Aug 30: "I don't want to
+                  show the graph thing, just make it a drop-down like you do
+                  this somewhere else"). A labelled button beside the heading
+                  was a second control saying what a chevron already says, and
+                  it is not how anything else in this app folds — the goal
+                  categories, the deal form and the summary rows are all a
+                  heading you press with a chevron that turns. */}
+              {/* THE HINT SITS BESIDE THE FOLD, NOT INSIDE IT. InfoHint renders
+                  its own <button>, and a button nested in a button is invalid
+                  HTML — React threw "Hydration failed" on every load of this
+                  page while it was in there. The standing rule in this repo is
+                  to place hints BESIDE a heading rather than within it, and
+                  this is exactly why. My own doing, Sep 1. */}
+              {/* The chevron and the hint are ONE cluster, not two loose marks.
+                  Before this they were a 16px chevron flung to the far right by
+                  the button's justify-between, and a 20px circled question mark
+                  after it on a different vertical offset (mt-0.5 against
+                  mt-[3px]). Anir, Sep 1: "look at all the elements inside it,
+                  the dropdown arrow especially, and then the spacing."
+
+                  Now both sit in matched 24px round targets on a shared centre
+                  line, so they line up with each other and the chevron has a
+                  hover state the same shape as the hint's. The button still
+                  spans the row, so clicking anywhere on the line still folds
+                  it. */}
+              <div className="flex w-full items-start gap-0.5">
+              <button
+                type="button"
+                onClick={() => setChartOpen((v) => !v)}
+                aria-expanded={chartOpen}
+                className="group flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
+              >
+                {/* THE ICON SITS OUTSIDE THE BASELINE GROUP (Anir, Sep 3:
+                    "the text isn't aligned with each other"). It used to live
+                    INSIDE the title span, and that span was a flex with
+                    items-center — so the title's baseline became the flex
+                    box's, not its text's, and the 14px title and the 12.5px
+                    subtitle beside it sat on two different lines that were
+                    supposed to be one. Out here it is centred against the row
+                    and the two pieces of text share a real baseline. */}
+                <TrendingUp
+                  size={14}
+                  strokeWidth={2}
+                  className="mt-[3px] shrink-0 text-blue-primary"
+                />
+                {/* PLAIN WORDS (Anir: "I don't like the copy. What does 'where
+                    this money lands' mean"). It meant the money split across
+                    time — so it says that. The unit is the one actually on
+                    screen: four QUARTERS reads as four quarters, not as "4
+                    periods", which is a word for the code's benefit. */}
+                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
+                  <span className="text-[14px] font-semibold text-text-primary">
+                    {spread ? "When the money is expected" : "When the money comes in"}
+                  </span>
+                  <span className="text-[12.5px] text-text-secondary">
+                    {money(grand.total)} {spread ? "planned" : `of ${measureLabel}`},
+                    split across {chart.length}{" "}
+                    {periodWord(timeline, chart.length)}
+                    {grand.entered < grand.of && (
+                      <>
+                        {" · "}
+                        <b className="font-semibold">
+                          {grand.entered} of {grand.of} deals{" "}
+                          {spread ? "have a plan" : "have a figure"}
+                        </b>
+                      </>
+                    )}
+                  </span>
+                </span>
+                <span className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors group-hover:bg-blue-light">
+                  <ChevronDown
+                    size={15}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                    className={cn(
+                      "text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary",
+                      chartOpen && "rotate-180"
+                    )}
+                  />
+                </span>
+              </button>
+              <div className="flex h-6 shrink-0 items-center">
+                <InfoHint text="Each column is the period a deal is expected to SIGN in, taken from its Expected to sign date. The year runs April to March, so Q1 is April to June. A deal with no expected sign date is in the total but in none of the columns, which is why the count of deals carrying a figure can be lower than the deal count." />
+              </div>
+              </div>
+              {chartOpen && (
+                <div className="mt-3">
+                  <BarChart
+                    data={chart}
+                    height={180}
+                    format="money"
+                    maxBarWidth={72}
+                    hideFullHeightGhost
+                  />
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
 

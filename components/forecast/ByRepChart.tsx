@@ -30,7 +30,7 @@ const SORTS: ColorOption[] = [
     value: "weighted",
     label: "Weighted forecast",
     description: "Probability-adjusted pipeline",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: TrendingUp,
   },
   {
@@ -44,7 +44,7 @@ const SORTS: ColorOption[] = [
     value: "pct",
     label: "Quota share",
     description: "Contribution to team target",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     icon: Target,
   },
   {

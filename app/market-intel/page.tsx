@@ -192,7 +192,7 @@ export default async function MarketIntelPage({
                 <span
                   className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tnum"
                   style={{
-                    color: up ? "#1A7A35" : "#DC2626",
+                    color: up ? "var(--ink-green)" : "#DC2626",
                     background: up
                       ? "rgba(26,122,53,0.10)"
                       : "rgba(220,38,38,0.10)",
@@ -220,16 +220,16 @@ export default async function MarketIntelPage({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
                   <LinkedInIcon size={10.5} />
                   {company.posts.length}{" "}
                   {company.posts.length === 1 ? "post" : "posts"}
                 </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0F766E]">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-teal-deep)]">
                   <Newspaper size={10.5} strokeWidth={2.2} />
                   {company.news.length} news
                 </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#7C3AED]">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)]">
                   <Radar size={10.5} strokeWidth={2.2} />
                   {company.signals.length}{" "}
                   {company.signals.length === 1 ? "signal" : "signals"}
@@ -284,7 +284,7 @@ export default async function MarketIntelPage({
                     </span>
                   </span>
                 </span>
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3]">
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)]">
                   New
                 </span>
               </div>
@@ -294,11 +294,11 @@ export default async function MarketIntelPage({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
                   <Users size={10.5} strokeWidth={2.2} />
                   {peopleCount} {peopleCount === 1 ? "person" : "people"} followed
                 </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B4318F]">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-magenta)]">
                   <Swords size={10.5} strokeWidth={2.2} />
                   {company.competitors.length}{" "}
                   {company.competitors.length === 1

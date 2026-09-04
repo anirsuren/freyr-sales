@@ -13,6 +13,7 @@ import {
   normalizeLevel,
   normalizeDealType,
   normalizeRevenueType,
+  normalizeOfferingKind,
   normalizeStatus,
   type Opportunity,
   type OpportunityLine,
@@ -117,6 +118,12 @@ function normalizeLines(raw: unknown): OpportunityLine[] {
       offeringId,
       offeringLabel,
       revenueType: normalizeRevenueType(r.revenueType),
+      /* SERVICES OR LICENCE, KEPT (Manoj, Sep 4). The client has sent this
+         since the field replaced ARR / OTS, and the normaliser dropped it on
+         the floor — so every deal saved as a services contract came back with
+         no type and its accrual plan offered all three split columns instead
+         of the one it needed. Found by round-tripping a real deal. */
+      offeringKind: normalizeOfferingKind(r.offeringKind),
       value,
       localValue: localValue > 0 && localCurrency ? localValue : undefined,
       localCurrency: localValue > 0 && localCurrency ? localCurrency : undefined,
@@ -284,12 +291,18 @@ function normalizeOne(raw: unknown): Opportunity | null {
 
 function normalize(raw: unknown): OpportunitiesState {
   const r = (raw ?? {}) as Record<string, unknown>;
+  /* CARRY THE HIGH-WATER MARK THROUGH (Anir, Sep 4). This function rebuilds
+     the state from named fields only, so a mark written on save was dropped on
+     the next read and the numbering fell back to "highest live + 1" — which is
+     exactly the reuse it was added to stop. */
+  const mark = Number(r.lastOpportunityNo);
   return {
     opportunities: Array.isArray(r.opportunities)
       ? r.opportunities
           .map(normalizeOne)
           .filter((o): o is Opportunity => o !== null)
       : [],
+    lastOpportunityNo: Number.isFinite(mark) && mark > 0 ? Math.floor(mark) : 0,
   };
 }
 
@@ -627,13 +640,23 @@ export type OpportunityInput = {
  *  creates an opportunity, you need to create an opportunity ID —
  *  automatically"). Counts only our own OPP-NNNN ids, so imported CRM numbers
  *  (DO_0026765) neither collide with nor advance the sequence. */
-function nextOpportunityId(existing: Opportunity[]): string {
-  let max = 0;
+function nextOpportunityId(existing: Opportunity[], highWater = 0): string {
+  /* NEVER REUSED, EVEN AFTER A DELETE (Anir, Sep 4). The high-water mark is
+     carried on the state and only ever goes up, so a deleted number is retired
+     rather than handed to the next deal. Live rows are still scanned, because
+     the mark is new and older workspaces have numbers it has not seen. */
+  let max = Math.max(0, highWater);
   for (const o of existing) {
     const m = /^OPP-(\d+)$/.exec(o.externalId ?? "");
     if (m) max = Math.max(max, Number(m[1]));
   }
   return `OPP-${String(max + 1).padStart(4, "0")}`;
+}
+
+/** Remember a number so it is never handed out twice. */
+function rememberOpportunityNo(state: OpportunitiesState, ref: string): void {
+  const m = /^OPP-(\d+)$/.exec(ref);
+  if (m) state.lastOpportunityNo = Math.max(state.lastOpportunityNo ?? 0, Number(m[1]));
 }
 
 export async function addOpportunity(input: OpportunityInput): Promise<Opportunity> {
@@ -653,7 +676,8 @@ export async function addOpportunity(input: OpportunityInput): Promise<Opportuni
   });
   if (!created) throw new Error("That opportunity could not be saved.");
   if (!created.externalId) {
-    created.externalId = nextOpportunityId(state.opportunities);
+    created.externalId = nextOpportunityId(state.opportunities, state.lastOpportunityNo);
+    rememberOpportunityNo(state, created.externalId);
   }
   state.opportunities.push(created);
   await writeRow(state);
@@ -732,8 +756,10 @@ export async function updateOpportunity(
   // coming. Numbers already imported from Freyr's CRM are never overwritten.
   if (!merged.externalId) {
     merged.externalId = nextOpportunityId(
-      state.opportunities.filter((_, i) => i !== idx)
+      state.opportunities.filter((_, i) => i !== idx),
+      state.lastOpportunityNo
     );
+    rememberOpportunityNo(state, merged.externalId);
   }
   state.opportunities[idx] = merged;
   await writeRow(state);

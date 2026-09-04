@@ -1,6 +1,6 @@
 // Derives real, in-app notifications from current state (V4) — replaces the
 // static bell items. Pure function so the API route + page + bell all share it.
-import { buildDeals, ROTTING_DAYS } from "./pipeline";
+import { buildDeals, dealsFromOpportunities, ROTTING_DAYS } from "./pipeline";
 import { OUTCOME_META } from "./utils";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
 import type { StoredVoiceConversation } from "./voiceEvents";
@@ -223,6 +223,10 @@ export function buildNotifications(input: {
   customers: Customer[];
   contacts: Contact[];
   interactions: Interaction[];
+  /** The real book of business. Optional for the same reason it is optional on
+   *  `nextBestActions`: a Mock workspace has pitch sessions and no
+   *  opportunities, a Real one has the opposite, and both must read right. */
+  opportunities?: Parameters<typeof dealsFromOpportunities>[0];
   voiceConversations?: StoredVoiceConversation[];
   /** True when the signed-in person has no passkey yet — the Touch ID nudge
    *  (Anir, Aug 12: "if they don't have it, it should be in the notifications
@@ -294,8 +298,14 @@ export function buildNotifications(input: {
   }
 
   // Rotting deals (no activity in N days)
-  const deals = buildDeals(sessions, customers, contacts, interactions);
-  for (const d of deals) {
+  const sessionDeals = buildDeals(sessions, customers, contacts, interactions);
+  const opportunityDeals = dealsFromOpportunities(input.opportunities ?? [], customers);
+  /* WHICH PIPELINE A DEAL CAME FROM DECIDES WHERE THE ROW LINKS. A pitch
+     session opens at /deals/<id>; an opportunity does not exist there at all
+     and that route is behind the release gate, so an opportunity row pointing
+     at it would be a notification that goes nowhere. */
+  const opportunityIds = new Set(opportunityDeals.map((d) => d.sessionId));
+  for (const d of [...sessionDeals, ...opportunityDeals]) {
     if (d.staleDays > ROTTING_DAYS && d.stage !== "Closed Lost") {
       out.push({
         id: `rotting-${d.sessionId}`,
@@ -310,7 +320,9 @@ export function buildNotifications(input: {
           : "Nothing has moved here: reach out or move it on.",
         // It has already sat past the rotting line, so it is late by definition.
         urgency: "overdue",
-        href: `/deals/${d.sessionId}`,
+        href: opportunityIds.has(d.sessionId)
+          ? `/opportunities/${d.sessionId}`
+          : `/deals/${d.sessionId}`,
         ts: d.lastActivity,
         company: d.company,
         person: d.contactName,

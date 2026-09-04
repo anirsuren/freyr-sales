@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/pipeline";
 import { revenueTypeRule } from "@/lib/opportunitiesShared";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * EVERY DEAL RUNNING ON THIS OFFERING, ON THE OFFERING'S OWN PAGE.
@@ -32,18 +33,18 @@ import { cn, formatDate } from "@/lib/utils";
  */
 
 const LEVEL_COLOR: Record<string, string> = {
-  Pipeline: "#0071E3",
-  "Go get": "#B4318F",
-  "High confidence": "#0F766E",
-  Future: "#7C3AED",
+  Pipeline: "var(--ink-bright-blue)",
+  "Go get": "var(--ink-magenta)",
+  "High confidence": "var(--ink-teal-deep)",
+  Future: "var(--ink-violet-soft)",
 };
 
 const STATUS_COLOR: Record<string, string> = {
   Qualify: "#0891B2",
   Pilot: "#5E5CE6",
-  Propose: "#0071E3",
-  "Submitted to client": "#7C3AED",
-  "Under review": "#B4318F",
+  Propose: "var(--ink-bright-blue)",
+  "Submitted to client": "var(--ink-violet-soft)",
+  "Under review": "var(--ink-magenta)",
   "On hold": "#8E98A8",
   Won: "#16A34A",
   Lost: "#DC2626",
@@ -180,7 +181,7 @@ export function OfferingOpportunities({
                     title={revenueTypeRule(row.level as never)}
                     className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                     style={{
-                      background: `${LEVEL_COLOR[row.level] ?? "#8E98A8"}18`,
+                      background: tint(LEVEL_COLOR[row.level] ?? "#8E98A8", 9),
                       color: LEVEL_COLOR[row.level] ?? "#8E98A8",
                     }}
                   >
@@ -192,7 +193,7 @@ export function OfferingOpportunities({
                     <span
                       className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                       style={{
-                        background: `${STATUS_COLOR[row.status] ?? "#8E98A8"}18`,
+                        background: tint(STATUS_COLOR[row.status] ?? "#8E98A8", 9),
                         color: STATUS_COLOR[row.status] ?? "#8E98A8",
                       }}
                     >

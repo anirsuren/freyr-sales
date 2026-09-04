@@ -94,8 +94,8 @@ const PACE_COLOR: Record<string, string> = {
      that one is a choice, not a bug, so it is left as found. */
   unscheduled: "#A855F7",
   met: "#16A34A",
-  ahead: "#0F766E",
-  ontrack: "#0071E3",
+  ahead: "var(--ink-teal-deep)",
+  ontrack: "var(--ink-bright-blue)",
   lagging: "#DC2626",
   unset: "#8AB4E8",
 };
@@ -164,9 +164,9 @@ const TYPE_TIP_ICON: Record<string, string> = {
 /** The four windows, widest to narrowest, each with its own mark. */
 const PERIOD_META: Record<PeriodKey, { color: string; icon: typeof CalendarDays }> = {
   week: { color: "#0891B2", icon: CalendarRange },
-  month: { color: "#0071E3", icon: CalendarDays },
-  quarter: { color: "#7C3AED", icon: CalendarClock },
-  year: { color: "#0F766E", icon: CalendarCheck },
+  month: { color: "var(--ink-bright-blue)", icon: CalendarDays },
+  quarter: { color: "var(--ink-violet-soft)", icon: CalendarClock },
+  year: { color: "var(--ink-teal-deep)", icon: CalendarCheck },
 };
 
 type SortKey = "pace" | "met" | "target" | "actual" | "verified" | "name";
@@ -695,7 +695,7 @@ export function OrgPerformanceTab({
               ? `${verifiedOfSignable} of ${signableGoals.length}`
               : "·"
           }
-          color="#0F766E"
+          color="var(--ink-teal-deep)"
           sub={
             !signableGoals.length
               ? "nothing to sign off yet"
@@ -1152,11 +1152,11 @@ export function OrgPerformanceTab({
             dense
             minWidth={150}
             options={[
-              { value: "pace", label: "Worst pace first", color: "#C2410C", icon: TrendingDown },
+              { value: "pace", label: "Worst pace first", color: "var(--ink-orange)", icon: TrendingDown },
               { value: "met", label: "Most complete", color: "#16A34A", icon: Target },
-              { value: "target", label: "Biggest target", color: "#0071E3", icon: Layers },
-              { value: "actual", label: "Most achieved", color: "#7C3AED", icon: TrendingUp },
-              { value: "verified", label: "Verified first", color: "#0F766E", icon: ShieldCheck },
+              { value: "target", label: "Biggest target", color: "var(--ink-bright-blue)", icon: Layers },
+              { value: "actual", label: "Most achieved", color: "var(--ink-violet-soft)", icon: TrendingUp },
+              { value: "verified", label: "Verified first", color: "var(--ink-teal-deep)", icon: ShieldCheck },
               { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
             ]}
           />
@@ -1200,8 +1200,8 @@ export function OrgPerformanceTab({
                 onChange: (next) => setPaceFilter(next[next.length - 1] ?? "all"),
                 options: [
                   { value: "met", label: "Target met", color: "#16A34A" },
-                  { value: "ahead", label: "Ahead", color: "#0F766E" },
-                  { value: "ontrack", label: "On track", color: "#0071E3" },
+                  { value: "ahead", label: "Ahead", color: "var(--ink-teal-deep)" },
+                  { value: "ontrack", label: "On track", color: "var(--ink-bright-blue)" },
                   { value: "lagging", label: "Lagging", color: "#DC2626" },
                   /* The donut counts these and every row wears the chip, but
                      the filter had no way to ask for them — the one standing
@@ -1217,7 +1217,7 @@ export function OrgPerformanceTab({
                 onChange: (next) => setVerFilter(next[next.length - 1] ?? "all"),
                 options: [
                   { value: "verified", label: "Verified", color: "#16A34A" },
-                  { value: "unverified", label: "Not verified", color: "#0058B0" },
+                  { value: "unverified", label: "Not verified", color: "var(--ink-blue-soft)" },
                 ],
               },
             ]}
@@ -2140,7 +2140,7 @@ function GoalRows({
                                           share >= 85
                                             ? "#15803D"
                                             : share >= 55
-                                              ? "#0071E3"
+                                              ? "var(--ink-bright-blue)"
                                               : "#DC2626",
                                       }}
                                     >
@@ -2360,7 +2360,7 @@ function GoalRows({
                               size={10}
                               strokeWidth={2.6}
                               aria-label="Goal owner"
-                              className="text-[color:#7C3AED]"
+                              className="text-[color:var(--ink-violet-soft)]"
                             />
                             <span className="text-[10.5px] font-medium text-text-secondary">
                               {s.owners.join(", ")}
@@ -2477,7 +2477,7 @@ function GoalRows({
                                               pShare >= 85
                                                 ? "#15803D"
                                                 : pShare >= 55
-                                                  ? "#0071E3"
+                                                  ? "var(--ink-bright-blue)"
                                                   : "#DC2626",
                                           }}
                                         >
@@ -2570,7 +2570,7 @@ function GoalRows({
                                   size={11}
                                   strokeWidth={2.6}
                                   aria-hidden="true"
-                                  className="mr-1 inline align-[-1px] text-[color:#7C3AED]"
+                                  className="mr-1 inline align-[-1px] text-[color:var(--ink-violet-soft)]"
                                 />
                                 <span className="font-semibold text-text-primary">
                                   {s.owners.join(" and ")}

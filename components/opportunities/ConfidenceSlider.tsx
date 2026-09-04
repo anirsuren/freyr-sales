@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * THE CONFIDENCE BAR, SHARED.
@@ -60,7 +61,7 @@ export function ConfidenceSlider({
    * this also stops one number reading as two different colours on two screens.
    */
   const active = !(committed === null && drag === null);
-  const color = active ? "#0071E3" : "#8E98A8";
+  const color = active ? "var(--ink-bright-blue)" : "#8E98A8";
   const dragging = drag !== null;
   return (
     /* STACKED, NOT SIDE-BY-SIDE (Anir, Aug 18: "it would look so much better
@@ -84,7 +85,7 @@ export function ConfidenceSlider({
                  direction to travel in. It is the same blue at both ends, not
                  two colours meeting in the middle. */
               background: `linear-gradient(90deg, #5AA9F2, ${color})`,
-              boxShadow: dragging ? `0 0 10px ${color}66` : undefined,
+              boxShadow: dragging ? `0 0 10px ${tint(color, 40)}` : undefined,
             }}
           />
         </span>
@@ -124,8 +125,8 @@ export function ConfidenceSlider({
           )}
           style={{
             left: `clamp(34px, ${pct}%, calc(100% - 34px))`,
-            background: active ? `${color}14` : "var(--surface)",
-            borderColor: active ? `${color}40` : "var(--border-light)",
+            background: active ? tint(color, 8) : "var(--surface)",
+            borderColor: active ? tint(color, 25) : "var(--border-light)",
           }}
         >
           <input

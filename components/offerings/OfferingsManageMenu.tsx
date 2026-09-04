@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SlidersHorizontal, ChevronDown, Layers, Package, Users } from "lucide-react";
+import { tint } from "@/lib/tint";
 
 // The three master-list pages were three big header buttons eating the row
 // (Suren, Jul 8: "those buttons take up unnecessary space"). Folded into one
 // compact "Manage" menu — the stat tiles below still deep-link to the lists.
 const LINKS = [
-  { href: "/offerings/offering-categories", label: "Offering categories", icon: Layers, color: "#7C3AED" },
-  { href: "/offerings/offering-types", label: "Offering types", icon: Package, color: "#0071E3" },
+  { href: "/offerings/offering-categories", label: "Offering categories", icon: Layers, color: "var(--ink-violet-soft)" },
+  { href: "/offerings/offering-types", label: "Offering types", icon: Package, color: "var(--ink-bright-blue)" },
   { href: "/offerings/customer-types", label: "Customer types", icon: Users, color: "#0891B2" },
 ];
 
@@ -114,7 +115,7 @@ export function OfferingsManageMenu() {
                   >
                     <span
                       className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                      style={{ background: `${l.color}14`, color: l.color }}
+                      style={{ background: tint(l.color, 8), color: l.color }}
                     >
                       <LIcon size={13} strokeWidth={2} />
                     </span>

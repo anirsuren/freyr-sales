@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { readOpportunities } from "@/lib/opportunities";
 import { buildNotifications } from "@/lib/notifications";
 import { readSolutioning } from "@/lib/solutioning";
 import { canOpenModule } from "@/lib/moduleAccessServer";
@@ -101,6 +102,7 @@ export async function GET() {
     customers,
     contacts,
     interactions,
+    opportunities: (await readOpportunities()).opportunities,
     voiceConversations,
     performance,
     roadmaps: await roadmapChangesForReader(),

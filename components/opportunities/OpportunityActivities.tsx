@@ -33,6 +33,7 @@ import type {
   Opportunity,
   OpportunityActivity,
 } from "@/lib/opportunitiesShared";
+import { tint } from "@/lib/tint";
 
 /**
  * ACTIVITIES ON THE DEAL (Suren, Aug 17 answers: "the activity on the
@@ -58,9 +59,9 @@ const STATUS_META: Record<
   OpportunityActivity["status"],
   { label: string; color: string; icon: LucideIcon }
 > = {
-  initiated: { label: "Initiated", color: "#0071E3", icon: Play },
-  under_progress: { label: "Under progress", color: "#7C3AED", icon: Loader },
-  completed: { label: "Completed", color: "#0F766E", icon: CheckCircle2 },
+  initiated: { label: "Initiated", color: "var(--ink-bright-blue)", icon: Play },
+  under_progress: { label: "Under progress", color: "var(--ink-violet-soft)", icon: Loader },
+  completed: { label: "Completed", color: "var(--ink-teal-deep)", icon: CheckCircle2 },
 };
 
 type Bridge = {
@@ -205,7 +206,7 @@ export function OpportunityActivities({
                     <td className="px-3 py-2">
                       <span
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                        style={{ background: `${color}16`, color }}
+                        style={{ background: tint(color, 9), color }}
                       >
                         <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
                         {label}

@@ -94,7 +94,7 @@ export function LiveCompanyCard({
           // here: the arrow means "versus last month", and this one isn't.
           <span
             title="New items picked up this month. Not enough history yet to compare it with last month."
-            className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3] tnum"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)] tnum"
           >
             <Newspaper size={11} strokeWidth={2.4} />
             {briefing.itemsThisMonth} this month
@@ -103,7 +103,7 @@ export function LiveCompanyCard({
           <span
             className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tnum"
             style={{
-              color: up ? "#1A7A35" : "#DC2626",
+              color: up ? "var(--ink-green)" : "#DC2626",
               background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
             }}
           >
@@ -130,11 +130,11 @@ export function LiveCompanyCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
           <LinkedInIcon size={10.5} />
           {briefing.posts.length} {briefing.posts.length === 1 ? "post" : "posts"}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0F766E]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-teal-deep)]">
           <Newspaper size={10.5} strokeWidth={2.2} />
           {briefing.news.length} news
         </span>
@@ -142,12 +142,12 @@ export function LiveCompanyCard({
           /* The company's own website, counted beside the wire and LinkedIn
              (Anir, Aug 28) — only when there is something, so a card never
              advertises an empty source. */
-          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#C2410C]">
+          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
             <Globe2 size={10.5} strokeWidth={2.2} />
             {briefing.site!.length} from them
           </span>
         )}
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#7C3AED]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)]">
           <Radar size={10.5} strokeWidth={2.2} />
           {briefing.signals.length}{" "}
           {briefing.signals.length === 1 ? "signal" : "signals"}
@@ -180,7 +180,7 @@ export function LiveCompanyCard({
                 className="h-1 rounded-full transition-all duration-300"
                 style={{
                   width: i === index ? 12 : 4,
-                  background: i === index ? "#0071E3" : "rgba(0,113,227,0.25)",
+                  background: i === index ? "var(--ink-bright-blue)" : "rgba(0,113,227,0.25)",
                 }}
               />
             ))}
@@ -247,7 +247,7 @@ export function LiveCompanyCard({
                       </span>
                     </span>
                   </span>
-                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
                     <LinkedInIcon size={9.5} />
                     {person.posts} {person.posts === 1 ? "post" : "posts"} collected
                   </span>

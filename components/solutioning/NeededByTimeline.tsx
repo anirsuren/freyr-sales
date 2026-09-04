@@ -124,9 +124,9 @@ export function NeededByTimeline({
   const ELAPSED = "rgba(0,113,227,0.55)";
 
   const tone = done
-    ? { hue: "#0071E3", text: "text-blue-primary" }
+    ? { hue: "var(--ink-bright-blue)", text: "text-blue-primary" }
     : overdue
-      ? { hue: "#DC2626", text: "text-[color:#DC2626]" }
+      ? { hue: "#DC2626", text: "text-[color:var(--status-red)]" }
       : soon
         ? { hue: "#D97706", text: "text-[color:#D97706]" }
         : { hue: "#16A34A", text: "text-[color:#16A34A]" };
@@ -199,7 +199,7 @@ export function NeededByTimeline({
         {/* ASKED — a real date, so it gets a dot. */}
         <Marker
           left={at(asked)}
-          hue="#0071E3"
+          hue="var(--ink-bright-blue)"
           icon={Inbox}
           title="Requested"
           date={label(asked)}

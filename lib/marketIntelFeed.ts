@@ -99,7 +99,13 @@ export type MnaItem = {
   sourceUrl: string;
 };
 
-export type MnaBoard = { items: MnaItem[]; fetchedAt: string };
+export type MnaBoard = {
+  items: MnaItem[];
+  /** Every deal found, before the list was capped, so the screen can say what
+   *  it is not showing rather than presenting the cap as a count. */
+  total?: number;
+  fetchedAt: string;
+};
 
 export type PersonFeed = { posts: FeedPost[]; fetchedAt: string };
 

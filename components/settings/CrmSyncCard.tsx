@@ -49,7 +49,7 @@ export function CrmSyncCard({
         </div>
         <span
           className="inline-flex items-center gap-1.5 text-[13px] font-medium shrink-0"
-          style={{ color: "#1A7A35" }}
+          style={{ color: "var(--ink-green)" }}
         >
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#34C759" }} />
           <Check size={14} strokeWidth={2} /> Connected

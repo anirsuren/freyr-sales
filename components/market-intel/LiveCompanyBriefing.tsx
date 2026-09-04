@@ -52,6 +52,7 @@ import { SIGNAL_META, type MiSignalKind } from "@/lib/marketIntelMock";
 import type { FeedPost, LiveBriefing } from "@/lib/marketIntelFeed";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
 import { useStoredView } from "@/lib/useStoredView";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE COMPANY, REAL DATA ONLY. Every post links to the actual LinkedIn post,
@@ -157,14 +158,14 @@ export function LiveCompanyBriefing({
   // Four content types, each its own toggle (Anir, Aug 11: "I can even filter
   // to only see what people are posting").
   const KIND_META: { key: Kind; label: string; icon: LucideIcon; color: string; count: number }[] = [
-    { key: "company", label: "Company posts", icon: Building2, color: "#0071E3", count: posts.filter((p) => !p.by).length },
-    { key: "people", label: "People posts", icon: Users, color: "#B4318F", count: posts.filter((p) => p.by).length },
-    { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: news.length },
+    { key: "company", label: "Company posts", icon: Building2, color: "var(--ink-bright-blue)", count: posts.filter((p) => !p.by).length },
+    { key: "people", label: "People posts", icon: Users, color: "var(--ink-magenta)", count: posts.filter((p) => p.by).length },
+    { key: "news", label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: news.length },
     /* Their own words, from their own site: a different colour and a
        different glyph from the news wire, because "the company said this"
        and "a reporter wrote this" are different claims. */
-    { key: "site", label: "Their website", icon: Globe2, color: "#C2410C", count: site.length },
-    { key: "signal", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
+    { key: "site", label: "Their website", icon: Globe2, color: "var(--ink-orange)", count: site.length },
+    { key: "signal", label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: signals.length },
   ];
   const activeCount = KIND_META.filter((k) => kinds.has(k.key)).reduce((a, k) => a + k.count, 0);
   const allOn = kinds.size === ALL_KINDS.length;
@@ -235,7 +236,7 @@ export function LiveCompanyBriefing({
                 rel="noreferrer"
                 aria-label="Open on LinkedIn"
                 title="Open on LinkedIn"
-                className="ml-auto flex items-center gap-1 text-[color:#0071E3] transition-opacity hover:opacity-70"
+                className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)] transition-opacity hover:opacity-70"
               >
                 <LinkedInIcon size={13} />
                 <ExternalLink size={12} strokeWidth={2.2} />
@@ -293,7 +294,7 @@ export function LiveCompanyBriefing({
   const siteCard = (item: LiveBriefing["news"][number], key: string) => (
     <Card key={key} className="p-4">
       <p className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#C2410C]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-orange)]">
           <Globe2 size={10.5} strokeWidth={2.2} /> {item.source}
         </span>
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
@@ -329,7 +330,7 @@ export function LiveCompanyBriefing({
   const newsCard = (item: LiveBriefing["news"][number], key: string) => (
     <Card key={key} className="p-4">
       <p className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
           <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
         </span>
         <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
@@ -366,7 +367,7 @@ export function LiveCompanyBriefing({
         <p className="flex flex-wrap items-center gap-2">
           <span
             className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-            style={{ color: meta.color, background: `${meta.color}14` }}
+            style={{ color: meta.color, background: tint(meta.color, 8) }}
           >
             <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
           </span>
@@ -394,10 +395,10 @@ export function LiveCompanyBriefing({
   };
 
   const TABLE_TAG = {
-    post: { color: "#0071E3" },
-    news: { color: "#0F766E" },
-    site: { color: "#C2410C" },
-    signal: { color: "#7C3AED" },
+    post: { color: "var(--ink-bright-blue)" },
+    news: { color: "var(--ink-teal-deep)" },
+    site: { color: "var(--ink-orange)" },
+    signal: { color: "var(--ink-violet-soft)" },
   } as const;
 
   type FeedItem =
@@ -487,7 +488,7 @@ export function LiveCompanyBriefing({
           <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
             {briefing.name}
             {briefing.momentumPct === null ? (
-              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:#0071E3] tnum">
+              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum">
                 <TrendingUp size={12} strokeWidth={2.4} />
                 {briefing.itemsThisMonth} items this month
               </span>
@@ -495,7 +496,7 @@ export function LiveCompanyBriefing({
               <span
                 className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tnum"
                 style={{
-                  color: up ? "#1A7A35" : "#DC2626",
+                  color: up ? "var(--ink-green)" : "#DC2626",
                   background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
                 }}
               >
@@ -505,7 +506,7 @@ export function LiveCompanyBriefing({
               </span>
             )}
             {briefing.followerCount != null && (
-              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-semibold text-[color:#0071E3] tnum">
+              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
                 <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
               </span>
             )}
@@ -526,7 +527,7 @@ export function LiveCompanyBriefing({
           breath, regenerated by AI with each refresh. */}
       {briefing.tldr && (
         <div className="rise-in mt-4 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.04)] p-4">
-          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:#0071E3]">
+          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--ink-bright-blue)]">
             <Sparkles size={11} strokeWidth={2.2} /> The rundown
           </p>
           <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
@@ -564,8 +565,8 @@ export function LiveCompanyBriefing({
                   <span
                     className="flex h-6 w-6 items-center justify-center rounded-full"
                     style={{
-                      color: kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "#0071E3",
-                      background: `${(kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "#0071E3") ?? "#0071E3"}14`,
+                      color: kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "var(--ink-bright-blue)",
+                      background: tint((kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "var(--ink-bright-blue)") ?? "var(--ink-bright-blue)", 8),
                     }}
                   >
                     <Radar size={13} strokeWidth={2.2} />
@@ -593,7 +594,7 @@ export function LiveCompanyBriefing({
                         allOn ? "bg-blue-light text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"
                       )}
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.08)] text-[color:#0071E3]">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]">
                         <Radar size={13} strokeWidth={2.2} />
                       </span>
                       <span className="flex-1">Everything</span>
@@ -641,10 +642,10 @@ export function LiveCompanyBriefing({
                 minWidth={150}
                 dense
                 options={[
-                  { value: "1", label: "Past day", color: "#C2410C", icon: Sun },
-                  { value: "7", label: "Past week", color: "#0071E3", icon: CalendarDays },
-                  { value: "30", label: "Past month", color: "#6D28D9", icon: CalendarRange },
-                  { value: "90", label: "Past 3 months", color: "#0F766E", icon: History },
+                  { value: "1", label: "Past day", color: "var(--ink-orange)", icon: Sun },
+                  { value: "7", label: "Past week", color: "var(--ink-bright-blue)", icon: CalendarDays },
+                  { value: "30", label: "Past month", color: "var(--ink-violet)", icon: CalendarRange },
+                  { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
                 ]}
               />
               <div ref={viewRef} className="relative">
@@ -745,7 +746,7 @@ export function LiveCompanyBriefing({
                             className="flex w-max max-w-[180px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
                             style={{
                               color: TABLE_TAG[row.kind].color,
-                              background: `${TABLE_TAG[row.kind].color}14`,
+                              background: tint(TABLE_TAG[row.kind].color, 8),
                             }}
                           >
                             {row.kind === "post" ? (
@@ -856,7 +857,7 @@ export function LiveCompanyBriefing({
                     <li key={kind} className="flex items-center gap-2">
                       <span
                         className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ color: meta.color, background: `${meta.color}14` }}
+                        style={{ color: meta.color, background: tint(meta.color, 8) }}
                       >
                         <SIcon size={11} strokeWidth={2.2} /> {meta.label}
                       </span>
@@ -880,7 +881,7 @@ export function LiveCompanyBriefing({
                 {briefing.competitorMentions.map((mention) => (
                   <span
                     key={mention.name}
-                    className="flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:#B4318F]"
+                    className="flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)]"
                   >
                     {mention.name}
                     <span className="tnum font-bold">{mention.count}</span>

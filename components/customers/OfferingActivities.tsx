@@ -45,6 +45,7 @@ import type {
   CustomerOfferingStatus,
 } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * ACTIVITIES ON THE OFFERING THE CUSTOMER HAS (Suren, Aug 8, via Anir): "once
@@ -92,11 +93,11 @@ const STATUS_OPTIONS: ColorOption[] = CUSTOMER_OFFERING_STATUS_ORDER.map(
 
 const CURRENCY_OPTIONS: ColorOption[] = [
   { value: "USD", label: "$ USD", color: "#2563EB", icon: Coins },
-  { value: "EUR", label: "€ EUR", color: "#7C3AED", icon: Coins },
-  { value: "GBP", label: "£ GBP", color: "#C2410C", icon: Coins },
-  { value: "CHF", label: "CHF", color: "#0F766E", icon: Coins },
+  { value: "EUR", label: "€ EUR", color: "var(--ink-violet-soft)", icon: Coins },
+  { value: "GBP", label: "£ GBP", color: "var(--ink-orange)", icon: Coins },
+  { value: "CHF", label: "CHF", color: "var(--ink-teal-deep)", icon: Coins },
   { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
-  { value: "JPY", label: "¥ JPY", color: "#C2410C", icon: Coins },
+  { value: "JPY", label: "¥ JPY", color: "var(--ink-orange)", icon: Coins },
   { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
   { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
   { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },
@@ -153,8 +154,8 @@ export function StatusChip({ status }: { status: CustomerOfferingStatus }) {
       className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold"
       style={{
         color: meta.color,
-        borderColor: `${meta.color}40`,
-        background: `${meta.color}14`,
+        borderColor: tint(meta.color, 25),
+        background: tint(meta.color, 8),
       }}
     >
       <Icon size={11} strokeWidth={2.2} />
@@ -304,7 +305,7 @@ export function OfferingActivities({
            invisible on the heat map and in every report, so the empty state
            now says that plainly and puts the button inside it. */
         <div className="rounded-xl border border-dashed border-[rgba(180,49,143,0.4)] bg-[rgba(180,49,143,0.04)] px-4 py-4 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.12)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.05em] text-[color:#B4318F]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.12)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-magenta)]">
             <CircleAlert size={12} strokeWidth={2.4} /> Needed
           </span>
           <p className="mt-2 text-[13px] font-semibold text-text-primary">
@@ -400,7 +401,7 @@ export function OfferingActivities({
                     </td>
                     <td className="py-2.5 pr-3">
                       {planned(version) ? (
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet)]">
                           <CalendarClock size={11} strokeWidth={2.2} /> Planned
                         </span>
                       ) : (
@@ -475,7 +476,7 @@ export function OfferingActivities({
                           type="button"
                           aria-label="Remove this activity"
                           onClick={() => setConfirmDelete(version.id)}
-                          className="text-[color:#DC2626] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          className="text-[color:var(--status-red)] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                         >
                           <Trash2 size={13} strokeWidth={2} />
                         </button>

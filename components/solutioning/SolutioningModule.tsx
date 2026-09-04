@@ -54,6 +54,7 @@ import {
   type SolutionRequest,
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
+import { tint } from "@/lib/tint";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
@@ -396,7 +397,7 @@ export function SolutioningModule({
           icon={Inbox}
           label="Waiting to be picked up"
           value={String(unclaimed.length)}
-          color="#0071E3"
+          color="var(--ink-bright-blue)"
           warn={unclaimed.length > 0}
           sub={
             unclaimed.length > 0
@@ -408,7 +409,7 @@ export function SolutioningModule({
           icon={Timer}
           label="Average turnaround"
           value={avgTurnaround === null ? "—" : `${avgTurnaround}d`}
-          color="#0F766E"
+          color="var(--ink-teal-deep)"
           sub={
             avgTurnaround === null
               ? "nothing closed yet"
@@ -421,7 +422,7 @@ export function SolutioningModule({
              for the queue, not somebody's failure. */
           label="Longest waiting"
           value={oldestOpen ? `${oldestOpen.days}d` : "—"}
-          color="#B45309"
+          color="var(--ink-amber)"
           warn={!!oldestOpen && oldestOpen.days >= 14}
           sub={oldestOpen ? oldestOpen.r.ref : "nothing open"}
         />
@@ -504,8 +505,8 @@ export function SolutioningModule({
               ariaLabel="Sort requests"
               minWidth={150}
               options={[
-                { value: "newest", label: "Newest first", color: "#0071E3", icon: Sparkles },
-                { value: "needed", label: "By needed-by date", color: "#C2410C", icon: CalendarClock },
+                { value: "newest", label: "Newest first", color: "var(--ink-bright-blue)", icon: Sparkles },
+                { value: "needed", label: "By needed-by date", color: "var(--ink-orange)", icon: CalendarClock },
               ]}
             />
           }
@@ -581,7 +582,7 @@ export function SolutioningModule({
                   title={r.title}
                   style={{
                     ["--kind-accent" as string]: meta.color,
-                    backgroundColor: on ? `${meta.color}14` : undefined,
+                    backgroundColor: on ? tint(meta.color, 8) : undefined,
                   }}
                   className={cn(
                     "flex w-full cursor-pointer items-start gap-2.5 border-b border-border-light px-3 py-2.5 text-left transition-colors last:border-b-0",
@@ -601,7 +602,7 @@ export function SolutioningModule({
                       </span>
                       <span
                         className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold"
-                        style={{ color: meta.color, background: `${meta.color}1A` }}
+                        style={{ color: meta.color, background: tint(meta.color, 10) }}
                       >
                         {meta.label}
                       </span>
@@ -612,7 +613,7 @@ export function SolutioningModule({
                     <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
                       <span className="min-w-0 truncate">{r.customer}</span>
                       {overdue && (
-                        <span className="shrink-0 font-bold text-[color:#DC2626]">
+                        <span className="shrink-0 font-bold text-[color:var(--status-red)]">
                           overdue
                         </span>
                       )}
@@ -644,7 +645,7 @@ export function SolutioningModule({
                         className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
                         style={{
                           color: KIND_META[picked.kind].color,
-                          background: `${KIND_META[picked.kind].color}1A`,
+                          background: tint(KIND_META[picked.kind].color, 10),
                         }}
                       >
                         {KIND_META[picked.kind].label}
@@ -973,7 +974,7 @@ function RequestRow({
           <span
             className={cn(
               "text-[12px] tnum",
-              overdue ? "font-bold text-[color:#DC2626]" : "text-text-secondary"
+              overdue ? "font-bold text-[color:var(--status-red)]" : "text-text-secondary"
             )}
           >
             {r.neededBy}
@@ -1281,7 +1282,7 @@ function RequestPanel({
                               <span
                                 aria-hidden="true"
                                 className="absolute left-0 top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full"
-                                style={{ background: `${mark.color}1A`, color: mark.color }}
+                                style={{ background: tint(mark.color, 10), color: mark.color }}
                               >
                                 <MarkIcon size={11} strokeWidth={2.4} />
                               </span>
@@ -1345,7 +1346,7 @@ function docKind(name: string): { color: string; icon: LucideIcon } {
      just attached is not disabled. */
   return (
     DOC_KINDS.find((k) => k.match.test(name)) ?? {
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       icon: File,
     }
   );
@@ -1788,7 +1789,7 @@ export function NewRequestDialog({
                 <span className="flex w-full items-start justify-between gap-2">
                   <span
                     className="flex h-10 w-10 items-center justify-center rounded-lg"
-                    style={{ background: `${meta.color}14`, color: meta.color }}
+                    style={{ background: tint(meta.color, 8), color: meta.color }}
                   >
                     <Icon size={19} strokeWidth={1.9} />
                   </span>
@@ -1899,7 +1900,7 @@ export function NewRequestDialog({
                     options={SUBMISSION_TYPES.map((t, i) => ({
                       value: t,
                       label: t,
-                      color: ["#0071E3", "#0D9488", "#7C3AED", "#64748B"][i],
+                      color: ["var(--ink-bright-blue)", "#0D9488", "var(--ink-violet-soft)", "#64748B"][i],
                       icon: FileText,
                     }))}
                   />
@@ -2023,11 +2024,11 @@ export function NewRequestDialog({
                       : "Pick the customer first"
                   }
                   allIcon={ClipboardList}
-                  allColor="#0071E3"
+                  allColor="var(--ink-bright-blue)"
                   options={customerOpps.map((o) => ({
                     value: o.id,
                     label: o.label,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                   }))}
                   /* Only once an account is chosen: an opportunity has to
                      belong to somebody. */
@@ -2186,7 +2187,7 @@ export function NewRequestDialog({
                         <span
                           className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
                           style={{
-                            background: `${meta.color}14`,
+                            background: tint(meta.color, 8),
                             color: meta.color,
                           }}
                         >

@@ -82,6 +82,7 @@ import type {
   OfferingType,
   OfferingCategory,
 } from "@/lib/offerings";
+import { tint } from "@/lib/tint";
 
 // Canonical family order so the "who it's for" chips read consistently.
 // Offering descriptions arrive from Suren's Excel as bullet LISTS ("• item\n•
@@ -662,8 +663,8 @@ export function OfferingsBrowser({
        boxes; the hue is meant to whisper which family a card belongs to, not
        outline it. 22% and 34% keep it legible against white and let the card
        go back to being a card. */
-    const catEdge = catColor ? `${catColor}38` : undefined; // 22%
-    const catRule = catColor ? `${catColor}57` : undefined; // 34%
+    const catEdge = catColor ? tint(catColor, 22) : undefined; // 22%
+    const catRule = catColor ? tint(catColor, 34) : undefined; // 34%
     const mapped =
       o.customerTypes.length > 0 ||
       o.markets.length > 0 ||
@@ -806,7 +807,7 @@ export function OfferingsBrowser({
                         size={13}
                         strokeWidth={2.5}
                         aria-label="You own this offering"
-                        className="mt-[3px] shrink-0 text-[color:#7C3AED]"
+                        className="mt-[3px] shrink-0 text-[color:var(--ink-violet-soft)]"
                       />
                     </Tooltip>
                   )}
@@ -937,19 +938,19 @@ export function OfferingsBrowser({
                     label: "Customers using it",
                     value: String(com?.customerCount ?? 0),
                     icon: Building,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                   },
                   {
                     label: "Licensed seats",
                     value: String(com?.totalLicenses ?? 0),
                     icon: KeyRound,
-                    color: "#7C3AED",
+                    color: "var(--ink-violet-soft)",
                   },
                   {
                     label: "Sales materials",
                     value: String(o.materials.length),
                     icon: FileText,
-                    color: "#0F766E",
+                    color: "var(--ink-teal-deep)",
                   },
                 ].map((f) => (
                   <div key={f.label} className="rounded-lg bg-surface px-2.5 py-1.5">
@@ -1166,7 +1167,7 @@ export function OfferingsBrowser({
                             style={
                               {
                                 "--semantic-color": accent,
-                                "--semantic-bg": `${accent}14`,
+                                "--semantic-bg": tint(accent, 8),
                               } as CSSProperties
                             }
                           >
@@ -1302,7 +1303,7 @@ export function OfferingsBrowser({
               onChange: (next) => setGtm(next.join(",")),
               options: [
                 { value: "available", label: "Available Now", color: "#059669" },
-                { value: "coming", label: "Coming Soon", color: "#C2410C" },
+                { value: "coming", label: "Coming Soon", color: "var(--ink-orange)" },
                 { value: "tbd", label: "To Be Decided", color: "#4338CA" },
               ],
             },
@@ -1355,7 +1356,7 @@ export function OfferingsBrowser({
               style={
                 {
                   "--semantic-color": color,
-                  "--semantic-bg": `${color}1A`,
+                  "--semantic-bg": tint(color, 10),
                 } as CSSProperties
               }
             >
@@ -1369,7 +1370,7 @@ export function OfferingsBrowser({
           const meta =
             s === "mapped"
               ? { label: "Fully detailed", color: "#059669", Icon: SortComplete }
-              : { label: "Awaiting details", color: "#C2410C", Icon: Clock3 };
+              : { label: "Awaiting details", color: "var(--ink-orange)", Icon: Clock3 };
           const StatusIcon = meta.Icon;
           return (
             <button
@@ -1382,7 +1383,7 @@ export function OfferingsBrowser({
               style={
                 {
                   "--semantic-color": meta.color,
-                  "--semantic-bg": `${meta.color}1A`,
+                  "--semantic-bg": tint(meta.color, 10),
                 } as CSSProperties
               }
             >
@@ -1431,8 +1432,8 @@ export function OfferingsBrowser({
                  that did not read as labels rather than as an instruction the
                  word SORT beside them completes. And "(A, Z)" was shorthand
                  for a phrase nobody shortens out loud. */
-              { value: "default", label: "By recommended", color: "#0071E3", icon: SortSpark },
-              { value: "name", label: "By name (A to Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "default", label: "By recommended", color: "var(--ink-bright-blue)", icon: SortSpark },
+              { value: "name", label: "By name (A to Z)", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
               { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
               /* "Most complete" is gone (Saras, Aug 21: "this isn't really the
@@ -1651,7 +1652,7 @@ export function OfferingsBrowser({
                       onValues={(next) => setGtm(next.join(","))}
                       options={[
                         { value: "available", label: "Available Now", color: "#059669" },
-                        { value: "coming", label: "Coming Soon", color: "#C2410C" },
+                        { value: "coming", label: "Coming Soon", color: "var(--ink-orange)" },
                         { value: "tbd", label: "To Be Decided", color: "#4338CA" },
                       ]}
                     />
@@ -1775,7 +1776,7 @@ export function OfferingsBrowser({
                                 size={13}
                                 strokeWidth={2.5}
                                 aria-label="You own this offering"
-                                className="mt-[3px] shrink-0 text-[color:#7C3AED]"
+                                className="mt-[3px] shrink-0 text-[color:var(--ink-violet-soft)]"
                               />
                             </Tooltip>
                           )}
@@ -2066,7 +2067,7 @@ export function OfferingsBrowser({
                   style={{ color: categoryColorByName[g.cat] || "#2563EB" }}
                 />
                 {g.cat || "Uncategorized"}
-                <span className="text-text-tertiary/70 tnum">
+                <span className="text-text-tertiary tnum">
                   ({g.items.length})
                 </span>
               </h2>
@@ -2086,10 +2087,10 @@ export function OfferingsBrowser({
                 <Sparkles
                   size={12}
                   strokeWidth={2.2}
-                  style={{ color: typeColorByName[g.type] || "#7C3AED" }}
+                  style={{ color: typeColorByName[g.type] || "var(--ink-violet-soft)" }}
                 />
                 {g.type || "Other"}
-                <span className="text-text-tertiary/70 tnum">
+                <span className="text-text-tertiary tnum">
                   ({g.items.length})
                 </span>
               </h2>
@@ -2122,12 +2123,12 @@ export function OfferingsBrowser({
               {ownerGroups.length > 1 && (
                 <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
                   {g.key === "assigned" ? (
-                    <Crown size={12} strokeWidth={2.2} className="text-[color:#7C3AED]" />
+                    <Crown size={12} strokeWidth={2.2} className="text-[color:var(--ink-violet-soft)]" />
                   ) : (
                     <CircleDashed size={12} strokeWidth={2.2} className="text-text-tertiary" />
                   )}
                   {g.label}
-                  <span className="text-text-tertiary/70 tnum">({g.items.length})</span>
+                  <span className="text-text-tertiary tnum">({g.items.length})</span>
                 </h2>
               )}
               {/* THREE ACROSS ON A LAPTOP (Saras, on the Aug 24 call with Anir:

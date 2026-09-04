@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * AN OFFERING, WEARING ITS OWN COLOUR AND ICON.
@@ -121,7 +122,7 @@ export function OfferingChip({
       style={
         {
           "--semantic-color": accent,
-          "--semantic-bg": `${accent}14`,
+          "--semantic-bg": tint(accent, 8),
         } as CSSProperties
       }
     >

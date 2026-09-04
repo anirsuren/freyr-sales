@@ -48,15 +48,15 @@ import { canSwitchWorkspaceMode } from "@/lib/release";
 // The directory's role control for admins — same three identities, keyed by
 // the STORED role values the access API expects.
 const ROLE_CHANGE_OPTIONS: ColorOption[] = [
-  { value: "bd_member", label: "BD Member", color: "#0071E3", icon: UserRound },
-  { value: "bd_owner", label: "Owner", color: "#7C3AED", icon: UsersRound },
+  { value: "bd_member", label: "BD Member", color: "var(--ink-bright-blue)", icon: UserRound },
+  { value: "bd_owner", label: "Owner", color: "var(--ink-violet-soft)", icon: UsersRound },
   {
     value: "sol_member",
     label: "Solutioning Member",
     color: "#DB2777",
     icon: PencilRuler,
   },
-  { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
+  { value: "admin", label: "Admin", color: "var(--ink-teal-deep)", icon: ShieldCheck },
 ];
 
 const TABS = [
@@ -1170,13 +1170,13 @@ export function SettingsTabs({
                     value: "",
                     label: `Automatic, follow this device (${describeZone(detectedZone)})`,
                     icon: MonitorSmartphone,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                   },
                   ...zoneChoices.map((z) => ({
                     value: z,
                     label: describeZone(z),
                     icon: Clock,
-                    color: "#0F766E",
+                    color: "var(--ink-teal-deep)",
                   })),
                 ]}
               />

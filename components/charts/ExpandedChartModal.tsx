@@ -26,6 +26,7 @@ import {
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * Existing chart wrappers can provide this around their chart content to
@@ -240,8 +241,8 @@ export function ExpandedChartControl({
                     key={item.key}
                     className="inline-flex h-9 overflow-hidden rounded-xl border"
                     style={{
-                      borderColor: visible ? `${item.color}73` : undefined,
-                      background: visible ? `${item.color}14` : undefined,
+                      borderColor: visible ? `${tint(item.color, 45)}` : undefined,
+                      background: visible ? tint(item.color, 8) : undefined,
                     }}
                   >
                     <button

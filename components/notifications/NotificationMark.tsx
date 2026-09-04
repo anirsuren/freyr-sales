@@ -15,6 +15,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import { SETUP_META } from "@/components/notifications/NotificationRow";
 import type { NotificationType, SetupMark } from "@/lib/notifications";
+import { tint } from "@/lib/tint";
 
 const ICON: Record<NotificationType, typeof Bell> = {
   review: ClipboardCheck,
@@ -102,7 +103,7 @@ export function NotificationMark({
         )}
         style={
           setup
-            ? { backgroundColor: `${setup.color}18`, color: setup.color }
+            ? { backgroundColor: tint(setup.color, 9), color: setup.color }
             : undefined
         }
       >

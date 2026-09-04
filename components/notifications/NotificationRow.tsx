@@ -34,16 +34,16 @@ import type {
  */
 export const SETUP_META: Record<SetupMark, { icon: LucideIcon; color: string }> = {
   // Finding your way around: the blue used for "something waiting on you".
-  tour: { icon: Compass, color: "#0071E3" },
+  tour: { icon: Compass, color: "var(--ink-bright-blue)" },
   // Sign-in, and the only row a fingerprint belongs on.
-  passkey: { icon: Fingerprint, color: "#6D28D9" },
+  passkey: { icon: Fingerprint, color: "var(--ink-violet)" },
   // Who you are to the rest of the company.
-  profile: { icon: Briefcase, color: "#0F766E" },
+  profile: { icon: Briefcase, color: "var(--ink-teal-deep)" },
 };
 
 /** Late is late: an overdue promise turns red wherever it appears. */
-const LATE_RED = "#B02020";
-const TODAY_ORANGE = "#C2410C";
+const LATE_RED = "var(--ink-red)";
+const TODAY_ORANGE = "var(--ink-orange)";
 
 export function urgencyColor(urgency?: NotificationUrgency): string | null {
   if (urgency === "overdue") return LATE_RED;

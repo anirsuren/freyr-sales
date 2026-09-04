@@ -10,6 +10,7 @@ import {
   JOURNEY_STAGE_META,
   type AccessLevel,
 } from "@/lib/offeringMaterials";
+import { tint } from "@/lib/tint";
 
 /**
  * WHAT THE TAGS ACTUALLY MEAN.
@@ -151,7 +152,7 @@ export function MaterialTagGlossary({
       key: "stages" as const,
       label: "Buyer's Journey Stages",
       icon: Route,
-      color: "#7C3AED",
+      color: "var(--ink-violet-soft)",
       count: JOURNEY_STAGES.length,
     },
     {
@@ -263,7 +264,7 @@ export function MaterialTagGlossary({
                     <span
                       aria-hidden="true"
                       className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full"
-                      style={{ background: `${row.meta.color}1F`, color: row.meta.color }}
+                      style={{ background: tint(row.meta.color, 12), color: row.meta.color }}
                     >
                       <Icon size={10.5} strokeWidth={2.5} />
                     </span>

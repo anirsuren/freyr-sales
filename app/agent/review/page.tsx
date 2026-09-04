@@ -26,6 +26,7 @@ import {
 } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
 import { formatDateTime } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 export const metadata = { title: "Weekly Review" };
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ function StageChip({ stage }: { stage: string }) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight"
-      style={{ background: `${color}1A`, color }}
+      style={{ background: tint(color, 10), color }}
     >
       <Icon size={11} strokeWidth={2.2} className="shrink-0" />
       {stage}

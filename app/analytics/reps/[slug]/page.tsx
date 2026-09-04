@@ -46,6 +46,7 @@ import { readOpportunities } from "@/lib/opportunities";
 import { buildPerson360 } from "@/lib/person360";
 import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
+import { tint } from "@/lib/tint";
 
 /**
  * The teammate's own name in the tab. A static "Rep" label made every open profile
@@ -405,7 +406,7 @@ export default async function RepPage({
   const attain = Math.round((wonFY / quota) * 100);
   // Painted on a 34px attainment number — amber text was barely visible on
   // white. Burnt orange keeps "mid tier" warm and legible.
-  const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#C2410C" : "#B02020";
+  const attainColor = attain >= 50 ? "var(--ink-green)" : attain >= 35 ? "var(--ink-orange)" : "var(--ink-red)";
 
   /* Three tiles, not four: the Weighted tile came out on Anir, Sep 2 ("they
      dont use weighted"). */
@@ -436,10 +437,10 @@ export default async function RepPage({
   // Outcome mix of this rep's logged touches — deterministic + believable.
   const outcomes = [
     { label: "Interested", value: Math.max(1, Math.round(me.qualifiedPlus * 1.3)), color: "#34C759" },
-    { label: "Meeting booked", value: me.meetings, color: "#0071E3" },
+    { label: "Meeting booked", value: me.meetings, color: "var(--ink-bright-blue)" },
     // DonutLegend draws each label as colour-on-tint text, so this is a text
     // colour too — amber was illegible there.
-    { label: "Follow-up", value: Math.max(1, Math.round(me.openCount * 0.4)), color: "#C2410C" },
+    { label: "Follow-up", value: Math.max(1, Math.round(me.openCount * 0.4)), color: "var(--ink-orange)" },
     { label: "No response", value: Math.max(1, Math.round(me.openCount * 0.28)), color: "#A855F7" },
   ]
     .filter((o) => o.value > 0)
@@ -808,7 +809,7 @@ export default async function RepPage({
                         {/* Stage is a category: colour AND icon, never a bare dot. */}
                         <span
                           className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12.5px] font-semibold"
-                          style={{ background: `${STAGE_COLOR[d.stage]}1F`, color: STAGE_COLOR[d.stage] }}
+                          style={{ background: tint(STAGE_COLOR[d.stage], 12), color: STAGE_COLOR[d.stage] }}
                         >
                           <StageIcon size={13} strokeWidth={2.1} className="shrink-0" />
                           {d.stage}

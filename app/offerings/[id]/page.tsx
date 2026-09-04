@@ -75,6 +75,7 @@ import {
   OfferingCustomers,
   type OfferingCustomerRow,
 } from "@/components/offerings/OfferingCustomers";
+import { tint } from "@/lib/tint";
 
 export const dynamic = "force-dynamic";
 
@@ -272,12 +273,12 @@ export default async function OfferingDetailPage({
           const days = Math.ceil((ends - nowMs) / 86_400_000);
           const tone =
             days < 0
-              ? { color: "#B02020", bg: "rgba(176,32,32,0.10)" }
+              ? { color: "var(--ink-red)", bg: "rgba(176,32,32,0.10)" }
               : days <= 90
                 ? // Caution reads in orange-700, never the yellow band, this
                   // status renders as TEXT and amber failed on white.
-                  { color: "#C2410C", bg: "rgba(194,65,12,0.12)" }
-                : { color: "#1A7A35", bg: "rgba(26,122,53,0.10)" };
+                  { color: "var(--ink-orange)", bg: "rgba(194,65,12,0.12)" }
+                : { color: "var(--ink-green)", bg: "rgba(26,122,53,0.10)" };
           // How much of the contract's OWN term is left. When a line carries
           // no start date the term is unknown, so it falls back to a 12-month
           // assumption rather than inventing a specific one — same rule the
@@ -375,7 +376,7 @@ export default async function OfferingDetailPage({
   const marketStyle = (name: string): { bg: string; color: string } => {
     const n = name.toLowerCase();
     if (n.includes("usa") || n.includes("united states") || n.includes("us"))
-      return { bg: "rgba(0,113,227,0.10)", color: "#0071E3" };
+      return { bg: "rgba(0,113,227,0.10)", color: "var(--ink-bright-blue)" };
     if (n.includes("europe") || n.includes("eu"))
       return { bg: "rgba(94,92,230,0.12)", color: "#5E5CE6" };
     if (n.includes("japan")) return { bg: "rgba(219,39,119,0.10)", color: "#C81E67" };
@@ -523,14 +524,14 @@ export default async function OfferingDetailPage({
             const typeColor =
               typeIndex >= 0
                 ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
-                : "#0071E3";
+                : "var(--ink-bright-blue)";
             return (
               <span
                 className="semantic-color-pill inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
                 style={
                   {
                     "--semantic-color": typeColor,
-                    "--semantic-bg": `${typeColor}14`,
+                    "--semantic-bg": tint(typeColor, 8),
                   } as CSSProperties
                 }
               >
@@ -610,7 +611,7 @@ export default async function OfferingDetailPage({
                   <span className="sr-only">
                     Added by {o.created_by}
                     {o.created_at
-                      ? ` on ${new Date(o.created_at).toLocaleDateString()}`
+                      ? ` on ${new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
                       : ""}
                   </span>
                 </span>
@@ -1008,7 +1009,7 @@ export default async function OfferingDetailPage({
               <SectionCard title="Offering Type" icon={Package}>
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-bold"
-                  style={{ color: "#6D28D9", background: "rgba(109,40,217,0.10)" }}
+                  style={{ color: "var(--ink-violet)", background: "rgba(109,40,217,0.10)" }}
                 >
                   <Package size={13} strokeWidth={2.2} />
                   {o.offeringType.name}

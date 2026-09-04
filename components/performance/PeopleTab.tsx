@@ -351,7 +351,7 @@ export function PeopleTab({
           noun: "goals",
           picker,
           jumps,
-          accent: "#B4318F",
+          accent: "var(--ink-magenta)",
           exportLabel: `person-${person}`,
           // Named after the person you are looking at, so the screen says who
           // it is about before you check which tab is lit (Anir, Aug 15).

@@ -37,16 +37,16 @@ import type { OfferingContact } from "@/lib/offerings";
 const CUSTOM_ROLE = "__custom__";
 
 const ROLE_OPTIONS: ColorOption[] = [
-  { value: "Subject matter expert", label: "Subject matter expert", color: "#7C3AED", icon: GraduationCap },
-  { value: "Commercial lead", label: "Commercial lead", color: "#0F766E", icon: Briefcase },
-  { value: "Product owner", label: "Product owner", color: "#C2410C", icon: Package },
+  { value: "Subject matter expert", label: "Subject matter expert", color: "var(--ink-violet-soft)", icon: GraduationCap },
+  { value: "Commercial lead", label: "Commercial lead", color: "var(--ink-teal-deep)", icon: Briefcase },
+  { value: "Product owner", label: "Product owner", color: "var(--ink-orange)", icon: Package },
   { value: "Escalation contact", label: "Escalation contact", color: "#4338CA", icon: LifeBuoy },
   // The five above are the common cases, not every case. Choosing this reveals
   // a text field so a team can name a role we never thought of (Anir, Jul 29:
   // "there should be an option to add another rule, like custom").
   // "Custom role…" named the mechanism, not the choice ("custom role doesn't
   // mean anything" — Anir). This says what happens next: you type it in.
-  { value: CUSTOM_ROLE, label: "Something else, type it in", color: "#0F766E", icon: Pencil },
+  { value: CUSTOM_ROLE, label: "Something else, type it in", color: "var(--ink-teal-deep)", icon: Pencil },
 ];
 
 /**
@@ -397,7 +397,7 @@ export function OfferingContacts({
                       value="Offering owner"
                       icon={Crown}
                       label="Owns this offering"
-                      color="#7C3AED"
+                      color="var(--ink-violet-soft)"
                       className="!px-2 !py-[3px] !text-[11px]"
                     />
                   )}
@@ -444,7 +444,7 @@ export function OfferingContacts({
                 onClick={() => setConfirmRemove(c)}
                 disabled={busy === c.id}
                 aria-label={`Remove ${c.name} from this offering`}
-                className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020] disabled:opacity-50"
+                className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:var(--ink-red)] disabled:opacity-50"
               >
                 {busy === c.id ? (
                   <Loader2 size={15} strokeWidth={2} className="animate-spin" />
@@ -535,7 +535,7 @@ export function OfferingContacts({
                     type="button"
                     aria-label={`Remove ${name}`}
                     onClick={() => setPick((l) => l.filter((n) => n !== name))}
-                    className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:text-[color:#B02020]"
+                    className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:text-[color:var(--ink-red)]"
                   >
                     <X size={15} strokeWidth={2} />
                   </button>
@@ -622,7 +622,7 @@ export function OfferingContacts({
                               value="Offering owner"
                               icon={Crown}
                               label="Owns this offering"
-                              color="#7C3AED"
+                              color="var(--ink-violet-soft)"
                               className="!px-2 !py-[3px] !text-[11px]"
                             />
                           )}
@@ -748,7 +748,7 @@ export function OfferingContacts({
               )}
             </div>
             {error && (
-              <p className="text-[12.5px] font-medium text-[color:#B02020]">{error}</p>
+              <p className="text-[12.5px] font-medium text-[color:var(--ink-red)]">{error}</p>
             )}
           </div>
         </div>
@@ -847,7 +847,7 @@ export function OfferingContacts({
               )}
             </div>
             {error && (
-              <p className="text-[12.5px] font-medium text-[color:#B02020]">{error}</p>
+              <p className="text-[12.5px] font-medium text-[color:var(--ink-red)]">{error}</p>
             )}
             <div className="flex items-center gap-3 pt-1">
               <button
@@ -857,7 +857,7 @@ export function OfferingContacts({
                   setEditing(null);
                   remove(target);
                 }}
-                className="text-[13px] font-semibold text-[color:#B02020] hover:underline"
+                className="text-[13px] font-semibold text-[color:var(--ink-red)] hover:underline"
               >
                 Remove from this offering
               </button>
@@ -885,7 +885,7 @@ export function OfferingContacts({
       </Modal>
 
       {error && !adding && !editing && (
-        <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
+        <p className="text-[12px] font-medium text-[color:var(--ink-red)]">{error}</p>
       )}
     </SectionCard>
   );

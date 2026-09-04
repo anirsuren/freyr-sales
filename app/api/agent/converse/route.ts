@@ -4,7 +4,8 @@ import { getDb, type Db } from "@/lib/db";
 import { escapeRegExp } from "@/lib/utils";
 import { manualFor } from "@/lib/appManual";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
-import { buildDeals, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
+import { buildDeals, dealsFromOpportunities, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import { accountHealth } from "@/lib/health";
 import {
   answerAgentChat,
@@ -283,9 +284,16 @@ export async function POST(req: NextRequest) {
       db.agentPrefs.get(scope),
       readMemberProfile(scope).catch(() => ({ title: "", signature: "" })),
     ]);
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  const opportunities = (await readOpportunities()).opportunities;
+  /* BOTH PIPELINES: Mock is pitch sessions, Real is opportunities and has no
+     sessions at all. Reading only the former is what made the agent answer
+     "$0 open" over a $112.0M book. */
+  const deals = [
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(opportunities, customers),
+  ];
   const { actions } = focusActions(
-    nextBestActions({ sessions, customers, contacts, interactions }),
+    nextBestActions({ sessions, customers, contacts, interactions, opportunities }),
     customers,
     prefs,
     actorName,

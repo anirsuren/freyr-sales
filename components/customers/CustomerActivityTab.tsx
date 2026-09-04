@@ -252,7 +252,7 @@ export function CustomerActivityTab({
                           missing activity is work owed, so it wears the amber
                           every other piece of owed work wears here. */}
                       {logged === 0 ? (
-                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.1)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B45309]">
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.1)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-amber)]">
                           <AlertTriangle size={11} strokeWidth={2.4} aria-hidden="true" />
                           No activity yet
                         </span>
@@ -280,7 +280,7 @@ export function CustomerActivityTab({
                               setConfirmRemove(u.offering_id);
                             }
                           }}
-                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                         >
                           <Trash2 size={14} strokeWidth={2.1} />
                         </span>

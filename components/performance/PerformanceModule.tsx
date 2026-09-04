@@ -101,6 +101,7 @@ import {
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
 import { GroupPerformanceTab } from "./GroupPerformanceTab";
+import { tint } from "@/lib/tint";
 
 /**
  * THE PERFORMANCE MANAGEMENT MODULE (Suren, Aug 11 — voice notes +
@@ -123,7 +124,7 @@ const TABS = ["org", "groups", "people"] as const;
 
 type Tab = (typeof TABS)[number];
 
-const SPLIT_COLORS = ["#0071E3", "#6D28D9", "#0F766E", "#B4318F", "#C2410C", "#0EA5E9"];
+const SPLIT_COLORS = ["var(--ink-bright-blue)", "var(--ink-violet)", "var(--ink-teal-deep)", "var(--ink-magenta)", "var(--ink-orange)", "#0EA5E9"];
 // A sane window: last year through three years out. Nobody plans 2126.
 const YEAR_CHOICES = Array.from({ length: 5 }, (_, i) =>
   String(new Date().getFullYear() - 1 + i)
@@ -144,17 +145,17 @@ const ROOMS: Record<
   org: {
     label: "Org performance",
     icon: Gauge,
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
   },
   groups: {
     label: "Group performance",
     icon: UsersRound,
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
   },
   people: {
     label: "People performance",
     icon: CircleUserRound,
-    color: "#B4318F",
+    color: "var(--ink-magenta)",
   },
 };
 
@@ -906,9 +907,9 @@ function MasterTab({
       values: unitFilter,
       onChange: setUnitFilter,
       options: [
-        { value: "currency", label: "Money ($)", color: "#0F766E" },
-        { value: "count", label: "Count (#)", color: "#0071E3" },
-        { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
+        { value: "currency", label: "Money ($)", color: "var(--ink-teal-deep)" },
+        { value: "count", label: "Count (#)", color: "var(--ink-bright-blue)" },
+        { value: "percent", label: "Percentage (%)", color: "var(--ink-violet)" },
       ],
     },
     {
@@ -918,7 +919,7 @@ function MasterTab({
       onChange: setYearFilter,
       options: [...new Set(state.goals.map((g) => g.year))]
         .sort((x, y) => y - x)
-        .map((y) => ({ value: String(y), label: String(y), color: "#6D28D9" })),
+        .map((y) => ({ value: String(y), label: String(y), color: "var(--ink-violet)" })),
     },
   ];
 
@@ -1099,7 +1100,7 @@ function MasterTab({
                         style={{
                           ["--goal-accent" as string]: typeMeta(g.type).color,
                           backgroundColor: on
-                            ? `${typeMeta(g.type).color}14`
+                            ? tint(typeMeta(g.type).color, 8)
                             : undefined,
                         }}
                         className={cn(
@@ -1293,7 +1294,7 @@ function MasterTab({
                         <span className="flex flex-wrap items-center gap-1.5">
                           <UnitChip unit={g.unit} />
                           {g.measure === "level" && (
-                            <span className="whitespace-nowrap rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                            <span className="whitespace-nowrap rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet)]">
                               latest value
                             </span>
                           )}
@@ -1383,7 +1384,7 @@ function MasterTab({
                                     confirmRemoveId === g.id ? null : g.id
                                   );
                                 }}
-                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
                               </button>
@@ -1690,7 +1691,7 @@ function GroupSplitPanel({
                 <span
                   className={cn(
                     "ml-1.5 font-semibold",
-                    left > 0 ? "text-[color:#0058B0]" : "text-[color:#C2410C]"
+                    left > 0 ? "text-[color:var(--ink-blue-soft)]" : "text-[color:var(--ink-orange)]"
                   )}
                 >
                   {left > 0
@@ -1753,7 +1754,7 @@ function GroupSplitPanel({
                 size={11}
                 strokeWidth={2.6}
                 aria-label="Group owner"
-                className="shrink-0 text-[color:#7C3AED]"
+                className="shrink-0 text-[color:var(--ink-violet-soft)]"
               />
             )}
             {/* WHAT THEY HAVE AGAINST WHAT THEY CARRY, not a bare count
@@ -1836,7 +1837,7 @@ function GroupSplitPanel({
                   title={`Take ${m} off ${goal.name}. They stay in ${group.name}.`}
                   aria-label={`Take ${m} off this goal`}
                   onClick={() => setDropFor(m)}
-                  className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                  className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
                 >
                   <X size={13} strokeWidth={2.4} />
                 </button>
@@ -2054,7 +2055,7 @@ function AssignGroupModal({
       </p>
       <label className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
         Group
-        <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:#0058B0]">
+        <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-blue-soft)]">
           Pick one
         </span>
         {canMakeGroups && (
@@ -2203,7 +2204,7 @@ function AssignGroupModal({
                                   size={10}
                                   strokeWidth={2.8}
                                   aria-label="Group owner"
-                                  className="shrink-0 text-[color:#7C3AED]"
+                                  className="shrink-0 text-[color:var(--ink-violet-soft)]"
                                 />
                               )}
                             </span>
@@ -2579,7 +2580,7 @@ function GoalPopupBody({
             </span>
             <UnitChip unit={goal.unit} />
             {goal.measure === "level" && (
-              <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+              <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet)]">
                 latest value
               </span>
             )}
@@ -2608,7 +2609,7 @@ function GoalPopupBody({
                 type="button"
                 title="Remove this goal from the master"
                 onClick={() => setConfirmGoalRemove(!confirmGoalRemove)}
-                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-white"
+                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-white"
               >
                 <Trash2 size={14} strokeWidth={2.2} />
               </button>
@@ -2886,7 +2887,7 @@ function GoalPopupBody({
                           confirmSubRemove === s.id ? null : s.id
                         );
                       }}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10"
                     >
                       <Trash2 size={13} strokeWidth={2.2} />
                     </span>
@@ -3148,7 +3149,7 @@ function GoalPopupBody({
                       title={`Take ${goal.name} off ${group?.name ?? "this group"}`}
                       aria-label={`Unassign ${group?.name ?? "this group"}`}
                       onClick={() => setConfirmGroupUnassign(assignment.groupId)}
-                      className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
+                      className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-[color:var(--status-red)]"
                     >
                       <X size={14} strokeWidth={2.4} />
                     </button>
@@ -3324,7 +3325,7 @@ function GoalPopupBody({
                     title={`Unassign ${a.person}`}
                     aria-label={`Unassign ${a.person}`}
                     onClick={() => setConfirmUnassign(a.person)}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10"
                   >
                     <Trash2 size={13} strokeWidth={2.2} />
                   </button>
@@ -3656,7 +3657,7 @@ function GoalEditorFields({
                   color: typeMeta(t).color,
                   icon: typeMeta(t).icon,
                 })),
-                { value: "__new", label: "New type…", color: "#6D28D9", icon: Plus },
+                { value: "__new", label: "New type…", color: "var(--ink-violet)", icon: Plus },
               ]}
             />
           </div>
@@ -3695,9 +3696,9 @@ function GoalEditorFields({
               minWidth={150}
               options={[
                 { value: "", label: "Pick one…", color: "#8E98A8" },
-                { value: "currency", label: "Money ($)", color: "#0F766E" },
-                { value: "count", label: "Count (#)", color: "#0071E3" },
-                { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
+                { value: "currency", label: "Money ($)", color: "var(--ink-teal-deep)" },
+                { value: "count", label: "Count (#)", color: "var(--ink-bright-blue)" },
+                { value: "percent", label: "Percentage (%)", color: "var(--ink-violet)" },
               ]}
             />
           </div>
@@ -3714,8 +3715,8 @@ function GoalEditorFields({
               ariaLabel="How it adds up"
               minWidth={180}
               options={[
-                { value: "total", label: "Running total", color: "#0071E3" },
-                { value: "level", label: "Latest value (ratio)", color: "#6D28D9" },
+                { value: "total", label: "Running total", color: "var(--ink-bright-blue)" },
+                { value: "level", label: "Latest value (ratio)", color: "var(--ink-violet)" },
               ]}
             />
           </div>
@@ -3734,7 +3735,7 @@ function GoalEditorFields({
               options={YEAR_CHOICES.map((y) => ({
                 value: y,
                 label: y,
-                color: "#6D28D9",
+                color: "var(--ink-violet)",
                 icon: CalendarDays,
               }))}
             />
@@ -3843,7 +3844,7 @@ function GoalEditorFields({
                         className={cn(
                           "grid h-[24px] w-[24px] shrink-0 place-items-center rounded-full text-[11.5px] font-bold tnum",
                           faulted
-                            ? "bg-[rgba(194,65,12,0.12)] text-[color:#C2410C]"
+                            ? "bg-[rgba(194,65,12,0.12)] text-[color:var(--ink-orange)]"
                             : "bg-blue-light text-blue-primary"
                         )}
                       >
@@ -3919,7 +3920,7 @@ function GoalEditorFields({
                             className={cn(
                               "mb-[7px] shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum",
                               over
-                                ? "bg-[rgba(194,65,12,0.12)] text-[color:#C2410C]"
+                                ? "bg-[rgba(194,65,12,0.12)] text-[color:var(--ink-orange)]"
                                 : "bg-surface text-text-secondary"
                             )}
                           >
@@ -3932,7 +3933,7 @@ function GoalEditorFields({
                           title="Remove this milestone"
                           aria-label={`Remove milestone ${idx + 1}`}
                           onClick={() => setConfirmMilestone(idx)}
-                          className="mb-[5px] ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+                          className="mb-[5px] ml-auto shrink-0 cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
                         >
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
@@ -3955,7 +3956,7 @@ function GoalEditorFields({
                         confirmLabel="Remove it"
                       />
                       {faulted && (
-                        <p className="mt-2 text-[11.5px] font-medium text-[color:#C2410C]">
+                        <p className="mt-2 text-[11.5px] font-medium text-[color:var(--ink-orange)]">
                           {milestoneFault.message}
                         </p>
                       )}
@@ -4216,7 +4217,7 @@ function SubgoalEditorFields({
                   </b>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 font-semibold text-[color:#C2410C] tnum">
+                <span className="flex items-center gap-1.5 font-semibold text-[color:var(--ink-orange)] tnum">
                   Over by {fmtAmount(goal.unit, spoken - goalTarget)}
                 </span>
               )}
@@ -4291,7 +4292,7 @@ function SubgoalEditorFields({
             <Crown
               size={13}
               strokeWidth={2.2}
-              className="text-[color:#7C3AED]"
+              className="text-[color:var(--ink-violet-soft)]"
               aria-label="Owners wear the crown"
             />
             <InfoHint text={"Responsible for this subgoal overall. The crown marks them wherever they appear.\nAn owner can also appear in the people list with a personal target of their own."} />
@@ -4314,7 +4315,7 @@ function SubgoalEditorFields({
                     size={10}
                     strokeWidth={2.6}
                     aria-label="Goal owner"
-                    className="shrink-0 text-[color:#7C3AED]"
+                    className="shrink-0 text-[color:var(--ink-violet-soft)]"
                   />
                 </span>
                 {/* AN X, AND IT ASKS (Anir, Aug 15: "can you make it just an
@@ -4349,7 +4350,7 @@ function SubgoalEditorFields({
                     aria-label={"Remove " + o}
                     title={`Remove ${o} as a goal owner`}
                     onClick={() => setConfirmDrop(`owner:${o}`)}
-                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
                   >
                     <X size={14} strokeWidth={2.4} />
                   </button>
@@ -4410,7 +4411,7 @@ function SubgoalEditorFields({
                             `${g?.name ?? "That group"} no longer carries this slice`
                           )
                         }
-                        className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                        className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
                       >
                         <X size={13} strokeWidth={2.4} />
                       </button>
@@ -4459,7 +4460,7 @@ function SubgoalEditorFields({
                       return {
                         value: g.id,
                         label: g.name,
-                        color: "#0071E3",
+                        color: "var(--ink-bright-blue)",
                         avatarName: g.head,
                         crown: true,
                         faces: roster.filter(
@@ -4498,7 +4499,7 @@ function SubgoalEditorFields({
                       size={10}
                       strokeWidth={2.6}
                       aria-label="Also a goal owner"
-                      className="shrink-0 text-[color:#7C3AED]"
+                      className="shrink-0 text-[color:var(--ink-violet-soft)]"
                     />
                   )}
                 </span>
@@ -4557,7 +4558,7 @@ function SubgoalEditorFields({
                     aria-label={"Remove " + r.name}
                     title={`Take ${r.name} off this subgoal`}
                     onClick={() => setConfirmDrop(`person:${r.name}`)}
-                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
                   >
                     <X size={14} strokeWidth={2.4} />
                   </button>
@@ -4592,7 +4593,7 @@ function SubgoalEditorFields({
                 className={cn(
                   "mt-1.5 text-[11px] tnum",
                   peopleOver
-                    ? "font-semibold text-[color:#C2410C]"
+                    ? "font-semibold text-[color:var(--ink-orange)]"
                     : Math.abs(peopleSum - personCeiling) < 0.005 * personCeiling
                       ? "text-[color:#16A34A]"
                       : "text-text-secondary"
@@ -5226,7 +5227,7 @@ function LogActualModal({
                 options={[
                   { value: "", label: "Pick the account…", color: "#C7CDD6" },
                   ...(customer && !customerId
-                    ? [{ value: "__typed", label: customer, color: "#0071E3" }]
+                    ? [{ value: "__typed", label: customer, color: "var(--ink-bright-blue)" }]
                     : []),
                   {
                     value: "__other",
@@ -5284,14 +5285,14 @@ function LogActualModal({
                   ]
                     .filter(Boolean)
                     .join(" · "),
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                   logoName: o.customer || undefined,
                 })),
                 ...(selectedAccount?.deals ?? []).map((d) => ({
                   value: `eng:${d.id}`,
                   label: d.label,
                   description: "Engagement already recorded on this account",
-                  color: "#0F766E",
+                  color: "var(--ink-teal-deep)",
                   logoName: selectedAccount?.name || undefined,
                 })),
               ]}
@@ -5480,7 +5481,7 @@ function LogActualModal({
                   options={CURRENCIES.map((c) => ({
                     value: c.code,
                     label: c.code,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                     icon: currencyGlyph(c.symbol),
                   }))}
                 />
@@ -5527,7 +5528,7 @@ function LogActualModal({
           </div>
         </div>
         {effectiveGoal?.measure === "level" && (
-          <p className="rounded-lg bg-[rgba(109,40,217,0.06)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#6D28D9]">
+          <p className="rounded-lg bg-[rgba(109,40,217,0.06)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:var(--ink-violet)]">
             This goal tracks the latest value, so this entry becomes the current
             number rather than adding to a total.
           </p>

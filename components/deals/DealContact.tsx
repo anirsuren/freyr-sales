@@ -16,6 +16,7 @@ import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { formatPhone } from "@/lib/utils";
 import type { Contact } from "@/lib/types";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    WHO YOU'RE SELLING TO.
@@ -33,11 +34,11 @@ import type { Contact } from "@/lib/types";
 
 // A role is a category, so it gets a colour AND an icon — never gray type.
 const ROLE_MARKS: { test: RegExp; color: string; icon: LucideIcon }[] = [
-  { test: /exec|chief|officer|president|founder|coo|ceo|cmo/i, color: "#7C3AED", icon: Briefcase },
-  { test: /complian|audit|legal/i, color: "#0F766E", icon: ShieldCheck },
-  { test: /quality|qa\b|cmc|manufactur/i, color: "#C2410C", icon: Award },
+  { test: /exec|chief|officer|president|founder|coo|ceo|cmo/i, color: "var(--ink-violet-soft)", icon: Briefcase },
+  { test: /complian|audit|legal/i, color: "var(--ink-teal-deep)", icon: ShieldCheck },
+  { test: /quality|qa\b|cmc|manufactur/i, color: "var(--ink-orange)", icon: Award },
   { test: /clinical|medical|scientif|safety|pharmacovig/i, color: "#047857", icon: FlaskConical },
-  { test: /regulat|affairs|strategy|submiss|intellig/i, color: "#0071E3", icon: Target },
+  { test: /regulat|affairs|strategy|submiss|intellig/i, color: "var(--ink-bright-blue)", icon: Target },
 ];
 
 function roleMark(role: string): { color: string; icon: LucideIcon } {
@@ -94,7 +95,7 @@ export function DealContact({ contact }: { contact: Contact }) {
             {role && (
               <span
                 className="mt-1.5 inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-[11px] font-semibold leading-tight"
-                style={{ background: `${color}14`, color }}
+                style={{ background: tint(color, 8), color }}
               >
                 <span
                   className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full text-white"

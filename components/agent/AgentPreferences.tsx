@@ -33,7 +33,7 @@ const INDUSTRIES = [
 // industry reads as the same colour on both surfaces.
 const INDUSTRY_ACCENT: Record<string, { color: string; icon: LucideIcon }> = {
   Biotechnology: { color: "#0E7C70", icon: FlaskConical },
-  Pharmaceutical: { color: "#0040A0", icon: Pill },
+  Pharmaceutical: { color: "var(--ink-blue)", icon: Pill },
   "Medical Device": { color: "#8A5A00", icon: Stethoscope },
   "Consumer Health": { color: "#A31E68", icon: HeartPulse },
 };
@@ -187,7 +187,7 @@ export function AgentPreferences() {
             ...INDUSTRIES.map((i) => ({
               value: i,
               label: i,
-              color: INDUSTRY_ACCENT[i]?.color ?? "#0071E3",
+              color: INDUSTRY_ACCENT[i]?.color ?? "var(--ink-bright-blue)",
               icon: INDUSTRY_ACCENT[i]?.icon ?? Building2,
             })),
           ]}
@@ -252,11 +252,11 @@ export function AgentPreferences() {
             save({ autopilot_max_value: v ? Number(v) : null })
           }
           options={[
-            { value: "", label: "No limit, autopilot may handle any deal", icon: Infinity, color: "#0071E3" },
-            { value: "100000", label: "$100K open pipeline", icon: DollarSign, color: "#0F766E" },
-            { value: "250000", label: "$250K open pipeline", icon: DollarSign, color: "#0F766E" },
-            { value: "500000", label: "$500K open pipeline", icon: DollarSign, color: "#0F766E" },
-            { value: "1000000", label: "$1M open pipeline", icon: DollarSign, color: "#0F766E" },
+            { value: "", label: "No limit, autopilot may handle any deal", icon: Infinity, color: "var(--ink-bright-blue)" },
+            { value: "100000", label: "$100K open pipeline", icon: DollarSign, color: "var(--ink-teal-deep)" },
+            { value: "250000", label: "$250K open pipeline", icon: DollarSign, color: "var(--ink-teal-deep)" },
+            { value: "500000", label: "$500K open pipeline", icon: DollarSign, color: "var(--ink-teal-deep)" },
+            { value: "1000000", label: "$1M open pipeline", icon: DollarSign, color: "var(--ink-teal-deep)" },
           ]}
         />
         <p className="text-[12px] text-text-tertiary mt-1.5">
@@ -294,7 +294,7 @@ export function AgentPreferences() {
             ? "No scheduled runs: run autopilot manually."
             : `Flagged as due on your next visit; a deployment cron fires it on time.${
                 prefs.autopilot_last_run
-                  ? ` Last run ${new Date(prefs.autopilot_last_run).toLocaleDateString()}.`
+                  ? ` Last run ${new Date(prefs.autopilot_last_run).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`
                   : ""
               }`}
         </p>
@@ -326,7 +326,7 @@ export function AgentPreferences() {
             ? "No scheduled briefing: open the digest anytime."
             : `The agent's briefing is flagged ready on your next visit.${
                 prefs.digest_last_sent
-                  ? ` Last sent ${new Date(prefs.digest_last_sent).toLocaleDateString()}.`
+                  ? ` Last sent ${new Date(prefs.digest_last_sent).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`
                   : ""
               }`}
         </p>

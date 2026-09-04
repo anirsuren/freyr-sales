@@ -27,6 +27,7 @@ import {
   joinPhone,
   splitPhone,
 } from "@/lib/countries";
+import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -64,6 +65,7 @@ import {
  */
 
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
+import { tint } from "@/lib/tint";
 
 type CustomerOption = { id: string; name: string };
 
@@ -219,8 +221,31 @@ export function LeadsModule({
 
   async function save() {
     if (!editing) return;
-    if (!editing.name.trim() && !editing.company.trim()) {
-      toast("A lead needs at least a person or a company name.", "error");
+    /* MANDATORY, AND STARRED TO MATCH (Anir, Sep 4: "we need some mandatory
+       fields here... And show the asterisk"). It used to accept either a
+       person or a company, which let a lead in carrying a name and nothing
+       else to act on. Person and company are both needed to know who this is;
+       a way to reach them is needed to do anything about it, and either
+       channel will do. */
+    if (!editing.name.trim()) {
+      toast("Who got in touch? A lead needs a person.", "error");
+      return;
+    }
+    if (!editing.company.trim()) {
+      toast("Which organisation are they from?", "error");
+      return;
+    }
+    const phoneDigitsOnly = phoneDigits(splitPhone(editing.phone).number);
+    if (!editing.email.trim() && !phoneDigitsOnly) {
+      toast("Add an email or a phone number, so somebody can follow up.", "error");
+      return;
+    }
+    /* A number that is present has to be a real length — the box already stops
+       at the ceiling, but a pasted value arrives whole. */
+    const parsedPhone = splitPhone(editing.phone);
+    const phoneWhy = phoneProblem(editing.dialCode || parsedPhone.dial, parsedPhone.number);
+    if (phoneWhy) {
+      toast(phoneWhy, "error");
       return;
     }
     /* type="email" is on the box, but nothing in this dialog is a form, so the
@@ -284,7 +309,7 @@ export function LeadsModule({
           icon={UserPlus}
           label="Nobody has touched"
           value={String(untouched.length)}
-          color="#0071E3"
+          color="var(--ink-bright-blue)"
           warn={untouched.length > 0}
           sub="still sitting at New"
         />
@@ -292,7 +317,7 @@ export function LeadsModule({
           icon={Clock3}
           label="Going stale"
           value={String(stale.length)}
-          color="#B45309"
+          color="var(--ink-amber)"
           warn={stale.length > 0}
           sub="open, untouched 21+ days"
         />
@@ -355,7 +380,7 @@ export function LeadsModule({
             options: [
               { value: "__none", label: "Unassigned", color: "#8E98A8" },
               ...[...new Set(leads.map((l) => l.owner).filter(Boolean))].map(
-                (o) => ({ value: o as string, label: o as string, color: "#0071E3" })
+                (o) => ({ value: o as string, label: o as string, color: "var(--ink-bright-blue)" })
               ),
             ],
           },
@@ -391,11 +416,11 @@ export function LeadsModule({
             dense
             collapsible={false}
             options={[
-              { value: "newest", label: "Newest first", color: "#0071E3" },
+              { value: "newest", label: "Newest first", color: "var(--ink-bright-blue)" },
               { value: "oldest", label: "Oldest first", color: "#8E98A8" },
               /* The stale list is the reason to open this page in the
                  morning, so it is one click away, not a mental sort. */
-              { value: "stalest", label: "Stalest first", color: "#B45309" },
+              { value: "stalest", label: "Stalest first", color: "var(--ink-amber)" },
             ]}
           />
         }
@@ -492,7 +517,7 @@ export function LeadsModule({
                         <span
                           className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                           style={{
-                            background: `${leadSourceColor(lead.source)}18`,
+                            background: tint(leadSourceColor(lead.source), 9),
                             color: leadSourceColor(lead.source),
                           }}
                         >
@@ -503,7 +528,7 @@ export function LeadsModule({
                         <span
                           className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                           style={{
-                            background: `${leadStatusColor(lead.status)}18`,
+                            background: tint(leadStatusColor(lead.status), 9),
                             color: leadStatusColor(lead.status),
                           }}
                         >
@@ -521,7 +546,7 @@ export function LeadsModule({
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-[12px] tnum">
-                        <span className={cn(isStale && "font-semibold text-[color:#B45309]")}>
+                        <span className={cn(isStale && "font-semibold text-[color:var(--ink-amber)]")}>
                           {age === 0 ? "Today" : age === 1 ? "Yesterday" : `${age}d ago`}
                         </span>
                       </td>
@@ -549,7 +574,7 @@ export function LeadsModule({
                                   setConfirmDelete(lead);
                                 }}
                                 title="Delete this lead"
-                                className="rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                                className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                               >
                                 <Trash2 size={13} strokeWidth={2.2} />
                               </button>
@@ -609,7 +634,7 @@ export function LeadsModule({
                             </div>
 
                             {lead.status === "Disqualified" && lead.disqualifiedReason && (
-                              <p className="mt-3 rounded-lg bg-[rgba(180,83,9,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:#B45309]">
+                              <p className="mt-3 rounded-lg bg-[rgba(180,83,9,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--ink-amber)]">
                                 Dropped: {lead.disqualifiedReason}
                               </p>
                             )}
@@ -720,7 +745,7 @@ export function LeadsModule({
           size="workflow"
         >
           <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
-            <Field label="Person">
+            <Field label="Person" required>
               {/* THE CAP THE SERVER ALREADY KEEPS, said out loud. lib/leads
                   trims a name to 120 characters on the way in, so a longer one
                   was accepted, saved short, and nobody was told — paste a job
@@ -734,7 +759,7 @@ export function LeadsModule({
                 placeholder="Who got in touch"
               />
             </Field>
-            <Field label="Company">
+            <Field label="Company" required>
               {/* THE ACCOUNT, WITH ITS OWN LOGO (Anir, Aug 26: "Company:
                   you're not doing that either" — on the picker showing no
                   logos). This was an <input list> wearing a datalist, which
@@ -837,7 +862,7 @@ export function LeadsModule({
                 ]}
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required hint="Email or phone — at least one way to reach them.">
               <Input
                 type="email"
                 value={editing.email}
@@ -846,7 +871,7 @@ export function LeadsModule({
                 placeholder="name@company.com"
               />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone" required>
               {/* A dialling code beside the number, not one free-text box
                   (Anir, Aug 26: "For phone, it's obviously gonna be different,
                   like countries and stuff"). Stored as one string, so nothing
@@ -872,19 +897,38 @@ export function LeadsModule({
                       ]}
                     />
                     <Input
-                      value={number}
-                      onChange={(e) =>
+                      value={formatPhoneNumber(number)}
+                      inputMode="tel"
+                      onChange={(e) => {
+                        /* SPACES AS YOU TYPE, AND A CEILING (Anir, Sep 4:
+                           "show the spaces and also i cant just type in
+                           anything"). The box keeps only digits, groups them
+                           for reading, and stops accepting once E.164's
+                           fifteen are used up — refusing the keystroke is
+                           kinder than letting somebody fill the box and then
+                           telling them it is wrong. */
+                        const digits = phoneDigits(e.target.value).slice(
+                          0,
+                          nationalDigitBudget(dial)
+                        );
                         setEditing({
                           ...editing,
                           dialCode: dial,
-                          phone: joinPhone(dial, e.target.value),
-                        })
-                      }
+                          phone: joinPhone(dial, digits),
+                        });
+                      }}
                       placeholder="20 7946 0000"
                       aria-label="Phone number"
                     />
                   </div>
                 );
+              })()}
+              {(() => {
+                const parsed = splitPhone(editing.phone);
+                const why = phoneProblem(editing.dialCode || parsed.dial, parsed.number);
+                return why ? (
+                  <p className="mt-1 text-[12px] text-error">{why}</p>
+                ) : null;
               })()}
             </Field>
             <Field label="Source">

@@ -592,7 +592,7 @@ export function TopBar({
                       {(
                         [
                           { mode: "live", icon: CheckCircle2, label: "Ready now", color: "#16A34A" },
-                          { mode: "mock", icon: Hammer, label: "In progress", color: "#7C3AED" },
+                          { mode: "mock", icon: Hammer, label: "In progress", color: "var(--ink-violet-soft)" },
                         ] as const
                       ).map((m) => {
                         const MIcon = m.icon;

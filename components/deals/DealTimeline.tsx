@@ -15,6 +15,7 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 import { daysLabel, daysSince, whenLabel } from "./dealTime";
 import { outcomeMark } from "./dealOutcome";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    ONE AXIS, AND IT IS THE FUNNEL IN TIME.
@@ -50,8 +51,8 @@ import { outcomeMark } from "./dealOutcome";
    two different things on two different screens.
 --------------------------------------------------------------------------- */
 
-const OVERDUE_RED = "#B02020"; // a problem, and only for an overdue follow-up
-const NEXT_BLUE = "#0071E3"; // = --blue-primary
+const OVERDUE_RED = "var(--ink-red)"; // a problem, and only for an overdue follow-up
+const NEXT_BLUE = "var(--ink-bright-blue)"; // = --blue-primary
 
 /** No column is drawn narrower than this share of the rail. Sized so the stage
  *  pill above a same-day stay still fits inside its own column at the narrowest
@@ -279,7 +280,7 @@ export function DealTimeline({
       <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-border-light pt-3.5 text-[12.5px]">
         <span
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-semibold"
-          style={{ background: `${nextColor}14`, color: nextColor }}
+          style={{ background: tint(nextColor, 8), color: nextColor }}
         >
           <CalendarClock size={13} strokeWidth={2.1} />
           {nextStepOverdue ? "Follow-up overdue" : "Next step"}
@@ -333,7 +334,7 @@ function StayHover({ rung }: { rung: Rung }) {
       <div className="flex items-center gap-2 border-b border-border-light pb-2.5">
         <span
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-          style={{ background: `${rung.color}1A`, color: rung.color }}
+          style={{ background: tint(rung.color, 10), color: rung.color }}
         >
           <StageIcon size={15} strokeWidth={2} />
         </span>
@@ -387,7 +388,7 @@ function TouchRow({
           {lead}
           <span
             className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold"
-            style={{ background: `${m.color}1A`, color: m.color }}
+            style={{ background: tint(m.color, 10), color: m.color }}
           >
             <Icon size={9} strokeWidth={2.4} />
             {m.label}
@@ -413,14 +414,14 @@ function chipStyle(n: Rung): React.CSSProperties {
       background: n.color,
       color: "#FFFFFF",
       border: `1px solid ${n.color}`,
-      boxShadow: `0 0 0 3px ${n.color}22`,
+      boxShadow: `0 0 0 3px ${tint(n.color, 13)}`,
     };
   }
   if (n.state === "done") {
     return {
-      background: `${n.color}14`,
+      background: tint(n.color, 8),
       color: n.color,
-      border: `1px solid ${n.color}4D`,
+      border: `1px solid ${tint(n.color, 30)}`,
     };
   }
   // Steps still ahead stay colour-coded (never gray) but read as "not yet"
@@ -428,7 +429,7 @@ function chipStyle(n: Rung): React.CSSProperties {
   return {
     background: "transparent",
     color: n.color,
-    border: `1px dashed ${n.color}80`,
+    border: `1px dashed ${tint(n.color, 50)}`,
   };
 }
 
@@ -464,7 +465,7 @@ function Dot({ rung }: { rung: Rung }) {
       {rung.state === "todo" ? (
         <span
           className="h-2.5 w-2.5 rounded-full border-2 bg-[var(--surface)]"
-          style={{ borderColor: `${rung.color}80` }}
+          style={{ borderColor: tint(rung.color, 50) }}
         />
       ) : (
         <span
@@ -475,7 +476,7 @@ function Dot({ rung }: { rung: Rung }) {
           style={{
             background: rung.color,
             boxShadow:
-              rung.state === "current" ? `0 0 0 4px ${rung.color}26` : undefined,
+              rung.state === "current" ? `0 0 0 4px ${tint(rung.color, 15)}` : undefined,
           }}
         />
       )}

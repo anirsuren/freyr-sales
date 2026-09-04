@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * WHO ELSE IS ON THIS DEAL.
@@ -103,7 +104,7 @@ function PersonRow({
             told apart by their icon and their word rather than by hue. */}
         <span
           className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-bold"
-          style={{ background: `${tone}14`, color: tone }}
+          style={{ background: tint(tone, 8), color: tone }}
         >
           <Icon size={10} strokeWidth={2.6} aria-hidden="true" />
           {role}
@@ -288,7 +289,7 @@ export function DealPeople({
               key={n}
               name={n}
               role="On the deal"
-              tone="#0071E3"
+              tone="var(--ink-bright-blue)"
               icon={Users}
               you={same(n, meName)}
               action={

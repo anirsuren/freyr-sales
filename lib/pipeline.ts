@@ -52,9 +52,9 @@ export const STAGE_COLOR: Record<Stage, string> = {
   // Prospect is burnt orange, not amber: forecast and account rows draw the
   // stage name AS this colour on a 8% tint, where amber was unreadable. It is
   // 20 lightness points darker than the Closed Lost red, so the two never blur.
-  Prospect: "#C2410C",
-  Engaged: "#0071E3",
-  Qualified: "#7C3AED",
+  Prospect: "var(--ink-orange)",
+  Engaged: "var(--ink-bright-blue)",
+  Qualified: "var(--ink-violet-soft)",
   "Meeting Booked": "#16A34A",
   "Closed Lost": "#EF4444",
 };
@@ -635,4 +635,99 @@ export function pipelineGrowthPointDeals(
     }
   }
   return buckets;
+}
+
+/**
+ * THE REAL DEALS, IN THE SHAPE THE REST OF THIS FILE SPEAKS.
+ *
+ * `buildDeals` above reads PITCH SESSIONS — the original pipeline, from before
+ * Opportunities existed. Every screen and every agent route still calls it, and
+ * in REAL mode there are no pitch sessions at all, so all of them were quietly
+ * answering with an empty pipeline. The agent said "$0 open, 0 deals" on every
+ * page in the app while 103 opportunities worth $112.0M sat in the database
+ * next to it (proved on Sep 4 against /api/agent/summary).
+ *
+ * Rather than rewrite twenty-eight call sites, this converts the real records
+ * into the `Deal` shape those call sites already handle. Nothing about
+ * `buildDeals` changes: mock workspaces are full of pitch sessions and keep
+ * reading exactly as they did.
+ */
+
+/**
+ * An opportunity status is a place in Freyr's own sales motion; a `Stage` is
+ * the old five-step vocabulary the health scoring and the agent cards speak.
+ * This is the translation, and it is deliberately coarse — the point is that
+ * "this deal is live and somebody is working it" survives the trip, not that
+ * every status gets its own bucket.
+ */
+const OPPORTUNITY_STATUS_TO_STAGE: Record<string, Stage> = {
+  Qualify: "Qualified",
+  Pilot: "Meeting Booked",
+  Propose: "Meeting Booked",
+  "Submitted to client": "Meeting Booked",
+  "Under review": "Engaged",
+  "On hold": "Engaged",
+  Won: "Qualified",
+  Lost: "Closed Lost",
+};
+
+type OpportunityLike = {
+  id: string;
+  name?: string;
+  customer?: string;
+  customerId?: string;
+  value?: number;
+  status?: string;
+  level?: string;
+  owner?: string;
+  offeringLabels?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export function dealsFromOpportunities(
+  opportunities: OpportunityLike[],
+  customers: Customer[]
+): Deal[] {
+  const byId = Object.fromEntries(customers.map((c) => [c.id, c]));
+  /* Most imported deals carry the account's NAME and no id, so a lookup on id
+     alone loses the customer on almost every row — and with it the owner, the
+     size tier and every per-account total the agent puts on a card. */
+  const byName = Object.fromEntries(
+    customers.map((c) => [String(c.company_name || "").trim().toLowerCase(), c])
+  );
+  const now = Date.now();
+  return opportunities.map((o) => {
+    const customer =
+      (o.customerId ? byId[o.customerId] : undefined) ??
+      byName[String(o.customer || "").trim().toLowerCase()];
+    const lastActivity = o.updatedAt || o.createdAt || new Date(now).toISOString();
+    const staleDays = Math.floor((now - new Date(lastActivity).getTime()) / 86400000);
+    return {
+      /* The opportunity id, not a session id. Everything downstream treats this
+         as an opaque key, and a card that links back has to land on the real
+         record rather than a pitch session that does not exist. */
+      sessionId: o.id,
+      customerId: customer?.id ?? o.customerId ?? "",
+      contactId: "",
+      company: o.customer || customer?.company_name || "-",
+      sizeTier: customer?.size_tier || null,
+      /* An opportunity has no single contact — the people are on the account.
+         Blank rather than invented: a made-up name on a real deal is worse
+         than an empty one. */
+      contactName: "",
+      title: o.name || "",
+      service: (o.offeringLabels ?? [])[0] || "-",
+      value: Number(o.value) || 0,
+      stage:
+        OPPORTUNITY_STATUS_TO_STAGE[String(o.status ?? "")] ??
+        /* No status yet is a deal nobody has moved, which is a Prospect. */
+        "Prospect",
+      lastActivity,
+      staleDays: Math.max(0, staleDays),
+      owner: o.owner || ownerFor(customer),
+      ownerUserId: customer?.owner_user_id || null,
+      createdAt: o.createdAt || lastActivity,
+    };
+  });
 }

@@ -91,7 +91,7 @@ const STATUS_STYLE: Record<
   },
   Inactive: {
     bg: "rgba(194,65,12,0.12)",
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     darkBg: "rgba(249,115,22,0.18)",
     darkColor: "#FDBA74",
     darkBorder: "rgba(253,186,116,0.42)",
@@ -125,7 +125,7 @@ const ORIGIN_STYLE: Record<
   },
   user: {
     bg: "rgba(139,92,246,0.14)",
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     darkBg: "rgba(139,92,246,0.2)",
     darkColor: "#C4B5FD",
     darkBorder: "rgba(196,181,253,0.42)",
@@ -135,7 +135,7 @@ const ORIGIN_STYLE: Record<
   },
   system: {
     bg: "rgba(13,148,136,0.14)",
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     darkBg: "rgba(20,184,166,0.2)",
     darkColor: "#5EEAD4",
     darkBorder: "rgba(94,234,212,0.42)",

@@ -60,9 +60,9 @@ export interface SessionRow {
 // which read as three identical gray squares the moment the toolbar compressed
 // (and broke the standing "never gray, always colour + icon" rule at rest too).
 const SORTS = [
-  { key: "recent", label: "Newest", icon: CalendarClock, color: "#0F766E" },
-  { key: "oldest", label: "Oldest", icon: History, color: "#7C3AED" },
-  { key: "company", label: "Company A, Z", icon: Building2, color: "#0071E3" },
+  { key: "recent", label: "Newest", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+  { key: "oldest", label: "Oldest", icon: History, color: "var(--ink-violet-soft)" },
+  { key: "company", label: "Company A, Z", icon: Building2, color: "var(--ink-bright-blue)" },
 ];
 
 /**
@@ -185,7 +185,7 @@ export function SessionsBrowser({
             options={[
               // Blue + a glyph, so "no outcome filter" still reads as an
               // outcome filter once the words go.
-              { value: "all", label: "All outcomes", color: "#0071E3", icon: CircleDot },
+              { value: "all", label: "All outcomes", color: "var(--ink-bright-blue)", icon: CircleDot },
               ...outcomes.map<ColorOption>((o) => ({
                 value: o,
                 label: OUTCOME_META[o]?.label || o,

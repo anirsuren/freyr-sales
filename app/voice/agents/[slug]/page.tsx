@@ -211,7 +211,7 @@ export default async function VoiceAgentPage({
   // How long answered calls actually run — a real distribution, straight from
   // duration_secs. Shorter → longer, warm → green, never a yellow band.
   const LENGTH_BUCKETS: { label: string; min: number; max: number; color: string }[] = [
-    { label: "Under 1 min", min: 0, max: 60, color: "#C2410C" },
+    { label: "Under 1 min", min: 0, max: 60, color: "var(--ink-orange)" },
     { label: "1-2 min", min: 60, max: 120, color: VIZ.sky },
     { label: "2-4 min", min: 120, max: 240, color: VIZ.blue },
     { label: "4 min+", min: 240, max: Number.POSITIVE_INFINITY, color: VIZ.green },

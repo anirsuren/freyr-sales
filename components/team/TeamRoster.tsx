@@ -44,6 +44,7 @@ import {
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { cn, formatDate } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 export type RosterRep = {
   identityKey: string;
@@ -126,9 +127,9 @@ function topOpenDeals(rep: RosterRep, n = 4) {
 // (Anir, Jul 27: "that yellow, never use that yellow"); #C2410C is the app-wide
 // caution token — warm, legible, and clearly not the error red.
 function attainColor(pct: number): string {
-  if (pct >= 50) return "#1A7A35";
-  if (pct >= 35) return "#C2410C";
-  return "#B02020";
+  if (pct >= 50) return "var(--ink-green)";
+  if (pct >= 35) return "var(--ink-orange)";
+  return "var(--ink-red)";
 }
 
 function tel(phone: string) {
@@ -312,7 +313,7 @@ function PipelineInspector({
               )}
               style={
                 isFocused
-                  ? { background: `${stage.color}22`, borderLeftColor: stage.color }
+                  ? { background: tint(stage.color, 13), borderLeftColor: stage.color }
                   : undefined
               }
             >
@@ -594,8 +595,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               values: pipelineFilter,
               onChange: setPipelineFilter,
               options: [
-                { value: "with", label: "Holding pipeline", color: "#1A7A35" },
-                { value: "without", label: "Nothing open", color: "#B4318F" },
+                { value: "with", label: "Holding pipeline", color: "var(--ink-green)" },
+                { value: "without", label: "Nothing open", color: "var(--ink-magenta)" },
               ],
             },
           ]}
@@ -609,9 +610,9 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               collapsible={false}
               className="w-[150px] shrink-0"
               options={[
-                { value: "pipeline", label: "Open pipeline", color: "#1A7A35", icon: TrendingUp },
-                { value: "deals", label: "Open deals", color: "#0071E3", icon: Layers },
-                { value: "meetings", label: "Meetings", color: "#6D28D9", icon: CalendarDays },
+                { value: "pipeline", label: "Open pipeline", color: "var(--ink-green)", icon: TrendingUp },
+                { value: "deals", label: "Open deals", color: "var(--ink-bright-blue)", icon: Layers },
+                { value: "meetings", label: "Meetings", color: "var(--ink-violet)", icon: CalendarDays },
                 { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
               ]}
             />
@@ -693,7 +694,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   ? `Invited${r.invitedBy ? ` by ${r.invitedBy}` : ""} · expires ${formatDate(r.invitedExpiresAt)}`
                                   : "Invited, has not signed up yet"
                               }
-                              className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309]"
+                              className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:var(--ink-amber)]"
                             >
                               <Hourglass size={10} strokeWidth={2.6} aria-hidden="true" />
                               Pending
@@ -739,7 +740,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                           Won FY26
                         </p>
-                        <p className="text-[17px] font-bold tnum leading-none mt-1" style={{ color: "#1A7A35" }}>
+                        <p className="text-[17px] font-bold tnum leading-none mt-1" style={{ color: "var(--ink-green)" }}>
                           {formatMoney(r.wonFY)}
                         </p>
                       </div>
@@ -1030,7 +1031,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                       ? `Invited${r.invitedBy ? ` by ${r.invitedBy}` : ""} · expires ${formatDate(r.invitedExpiresAt)}`
                                       : "Invited, has not signed up yet"
                                   }
-                                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309]"
+                                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(180,83,9,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:var(--ink-amber)]"
                                 >
                                   <Hourglass size={10} strokeWidth={2.6} aria-hidden="true" />
                                   Pending

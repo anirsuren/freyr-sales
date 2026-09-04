@@ -405,7 +405,7 @@ export function SupabaseLoginForm({
               className={inputClass}
             />
             {name.trim() !== "" && !isFullName(name) && (
-              <span className="mt-1 block text-[11px] font-normal text-[color:#C2410C]">
+              <span className="mt-1 block text-[11px] font-normal text-[color:var(--ink-orange)]">
                 {FULL_NAME_HINT}
               </span>
             )}

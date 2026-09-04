@@ -31,6 +31,7 @@ import type {
   CompetitionMaterialKind,
   CompetitorProduct,
 } from "@/lib/offeringCompetition";
+import { tint } from "@/lib/tint";
 
 /**
  * THE COMPETITION TAB (Suren, Aug 11): who competes with this offering, with
@@ -44,10 +45,10 @@ const KIND_META: Record<
   CompetitionMaterialKind,
   { label: string; color: string; icon: typeof Info }
 > = {
-  pricing: { label: "Pricing", color: "#C2410C", icon: BadgeDollarSign },
-  about: { label: "About", color: "#0071E3", icon: Info },
-  link: { label: "Link", color: "#6D28D9", icon: Link2 },
-  file: { label: "Document", color: "#0F766E", icon: FileText },
+  pricing: { label: "Pricing", color: "var(--ink-orange)", icon: BadgeDollarSign },
+  about: { label: "About", color: "var(--ink-bright-blue)", icon: Info },
+  link: { label: "Link", color: "var(--ink-violet)", icon: Link2 },
+  file: { label: "Document", color: "var(--ink-teal-deep)", icon: FileText },
 };
 
 const VIEWS = ["tiles", "rows", "table"] as const;
@@ -264,7 +265,7 @@ export function OfferingCompetition({
                   ? "px-1.5 py-0.5 text-[10px]"
                   : "px-2 py-0.5 text-[10.5px]"
               )}
-              style={{ color: meta.color, background: `${meta.color}14` }}
+              style={{ color: meta.color, background: tint(meta.color, 8) }}
             >
               <KIcon size={size === "sm" ? 10 : 10.5} strokeWidth={2.2} />
               {counts[kind]} {meta.label.toLowerCase()}
@@ -292,7 +293,7 @@ export function OfferingCompetition({
       <Link
         href={`/market-intel/${row.marketIntelId}`}
         onClick={(e) => e.stopPropagation()}
-        className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B4318F] transition-opacity hover:opacity-80"
+        className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-[color:var(--ink-magenta)] transition-opacity hover:opacity-80"
       >
         <Radar size={10} strokeWidth={2.4} /> Live intel
       </Link>
@@ -547,7 +548,7 @@ export function OfferingCompetition({
               {openRow.marketIntelId && (
                 <Link
                   href={`/market-intel/${openRow.marketIntelId}`}
-                  className="flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-3 py-1.5 text-[12px] font-semibold text-[color:#B4318F] transition-opacity hover:opacity-80"
+                  className="flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--ink-magenta)] transition-opacity hover:opacity-80"
                 >
                   <Radar size={12} strokeWidth={2.4} /> Live intel
                 </Link>
@@ -573,7 +574,7 @@ export function OfferingCompetition({
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                       style={{
                         color: meta.color,
-                        background: `${meta.color}14`,
+                        background: tint(meta.color, 8),
                       }}
                     >
                       <MIcon size={15} strokeWidth={2.2} />
@@ -610,7 +611,7 @@ export function OfferingCompetition({
                             confirmMaterial === m.id ? null : m.id
                           )
                         }
-                        className="cursor-pointer rounded-md p-1 text-[color:#DC2626] transition-colors hover:bg-surface"
+                        className="cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-surface"
                       >
                         <Trash2 size={13} strokeWidth={2.2} />
                       </button>
@@ -742,7 +743,7 @@ export function OfferingCompetition({
                   <button
                     type="button"
                     onClick={() => setConfirmCompetitor(true)}
-                    className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-[color:#DC2626] transition-colors hover:bg-surface"
+                    className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-[color:var(--status-red)] transition-colors hover:bg-surface"
                   >
                     <Trash2 size={12.5} strokeWidth={2.2} /> Remove from list
                   </button>

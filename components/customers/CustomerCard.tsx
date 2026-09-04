@@ -26,6 +26,7 @@ import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { geographyWithFlag } from "@/lib/countryFlags";
+import { tint } from "@/lib/tint";
 
 type MixSlice = { label: string; value: number; color: string; tip: TipItem[] };
 
@@ -42,8 +43,8 @@ const SIZE_OPP: Record<string, string> = {
 // deliberately not red either: a small account is not a failing one.
 const OPP_TIER: Record<string, { color: string; bg: string }> = {
   High: { color: "#15803D", bg: "rgba(21,128,61,0.12)" },
-  Medium: { color: "#0071E3", bg: "rgba(0,113,227,0.12)" },
-  Low: { color: "#7C3AED", bg: "rgba(124,58,237,0.12)" },
+  Medium: { color: "var(--ink-bright-blue)", bg: "rgba(0,113,227,0.12)" },
+  Low: { color: "var(--ink-violet-soft)", bg: "rgba(124,58,237,0.12)" },
 };
 
 /**
@@ -396,7 +397,7 @@ export function CustomerCard({
                   style={{
                     color: health ? HEALTH_COLOR[health.band].color : undefined,
                     background: health
-                      ? `${HEALTH_COLOR[health.band].color}1F`
+                      ? tint(HEALTH_COLOR[health.band].color, 12)
                       : undefined,
                   }}
                 >
@@ -432,7 +433,7 @@ export function CustomerCard({
               <div className="grid grid-cols-2 gap-1.5">
                 {health.factors.map((f) => {
                   const up = f.delta >= 0;
-                  const color = up ? "#1A7A35" : "#B02020";
+                  const color = up ? "var(--ink-green)" : "var(--ink-red)";
                   const Trend = up ? TrendingUp : TrendingDown;
                   return (
                     <div
@@ -455,7 +456,7 @@ export function CustomerCard({
                         {f.label}{" "}
                         <span
                           className="ml-0.5 inline-block whitespace-nowrap rounded-full px-1.5 py-[1px] text-[11px] font-bold tnum align-[1px]"
-                          style={{ color, background: `${color}1F` }}
+                          style={{ color, background: tint(color, 12) }}
                         >
                           {up ? `+${f.delta}` : f.delta}
                         </span>

@@ -114,11 +114,17 @@ export function LiveMarketIntelDashboard({
           value={String(totalNews)}
           sub="real articles, 90 days"
         />
+        {/* THE SHORTLIST, NAMED AS ONE (Anir, Sep 4). Each company contributes
+            at most eight signals, so summing them produced a figure that could
+            never exceed companies x 8 and barely moved whether the market was
+            busy or silent — it read as a measure of activity and was a
+            measure of the cap. Saying "top 8 per company" makes it honest
+            without throwing away a number people have got used to. */}
         <StatTile
           icon={Radar}
           label="Signals live"
           value={String(totalSignals)}
-          sub={`${newThisWeek} new this week`}
+          sub={`${newThisWeek} new this week · top 8 per company`}
         />
       </section>
 

@@ -23,7 +23,7 @@ export const VIZ = {
   // goal line's label (Anir, Jul 27: "that yellow, never use that yellow").
   // #C2410C is the app-wide caution/warm token: legible as text, still clearly
   // orange rather than brown, and 30°+ off both rose and the green below.
-  amber: "#C2410C",
+  amber: "var(--ink-orange)",
   // Was a gray (#8E98A8) — Suren: never gray in a graph. Now a real violet.
   slate: "#A855F7",
   rose: "#E11D48",

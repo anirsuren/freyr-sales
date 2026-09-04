@@ -15,6 +15,7 @@ import { HEALTH_COLOR } from "@/lib/health";
 import { STAGE_COLOR, STAGE_ICON, formatMoney, type Stage } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
 import { daysLabel } from "./dealTime";
+import { tint } from "@/lib/tint";
 
 /* ---------------------------------------------------------------------------
    THE COLOUR LAW FOR THIS CARD, colour by MEANING, exactly like /forecast.
@@ -39,13 +40,13 @@ import { daysLabel } from "./dealTime";
  *  account cards). Earned only by a deal that has overdrawn its runway. The
  *  brighter #FF3B30 that used to sit here is a full-saturation alarm red and is
  *  not the sanctioned risk colour. */
-const RISK = "#B02020";
+const RISK = "var(--ink-red)";
 /** The measure: the same blue as /forecast's commit bar. */
-const MEASURE = "#0071E3"; // = blue-primary
+const MEASURE = "var(--ink-bright-blue)"; // = blue-primary
 /** A closed deal's spent track — muted, no alarm. */
 const SPENT = "#B7C4D4";
 /** The quiet half of a gauge: same hue, 12%. */
-const quiet = (c: string) => `${c}1F`;
+const quiet = (c: string) => tint(c, 12);
 
 // One rhythm for all three panels, lifted straight off /forecast: tiny uppercase
 // eyebrow, one dominant number, generous air, equal heights.
@@ -310,7 +311,7 @@ function Pill({
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-      style={{ background: `${color}1A`, color }}
+      style={{ background: tint(color, 10), color }}
     >
       <Icon size={11} strokeWidth={2.2} />
       {children}

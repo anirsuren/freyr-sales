@@ -25,6 +25,7 @@ import {
 } from "@/lib/agent";
 import { cn } from "@/lib/utils";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { tint } from "@/lib/tint";
 
 export type AttentionRow = AgentAction & {
   value: string;
@@ -39,7 +40,7 @@ const ACTION_META: Record<
   approve: {
     label: "Compliance review",
     icon: ShieldCheck,
-    color: "#6D28D9",
+    color: "var(--ink-violet)",
     bg: "#F3EEFF",
   },
   send: {
@@ -53,7 +54,7 @@ const ACTION_META: Record<
     // was the banned yellow. Burnt orange keeps the warm warning read.
     label: "Deal cooling",
     icon: Flame,
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     bg: "#FEF0E7",
   },
   stabilize: {
@@ -130,7 +131,7 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
           const PreviewIcon = preview.icon;
           // Mid priority is burnt orange, not amber: this pair is text-on-tint,
           // and it still sits clearly between the red #1 and the blue #3.
-          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "#C2410C" : "#0057B8";
+          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "var(--ink-orange)" : "#0057B8";
           const priorityBg = index === 0 ? "#FEF3F2" : index === 1 ? "#FEF0E7" : "#EAF4FF";
           return (
             <HoverCard
@@ -171,7 +172,7 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
 
                   <div
                     className="mt-3 rounded-lg border px-3 py-3"
-                    style={{ borderColor: `${preview.color}26`, background: `${preview.bg}99` }}
+                    style={{ borderColor: tint(preview.color, 15), background: tint(preview.bg, 60) }}
                   >
                     <p className="text-[9.5px] font-bold uppercase tracking-[0.06em]" style={{ color: preview.color }}>
                       Why it needs attention

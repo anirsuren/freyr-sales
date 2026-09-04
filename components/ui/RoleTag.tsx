@@ -1,6 +1,7 @@
 import { PencilRuler, ShieldCheck, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * THE ROLES, SAID THE SAME WAY EVERYWHERE — AND THEY ARE PRIVILEGES NOW.
@@ -39,19 +40,19 @@ export const ROLE_META: Record<
 > = {
   admin: {
     label: "Admin",
-    color: "#0F766E",
+    color: "var(--ink-teal-deep)",
     icon: ShieldCheck,
     what: "Invites and approves teammates, and hands out offering ownership",
   },
   bd_owner: {
     label: "Owner",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     icon: UsersRound,
     what: "Runs a group and the numbers inside it. What used to be Manager.",
   },
   bd_member: {
     label: "BD Member",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: UserRound,
     what: "Works accounts and opportunities in a business development group.",
   },
@@ -109,7 +110,7 @@ export function RoleTag({
       style={
         {
           "--semantic-color": meta.color,
-          "--semantic-bg": `${meta.color}1A`,
+          "--semantic-bg": tint(meta.color, 10),
         } as CSSProperties
       }
       className={cn(

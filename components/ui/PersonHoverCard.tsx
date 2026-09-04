@@ -51,7 +51,7 @@ function RoleLine({ role }: { role: string }) {
           return (
             <span
               key={i}
-              style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}
+              style={{ color: "var(--ink-violet-soft)", background: "rgba(124,58,237,0.10)" }}
               className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-[3px] text-[11px] font-semibold"
             >
               <Crown size={11} strokeWidth={2.4} aria-hidden="true" />

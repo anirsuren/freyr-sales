@@ -26,9 +26,9 @@ type Result = { type: string; label: string; sublabel: string; href: string };
 // The record TYPE is a category, so it reads as a colour + icon chip rather
 // than gray type in the corner (standing chip rule).
 const TYPE_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-  Customer: { icon: Building2, color: "#0040A0", bg: "rgba(0,113,227,0.10)" },
-  Contact: { icon: ContactIcon, color: "#6D28D9", bg: "rgba(124,58,237,0.10)" },
-  Offering: { icon: Package, color: "#0F766E", bg: "rgba(15,118,110,0.12)" },
+  Customer: { icon: Building2, color: "var(--ink-blue)", bg: "rgba(0,113,227,0.10)" },
+  Contact: { icon: ContactIcon, color: "var(--ink-violet)", bg: "rgba(124,58,237,0.10)" },
+  Offering: { icon: Package, color: "var(--ink-teal-deep)", bg: "rgba(15,118,110,0.12)" },
   Session: { icon: CalendarClock, color: "#0891B2", bg: "rgba(8,145,178,0.12)" },
 };
 const TYPE_FALLBACK = { icon: Clock, color: "#0369A1", bg: "rgba(2,132,199,0.12)" };

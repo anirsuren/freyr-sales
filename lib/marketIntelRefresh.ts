@@ -5,6 +5,7 @@ import {
   type CompanySource,
 } from "./marketIntelSources";
 import { bustMarketIntelFeedCache, cleanSourceLabel } from "./marketIntelFeed";
+import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import { classifyMna, digestCompany } from "./marketIntelSummarize";
 import { scrapeFreshNews } from "./perplexityNews";
@@ -65,6 +66,8 @@ const NEWS_LIMIT = 8;
 const PERSON_POST_LIMIT = 5;
 const KEEP_POSTS = 60;
 const KEEP_NEWS = 40;
+/** How many M&A rows the tracker keeps. The screen reports the total too. */
+const MNA_ROWS_KEPT = 40;
 
 const FEED_ROW = "market-intel-feed";
 const LOCK_ROW = "market-intel:refresh-lock";
@@ -204,7 +207,7 @@ async function scrapeCompanyPosts(
         ? {
             name: author.name,
             followerCount: author.follower_count ?? null,
-            logoUrl: author.logo_url ?? null,
+            logoUrl: (await mirrorPhoto(author.logo_url ?? "")) || null,
           }
         : null,
       slug,
@@ -280,16 +283,50 @@ async function refreshMna(feed: any): Promise<number> {
   const merged = [...classified, ...existing].filter((deal) => {
     // "Integer" vs "Integer Holdings" is the same deal: key on the first
     // word of each side so name variants collapse.
-    const first = (name: string) => name.toLowerCase().split(/\s+/)[0];
-    const key = `${first(deal.acquirer)}|${first(deal.target)}`;
-    if (seen.has(key)) return false;
+    /* MATCH ON THE WHOLE NAME, NOT ITS FIRST WORD (Anir, Sep 4: the tracker
+       listed one deal twice). Keying on the first word collapsed "Integer" and
+       "Integer Holdings" as intended, but it also treated "Eli Lilly" and
+       "Lilly" as different companies, and a local paper's "Auburn's Currier
+       Plastics" as different from "Currier Plastics". Headlines vary at the
+       front as often as the back.
+
+       So: strip the corporate furniture and the possessive lead-in, then let
+       either name contain the other. "Lilly" is inside "eli lilly"; "Integer"
+       is inside "integer holdings"; "Pfizer" is not inside "Moderna". */
+    const bare = (name: string) =>
+      name
+        .toLowerCase()
+        .replace(/[’']s\b/g, "")
+        .replace(
+          /\b(inc|corp|corporation|ltd|limited|plc|llc|co|group|holdings?|company|pharmaceuticals?|pharma|biosciences?|therapeutics|sciences|laboratories|labs|international)\b/g,
+          ""
+        )
+        .replace(/[^a-z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    const overlaps = (a: string, b: string) =>
+      !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+    const key = `${bare(deal.acquirer)}|${bare(deal.target)}`;
+    const [a, t] = key.split("|");
+    for (const prev of seen) {
+      const [pa, pt] = prev.split("|");
+      if (overlaps(a, pa) && overlaps(t, pt)) return false;
+    }
     seen.add(key);
     return true;
   });
   merged.sort(
     (a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0)
   );
-  feed.mna = { items: merged.slice(0, 40), fetchedAt: new Date().toISOString() };
+  /* THE LIST IS CAPPED, SO THE SCREEN HAS TO SAY SO (Anir, Sep 4: "40 deals"
+     was the ceiling being read as a count). Notifications already does this
+     correctly — it caps its roadmap list and then adds a row saying how many
+     it held back. Carrying the total lets the tracker do the same. */
+  feed.mna = {
+    items: merged.slice(0, MNA_ROWS_KEPT),
+    total: merged.length,
+    fetchedAt: new Date().toISOString(),
+  };
   return cost;
 }
 
@@ -959,7 +996,9 @@ export async function addPersonByLink(
       typeof info?.follower_count === "number" ? info.follower_count : undefined,
     linkedinUrl:
       String(info?.profile_url ?? "") || `https://www.linkedin.com/in/${username}`,
-    photoUrl: String(info?.profile_picture_url ?? ""),
+    /* MIRRORED, NOT LINKED (see lib/miPhotos). LinkedIn's URL carries an
+       expiry; storing it means the face goes blank in a few weeks. */
+    photoUrl: await mirrorPhoto(String(info?.profile_picture_url ?? "")),
     addedAt: new Date().toISOString(),
   };
   tracking.people.push(person);

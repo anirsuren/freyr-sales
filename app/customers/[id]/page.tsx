@@ -7,6 +7,7 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { ClipboardList,
   FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
@@ -85,6 +86,38 @@ export default async function CustomerDetailPage({
   }
 
   const contacts = await db.contacts.list(id);
+
+  /**
+   * CUSTOMER INTELLIGENCE ON THE CUSTOMER (Manoj, Sep 3: "If user clicks on the
+   * Customer name, we will need all customer intelligence. Customer logo,
+   * About, Locations, Key contacts, customer intelligence").
+   *
+   * Market Intel already tracks 34 of these accounts and writes a rundown for
+   * each; it was simply only readable from its own module. Matched on name,
+   * case- and punctuation-insensitively, because the feed carries LinkedIn's
+   * spelling of a company and the customer row carries ours ("Opella" against
+   * "Opella Healthcare", "BMS" against "Bristol Myers Squibb").
+   */
+  const miFeed = await readMarketIntelFeed().catch(() => null);
+  const miKey = (v: string) =>
+    v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const miCompany = miFeed
+    ? Object.values(miFeed.companies).find((co) => {
+        const a = miKey(co.name);
+        const b = miKey(customer.company_name);
+        return !!a && !!b && (a === b || a.startsWith(b) || b.startsWith(a));
+      }) ?? null
+    : null;
+  const intelligence = miCompany
+    ? {
+        name: miCompany.name,
+        href: `/market-intel/${miCompany.id}`,
+        tldr: miCompany.tldr ?? null,
+        posts: miCompany.posts.length,
+        news: miCompany.news.length,
+        updatedAt: miCompany.fetchedAt ?? null,
+      }
+    : null;
   const interactions = await db.interactions.list(id);
   const sessions = await db.pitchSessions.list(id);
   // No agent-run fetch here any more: the account rail's agent block and its
@@ -342,6 +375,7 @@ export default async function CustomerDetailPage({
           above it (Suren, Aug 28: "there's no point having two tabs — the
           entire thing should be just one big page"). See CustomerTabs. */}
       <CustomerTabs
+        intelligence={intelligence}
         /* The same question PATCH /api/customers/[id] asks, so the identity
            fields are editable exactly when a save would land. Since Sep 1 that
            question includes whether this account is one of yours. */

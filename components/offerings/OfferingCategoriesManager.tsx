@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { listAccent } from "./filterPalette";
+import { tint } from "@/lib/tint";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
@@ -243,7 +244,7 @@ export function OfferingCategoriesManager({
                 <div className="flex min-w-0 items-start gap-3">
                   <span
                     className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ background: `${accent}14`, color: accent }}
+                    style={{ background: tint(accent, 8), color: accent }}
                   >
                     <Layers size={15} strokeWidth={1.9} />
                   </span>
@@ -290,7 +291,7 @@ export function OfferingCategoriesManager({
                   <Link
                     href={`/offerings?cat=${c.id}`}
                     className="group inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                    style={{ color: accent, background: `${accent}14` }}
+                    style={{ color: accent, background: tint(accent, 8) }}
                   >
                     {count} offering{count === 1 ? "" : "s"}
                   </Link>

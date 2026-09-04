@@ -34,6 +34,7 @@ import { portfolioReport, REVENUE_TYPE_META } from "@/lib/revenue";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { tint } from "@/lib/tint";
 
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -101,8 +102,8 @@ export default async function ReportsPage() {
   // enough (Anir, Jul 25: "it has to be distinct and easy").
   const TYPE_COLOR: Record<string, string> = {
     annual: "#2563EB", // blue
-    project: "#7C3AED", // violet
-    annual_service: "#C2410C", // burnt orange, this colour is also the Type chip's TEXT (below), and amber was unreadable there
+    project: "var(--ink-violet-soft)", // violet
+    annual_service: "var(--ink-orange)", // burnt orange, this colour is also the Type chip's TEXT (below), and amber was unreadable there
     license: "#059669", // emerald
   };
   const typeSegments = report.byType.map((t) => ({
@@ -261,7 +262,7 @@ export default async function ReportsPage() {
 
       <Card className="p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,118,110,0.10)] text-[color:#0F766E]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,118,110,0.10)] text-[color:var(--ink-teal-deep)]">
             <Waypoints size={19} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
@@ -722,7 +723,7 @@ export default async function ReportsPage() {
                             className="inline-block text-[11px] font-semibold uppercase tracking-[0.04em] rounded px-2 py-0.5"
                             style={{
                               color: TYPE_COLOR[r.revenue_type] || VIZ.slate,
-                              background: `${TYPE_COLOR[r.revenue_type] || VIZ.slate}1A`,
+                              background: tint(TYPE_COLOR[r.revenue_type] || VIZ.slate, 10),
                             }}
                           >
                             {REVENUE_TYPE_META[r.revenue_type].short}

@@ -25,10 +25,10 @@ type DraftView = AgentDraft;
 
 const META: Record<AgentActionKind, { icon: typeof Send; bg: string; color: string }> = {
   approve: { icon: ClipboardCheck, bg: "rgba(255,159,10,0.14)", color: "#7A4A00" },
-  send: { icon: Send, bg: "rgba(52,199,89,0.15)", color: "#1A7A35" },
-  reengage: { icon: Flame, bg: "rgba(255,59,48,0.12)", color: "#B02020" },
-  stabilize: { icon: HeartPulse, bg: "rgba(255,59,48,0.12)", color: "#B02020" },
-  followup: { icon: CalendarClock, bg: "#E8F1FB", color: "#0040A0" },
+  send: { icon: Send, bg: "rgba(52,199,89,0.15)", color: "var(--ink-green)" },
+  reengage: { icon: Flame, bg: "rgba(255,59,48,0.12)", color: "var(--ink-red)" },
+  stabilize: { icon: HeartPulse, bg: "rgba(255,59,48,0.12)", color: "var(--ink-red)" },
+  followup: { icon: CalendarClock, bg: "#E8F1FB", color: "var(--ink-blue)" },
 };
 
 export function AgentActions({

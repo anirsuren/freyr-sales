@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pipeline";
 import { GROUP_COLORS, type CustomerGroup } from "@/lib/customerGroups";
+import { tint } from "@/lib/tint";
 
 /**
  * CUSTOMER GROUPS.
@@ -158,7 +159,7 @@ export function CustomerGroupsTab({
                       <span
                         aria-hidden="true"
                         className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
-                        style={{ background: `${g.color}1A`, color: g.color }}
+                        style={{ background: tint(g.color, 10), color: g.color }}
                       >
                         <Layers size={13} strokeWidth={2.4} />
                       </span>
@@ -184,7 +185,7 @@ export function CustomerGroupsTab({
                         type="button"
                         onClick={() => setConfirmDelete(g)}
                         aria-label={`Delete ${g.name}`}
-                        className="rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                        className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                       >
                         <Trash2 size={14} strokeWidth={2} />
                       </button>

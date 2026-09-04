@@ -17,24 +17,24 @@ export const CUSTOMER_OFFERING_ACTIVITIES: Record<
   CustomerOfferingActivity,
   { label: string; short: string; color: string; text: string }
 > = {
-  lead: { label: "Lead", short: "Lead", color: "#0071E3", text: "#FFFFFF" },
+  lead: { label: "Lead", short: "Lead", color: "var(--ink-bright-blue)", text: "#FFFFFF" },
   opportunity: {
     label: "Opportunity",
     short: "Opportunity",
-    color: "#7C3AED",
+    color: "var(--ink-violet-soft)",
     text: "#FFFFFF",
   },
-  pilot: { label: "Pilot", short: "Pilot", color: "#0E7490", text: "#FFFFFF" },
+  pilot: { label: "Pilot", short: "Pilot", color: "var(--ink-teal)", text: "#FFFFFF" },
   contract: {
     label: "Contract",
     short: "Contract",
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     text: "#FFFFFF",
   },
   delivery: {
     label: "Delivery",
     short: "Delivery",
-    color: "#1A7A35",
+    color: "var(--ink-green)",
     text: "#FFFFFF",
   },
 };
@@ -44,9 +44,9 @@ export const CUSTOMER_OFFERING_STATUSES: Record<
   CustomerOfferingStatus,
   { label: string; color: string }
 > = {
-  initiated: { label: "Initiated", color: "#0071E3" },
-  under_progress: { label: "Under progress", color: "#C2410C" },
-  completed: { label: "Completed", color: "#1A7A35" },
+  initiated: { label: "Initiated", color: "var(--ink-bright-blue)" },
+  under_progress: { label: "Under progress", color: "var(--ink-orange)" },
+  completed: { label: "Completed", color: "var(--ink-green)" },
 };
 
 /**

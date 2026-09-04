@@ -182,7 +182,7 @@ export default async function MarketIntelCompanyPage({
         <div className="min-w-0 flex-1">
           <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
             {mine.name}
-            <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:#0071E3]">
+            <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)]">
               New
             </span>
           </h1>
@@ -215,7 +215,7 @@ export default async function MarketIntelCompanyPage({
             </div>
             <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               <div className="rounded-lg border border-border-light bg-surface p-3">
-                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:#0071E3]">
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:var(--ink-bright-blue)]">
                   <LinkedInIcon size={12} /> LinkedIn activity
                 </p>
                 <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
@@ -224,7 +224,7 @@ export default async function MarketIntelCompanyPage({
                 </p>
               </div>
               <div className="rounded-lg border border-border-light bg-surface p-3">
-                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:#0F766E]">
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:var(--ink-teal-deep)]">
                   <Newspaper size={12} strokeWidth={2.2} /> News
                 </p>
                 <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
@@ -234,7 +234,7 @@ export default async function MarketIntelCompanyPage({
                 </p>
               </div>
               <div className="rounded-lg border border-border-light bg-surface p-3">
-                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:#7C3AED]">
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[color:var(--ink-violet-soft)]">
                   <Radar size={12} strokeWidth={2.2} /> Signals
                 </p>
                 <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
@@ -309,7 +309,7 @@ export default async function MarketIntelCompanyPage({
                 {mine.competitors.map((name) => (
                   <span
                     key={name}
-                    className="rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:#B4318F]"
+                    className="rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)]"
                   >
                     {name}
                   </span>

@@ -12,6 +12,7 @@ import {
   type FloatingMenuStyle,
 } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * PICK MANY FROM A LONG LIST WITHOUT A CHIP WALL.
@@ -93,7 +94,7 @@ function OptionRow({
   onPick: () => void;
   rowIndex: number;
 }) {
-  const accent = o.color || "#0071E3";
+  const accent = o.color || "var(--ink-bright-blue)";
   return (
     <button
       type="button"
@@ -105,7 +106,7 @@ function OptionRow({
         !on && "hover:bg-surface active:scale-[0.99]"
       )}
       style={{
-        ...(on ? { background: `${accent}0D` } : null),
+        ...(on ? { background: tint(accent, 5) } : null),
         ["--row" as string]: rowIndex,
       }}
     >
@@ -356,7 +357,7 @@ function DropdownPicker({
                 byId.get(selected[0]) ??
                 topOptions.find((t) => t.id === selected[0]);
               const Icon = o?.icon;
-              const c = o?.color ?? "#0071E3";
+              const c = o?.color ?? "var(--ink-bright-blue)";
               return (
                 <span className="flex min-w-0 items-center gap-2 text-text-primary">
                   {Icon && (
@@ -394,7 +395,7 @@ function DropdownPicker({
                     }
                   }}
                   className={cnChip(c)}
-                  style={c ? { background: `${c}16`, color: c } : undefined}
+                  style={c ? { background: tint(c, 9), color: c } : undefined}
                 >
                   {/* THE FOURTH PLACE THIS DRAWS A CHIP, and the one that was
                       still wrong (Anir, Aug 28: "profile pictures here too").
@@ -540,7 +541,7 @@ function DropdownPicker({
                   if (!g.name) return null;
                   const pickedHere = g.items.filter((o) => selected.includes(o.id)).length;
                   const head = g.items[0];
-                  const accent = head?.color || "#0071E3";
+                  const accent = head?.color || "var(--ink-bright-blue)";
                   const HeadIcon = head?.icon;
                   return (
                     <button
@@ -552,7 +553,7 @@ function DropdownPicker({
                       {HeadIcon ? (
                         <span
                           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                          style={{ background: `${accent}16`, color: accent }}
+                          style={{ background: tint(accent, 9), color: accent }}
                         >
                           <HeadIcon size={12} strokeWidth={2.4} />
                         </span>
@@ -666,7 +667,7 @@ export function MultiPicker({
                 onClick={() => onToggle(id)}
                 title="Remove"
                 className={cnChip(c)}
-                style={c ? { background: `${c}16`, color: c } : undefined}
+                style={c ? { background: tint(c, 9), color: c } : undefined}
               >
                 {o?.agentName ? (
                   <AgentAvatar name={o.agentName} size={18} className="shrink-0" />

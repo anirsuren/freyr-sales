@@ -285,11 +285,11 @@ export function RepAnalytics({
             ];
             // Same three KPIs, each with a mini bar = this rep vs the team best.
             const kpiViz = [
-              { label: "Avg deal", value: formatMoney(rep.avgDeal), pct: Math.round((rep.avgDeal / teamMax.avgDeal) * 100), color: "#7C3AED" },
-              { label: "Qualified+", value: String(rep.qualifiedPlus), pct: Math.round((rep.qualifiedPlus / teamMax.qualifiedPlus) * 100), color: "#1A7A35" },
+              { label: "Avg deal", value: formatMoney(rep.avgDeal), pct: Math.round((rep.avgDeal / teamMax.avgDeal) * 100), color: "var(--ink-violet-soft)" },
+              { label: "Qualified+", value: String(rep.qualifiedPlus), pct: Math.round((rep.qualifiedPlus / teamMax.qualifiedPlus) * 100), color: "var(--ink-green)" },
               // Burnt orange, not amber: the yellow band is banned app-wide,
               // fills included, so a KPI bar never reads mustard (Anir, Jul 27).
-              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#C2410C" },
+              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "var(--ink-orange)" },
             ];
             const repPipelineChartData = rep.stageValues.map((s) => ({
               label: s.stage.replace("Meeting Booked", "Meeting"),

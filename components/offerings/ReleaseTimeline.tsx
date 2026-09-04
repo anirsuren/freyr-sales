@@ -12,6 +12,7 @@ import { ChevronDown } from "lucide-react";
  * when".
  */
 import type { OfferingRelease } from "@/lib/offerings";
+import { tint } from "@/lib/tint";
 
 const TIMELINE_MONTHS = [
   "jan",
@@ -277,7 +278,7 @@ export function ReleaseTimeline({
   const TONE = {
     past: { dot: "#8E98A8", text: "text-[#5A6472]", panel: "bg-white" },
     current: { dot: "#20B15A", text: "text-[#137A3C]", panel: "bg-[rgba(32,177,90,0.06)]" },
-    next: { dot: "#0071E3", text: "text-blue-primary", panel: "bg-blue-light/25" },
+    next: { dot: "var(--ink-bright-blue)", text: "text-blue-primary", panel: "bg-blue-light/25" },
   } as const;
 
   return (
@@ -379,7 +380,7 @@ export function ReleaseTimeline({
                     className="block h-[19px] w-[19px] rounded-full border-[4px] border-white"
                     style={{
                       backgroundColor: dated ? tone.dot : "#FFFFFF",
-                      boxShadow: `0 0 0 2px ${dated ? tone.dot : `${tone.dot}66`}, 0 2px 6px rgba(15,23,42,0.18)`,
+                      boxShadow: `0 0 0 2px ${dated ? tone.dot : tint(tone.dot, 40)}, 0 2px 6px rgba(15,23,42,0.18)`,
                     }}
                   />
                 </div>

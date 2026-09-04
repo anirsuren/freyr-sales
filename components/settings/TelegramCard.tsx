@@ -66,12 +66,12 @@ export function TelegramCard() {
         </div>
         <span
           className="inline-flex items-center gap-2 text-[13px] font-medium shrink-0"
-          style={{ color: configured ? "#1A7A35" : "#7A4A00" }}
+          style={{ color: configured ? "var(--ink-green)" : "#7A4A00" }}
         >
           <span
             className="w-2 h-2 rounded-full"
             // not-configured dot: burnt orange, not the banned amber
-            style={{ backgroundColor: configured ? "#34C759" : "#C2410C" }}
+            style={{ backgroundColor: configured ? "#34C759" : "var(--ink-orange)" }}
           />
           {configured ? "Connected" : "Not configured"}
         </span>

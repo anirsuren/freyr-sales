@@ -50,12 +50,12 @@ export const dynamic = "force-dynamic";
 // wording ("Regulatory Strategy", "Reg Affairs", "Submissions Ops", …).
 const SKILL_STYLES: { test: RegExp; bg: string; color: string; icon: LucideIcon }[] = [
   { test: /complian|audit|gxp|gvp|inspection/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C", icon: ShieldCheck },
-  { test: /submiss|document|dossier|publish|ectd/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9", icon: FileText },
+  { test: /submiss|document|dossier|publish|ectd/i, bg: "rgba(124,58,237,0.10)", color: "var(--ink-violet)", icon: FileText },
   // was #B45309 on an amber wash — the brown-mustard chip Suren banned Jul 27
-  { test: /quality|qa\b|cmc|manufactur|gmp/i, bg: "rgba(194,65,12,0.12)", color: "#C2410C", icon: Award },
+  { test: /quality|qa\b|cmc|manufactur|gmp/i, bg: "rgba(194,65,12,0.12)", color: "var(--ink-orange)", icon: Award },
   { test: /clinical|medical|scientif|pharmacovig|safety|drug/i, bg: "rgba(5,150,105,0.12)", color: "#047857", icon: FlaskConical },
-  { test: /label|artwork|packag/i, bg: "rgba(15,157,140,0.12)", color: "#0F766E", icon: Tag },
-  { test: /regulat|strategy|affairs|intellig|policy/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0", icon: Target },
+  { test: /label|artwork|packag/i, bg: "rgba(15,157,140,0.12)", color: "var(--ink-teal-deep)", icon: Tag },
+  { test: /regulat|strategy|affairs|intellig|policy/i, bg: "rgba(0,113,227,0.10)", color: "var(--ink-blue)", icon: Target },
 ];
 function skillStyle(skill: string): { bg: string; color: string; icon: LucideIcon } {
   const hit = SKILL_STYLES.find((s) => s.test.test(skill));
@@ -201,7 +201,7 @@ export default async function ContactDetailPage({
                 <Badge
                   label={contact.role_bucket}
                   bg="rgba(0,113,227,0.10)"
-                  color="#0040A0"
+                  color="var(--ink-blue)"
                   icon={roleIcon(contact.role_bucket)}
                   className="!normal-case tracking-normal"
                 />

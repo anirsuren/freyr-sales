@@ -55,6 +55,7 @@ import {
   type ContractStatus,
   type ContractsState,
 } from "@/lib/contractsShared";
+import { tint } from "@/lib/tint";
 
 /**
  * CONTRACTS (Suren, Aug 25): "where we are logically closing."
@@ -528,7 +529,7 @@ export function ContractsModule({
           icon={AlertTriangle}
           label="Deals waiting on a contract"
           value={String(awaiting.length)}
-          color="#B45309"
+          color="var(--ink-amber)"
           warn={awaiting.length > 0}
           sub={'at "Submitted to client" with nothing drafted'}
         />
@@ -544,7 +545,7 @@ export function ContractsModule({
       {awaiting.length > 0 && (
         <section className="mt-4 rounded-xl border border-[rgba(180,83,9,0.3)] bg-white p-5 shadow-card">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <AlertTriangle size={15} strokeWidth={2} style={{ color: "#B45309" }} />
+            <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--ink-amber)" }} />
             Deals sitting at “Submitted to client”
             <InfoHint text="These deals are marked “Submitted to client” and nobody has written the contract yet. That is the point where sales hands the deal to delivery: press Convert to contract on the deal. Every deal here is a handover still waiting." />
           </h2>
@@ -627,7 +628,7 @@ export function ContractsModule({
             collapsible={false}
             options={[
               { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "customer", label: "Group by customer", color: "#0071E3" },
+              { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)" },
               { value: "status", label: "Group by status", color: "#4338CA" },
             ]}
           />
@@ -641,9 +642,9 @@ export function ContractsModule({
             dense
             collapsible={false}
             options={[
-              { value: "value", label: "Biggest first", color: "#0071E3" },
+              { value: "value", label: "Biggest first", color: "var(--ink-bright-blue)" },
               { value: "customer", label: "Customer A–Z", color: "#8E98A8" },
-              { value: "starting", label: "Starting soonest", color: "#0F766E" },
+              { value: "starting", label: "Starting soonest", color: "var(--ink-teal-deep)" },
               { value: "status", label: "By status", color: "#4338CA" },
             ]}
           />
@@ -750,7 +751,7 @@ export function ContractsModule({
                   <span
                     className="shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                     style={{
-                      background: `${contractStatusColor(c.status)}18`,
+                      background: tint(contractStatusColor(c.status), 9),
                       color: contractStatusColor(c.status),
                     }}
                   >
@@ -1139,7 +1140,7 @@ export function ContractsModule({
                             type="button"
                             onClick={() => setConfirmDelete(c)}
                             title="Delete this contract"
-                            className="rounded-lg p-1.5 text-[color:#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                            className="rounded-lg p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                           >
                             <Trash2 size={13} strokeWidth={2.2} />
                           </button>
@@ -1250,7 +1251,7 @@ export function ContractsModule({
                        "profile Pictures, hello"). Every other picker in the
                        app carries the logo; these two were the holdouts. */
                     logoName: d.customer,
-                    color: "#0071E3",
+                    color: "var(--ink-bright-blue)",
                   })),
                 ]}
               />
@@ -1496,7 +1497,7 @@ export function ContractsModule({
                 The months add up to{" "}
                 <b className="tnum text-text-primary">{formatMoney(scheduleTotalNow)}</b>
                 {Math.abs(scheduleTotalNow - scheduleValue) > 1 && (
-                  <span className="font-semibold text-[color:#B45309]">
+                  <span className="font-semibold text-[color:var(--ink-amber)]">
                     {" "}
                     — that is {formatMoney(Math.abs(scheduleTotalNow - scheduleValue))}{" "}
                     {scheduleTotalNow > scheduleValue ? "more" : "less"} than the

@@ -77,14 +77,14 @@ const COL_HINTS: Record<string, string> = {
 
 const SIGNAL: Record<string, { label: string; bars: number; color: string }> = {
   large: { label: "High", bars: 3, color: "#34C759" }, // green
-  mid: { label: "Medium", bars: 2, color: "#0071E3" }, // blue
-  small: { label: "Low", bars: 1, color: "#C2410C" }, // burnt orange, tracks the warning token
+  mid: { label: "Medium", bars: 2, color: "var(--ink-bright-blue)" }, // blue
+  small: { label: "Low", bars: 1, color: "var(--ink-orange)" }, // burnt orange, tracks the warning token
 };
 
 // Color-code industries so the table scans at a glance (Suren).
 const INDUSTRY_STYLE: Record<string, { bg: string; color: string }> = {
   Biotechnology: { bg: "rgba(25,195,177,0.14)", color: "#0E7C70" },
-  Pharmaceutical: { bg: "rgba(0,113,227,0.10)", color: "#0040A0" },
+  Pharmaceutical: { bg: "rgba(0,113,227,0.10)", color: "var(--ink-blue)" },
   "Consumer Health": { bg: "rgba(224,51,142,0.12)", color: "#A31E68" },
   "Medical Device": { bg: "rgba(255,159,10,0.16)", color: "#8A5A00" },
 };
@@ -100,7 +100,7 @@ function industryStyle(ind: string | null) {
 function Signal({ tier }: { tier: string | null }) {
   const s = tier ? SIGNAL[tier] : null;
   const bars = s?.bars ?? 0;
-  const color = s?.color || "#0071E3";
+  const color = s?.color || "var(--ink-bright-blue)";
   const sizeLabel = tier ? SIZE_TIER_LABEL[tier] || tier : null;
   const label = s
     ? `${s.label} opportunity: based on company size (${sizeLabel}). Bigger accounts tend to mean bigger potential deals.`
@@ -191,20 +191,43 @@ export function CustomersBrowser({
     currentUser.id
   );
   const [query, setQuery] = useState("");
-  const [healthFilter, setHealthFilter] = useState("all");
+
   const [sort, setSort] = useState("recent");
-  /* THE SAME GROUPING THE PIPELINE HAS (Anir, Aug 30: "bring that customer
-     also, that kind of a grouping first"). Summary leads, because the question
-     people arrive with is what the book is worth, not what row 14 says. */
+  /**
+   * THE LIST IS THE PAGE (Manoj, Sep 3: "In Customers, we will only need
+   * 'Customer Group', 'Customer' and 'Owner'. Remove opportunities, tiles, and
+   * all other data and filters").
+   *
+   * This reverses Anir's Aug 30 arrangement, so the reasoning behind that one
+   * is kept: the deal summary led "because the question people arrive with is
+   * what the book is worth, not what row 14 says". That question now has its
+   * own home on Opportunities, and everything an account knows about itself is
+   * one click away on the account page. What was left here was the pipeline's
+   * numbers on somebody else's screen.
+   */
   const [shape, setShape] = useStoredView<"summary" | "list">(
     "freyr.customers.shape",
     "summary",
     ["summary", "list"] as const
   );
-  const [custDims, setCustDims] = useStickyValue<SummaryDimension[]>(
+  /* THREE, AND ONLY THESE THREE (Manoj, Sep 4, pointing at the chip row:
+     "in customers, we will only need customer group, customer, and owner...
+     And everything else you can take this off. Like offering, right?
+     Opportunity category, all this we don't need").
+
+     Offering and Opportunity category are facts about a DEAL, and this is the
+     customer page — cutting the book by them here answered a question nobody
+     came to this screen to ask. A stored preference from before today can
+     still name them, so `allowedCustomerDims` filters what comes back. */
+  const [storedCustDims, setCustDims] = useStickyValue<SummaryDimension[]>(
     "freyr.customers.dims",
-    ["group", "customer", "offering", "revenue"]
+    ["group", "customer", "owner"]
   );
+  const custDims = useMemo(() => {
+    const allowed: SummaryDimension[] = ["group", "customer", "owner"];
+    const kept = storedCustDims.filter((d) => allowed.includes(d));
+    return kept.length ? kept : allowed;
+  }, [storedCustDims]);
   const [custMeasure, setCustMeasure] = useStickyValue<EstimateMeasure>(
     "freyr.customers.measure",
     "tcv"
@@ -213,9 +236,12 @@ export function CustomersBrowser({
     "freyr.customers.timeline",
     "quarterly"
   );
+  /* THE TABLE, NOT CARDS (Manoj, Sep 3: the three columns are the point of
+     this page, and a card grid cannot show three columns). Cards remain
+     available from the switch for anyone who prefers them. */
   const [view, setView] = useStoredView<"grid" | "table">(
     "freyr.customers.view",
-    "grid",
+    "table",
     ["grid", "table"]
   );
   const [page, setPage] = useState(1);
@@ -318,7 +344,6 @@ export function CustomersBrowser({
   useEffect(() => {
     setLoadedListUserId(null);
     const params = new URLSearchParams(window.location.search);
-    const nextHealth = params.get("health") || "all";
     const nextSort = params.get("sort") || "recent";
     /* A MISSING URL PARAM IS NOT A CHOICE (Anir, Aug 26: "when I switch the
        mode from tile to list and then go to another page, reload, and go back
@@ -331,11 +356,6 @@ export function CustomersBrowser({
        overrides storage now. */
     const nextView = params.get("view");
     setQuery(params.get("q") || "");
-    setHealthFilter(
-      ["all", "healthy", "watch", "at_risk"].includes(nextHealth)
-        ? nextHealth
-        : "all"
-    );
     setSort(
       ["recent", "company", "size", "health"].includes(nextSort)
         ? nextSort
@@ -359,7 +379,6 @@ export function CustomersBrowser({
       else url.searchParams.set(key, value);
     };
     setOrDelete("q", query, "");
-    setOrDelete("health", healthFilter, "all");
     setOrDelete("sort", sort, "recent");
     setOrDelete("view", view, "grid");
     url.searchParams.delete("page");
@@ -367,7 +386,6 @@ export function CustomersBrowser({
     window.history.replaceState(null, "", url.toString());
   }, [
     currentUser.id,
-    healthFilter,
     loadedListUserId,
     perPage,
     query,
@@ -395,9 +413,7 @@ export function CustomersBrowser({
         !query ||
         c.company_name.toLowerCase().includes(query.toLowerCase()) ||
         (c.industry || "").toLowerCase().includes(query.toLowerCase());
-      const matchesHealth =
-        healthFilter === "all" || c.health.band === healthFilter;
-      return matchesQuery && matchesHealth;
+      return matchesQuery;
     });
     v = [...v];
     if (sort === "company") v.sort((a, b) => a.company_name.localeCompare(b.company_name));
@@ -411,12 +427,12 @@ export function CustomersBrowser({
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     return v;
-  }, [customers, query, healthFilter, sort, sizeRank]);
+  }, [customers, query, sort, sizeRank]);
 
   // reset to first page whenever the result set changes
   useEffect(() => {
     setPage(1);
-  }, [query, healthFilter, sort]);
+  }, [query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const current = Math.min(page, pageCount);
@@ -620,27 +636,17 @@ export function CustomersBrowser({
         onQuery={setQuery}
         placeholder="Search customers…"
         searchAriaLabel="Search customers"
-        onClearAll={() => {
-          setQuery("");
-          setHealthFilter("all");
-        }}
-        groups={[
-          {
-            key: "health",
-            label: "Health",
-            // Single-select underneath, so picking one replaces the last.
-            values: healthFilter === "all" ? [] : [healthFilter],
-            onChange: (next) => setHealthFilter(next[next.length - 1] ?? "all"),
-            options: [
-              { value: "healthy", label: "Healthy", color: HEALTH_COLOR.healthy.color },
-              // Pulled from HEALTH_COLOR like its neighbours instead of a
-              // hardcoded yellow — the option label is rendered AS this colour,
-              // and #EAB308 was both illegible and out of sync with the badge.
-              { value: "watch", label: "Watch", color: HEALTH_COLOR.watch.color },
-              { value: "at_risk", label: "At risk", color: HEALTH_COLOR.at_risk.color },
-            ],
-          },
-        ]}
+        onClearAll={() => setQuery("")}
+        /* NO FILTERS ON THIS LIST (Manoj's change sheet, item 22: "In
+           Customers, we will only need 'Customer Group', 'Customer' and
+           'Owner'. Remove opportunities, tiles, and all other data and
+           filters").
+
+           Health was the only one left, and it filtered on a column this table
+           no longer shows — so the list would come back shorter with nothing
+           on screen to say why. Search and sort stay: they are how you find a
+           row, not extra data about it. */
+        groups={[]}
         sort={
           <ColorSelect
             value={sort}
@@ -655,9 +661,9 @@ export function CustomersBrowser({
               // colour (standing rule: chips and dropdowns are never gray).
               // Dark teal, not amber: this label is drawn in its own colour, and
               // it must not echo the caution orange in the health filter beside it.
-              { value: "recent", label: "Newest", icon: CalendarClock, color: "#0F766E" },
-              { value: "company", label: "Company A, Z", icon: ArrowDownAZ, color: "#0071E3" },
-              { value: "size", label: "Opportunity", icon: Target, color: "#7C3AED" },
+              { value: "recent", label: "Newest", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+              { value: "company", label: "Company A, Z", icon: ArrowDownAZ, color: "var(--ink-bright-blue)" },
+              { value: "size", label: "Opportunity", icon: Target, color: "var(--ink-violet-soft)" },
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
           />
@@ -689,7 +695,7 @@ export function CustomersBrowser({
                   label: "All on one page",
                   icon: Rows3,
                   short: "All",
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                 },
                 ...[8, 12, 24, 48].map<ColorOption>((n) => ({
                   value: String(n),
@@ -698,7 +704,7 @@ export function CustomersBrowser({
                   // Rows3 alone would collapse every page size to one identical
                   // glyph, so the compressed square shows the number itself.
                   short: String(n),
-                  color: "#0071E3",
+                  color: "var(--ink-bright-blue)",
                 })),
               ]}
             />
@@ -768,6 +774,11 @@ export function CustomersBrowser({
           summary pointed at the same deals: the money is each account's TCV,
           the four levels stack in any order, and the count says accounts
           rather than deals because this is the customer page. */}
+      {/* THE DEAL SUMMARY IS GONE FROM THIS PAGE (Manoj, Sep 3: "Remove
+          opportunities, tiles, and all other data and filters"). It lived
+          here from Aug 30 so the customer list carried the same grouping as
+          the pipeline; that view still exists, on Opportunities, which is
+          where the pipeline question belongs. */}
       {shape === "summary" && (() => {
         /* THE SUMMARY READS WHAT THE PAGE IS SHOWING (Anir, Aug 30: "that
            list and then the filtering and all that should be based on whatever
@@ -790,6 +801,12 @@ export function CustomersBrowser({
         );
         return (
         <div className="mb-4">
+          {/* THE TILES STAY. Item 22 read "remove opportunities, tiles, and
+              all other data and filters", and they came out — then Manoj, Sep
+              4, looking at the page without them: "Number of customers, uh,
+              with open deals. Okay, let these tiles be there, but from this
+              filtering point of view, whatever these are, just have only these
+              three." The line was about the CUTS, not the headline numbers. */}
           <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatTile
               icon={Building2}
@@ -820,6 +837,25 @@ export function CustomersBrowser({
           <Card className="p-4">
             <OpportunitySummary
               storageKey="freyr.customers.summaryOpen"
+              /* THE CUSTOMER PAGE CUTS BY THREE THINGS AND STOPS AT THE
+                 ACCOUNT (Manoj, Sep 4: "customer group, customer, and owner.
+                 Only three... We don't want opportunities in this screen at
+                 all"). Without `dimensions` the chip row offers Offering and
+                 Opportunity category back; without `hideDealRows` an account
+                 unfolds into its deals and this becomes the opportunities
+                 list wearing a different heading. */
+              dimensions={["group", "customer", "owner"]}
+              hideDealRows
+              /* And the account's own name goes to the account, not to a deal:
+                 "It should take us to the information about Galderma." */
+              rowHref={(dim, label) => {
+                if (dim !== "customer") return null;
+                const match = customers.find(
+                  (c) =>
+                    c.company_name.trim().toLowerCase() === label.trim().toLowerCase()
+                );
+                return match ? `/customers/${match.id}` : null;
+              }}
               deals={scoped}
               order={custDims}
               onReorder={setCustDims}
@@ -954,12 +990,9 @@ filtered.length === 0 ? (
           title="No customers match"
           description="Try a different search term or clear the filters."
           action={
-            query || healthFilter !== "all" ? (
+            query ? (
               <button
-                onClick={() => {
-                  setQuery("");
-                  setHealthFilter("all");
-                }}
+                onClick={() => setQuery("")}
                 className="text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
               >
                 Clear filters
@@ -996,7 +1029,12 @@ filtered.length === 0 ? (
               <thead>
                 <tr className="bg-surface border-b border-border-light">
                   {selectMode && <th className="pl-5 py-3 w-8" />}
-                  {["Company", "Opportunity", "Health", "Industry", "Contacts", "Last Outcome", "Last Session"].map((h) => (
+                  {/* THREE COLUMNS (Manoj, Sep 3: "In Customers, we will only need
+                      Customer Group, Customer and Owner. Remove opportunities, tiles,
+                      and all other data and filters."). Everything the deal
+                      pipeline knows about an account lives on the account page
+                      now, one click away, rather than crowding the list. */}
+                  {["Customer group", "Customer", "Owner"].map((h) => (
                     <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         {h}
@@ -1029,6 +1067,15 @@ filtered.length === 0 ? (
                         </button>
                       </td>
                     )}
+                    {/* CUSTOMER GROUP, FIRST (Manoj, Sep 3). The name of the
+                        group this account belongs to, or the honest absence of
+                        one — the same wording the pipeline uses so the two
+                        screens agree. */}
+                    <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
+                      {customerGroups.find((g) => g.customerIds.includes(c.id))?.name ?? (
+                        <span className="text-text-tertiary">No customer group</span>
+                      )}
+                    </td>
                     <td className="px-5 py-4">
                       <HoverCard
                         side="bottom"
@@ -1085,52 +1132,17 @@ filtered.length === 0 ? (
                         </Link>
                       </HoverCard>
                     </td>
-                    <td className="px-5 py-4"><Signal tier={c.size_tier} /></td>
-                    <td className="px-5 py-4"><HealthBar health={c.health} /></td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      {/* IndustryTag, not a local one-off. This cell had its
-                          own colour table and its own type scale, so Industry
-                          was the one column in the table wearing a different
-                          font from everything around it and a different chip
-                          from every other industry in the app (Anir, Aug 15:
-                          "industry font looks weird, make it the same as the
-                          other ones"). The shared tag also brings the icon the
-                          chip rule asks for. */}
-                      {c.industry ? (
-                        <IndustryTag industry={c.industry} size="sm" />
+                    {/* OWNER (Manoj, Sep 3). It was buried in the hover card;
+                        it is one of the three things this list is for. */}
+                    <td className="px-5 py-4 text-[13px] whitespace-nowrap">
+                      {c.owner ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Avatar name={c.owner} className="h-6 w-6 text-[10px]" />
+                          <span className="text-text-primary">{c.owner}</span>
+                        </span>
                       ) : (
-                        <span className="text-[13px] text-text-tertiary">-</span>
+                        <span className="text-text-tertiary">Unassigned</span>
                       )}
-                    </td>
-                    <td className="px-5 py-4">
-                      {c.contacts_preview.length > 0 ? (
-                        <div className="flex items-center -space-x-2">
-                          {c.contacts_preview.slice(0, 3).map((ct) => (
-                            <Link
-                              key={ct.id}
-                              href={`/contacts/${ct.id}`}
-                              aria-label={`Open ${ct.name}`}
-                              className="relative rounded-full hover:z-10"
-                            >
-                              <Avatar
-                                name={ct.name}
-                                className="w-7 h-7 text-[10px] ring-2 ring-[color:var(--white)]"
-                              />
-                            </Link>
-                          ))}
-                          {c.contact_count > 3 && (
-                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-[color:var(--white)] tnum">
-                              +{c.contact_count - 3}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[13px] text-text-tertiary">-</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">{c.last_outcome ? <OutcomeBadge outcome={c.last_outcome} /> : "-"}</td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
-                      {c.last_session_date ? formatDateTime(c.last_session_date) : "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">

@@ -109,10 +109,10 @@ export type TimelineRelease = FdlRelease & {
 /** Semantic version colours: released green, current blue, expected purple. */
 function toneOf(release: TimelineRelease) {
   if (release.current)
-    return { dot: "#0071E3", bar: "rgba(0,113,227,0.22)", label: "Current" };
+    return { dot: "var(--ink-bright-blue)", bar: "rgba(0,113,227,0.22)", label: "Current" };
   if (release.status === "next")
-    return { dot: "#6D28D9", bar: "rgba(124,58,237,0.20)", label: "Expected" };
-  return { dot: "#1A7A35", bar: "rgba(26,122,53,0.20)", label: "Released" };
+    return { dot: "var(--ink-violet)", bar: "rgba(124,58,237,0.20)", label: "Expected" };
+  return { dot: "var(--ink-green)", bar: "rgba(26,122,53,0.20)", label: "Released" };
 }
 
 /** Rough pill width so the lane logic can spot collisions before they paint.

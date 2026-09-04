@@ -17,6 +17,7 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 export type CustomerDealRowData = {
   id: string;
@@ -57,7 +58,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
       <span className="flex min-w-0 items-center gap-3">
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-          style={{ color, background: `${color}16` }}
+          style={{ color, background: tint(color, 9) }}
         >
           <BriefcaseBusiness size={16} strokeWidth={1.9} />
         </span>
@@ -74,7 +75,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
       <span className="min-w-0">
         <span
           className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[10.5px] font-semibold"
-          style={{ color, background: `${color}14` }}
+          style={{ color, background: tint(color, 8) }}
         >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
           <span>{stage}</span>

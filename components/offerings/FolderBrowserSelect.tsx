@@ -130,7 +130,7 @@ export function FolderBrowserSelect({
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
             value
               ? "bg-blue-light text-blue-primary"
-              : "bg-[color:#B02020]/10 text-[color:#B02020]"
+              : "bg-[color:#B02020]/10 text-[color:var(--ink-red)]"
           }`}
         >
           <Folder size={13} strokeWidth={2.1} />
@@ -208,7 +208,7 @@ export function FolderBrowserSelect({
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                           parent
-                            ? "bg-[color:#7C3AED]/10 text-[color:#7C3AED]"
+                            ? "bg-[color:#7C3AED]/10 text-[color:var(--ink-violet-soft)]"
                             : "bg-blue-light text-blue-primary"
                         }`}
                       >

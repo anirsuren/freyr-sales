@@ -15,6 +15,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import { formatMoney, STAGE_COLOR, STAGE_PROBABILITY } from "@/lib/pipeline";
+import { tint } from "@/lib/tint";
 
 interface StageStat {
   stage: string;
@@ -36,7 +37,7 @@ type OutcomeContact = { name: string; company: string; contactId: string };
 // three inches below showed the same two stages their real colours. One screen,
 // two stories. Every stage renderer on this page now reads the one map.
 const stageColor = (stage: string) =>
-  STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "#0071E3";
+  STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "var(--ink-bright-blue)";
 
 // The unfilled share of a rate ring. A light wash of the SAME hue as the
 // achieved arc (Qualified violet at 15%), so it reads as "this measure, not yet
@@ -44,7 +45,7 @@ const stageColor = (stage: string) =>
 // tint on purpose: it composites over whatever card it sits on, so it stays
 // quiet in dark mode instead of turning into the brightest thing in the ring.
 // Never red — a shortfall on a rate donut is not an alarm.
-const RATE_SHORTFALL = `${STAGE_COLOR.Qualified}26`;
+const RATE_SHORTFALL = tint(STAGE_COLOR.Qualified, 15);
 
 // The "who" reveal — the deals or contacts behind a bar/segment.
 function WhoPanel({ children }: { children: React.ReactNode }) {
@@ -393,7 +394,7 @@ export function AnalyticsView({
                       }`}
                       style={
                         !active && lit
-                          ? { background: `${o.color}1F`, boxShadow: `inset 0 0 0 1px ${o.color}59` }
+                          ? { background: tint(o.color, 12), boxShadow: `inset 0 0 0 1px ${tint(o.color, 35)}` }
                           : undefined
                       }
                     >

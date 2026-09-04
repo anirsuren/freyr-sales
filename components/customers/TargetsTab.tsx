@@ -25,6 +25,7 @@ import {
   tierColor,
   type TargetAccount,
 } from "@/lib/targetsShared";
+import { tint } from "@/lib/tint";
 
 /**
  * THE TARGET LIST — companies to go win, one step before Opportunities.
@@ -341,7 +342,7 @@ export function TargetsTab({
                       options: quarters.map((q) => ({
                         value: q,
                         label: q,
-                        color: "#0071E3",
+                        color: "var(--ink-bright-blue)",
                       })),
                     },
                   ]
@@ -477,7 +478,7 @@ export function TargetsTab({
                       <td className="px-2 py-2.5">
                         <span
                           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-                          style={{ background: `${d.color}14`, color: d.color }}
+                          style={{ background: tint(d.color, 8), color: d.color }}
                         >
                           <d.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
                           {t.domain}
@@ -488,7 +489,7 @@ export function TargetsTab({
                           <span
                             className="rounded-full px-2 py-0.5 text-[11px] font-bold"
                             style={{
-                              background: `${tierColor(t.tier)}14`,
+                              background: tint(tierColor(t.tier), 8),
                               color: tierColor(t.tier),
                             }}
                           >
@@ -540,7 +541,7 @@ export function TargetsTab({
                       </td>
                       <td className="px-2 py-2.5">
                         {t.quarter ? (
-                          <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0058B0]">
+                          <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-blue-soft)]">
                             {t.quarter}
                           </span>
                         ) : (
@@ -559,9 +560,9 @@ export function TargetsTab({
                                     ? "rgba(0,113,227,0.10)"
                                     : "rgba(142,152,168,0.14)",
                                 color: /^[1]/.test(t.degreeOfConnection)
-                                  ? "#0F766E"
+                                  ? "var(--ink-teal-deep)"
                                   : /^2/.test(t.degreeOfConnection)
-                                    ? "#0058B0"
+                                    ? "var(--ink-blue-soft)"
                                     : "#59616E",
                               }}
                               title="Degree of connection. 1 is a warm intro, 3 is cold"
@@ -848,7 +849,7 @@ export function TargetsTab({
                     ...["Q1", "Q2", "Q3", "Q4"].map((q) => ({
                       value: q,
                       label: q,
-                      color: "#0071E3",
+                      color: "var(--ink-bright-blue)",
                       icon: CalendarDays,
                     })),
                   ]}
@@ -866,8 +867,8 @@ export function TargetsTab({
                   onChange={(v) => set({ degreeOfConnection: v })}
                   options={[
                     { value: "", label: "No intro yet", color: "#C7CDD6" },
-                    { value: "1", label: "1, direct contact", color: "#0F766E" },
-                    { value: "2", label: "2, a warm intro exists", color: "#0071E3" },
+                    { value: "1", label: "1, direct contact", color: "var(--ink-teal-deep)" },
+                    { value: "2", label: "2, a warm intro exists", color: "var(--ink-bright-blue)" },
                     { value: "3", label: "3, cold", color: "#8E98A8" },
                   ]}
                 />

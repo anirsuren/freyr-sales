@@ -85,6 +85,7 @@ import { RoadmapTimeline } from "@/components/offerings/RoadmapTimeline";
 import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHistory";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { tint } from "@/lib/tint";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -412,7 +413,7 @@ export function FdlComponentDetail({
   const versionOptions: ColorOption[] = releases.map((release) => ({
     value: release.id,
     label: release.current ? `${withV(release.version)} (current)` : withV(release.version),
-    color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+    color: release.status === "released" ? "var(--ink-green)" : "var(--ink-violet)",
     icon: release.status === "released" ? CircleCheck : Clock,
   }));
 
@@ -1007,7 +1008,7 @@ export function FdlComponentDetail({
               }).length;
               const open = openVersions.has(release.id);
               const shipped = release.status === "released";
-              const accent = shipped ? "#1A7A35" : "#6D28D9";
+              const accent = shipped ? "var(--ink-green)" : "var(--ink-violet)";
               return (
                 <div
                   key={release.id}
@@ -1032,7 +1033,7 @@ export function FdlComponentDetail({
                     release.current
                       ? {
                           background: "rgba(232,241,251,0.55)",
-                          borderColor: "#0071E3",
+                          borderColor: "var(--ink-bright-blue)",
                         }
                       : undefined
                   }
@@ -1043,7 +1044,7 @@ export function FdlComponentDetail({
                     className={`absolute inset-y-0 left-0 ${
                       release.current ? "w-[6px]" : "w-[3px]"
                     }`}
-                    style={{ background: release.current ? "#0071E3" : accent }}
+                    style={{ background: release.current ? "var(--ink-bright-blue)" : accent }}
                   />
                   <div
                     className="flex cursor-pointer items-center gap-3 px-3.5 py-3"
@@ -1096,8 +1097,8 @@ export function FdlComponentDetail({
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
                             style={{
                               color: accent,
-                              background: `${accent}14`,
-                              border: `1px solid ${accent}40`,
+                              background: tint(accent, 8),
+                              border: `1px solid ${tint(accent, 25)}`,
                             }}
                           >
                             {shipped ? (
@@ -1383,9 +1384,9 @@ export function FdlComponentDetail({
                           }
                           className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50"
                           style={{
-                            color: shipped ? "#6D28D9" : "#1A7A35",
-                            borderColor: `${shipped ? "#6D28D9" : "#1A7A35"}40`,
-                            background: `${shipped ? "#6D28D9" : "#1A7A35"}0D`,
+                            color: shipped ? "var(--ink-violet)" : "var(--ink-green)",
+                            borderColor: tint(shipped ? "var(--ink-violet)" : "var(--ink-green)", 25),
+                            background: tint(shipped ? "var(--ink-violet)" : "var(--ink-green)", 5),
                           }}
                         >
                           {shipped ? (
@@ -1423,7 +1424,7 @@ export function FdlComponentDetail({
                             type="button"
                             aria-label={`Remove ${withV(release.version)}`}
                             onClick={() => setConfirmReleaseDelete(release.id)}
-                            className="text-[color:#DC2626] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            className="text-[color:var(--status-red)] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
@@ -1502,7 +1503,7 @@ export function FdlComponentDetail({
                                   <Check
                                     size={12}
                                     strokeWidth={2.6}
-                                    className="mt-[3px] shrink-0 text-[color:#1A7A35]"
+                                    className="mt-[3px] shrink-0 text-[color:var(--ink-green)]"
                                   />
                                   <span>
                                     {feature.fid && (
@@ -1603,11 +1604,11 @@ export function FdlComponentDetail({
                                         style={
                                           isLatest
                                             ? {
-                                                color: "#1A7A35",
+                                                color: "var(--ink-green)",
                                                 background: "rgba(26,122,53,0.1)",
                                               }
                                             : {
-                                                color: "#B4318F",
+                                                color: "var(--ink-magenta)",
                                                 background: "rgba(180,49,143,0.1)",
                                               }
                                         }
@@ -1757,7 +1758,7 @@ export function FdlComponentDetail({
           <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>
           <FdlTypeChip type={component.type} />
           {current && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[color:#0040A0]">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[color:var(--ink-blue)]">
               <Rocket size={11} strokeWidth={2.2} /> Current {withV(current)}
             </span>
           )}
@@ -1790,7 +1791,7 @@ export function FdlComponentDetail({
               onClick={() => setConfirmDeleteComponent(true)}
               aria-label={`Delete ${component.name}`}
               title={`Delete ${component.name}`}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-light bg-white text-[color:#DC2626] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-light bg-white text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
             >
               <Trash2 size={15} strokeWidth={1.9} />
             </button>
@@ -1950,7 +1951,7 @@ export function FdlComponentDetail({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               {readingFeature.fid && (
-                <span className="inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
+                <span className="inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.03em] text-[color:var(--ink-blue)] tnum">
                   {readingFeature.fid}
                 </span>
               )}
@@ -1961,7 +1962,7 @@ export function FdlComponentDetail({
                     key={release.id}
                     className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
                     style={{
-                      color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+                      color: release.status === "released" ? "var(--ink-green)" : "var(--ink-violet)",
                       background:
                         release.status === "released"
                           ? "rgba(26,122,53,0.08)"
@@ -2595,7 +2596,7 @@ export function FdlComponentDetail({
                       >
                         <p className="text-[13px] font-semibold text-text-primary group-hover/f:text-blue-primary">
                           {feature.fid && (
-                            <span className="mr-1.5 inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1 py-0.5 align-middle text-[10px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
+                            <span className="mr-1.5 inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1 py-0.5 align-middle text-[10px] font-bold tracking-[0.03em] text-[color:var(--ink-blue)] tnum">
                               {feature.fid}
                             </span>
                           )}
@@ -2680,7 +2681,7 @@ export function FdlComponentDetail({
                                       <Check
                                         size={12}
                                         strokeWidth={2.6}
-                                        className="shrink-0 text-[color:#1A7A35]"
+                                        className="shrink-0 text-[color:var(--ink-green)]"
                                       />
                                       <span className="tnum">{withV(r.version)}</span>
                                       {r.current && (
@@ -2824,7 +2825,7 @@ export function FdlComponentDetail({
                               e.stopPropagation();
                               setConfirmFeatureDelete(feature.id);
                             }}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10 hover:text-error"
                           >
                             <Trash2 size={13} strokeWidth={2} />
                           </button>
@@ -3148,7 +3149,7 @@ export function FdlComponentDetail({
                           </td>
                           <td className="whitespace-nowrap py-3 pr-4 text-[12.5px] tnum">
                             {gains > 0 ? (
-                              <span className="font-semibold text-[color:#B4318F]">
+                              <span className="font-semibold text-[color:var(--ink-magenta)]">
                                 +{gains}{" "}
                                 {gains === 1 ? "feature" : "features"}
                               </span>
@@ -3164,11 +3165,11 @@ export function FdlComponentDetail({
                                 Not known
                               </span>
                             ) : behind <= 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:#1A7A35]">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--ink-green)]">
                                 <CircleCheck size={11} strokeWidth={2.2} /> Up to date
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:#C2410C]">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--ink-orange)]">
                                 <Clock size={11} strokeWidth={2.2} />
                                 {behind} behind
                               </span>
@@ -3323,7 +3324,7 @@ export function FdlComponentDetail({
                         {compareReleases.map((release) => (
                           <td key={release.id} className="px-2 py-2.5 text-center">
                             {feature.versionIds.includes(release.id) ? (
-                              <Check size={14} strokeWidth={2.6} className="inline text-[color:#1A7A35]" />
+                              <Check size={14} strokeWidth={2.6} className="inline text-[color:var(--ink-green)]" />
                             ) : (
                               <Minus size={12} strokeWidth={2} className="inline text-text-tertiary" />
                             )}
@@ -3512,7 +3513,7 @@ export function FdlComponentDetail({
               onClick={() => setStatus("released")}
               className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
                 status === "released"
-                  ? "border-[rgba(26,122,53,0.35)] bg-[rgba(26,122,53,0.1)] text-[color:#1A7A35]"
+                  ? "border-[rgba(26,122,53,0.35)] bg-[rgba(26,122,53,0.1)] text-[color:var(--ink-green)]"
                   : "border-border-light text-text-secondary hover:border-blue-subtle"
               }`}
             >
@@ -3523,7 +3524,7 @@ export function FdlComponentDetail({
               onClick={() => setStatus("next")}
               className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
                 status === "next"
-                  ? "border-[rgba(124,58,237,0.35)] bg-[rgba(124,58,237,0.1)] text-[color:#6D28D9]"
+                  ? "border-[rgba(124,58,237,0.35)] bg-[rgba(124,58,237,0.1)] text-[color:var(--ink-violet)]"
                   : "border-border-light text-text-secondary hover:border-blue-subtle"
               }`}
             >
@@ -3688,7 +3689,7 @@ export function FdlComponentDetail({
             <label className="mb-1 flex flex-wrap items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Available in which versions?
               {featVersions.length === 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.12)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#B4318F]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.12)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-magenta)]">
                   Pick at least one
                 </span>
               ) : (
@@ -3711,7 +3712,7 @@ export function FdlComponentDetail({
                     }
                     className={`cursor-pointer rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
                       active
-                        ? "border-[rgba(26,122,53,0.35)] bg-[rgba(26,122,53,0.1)] text-[color:#1A7A35]"
+                        ? "border-[rgba(26,122,53,0.35)] bg-[rgba(26,122,53,0.1)] text-[color:var(--ink-green)]"
                         : "border-border-light text-text-secondary hover:border-blue-subtle"
                     }`}
                   >
@@ -3923,7 +3924,7 @@ type DateMove = {
 const MOVE_META = {
   later: { color: "#DC2626", word: "later", Icon: CalendarClock },
   earlier: { color: "#16A34A", word: "earlier", Icon: CalendarCheck2 },
-  set: { color: "#0071E3", word: "set", Icon: CalendarPlus },
+  set: { color: "var(--ink-bright-blue)", word: "set", Icon: CalendarPlus },
   cleared: { color: "#8E98A8", word: "removed", Icon: CalendarX2 },
 } as const;
 
@@ -4084,7 +4085,7 @@ function ReleaseDateChip({
               <button
                 type="button"
                 onClick={() => setDraft("")}
-                className="mt-1.5 cursor-pointer text-[11.5px] font-medium text-text-tertiary transition-colors hover:text-[color:#DC2626]"
+                className="mt-1.5 cursor-pointer text-[11.5px] font-medium text-text-tertiary transition-colors hover:text-[color:var(--status-red)]"
               >
                 Clear the date
               </button>
@@ -4157,7 +4158,7 @@ function ReleaseDateChip({
                       <span className="flex flex-col items-center">
                         <span
                           className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full"
-                          style={{ background: `${meta.color}1F`, color: meta.color }}
+                          style={{ background: tint(meta.color, 12), color: meta.color }}
                         >
                           <MoveIcon size={12.5} strokeWidth={2.5} />
                         </span>

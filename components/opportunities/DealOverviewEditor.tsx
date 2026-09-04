@@ -47,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ConfidenceSlider } from "./ConfidenceSlider";
 import { DealPeople, type DealTeam } from "./DealPeople";
+import { tint } from "@/lib/tint";
 
 /**
  * THE OVERVIEW TAB IS THE EDIT FORM.
@@ -80,9 +81,9 @@ import { DealPeople, type DealTeam } from "./DealPeople";
    never plain grey. Deliberately none of red/amber/green: those mean health
    here, and a renewal is not a warning. */
 const DEAL_TONE: Record<string, string> = {
-  "New business": "#0071E3",
-  "Existing business": "#0F766E",
-  Renewal: "#7C3AED",
+  "New business": "var(--ink-bright-blue)",
+  "Existing business": "var(--ink-teal-deep)",
+  Renewal: "var(--ink-violet-soft)",
 };
 
 /* Three levels since Sep 1, when Suren retired Future ("just pipeline. We
@@ -91,15 +92,15 @@ const DEAL_TONE: Record<string, string> = {
    its fourth colour by hand, because a leftover key here would quietly wait
    to colour something that can no longer exist. */
 const LEVEL_TONE: Record<string, string> = {
-  "Go get": "#0F766E",
-  "High confidence": "#0071E3",
-  Pipeline: "#7C3AED",
+  "Go get": "var(--ink-teal-deep)",
+  "High confidence": "var(--ink-bright-blue)",
+  Pipeline: "var(--ink-violet-soft)",
 };
 
-const STATUS_TONE = "#0071E3";
-const REVENUE_TONE: Record<string, string> = { ARR: "#0F766E" };
-const REVENUE_FALLBACK = "#B4318F";
-const OFFERING_TONE = "#B4318F";
+const STATUS_TONE = "var(--ink-bright-blue)";
+const REVENUE_TONE: Record<string, string> = { ARR: "var(--ink-teal-deep)" };
+const REVENUE_FALLBACK = "var(--ink-magenta)";
+const OFFERING_TONE = "var(--ink-magenta)";
 
 /** Digits only, and empty stays empty: a blank ACV means nobody has said it
  *  yet, which is not the same claim as zero. */
@@ -248,7 +249,7 @@ function Card({
            The border is drawn here rather than on the panel so it survives the
            fold and the card keeps its lid. */
         style={{
-          background: `${ACCENT}0D`,
+          background: tint(ACCENT, 5),
           borderBottom: open ? "1px solid var(--border-light)" : "none",
         }}
       >
@@ -303,7 +304,7 @@ function Card({
  * five differently-coloured cards also reads as five CATEGORIES of thing, which
  * these are not: they are five parts of one deal.
  */
-const ACCENT = "#0071E3";
+const ACCENT = "var(--ink-bright-blue)";
 
 /**
  * A LABEL, A CONTROL, AND WHAT HAPPENED TO IT.
@@ -395,7 +396,7 @@ function ReadValue({
       <span className="flex h-10 items-center">
         <span
           className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-          style={{ background: `${tone}14`, color: tone }}
+          style={{ background: tint(tone, 8), color: tone }}
         >
           {agent ? (
             <AgentAvatar name={text} size={16} className="shrink-0" />
@@ -469,7 +470,7 @@ const REQUIRED_FIELDS: Record<string, string> = {
 
 function Req() {
   return (
-    <span aria-label="required" title="Required" className="text-[color:#DC2626]">
+    <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">
       *
     </span>
   );
@@ -1112,7 +1113,7 @@ export function DealOverviewEditor({
                           {
                             value: "__current",
                             label: deal.customer || "No account",
-                            color: "#0071E3",
+                            color: "var(--ink-bright-blue)",
                           },
                         ]),
                     ...customers.map((c) => ({
@@ -1150,7 +1151,7 @@ export function DealOverviewEditor({
                     );
                   }}
                   options={[
-                    { value: "", label: "None", color: "#0071E3" },
+                    { value: "", label: "None", color: "var(--ink-bright-blue)" },
                     ...(offeringLabel && !offeringId
                       ? [
                           {
@@ -1296,7 +1297,7 @@ export function DealOverviewEditor({
             {ro ? (
               <ReadValue
                 text={level || "Not set"}
-                tone={LEVEL_TONE[level] ?? "#7C3AED"}
+                tone={LEVEL_TONE[level] ?? "var(--ink-violet-soft)"}
                 empty={!level}
               />
             ) : (
@@ -1314,7 +1315,7 @@ export function DealOverviewEditor({
                 options={OPPORTUNITY_LEVELS.map((l) => ({
                   value: l,
                   label: l,
-                  color: LEVEL_TONE[l] ?? "#7C3AED",
+                  color: LEVEL_TONE[l] ?? "var(--ink-violet-soft)",
                 }))}
               />
             )}
@@ -1330,7 +1331,7 @@ export function DealOverviewEditor({
             {ro ? (
               <ReadValue
                 text={dealType || "Not set"}
-                tone={DEAL_TONE[dealType] ?? "#0071E3"}
+                tone={DEAL_TONE[dealType] ?? "var(--ink-bright-blue)"}
                 empty={!dealType}
               />
             ) : (
@@ -1346,7 +1347,7 @@ export function DealOverviewEditor({
                   );
                 }}
                 options={[
-                  { value: "", label: "Not set", color: "#0071E3" },
+                  { value: "", label: "Not set", color: "var(--ink-bright-blue)" },
                   ...DEAL_TYPES.map((d) => ({
                     value: d,
                     label: d,
@@ -1380,7 +1381,7 @@ export function DealOverviewEditor({
                   );
                 }}
                 options={[
-                  { value: "", label: "Not set", color: "#0071E3" },
+                  { value: "", label: "Not set", color: "var(--ink-bright-blue)" },
                   ...REVENUE_TYPES.map((r) => ({
                     value: r,
                     label: r,
@@ -1467,14 +1468,14 @@ export function DealOverviewEditor({
                       options={CURRENCIES.map((c) => ({
                         value: c.code,
                         label: `${c.code} ${c.name}`,
-                        color: c.code === BASE_CURRENCY ? "#0071E3" : "#0F766E",
+                        color: c.code === BASE_CURRENCY ? "var(--ink-bright-blue)" : "var(--ink-teal-deep)",
                         short: c.symbol.trim(),
                         icon: currencyGlyph(c.symbol),
                       }))}
                     />
                   )}
                   {errors.currency && (
-                    <p className="mt-1 text-[11.5px] text-[color:#DC2626]">{errors.currency}</p>
+                    <p className="mt-1 text-[11.5px] text-[color:var(--status-red)]">{errors.currency}</p>
                   )}
                 </td>
                 {/* ONE MONEY NUMBER, NOT TWO (Manoj's item 2: "Change Value to
@@ -1525,7 +1526,7 @@ export function DealOverviewEditor({
                         placeholder="the whole signed number"
                       />
                       {errors.estimatedTcv && (
-                        <p className="mt-1 text-[11.5px] text-[color:#DC2626]">{errors.estimatedTcv}</p>
+                        <p className="mt-1 text-[11.5px] text-[color:var(--status-red)]">{errors.estimatedTcv}</p>
                       )}
                     </>
                   )}
@@ -1806,7 +1807,7 @@ export function DealOverviewEditor({
                   );
                 }}
                 options={[
-                  { value: "", label: "Unassigned", color: "#0071E3" },
+                  { value: "", label: "Unassigned", color: "var(--ink-bright-blue)" },
                   /* You first, wearing the blue tag, rather than alphabetised
                      into the middle of the roster. */
                   ...[...new Set([...people, ...(owner ? [owner] : [])])]
@@ -1956,7 +1957,7 @@ export function DealOverviewEditor({
               {dirtyCount} unsaved change{dirtyCount === 1 ? "" : "s"}
             </span>
             {errors.__form && (
-              <span className="text-[12.5px] text-[color:#DC2626]">{errors.__form}</span>
+              <span className="text-[12.5px] text-[color:var(--status-red)]">{errors.__form}</span>
             )}
             <span className="ml-auto flex items-center gap-2">
               <button

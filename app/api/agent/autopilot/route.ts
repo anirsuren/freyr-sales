@@ -7,7 +7,8 @@ import {
   autopilotRunSteps,
   openValueByAccount,
 } from "@/lib/agent";
-import { buildDeals } from "@/lib/pipeline";
+import { buildDeals, dealsFromOpportunities } from "@/lib/pipeline";
+import { readOpportunities } from "@/lib/opportunities";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
@@ -61,13 +62,19 @@ export async function POST(request: NextRequest) {
   // High-value guardrail (#75): escalate (never auto-handle) draftable actions on
   // accounts whose open pipeline exceeds the rep's ceiling.
   const ceiling = prefs?.autopilot_max_value ?? null;
-  const openVal = openValueByAccount(
-    buildDeals(sessions, customers, contacts, interactions)
-  );
+  /* THE CEILING ONLY GUARDS ANYTHING IF IT CAN SEE THE MONEY. Reading pitch
+     sessions alone put every Real account at $0 open, so no account ever
+     exceeded the ceiling and the escalation this guardrail exists to trigger
+     never fired once. */
+  const opportunities = (await readOpportunities()).opportunities;
+  const openVal = openValueByAccount([
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(opportunities, customers),
+  ]);
   const overCeiling = (customerId: string) =>
     ceiling != null && (openVal.get(customerId) || 0) > ceiling;
 
-  const actions = nextBestActions({ sessions, customers, contacts, interactions });
+  const actions = nextBestActions({ sessions, customers, contacts, interactions, opportunities });
 
   const handled: string[] = [];
   const escalated: string[] = [];

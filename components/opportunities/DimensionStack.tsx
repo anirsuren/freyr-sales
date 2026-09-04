@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SummaryDimension } from "./OpportunitySummary";
+import { tint } from "@/lib/tint";
 
 /**
  * THE VIEW STACK — the order the summary is built from, shuffled by hand.
@@ -306,8 +307,8 @@ export function DimensionStack({
               }
             }}
             style={{
-              borderColor: held ? color[dim] : `${color[dim]}55`,
-              backgroundColor: held ? `${color[dim]}22` : `${color[dim]}0F`,
+              borderColor: held ? color[dim] : `${tint(color[dim], 33)}`,
+              backgroundColor: held ? tint(color[dim], 13) : tint(color[dim], 6),
               color: color[dim],
               /* Always set, so React owns it and a transform can never be
                  left behind by a re-render landing mid-gesture. */
@@ -321,7 +322,7 @@ export function DimensionStack({
                   ? "none"
                   : "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
               zIndex: held ? 2 : 1,
-              boxShadow: held ? `0 10px 22px ${color[dim]}45` : undefined,
+              boxShadow: held ? `0 10px 22px ${tint(color[dim], 27)}` : undefined,
               touchAction: "none",
             }}
             className={cn(
@@ -356,7 +357,7 @@ export function DimensionStack({
           key={dim}
           type="button"
           onClick={() => onReorder([...order, dim])}
-          style={{ color: color[dim], borderColor: `${color[dim]}44` }}
+          style={{ color: color[dim], borderColor: `${tint(color[dim], 27)}` }}
           className="flex cursor-pointer items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-[12px] font-semibold opacity-70 transition-opacity hover:opacity-100"
         >
           <Plus size={11} strokeWidth={2.8} aria-hidden="true" />

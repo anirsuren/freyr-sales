@@ -30,11 +30,11 @@ import { OUTCOME_TO_STAGE, STAGE_COLOR } from "@/lib/pipeline";
 import type { Interaction } from "@/lib/types";
 
 /** The app-wide caution token. NEVER #F59E0B / #EAB308 / #CA8A04 / #D97706. */
-const CAUTION = "#C2410C";
+const CAUTION = "var(--ink-orange)";
 /** Real error red — the same --error the snapshot's risk track earns. */
 const ERROR = "#EF4444";
 /** Anything the app hasn't classified: teal, so it still carries a colour. */
-const UNCLASSIFIED = "#0F766E";
+const UNCLASSIFIED = "var(--ink-teal-deep)";
 
 const LABEL: Record<string, string> = {
   interested: "Interested",

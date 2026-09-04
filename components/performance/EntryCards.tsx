@@ -45,6 +45,7 @@ import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
+import { tint } from "@/lib/tint";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -63,7 +64,7 @@ function goalChip(state: PerformanceState, goalId: string) {
   return (
     <span
       className="inline-flex max-w-[240px] items-center gap-1 truncate rounded-full px-2.5 py-1 text-[12px] font-semibold"
-      style={{ background: `${meta.color}1A`, color: meta.color }}
+      style={{ background: tint(meta.color, 10), color: meta.color }}
     >
       {goal.name}
     </span>
@@ -168,7 +169,7 @@ export function StatusPill({
             onUnlock();
           }}
           title="Unlock this claim and send it back"
-          className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(22,163,74,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#16A34A] transition-colors hover:bg-[rgba(220,38,38,0.12)] hover:text-[color:#DC2626]"
+          className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(22,163,74,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#16A34A] transition-colors hover:bg-[rgba(220,38,38,0.12)] hover:text-[color:var(--status-red)]"
         >
           <CheckCircle2
             size={12}
@@ -227,7 +228,7 @@ export function StatusPill({
             onVerify();
           }}
           title="You sent this back. Open it to check the fix and sign it off"
-          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.16)]"
+          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--ink-red)] transition-colors hover:bg-[rgba(220,38,38,0.16)]"
         >
           {pill}
         </button>
@@ -246,14 +247,14 @@ export function StatusPill({
               ? `${entry.sentBackBy} sent this back. Click to fix it`
               : "Click to fix this claim"
           }
-          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020] transition-colors hover:bg-[rgba(220,38,38,0.18)]"
+          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--ink-red)] transition-colors hover:bg-[rgba(220,38,38,0.18)]"
         >
           {pill}
         </button>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#B02020]">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--ink-red)]">
         {pill}
       </span>
     );
@@ -270,7 +271,7 @@ export function StatusPill({
           onVerify();
         }}
         title="Check this claim and sign it off"
-        className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:#0058B0] transition-colors hover:bg-[rgba(22,163,74,0.12)] hover:text-[color:#16A34A]"
+        className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--ink-blue-soft)] transition-colors hover:bg-[rgba(22,163,74,0.12)] hover:text-[color:#16A34A]"
       >
         <Hourglass size={12} strokeWidth={2.4} className="group-hover/st:hidden" />
         <CheckCircle2
@@ -302,7 +303,7 @@ export function StatusPill({
           ? `Waiting for ${heads.join(" or ")} to verify`
           : undefined
       }
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-[color:#0058B0]"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-[color:var(--ink-blue-soft)]"
     >
       <Hourglass size={12} strokeWidth={2.4} className="shrink-0" />
       {waitingOnMe ? "Waiting for you to verify" : "Waiting for the group owner"}
@@ -406,7 +407,7 @@ export function EntryTimeline({
       when: entry.date,
       done: true,
       icon: CalendarCheck2,
-      color: "#0E7490",
+      color: "var(--ink-teal)",
     },
     {
       label: "Logged",
@@ -414,7 +415,7 @@ export function EntryTimeline({
       when: entry.addedAt,
       done: true,
       icon: PenLine,
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
     },
   ];
   if (entry.managerNote || entry.sentBackBy || entry.sentBackAt) {
@@ -443,7 +444,7 @@ export function EntryTimeline({
         when: entry.resubmittedAt,
         done: true,
         icon: RotateCcw,
-        color: "#7C3AED",
+        color: "var(--ink-violet-soft)",
       });
     }
   }
@@ -498,7 +499,7 @@ export function EntryTimeline({
                 className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full"
                 style={
                   step.done
-                    ? { background: `${step.color}1F`, color: step.color }
+                    ? { background: tint(step.color, 12), color: step.color }
                     : {
                         boxShadow: "inset 0 0 0 1.5px var(--border-light)",
                         color: "var(--text-tertiary)",
@@ -708,10 +709,10 @@ export function SentBackWatchCard({
           size={16}
           strokeWidth={2.4}
           aria-hidden="true"
-          className="mt-px shrink-0 text-[color:#B45309]"
+          className="mt-px shrink-0 text-[color:var(--ink-amber)]"
         />
         <span className="min-w-0">
-          <h3 className="text-[13.5px] font-bold text-[color:#B45309]">
+          <h3 className="text-[13.5px] font-bold text-[color:var(--ink-amber)]">
             {waiting.length} {waiting.length === 1 ? "claim you" : "claims you"}{" "}
             sent back, waiting on{" "}
             {withWhom.length === 1
@@ -788,10 +789,10 @@ export function SentBackCard({
           size={16}
           strokeWidth={2.4}
           aria-hidden="true"
-          className="mt-px shrink-0 text-[color:#B02020]"
+          className="mt-px shrink-0 text-[color:var(--ink-red)]"
         />
         <span className="min-w-0">
-          <h3 className="text-[13.5px] font-bold text-[color:#B02020]">
+          <h3 className="text-[13.5px] font-bold text-[color:var(--ink-red)]">
             {isMe
               ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
               : `Sent back to ${who}. ${rejected.length} waiting on them`}
@@ -998,7 +999,7 @@ export function MyEntriesCard({
                   <AlertCircle
                     size={13}
                     strokeWidth={2.6}
-                    className="text-[color:#DC2626]"
+                    className="text-[color:var(--status-red)]"
                   />
                   {back} sent back and waiting on a fix
                 </span>
@@ -1184,7 +1185,7 @@ export function MyEntriesCard({
                                 setReviewInSendBack(true);
                                 setReviewing(a.id);
                               }}
-                              className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-surface"
+                              className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-surface"
                             >
                               <RotateCcw size={14} strokeWidth={2.2} />
                             </button>
@@ -1221,7 +1222,7 @@ export function MyEntriesCard({
                                   setDropFor(a.id);
                                   setEditFor(null);
                                 }}
-                                className="cursor-pointer rounded-md p-1.5 text-[color:#DC2626] transition-colors hover:bg-surface"
+                                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-surface"
                               >
                                 <Trash2 size={14} strokeWidth={2.2} />
                               </button>
@@ -1267,7 +1268,7 @@ export function MyEntriesCard({
                               <AlertCircle
                                 size={17}
                                 strokeWidth={2.5}
-                                className="mt-px shrink-0 text-[color:#DC2626]"
+                                className="mt-px shrink-0 text-[color:var(--status-red)]"
                               />
                               <span className="min-w-0">
                                 <span className="block text-[13px] font-bold text-text-primary">
@@ -1501,7 +1502,7 @@ export function MyEntriesCard({
                   without the reason in front of you is guesswork. */}
               {a.managerNote && (
                 <div className="mt-3 rounded-xl border border-[color:#DC2626] bg-[color:#DC26260D] px-3.5 py-3">
-                  <span className="flex items-center gap-2 text-[12.5px] font-bold text-[color:#DC2626]">
+                  <span className="flex items-center gap-2 text-[12.5px] font-bold text-[color:var(--status-red)]">
                     <AlertCircle size={14} strokeWidth={2.4} />
                     Sent back
                     {a.sentBackBy ? " by" : ""}
@@ -1747,7 +1748,7 @@ export function VerifyQueueCard({
             size={16}
             strokeWidth={2.4}
             aria-hidden="true"
-            className="shrink-0 text-[color:#B45309]"
+            className="shrink-0 text-[color:var(--ink-amber)]"
           />
         )}
         <h3
@@ -1769,7 +1770,7 @@ export function VerifyQueueCard({
           {queue.length || "all clear"}
         </span>
         {pending && onHold > 0 && (
-          <span className="text-[11.5px] font-semibold text-[color:#B45309] tnum">
+          <span className="text-[11.5px] font-semibold text-[color:var(--ink-amber)] tnum">
             {fmtAmount("currency", onHold)} on hold until you do
           </span>
         )}
@@ -2261,8 +2262,8 @@ export function ClaimReviewDialog({
                             pctMet(verifiedTotal, goal.target) >= 85
                               ? "#15803D"
                               : pctMet(verifiedTotal, goal.target) >= 55
-                                ? "#0071E3"
-                                : "#B45309",
+                                ? "var(--ink-bright-blue)"
+                                : "var(--ink-amber)",
                         }}
                       >
                         {Math.min(100, Math.round(pctMet(verifiedTotal, goal.target)))}%
@@ -2509,7 +2510,7 @@ export function ClaimReviewDialog({
                       "inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-[13.5px] transition-colors",
                       locked
                         ? "bg-[color:#B02020] font-semibold text-white hover:bg-[color:#8F1A1A]"
-                        : "border border-border-light bg-white font-semibold text-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)]"
+                        : "border border-border-light bg-white font-semibold text-[color:var(--status-red)] hover:bg-[rgba(220,38,38,0.08)]"
                     )}
                   >
                     <RotateCcw size={14} strokeWidth={2.4} />

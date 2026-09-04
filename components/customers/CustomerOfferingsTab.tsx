@@ -46,14 +46,15 @@ import type {
   RevenueType,
 } from "@/lib/types";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
+import { tint } from "@/lib/tint";
 
 // One colour + glyph per revenue type — the same accents the offering report's
 // header chips use, so a type reads identically wherever it appears.
 const REVENUE_TYPE_ACCENT: Record<RevenueType, { color: string; icon: LucideIcon }> = {
-  annual: { color: "#0071E3", icon: CalendarClock },
-  project: { color: "#7C3AED", icon: Briefcase },
-  annual_service: { color: "#0F766E", icon: Wrench },
-  license: { color: "#C2410C", icon: KeyRound },
+  annual: { color: "var(--ink-bright-blue)", icon: CalendarClock },
+  project: { color: "var(--ink-violet-soft)", icon: Briefcase },
+  annual_service: { color: "var(--ink-teal-deep)", icon: Wrench },
+  license: { color: "var(--ink-orange)", icon: KeyRound },
 };
 
 
@@ -84,7 +85,7 @@ function MaterialTagPills({
               key={meta.label}
               title={meta.label}
               className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold leading-none"
-              style={{ background: `${meta.color}14`, color: meta.color }}
+              style={{ background: tint(meta.color, 8), color: meta.color }}
             >
               <Icon size={9} strokeWidth={2.2} />
               {meta.short}
@@ -120,10 +121,10 @@ export function segmentColor(type: string): string {
   const t = type.toLowerCase();
   // Family colours (match the offering page): Pharma = blue, Biologics = rose,
   // Bio Pharmaceutical = violet (Suren: "pharmaceutical blue, biologics red…").
-  if (t.includes("bio pharma") || t.includes("biopharma")) return "#7C3AED"; // violet
+  if (t.includes("bio pharma") || t.includes("biopharma")) return "var(--ink-violet-soft)"; // violet
   if (t.includes("biologic")) return "#E11D48"; // rose
-  if (t.includes("pharma")) return "#0071E3"; // blue
-  if (t.includes("device")) return "#C2410C"; // burnt orange (amber was illegible as chip text)
+  if (t.includes("pharma")) return "var(--ink-bright-blue)"; // blue
+  if (t.includes("device")) return "var(--ink-orange)"; // burnt orange (amber was illegible as chip text)
   if (t.includes("consumer")) return "#0F9E8E"; // teal
   return "#8E98A8"; // slate
 }
@@ -363,7 +364,7 @@ function RevenueSection({
                 </span>{" "}
                 <span
                   className="rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.04em]"
-                  style={{ color: typeColor, background: `${typeColor}14` }}
+                  style={{ color: typeColor, background: tint(typeColor, 8) }}
                 >
                   {REVENUE_TYPE_META[l.revenue_type].short}
                 </span>
@@ -385,7 +386,7 @@ function RevenueSection({
               <button
                 onClick={() => setConfirmLine({ id: l.id, label: l.description || "this line" })}
                 aria-label="Remove revenue line"
-                className="shrink-0 text-[color:#DC2626] hover:text-error transition-colors mt-0.5"
+                className="shrink-0 text-[color:var(--status-red)] hover:text-error transition-colors mt-0.5"
               >
                 <Trash2 size={14} strokeWidth={1.8} />
               </button>

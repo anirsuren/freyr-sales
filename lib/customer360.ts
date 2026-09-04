@@ -97,7 +97,7 @@ export async function buildCustomer360(
       key: "opportunities",
       label: "Opportunities",
       icon: BAND_ICONS.opportunities,
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       count: myDeals.length,
       total: myDeals.reduce((s, d) => s + (d.value || 0), 0),
       href: `/opportunities?customer=${encodeURIComponent(companyName)}`,
@@ -128,13 +128,13 @@ export async function buildCustomer360(
          the submissions and presentations they turn into — and no page
          carried them at all. "Now you should call it as solution request, not
          request; they call it solution request." */
-      ["solutionRequests", "Solution requests", "#0071E3"],
-      ["submissions", "Submissions", "#7C3AED"],
-      ["presentations", "Presentations", "#0F766E"],
+      ["solutionRequests", "Solution requests", "var(--ink-bright-blue)"],
+      ["submissions", "Submissions", "var(--ink-violet-soft)"],
+      ["presentations", "Presentations", "var(--ink-teal-deep)"],
       /* Named for what it is — somebody ASKED the Solutioning team for a
          meeting — so it cannot be mistaken for the meetings that were
          actually held, which have their own band below. */
-      ["meetingRequests", "Meeting requests", "#B4318F"],
+      ["meetingRequests", "Meeting requests", "var(--ink-magenta)"],
     ] as const) {
       const rows = myRequests.filter((r) => solutioningShelf(r) === key);
       bands.push({
@@ -167,7 +167,7 @@ export async function buildCustomer360(
       key: "meetings",
       label: "Meetings",
       icon: BAND_ICONS.meetings,
-      color: "#B4318F",
+      color: "var(--ink-magenta)",
       count: myMeetings.length,
       href: "/meetings",
       hrefLabel: "All meetings",
@@ -341,7 +341,7 @@ export async function buildCustomer360(
       key: "offerings",
       label: "Offerings",
       icon: BAND_ICONS.offerings,
-      color: "#C2410C",
+      color: "var(--ink-orange)",
       count: names.length,
       href: "/offerings",
       hrefLabel: "All offerings",

@@ -46,6 +46,7 @@ import {
   type Deal,
   type Stage,
 } from "@/lib/pipeline";
+import { tint } from "@/lib/tint";
 
 const WIP_KEY = "freyr.pipeline.wip.v1";
 const VIEWS_KEY = "freyr.pipeline.views.v1";
@@ -82,8 +83,8 @@ const BUILTIN_VIEWS: SavedView[] = [
 // it filters to — they had drifted apart (Anir: "the icons and the colors don't
 // even match with what you have currently").
 const VIEW_META: Record<string, { color: string; icon: LucideIcon }> = {
-  "All deals": { color: "#0071E3", icon: Layers },
-  "My deals": { color: "#7C3AED", icon: UserRound },
+  "All deals": { color: "var(--ink-bright-blue)", icon: Layers },
+  "My deals": { color: "var(--ink-violet-soft)", icon: UserRound },
   "Large deals": SIZE_TIER_META.large,
   "Mid-market": SIZE_TIER_META.mid,
   "Small deals": SIZE_TIER_META.small,
@@ -490,7 +491,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                   Built-in
                 </p>
                 {BUILTIN_VIEWS.map((v) => {
-                  const meta = VIEW_META[v.name] ?? { color: "#0071E3", icon: Layers };
+                  const meta = VIEW_META[v.name] ?? { color: "var(--ink-bright-blue)", icon: Layers };
                   const ViewIcon = meta.icon;
                   return (
                     <button
@@ -501,7 +502,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     >
                       <span
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                        style={{ color: meta.color, background: `${meta.color}14` }}
+                        style={{ color: meta.color, background: tint(meta.color, 8) }}
                       >
                         <ViewIcon size={13} strokeWidth={2} />
                       </span>
@@ -751,7 +752,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 <div className="flex items-center gap-2 min-w-0" style={{ color: stageColor }}>
                   <span
                     className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md"
-                    style={{ background: `${stageColor}14` }}
+                    style={{ background: tint(stageColor, 8) }}
                   >
                     <StageIcon size={13} strokeWidth={2.2} />
                   </span>
@@ -777,8 +778,8 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                         ? undefined
                         : {
                             color: stageColor,
-                            background: `${stageColor}14`,
-                            borderColor: `${stageColor}2E`,
+                            background: tint(stageColor, 8),
+                            borderColor: tint(stageColor, 18),
                           }
                     }
                     title={limit != null ? `${items.length} of a ${limit}-deal limit` : undefined}
@@ -1066,7 +1067,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 <div className="flex flex-col items-center gap-2 px-4 pb-8 pt-4 text-center">
                   <span
                     className="flex h-9 w-9 items-center justify-center rounded-full"
-                    style={{ background: `${stageColor}14`, color: stageColor }}
+                    style={{ background: tint(stageColor, 8), color: stageColor }}
                   >
                     <StageIcon size={16} strokeWidth={1.9} />
                   </span>

@@ -29,7 +29,7 @@ export const VOICE_PERSONAS: VoicePersona[] = [
     slug: "maya-regulatory-affairs",
     category: "Regulatory Affairs",
     tagline: "Talks strategy, agency questions and end-to-end regulatory support.",
-    color: "#0071E3",
+    color: "var(--ink-bright-blue)",
     icon: ShieldCheck,
   },
   {
@@ -55,7 +55,7 @@ export const VOICE_PERSONAS: VoicePersona[] = [
     tagline: "Handles label change, artwork and multi-market compliance calls.",
     // Leo's colour fills a solid avatar tile behind a white glyph; amber left
     // that glyph at 2.1:1. Burnt orange keeps him warm and distinct.
-    color: "#C2410C",
+    color: "var(--ink-orange)",
     icon: Palette,
   },
   {

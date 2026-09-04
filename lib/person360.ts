@@ -99,7 +99,7 @@ export async function buildPerson360(
       key: "meetings",
       label: "Meetings",
       icon: BAND_ICONS.meetings,
-      color: "#B4318F",
+      color: "var(--ink-magenta)",
       count: attended.length,
       href: "/meetings",
       hrefLabel: "All meetings",
@@ -144,7 +144,7 @@ export async function buildPerson360(
       key: "opportunities",
       label: "Opportunities",
       icon: "opportunities",
-      color: "#0071E3",
+      color: "var(--ink-bright-blue)",
       count: mine.length,
       total: mine.reduce((s, o) => s + (o.value || 0), 0),
       href: "/opportunities",
@@ -180,7 +180,7 @@ export async function buildPerson360(
       key: "offerings",
       label: "Offerings",
       icon: "offerings",
-      color: "#7C3AED",
+      color: "var(--ink-violet-soft)",
       count: mine.length,
       href: "/offerings",
       hrefLabel: "All offerings",
@@ -207,12 +207,12 @@ export async function buildPerson360(
          the submissions and presentations they turn into — and no page
          carried them at all. "Now you should call it as solution request, not
          request; they call it solution request." */
-      ["solutionRequests", "Solution requests", "request", "#0071E3"],
-      ["submissions", "Submissions", "submission", "#7C3AED"],
-      ["presentations", "Presentations", "presentation", "#0F766E"],
+      ["solutionRequests", "Solution requests", "request", "var(--ink-bright-blue)"],
+      ["submissions", "Submissions", "submission", "var(--ink-violet-soft)"],
+      ["presentations", "Presentations", "presentation", "var(--ink-teal-deep)"],
       /* Same collision as the customer page: a meeting ASKED FOR is not a
          meeting held, and both bands were called "Meetings". */
-      ["meetingRequests", "Meeting requests", "meeting", "#B4318F"],
+      ["meetingRequests", "Meeting requests", "meeting", "var(--ink-magenta)"],
     ] as const) {
       const rows = touched.filter((r) => r.kind === kind);
       bands.push({
@@ -310,7 +310,7 @@ export async function buildPerson360(
       key: "goals",
       label: "Goals",
       icon: "goals",
-      color: "#0F766E",
+      color: "var(--ink-teal-deep)",
       count: mine.length,
       href: `/performance/people?person=${encodeURIComponent(personName)}`,
       hrefLabel: "Their goals",

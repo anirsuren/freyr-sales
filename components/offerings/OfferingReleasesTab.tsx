@@ -42,6 +42,7 @@ import type {
 import type { PickablePerson } from "@/components/ui/PeoplePicker";
 import type { OwnerRow } from "@/components/offerings/OfferingOwners";
 import { OfferingContacts } from "@/components/offerings/OfferingContacts";
+import { tint } from "@/lib/tint";
 
 /**
  * PRODUCT ROADMAP — shipped history for everyone, future for approved people.
@@ -59,11 +60,11 @@ const LABEL =
 
 function StatusPill({ status }: { status: OfferingRelease["status"] }) {
   const shipped = status === "released";
-  const color = shipped ? "#1A7A35" : "#C2410C";
+  const color = shipped ? "var(--ink-green)" : "var(--ink-orange)";
   const Icon = shipped ? CircleCheck : Clock;
   return (
     <span
-      style={{ color, background: `${color}1A` }}
+      style={{ color, background: tint(color, 10) }}
       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap"
     >
       <Icon size={12} strokeWidth={2.2} />
@@ -350,7 +351,7 @@ function SummaryRow({
         type="button"
         onClick={onRemove}
         aria-label={removeLabel}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-error/10 hover:text-error"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10 hover:text-error"
       >
         <Trash2 size={14} strokeWidth={2} />
       </button>
@@ -927,7 +928,7 @@ function Milestone({
   last?: boolean;
 }) {
   const dot =
-    tone === "past" ? "#8E98A8" : tone === "current" ? "#20B15A" : "#0071E3";
+    tone === "past" ? "#8E98A8" : tone === "current" ? "#20B15A" : "var(--ink-bright-blue)";
   return (
     <div className="relative grid grid-cols-[22px_minmax(0,1fr)] gap-x-3.5">
       {!last && (
@@ -952,7 +953,7 @@ function Milestone({
       <div className="min-w-0 pb-1">
         <p
           className="text-[10.5px] font-semibold uppercase tracking-[0.07em]"
-          style={{ color: tone === "next" ? "#0071E3" : "#6B7280" }}
+          style={{ color: tone === "next" ? "var(--ink-bright-blue)" : "#6B7280" }}
         >
           {label}
         </p>
@@ -1555,7 +1556,7 @@ export function OfferingReleasesTab({
                       type="button"
                       onClick={() => setConfirmVersion({ id: rel.id, version: rel.version })}
                       aria-label={`Remove ${rel.version}`}
-                      className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:#DC2626] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                      className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:var(--ink-red)]"
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </button>

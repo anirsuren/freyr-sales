@@ -3,6 +3,7 @@
 // an LLM planner would refine/expand the list; for now it's deterministic.
 import {
   buildDeals,
+  dealsFromOpportunities,
   ROTTING_DAYS,
   formatMoney,
   type Deal,
@@ -1088,10 +1089,24 @@ export function nextBestActions(input: {
   customers: Customer[];
   contacts: Contact[];
   interactions: Interaction[];
+  /**
+   * THE REAL DEALS. Optional, and passing them is what makes the agent see
+   * the actual book of business.
+   *
+   * Without it this function reads pitch sessions, of which a Real workspace
+   * has none — so every "$X open" fact the agent puts on a card read $0 while
+   * 103 opportunities worth $112.0M sat one table away. Optional rather than
+   * required because Mock workspaces genuinely are pitch sessions, and their
+   * behaviour must not change.
+   */
+  opportunities?: Parameters<typeof dealsFromOpportunities>[0];
 }): AgentAction[] {
   const { sessions, customers, contacts, interactions } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  const deals = [
+    ...buildDeals(sessions, customers, contacts, interactions),
+    ...dealsFromOpportunities(input.opportunities ?? [], customers),
+  ];
   const sentCustomers = new Set(
     interactions
       .filter((i) => /email sent/i.test(i.notes || ""))
@@ -1197,7 +1212,7 @@ export function nextBestActions(input: {
   for (const i of interactions) {
     if (i.follow_up_date) {
       const co = custById[i.customer_id]?.company_name || "this account";
-      const due = new Date(i.follow_up_date).toLocaleDateString();
+      const due = new Date(i.follow_up_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       out.push({
         id: `followup-${i.id}`,
         kind: "followup",

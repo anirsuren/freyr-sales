@@ -36,7 +36,7 @@ export const REVIEW_META: Record<
   approved: {
     label: "Approved",
     bg: "rgba(52,199,89,0.14)",
-    color: "#1A7A35",
+    color: "var(--ink-green)",
     icon: CircleCheck,
     explain:
       "Cleared by compliance. Send email and Send to CRM are unlocked for this pitch.",
@@ -44,7 +44,7 @@ export const REVIEW_META: Record<
   changes_requested: {
     label: "Changes requested",
     bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
+    color: "var(--ink-red)",
     icon: RotateCcw,
     explain:
       "Compliance sent this back. Edit the pitch, then resubmit for review.",

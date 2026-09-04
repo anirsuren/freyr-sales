@@ -16,10 +16,10 @@ const GRADIENTS: [string, string][] = [
 // negative... colors like red, green, and yellow are reserved for actually
 // signifying something else." Purple, blue, indigo, teal, cyan, sky, pink,
 // fuchsia and slate all carry no status meaning, so they are safe here.
-  ["#0071E3", "#4AA3FF"], // blue
+  ["var(--ink-bright-blue)", "#4AA3FF"], // blue
   ["#5E5CE6", "#8A88FF"], // indigo
   ["#0F9E8E", "#2DD4BF"], // teal
-  ["#7C3AED", "#A78BFA"], // violet
+  ["var(--ink-violet-soft)", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
   ["#4338CA", "#818CF8"], // deep indigo
   ["#0EA5E9", "#7DD3FC"], // sky

@@ -234,7 +234,7 @@ export function KnowledgePanel({
                           <span
                             className={`tnum shrink-0 text-[11.5px] ${
                               row.words === 0
-                                ? "font-semibold text-[color:#B02020]"
+                                ? "font-semibold text-[color:var(--ink-red)]"
                                 : "text-text-tertiary"
                             }`}
                           >

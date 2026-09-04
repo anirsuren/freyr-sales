@@ -11,6 +11,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { cn, OUTCOME_META } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 export type OutcomeSlice = {
   /** OUTCOME_META key — the colour + icon come from the app's own outcome map. */
@@ -88,15 +89,15 @@ export function OutcomeMixPanel({
                 style={
                   lit === i
                     ? {
-                        background: `${segment.color}1F`,
-                        boxShadow: `inset 0 0 0 1px ${segment.color}59`,
+                        background: tint(segment.color, 12),
+                        boxShadow: `inset 0 0 0 1px ${tint(segment.color, 35)}`,
                       }
                     : undefined
                 }
               >
                 <span
                   className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md"
-                  style={{ color: segment.color, background: `${segment.color}24` }}
+                  style={{ color: segment.color, background: tint(segment.color, 14) }}
                   aria-hidden="true"
                 >
                   {Icon && <Icon size={12} strokeWidth={2.2} />}

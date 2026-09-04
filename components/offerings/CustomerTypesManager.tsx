@@ -29,6 +29,7 @@ import {
   customerFamilyIcon,
 } from "@/lib/customerFamilies";
 import { flagForGeography } from "@/lib/countryFlags";
+import { tint } from "@/lib/tint";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
@@ -54,7 +55,7 @@ const FAMILY_META = CUSTOMER_FAMILY_META;
 const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
   Small: { color: "#0891B2", icon: Store },
   "Mid size": { color: "#0891B2", icon: Building },
-  Large: { color: "#0071E3", icon: Building2 },
+  Large: { color: "var(--ink-bright-blue)", icon: Building2 },
 };
 
 export function CustomerTypesManager({
@@ -541,7 +542,7 @@ export function CustomerTypesManager({
           <div className="p-4 border-b border-border-light flex items-start gap-3">
             <span
               className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: `${famColor}14`, color: famColor }}
+              style={{ background: tint(famColor, 8), color: famColor }}
             >
               <FIcon size={17} strokeWidth={1.8} />
             </span>
@@ -637,7 +638,7 @@ export function CustomerTypesManager({
                     return (
                       <span
                         className="inline-flex w-fit items-center gap-1 text-[11px] font-semibold rounded px-2 py-0.5"
-                        style={{ color: sm.color, background: `${sm.color}14` }}
+                        style={{ color: sm.color, background: tint(sm.color, 8) }}
                       >
                         <SIcon size={11} strokeWidth={2} />
                         {t.size}
@@ -655,7 +656,7 @@ export function CustomerTypesManager({
                   </span>
                   <span
                     className="inline-flex items-center gap-1 self-center justify-self-start sm:justify-self-end whitespace-nowrap rounded-full text-[11px] font-semibold px-2.5 py-1"
-                    style={{ color: accent, background: `${accent}14` }}
+                    style={{ color: accent, background: tint(accent, 8) }}
                   >
                     {count} offering{count === 1 ? "" : "s"}
                   </span>
@@ -732,7 +733,7 @@ export function CustomerTypesManager({
               <span
                 key={m.id}
                 className="group inline-flex items-center text-[12.5px] font-medium border rounded-md transition-colors"
-                style={{ background: `${accent}0D`, borderColor: `${accent}33` }}
+                style={{ background: tint(accent, 5), borderColor: tint(accent, 20) }}
               >
                 <Link
                   href={`/offerings?market=${m.id}`}

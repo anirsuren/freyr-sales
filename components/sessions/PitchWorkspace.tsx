@@ -1003,12 +1003,12 @@ export function PitchWorkspace({
               value={composeTemplate}
               onChange={applyTemplate}
               options={[
-                { value: "", label: "From this pitch (current draft)", icon: PenLine, color: "#0071E3" },
+                { value: "", label: "From this pitch (current draft)", icon: PenLine, color: "var(--ink-bright-blue)" },
                 ...EMAIL_TEMPLATES.map((t) => ({
                   value: t.id,
                   label: t.name,
                   icon: FileText,
-                  color: "#0F766E",
+                  color: "var(--ink-teal-deep)",
                 })),
               ]}
             />

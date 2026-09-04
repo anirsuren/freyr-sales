@@ -65,7 +65,7 @@ function lineStatus(
       label: "Ongoing",
       className: "bg-blue-light text-blue-primary",
       icon: Repeat,
-      bar: "#0071E3",
+      bar: "var(--ink-bright-blue)",
     };
   const days = Math.ceil((Date.parse(line.end_date) - now.getTime()) / 86_400_000);
   if (days < 0)
@@ -81,7 +81,7 @@ function lineStatus(
       label: `${days}d left`,
       className: "bg-orange-50 text-orange-700",
       icon: AlarmClock,
-      bar: "#C2410C",
+      bar: "var(--ink-orange)",
     };
   return {
     label: "Active",
@@ -98,9 +98,9 @@ const REVENUE_TYPE_STYLE: Record<
   OfferingRevenueLine["revenue_type"],
   { color: string; bg: string; icon: LucideIcon }
 > = {
-  annual: { color: "#0071E3", bg: "rgba(0,113,227,0.10)", icon: Repeat },
-  project: { color: "#7C3AED", bg: "rgba(124,58,237,0.10)", icon: Briefcase },
-  annual_service: { color: "#0F766E", bg: "rgba(15,118,110,0.10)", icon: Wrench },
+  annual: { color: "var(--ink-bright-blue)", bg: "rgba(0,113,227,0.10)", icon: Repeat },
+  project: { color: "var(--ink-violet-soft)", bg: "rgba(124,58,237,0.10)", icon: Briefcase },
+  annual_service: { color: "var(--ink-teal-deep)", bg: "rgba(15,118,110,0.10)", icon: Wrench },
   license: { color: "#0891B2", bg: "rgba(8,145,178,0.12)", icon: KeyRound },
 };
 

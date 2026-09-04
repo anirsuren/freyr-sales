@@ -32,6 +32,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
+import { tint } from "@/lib/tint";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -185,7 +186,7 @@ function PointMarker({
             top,
             width: POINT_MARKER_CLEARANCE * 1.25,
             height: POINT_MARKER_CLEARANCE * 1.25,
-            background: `${color}30`,
+            background: `${tint(color, 19)}`,
             transform: "translate(-50%,-50%)",
           }}
         />
@@ -731,7 +732,7 @@ const STAGE_TAGS: Record<string, TipTagDef> = Object.fromEntries(
       color: STAGE_COLOR[stage],
       // 10% tint of the stage's own colour — the same recipe as the deal
       // page's stage pill, so the two are the same object visually.
-      bg: `${STAGE_COLOR[stage]}1A`,
+      bg: tint(STAGE_COLOR[stage], 10),
       icon: STAGE_ICON[stage],
     },
   ])
@@ -856,7 +857,7 @@ function TipBreakdown({
             ...(t.tags ?? []).map((tag) => ({
               label: tag.label,
               color: tag.color,
-              bg: `${tag.color}1A`,
+              bg: tint(tag.color, 10),
               icon: (tag.icon ? TIP_ICONS[tag.icon] : undefined) ?? Sparkles,
             })),
             tipTagFor(t.stage, "stage"),
@@ -1210,7 +1211,7 @@ function SeriesMark({
       )}
       // 14% wash of the series colour behind the glyph in the colour itself —
       // reads as "a purple something", not a raw dot.
-      style={{ color, background: `${color}24` }}
+      style={{ color, background: tint(color, 14) }}
       aria-hidden="true"
     >
       <Icon size={12} strokeWidth={2.2} />
@@ -2413,7 +2414,7 @@ export function BarChart({
                   lit === i && "bar-lit"
                 )}
                 style={{
-                  ["--bar-glow" as string]: `${d.color || VIZ.blue}bf`,
+                  ["--bar-glow" as string]: `${tint(d.color || VIZ.blue, 75)}`,
                   maxWidth: maxBarWidth,
                   height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,
@@ -2476,7 +2477,7 @@ export function BarChart({
                        bar lifts and glows, nothing is drawn around it. */
                     boxShadow:
                       lit === i
-                        ? `0 0 16px 2px ${ringColor}80, 0 4px 14px ${ringColor}4D`
+                        ? `0 0 16px 2px ${tint(ringColor, 50)}, 0 4px 14px ${tint(ringColor, 30)}`
                         : undefined,
                   }}
                 >
@@ -3062,7 +3063,7 @@ export function DonutLegend({
             )}
             style={
               linked === i
-                ? { background: `${it.color}1F`, boxShadow: `inset 0 0 0 1px ${it.color}59` }
+                ? { background: tint(it.color, 12), boxShadow: `inset 0 0 0 1px ${tint(it.color, 35)}` }
                 : undefined
             }
           >
@@ -3071,7 +3072,7 @@ export function DonutLegend({
               // tag — the blue and yellow tag that has the company name").
               <span
                 className="col-span-2 inline-flex min-w-0 items-center gap-1.5 justify-self-start rounded-full px-2.5 py-1 text-[12px] font-semibold"
-                style={{ color: it.color, background: `${it.color}1A` }}
+                style={{ color: it.color, background: tint(it.color, 10) }}
               >
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"

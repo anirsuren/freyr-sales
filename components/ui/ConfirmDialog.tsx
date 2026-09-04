@@ -58,8 +58,8 @@ export function ConfirmDialog({
           className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
           style={
             tone === "primary"
-              ? { background: "rgba(0,113,227,0.10)", color: "#0071E3" }
-              : { background: "rgba(176,32,32,0.10)", color: "#B02020" }
+              ? { background: "rgba(0,113,227,0.10)", color: "var(--ink-bright-blue)" }
+              : { background: "rgba(176,32,32,0.10)", color: "var(--ink-red)" }
           }
         >
           {tone === "primary" ? (

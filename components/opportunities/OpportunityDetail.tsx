@@ -44,6 +44,7 @@ import {
   statusColor,
 } from "@/lib/opportunitiesShared";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * THE OPPORTUNITY PAGE.
@@ -65,10 +66,10 @@ function money(n: number): string {
 }
 
 const LEVEL_TONE: Record<string, string> = {
-  "Go get": "#0F766E",
-  "High confidence": "#0071E3",
-  Pipeline: "#7C3AED",
-  Future: "#B4318F",
+  "Go get": "var(--ink-teal-deep)",
+  "High confidence": "var(--ink-bright-blue)",
+  Pipeline: "var(--ink-violet-soft)",
+  Future: "var(--ink-magenta)",
 };
 
 export function OpportunityDetail({
@@ -410,8 +411,8 @@ export function OpportunityDetail({
               <span
                 className="rounded-full px-2 py-0.5 text-[11px] font-bold"
                 style={{
-                  background: `${LEVEL_TONE[level] ?? "#7C3AED"}14`,
-                  color: LEVEL_TONE[level] ?? "#7C3AED",
+                  background: tint(LEVEL_TONE[level] ?? "var(--ink-violet-soft)", 8),
+                  color: LEVEL_TONE[level] ?? "var(--ink-violet-soft)",
                 }}
               >
                 {level}
@@ -426,7 +427,7 @@ export function OpportunityDetail({
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold"
                   style={{
-                    background: `${statusColor(deal.status)}14`,
+                    background: tint(statusColor(deal.status), 8),
                     color: statusColor(deal.status),
                   }}
                 >

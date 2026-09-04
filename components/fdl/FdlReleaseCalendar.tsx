@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
 import { useFillHeight } from "@/components/ui/useFillHeight";
 import { FullScreenButton } from "@/components/ui/FullScreenPanel";
 import Link from "next/link";
@@ -23,6 +24,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { FDL_TYPE_META } from "./FdlComponentsBrowser";
+import { tint } from "@/lib/tint";
 
 /**
  * EVERY COMPONENT'S RELEASES ON ONE CALENDAR (Suren, Aug 12: "these things
@@ -37,8 +39,8 @@ type ReleaseStatus = "released" | "current" | "expected";
 
 const STATUS_META: Record<ReleaseStatus, { label: string; color: string }> = {
   released: { label: "Released", color: "#16A34A" },
-  current: { label: "Current", color: "#0071E3" },
-  expected: { label: "Expected", color: "#7C3AED" },
+  current: { label: "Current", color: "var(--ink-bright-blue)" },
+  expected: { label: "Expected", color: "var(--ink-violet-soft)" },
 };
 
 function releaseStatus(r: FdlComponent["releases"][number]): ReleaseStatus {
@@ -88,7 +90,12 @@ function ReleaseStats({ components }: { components: FdlComponent[] }) {
   let overdue = 0;
   let withCurrent = 0;
   for (const c of components) {
-    if (c.releases.some((r) => r.current)) withCurrent += 1;
+    /* THE SAME QUESTION THE CARDS ASK (Anir, Sep 4: the components page drew
+       38 "Current V…" badges while this tile said 37 of 64). fdlCurrentVersion
+       is the shared answer — the version marked current, else the latest
+       released — and counting the raw flag here made one component, Archive,
+       appear on one screen and not the other. */
+    if (fdlCurrentVersion(c)) withCurrent += 1;
     for (const r of c.releases) {
       if (r.date?.startsWith(monthKey)) thisMonth += 1;
       if (r.status === "next" && r.date) {
@@ -111,7 +118,7 @@ function ReleaseStats({ components }: { components: FdlComponent[] }) {
         label="Expected in 30 days"
         value={String(expectedSoon)}
         sub={expectedSoon === 1 ? "version" : "versions"}
-        color="#7C3AED"
+        color="var(--ink-violet-soft)"
       />
       <StatTile
         icon={AlarmClock}
@@ -250,7 +257,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           collapsible={false}
           className="w-[170px] shrink-0"
           options={[
-            { value: "", label: "All statuses", color: "#0071E3", icon: Layers },
+            { value: "", label: "All statuses", color: "var(--ink-bright-blue)", icon: Layers },
             ...(Object.keys(STATUS_META) as ReleaseStatus[]).map((s) => ({
               value: s,
               label: STATUS_META[s].label,
@@ -267,8 +274,8 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           collapsible={false}
           className="w-[190px] shrink-0"
           options={[
-            { value: "all", label: "All versions", color: "#0071E3", icon: Layers },
-            { value: "latest", label: "Latest per component", color: "#6D28D9", icon: Rocket },
+            { value: "all", label: "All versions", color: "var(--ink-bright-blue)", icon: Layers },
+            { value: "latest", label: "Latest per component", color: "var(--ink-violet)", icon: Rocket },
           ]}
         />
         <span className="ml-auto flex items-center gap-3">
@@ -436,7 +443,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                       >
                         <span
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                          style={{ color: typeColor, background: `${typeColor}14` }}
+                          style={{ color: typeColor, background: tint(typeColor, 8) }}
                         >
                           <TypeIcon size={15} strokeWidth={2} />
                         </span>
@@ -540,7 +547,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                         className="flex items-start gap-2 rounded-lg border border-border-light bg-white px-3 py-2"
                       >
                         {f.fid && (
-                          <span className="mt-0.5 shrink-0 rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[10px] font-bold text-[color:#0040A0] tnum">
+                          <span className="mt-0.5 shrink-0 rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[10px] font-bold text-[color:var(--ink-blue)] tnum">
                             {f.fid}
                           </span>
                         )}

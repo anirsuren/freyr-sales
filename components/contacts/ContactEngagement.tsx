@@ -219,7 +219,7 @@ export function ContactEngagement({
               label: openDeals.length === 1 ? "Open deal" : "Open deals",
               value: String(openDeals.length),
               bg: "rgba(0,113,227,0.10)",
-              color: "#0040A0",
+              color: "var(--ink-blue)",
             },
             {
               icon: CircleDollarSign,
