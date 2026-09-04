@@ -244,9 +244,24 @@ export function escapeRegExp(value: string): string {
  */
 export function parseCalendarDate(value: string | null | undefined): Date | null {
   if (!value) return null;
-  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (plain) {
-    const [, y, m, d] = plain;
+  /**
+   * THE DATE PART, WHOEVER IS LOOKING.
+   *
+   * This took the plain YYYY-MM-DD case and let everything else fall through
+   * to `Date.parse`, which turns a full timestamp into an INSTANT — and an
+   * instant renders as a different calendar day either side of midnight. The
+   * deal page is server-rendered, so "Added" came out as one day on the server
+   * (UTC) and another in a Los Angeles browser, and React threw a hydration
+   * mismatch and re-rendered the tree. Found in the loop: the error appeared
+   * on that page in US Pacific and vanished in UTC.
+   *
+   * A day in a sentence — added on, expected to sign — is a calendar square,
+   * not a moment. Taking the leading date off the string makes it the same
+   * square for everybody, and kills the mismatch at its source.
+   */
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (iso) {
+    const [, y, m, d] = iso;
     return new Date(Number(y), Number(m) - 1, Number(d));
   }
   const t = Date.parse(value);

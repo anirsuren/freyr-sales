@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { statusColor } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
 import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
@@ -678,9 +679,54 @@ export function DealOverviewEditor({
    * reviewed later; it is a thing the form does not accept, and saying so
    * three fields later would leave you hunting for which one it meant.
    */
-  const [pending, setPending] = useState<Record<string, unknown>>({});
+  /* BANKED BY FIELD, NOT BY COLUMN. Keyed on the patch's own keys, the money
+     box counted TWO — it writes `estimatedTcv` and `value` to keep the deal
+     from being worth two amounts — so editing a name and a figure announced
+     "3 unsaved changes" for two edits. The bank is keyed by the FIELD the
+     person touched and each entry carries its whole patch. */
+  const [pending, setPending] = useState<Record<string, Record<string, unknown>>>({});
   const [saving, setSaving] = useState(false);
   const dirtyCount = Object.keys(pending).length;
+  /* Bumped by Discard. Every field's local state re-seeds from `deal` when it
+     changes — see the effect below. */
+  const [resetNonce, setResetNonce] = useState(0);
+
+  /**
+   * DISCARD PUTS THE BOXES BACK, NOT JUST THE BANK.
+   *
+   * Found in the loop: pressing Discard emptied `pending` and hid the bar, but
+   * every field kept its own local state — so the screen still showed the text
+   * you had just thrown away, and nothing would save it. A form that displays
+   * a value it will not write is worse than one that refuses to discard.
+   *
+   * Each box re-seeds from the record here. The nonce, not `deal`, is the
+   * dependency: re-seeding whenever the prop object changed would fight
+   * somebody mid-edit every time the parent re-rendered.
+   */
+  useEffect(() => {
+    if (!resetNonce) return;
+    setName(deal.name ?? "");
+    setLevel(deal.level ?? "Pipeline");
+    setStatus(deal.status ?? "");
+    setRevenueType(deal.revenueType ?? "");
+    setDealType(deal.dealType ?? "");
+    setCurrency(deal.currency ?? BASE_CURRENCY);
+    setAcv(deal.estimatedAcv === undefined ? "" : String(deal.estimatedAcv));
+    setTcv(
+      deal.estimatedTcv === undefined
+        ? deal.value
+          ? String(deal.value)
+          : ""
+        : String(deal.estimatedTcv)
+    );
+    setConfidence(deal.confidence === undefined ? "" : String(deal.confidence));
+    setSigns(deal.estSignDate ?? "");
+    setOwner(deal.owner ?? "");
+    setNote(deal.nextSteps ?? "");
+    setErrors({});
+    setState({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetNonce]);
 
   async function commit(
     key: string,
@@ -698,9 +744,9 @@ export function DealOverviewEditor({
          banks, an early return leaves the old staged value sitting in the bank
          and the save bar offering to write a change that no longer exists. */
       setPending((prev) => {
-        if (!Object.keys(patch).some((k) => k in prev)) return prev;
+        if (!(key in prev)) return prev;
         const next = { ...prev };
-        for (const k of Object.keys(patch)) delete next[k];
+        delete next[key];
         return next;
       });
       return;
@@ -746,13 +792,7 @@ export function DealOverviewEditor({
     /* BANKED, NOT SENT. A field edited back to what it started as leaves the
        bank entirely, so the footer disappears rather than offering to save
        nothing. */
-    setPending((prev) => {
-      const next = { ...prev, ...patch };
-      for (const k of Object.keys(next)) {
-        if (JSON.stringify(next[k]) === JSON.stringify(baseline[k])) delete next[k];
-      }
-      return next;
-    });
+    setPending((prev) => ({ ...prev, [key]: patch }));
     setState((s) => ({ ...s, [key]: "idle" }));
   }
 
@@ -761,7 +801,7 @@ export function DealOverviewEditor({
     if (!dirtyCount || saving) return;
     setSaving(true);
     try {
-      const patch = { ...pending };
+      const patch = Object.assign({}, ...Object.values(pending));
       const message = onSave ? await onSave(patch) : await postUpdate(deal.id, patch);
       if (!alive.current) return;
       if (message) {
@@ -1404,7 +1444,11 @@ export function DealOverviewEditor({
                       <input
                         value={tcv}
                         aria-label="Estimated TCV"
-                        onChange={(e) => setTcv(e.target.value)}
+                        /* K AND M HERE TOO. The shared MoneyInput learned this; these two
+                           boxes are hand-rolled inputs in the money table and were
+                           still eating the letter, so "1.5m" sat there as text and
+                           went to the server as NaN. */
+                        onChange={(e) => setTcv(expandMoneyShorthand(e.target.value))}
                         onBlur={() =>
                           /* BOTH FIELDS, ONE NUMBER. `value` is what the
                              rollups read and `estimatedTcv` is what
@@ -1443,7 +1487,7 @@ export function DealOverviewEditor({
                     <input
                       value={acv}
                       aria-label="Estimated ACV"
-                      onChange={(e) => setAcv(e.target.value)}
+                      onChange={(e) => setAcv(expandMoneyShorthand(e.target.value))}
                       onBlur={() =>
                         void commit(
                           "estimatedAcv",
@@ -1852,11 +1896,11 @@ export function DealOverviewEditor({
                 type="button"
                 disabled={saving}
                 onClick={() => {
-                  /* Putting the record back is the parent's job — it holds the
-                     server's copy. Re-reading it is both the discard and the
-                     proof that the discard worked. */
                   setPending({});
                   setErrors((e) => ({ ...e, __form: "" }));
+                  /* Re-seed every box from the record. Emptying the bank alone
+                     left the discarded text sitting on screen. */
+                  setResetNonce((n) => n + 1);
                   onSaved?.();
                 }}
                 className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50"
