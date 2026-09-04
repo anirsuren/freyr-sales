@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { CalendarClock, Flag, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,26 @@ function midnight(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/**
+ * THE CALENDAR DAY A TIMESTAMP NAMES, THE SAME FOR EVERYBODY.
+ *
+ * `midnight(new Date(requestedAt))` reads the LOCAL year, month and day of an
+ * instant, so a request made at 22:30 UTC is the 28th in London and the 28th
+ * on the server but the 27th in California. The rail then drew a different
+ * first date depending on who was looking, and because this page is
+ * server-rendered React threw a hydration mismatch and rebuilt the tree.
+ *
+ * Found in the loop: the solutioning detail failed in US Pacific and passed in
+ * UTC, which is the signature of exactly this and not of the local-clock class
+ * fixed elsewhere. Taking the date part off the string makes the request's own
+ * day a fixed square.
+ */
+function askedDay(iso: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? "").trim());
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
+  return midnight(new Date(iso));
+}
+
 function label(ms: number): string {
   return new Date(ms).toLocaleDateString("en-US", {
     day: "numeric",
@@ -59,9 +80,26 @@ export function NeededByTimeline({
   done?: boolean;
   className?: string;
 }) {
-  const asked = midnight(new Date(requestedAt));
+  const asked = askedDay(requestedAt);
   const due = midnight(new Date(`${neededBy}T00:00:00`));
-  const today = midnight(new Date());
+  /**
+   * TODAY ARRIVES AFTER THE PAGE DOES.
+   *
+   * This whole rail is built around the reader's today — the marker's
+   * position, the countdown, the tone — and a server-rendered today can always
+   * disagree with the browser's by a day across a timezone. No parsing fixes
+   * that: the two clocks genuinely differ, and `suppressHydrationWarning` is
+   * no use because it only covers one level and the varying text is several
+   * deep.
+   *
+   * So the first paint (server, and the client's hydrating pass) uses the
+   * request's own due date as a fixed anchor, and the real today lands one
+   * effect later. Server and client render identically, then the rail corrects
+   * itself in the same frame the browser was going to paint anyway.
+   */
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => setNow(midnight(new Date())), []);
+  const today = now ?? due;
   if (!Number.isFinite(asked) || !Number.isFinite(due)) return null;
 
   /* The window always holds all three, so today never falls off the end of a
