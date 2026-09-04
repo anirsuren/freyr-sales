@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { setLeaveAsker } from "@/lib/unsavedGuard";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
-import { statusColor } from "@/lib/opportunitiesShared";
+import { signDateOf, statusColor } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
 import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
@@ -611,7 +611,18 @@ export function DealOverviewEditor({
   const [confidence, setConfidence] = useState(
     deal.confidence === undefined ? "" : String(deal.confidence)
   );
-  const [signs, setSigns] = useState(deal.estSignDate ?? "");
+  /* THE DATE THE REST OF THE APP READS (found in the loop, Sep 4: this page's
+     tile said "Sep 18, 2026" while the field under it said "28 Sept 2026").
+
+     Every other reader — the opportunities list, the summary tree's period
+     bucketing, the accruals module's signing-date flag — goes through
+     signDateOf(), which takes the OFFERING ROW's date and only falls back to
+     the deal-level one. The create route agrees: a new deal is rejected
+     without lines[0].estSignDate. This editor was the single place reading
+     deal.estSignDate raw, so when the two had drifted it showed a date nobody
+     else used, and editing it wrote to a field nobody else read — the list,
+     the tree and the accrual flag all kept the old date and said nothing. */
+  const [signs, setSigns] = useState(signDateOf(deal) ?? "");
   const [owner, setOwner] = useState(deal.owner ?? "");
   const [note, setNote] = useState(deal.nextSteps ?? "");
 
@@ -1258,8 +1269,21 @@ export function DealOverviewEditor({
                 onChange={(e) => {
                   const next = e.target.value;
                   setSigns(next);
-                  void commit("estSignDate", { estSignDate: next }, () =>
-                    setSigns(deal.estSignDate ?? "")
+                  /* BOTH PLACES, SO THEY CANNOT DRIFT AGAIN. One offering per
+                     opportunity since Aug 17, so the row IS the deal: writing
+                     the date to only one of the two is what let this page
+                     disagree with itself in the first place. */
+                  void commit(
+                    "estSignDate",
+                    (deal.lines ?? []).length
+                      ? {
+                          estSignDate: next,
+                          lines: (deal.lines ?? []).map((l, i) =>
+                            i === 0 ? { ...l, estSignDate: next } : l
+                          ),
+                        }
+                      : { estSignDate: next },
+                    () => setSigns(signDateOf(deal) ?? "")
                   );
                 }}
                 className={INPUT}

@@ -4355,14 +4355,37 @@ function SingleOfferingEditor({
               collapsible={false}
               dense
               minWidth={88}
+              /* THE NUMBER SURVIVES THE CURRENCY (found in the loop, Sep 4:
+                 typing 500K in USD and then picking GBP emptied the box, reset
+                 Estimated TCV to "Not set" and put the counter back up from 6
+                 to 7 still needed).
+
+                 There is ONE box on screen but TWO fields behind it: in USD
+                 the typed number lives in `value`, in anything else it lives
+                 in `localValue`. The switch never moved the number between
+                 them, so it read whichever field was empty.
+
+                 USD to GBP lost it outright. GBP to USD was quieter and
+                 worse: it cleared `localValue` and left `value` holding the
+                 CONVERTED dollars, so £500,000 silently became "$674,855, the
+                 deal's value" — a figure nobody typed, sitting in a mandatory
+                 field, saveable.
+
+                 The amount is one fact: the number the client pays. Changing
+                 the label on it does not change it, so it is carried across
+                 and the dollars are re-derived at the new rate. */
               onChange={(cur) => {
+                /* Whichever field the number is in right now. */
+                const typed = String(
+                  line.localCurrency ? line.localValue : line.value
+                );
                 if (cur === "USD") {
-                  set({ localCurrency: "", localValue: "" });
+                  set({ localCurrency: "", localValue: "", value: typed });
                 } else {
                   set({
                     localCurrency: cur,
-                    localValue: line.localValue,
-                    value: usdFrom(line.localValue, cur),
+                    localValue: typed,
+                    value: usdFrom(typed, cur),
                   });
                 }
               }}

@@ -356,6 +356,16 @@ export async function buildCustomer360(
           a.name.localeCompare(b.name)
       );
 
+    /* HOW MANY OPEN DEALS EACH NAME OWNS HERE, so the row says what the
+       person is actually carrying on this account rather than only how they
+       came to be listed. */
+    const openByOwner = new Map<string, number>();
+    for (const d of myDeals) {
+      if (d.status === "Won" || d.status === "Lost") continue;
+      const k = (d.owner ?? "").trim().toLowerCase();
+      if (k) openByOwner.set(k, (openByOwner.get(k) ?? 0) + 1);
+    }
+
     bands.push({
       key: "team",
       label: "Team",
@@ -364,13 +374,47 @@ export async function buildCustomer360(
       count: people.length,
       href: "/team",
       hrefLabel: "The team",
+      /* A PROPER TABLE, LIKE EVERY OTHER BAND (Anir, Sep 4: "it says 'Team,'
+         and it says '1 team member' and it shows me... it should be a proper
+         table that has at least 3, 4, 5 columns. This goes for every single
+         page").
+
+         Two things were wrong and only one of them was the count. The count
+         was right — he owns a deal on that account, so he IS on it — but the
+         row gave him no way to see that, because the band had no columns and
+         fell back to a name and a run-on sentence. Naming the standing first
+         answers the question the row was raising: you are here because you
+         own a deal here. */
+      columns: [
+        { key: "standing", label: "Standing" },
+        { key: "openDeals", label: "Open deals here" },
+        { key: "does", label: "What they do here" },
+      ],
       empty: "Nobody is on this account yet.",
-      items: people.map<Customer360Item>((p) => ({
-        id: p.name,
-        title: p.name,
-        sub: p.how.join(" · "),
-        face: p.name,
-      })),
+      items: people.map<Customer360Item>((p) => {
+        const open = openByOwner.get(p.name.toLowerCase()) ?? 0;
+        /* The standing is the strongest claim the person has; the rest of the
+           reasons move into the last column so neither repeats the other. */
+        const standing = p.isOwner
+          ? "Account owner"
+          : p.onTeam
+            ? "On the account team"
+            : "Works the account";
+        const rest = p.how.filter(
+          (h) => h !== "account owner" && h !== "on the account team"
+        );
+        return {
+          id: p.name,
+          title: p.name,
+          sub: p.how.join(" · "),
+          face: p.name,
+          cells: {
+            standing,
+            openDeals: open > 0 ? String(open) : "·",
+            does: rest.length ? rest.join(" · ") : "named on the team",
+          },
+        };
+      }),
     });
   }
 

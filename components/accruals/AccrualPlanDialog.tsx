@@ -239,11 +239,33 @@ function planRows(d: Draft): DraftLine[] {
  */
 type SplitField = "ots" | "arr" | "mrr";
 
-function splitFieldsFor(kind: string | undefined): SplitField[] {
+/**
+ * WHICH SPLIT COLUMNS THIS PLAN GETS.
+ *
+ * The offering type decides it — Manoj, Sep 3: a licence schedules as OTS +
+ * ARR, a service as one monthly figure. What it did NOT decide was the third
+ * case, a deal whose type nobody has picked yet, and that fell through to all
+ * three columns. Found in the loop, Sep 4: on a typeless deal the footer read
+ * "$0  $0  $0  |  $500,000" — three empty parts beside a total that is not
+ * their sum, on a table whose own hint says the total is "the three columns to
+ * the left, added up". A row that contradicts its own header.
+ *
+ * With no type, the plan is simply a total per month, which the store has
+ * always supported: the normaliser only adds the parts up when the plan is
+ * split. So no type means no split columns — except any the plan is ALREADY
+ * using, because a schedule written before the type existed still has to show
+ * the figures somebody entered.
+ */
+function splitFieldsFor(
+  kind: string | undefined,
+  used: readonly SplitField[] = []
+): SplitField[] {
   const k = String(kind ?? "").toLowerCase();
   if (k === "license") return ["ots", "arr"];
   if (k === "services") return ["mrr"];
-  return ["ots", "arr", "mrr"];
+  return ["ots", "arr", "mrr"].filter((f) =>
+    used.includes(f as SplitField)
+  ) as SplitField[];
 }
 
 const SPLIT_LABEL: Record<SplitField, string> = {
@@ -267,10 +289,13 @@ const COLUMN_HINT: Record<string, string> = {
   "Revised Monthly (USD)": "The new monthly figure for this month, if you are changing it.",
 };
 
-function monthColumnsFor(kind: string | undefined): string[] {
+function monthColumnsFor(
+  kind: string | undefined,
+  used: readonly SplitField[] = []
+): string[] {
   return [
     "Month",
-    ...splitFieldsFor(kind).map((f) => `${SPLIT_LABEL[f]} (USD)`),
+    ...splitFieldsFor(kind, used).map((f) => `${SPLIT_LABEL[f]} (USD)`),
     "Total (USD)",
   ];
 }
@@ -290,8 +315,11 @@ function monthColumnsFor(kind: string | undefined): string[] {
  * The revised total is reported under the table instead, where it is
  * arithmetic rather than a field.
  */
-function deviationColumnsFor(kind: string | undefined): string[] {
-  return splitFieldsFor(kind).map((f) => `Revised ${SPLIT_LABEL[f]} (USD)`);
+function deviationColumnsFor(
+  kind: string | undefined,
+  used: readonly SplitField[] = []
+): string[] {
+  return splitFieldsFor(kind, used).map((f) => `Revised ${SPLIT_LABEL[f]} (USD)`);
 }
 
 /** Every column takes an equal share, so the header keeps sitting over its own
@@ -1002,6 +1030,15 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
    * Emptying both boxes hands the month back to the formula, so there is a way
    * out that is not "start over".
    */
+  /** The month's own figure, for a plan with no split columns to sum. */
+  function editAmount(index: number, raw: string) {
+    const lines = [...editing.lines];
+    while (lines.length <= index)
+      lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
+    lines[index] = { ...lines[index], amount: raw };
+    setEditing(reshape({ ...editing, lines }));
+  }
+
   function editSplit(index: number, field: "ots" | "arr" | "mrr", raw: string) {
     const lines = [...editing.lines];
     while (lines.length <= index)
@@ -1259,10 +1296,15 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
      while deviating. The width falls out of the count so the header and the
      body cannot drift apart. */
   const dealKind = dealById.get(editing.opportunityId)?.offeringKind;
-  const splitFields = splitFieldsFor(dealKind);
-  const baseColumns = monthColumnsFor(dealKind);
+  /* The split columns a TYPELESS plan has already been filled in with, so
+     nothing anybody entered goes invisible when the type is blank. */
+  const usedSplitFields = (["ots", "arr", "mrr"] as SplitField[]).filter((f) =>
+    editingRows.some((l) => Number(l[f]) > 0)
+  );
+  const splitFields = splitFieldsFor(dealKind, usedSplitFields);
+  const baseColumns = monthColumnsFor(dealKind, usedSplitFields);
   const monthColumns: readonly string[] = deviating
-    ? [...baseColumns, ...deviationColumnsFor(dealKind)]
+    ? [...baseColumns, ...deviationColumnsFor(dealKind, usedSplitFields)]
     : baseColumns;
   const monthColWidth = colWidth(monthColumns.length);
 
@@ -1930,14 +1972,46 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                                 total that none of its columns explained. The
                                 money is entered in the split columns to the
                                 left and this adds them up. */}
+                            {/* UNLESS THERE IS NOTHING TO ADD UP. Manoj's
+                                rule is that the total must not be typed when
+                                the split columns exist, because then it has to
+                                equal them. A deal with no offering type has no
+                                split columns at all (see splitFieldsFor), so
+                                there is nothing for it to disagree with and
+                                the month's figure has to be enterable — or
+                                Spread evenly becomes the only way to fill the
+                                schedule and no single month could ever be
+                                adjusted. The store has always allowed this:
+                                the normaliser only sums the parts when the
+                                plan is split. */}
                             <input
-                              value={withCommas(rowTotal(line))}
+                              value={withCommas(
+                                splitFields.length ? rowTotal(line) : (line.amount ?? "")
+                              )}
                               placeholder="0"
                               inputMode="numeric"
-                              readOnly
-                              tabIndex={-1}
+                              readOnly={splitFields.length > 0}
+                              tabIndex={splitFields.length ? -1 : undefined}
                               aria-label={`Total for ${monthLabel(line.month)}`}
-                              className="h-8 w-full cursor-default rounded-md border border-transparent bg-surface pl-5 pr-2 text-[13px] font-semibold tnum text-text-primary outline-none"
+                              onChange={
+                                splitFields.length
+                                  ? undefined
+                                  : (e) =>
+                                      editAmount(
+                                        i,
+                                        expandMoneyShorthand(e.target.value, {
+                                          integer: true,
+                                        })
+                                      )
+                              }
+                              className={cn(
+                                "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] font-semibold tnum outline-none",
+                                splitFields.length
+                                  ? "cursor-default border-transparent bg-surface text-text-primary"
+                                  : line.amount
+                                    ? "border-blue-subtle bg-blue-light/40 text-text-primary focus:border-blue-subtle"
+                                    : "border-border-light text-text-primary focus:border-blue-subtle"
+                              )}
                             />
                             </span>
                           </td>

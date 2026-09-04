@@ -1121,18 +1121,65 @@ export function OpportunitySummary({
                     )}
                   </button>
                 </th>
-                <td className={cn(cellCls, "font-semibold text-text-primary")}>
-                  {own === undefined ? (
-                    <span className="font-normal text-text-tertiary">·</span>
-                  ) : (
-                    money(own)
-                  )}
-                </td>
-                {periods.map((per) => (
-                  <td key={per} className={cn(cellCls, "text-text-tertiary")}>
-                    {p === per && own !== undefined ? money(own) : ""}
-                  </td>
-                ))}
+                {/* THE LEAF COUNTS THE SAME MONEY ITS PARENTS DO.
+
+                    Every group row and the grand total go through cellsOf,
+                    which reads the SPREAD when there is one — on the Revenue
+                    Accruals page that is the deal's planned months. The leaf
+                    never did: it printed estimateOf(), the deal's own TCV, in
+                    whichever single column its close date fell in. So a deal
+                    with no accrual plan printed its whole value on its own
+                    line while every ancestor above it, correctly, counted
+                    nothing — "GRI — Kimberly Clark $500K" sitting under four
+                    rows of "·" and a grand total that did not include it.
+
+                    The group-level version of this was already fixed, with the
+                    note that "a Total that disagreed with them is a table that
+                    does not reconcile — worse than no table on a money page".
+                    That is just as true one row further down. With a spread,
+                    the leaf reads the spread; with no plan it reads "·", which
+                    is the honest answer and the one its parents give.
+
+                    Without a spread (the pipeline) nothing changes: the deal is
+                    worth its whole figure in the period it closes. */}
+                {(() => {
+                  const cells = periods.map((per) =>
+                    spread ? spread.amountIn(d, per, measure) : undefined
+                  );
+                  const leafTotal = spread
+                    ? spread.periodsOf(d, timeline).length > 0
+                      ? cells.reduce((a, b) => (a ?? 0) + (b ?? 0), 0)
+                      : undefined
+                    : own;
+                  return (
+                    <>
+                      <td className={cn(cellCls, "font-semibold text-text-primary")}>
+                        {leafTotal === undefined ? (
+                          <span className="font-normal text-text-tertiary">·</span>
+                        ) : (
+                          money(leafTotal)
+                        )}
+                      </td>
+                      {/* With a spread, the same Money the group rows use, so
+                          an empty month reads "·" here exactly as it does on
+                          every row above it instead of going blank. Without
+                          one, a deal lands in exactly one column and the rest
+                          stay empty — that is the pipeline's own shape and it
+                          was never the thing that failed to reconcile. */}
+                      {periods.map((per, pi) => (
+                        <td key={per} className={cn(cellCls, "text-text-tertiary")}>
+                          {spread ? (
+                            <Money n={cells[pi] ?? 0} dim />
+                          ) : p === per && own !== undefined ? (
+                            money(own)
+                          ) : (
+                            ""
+                          )}
+                        </td>
+                      ))}
+                    </>
+                  );
+                })()}
               </tr>
             );
           }
