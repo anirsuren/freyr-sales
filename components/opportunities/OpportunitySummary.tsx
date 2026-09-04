@@ -6,6 +6,7 @@ import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, Tr
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { cn } from "@/lib/utils";
 import { DimensionStack } from "./DimensionStack";
@@ -659,7 +660,43 @@ export function OpportunitySummary({
    * Pinned, so opening and closing changes what is listed and never where the
    * numbers sit. Long names truncate, which they already did.
    */
-  const nameCol = { width: 360, minWidth: 360, maxWidth: 360 } as const;
+  /**
+   * WIDE ENOUGH FOR A DEAL'S ACTUAL NAME (Anir, Sep 3: "I really don't want
+   * this to show up as '...'. Maybe if you could only do that if it's ... and
+   * it's only fucking huge, but I'm okay with scrolling on the screen left and
+   * right").
+   *
+   * 360px was cutting "Agent - VIA — AbbVie" down to "Agent - VIA — Abb…" —
+   * and truncation at that width hides the END of a name, which on these deals
+   * is the customer. The column is 520 now and the table already scrolls
+   * sideways, which he would rather do than read an ellipsis. A ceiling stays
+   * so one absurd name cannot push every figure off the screen; only genuinely
+   * huge names clip.
+   */
+  /**
+   * WHAT IS BEING SOLD, AS A MARK. The six Freya Fusion agents wear Saras's
+   * artwork — the same faces the pickers and the deal screen draw — and
+   * everything else gets the catalogue's package glyph, so an offering never
+   * reads as a bare word where its neighbours have icons.
+   */
+  function offeringMark(d: Opportunity) {
+    const label = offeringNameFor(d);
+    /* "No offering" and friends are placeholders, not products — the same
+       leftovers test the tree sorts by. */
+    if (!label || /^(no |unassigned|none$)/i.test(label)) return null;
+    return agentIn(label) ? (
+      <AgentAvatar name={label} size={18} className="shrink-0" />
+    ) : (
+      <Package
+        size={13}
+        strokeWidth={2.2}
+        aria-hidden="true"
+        className="shrink-0 text-[color:#7C3AED]"
+      />
+    );
+  }
+
+  const nameCol = { width: 520, minWidth: 520, maxWidth: 520 } as const;
 
   function Money({ n, dim }: { n: number; dim?: boolean }) {
     if (n <= 0) return <span className="text-text-tertiary/50">·</span>;
@@ -827,12 +864,45 @@ export function OpportunitySummary({
                         glyph from the sidebar, in indigo: the customer's logo
                         is already on the row above, so repeating it would say
                         nothing this row does not already sit under. */}
-                    <Briefcase
-                      size={13}
-                      strokeWidth={2.2}
-                      className="shrink-0 text-[color:#4338CA]"
-                      aria-hidden="true"
-                    />
+                    {/* ONE MARK, NOT TWO (Anir, Sep 3: "if you're using that,
+                        I only need one icon. You don't have to put that
+                        fucking briefcase if you're putting the other icon").
+
+                        The briefcase says "this row is a deal" — which is
+                        worth saying when the row would otherwise start with
+                        bare text, and worth nothing beside an offering mark
+                        that says the same and more. So the specific mark wins
+                        and the generic one steps aside. */}
+                    {(!order.includes("offering") && offeringMark(d)) || (
+                      <Briefcase
+                        size={13}
+                        strokeWidth={2.2}
+                        className="shrink-0 text-[color:#4338CA]"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {/* THE MARKS THIS ROW STILL HAS TO CARRY (Anir, Sep 3:
+                        "if I'm in a customer, I want to see the company logo…
+                        you have to see if I don't already select the customer.
+                        If I want to see the customer and if I didn't already
+                        select the owner or the team member, I want to see that
+                        as a profile picture").
+
+                        One rule, three marks: a dimension the tree is GROUPED
+                        BY is already answered by an ancestor row, so repeating
+                        it down the column says nothing. A dimension that is
+                        NOT in the view has nowhere else to appear, and that is
+                        exactly when the deal row should say it. The company
+                        logo and the offering follow the owner's face, which
+                        got this treatment first. */}
+                    {!order.includes("customer") &&
+                      !order.includes("group") &&
+                      d.customer && (
+                        <CompanyLogo
+                          name={d.customer}
+                          className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                        />
+                      )}
                     <span className="min-w-0 truncate" title={d.name}>
                       {d.name}
                     </span>
