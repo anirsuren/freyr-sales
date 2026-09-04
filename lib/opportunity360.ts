@@ -26,6 +26,32 @@ const readAccrualPlans = cache(async () => {
 });
 
 /**
+ * AND THE OTHER THREE STORES, FOR EXACTLY THE SAME REASON.
+ *
+ * The note above was written about the accrual plans and only the accrual
+ * plans got the cache; solutioning, meetings and contracts stayed inside the
+ * loop, so a page with N deals read those three tables N times over.
+ *
+ * Measured in the loop: the Opportunities page in MOCK mode, which carries 406
+ * deals against real's 103, never finished — 120 seconds and still going —
+ * while the API behind it answered in 1.9. Real mode took 9.5s for a quarter
+ * of the data, so this was already the slowest page in the app and was going
+ * to arrive in real mode too, on its own, as the pipeline grew past a hundred.
+ *
+ * React's `cache` is per-REQUEST memoisation: same answer, one round trip,
+ * nothing held between requests and no staleness introduced.
+ */
+const requestsOnce = cache(async () =>
+  readSolutioning().then((s) => s.requests).catch(() => [])
+);
+const meetingsOnce = cache(async () =>
+  readMeetings().then((s) => s.meetings).catch(() => [])
+);
+const contractsOnce = cache(async () =>
+  readContracts().then((s) => s.contracts).catch(() => [])
+);
+
+/**
  * HOW ONE MONTH'S TOTAL WAS MADE UP (Suren, Sep 1: "what if we need a
  * separation between month-on-month revenue and one-time revenue? You can make
  * another column: OTS amount in USD, ARR amount in USD... and then you can
@@ -87,15 +113,9 @@ export async function buildOpportunity360(
   const may = (path: string) => canAccessModuleWith(path, role, access);
 
   const [solutioning, meetings, contracts, accrualPlans] = await Promise.all([
-    may("/solutioning")
-      ? readSolutioning().then((s) => s.requests).catch(() => [])
-      : Promise.resolve([]),
-    may("/meetings")
-      ? readMeetings().then((s) => s.meetings).catch(() => [])
-      : Promise.resolve([]),
-    may("/contracts")
-      ? readContracts().then((s) => s.contracts).catch(() => [])
-      : Promise.resolve([]),
+    may("/solutioning") ? requestsOnce() : Promise.resolve([]),
+    may("/meetings") ? meetingsOnce() : Promise.resolve([]),
+    may("/contracts") ? contractsOnce() : Promise.resolve([]),
     may("/revenue-accruals") ? readAccrualPlans() : Promise.resolve([]),
   ]);
 
