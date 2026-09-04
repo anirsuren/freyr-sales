@@ -766,6 +766,20 @@ export function OpportunitySummary({
        and the set records what the reader shut again. */
     const shown = filtering ? !shutWhileFiltering.has(node.key) : open.has(node.key);
     const faded = !onOpenPath(node.key);
+    /**
+     * IS THERE ANYTHING UNDER THIS ROW TO OPEN?
+     *
+     * Anir, Sep 4, on the customer page: "it says that there's one thing, but
+     * it's not letting me see it in customers." Galderma showed 1, unfolded to
+     * "Anir Suren 1", and that unfolded to nothing at all — because this screen
+     * deliberately stops at the account and never lists the deals (Manoj: "we
+     * don't want opportunities in this screen at all").
+     *
+     * The count is honest; the chevron was not. A row with nothing beneath it
+     * must not offer to open, so the deepest level loses its arrow and its
+     * click instead of opening onto a blank.
+     */
+    const canOpen = node.children.length > 0 || !hideDealRows;
     const out: React.ReactNode[] = [];
 
     out.push(
@@ -814,18 +828,28 @@ export function OpportunitySummary({
                 return next;
               });
             }}
-            aria-expanded={shown}
-            className="flex w-full cursor-pointer items-center gap-2 text-left"
+            aria-expanded={canOpen ? shown : undefined}
+            disabled={!canOpen}
+            className={cn(
+              "flex w-full items-center gap-2 text-left",
+              canOpen ? "cursor-pointer" : "cursor-default"
+            )}
           >
-            <ChevronRight
-              size={12}
-              strokeWidth={2.6}
-              aria-hidden="true"
-              className={cn(
-                "shrink-0 text-text-tertiary transition-transform",
-                shown && "rotate-90"
-              )}
-            />
+            {canOpen ? (
+              <ChevronRight
+                size={12}
+                strokeWidth={2.6}
+                aria-hidden="true"
+                className={cn(
+                  "shrink-0 text-text-tertiary transition-transform",
+                  shown && "rotate-90"
+                )}
+              />
+            ) : (
+              /* The arrow's width is still spent, so the labels of a leaf row
+                 and an openable one stay on the same left edge. */
+              <span className="w-3 shrink-0" aria-hidden />
+            )}
             <DimensionMark dim={node.dimension} label={node.label} />
             {/* THE NAME CAN BE A DOOR (Manoj, Sep 4, clicking an account here
                 and landing on a deal: "It should not take us to opportunities

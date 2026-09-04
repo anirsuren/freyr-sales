@@ -810,7 +810,11 @@ export function LiveCompanyBriefing({
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4: "on the
+            right side, I don't think that stuff is animating"). The briefing
+            table carried an entrance and this column carried none, so half the
+            page arrived and the other half was simply already there. */}
+        <div className="stagger space-y-4">
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
