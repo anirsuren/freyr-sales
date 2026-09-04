@@ -4468,44 +4468,51 @@ function SingleOfferingEditor({
         </div>
       </div>
 
-      {/* NOTHING TYPED IS NOT A BROKEN RATE (Anir, Sep 4: "how many fucking
-          times do I have to tell you to fix this? ... It's just a simple rate
-          conversion").
+      {/* BOTH CURRENCIES, SIDE BY SIDE, UNDER THE BOX THEY BELONG TO (Anir,
+          Sep 4: "I don't know why you're giving so much gap. Just show me the
+          USD amount right below. It should be kind of a table... a good table
+          that shows the value in both currencies").
 
-          He was right to be angry and the rate was never the problem: GBP is
-          in the feed at 0.7409 and converts exactly. The condition was
-          `line.value ? conversion : rateWarning`, and `line.value` is the
-          CONVERTED figure — so picking a currency and typing nothing put
-          "Couldn't reach the GBP rate" on screen before a single digit had
-          been entered. It looked like the fix had never landed. It had; this
-          line was accusing the network of the user's blank box.
+          It was a sentence stretched across the whole room, three fields wide,
+          under a box in the left third — so the answer to "what is this worth
+          in dollars" sat nowhere near the number it converted. Two rows,
+          contract currency then dollars, directly beneath the amount.
 
-          Three states now, and they are actually different: no amount says
-          nothing at all, a converted amount shows the dollars, and an amount
-          we genuinely cannot convert says so. */}
+          NOTHING TYPED IS NOT A BROKEN RATE. The earlier version keyed on
+          `line.value`, which is the CONVERTED figure, so picking a currency
+          and typing nothing printed "Couldn't reach the GBP rate" before a
+          digit existed. The rate was never the problem. */}
       {line.localCurrency && Number(line.localValue) > 0 && (
-        <p className="text-[11.5px] leading-snug">
-          {Number(line.value) > 0 ? (
-            <span className="text-text-secondary">
-              ≈ <b className="text-text-primary tnum">{money(Number(line.value))}</b>{" "}
-              {/* SAY WHOSE RATE IT IS AND WHEN. "At the admin rate" was both
-                  wrong and useless: wrong because the number now comes from
-                  the ECB's published close, and useless because a conversion
-                  you cannot date is a conversion you cannot check. */}
-              at the {line.estSignDate ? "rate on that sign date" : "latest published rate"} — goals and totals count the USD figure.
-            </span>
-          ) : (
-            /* NOT A JOB FOR AN ADMIN. This used to read "an admin adds it on
-               the Goals page", which sent people off to do by hand something
-               the app fetches by itself, and made a momentary network failure
-               look like a missing configuration. The only way to get here now
-               is that neither the live source nor the stored table could
-               answer, so it says exactly that and asks for nothing. */
-            <span className="font-semibold text-[color:var(--ink-amber)]">
-              Couldn&apos;t reach the {line.localCurrency} rate just now — the USD figure will fill in once it loads.
-            </span>
-          )}
-        </p>
+        <div className="mt-2 w-fit overflow-hidden rounded-lg border border-border-light bg-white">
+          <table className="text-left text-[12.5px]">
+            <tbody className="divide-y divide-border-light">
+              <tr>
+                <td className="py-1.5 pl-3 pr-4 font-semibold text-text-tertiary">
+                  {line.localCurrency}
+                </td>
+                <td className="py-1.5 pr-3 font-semibold tnum text-text-primary">
+                  {fmtMoney(Number(line.localValue), line.localCurrency as CurrencyCode)}
+                </td>
+                <td className="py-1.5 pr-3 text-[11.5px] text-text-tertiary">
+                  what the client pays
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1.5 pl-3 pr-4 font-semibold text-text-tertiary">
+                  USD
+                </td>
+                <td className="py-1.5 pr-3 font-semibold tnum text-text-primary">
+                  {Number(line.value) > 0 ? money(Number(line.value)) : "—"}
+                </td>
+                <td className="py-1.5 pr-3 text-[11.5px] text-text-tertiary">
+                  {Number(line.value) > 0
+                    ? `at the ${line.estSignDate ? "rate on the sign date" : "latest published rate"} — what goals count`
+                    : "rate not in yet"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       )}
     </FormRoom>
   );

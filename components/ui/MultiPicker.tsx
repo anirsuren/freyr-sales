@@ -550,16 +550,31 @@ function DropdownPicker({
                       onClick={() => setLevel(g.name)}
                       className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
                     >
-                      {HeadIcon ? (
-                        <span
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                          style={{ background: tint(accent, 9), color: accent }}
-                        >
-                          <HeadIcon size={12} strokeWidth={2.4} />
-                        </span>
-                      ) : (
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
-                      )}
+                      {/* THE SAME SLOT WHETHER OR NOT THERE IS AN ICON (Anir,
+                          Sep 4: "see how the agents one is not really lined up
+                          properly").
+
+                          A group whose first offering carries an icon got a
+                          20px tile; one without got a 10px dot in its place, so
+                          its label started ten pixels to the left of every
+                          other label in the list and the column of names had a
+                          step in it. The dot is centred in a slot the same size
+                          as the tile now, so the names line up regardless. */}
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                        {HeadIcon ? (
+                          <span
+                            className="flex h-5 w-5 items-center justify-center rounded-md"
+                            style={{ background: tint(accent, 9), color: accent }}
+                          >
+                            <HeadIcon size={12} strokeWidth={2.4} />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ background: accent }}
+                          />
+                        )}
+                      </span>
                       <span className="min-w-0 flex-1 whitespace-normal text-[12px] font-bold uppercase leading-snug tracking-[0.04em]" style={{ color: accent }}>
                         {g.name}
                       </span>
