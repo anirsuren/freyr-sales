@@ -5,7 +5,16 @@ import { useFillHeight } from "@/components/ui/useFillHeight";
 import { FullScreenButton } from "@/components/ui/FullScreenPanel";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
-import { ArrowLeft, AlarmClock, CalendarCheck, CalendarRange, CircleCheck, Layers, Rocket, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  AlarmClock,
+  CalendarCheck,
+  CircleCheck,
+  Layers,
+  Rocket,
+  Search,
+  X,
+} from "lucide-react";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -482,11 +491,11 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
       )}
       </div>
 
-      <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
-        <CalendarRange size={13} strokeWidth={2} />
-        Click any version to open its component. The per-component timeline
-        stays on each component&apos;s page.
-      </p>
+      {/* THE FOOTNOTE IS GONE (Anir, Sep 3: "you can just remove that text,
+          actually"). It explained that clicking a version opens its component
+          and that each component keeps its own timeline — both of which the
+          calendar demonstrates the moment you click one. A caption that
+          narrates an obvious interaction is a caption nobody reads. */}
 
       <Modal
         open={peek !== null}
