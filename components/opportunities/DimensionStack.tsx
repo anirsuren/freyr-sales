@@ -339,8 +339,20 @@ export function DimensionStack({
             )}
           >
             <GripVertical size={12} strokeWidth={2.4} aria-hidden="true" />
-            <span className="tnum text-[10px] opacity-60">{shown}</span>
-            {label[dim]}
+            {/* THE NUMBER SITS ON THE LABEL'S BASELINE (Anir, Sep 4: "it
+                doesn't look like this is aligned. The number is not really
+                aligned. Maybe it's just my eyes").
+
+                Not his eyes. The chip is a flex row with items-center and the
+                number is 10px against a 12px label, so the two were centred by
+                LINE BOX rather than aligned by baseline — and a smaller line
+                box centred against a larger one puts its baseline higher,
+                every time. The pair gets its own baseline row; the grip and
+                the × stay centred on the chip, which is right for icons. */}
+            <span className="flex items-baseline gap-1.5">
+              <span className="tnum text-[10px] opacity-60">{shown}</span>
+              <span>{label[dim]}</span>
+            </span>
             {/* Take this level out of the breakdown. The pointer handlers on
                 the chip would otherwise read the press as the start of a drag,
                 so this one stops the event before it gets there. */}

@@ -170,6 +170,7 @@ export function ContractsModule({
   const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
   const [showAllAwaiting, setShowAllAwaiting] = useState(false);
+  const [awaitingQuery, setAwaitingQuery] = useState("");
 
   const contracts = state.contracts;
   /* The schedule ON SCREEN is the schedule. A month parked past the visible
@@ -200,6 +201,23 @@ export function ContractsModule({
       (d) => d.status === "Submitted to client" && !done.has(d.id)
     );
   }, [deals, contracts]);
+  /* What the queue shows right now: every match while searching, otherwise the
+     preview or the lot. Searching reads the WHOLE queue, never the preview. */
+  const awaitingNeedle = awaitingQuery.trim().toLowerCase();
+  const awaitingMatches = awaitingNeedle
+    ? awaiting.filter((d) =>
+        [d.name, d.customer, d.offeringLabel]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(awaitingNeedle)
+      )
+    : awaiting;
+  const awaitingShown = awaitingNeedle
+    ? awaitingMatches
+    : showAllAwaiting
+      ? awaiting
+      : awaiting.slice(0, AWAITING_PREVIEW);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -549,8 +567,46 @@ export function ContractsModule({
             Deals sitting at “Submitted to client”
             <InfoHint text="These deals are marked “Submitted to client” and nobody has written the contract yet. That is the point where sales hands the deal to delivery: press Convert to contract on the deal. Every deal here is a handover still waiting." />
           </h2>
-          <div className="mt-2 divide-y divide-border-light">
-            {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((d) => (
+          {/* IT HOLDS A HUNDRED WITHOUT EATING THE PAGE (Anir, Sep 4:
+              "assuming that there are 100 of these, I'm hoping it'll be in a
+              container, right, and then they'll have a search bar").
+
+              Four rows and a "show all" was fine at four and useless at a
+              hundred: pressing it dropped a hundred rows into the page and
+              pushed the contracts table below the fold, with no way to find
+              one deal in the pile. Opened, the rows now live in a box of their
+              own that scrolls, and a search sits in the header once there are
+              more than the preview shows. Searching looks at the whole queue,
+              not the four on screen, and opens the box on its own — otherwise
+              typing a customer's name would search four rows and report
+              nothing. */}
+          {awaiting.length > AWAITING_PREVIEW && (
+            <div className="mt-3">
+              <input
+                value={awaitingQuery}
+                onChange={(e) => setAwaitingQuery(e.target.value)}
+                placeholder="Search these by deal, customer or offering"
+                aria-label="Search deals waiting on a contract"
+                className="h-9 w-full max-w-[420px] rounded-md border border-border bg-surface px-3 text-[13px] outline-none transition focus:border-blue-primary focus:shadow-focus"
+              />
+            </div>
+          )}
+          <div
+            className={cn(
+              "mt-2 divide-y divide-border-light",
+              /* Only once it is open, so the collapsed four never sit in a
+                 scroller with a stub of a fifth row showing under them. */
+              (showAllAwaiting || awaitingQuery.trim()) &&
+                awaitingShown.length > AWAITING_PREVIEW &&
+                "max-h-[320px] overflow-y-auto pr-1"
+            )}
+          >
+            {awaitingShown.length === 0 && (
+              <p className="py-3 text-[12.5px] text-text-tertiary">
+                No deal here matches “{awaitingQuery.trim()}”.
+              </p>
+            )}
+            {awaitingShown.map((d) => (
               <div key={d.id} className="flex items-center gap-3 py-2.5" data-awaiting-contract={d.id}>
                 <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -577,7 +633,9 @@ export function ContractsModule({
               </div>
             ))}
           </div>
-          {awaiting.length > AWAITING_PREVIEW && (
+          {/* Hidden while searching: the list is already showing every match,
+              so "show all" would be a button that does nothing. */}
+          {awaiting.length > AWAITING_PREVIEW && !awaitingQuery.trim() && (
             <button
               type="button"
               onClick={() => setShowAllAwaiting((v) => !v)}

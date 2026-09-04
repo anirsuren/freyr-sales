@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
+import {
+  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
@@ -40,10 +41,11 @@ import {
   estimatedAcvOf,
   estimatedTcvOf,
   weightedValue,
+  signDateOf,
   type Opportunity,
   statusColor,
 } from "@/lib/opportunitiesShared";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 
 /**
@@ -541,13 +543,64 @@ export function OpportunityDetail({
           value={acv === undefined ? "·" : money(acv)}
           sub={acv === undefined ? "not entered yet" : "one year of it"}
         />
-        {/* WEIGHTED IS GONE (Suren, Sep 1, reading this row of tiles out loud:
-            "this weighted, and all — don't confuse him, take it out. This
-            doesn't make sense, we don't use this actually").
+        {/* THE THIRD TILE IS TIME, NOT MORE MONEY.
 
-            It was value × confidence, a forecasting figure nobody at Freyr
-            works from. The two tiles beside it are the numbers people actually
-            enter and quote, so the row now carries only those. */}
+            Weighted value was here and Suren took it out (Sep 1, reading the
+            row out loud: "this weighted, and all — don't confuse him, take it
+            out. This doesn't make sense, we don't use this actually"). It was
+            TCV × confidence: a figure the app computed, that nobody at Freyr
+            quotes, sitting between two figures people do. A third money tile
+            was always going to be a third answer to a question already
+            answered twice, which is why every replacement got removed too.
+
+            So this one answers a different question. When is it signing, and
+            is that date still ahead of us. It is a date somebody typed, not
+            arithmetic; it is the field the whole accrual schedule is built
+            against; and it is the only thing on this deal that goes wrong on
+            its own, without anybody touching the record — which is exactly
+            what a glance strip is for. Past its date and still open, it goes
+            amber, the same warning the Revenue Accruals module already raises
+            for the same fact ("close month passed, needs re-planning").
+
+            Won or Lost, the countdown is meaningless and it says so rather
+            than counting days toward a date that has stopped mattering. */}
+        {(() => {
+          const iso = signDateOf(deal);
+          const settled = deal.status === "Won" || deal.status === "Lost";
+          if (!iso) {
+            return (
+              <StatTile
+                icon={CalendarCheck}
+                label="Expected to sign"
+                value="·"
+                sub="no date on this deal yet"
+              />
+            );
+          }
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const due = new Date(`${iso}T00:00:00`);
+          const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+          const late = days < 0 && !settled;
+          return (
+            <StatTile
+              icon={CalendarCheck}
+              label="Expected to sign"
+              value={formatDate(iso)}
+              warn={late}
+              color={late ? "var(--ink-amber)" : undefined}
+              sub={
+                settled
+                  ? `the deal is ${String(deal.status).toLowerCase()}`
+                  : days === 0
+                    ? "today"
+                    : days > 0
+                      ? `in ${days} day${days === 1 ? "" : "s"}`
+                      : `${-days} day${days === -1 ? "" : "s"} ago, still open`
+              }
+            />
+          );
+        })()}
       </div>
 
       {/* THE CONNECTED AREAS ARE THE PAGE'S OWN TABS, full width — the same
