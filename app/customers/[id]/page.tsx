@@ -398,7 +398,13 @@ export default async function CustomerDetailPage({
              well; this stops it being offered. The team itself still READS on
              the band for everybody, which is the point of view access. */
           team: mayEditThisAccount ? (
+            /* KEYED AT THE POINT IT IS CREATED. Customer360 renders this node
+               inside a list, so React warned "each child in a list should have
+               a unique key" on every customer page in dev, naming this line.
+               The element is handed over as a prop, so the key has to travel
+               with it — the receiving list cannot add one. */
             <RecordTeamButton
+              key="band-action-team"
               type="customer"
               id={customer.id}
               label={customer.company_name}

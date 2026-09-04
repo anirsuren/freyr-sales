@@ -765,6 +765,11 @@ export function OpportunitySummary({
     /* While filtering, EVERY surviving row is a match, so open is the default
        and the set records what the reader shut again. */
     const shown = filtering ? !shutWhileFiltering.has(node.key) : open.has(node.key);
+    /* Where this row's NAME goes, if anywhere. Read here because the button
+       wrapping the name has to know whether the name is a door before it
+       decides whether to disable itself, and a disabled button would swallow
+       the link's clicks. */
+    const rowLink = rowHref?.(node.dimension, node.label) ?? null;
     const faded = !onOpenPath(node.key);
     /**
      * IS THERE ANYTHING UNDER THIS ROW TO OPEN?
@@ -809,9 +814,15 @@ export function OpportunitySummary({
           className="sticky left-0 z-[1] bg-white px-3 py-2 text-left font-normal"
           style={{ ...nameCol, paddingLeft: `${12 + depth * 18}px` }}
         >
+          {/* Read once, because the button above the name needs to know
+             whether the name is a door before it decides to disable itself. */}
           <button
             type="button"
             onClick={() => {
+              /* A row that cannot open has nothing to toggle. This used to be
+                 expressed with `disabled`, which is what broke the link inside
+                 it — see below. */
+              if (!canOpen) return;
               if (filtering) {
                 setShutWhileFiltering((prev) => {
                   const next = new Set(prev);
@@ -829,7 +840,23 @@ export function OpportunitySummary({
               });
             }}
             aria-expanded={canOpen ? shown : undefined}
-            disabled={!canOpen}
+            /* NOT `disabled` WHEN THE NAME IS A DOOR (found in the loop,
+               Sep 4: on the Customers page an account name renders as a link,
+               is announced as a link, hovers as a link, and does nothing when
+               you click it).
+
+               A disabled <button> suppresses pointer events across its ENTIRE
+               subtree, so the role="link" span below never received the click.
+               And the rows where this bites are exactly the rows the link was
+               built for: with deal rows hidden, the account IS the deepest
+               level, so canOpen is false on every one of them. Manoj asked for
+               that door on Sep 4 ("it should take us to the information about
+               Galderma") and it has been welded shut ever since.
+
+               A row that is inert in BOTH ways is still disabled; a row whose
+               name goes somewhere stays clickable, and the onClick above
+               ignores the press. */
+            disabled={!canOpen && !rowLink}
             className={cn(
               "flex w-full items-center gap-2 text-left",
               canOpen ? "cursor-pointer" : "cursor-default"
@@ -859,7 +886,7 @@ export function OpportunitySummary({
                 it should. Rendered as a span with a click rather than a nested
                 <a>, because this row is already a <button>. */}
             {(() => {
-              const href = rowHref?.(node.dimension, node.label) ?? null;
+              const href = rowLink;
               const text = (
                 <span
                   className={cn(

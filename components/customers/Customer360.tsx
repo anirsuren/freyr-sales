@@ -110,6 +110,20 @@ export const BAND_ICON_MAP = {
  * would drift away from this one.
  */
 /** "Opportunities" is not "Opportunitie". Anything not plural is left alone. */
+/* A BAND WHOSE NAME IS NOT WHAT IT COUNTS. "Team" is a collective noun: it
+   does not de-pluralise, so the rule below left it alone and the band read
+   "1 team" for one person (found in the loop, Sep 4). One entry per band that
+   needs it, singular then plural. */
+const COUNT_NOUN: Record<string, readonly [string, string]> = {
+  Team: ["person", "people"],
+};
+
+function countNoun(label: string, count: number): string {
+  const pair = COUNT_NOUN[label];
+  if (pair) return count === 1 ? pair[0] : pair[1];
+  return count === 1 ? singularLabel(label) : label;
+}
+
 function singularLabel(label: string): string {
   if (label.endsWith("ies")) return `${label.slice(0, -3)}y`;
   if (label.endsWith("ss")) return label;
@@ -374,9 +388,7 @@ export function Customer360({
                   <span className="text-[13px] text-text-secondary">
                     {/* "1 opportunities" was wrong on every band holding one
                         of anything. */}
-                    {active.count === 1
-                      ? singularLabel(active.label).toLowerCase()
-                      : active.label.toLowerCase()}
+                    {countNoun(active.label, active.count ?? 0).toLowerCase()}
                   </span>
                 </span>
                 {active.total !== undefined && active.total > 0 && (

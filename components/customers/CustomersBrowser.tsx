@@ -221,13 +221,27 @@ export function CustomersBrowser({
      still name them, so `allowedCustomerDims` filters what comes back. */
   const [storedCustDims, setCustDims] = useStickyValue<SummaryDimension[]>(
     "freyr.customers.dims",
-    ["group", "customer", "owner"]
+    ["customer", "owner", "group"]
   );
+  /* A LEVEL THAT SORTS NOTHING IS NOT A LEVEL (found in the loop, Sep 4:
+     this page opens on "No customer group — 20 deals", one bucket holding
+     every deal, and you have to expand through it to reach anything).
+
+     Nobody has defined a customer group yet, so grouping by one produces
+     exactly one row called "No customer group" with the whole book inside it:
+     a level of the tree that costs a click and answers nothing. It is offered
+     the moment a group exists — this reads the data rather than deciding for
+     him — and it is filtered out of a STORED preference too, the same way
+     offering and category already are, because his saved order already leads
+     with it and a default alone would never reach him. */
+  const hasCustomerGroups = customerGroups.some((g) => g.customerIds.length > 0);
   const custDims = useMemo(() => {
-    const allowed: SummaryDimension[] = ["group", "customer", "owner"];
+    const allowed: SummaryDimension[] = hasCustomerGroups
+      ? ["group", "customer", "owner"]
+      : ["customer", "owner"];
     const kept = storedCustDims.filter((d) => allowed.includes(d));
     return kept.length ? kept : allowed;
-  }, [storedCustDims]);
+  }, [storedCustDims, hasCustomerGroups]);
   const [custMeasure, setCustMeasure] = useStickyValue<EstimateMeasure>(
     "freyr.customers.measure",
     "tcv"
@@ -863,7 +877,11 @@ export function CustomersBrowser({
                  Opportunity category back; without `hideDealRows` an account
                  unfolds into its deals and this becomes the opportunities
                  list wearing a different heading. */
-              dimensions={["group", "customer", "owner"]}
+              dimensions={
+                hasCustomerGroups
+                  ? ["group", "customer", "owner"]
+                  : ["customer", "owner"]
+              }
               hideDealRows
               /* And the account's own name goes to the account, not to a deal:
                  "It should take us to the information about Galderma." */
