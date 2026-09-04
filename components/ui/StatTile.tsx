@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
 // The one stat tile (Anir, Jul 4: "just make them look better, dude").
-// Label up top, then the number with its qualifier ON THE SAME LINE — no
-// fixed heights, so nothing ever bleeds out of the card.
+// Label up top, then the number, then its qualifier on its own reserved line
+// — so every tile everywhere is the same three lines, whatever its words.
 export function StatTile({
   icon: Icon,
   label,
@@ -52,8 +52,25 @@ export function StatTile({
           {label}
         </span>
       </div>
-      <p className="mt-auto flex items-baseline gap-1.5 flex-wrap">
-        <span
+      {/* THE CAPTION IS ALWAYS ITS OWN LINE (Anir, Sep 4: "you have three
+          lines or two lines, and it's really important that you keep it
+          consistent. Here you have three tiles with two lines, but then you
+          have the last tile with three lines. I don't like that").
+
+          It used to sit beside the number on a wrapping line, so how many
+          lines a tile came out at was decided by how long its caption happened
+          to be and how wide the window happened to be: three tiles read as two
+          lines and the fourth, whose caption was longer, read as three. Same
+          row, two different shapes, and it changed as you resized.
+
+          Below the number, always, and the line is RESERVED even when there is
+          no caption — the three tiles in the app without one would otherwise
+          hang their number a line lower than the tiles beside them, which is
+          the same asymmetry from the other direction. Every tile in every row
+          on every page is now icon+label, number, caption. Nothing about the
+          words or the viewport can change that. */}
+      <div className="mt-auto">
+        <p
           className={cn(
             "font-bold leading-none tnum tracking-[-0.01em]",
             value.length > 12 ? "text-[17px]" : "text-[24px]",
@@ -61,13 +78,11 @@ export function StatTile({
           )}
         >
           {value}
-        </span>
-        {sub && (
-          <span className="text-[12px] text-text-tertiary leading-none">
-            {sub}
-          </span>
-        )}
-      </p>
+        </p>
+        <p className="mt-1.5 text-[12px] leading-tight text-text-tertiary">
+          {sub || "\u00A0"}
+        </p>
+      </div>
     </Card>
   );
 }

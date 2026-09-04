@@ -266,7 +266,14 @@ export function DimensionStack({
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-1.5">
+    /* NO MARGIN OF ITS OWN (Anir, Sep 4: "why is there so much gap here?
+       You see that between the view and then the table?").
+
+       This carried mb-4 and the table below it carries mt-4, so the two
+       stacked into 32px of nothing between the chips and the header row. A
+       component does not get to reserve space outside itself when its only
+       caller is already spacing it; the caller owns the gap. */
+    <div className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
         View
       </span>

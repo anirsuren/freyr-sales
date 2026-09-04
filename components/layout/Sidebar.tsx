@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  ChevronDown,
   FolderOpen,
   CalendarClock,
   Building2,
@@ -45,6 +46,7 @@ import { userScopedStorageKey } from "@/lib/userIdentity";
 // Release gating (Suren): the first Freyr rollout shows ONLY production-ready
 // modules — everything else stays hidden until it's released.
 const COLLAPSE_KEY = "freyr.sidebar.collapsed";
+const SECTIONS_KEY = "freyr.sidebar.shutSections";
 
 // Every page must light up a sidebar section so you always know where you are
 // (Suren, Jul 9: "every page should show up in the sidebar"). Detail routes
@@ -96,6 +98,15 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);
+  /* WHICH SECTIONS ARE FOLDED SHUT (Anir, Sep 4: "I should be able to toggle
+     knowledge and materials or sales or performance, etc. I should be able to
+     close them").
+
+     Shut ones are the exception, so the set holds those and an empty set is
+     the rail everybody sees on their first visit. Per person, like the rail's
+     own collapse, because which half of the app you live in is personal. */
+  const [shutSections, setShutSections] = useState<string[]>([]);
+  const sectionStorageKey = userScopedStorageKey(SECTIONS_KEY, currentUser.id);
 
   // restore persisted collapse state after mount (avoids hydration mismatch)
   useEffect(() => {
@@ -104,6 +115,15 @@ export function Sidebar({
       setCollapsed(localStorage.getItem(collapseStorageKey) === "1");
     } catch {}
   }, [collapseStorageKey]);
+
+  // same, for the folded sections
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(sectionStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setShutSections(parsed.filter((v) => typeof v === "string"));
+    } catch {}
+  }, [sectionStorageKey]);
 
   // live count of everything needing the rep — approvals + sent-back reworks
   // (V9 agent inbox badge, #69)
@@ -121,6 +141,18 @@ export function Sidebar({
       alive = false;
     };
   }, [offeringsOnly, pathname]);
+
+  function toggleSection(section: string) {
+    setShutSections((open) => {
+      const next = open.includes(section)
+        ? open.filter((v) => v !== section)
+        : [...open, section];
+      try {
+        localStorage.setItem(sectionStorageKey, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
 
   function toggle() {
     setCollapsed((c) => {
@@ -354,12 +386,41 @@ export function Sidebar({
                         future label, and the tracking is eased so the longest
                         one clears the rail's width rather than only just
                         failing to. */}
-                    <p className="whitespace-nowrap px-3 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                      {item.section}
-                    </p>
+                    {/* A HEADING YOU CAN PRESS. The chevron only turns; the
+                        label does not move, change size or change colour, so
+                        folding a section never redraws the rail around it. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(item.section!)}
+                      aria-expanded={!shutSections.includes(item.section!)}
+                      className="group flex w-full cursor-pointer items-center gap-1 rounded-md px-3 py-0.5 text-left transition-colors hover:bg-surface"
+                    >
+                      <span className="whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        {item.section}
+                      </span>
+                      <ChevronDown
+                        size={12}
+                        strokeWidth={2.6}
+                        aria-hidden="true"
+                        className={cn(
+                          "shrink-0 text-text-tertiary transition-transform duration-150 motion-reduce:transition-none",
+                          shutSections.includes(item.section!) && "-rotate-90"
+                        )}
+                      />
+                    </button>
                   </div>
                 )}
-              {navLink(item)}
+              {/* FOLDED AWAY, UNLESS YOU ARE STANDING IN IT. Hiding the page
+                  somebody is currently on would leave the rail with nothing
+                  lit and no way back to it, so the active item stays put
+                  whatever its section is doing. The rail's own collapsed state
+                  wins outright: there are no headings to press down there, so
+                  there is nothing to fold. */}
+              {(collapsed ||
+                !item.section ||
+                !shutSections.includes(item.section) ||
+                isActive(pathname, item.href)) &&
+                navLink(item)}
               {/* SALES MATERIALS IS A SUBPAGE OF OFFERINGS (Anir, Aug 21, on
                   the call, answering the reps' most repeated ask — "is there a
                   shorter way to reach the sales materials?": "I'll just have

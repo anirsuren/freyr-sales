@@ -1212,7 +1212,7 @@ export function OpportunitySummary({
 
               It scrolls sideways when there are more periods than fit; the
               first column is pinned so the row never loses its name. */}
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full border-collapse bg-white text-left">
               <thead>
                 <tr className="border-b border-border-light bg-surface">
