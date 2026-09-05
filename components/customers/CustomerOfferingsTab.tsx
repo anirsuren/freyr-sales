@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { fmtMoney } from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,10 +109,14 @@ const REV_COLOR: Record<RevenueType, string> = {
 
 // Short money for the donut centre / hero ($250K, $1.2M) — the itemised lines
 // still show the exact figure.
+/* ONE SHORTHAND, EVERYWHERE. This used to be its own copy, and the copies had
+   drifted into four different answers for the same figure: $2,000,000 read
+   "$2M" here and "$2.0M" there, $15,500,000 rounded to "$16M" on two screens,
+   and every one of them printed $999,999 as "$1000K" — the carry bug
+   lib/currency fixed for itself and nobody else (Anir, Sep 4: "the same figure
+   read $2K on one screen and $1.5K on another"). */
 function compactMoney(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1000)}K`;
-  return `$${n}`;
+  return fmtMoney(n);
 }
 
 // Colour-code each customer segment by its family so the picker reads at a

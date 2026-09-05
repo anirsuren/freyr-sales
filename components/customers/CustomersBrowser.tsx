@@ -1,6 +1,7 @@
 "use client";
 
 import { StatTile } from "@/components/ui/StatTile";
+import { fmtMoney } from "@/lib/currency";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { Card } from "@/components/ui/Card";
 import { useStickyValue } from "@/lib/useStickyValue";
@@ -161,10 +162,14 @@ function HealthBar({ health }: { health: AccountHealth }) {
 }
 
 /** Same shorthand the pipeline tiles use. */
+/* ONE SHORTHAND, EVERYWHERE. This used to be its own copy, and the copies had
+   drifted into four different answers for the same figure: $2,000,000 read
+   "$2M" here and "$2.0M" there, $15,500,000 rounded to "$16M" on two screens,
+   and every one of them printed $999,999 as "$1000K" — the carry bug
+   lib/currency fixed for itself and nobody else (Anir, Sep 4: "the same figure
+   read $2K on one screen and $1.5K on another"). */
 function moneyShort(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtMoney(n);
 }
 
 export function CustomersBrowser({

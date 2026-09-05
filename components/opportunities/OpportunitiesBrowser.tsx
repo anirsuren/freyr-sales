@@ -194,12 +194,15 @@ function confidenceColor(_pct: number): string {
   return MONEY_BLUE;
 }
 
+/* ONE SHORTHAND, EVERYWHERE. This used to be its own copy, and the copies had
+   drifted into four different answers for the same figure: $2,000,000 read
+   "$2M" here and "$2.0M" there, $15,500,000 rounded to "$16M" on two screens,
+   and every one of them printed $999,999 as "$1000K" — the carry bug
+   lib/currency fixed for itself and nobody else (Anir, Sep 4: "the same figure
+   read $2K on one screen and $1.5K on another"). */
 function money(n: number): string {
   if (!Number.isFinite(n)) return "$0";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
-  if (abs >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtMoney(n);
 }
 
 /** One editable offering row. Everything is text while it is being typed, so
