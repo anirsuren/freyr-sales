@@ -219,8 +219,14 @@ export function CustomerActivityTab({
                       type="button"
                       onClick={() => toggleOffering(u.offering_id)}
                       aria-expanded={open}
+                      /* mb-2 pb-2.5, was mb-3.5 pb-3 (Anir, Sep 4: "you see
+                         how far the start of the table is from the header?").
+                         The header's bottom padding, this margin, the panel's
+                         own pt and the column row's padding all stacked into
+                         ~40px of nothing between the offering name and its
+                         table. The rule stays; the air goes. */
                       className={`-mx-4 flex w-[calc(100%+2rem)] cursor-pointer items-center gap-2.5 px-4 text-left transition-colors hover:bg-surface/60 ${
-                        open ? "entry-card__head mb-3.5 pb-3" : "pb-0"
+                        open ? "entry-card__head mb-2 pb-2.5" : "pb-0"
                       }`}
                     >
                       <ChevronRight

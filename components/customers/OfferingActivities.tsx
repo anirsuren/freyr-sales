@@ -339,7 +339,7 @@ export function OfferingActivities({
             the Actions header cell, directly above the pencil and the bin it
             belongs with, left aligned like every other Actions column in this
             app. */}
-        <div className="overflow-x-auto pt-1">
+        <div className="overflow-x-auto">
           {/* The min-width only has to be wide enough that no chip wraps; past that
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the

@@ -180,7 +180,10 @@ function GeographyValue({ value }: { value: string }) {
   const flag = flagForGeography(country);
 
   return (
-    <div className="mt-0.5 min-w-0">
+    /* A block SPAN, not a div: stacked EditableFact draws its value inside a
+       <p>, and a div inside a p is invalid HTML — React tears the tree apart
+       at hydration (the "2 Issues" badge on every account page, Sep 4). */
+    <span className="mt-0.5 block min-w-0">
       <span
         className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-normal break-words"
         // Inline because the palette is a runtime value, not a Tailwind class.
@@ -192,7 +195,7 @@ function GeographyValue({ value }: { value: string }) {
         {flag && <span aria-hidden="true">{flag}</span>}
         {country}
       </span>
-    </div>
+    </span>
   );
 }
 
