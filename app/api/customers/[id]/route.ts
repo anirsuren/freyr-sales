@@ -31,6 +31,21 @@ import {
 /** The only three the column accepts. */
 const SIZE_TIERS: SizeTier[] = ["small", "mid", "large"];
 
+/** What a person may type into an account's own fields, with the name to use
+ *  when telling them it is too long. Generous on purpose: this stops a paste,
+ *  it does not argue with a long real name. */
+const LENGTH_CAPS: { field: string; max: number; label: string }[] = [
+  { field: "company_name", max: 200, label: "account name" },
+  { field: "industry", max: 120, label: "industry" },
+  { field: "geography", max: 200, label: "location" },
+  { field: "website_url", max: 500, label: "website" },
+  { field: "customer_type", max: 120, label: "customer type" },
+  { field: "ownership", max: 120, label: "ownership" },
+  { field: "revenue", max: 60, label: "revenue" },
+  { field: "competitor", max: 200, label: "competitor" },
+];
+
+
 export const dynamic = "force-dynamic";
 
 function uid(prefix: string): string {
@@ -246,6 +261,23 @@ export async function PATCH(
      five were not, so the Overview could show who an account IS and offer no
      way to correct it. Same owner-or-manager check above guards them; nothing
      about who may write has changed, only what they may write. */
+  /* NOTHING A PERSON TYPES IS UNBOUNDED. A 100,000-character company name was
+     accepted and stored (found in the loop, Sep 5) — one paste of a document
+     into the wrong field would then carry through every list, every table and
+     every CSV export the account appears in. The person's own name is already
+     held to 120 characters in /api/auth/profile; these are the same kind of
+     field and are held the same way. Generous limits: the point is to stop a
+     paste, not to argue with a long real name. */
+  const tooLong = LENGTH_CAPS.find((cap) => {
+    const given = body[cap.field];
+    return typeof given === "string" && given.trim().length > cap.max;
+  });
+  if (tooLong) {
+    return NextResponse.json(
+      { error: `That ${tooLong.label} is too long (limit ${tooLong.max} characters).` },
+      { status: 400 }
+    );
+  }
   if (typeof body.company_name === "string" && body.company_name.trim())
     patch.company_name = body.company_name.trim();
   if (typeof body.industry === "string")
