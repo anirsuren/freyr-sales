@@ -582,10 +582,12 @@ export function OfferingActivities({
         open={editing !== null}
         onClose={() => setEditing(null)}
         title={editing === "" ? "Add an activity" : "Edit activity"}
-        /* Same clothes as every other editor — the 440px default read as a
-           strip (Anir, Aug 18: "Why is it so thin? Just make it like the
-           other pop-ups"). */
-        size="wide"
+        /* Full editor width. 440px read as a strip (Anir, Aug 18) and the
+           640px "wide" still did (Anir, Sep 5: "you can make this a
+           normal-size pop-up. You don't have to make it this skinny") — a
+           form with side-by-side pairs and a drop zone wears the same 980px
+           as the other workflow editors. */
+        size="workflow"
       >
         <form
           onSubmit={(event) => {
