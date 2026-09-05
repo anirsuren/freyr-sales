@@ -129,18 +129,35 @@ export function TopBar({
         // in the NEW mode: if that answers 200 the same page reloads in
         // place; if the record does not exist over there, land on the
         // module's list instead.
+        //
+        // THE ADDRESS CHANGES MODES WITH YOU. /mock-mode is the URL's mock
+        // label, and both the middleware and ModeUrlSync treat a prefixed
+        // address as the person's stated intent — a live cookie under a
+        // /mock-mode URL is corrected BACK to mock. So reloading the old
+        // address after switching to live undid the switch on arrival
+        // (Anir, Sep 5: "I literally can't even switch to ready now mode").
+        // Leaving mock must leave the prefix in the same navigation, and
+        // entering mock puts it on, so the label never disagrees en route.
+        const PREFIX = "/mock-mode";
+        const here = window.location.pathname;
+        const bare =
+          here === PREFIX || here.startsWith(`${PREFIX}/`)
+            ? here.slice(PREFIX.length) || "/"
+            : here;
+        const dress = (path: string) =>
+          mode === "mock" ? `${PREFIX}${path === "/" ? "" : path}` || PREFIX : path;
         try {
-          const probe = await fetch(window.location.pathname + window.location.search, {
+          const probe = await fetch(bare + window.location.search, {
             cache: "no-store",
             headers: { accept: "text/html" },
           });
           if (probe.status === 404) {
-            const segments = window.location.pathname.split("/").filter(Boolean);
-            window.location.href = segments.length > 0 ? `/${segments[0]}` : "/";
+            const segments = bare.split("/").filter(Boolean);
+            window.location.href = dress(segments.length > 0 ? `/${segments[0]}` : "/");
             return;
           }
         } catch {}
-        window.location.reload();
+        window.location.href = dress(bare) + window.location.search;
         return;
       }
     } catch {}
