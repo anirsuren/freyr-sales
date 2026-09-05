@@ -365,8 +365,14 @@ export function ConnectedComponents({
                         offers, so the row behaves the same wherever you meet
                         it: take the feature sheet, take it out of this
                         package, or open it. */}
-                    <td className="px-3 py-2.5 text-right">
-                      {/* -mr-1.5 is optical alignment, not a nudge: the last
+                    {/* text-LEFT, like the header above it. The Aug 30 sweep
+                        turned the heading and the icon row left and left this
+                        cell on text-right, which right-aligns an inline-flex
+                        span no matter what it justifies inside itself — so the
+                        header sat left and the icons sat right, the exact
+                        split Anir has corrected three times. */}
+                    <td className="px-3 py-2.5 text-left">
+                      {/* -ml-1.5 is optical alignment, not a nudge: the first
                           glyph sits ~6px inside its own 28px hit area, so a
                           header aligned to the box edge reads as overhanging
                           (Anir, Aug 10: "why is the actions header aligned like
