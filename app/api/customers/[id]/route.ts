@@ -15,6 +15,7 @@ import type {
   AccountAttachment,
   AccountDeal,
   Customer,
+  SizeTier,
 } from "@/lib/types";
 import {
   CUSTOMER_OFFERING_STATUS_ORDER,
@@ -26,6 +27,9 @@ import {
   moduleWriteRefusal,
   recordWriteRefusal,
   canOpenModule,} from "@/lib/moduleAccessServer";
+
+/** The only three the column accepts. */
+const SIZE_TIERS: SizeTier[] = ["small", "mid", "large"];
 
 export const dynamic = "force-dynamic";
 
@@ -246,8 +250,22 @@ export async function PATCH(
     patch.company_name = body.company_name.trim();
   if (typeof body.industry === "string")
     patch.industry = body.industry.trim() || null;
-  if (typeof body.size_tier === "string")
-    patch.size_tier = (body.size_tier.trim() || null) as Customer["size_tier"];
+  /* THE CAST WAS A LIE THE DATABASE CAUGHT. `as Customer["size_tier"]` let
+     any string through to a column that only accepts three, so the constraint
+     rejection came back as a bare 500 with no body and the form's toast said
+     "Could not save: try again" with nothing to act on. Every other enum in
+     this route is checked with .includes(); this one is now too, and an
+     unknown tier is answered rather than thrown. */
+  if (typeof body.size_tier === "string") {
+    const tier = body.size_tier.trim();
+    if (tier && !SIZE_TIERS.includes(tier as SizeTier)) {
+      return NextResponse.json(
+        { error: `Size must be one of ${SIZE_TIERS.join(", ")}.` },
+        { status: 400 }
+      );
+    }
+    patch.size_tier = (tier || null) as Customer["size_tier"];
+  }
   if (typeof body.geography === "string")
     patch.geography = body.geography.trim() || null;
   if (typeof body.website_url === "string")
