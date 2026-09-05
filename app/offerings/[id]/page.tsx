@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { SmartBack } from "@/components/ui/BackButton";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   Pencil,
@@ -94,7 +94,13 @@ export default async function OfferingDetailPage({
 }) {
   const query = await searchParams;
   const raw = getOffering((await params).id);
-  if (!raw) notFound();
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!raw) redirect("/offerings");
   const people = await listAssignablePeople();
   const hydrated = hydrateOffering(
     redactUnverifiedOfferingPeople(raw, people)

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SmartBack } from "@/components/ui/BackButton";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -22,25 +23,13 @@ export default async function SessionPage({
   const db = getDb();
   const session = await db.pitchSessions.get((await params).id);
 
-  if (!session) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Session not found"
-        description="This link no longer works, or the session was removed. Head back to your sessions to find it."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/sessions"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to sessions
-          </SmartBack>
-        }
-      />
-    );
-  }
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!session) redirect("/sessions");
 
   const customer = await db.customers.get(session.customer_id);
   const contact = await db.contacts.get(session.contact_id);

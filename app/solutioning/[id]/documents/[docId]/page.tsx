@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StandaloneRecordDoc } from "@/components/documents/StandaloneRecordDoc";
 import { DOC_CATEGORY_NOUN, readSolutioning } from "@/lib/solutioning";
 import { reachableSolutioningDoc } from "@/lib/solutioningDocAccess";
@@ -37,7 +37,11 @@ export default async function SolutioningDocumentPage({
   const { embed, member } = await searchParams;
 
   const access = await reachableSolutioningDoc(id, docId);
-  if (!access.ok) notFound();
+  /* Miss -> the request itself, or the module list when even that is gone —
+     never a dead end (Anir, Sep 4). reachableSolutioningDoc also refuses on
+     PERMISSION, and that case belongs on the list too: the list shows what
+     the person may see, which is the honest answer. */
+  if (!access.ok) redirect(`/solutioning/${id}`);
 
   /* Whose record this is, for the viewer's header — the customer if there is
      one, otherwise the request itself. */

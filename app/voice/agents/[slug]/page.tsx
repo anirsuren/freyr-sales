@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
@@ -71,25 +72,13 @@ export default async function VoiceAgentPage({
   params: Promise<{ slug: string }>;
 }) {
   const persona = personaBySlug((await params).slug);
-  if (!persona) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Agent not found"
-        description="The link may be out of date. Head back to the voice team to find everyone."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/voice"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to voice agents
-          </SmartBack>
-        }
-      />
-    );
-  }
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!persona) redirect("/voice");
 
   const status = voiceStatus();
   const agentId = status.agents[persona.category];

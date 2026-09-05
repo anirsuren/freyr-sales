@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getRole } from "@/lib/role";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { readPerformance } from "@/lib/performance";
@@ -38,7 +38,10 @@ export default async function AdminGroupPage({
     readPrivileges().catch(() => null),
   ]);
   const group = perf?.groups.find((g) => g.id === id);
-  if (!perf || !group) notFound();
+  /* A MISSING GROUP LANDS ON THE GROUPS LIST, never on a dead end (Anir,
+     Sep 4). The role gate above stays a 404 — that one is hiding a surface,
+     not mislaying a record. */
+  if (!perf || !group) redirect("/admin/groups");
 
   /* Everyone who could be added, so the picker is not limited to whoever is
      already in the group. Real accounts only — a group of placeholder rows

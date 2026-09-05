@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import {
   getFdlComponent,
@@ -51,7 +51,13 @@ export default async function FdlComponentPage({
       ? from
       : null;
   const component = getFdlComponent(id);
-  if (!component) notFound();
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!component) redirect("/components");
   const homes = listOfferings()
     .filter((offering) => offering.component_ids?.includes(id))
     .map((offering) => ({ id: offering.id, name: offering.offering_name }));

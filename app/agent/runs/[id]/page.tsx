@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   Bot,
@@ -70,8 +70,13 @@ export default async function AgentRunDetailPage({
 }) {
   const db = getDb();
   const run = await db.agentRuns.get((await params).id);
-  if (!run) notFound();
-
+  /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!run) redirect("/agent");
   // Only pull the activity log when the run actually wrote entries (#52).
   const [allInteractions, customers] = run.interaction_ids?.length
     ? await Promise.all([db.interactions.list(), db.customers.list()])

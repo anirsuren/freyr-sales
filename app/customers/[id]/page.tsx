@@ -1,4 +1,5 @@
 import { orderBands } from "@/lib/connectionOrder";
+import { redirect } from "next/navigation";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { RecordTeamButton } from "@/components/team/RecordTeamButton";
 import type { Customer360Band } from "@/lib/customer360Shared";
@@ -66,25 +67,13 @@ export default async function CustomerDetailPage({
   const db = getDb();
   const customer = await db.customers.get(id);
 
-  if (!customer) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Customer not found"
-        description="The link may be out of date, or this account was removed. Head back to your customers to find it."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/customers"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to customers
-          </SmartBack>
-        }
-      />
-    );
-  }
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!customer) redirect("/customers");
 
   const contacts = await db.contacts.list(id);
 

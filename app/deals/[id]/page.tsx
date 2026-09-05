@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SmartBack } from "@/components/ui/BackButton";
 import { ArrowUpRight, ChevronRight, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -49,25 +50,13 @@ export default async function DealDetailPage({
   const currentUser = await getCurrentUser();
   const db = getDb();
   const session = await db.pitchSessions.get(id);
-  if (!session) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Deal not found"
-        description="The link may be out of date, or this deal was closed or removed. Head back to the pipeline to pick up where you left off."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/pipeline"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to pipeline
-          </SmartBack>
-        }
-      />
-    );
-  }
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!session) redirect("/deals");
 
   const [customer, contact, rawInteractions, sessions, customers, contacts, allInteractions] =
     await Promise.all([

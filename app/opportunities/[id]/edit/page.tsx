@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { estimatedTcvOf } from "@/lib/opportunitiesShared";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -70,8 +70,13 @@ export default async function EditDealPage({
     readRecordTeams(),
   ]);
   const deal = opportunities.find((o) => o.id === id);
-  if (!deal) notFound();
-
+  /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!deal) redirect("/opportunities");
   const db = getDb();
   const [customers, offerings] = await Promise.all([
     db.customers.list().catch(() => []),

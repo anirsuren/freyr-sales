@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   SearchX,
@@ -53,25 +54,13 @@ export default async function VoiceContactPage({
   const id = (await params).id;
   const db = getDb();
   const contact = await db.contacts.get(id);
-  if (!contact) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Contact not found"
-        description="This link no longer works, or the contact was removed. Head back to the voice team to find them."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/voice"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to voice agents
-          </SmartBack>
-        }
-      />
-    );
-  }
+    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!contact) redirect("/voice");
 
   const customer = contact.customer_id
     ? await db.customers.get(contact.customer_id)

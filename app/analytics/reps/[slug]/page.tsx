@@ -1,4 +1,5 @@
 import { meetingsForPerson, readMeetings } from "@/lib/meetings";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   SearchX,
@@ -107,25 +108,8 @@ export default async function RepPage({
         m.accountType === "real" &&
         m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug
     );
-    if (!member) {
-      return (
-        <EmptyState
-          icon={SearchX}
-          title="Rep not found"
-          description="That teammate isn't on the roster. Head back to the team."
-          className="py-24"
-          action={
-            <SmartBack
-              fallback="/team"
-              className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-            >
-              <ArrowLeft size={15} strokeWidth={2} />
-              Back to team
-            </SmartBack>
-          }
-        />
-      );
-    }
+    /* A missing rep lands on the roster, never on a dead end (Anir, Sep 4). */
+    if (!member) redirect("/team");
     const memberTitle = memberProfiles.get(member.id)?.title.trim();
     /**
      * THEIR OWN DEALS, NOT FOUR ZEROS (the Team page told the same lie until

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
 } from "lucide-react";
@@ -37,7 +37,13 @@ export default async function EditOfferingPage({
   params: Promise<{ id: string }>;
 }) {
   const raw = getOffering((await params).id);
-  if (!raw) notFound();
+  /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+     stuck on "Customer not found" after a mode switch: "i should never go
+     here... just take me back to the page with all those things. dont show me
+     that it doesnt exist"). The commonest way to arrive with a stale id is
+     flipping Mock/Real while standing on a record; the honest answer is the
+     module's own list, which exists in both worlds. */
+  if (!raw) redirect("/offerings");
   // Direct navigation is gated exactly like the button that leads here: you
   // must be an admin-assigned owner. Hiding the button alone would leave the
   // URL open, so the same rule is enforced on direct navigation.

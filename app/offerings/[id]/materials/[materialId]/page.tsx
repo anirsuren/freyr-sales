@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StandaloneMaterialViewer } from "@/components/offerings/StandaloneMaterialViewer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
@@ -31,7 +31,8 @@ export default async function MaterialPage({
   const { id, materialId } = await params;
   const { embed, member } = await searchParams;
   const offering = getOffering(id);
-  if (!offering) notFound();
+  /* Miss -> the list / the parent, never a dead end (Anir, Sep 4). */
+  if (!offering) redirect("/offerings");
 
   const currentUser = await getCurrentUser();
   const visibleOffering = redactAgentOnlyMaterials(
@@ -42,7 +43,7 @@ export default async function MaterialPage({
   const material = visibleOffering.materials.find(
     (item) => item.id === materialId && item.docsPath
   );
-  if (!material) notFound();
+  if (!material) redirect(`/offerings/${offering.id}`);
 
   return (
     <StandaloneMaterialViewer

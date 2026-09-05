@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StandaloneRecordDoc } from "@/components/documents/StandaloneRecordDoc";
 import { readMeetings } from "@/lib/meetings";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
@@ -45,7 +45,11 @@ export default async function MeetingDocumentPage({
   const doc = meeting?.docs.find((d) => d.id === docId);
   /* A named entry with no file behind it has nothing to render — the row that
      links here refuses the click for the same reason. */
-  if (!meeting || !doc?.docsPath) notFound();
+  /* The meeting gone -> the meetings list; the meeting fine but the file
+     gone -> the meeting itself, where its documents live (Anir, Sep 4: a
+     miss lands where the things are, never on a dead end). */
+  if (!meeting) redirect("/meetings");
+  if (!doc?.docsPath) redirect(`/meetings/${meeting.id}`);
 
   const q = `meetingId=${encodeURIComponent(meeting.id)}&docId=${encodeURIComponent(
     doc.id

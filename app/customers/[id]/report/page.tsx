@@ -1,4 +1,5 @@
 import { CircleDot } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
 import { Avatar } from "@/components/ui/Avatar";
@@ -77,13 +78,8 @@ export default async function AccountReportPage({
   const id = (await params).id;
   const db = getDb();
   const customer = await db.customers.get(id);
-  if (!customer) {
-    return (
-      <div className="p-10 text-[14px] text-text-secondary">
-        Account not found.
-      </div>
-    );
-  }
+  /* Miss -> the customers list, never a dead end (Anir, Sep 4). */
+  if (!customer) redirect("/customers");
 
   const [contacts, sessions, interactions, allCustomers, allContacts] =
     await Promise.all([
