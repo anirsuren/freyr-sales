@@ -83,6 +83,13 @@ export function timeAgo(value: string | null | undefined): string {
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "-";
   try {
+    /* A DATE WITH NO CLOCK GETS NO CLOCK, on 54 screens. This is the same
+       synthetic midnight that formatDate and formatTime already handle, and
+       here it went wrong twice over: "2026-08-16T00:00:00.000Z" — the shape 76
+       of the live deals carry — rendered as "Aug 15, 2026 • 8:00 PM", both the
+       day before AND a time nobody recorded. Falling back to formatDate gives
+       the stored day and says nothing about a time that does not exist. */
+    if (isDateOnly(value)) return formatDate(value);
     const d = parseISO(value);
     if (!isValid(d)) return "-";
     return format(d, "MMM d, yyyy • h:mm a");
