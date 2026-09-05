@@ -140,7 +140,7 @@ export function ResultDetailModal({
         </p>
         <div className="mt-1.5 space-y-1.5">
           {(entry.evidence ?? []).length === 0 ? (
-            <p className="text-[12.5px] text-[color:var(--warning)]">
+            <p className="text-[12.5px] text-warning">
               Nothing attached. There is no proof to read for this one.
             </p>
           ) : (

@@ -2275,7 +2275,7 @@ export function GoalZoom({
                        verify dialog says it — it was link-blue here, which
                        read as something to click (dark-mode sweep, loop
                        tick 3). */
-                    <p className="mt-1 flex items-center gap-1.5 pl-8 text-[10.5px] text-[color:var(--warning)]">
+                    <p className="mt-1 flex items-center gap-1.5 pl-8 text-[10.5px] text-warning">
                       <Paperclip size={10} strokeWidth={2.4} />
                       Nothing attached. There is no proof to read for this one.
                     </p>
