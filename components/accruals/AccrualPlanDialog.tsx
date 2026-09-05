@@ -522,13 +522,6 @@ export function AccrualPlanDialog({
  *  keeps a free box for everything in between. */
 const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
 
-/** The Deviations tab's three colours, so the scheduler paints them the same
- *  (item 20). Kept beside the helper that produces the words. */
-const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
-  Active: "var(--ink-teal-deep)",
-  Deviated: "var(--ink-violet-soft)",
-  Inactive: "var(--ink-amber)",
-};
 
 /* ------------------------------------------------------------- deviating */
 
@@ -2261,46 +2254,12 @@ const TAB_STATUS_COLOR: Record<TabAccrualStatus, string> = {
                 <h3 className="text-[13px] font-semibold text-text-primary">
                   Previous deviations
                 </h3>
-                {/* THE VERSION AND THE STATUS, WHERE A PERSON CAN SEE THEM
-                    ("every time you see an accrual record, the record has a
-                    version number and a status"). The chips are the app's own,
-                    not a second set painted here. */}
-                {record && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {/* ITEM 20 — "Have the Deviations tab in Revenue Accrual
-                        Scheduler page as well."
-
-                        The scheduler is this dialog: the standalone plan PAGE
-                        was retired on Sep 1 ("I don't want a different screen.
-                        It has to be consistent") and its route redirects here.
-                        A tab strip inside a dialog would be a screen inside a
-                        screen, so what "as well" means in practice is that the
-                        record's deviations read the SAME here as they do on
-                        the tab — same status word, same count. They now do:
-                        this chip is the tab's Accrual status, from the same
-                        `tabAccrualStatus`, so the two can never disagree about
-                        whether a record is Deviated. */}
-                    <span
-                      className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
-                      style={{
-                        background: tint(TAB_STATUS_COLOR[tabAccrualStatus(record)], 9),
-                        color: TAB_STATUS_COLOR[tabAccrualStatus(record)],
-                      }}
-                    >
-                      {tabAccrualStatus(record)}
-                    </span>
-                    <AccrualStatusChip
-                      status={record.status}
-                      version={record.version}
-                      size="sm"
-                    />
-                    <AccrualOriginChip
-                      origin={record.origin}
-                      showOriginal
-                      size="sm"
-                    />
-                  </div>
-                )}
+                {/* NO CHIP CLUSTER UP HERE ANY MORE (Anir, Sep 4: "what's the
+                    point of the three tags at the top right? What's the point
+                    of that shit?"). They repeated the current version's status
+                    — the exact same chips the table two lines down already
+                    pins to the current row. A legend that restates the first
+                    row is noise, and this heading only needs its table. */}
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
                 {history.length === 1
