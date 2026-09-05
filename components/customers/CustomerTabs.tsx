@@ -3077,7 +3077,27 @@ export function CustomerTabs({
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-5">
+        {/* THE OTHER HALF OF THE RULE (Anir, Sep 4: "u didnt fix this?").
+            The button was already disabled on an empty note — but silently,
+            which is only half of "don't let them click in the first place AND
+            give reason". The reason now sits beside it, the same shape the
+            contract and accrual dialogs got, and the footer gains the Cancel
+            every other dialog has. */}
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+          {!noteDraft.trim() && (
+            <span className="text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+              {noteKind === "note"
+                ? "Write the note first."
+                : "Say what happened first."}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setNoteModalOpen(false)}
+            className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
           <Button
             onClick={async () => {
               await addNote();
