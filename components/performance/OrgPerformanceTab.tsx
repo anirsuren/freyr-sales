@@ -2272,11 +2272,12 @@ function GoalRows({
                               {fmtAmount(goal.unit, e.amount)}
                             </span>
                             <span className="text-[10.5px] text-text-tertiary">
-                              {new Date(e.date).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })}{" "}
+                              {/* formatDate, not new Date(...).toLocaleDateString.
+                                  These entries carry a bare yyyy-mm-dd, which
+                                  `new Date` reads as UTC midnight, so a result
+                                  logged on the 5th displayed as "Sep 4" for
+                                  anybody west of UTC. Same shape, right day. */}
+                              {formatDate(e.date)}{" "}
                               · {e.person.split(" ")[0]}
                             </span>
                           </span>
