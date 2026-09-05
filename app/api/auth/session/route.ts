@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { linkedInUrl } from "@/lib/safeUrl";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getDb } from "@/lib/db";
 import { createClient } from "@supabase/supabase-js";
@@ -105,19 +106,22 @@ export async function POST(request: NextRequest) {
   // (no member row existed yet). Copy it into agent_prefs on the first
   // approved sign-in so the agent knows who this rep is from day one — never
   // overwriting a URL the rep has since set, and never blocking sign-in.
-  const onboardingLinkedin = user.user_metadata?.linkedin_url;
-  if (
-    access.status === "approved" &&
-    typeof onboardingLinkedin === "string" &&
-    onboardingLinkedin.includes("linkedin.com/")
-  ) {
+  /* VALIDATED, NOT PATTERN-MATCHED. This used to accept any string CONTAINING
+     "linkedin.com/", which let through both "javascript:alert(1)//linkedin.com/"
+     and "https://evil.com/linkedin.com/" — the first executes when a colleague
+     clicks the chip, the second is simply somebody else's site wearing our
+     label. linkedInUrl parses it and demands http(s) on a real linkedin.com
+     host, and what gets stored is its normalised form. Refusing here only means
+     the URL is not copied; sign-in is untouched either way. */
+  const onboardingLinkedin = linkedInUrl(user.user_metadata?.linkedin_url);
+  if (access.status === "approved" && onboardingLinkedin) {
     try {
       const scope = { workspaceId: access.workspaceId, userId: access.userId };
       const db = getDb();
       const prefs = await db.agentPrefs.get(scope);
       if (!prefs?.linkedin_url) {
         await db.agentPrefs.update(scope, {
-          linkedin_url: onboardingLinkedin.trim(),
+          linkedin_url: onboardingLinkedin,
         });
       }
     } catch {

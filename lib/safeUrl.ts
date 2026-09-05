@@ -30,3 +30,23 @@ export function safeHref(url: string | null | undefined): string | null {
     return null;
   }
 }
+
+/**
+ * A LINKEDIN ADDRESS, OR NOTHING.
+ *
+ * Same shape as the check /api/customers/[id]/contacts and /api/profile/linkedin
+ * already apply, in a module that imports nothing so the sign-in path can use
+ * it too. Returns the normalised `https://host/path`, or null if the value is
+ * not an http(s) URL on linkedin.com — which is what
+ * "javascript:alert(1)//linkedin.com/" is.
+ */
+export function linkedInUrl(raw: string | null | undefined): string | null {
+  const href = safeHref(raw);
+  if (!href) return null;
+  try {
+    const host = new URL(href).hostname.replace(/^www\./, "").toLowerCase();
+    return host === "linkedin.com" || host.endsWith(".linkedin.com") ? href : null;
+  } catch {
+    return null;
+  }
+}

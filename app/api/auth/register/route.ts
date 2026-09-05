@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { linkedInUrl } from "@/lib/safeUrl";
 import { createClient } from "@supabase/supabase-js";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import { authUrl } from "@/lib/authOrigin";
@@ -78,12 +79,15 @@ export async function POST(request: NextRequest) {
   // workspace member row doesn't exist until the first approved sign-in — the
   // session route copies it into agent_prefs then. Loosely validated here;
   // the enrichment endpoint re-validates strictly before ever fetching it.
+  /* Parsed rather than pattern-matched — see lib/safeUrl. The old check
+     accepted anything containing "linkedin.com/", which includes a
+     javascript: URL and anybody else's domain with that string in the path.
+     An address that does not survive validation is simply not stored; sign-up
+     is unaffected. */
   const linkedinUrl =
-    typeof body.linkedinUrl === "string" &&
-    body.linkedinUrl.length <= 300 &&
-    body.linkedinUrl.includes("linkedin.com/")
-      ? body.linkedinUrl.trim()
-      : undefined;
+    (typeof body.linkedinUrl === "string" && body.linkedinUrl.length <= 300
+      ? linkedInUrl(body.linkedinUrl)
+      : null) ?? undefined;
 
   const { data, error } = await supabase.auth.signUp({
     email,
