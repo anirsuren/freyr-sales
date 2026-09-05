@@ -49,18 +49,23 @@ export default async function LoginPage() {
 
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3 overflow-hidden bg-surface px-6 py-4">
-      {/* Plain words, and NO address (Anir, Aug 27, two rounds: "it's very
-          unclear... don't say this link is temporary, and don't give them
-          the link because I don't want them to have the link yet. Just say
-          that eventually they will be moved"). One calm sentence: keep
-          signing in here, a new home is coming, you will be told. */}
+      {/* The app has moved to its own address. Anir, Sep 5: now urge users to
+          the new link (this reverses the earlier "don't give them the link yet"
+          — the prod site is live and everyone should move to it). Plain words,
+          the real address, no metaphors. Host-gated: shows on dev/localhost,
+          never on the prod host. */}
       {isDevHome && (
         <div className="w-full max-w-[420px] rounded-xl border border-blue-subtle bg-blue-light px-4 py-3 text-center text-[12.5px] leading-relaxed text-blue-primary">
-          {/* Literal words only (Anir: "stop speaking in metaphors") — no
-              "home", no "move", just the fact and what to do. */}
-          <b className="font-semibold">Sign in here as usual.</b>{" "}
-          This website&apos;s address will change in the future. You will be
-          told when it does.
+          <b className="font-semibold">Freyr Sales has moved.</b>{" "}
+          Please use the new site from now on:{" "}
+          <a
+            href="https://freyrsales.freyrapps.com"
+            className="font-semibold underline underline-offset-2"
+          >
+            freyrsales.freyrapps.com
+          </a>
+          . Your account and all your data are already there. This address is
+          being retired.
         </div>
       )}
       <Card className="max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto p-8">

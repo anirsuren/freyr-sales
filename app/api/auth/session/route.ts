@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isLoginAllowedHere, PROD_HOME_URL } from "@/lib/devGate";
 import { linkedInUrl } from "@/lib/safeUrl";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getDb } from "@/lib/db";
@@ -61,6 +62,18 @@ export async function POST(request: NextRequest) {
   if (!email) {
     return NextResponse.json(
       { error: "Your account does not have a valid email address." },
+      { status: 403, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  // Dev-only allowlist (see lib/devGate): on the retired dev instance only a
+  // named handful sign in; everyone else is sent to the new prod link. Both
+  // gates (env allowlist set AND a dev host) must agree, so prod is never
+  // restricted. Checked here so it covers every sign-in path at once.
+  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+    return NextResponse.json(
+      {
+        error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,
+      },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { linkedInUrl } from "@/lib/safeUrl";
 import { createClient } from "@supabase/supabase-js";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
+import { isLoginAllowedHere, PROD_HOME_URL } from "@/lib/devGate";
 import { authUrl } from "@/lib/authOrigin";
 import { ensureCompanyDomainInvitation } from "@/lib/accessStore";
 
@@ -42,6 +43,18 @@ export async function POST(request: NextRequest) {
   const name = body.name?.trim();
   if (!email) {
     return json({ error: "Enter a valid email address." }, 400);
+  }
+  // Dev-only allowlist backstop (lib/devGate): a blocked person should not be
+  // able to create an account on the retired dev instance either. Host-gated,
+  // so prod is never affected. The email step (/api/auth/lookup) already stops
+  // them in the UI; this covers a direct call.
+  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+    return json(
+      {
+        error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,
+      },
+      403
+    );
   }
   if (!name || name.length > 120) {
     return json({ error: "Enter your full name." }, 400);

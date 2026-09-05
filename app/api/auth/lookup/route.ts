@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAutoApprovedEmail, normalizeAuthEmail } from "@/lib/authEmailPolicy";
+import { isLoginAllowedHere, PROD_HOME_URL } from "@/lib/devGate";
 
 /**
  * Decides what the login page asks for after someone types their email, so a
@@ -61,6 +62,19 @@ export async function POST(request: NextRequest) {
 
   const email = normalizeAuthEmail(body.email);
   if (!email) return json({ error: "Enter a valid email address." }, 400);
+
+  // Dev-only allowlist (lib/devGate): stop non-allowlisted users at the EMAIL
+  // step so the password field never appears — they are sent to the new prod
+  // link instead. Both gates (env allowlist AND a dev host) must agree, so
+  // prod is never affected. The same check backstops at /api/auth/session.
+  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+    return json(
+      {
+        error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,
+      },
+      403
+    );
+  }
 
   const domainMember = isAutoApprovedEmail(email);
   const client = adminClient();
