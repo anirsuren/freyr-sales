@@ -21,10 +21,32 @@
 /** The prod home users on the retired dev instance are sent to. */
 export const PROD_HOME_URL = "https://freyrsales.freyrapps.com";
 
-/** True when this host is a dev or local host — never the prod host. */
-export function isDevHost(host: string | null | undefined): boolean {
-  const h = (host ?? "").toLowerCase();
-  return h.includes(".dev.") || h.startsWith("localhost") || h.startsWith("127.");
+/**
+ * Is THIS deployment the dev instance? Keyed off the server's own configured
+ * origin (AUTH_PUBLIC_ORIGIN / APP_PUBLIC_URL), NOT the request Host header.
+ *
+ * The load balancer does not pass the public Host through to the container, so
+ * a Host-header check silently failed to fire on the deployed dev site (and a
+ * Host header is client-spoofable anyway, which on prod could lock everyone
+ * out). The origin env var is set per-environment on the task definition —
+ * dev carries `...dev.freyrapps.com`, prod carries `freyrsales.freyrapps.com`
+ * — so it is reliable behind the proxy and cannot be forged by a caller.
+ * A plain `next dev` with no origin set counts as dev (non-production).
+ */
+export function isDevEnvironment(): boolean {
+  const origin = (
+    process.env.AUTH_PUBLIC_ORIGIN ||
+    process.env.APP_PUBLIC_URL ||
+    ""
+  ).toLowerCase();
+  if (origin) {
+    return (
+      origin.includes(".dev.") ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1")
+    );
+  }
+  return process.env.NODE_ENV !== "production";
 }
 
 /**
@@ -60,17 +82,12 @@ function globToRegExp(glob: string): RegExp {
 }
 
 /**
- * May this email sign in, given the current host? Returns true unless BOTH
- * gates say to restrict AND the email matches no allowlist entry. Fails open:
- * no allowlist, or a non-dev host, always returns true.
+ * May this email sign in on THIS deployment? Fails open: on anything that is
+ * not the dev instance (prod, above all) every email is allowed. On dev, only
+ * emails matching the allowlist may sign in.
  */
-export function isLoginAllowedHere(
-  email: string,
-  host: string | null | undefined
-): boolean {
-  const globs = allowlistGlobs();
-  if (globs.length === 0) return true; // no allowlist configured (e.g. prod)
-  if (!isDevHost(host)) return true; // second gate: never restrict prod's host
+export function isLoginAllowedHere(email: string): boolean {
+  if (!isDevEnvironment()) return true; // prod (and any non-dev) is never restricted
   const e = email.trim().toLowerCase();
-  return globs.some((g) => globToRegExp(g).test(e));
+  return allowlistGlobs().some((g) => globToRegExp(g).test(e));
 }

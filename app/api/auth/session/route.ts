@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   // named handful sign in; everyone else is sent to the new prod link. Both
   // gates (env allowlist set AND a dev host) must agree, so prod is never
   // restricted. Checked here so it covers every sign-in path at once.
-  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+  if (!isLoginAllowedHere(email)) {
     return NextResponse.json(
       {
         error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,

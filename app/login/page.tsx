@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { headers } from "next/headers";
+import { isDevEnvironment } from "@/lib/devGate";
 import { PasskeySignIn } from "@/components/auth/PasskeySignIn";
 import { appHomePath } from "@/lib/appHome";
 import { ShieldCheck } from "lucide-react";
@@ -19,9 +19,11 @@ export default async function LoginPage() {
      Host header is the one switch that needs no config and survives every
      promote: the banner shows on freyrsales.dev.* and localhost, and can
      never appear on freyrsales.freyrapps.com. */
-  const host = ((await headers()).get("host") ?? "").toLowerCase();
-  const isDevHome =
-    host.includes(".dev.") || host.startsWith("localhost") || host.startsWith("127.");
+  // Dev banner keys off the server's configured origin, not the request Host
+  // header (the load balancer does not forward the public host to the
+  // container, so a Host check silently never fired on deployed dev). Same
+  // signal the login lock uses — see lib/devGate.
+  const isDevHome = isDevEnvironment();
   const authMode = process.env.AUTH_MODE;
   const entra = authMode === "entra";
   const alb = authMode === "aws-alb";

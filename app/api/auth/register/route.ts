@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   // able to create an account on the retired dev instance either. Host-gated,
   // so prod is never affected. The email step (/api/auth/lookup) already stops
   // them in the UI; this covers a direct call.
-  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+  if (!isLoginAllowedHere(email)) {
     return json(
       {
         error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,

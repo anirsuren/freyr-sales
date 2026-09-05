@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   // step so the password field never appears — they are sent to the new prod
   // link instead. Both gates (env allowlist AND a dev host) must agree, so
   // prod is never affected. The same check backstops at /api/auth/session.
-  if (!isLoginAllowedHere(email, request.headers.get("host"))) {
+  if (!isLoginAllowedHere(email)) {
     return json(
       {
         error: `This app has moved. Please sign in at ${PROD_HOME_URL} — your account and all your data are already there.`,
