@@ -5,14 +5,18 @@ RUN npm ci
 
 FROM node:22-trixie-slim AS builder
 WORKDIR /app
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# NEXT_PUBLIC_SUPABASE_* is deliberately ABSENT at build time. When present,
+# Next.js compiles the value into the server and client bundles as a literal,
+# and the image can only ever talk to the database it was built against —
+# task-definition env cannot repoint it (rev 17 failed exactly this way on
+# Sep 5 when prod moved to its own Supabase project). Built without it, every
+# process.env read stays a runtime lookup and one image serves any database;
+# the login/reset/SSO screens already receive the values from the server at
+# request time.
 ARG NEXT_BUILD_CPUS=1
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_BUILD_CPUS=${NEXT_BUILD_CPUS} \
-    NODE_OPTIONS=--max-old-space-size=1536 \
-    NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL} \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    NODE_OPTIONS=--max-old-space-size=1536
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
