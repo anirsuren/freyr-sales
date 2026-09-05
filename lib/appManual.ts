@@ -114,11 +114,11 @@ The bar snaps to fives up to 95 and then to
 99 and 100, so every verdict is reachable by dragging; typing an exact figure
 still accepts anything, 72 or 97 included.
 
-Future is separate and still chosen by hand, because it says WHEN the money
-lands rather than how likely it is: a deal can be 99% certain and still be
-future revenue that arrives in a later financial year. A deal carrying no
-confidence at all keeps whatever level it was imported with, because a blank
-cell is not a verdict.
+Future is GONE as a level (Suren, Sep 1: "take the word future off"). Its 23
+deals were folded into Pipeline, the Current/Future tab pair that used to sit
+above the list went with it, and there is now one pipeline and one list. A deal
+carrying no confidence at all keeps whatever level it was imported with,
+because a blank cell is not a verdict.
 
 STATUSES: Qualify, Pilot, Propose, Submitted to client, Under review, On hold,
 Won, Lost. "Submitted to client" is the hand-off point — a deal sitting there
@@ -126,10 +126,15 @@ with no contract drafted shows in a queue on the Contracts page, and the
 "Convert to contract" button on the deal is how you draft one.
 
 WEIGHTED means value x confidence — the probability-adjusted figure. A $800K
-deal at 60% confidence shows $480K weighted. The tiles at the top give the
-count, the total contract value, the weighted total and the average confidence
-across whatever the filters currently show, so filtering to one level
-re-totals everything beneath it.
+deal at 60% confidence shows $480K weighted. It rides beside the money in the
+table's "Estimated TCV · weighted" column; it is NOT one of the tiles, because
+Suren had the weighted tile removed for confusing people.
+
+THE THREE TILES at the top read, left to right: how many opportunities are in
+the pipeline, the estimated TCV across the deals that carry one, and what is
+expected to SIGN in the current fiscal quarter. All three are summed from
+whatever the filters currently show, so narrowing to one owner or one level
+re-totals every one of them.
 
 ONE DEAL, MANY OFFERINGS. Tick every offering a deal covers on its form;
 anything not in the catalogue yet can be typed as free text so nothing is
@@ -449,14 +454,21 @@ rows, and a bar appears with "{n} selected". It offers "Run analysis",
 "Assign owner" (pick the person, then press "Assign"), "Export" (just the rows
 you ticked) and "Clear selection".
 
-WHICH TABS A CUSTOMER HAS. This is the usual surprise. In Ready now (real) mode
-a customer page shows only two tabs, "Digital components" and "Activity" —
-everything else is still being built and is deliberately hidden, not missing
-data. Flip to In progress and the full set appears: Overview, Analytics,
-Offerings, Digital components, Contacts, Deals, Sessions, Notes and Activity.
-So in the live workspace there is no Offerings tab on a customer; what a
-customer runs is on "Digital components", and the customer-by-offering picture
-lives on the Customer Offering Heat Map under Reports.
+WHICH TABS A CUSTOMER HAS. In Ready now (real) mode the account page carries
+the full set, each with its own count on the tab itself: Overview, Team,
+Contracts, Offerings, Opportunities, Submissions, Presentations, Meetings,
+Solution requests, Meeting requests, Leads, Digital components, Contacts and
+Activity. A tab reading 0 means that account has none of those yet, not that
+the tab is unbuilt.
+
+(This used to say a real customer had only "Digital components" and
+"Activity" and that there was no Offerings tab. That was true of the Aug 8
+rollout and stopped being true as the modules shipped; it is corrected here
+because the agent quotes this manual, and an answer that contradicts what
+somebody is looking at is worse than no answer.)
+
+The customer-by-offering picture across ALL accounts is still the Customer
+Offering Heat Map under Reports.
 
 RECORDING WHAT A CUSTOMER RUNS. The "Digital components" tab lists every
 component and its version, with columns Component, Type, Current version,
