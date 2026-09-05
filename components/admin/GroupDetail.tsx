@@ -25,7 +25,7 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
-import { cn } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { GROUP_TYPE_META } from "@/lib/privileges";
 import {
   PersonProgress,
@@ -783,7 +783,7 @@ export function GroupDetail({
           >
             {chosen.length <= 1
               ? "Assign goal"
-              : `Assign ${chosen.length} goals`}
+              : `Assign ${chosen.length} ${plural(chosen.length, "goal")}`}
           </Button>
         </div>
         </div>

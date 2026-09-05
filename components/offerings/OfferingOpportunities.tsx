@@ -12,7 +12,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { formatMoney } from "@/lib/pipeline";
 import { revenueTypeRule } from "@/lib/opportunitiesShared";
 import type { Opportunity } from "@/lib/opportunitiesShared";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, plural } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 
 /**
@@ -104,7 +104,7 @@ export function OfferingOpportunities({
           dont use weighted". */}
       <div className="mt-3 grid grid-cols-2 gap-2.5">
         {[
-          { label: "Total value", value: formatMoney(total), sub: `${rows.length} deals` },
+          { label: "Total value", value: formatMoney(total), sub: `${rows.length} ${plural(rows.length, "deal")}` },
           {
             label: "Still open",
             value: String(open.length),

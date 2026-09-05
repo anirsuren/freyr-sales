@@ -82,7 +82,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, plural } from "@/lib/utils";
 import { ConfidenceSlider, snapConfidence } from "./ConfidenceSlider";
 import { fiscalYearEnding } from "./OpportunitySummary";
 import { refreshOpportunities } from "@/lib/useOpportunities";
@@ -2227,7 +2227,7 @@ export function OpportunitiesBrowser({
             totals.tcv.entered === 0
               ? "nobody has entered one yet"
               : totals.tcv.entered < totals.tcv.of
-                ? `across ${totals.tcv.entered} of ${totals.tcv.of} deals`
+                ? `across ${totals.tcv.entered} of ${totals.tcv.of} ${plural(totals.tcv.of, "deal")}`
                 : "total contract value"
           }
         />

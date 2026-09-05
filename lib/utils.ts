@@ -19,6 +19,18 @@ export function cn(
   return classes.filter(Boolean).join(" ");
 }
 
+/**
+ * "1 deal", not "1 deals".
+ *
+ * The codebase already does this inline in a few places
+ * (`c.schedule.length === 1 ? "month" : "months"`), and everywhere it does not,
+ * a count of one reads as a typo — an offering with a single opportunity says
+ * "1 deals" on its own tab today. Pass the plural only when it is irregular.
+ */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return n === 1 ? one : many;
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
   try {

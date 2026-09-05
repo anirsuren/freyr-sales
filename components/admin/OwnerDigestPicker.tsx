@@ -5,7 +5,7 @@ import { ChevronDown, FileText, FolderOpen, Loader2 } from "lucide-react";
 import { emailTemplates } from "@/lib/emailTemplates";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, plural } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 
 /**
@@ -304,7 +304,7 @@ export function OwnerDigestPicker({
                         <span className="block truncate text-[12px] text-text-secondary">
                           {mine.length === 1
                             ? mine[0].offeringName
-                            : `${mine.length} offerings`}
+                            : `${mine.length} ${plural(mine.length, "offering")}`}
                         </span>
                       </span>
                       {empties > 0 && (

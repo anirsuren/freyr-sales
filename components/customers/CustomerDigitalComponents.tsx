@@ -20,7 +20,7 @@ import {
 } from "@/components/fdl/FdlComponentsBrowser";
 import type { CustomerComponentLink } from "@/lib/types";
 import type { FdlComponent } from "@/lib/offerings";
-import { formatDate } from "@/lib/utils";
+import { formatDate, plural } from "@/lib/utils";
 import { CircleCheck, Clock, Rocket } from "lucide-react";
 
 /**
@@ -516,7 +516,7 @@ export function CustomerDigitalComponents({
                 [...state, ...additions],
                 picked.length === 1
                   ? "Component connected."
-                  : `${picked.length} components connected.`
+                  : `${picked.length} ${plural(picked.length, "component")} connected.`
               );
               setPicking(false);
             }}
