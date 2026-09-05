@@ -41,6 +41,16 @@ export function formatDate(value: string | null | undefined): string {
 export function formatTime(value: string | null | undefined): string {
   if (!value) return "";
   try {
+    /* NO CLOCK MEANS NO TIME, not midnight translated into the reader's
+       timezone. Every mock session is stored as "2027-03-06T00:00:00.000Z" —
+       a calendar day given a synthetic midnight — and this printed "7:00 PM"
+       for all of them, which is 7pm on the FIFTH in New York. So each row read
+       "Mar 6, 2027" over a time from the day before, identical on every row
+       because it was never a time at all. stampedAt already says the rule:
+       "a bare yyyy-mm-dd carries no clock, so saying one would be inventing
+       it". The caller renders this as its own line, so an empty string simply
+       leaves the line out. */
+    if (typeof value === "string" && isDateOnly(value)) return "";
     const d = typeof value === "string" ? parseISO(value) : value;
     if (!isValid(d)) return "";
     return format(d, "h:mm a");
