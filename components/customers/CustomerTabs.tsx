@@ -989,14 +989,19 @@ export function CustomerTabs({
                     moment you turn it off. */}
                 {/* No control here: Edit account in the page header opens
                     the edit page, the same road the offering page takes. */}
-                {false && (
-                  <span className="text-[11.5px] text-text-tertiary">
-                    Click a value to change it
-                  </span>
-                )}
               </div>
-              <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-x-6 gap-y-2.5">
+              {/* LABEL ABOVE, VALUE BELOW (Anir, Sep 4: "everything is so far
+                  away from their header. why wouldn't u just make it like
+                  header above data point below. just look what u do on other
+                  pages"). Each cell was label-left / value-right, so a wide
+                  column put a canyon between the two and every row gave the
+                  eye a different distance to travel — the exact defect the
+                  deal rail fixed on Aug 30 with EditableFact's `stacked`
+                  mode. This card now uses it, in the same four-across grid
+                  the edit page lays its fields in. */}
+              <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
                 <EditableFact
+                  stacked
                   label="Company name"
                   value={customer.company_name ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1005,6 +1010,7 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
+                  stacked
                   label="Industry"
                   value={customer.industry ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1022,6 +1028,7 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
+                  stacked
                   label="Size"
                   value={customer.size_tier ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1048,6 +1055,7 @@ export function CustomerTabs({
                   /* "Locations", his word (Manoj, Sep 3: "Customer logo,
                      About, Locations, Key contacts, customer intelligence").
                      Same field, the name people use for it. */
+                  stacked
                   label="Locations"
                   value={customer.geography ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1057,6 +1065,7 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
+                  stacked
                   label="Website"
                   value={customer.website_url ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1066,6 +1075,7 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
+                  stacked
                   label="Customer type"
                   value={customer.customer_type ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1084,6 +1094,7 @@ export function CustomerTabs({
                     card, so the page held the answers and showed the reader
                     two of them. */}
                 <EditableFact
+                  stacked
                   label="Ownership"
                   value={customer.ownership ?? ""}
                   canEdit={canEditFacts && editingAbout}
@@ -1092,6 +1103,7 @@ export function CustomerTabs({
                   }
                 />
                 <EditableFact
+                  stacked
                   label="Revenue"
                   value={customer.revenue ?? ""}
                   canEdit={canEditFacts && editingAbout}
