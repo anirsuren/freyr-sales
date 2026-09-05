@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useEffect, useRef, useState } from "react";
@@ -231,7 +232,7 @@ export function LiveCompanyBriefing({
                   : `Company page · ${fmtDate(post.date)}`}
               </span>
               <a
-                href={post.url}
+                href={safeHref(post.url) as string}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Open on LinkedIn"
@@ -316,7 +317,7 @@ export function LiveCompanyBriefing({
         </p>
       )}
       <a
-        href={item.url}
+        href={safeHref(item.url) as string}
         target="_blank"
         rel="noreferrer"
         className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
@@ -349,7 +350,7 @@ export function LiveCompanyBriefing({
         </p>
       )}
       <a
-        href={item.url}
+        href={safeHref(item.url) as string}
         target="_blank"
         rel="noreferrer"
         className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
@@ -379,7 +380,7 @@ export function LiveCompanyBriefing({
           {signal.title}
         </h3>
         <a
-          href={signal.url}
+          href={safeHref(signal.url) as string}
           target="_blank"
           rel="noreferrer"
           className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
@@ -777,7 +778,7 @@ export function LiveCompanyBriefing({
                         </td>
                         <td className="px-4 py-3 text-right align-top">
                           <a
-                            href={row.url}
+                            href={safeHref(row.url) as string}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"

@@ -1,6 +1,7 @@
 "use client";
 
 import { EditableFact } from "@/components/opportunities/EditableFact";
+import { safeHref } from "@/lib/safeUrl";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
@@ -2434,7 +2435,7 @@ export function CustomerTabs({
                       />
                       {a.url ? (
                         <a
-                          href={a.url}
+                          href={safeHref(a.url) as string}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="min-w-0 text-blue-primary hover:underline break-words"

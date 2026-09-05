@@ -204,7 +204,7 @@ export function TrackedPeopleList({
                         {fmtDate(post.date)}
                       </span>
                       <a
-                        href={post.url}
+                        href={safeHref(post.url) as string}
                         target="_blank"
                         rel="noreferrer"
                         aria-label="Open on LinkedIn"

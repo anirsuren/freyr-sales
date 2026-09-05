@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import {
   ArrowRight,
@@ -279,7 +280,7 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
                   {deal.summary}
                 </p>
                 <a
-                  href={deal.sourceUrl}
+                  href={safeHref(deal.sourceUrl) as string}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"

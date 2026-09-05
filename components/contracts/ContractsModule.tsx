@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { safeHref } from "@/lib/safeUrl";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -1159,7 +1160,7 @@ export function ContractsModule({
                         {/* "HOW DO I OPEN THE CONTRACT?" (Anir, Aug 26). Here. */}
                         {c.documentUrl ? (
                           <a
-                            href={c.documentUrl}
+                            href={safeHref(c.documentUrl) as string}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
