@@ -594,27 +594,13 @@ export function OpportunitiesBrowser({
    *  separate, like a separate tab within the pipeline page?"). Future deals
    *  have no money yet, so they get their own table instead of $0 rows
    *  diluting the pipeline's numbers. Remembered per person. */
-  const [storedPipeView, setPipeView] = useStoredView<"current" | "future">(
-    "freyr.opportunities.view",
-    "current",
-    ["current", "future"]
-  );
-  /**
-   * ONE LIST IN REAL MODE (Suren, Sep 1, on this exact pill pair: "this current
-   * pipeline future, he has to take this off because it's all confusing
-   * things... make sure that these two things are gone now. Somebody comes
-   * here, they can add a new opportunity, and they can search").
-   *
-   * The split earns its keep in mock, where Future carries invented numbers.
-   * In the real workspace the 23 Future rows are named prospects with no money
-   * on them at all — nothing to add up — so the toggle asked people to choose
-   * between a pipeline and a list of names, which is the confusion he means.
-   *
-   * Nothing is deleted and nothing changes in Mock. Real mode simply opens on
-   * the pipeline, and a person who last left the toggle on Future does not
-   * come back to a view that no longer has a way out.
-   */
-  const pipeView = live ? "current" : storedPipeView;
+  /* THE CURRENT/FUTURE SPLIT IS GONE EVERYWHERE, MOCK INCLUDED.
+     Suren retired the level ("take the word future off", Sep 1) and `futures`
+     had been hardcoded empty ever since — but mock kept the pill pair, whose
+     second position was a permanent "Future 0" over an empty table. Anir,
+     Sep 4: "it cant say 0 then whats the point of mock mode". A toggle with
+     one live position is not a toggle, so the pills, the stored view and the
+     FutureSection component all left together. */
   /** GROUPING IS A LENS, NOT A STRUCTURE (Suren, Aug 17 call: "bring all the
    *  opportunities together under one customer… it's just a grouping
    *  mechanism — every row is an opportunity, I'm not taking that out"). */
@@ -632,12 +618,12 @@ export function OpportunitiesBrowser({
      answers what the money is doing and the table is where a deal is worked
      on; a third way to look at the same rows was one too many. */
   const [dealView, setDealView] = useStoredView<"summary" | "table">(
-    /* ITS OWN KEY. This shared "freyr.opportunities.view" with the
-       Current-pipeline/Future tab above, so the two wrote over each other:
-       picking Future stored "future" where the view toggle looks, and the next
-       load came back on a view nobody chose. Found while chasing "why does it
-       take me back to the table view" (Anir, Aug 30) — that complaint was
-       partly this. */
+    /* ITS OWN KEY. This shared "freyr.opportunities.view" with the retired
+       Current-pipeline/Future tab, so the two wrote over each other: picking
+       Future stored "future" where the view toggle looks, and the next load
+       came back on a view nobody chose. Found while chasing "why does it take
+       me back to the table view" (Anir, Aug 30) — that complaint was partly
+       this. */
     "freyr.opportunities.dealView",
     "summary",
     ["summary", "table"] as const
@@ -666,10 +652,6 @@ export function OpportunitiesBrowser({
     "customer",
     ["none", "customer", "offering"]
   );
-  /* THE FUTURE LEVEL IS RETIRED (Suren, Sep 1: "take the word future off").
-     Its 23 deals were clubbed into Pipeline, so there is nothing to separate
-     out any more and the current list is simply the list. */
-  const futures = useMemo<typeof list>(() => [], []);
   const currentList = list;
   const [query, setQuery] = useState("");
   // MULTISELECT filters (Anir, Aug 18: "multiselect. wherever this applies…
@@ -2154,9 +2136,7 @@ export function OpportunitiesBrowser({
           move up to where the title was and carry the name themselves; the h1
           stays for screen readers and the document outline, and the one action
           keeps its place on the right. */}
-      <h1 className="sr-only">
-        {pipeView === "future" ? "Future pipeline" : "Current pipeline"}
-      </h1>
+      <h1 className="sr-only">Current pipeline</h1>
       {/* Same pill idiom as the performance rooms, at the same size. NO
           entrance animation on these — the performance lesson holds here too. */}
       {/* THE PAGE GETS A HEADER AGAIN.
@@ -2203,78 +2183,7 @@ export function OpportunitiesBrowser({
           }
         />
       )}
-      {/* In mock the pills survive and carry the name themselves, so this row
-          still earns its place there. */}
-      <div className={cn(
-        "relative z-40 mb-6 mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-        live && "hidden"
-      )}>
-        <div className={cn(
-          "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          live && "hidden"
-        )}>
-          {([
-            { key: "current" as const, label: "Current pipeline", count: currentList.length, icon: Workflow, color: "var(--ink-bright-blue)" },
-            { key: "future" as const, label: "Future", count: futures.length, icon: CalendarClock, color: "var(--ink-violet-soft)" },
-          ]).map((t) => {
-            const Icon = t.icon;
-            const active = pipeView === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setPipeView(t.key)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
-                  active
-                    ? "bg-white text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                <Icon
-                  size={16}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  style={active ? { color: t.color } : undefined}
-                />
-                {t.label}
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10.5px] font-bold tnum",
-                    t.key === "future"
-                      ? "bg-[rgba(124,58,237,0.12)] text-[color:var(--ink-violet-soft)]"
-                      : "bg-[rgba(0,113,227,0.10)] text-[color:var(--ink-blue-soft)]"
-                  )}
-                >
-                  {t.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Same entrance the performance rooms play when the tab flips — the
-          pills above hold still, only the content below arrives. */}
-      <div key={pipeView} className="tab-panel">
-      {pipeView === "future" ? (
-        <FutureSection
-          futures={futures}
-          flashId={flashId}
-          writable={writable}
-          mayTouch={mayTouch}
-          offeringName={offeringName}
-          colorForOffering={(o) =>
-            o.offeringIds[0]
-              ? (colorForOfferingId.get(o.offeringIds[0]) ?? "var(--ink-violet-soft)")
-              : "var(--ink-violet-soft)"
-          }
-          onEdit={(o) => setEditing(draftStash.current[o.id] ?? toDraft(o, offerings, masterActivities))}
-          onRemove={(o) => setConfirmRemove(o)}
-        />
-      ) : (
-      <>
+      <div className="tab-panel">
 
 
       {/* THE THREE VALUES OPEN THE PAGE (Anir, Sep 4, moving the toolbar down
@@ -2863,8 +2772,6 @@ export function OpportunitiesBrowser({
             );
           })}
         </div>
-      )}
-      </>
       )}
       </div>
 
@@ -3849,320 +3756,6 @@ function withCommas(digits: string): string {
  * untouched and still accepts 72, or 97.
  */
 
-/**
- * THE FUTURE TAB — deals nobody has pitched yet, from the workbook's Future
- * Pipeline sheet. No money columns: these rows honestly have none. What they
- * do have: who, which offering, when the first pitch is planned, and the
- * quarter it targets. Editing one and flipping its level to Pipeline is the
- * promotion path.
- */
-function FutureSection({
-  futures,
-  writable,
-  mayTouch = () => true,
-  offeringName,
-  colorForOffering,
-  onEdit,
-  onRemove,
-  flashId = null,
-}: {
-  futures: Opportunity[];
-  writable: boolean;
-  /** Same per-row rule as the pipeline: only rows the reader may change
-   *  draw the pencil. */
-  mayTouch?: (o: Opportunity) => boolean;
-  offeringName: Map<string, string>;
-  colorForOffering: (o: Opportunity) => string;
-  onEdit: (o: Opportunity) => void;
-  onRemove: (o: Opportunity) => void;
-  /** The row a save just landed on — briefly lit so it never looks vanished. */
-  flashId?: string | null;
-}) {
-  /**
-   * THE SAME TOOLS AS THE PIPELINE (Anir, Aug 20: "Why would we not have
-   * filters and search bars here either on the future page? Just copy
-   * whatever you have on the current pipeline and do it for future as well").
-   *
-   * 23 rows is already more than a screen, and this tab had no way to find
-   * one. Search reads the same fields the pipeline's does; the two pickers are
-   * the ones that mean anything here — which account, and which quarter it is
-   * aimed at. The tiles keep counting ALL futures, because they answer "what
-   * is queued" and must not move when you narrow the list.
-   */
-  const [q, setQ] = useState("");
-  const [customer, setCustomer] = useState("all");
-  const [quarter, setQuarter] = useState("all");
-  const customers = useMemo(
-    () => [...new Set(futures.map((o) => o.customer).filter(Boolean))].sort(),
-    [futures]
-  );
-  const quarters = useMemo(
-    () => [...new Set(futures.map((o) => o.targetQuarter).filter(Boolean) as string[])].sort(),
-    [futures]
-  );
-  const shownFutures = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return futures.filter((o) => {
-      if (customer !== "all" && o.customer !== customer) return false;
-      if (quarter !== "all" && o.targetQuarter !== quarter) return false;
-      if (!needle) return true;
-      const hay = [
-        o.name,
-        o.customer,
-        o.owner,
-        offeringName.get(o.offeringIds?.[0] ?? "") ?? "",
-        ...(o.offeringLabels ?? []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(needle);
-    });
-  }, [futures, q, customer, quarter, offeringName]);
-
-  const dated = futures.filter((o) => o.targetPitchDate);
-  const nextPitch = dated
-    .map((o) => o.targetPitchDate!)
-    .sort()
-    .find((d) => d >= new Date().toISOString().slice(0, 10));
-  return (
-    <>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatTile
-          icon={Briefcase}
-          label="Future deals"
-          value={String(futures.length)}
-          sub="not pitched yet. No money, honestly"
-          color="var(--ink-violet-soft)"
-        />
-        <StatTile
-          icon={Target}
-          label="With a pitch date"
-          value={`${dated.length} of ${futures.length}`}
-          sub="the rest only name a quarter"
-          color="var(--ink-violet-soft)"
-        />
-        <StatTile
-          icon={TrendingUp}
-          label="Next pitch"
-          value={
-            nextPitch
-              ? new Date(`${nextPitch}T12:00:00`).toLocaleDateString("en-US", {
-                  day: "numeric",
-                  month: "short",
-                })
-              : "None"
-          }
-          sub={nextPitch ? "the soonest planned pitch" : "no upcoming date set"}
-          color="var(--ink-violet-soft)"
-        />
-      </div>
-
-      {futures.length > 0 && (
-          <div className="mt-4">
-            <PageToolbar
-              query={q}
-              onQuery={setQ}
-              placeholder="Search future deals, accounts, offerings…"
-              placeholders={[
-                "Search future deals…",
-                "Search accounts…",
-                "Search offerings…",
-              ]}
-              searchAriaLabel="Search future deals"
-              onClearAll={() => {
-                setQ("");
-                setCustomer("all");
-                setQuarter("all");
-              }}
-              groups={[
-                {
-                  key: "customer",
-                  label: "Customer",
-                  values: customer === "all" ? [] : [customer],
-                  onChange: (next) => setCustomer(next[next.length - 1] ?? "all"),
-                  options: customers.map((c) => ({ value: c, label: c, logoName: c })),
-                },
-                {
-                  key: "quarter",
-                  label: "Target quarter",
-                  values: quarter === "all" ? [] : [quarter],
-                  onChange: (next) => setQuarter(next[next.length - 1] ?? "all"),
-                  options: quarters.map((qt) => ({
-                    value: qt,
-                    label: qt,
-                    color: "var(--ink-violet-soft)",
-                  })),
-                },
-              ]}
-              display={
-                <span className="shrink-0 text-[12px] font-semibold text-text-tertiary tnum">
-                  {shownFutures.length} of {futures.length}
-                </span>
-              }
-            />
-          </div>
-        )}
-      <Card className={cn("overflow-hidden p-0", futures.length === 0 && "mt-4")}>
-        {futures.length === 0 ? (
-          <div className="px-4 py-8">
-            <EmptyState
-              icon={Briefcase}
-              title="Nothing queued for the future yet"
-              description="Add a deal with the revenue type Future and it lives here until it is pitched."
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="w-[26%] px-4 py-2.5">Customer</th>
-                  <th className="w-[20%] px-2 py-2.5">Offering</th>
-                  <th className="w-[13%] px-2 py-2.5">Target pitch</th>
-                  <th className="w-[12%] px-2 py-2.5">Target quarter</th>
-                  <th className="px-2 py-2.5">Activities</th>
-                  {/* ALWAYS DRAWN NOW. Opening a deal is a READ, and it was
-                      locked inside a column that only appeared for people who
-                      could write — so a view-only account had no way out of
-                      this table at all. */}
-                  <th className="w-[112px] px-2 py-2.5 pr-4 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light">
-                {shownFutures.length === 0 && (
-                  <tr>
-                    <td colSpan={writable ? 6 : 5} className="px-4 py-8 text-center text-[13px] text-text-secondary">
-                      No future deal matches that. Clear the filters to see all {futures.length}.
-                    </td>
-                  </tr>
-                )}
-                {shownFutures.map((o) => {
-                  const label =
-                    o.offeringIds[0]
-                      ? (offeringName.get(o.offeringIds[0]) ?? o.offeringLabels[0])
-                      : o.offeringLabels[0];
-                  return (
-                    <tr
-                      key={o.id}
-                      data-opp-row={o.id}
-                      className={cn(
-                        "transition-colors hover:bg-surface/60",
-                        flashId === o.id && "bg-blue-light/60"
-                      )}
-                    >
-                      <td className="px-4 py-2.5">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <CompanyLogo name={o.customer} className="h-7 w-7 shrink-0 text-[9px]" />
-                          <span className="truncate text-[13px] font-semibold text-text-primary">
-                            {o.customer}
-                          </span>
-                        </span>
-                      </td>
-                      <td className="px-2 py-2.5">
-                        {label ? (
-                          <OfferingChip name={label} color={colorForOffering(o)} size="xs" />
-                        ) : (
-                          <span className="text-[11.5px] text-text-tertiary">·</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2.5 text-[12.5px] text-text-secondary tnum">
-                        {o.targetPitchDate
-                          ? new Date(`${o.targetPitchDate}T12:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
-                          : <span className="text-text-tertiary">not set</span>}
-                      </td>
-                      <td className="px-2 py-2.5">
-                        {o.targetQuarter ? (
-                          <span className="rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-violet-soft)]">
-                            {o.targetQuarter}
-                          </span>
-                        ) : (
-                          <span className="text-[11.5px] text-text-tertiary">·</span>
-                        )}
-                      </td>
-                      {/* THE COLUMN FOLLOWS THE FORM. Next steps came out of the
-                          editor when activities replaced it, which left this
-                          column showing a field nothing could ever fill again. */}
-                      <td className="px-2 py-2.5 text-[12.5px] text-text-secondary">
-                        {(o.activities ?? []).length > 0 ? (
-                          <span className="flex flex-wrap items-center gap-1">
-                            {(o.activities ?? []).slice(0, 2).map((a) => (
-                              <span
-                                key={a.id}
-                                className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary"
-                              >
-                                {a.activity}
-                              </span>
-                            ))}
-                            {(o.activities ?? []).length > 2 && (
-                              <span className="text-[11px] text-text-tertiary tnum">
-                                +{(o.activities ?? []).length - 2}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-text-tertiary">nothing logged yet</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2.5 pr-4 text-left">
-                          <span className="inline-flex items-center gap-1">
-                            {/* THE WAY INTO THE DEAL (Anir, Sep 1: "I thought
-                                I said I need the same functionality on all the
-                                different views. On opportunities, how do I go
-                                to this specific opportunity? On the summary
-                                page it's pretty simple: I just click on it,
-                                but here there's no way to go there").
-
-                                Quite right — Summary opened a deal by its
-                                name, and Table had edit, delete and a fold and
-                                no door at all. The arrow, because that is this
-                                app's standing answer for "open the thing"
-                                (Anir, Aug 30: "wherever you put 'Open the
-                                deal' or anything similar, replace it with the
-                                arrow"). Outside the writable gate: reading a
-                                deal is not a write. */}
-                            <Link
-                              href={`/opportunities/${o.id}`}
-                              title={`Open ${o.name}`}
-                              aria-label={`Open ${o.name}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                            >
-                              <ArrowUpRight size={13} strokeWidth={2.2} />
-                            </Link>
-                          {writable && mayTouch(o) && (
-                          <>
-                            <button
-                              type="button"
-                              title={`Edit ${o.name}. Flip its revenue type to Pipeline when it is pitched`}
-                              onClick={() => onEdit(o)}
-                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                            >
-                              <Pencil size={13} strokeWidth={2.2} />
-                            </button>
-                            <button
-                              type="button"
-                              title={`Remove ${o.name}`}
-                              onClick={() => onRemove(o)}
-                              className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-                            >
-                              <Trash2 size={13} strokeWidth={2.2} />
-                            </button>
-                          </>
-                          )}
-                          </span>
-                        </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </>
-  );
-}
 
 /**
  * THE ONE OFFERING ON THE DEAL (Suren, Aug 17 call: "make it one offering on
