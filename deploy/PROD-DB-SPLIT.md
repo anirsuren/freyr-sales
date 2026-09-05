@@ -158,3 +158,22 @@ updated_at is the clone-copy time, not a real run), so prod has not spent yet.
 Decision for Anir: should prod spend on live market intel independently, or
 should only one environment run the paid refresh? Not changed here — blanking
 a live prod config row is a cost/product decision, not a test cleanup.
+
+### Update (Sep 5, later): the double-spend can't happen — the key is dead
+
+Prod's market-intel timer has now fired (feed moved to 18:00) and it FAILS:
+`[market-intel] site updates failed: perplexity HTTP 401`, scan reports
+`spendUsd: 0`. The cloned Perplexity key (`pplx-JM2...NnHu`, 53 chars, not
+truncated) returns 401 tested directly against api.perplexity.ai, and it is
+byte-identical in prod, dev, and .env.local — all three 401.
+
+So two corrections to the cost note above:
+ - The feared double-spend on Perplexity CANNOT occur: an invalid key spends
+   nothing. The cost concern is moot for Perplexity (Apify may differ; its
+   token was not separately tested).
+ - The market-intel NEWS pipeline is broken in BOTH environments, pre-existing,
+   on an expired/revoked Perplexity key. Every refresh 401s and returns no
+   news. This predates the split (dev carries the same dead key). Fix is a key
+   rotation in the market-intel:config row (and .env.local / any env copy) —
+   Anir's call; no valid key is available here to swap in. Until then prod logs
+   a 401 line every ~20-30 min from the website-scan timer (noise, no spend).
