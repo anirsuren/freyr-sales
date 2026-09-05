@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { useRouter } from "next/navigation";
 import { ExternalLink, MapPin, MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
@@ -119,7 +120,7 @@ export function TrackedPeopleList({
                   </button>
                   {person.linkedinUrl && (
                     <a
-                      href={person.linkedinUrl}
+                      href={safeHref(person.linkedinUrl) as string}
                       target="_blank"
                       rel="noreferrer"
                       title={`${person.name} on LinkedIn`}
@@ -280,7 +281,7 @@ export function TrackedPeopleList({
                 </p>
                 {open.linkedinUrl && (
                   <a
-                    href={open.linkedinUrl}
+                    href={safeHref(open.linkedinUrl) as string}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[color:#0071E3] px-3 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"

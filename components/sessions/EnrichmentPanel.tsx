@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeHref } from "@/lib/safeUrl";
 import { ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SizeBadge, Badge } from "@/components/ui/Badge";
@@ -83,9 +84,9 @@ export function EnrichmentPanel({
           <p className="text-[14px] text-text-secondary leading-relaxed mt-3">
             {contact.career_summary}
           </p>
-          {contact.linkedin_url && (
+          {safeHref(contact.linkedin_url) && (
             <a
-              href={contact.linkedin_url}
+              href={safeHref(contact.linkedin_url) as string}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline mt-3"

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { safeHref } from "@/lib/safeUrl";
 
 // The real LinkedIn logo (Suren supplied the file — no AI-drawn mark) as a
 // small icon-link that opens the person's profile. Default: bare inline icon
@@ -18,10 +19,14 @@ export function LinkedInLink({
   label?: string;
   className?: string;
 }) {
-  if (!url) return null;
+  /* Only a real web address becomes a link. Four routes write this field and
+     two of them barely check it, so the reader refuses rather than trusting
+     the writer — see lib/safeUrl. */
+  const href = safeHref(url);
+  if (!href) return null;
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
