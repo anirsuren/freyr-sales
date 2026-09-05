@@ -14,6 +14,7 @@
  */
 const ARMED_KEY = "__MONTHLY_EMAILS_ARMED__";
 const LOGGED_KEY = "__MONTHLY_EMAILS_FIRST_LOGGED__";
+const DISABLED_LOGGED_KEY = "__MONTHLY_EMAILS_DISABLED_LOGGED__";
 // Hourly. The window this is watching for is a month wide, so there is nothing
 // to gain from checking harder, and each check is one small row read.
 const CHECK_MS = 60 * 60 * 1000;
@@ -54,9 +55,19 @@ export function armMonthlyEmailSchedule(): void {
    * which is exactly the case he wants to keep.
    */
   if (process.env.MONTHLY_EMAILS_ENABLED !== "true") {
-    console.log(
-      "[monthly-emails] schedule not armed: MONTHLY_EMAILS_ENABLED is not 'true'"
-    );
+    // Log ONCE per process, not per call. This function runs on every
+    // /api/health hit and the load balancer pings health continuously, so an
+    // unguarded log here is the single most repeated line in the whole log
+    // group (93x in one short-lived task, observed Sep 5) — it buries real
+    // signal. The armed path is already idempotent via ARMED_KEY below; the
+    // disabled path returns before reaching it, so it needs its own guard.
+    const gg = globalThis as Record<string, unknown>;
+    if (!gg[DISABLED_LOGGED_KEY]) {
+      gg[DISABLED_LOGGED_KEY] = true;
+      console.log(
+        "[monthly-emails] schedule not armed: MONTHLY_EMAILS_ENABLED is not 'true'"
+      );
+    }
     return;
   }
 
