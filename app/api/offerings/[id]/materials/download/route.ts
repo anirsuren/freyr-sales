@@ -4,7 +4,7 @@ import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { DocsApiError, docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
-import { getFallbackMaterialDownloadUrl } from "@/lib/materialStorage";
+import { getMaterialServeUrl, materialExistsInStore } from "@/lib/materialStorage";
 
 export const dynamic = "force-dynamic";
 
@@ -80,9 +80,9 @@ export async function GET(
   bumpUsage(actor.userId, "download");
 
   try {
-    const presignUrl = (await hasDocsStorage())
-      ? (await docsStorage.getDownloadUrl(path)).presignUrl
-      : await getFallbackMaterialDownloadUrl(path);
+    /* Supabase is the read path — Freya.Docs is write-only archive
+       (Anir, Sep 5: "pretend you don't have it when it comes to the app"). */
+    const presignUrl = await getMaterialServeUrl(path);
 
     /**
      * VIEW IN A TAB, OR SAVE TO DISK — the rep chooses.
@@ -162,7 +162,10 @@ export async function GET(
        of-005/1788437509930-Syngene_International.zip" — which the viewer then
        printed at the reader verbatim. Missing is a 404, and it is said in
        words, with the file's own name rather than its storage path. */
-    if (e instanceof DocsApiError && e.code === 404001) {
+    if (
+      (e instanceof DocsApiError && e.code === 404001) ||
+      !(await materialExistsInStore(path))
+    ) {
       return NextResponse.json(
         {
           error: `"${material.label || "That file"}" is listed here but its file is missing from storage. It needs uploading again.`,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
-import { hasDocsStorage } from "@/lib/docsStorage";
+import { hasMaterialStorage } from "@/lib/materialStorage";
 import { extensionOf, buildMaterialPreview } from "@/lib/materialPreview";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
@@ -66,7 +66,7 @@ export async function GET(
   // already open, and counting it would report one ZIP as twenty opens.
   if (!member) bumpUsage(actor.userId, "open");
 
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { getMaterialServeUrl } from "./materialStorage";
 
 import { docsStorage } from "@/lib/docsStorage";
 import {
@@ -215,7 +216,7 @@ export async function buildMaterialPreview({
     } else if (readBytes) {
       buffer = await readBytes();
     } else {
-      const { presignUrl } = await docsStorage.getDownloadUrl(path);
+      const presignUrl = await getMaterialServeUrl(path);
       const upstream = await fetch(presignUrl);
       if (!upstream.ok)
         return payload(

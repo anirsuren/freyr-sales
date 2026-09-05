@@ -1,4 +1,5 @@
 import "server-only";
+import { getMaterialServeUrl } from "./materialStorage";
 
 import { docsStorage } from "./docsStorage";
 import { contentTypeForFilename, mirrorMaterialToSupabase } from "./materialStorage";
@@ -82,7 +83,7 @@ export async function indexStoredMaterial(args: {
       for (const waitMs of [0, 400, 1200, 3000]) {
         if (waitMs) await new Promise((r) => setTimeout(r, waitMs));
         try {
-          const { presignUrl } = await docsStorage.getDownloadUrl(path);
+          const presignUrl = await getMaterialServeUrl(path);
           const res = await fetch(presignUrl);
           if (!res.ok) continue;
           const size = Number(res.headers.get("content-length") || 0);

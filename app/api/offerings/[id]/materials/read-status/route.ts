@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getMaterialServeUrl } from "@/lib/materialStorage";
 import { getOffering } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import {
@@ -70,7 +71,7 @@ export async function POST(
         kicked.add(path);
         void (async () => {
           try {
-            const { presignUrl } = await docsStorage.getDownloadUrl(path);
+            const presignUrl = await getMaterialServeUrl(path);
             const head = await fetch(presignUrl, { method: "HEAD" });
             const size = Number(head.headers.get("content-length") || 0);
             if (size > 0) await saveMaterialText(path, { ...entry, bytes: size });

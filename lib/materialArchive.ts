@@ -1,4 +1,5 @@
 import "server-only";
+import { getMaterialServeUrl } from "./materialStorage";
 
 import JSZip, { type JSZipObject } from "jszip";
 import { docsStorage } from "@/lib/docsStorage";
@@ -31,7 +32,8 @@ export type MaterialArchiveEntry = {
 };
 
 async function downloadArchive(path: string): Promise<Buffer> {
-  const { presignUrl } = await docsStorage.getDownloadUrl(path);
+  /* Reads come from the app's own store, never Docs (Anir, Sep 5). */
+  const presignUrl = await getMaterialServeUrl(path);
   const upstream = await fetch(presignUrl);
   if (!upstream.ok)
     throw new MaterialArchiveError("Could not read that archive", 502);

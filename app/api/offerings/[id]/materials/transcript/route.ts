@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getMaterialServeUrl } from "@/lib/materialStorage";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
@@ -143,7 +144,7 @@ export async function POST(
     );
 
   try {
-    const { presignUrl } = await docsStorage.getDownloadUrl(path);
+    const presignUrl = await getMaterialServeUrl(path);
     const upstream = await fetch(presignUrl);
     if (!upstream.ok)
       return NextResponse.json(

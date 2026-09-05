@@ -125,9 +125,11 @@ function storageClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/** Is a real file store configured in this environment? */
+/** Is a real file store configured in this environment? Supabase decides:
+ *  it is what the app serves from AND a required leg of every upload, so a
+ *  Docs-only environment can neither store nor show a file any more. */
 export async function hasMaterialStorage(): Promise<boolean> {
-  return (await hasDocsStorage()) || storageClient() !== null;
+  return storageClient() !== null;
 }
 
 /** What kind of material a filename is, by its extension. Keeps the four-tile
@@ -220,14 +222,18 @@ export async function uploadMaterialFile(
       // Rule 3: without complete(), the object stays pending and the path is
       // unusable until aborted.
       await docsStorage.completeUpload(path);
-      // Mirror to the workspace's own Supabase bucket too — same contract as
-      // the direct-upload path: best-effort, never blocks the upload.
-      void file
+      /* THE SUPABASE COPY IS WHAT READERS OPEN (see getMaterialServeUrl), so
+         it is no longer a best-effort mirror — an upload that reaches Docs but
+         not Supabase would list a material nobody can click. Awaited, and its
+         failure fails the upload: the uploader retries, and an orphaned copy
+         in the Docs archive is the harmless leftover. */
+      const mirrored = await file
         .arrayBuffer()
-        .then((buf) =>
-          mirrorMaterialToSupabase(path, Buffer.from(buf), contentType)
-        )
-        .catch(() => undefined);
+        .then((buf) => mirrorMaterialToSupabase(path, Buffer.from(buf), contentType));
+      if (!mirrored) {
+        await docsStorage.abortUpload(path).catch(() => undefined);
+        throw new Error("The file could not be stored for the app to serve. Try again.");
+      }
       return {
         // Downloads go through our own route, which mints a fresh signed URL
         // per click: a stored presign would expire and rot in the record.
@@ -279,12 +285,37 @@ export async function uploadMaterialFile(
   };
 }
 
-/** Mint a short-lived URL for a private fallback-storage object. */
-export async function getFallbackMaterialDownloadUrl(path: string): Promise<string> {
+/**
+ * THE APP READS FROM SUPABASE. FREYA.DOCS IS WRITE-ONLY ARCHIVE.
+ *
+ * Anir, Sep 5: "You just store it in Fradox. That's just the backend thing
+ * they want. Pretend you don't have it when it comes to the actual app."
+ *
+ * This reverses the Jul 29 arrangement where Docs was the source the app
+ * served downloads from and the Supabase copy was a best-effort mirror. Eight
+ * materials taught us why: their bytes vanished from Docs (both instances)
+ * while the Supabase copies sat there intact, and every click answered
+ * "Storage object not found". Uploads still push to Docs so the enterprise
+ * repository stays complete — but nothing a reader clicks depends on it.
+ */
+export async function getMaterialServeUrl(path: string): Promise<string> {
   const client = storageClient();
   if (!client) throw new Error("Material storage is not configured here");
   const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 60);
   if (error || !data?.signedUrl)
     throw new Error(error?.message || "Could not authorize that file");
   return data.signedUrl;
+}
+
+/** The old name, kept so existing imports keep compiling. Same URL. */
+export async function getFallbackMaterialDownloadUrl(path: string): Promise<string> {
+  return getMaterialServeUrl(path);
+}
+
+/** Does the app's own store hold this file? (Existence check via a 1s URL.) */
+export async function materialExistsInStore(path: string): Promise<boolean> {
+  const client = storageClient();
+  if (!client) return false;
+  const { data } = await client.storage.from(BUCKET).createSignedUrl(path, 1);
+  return !!data?.signedUrl;
 }

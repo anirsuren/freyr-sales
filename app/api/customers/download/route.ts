@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getMaterialServeUrl } from "@/lib/materialStorage";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { streamStoredFile } from "@/lib/storedFileResponse";
 import { getDb } from "@/lib/db";
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
       { status: 503 }
     );
 
-  const { presignUrl } = await docsStorage.getDownloadUrl(doc.docsPath);
+  const presignUrl = await getMaterialServeUrl(doc.docsPath);
   if (inline)
     return streamStoredFile(presignUrl, {
       filename: doc.name,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
-import { hasDocsStorage } from "@/lib/docsStorage";
+import { hasMaterialStorage } from "@/lib/materialStorage";
 import {
   MaterialArchiveError,
   readMaterialArchiveMember,
@@ -98,7 +98,7 @@ export async function GET(
       { status: 404 }
     );
 
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

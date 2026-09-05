@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getMaterialServeUrl } from "@/lib/materialStorage";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -186,7 +187,7 @@ export async function GET(
       await fs.access(cached);
       pdfPath = cached;
     } catch {
-      const { presignUrl } = await docsStorage.getDownloadUrl(path);
+      const presignUrl = await getMaterialServeUrl(path);
       const res = await fetch(presignUrl);
       if (!res.ok) throw new Error(`storage answered ${res.status}`);
       const bytes = Buffer.from(await res.arrayBuffer());
