@@ -1,66 +1,108 @@
 # Splitting prod onto its own database
 
-Today dev and prod share one Supabase project. The plan: clone that project,
-point PROD at the clone, dev keeps the original. This file is the whole
-procedure — after tonight's prep, **no code changes and no variable renames
-are needed**. The app reads exactly three values:
+Dev and prod share one Supabase project. The clone is DONE and verified; this
+file is what remains. Status as of Sep 5 2026.
 
-    NEXT_PUBLIC_SUPABASE_URL
-    NEXT_PUBLIC_SUPABASE_ANON_KEY
-    SUPABASE_SERVICE_ROLE_KEY
+## Where the three values actually live  (corrected Sep 5)
 
-Nothing in the codebase hardcodes the project ref, a supabase.co URL, or the
-workspace id (audited Sep 5; the clone keeps the same row ids, so
-FREYR_WORKSPACE_ID does not change).
+An earlier version of this file said "change three keys in prod's secret".
+That was wrong, and it matters: only ONE of the three is in Secrets Manager.
 
-## Why one image can serve two databases (fixed Sep 5)
+| Value | Where it lives in prod |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Secrets Manager `freyr-sales/runtime` |
+| `NEXT_PUBLIC_SUPABASE_URL` | **plain env in the ECS task definition** |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **plain env in the ECS task definition** |
 
-`NEXT_PUBLIC_*` values are baked into the browser bundle at BUILD time, and
-prod runs the image ferried from dev's ECR. Three screens created browser-side
-Supabase clients from baked values — login, reset-password, the SSO card — so
-after the split, prod's login would have quietly authenticated against DEV's
-database. All three now receive the URL and anon key from their server parent
-at request time, with the baked value only as a fallback. This is what makes
-the split an env-vars-only operation.
+So the cutover is: one secret edit + one new task-definition revision.
+Cluster `freyr-sales-cluster`, service `freyr-sales-svc`, family `freyr-sales`.
 
-## The steps
+## New project
 
-1. **Clone the project** (Supabase dashboard backup/restore, or pg_dump + a
-   storage copy). The clone must carry, at minimum:
-   - every `public` table — `offering_catalog_state` holds most of the app
-   - `auth.users` and identities — otherwise nobody can sign in
-   - BOTH storage buckets: `offering-materials` (the app now SERVES all sales
-     materials from this — Freya.Docs is write-only archive since Sep 5) and
-     `market-intel-photos`
+`Freyr Sales Prod` — ref `kthwujrkgmpvrfcghqib`, pooler
+`aws-0-us-east-2.pooler.supabase.com`. (The old project pools through
+`aws-0-ca-central-1`; they are in different regions, which is why any script
+that talks to both needs two hosts.)
 
-2. **Verify the clone** before touching prod:
+Values are staged in `.env.local` under `FREYR_PROD_SUPABASE_*`. The running
+app never reads those; they exist for the migration scripts.
 
-       SOURCE_URL=... SOURCE_KEY=... TARGET_URL=... TARGET_KEY=... \
-       node scripts/prod-split/verify-clone.mjs
+## Done and verified
 
-   It compares row counts, auth users and bucket contents, and refuses on any
-   mismatch.
+- **Schema** — all 24 migrations replayed; zero column drift vs live.
+- **Data** — all 30 public tables. Verified by SHA-256 of every row, not just
+  counts: every table byte-identical except `app_users.last_seen_at`, which
+  moves because people are still using dev. The delta re-run handles it.
+- **Logins** — 43 users + 43 identities, `encrypted_password` byte-identical,
+  so everyone signs in with their existing password. SSO/SAML rows copied.
+- **Storage** — both buckets with their config, 187 objects, 363 MB. The three
+  largest re-downloaded from the new project and byte-checked.
+- **Auth config** — all 243 settings copied via the Management API: six email
+  templates, SMTP, OTP length/expiry, rate limits. Two set deliberately to
+  PROD values rather than copied: `site_url` and `uri_allow_list`. Copying
+  dev's would have sent every prod password-reset link to the dev site.
+- **Absolute URL rewrite** — the market-intel feed stored 51 headshot URLs
+  hardcoded to the old project. Rewritten to the new ref and verified serving.
+  This runs as part of `clone-db.mjs`, after every data copy, because a delta
+  copy re-introduces them.
 
-3. **Repoint prod.** In the PROD account (966427768186), edit the one Secrets
-   Manager JSON `freyr-sales/runtime` and change exactly three keys to the
-   clone's values: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`. Nothing else moves.
+## BLOCKER: the new project cannot send email
 
-4. **Roll prod** (a new task-def revision so the fresh secrets are read), then
-   check https://freyrsales.freyrapps.com/api/health says database reachable,
-   sign in as a real account, and open one sales material end to end.
+Proven, not assumed: a real `POST /auth/v1/recover` returns
+`500 Error sending recovery email`.
 
-5. **After the split**, dev writes stop reaching prod. Two ongoing syncs to
-   decide a cadence for:
-   - Freya.Docs archive copies: uploads land in the environment's own Docs
-     instance; `scripts/qa/copy-docs.mjs` mirrors the bytes across
-     (`--to prod` for the dev→prod direction) so both archives stay complete.
-   - Any catalogue content authored in dev that prod should show: that is now
-     a deliberate export/import, not automatic.
+The Management API returns `smtp_pass` encrypted per-project, so copying it
+writes a dead value. The real SES SMTP password is stored nowhere retrievable.
+Both repair routes are closed:
 
-## What deliberately does NOT change
+- **New SES credential** — needs `iam:CreateUser` / `iam:CreateAccessKey`.
+  The `Infra_Engineer` role is denied both, via CLI *and* in the console.
+  Needs someone with IAM rights.
+- **Resend instead** — `notifications.freyrsolutions.com` shows
+  `status=failed` in Resend, so it cannot send from that sender either.
 
-- `deploy/promote-to-prod.sh` and the image ferry: unchanged, that is the point.
-- `FREYR_WORKSPACE_ID`: same value in both, the clone keeps row ids.
-- Freya.Docs credentials per environment: already separate, already in each
-  account's own secret.
+Until this is fixed, cutting over would regress prod: no password resets, no
+invites, no signup confirmations. Everything else is ready.
+
+## Remaining steps
+
+1. **Fix email** (above). Then re-test with a real `recover` call.
+2. **Delta copy** — `node clone-db.mjs data && node clone-db.mjs auth &&
+   node clone-storage.mjs`. Idempotent; moves only what changed. The rewrite
+   phase runs automatically with `data`.
+3. **Verify** — `node verify-full.mjs` (row counts, auth tables, every storage
+   object by name+size, spot downloads, a password-hash spot check). Exits 1
+   on any mismatch. Then `node checksum.mjs` for content hashes.
+4. **Repoint prod** — secret edit + task-def revision per the table above.
+5. **Roll and check** — `/api/health` reports the new database reachable,
+   sign in as a real account, open a sales material end to end.
+
+## Known differences that are NOT bugs
+
+- **Everyone gets logged out once.** `auth.refresh_tokens` was deliberately not
+  copied, so existing sessions do not carry. Credentials are unchanged.
+- **One passkey dies.** WebAuthn credentials are bound to an origin, and one is
+  registered against `freyrsales.dev.freyrapps.com`. That user re-registers a
+  passkey on prod; password sign-in is unaffected.
+- **RLS is enabled on the new project** (auto-enable event trigger), including
+  on `record_assignments` where live has it off. Harmless: every data read uses
+  the service-role key, which bypasses RLS. No client code reads tables with
+  the anon key.
+- **`auto_join_domains` exists in the clone but not in live.** Migration 013
+  creates it; live drifted. It is only read by `freyr_before_user_created`,
+  which is disabled in both. The clone is the more correct of the two.
+
+## Landmines worth knowing
+
+- **`DATA_MODE_LOCKED=0` + `DEFAULT_DATA_MODE=mock` in prod.** Today the cookie
+  decides and anything not literally "mock" resolves to live, so real users see
+  real data. Flip that lock to `1` and every user instantly sees mock data.
+- **Prod's AWS account has no SES identity.** `notifications.freyrsolutions.com`
+  is verified only in the dev account (602367507820), so prod email runs through
+  dev's SES. Independent of this migration, but it means "prod is separate from
+  dev" is not yet true for email.
+- **26 env vars the app reads are absent from prod**, including
+  `PERPLEXITY_API_KEY` (Market Intel refresh), `HUBSPOT_ACCESS_TOKEN`,
+  `SALESFORCE_CLIENT_ID` and `NEXT_PUBLIC_RELEASE_MODE`. Most degrade quietly
+  rather than failing. `AUTH_SESSION_SECRET` is absent but falls back to
+  `AUTH_COOKIE_SECRET`, which prod has, so sessions are correctly signed.
