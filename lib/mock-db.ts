@@ -928,6 +928,10 @@ function seed(): MockStore {
    * so the stage mix, the outcome mix and the rotting-deal count all come out
    * of real records rather than a hardcoded curve.
    */
+  /* The whole floor, not a subset. This was a hand-kept copy of fourteen of
+     the twenty names, so six people on the roster never logged anything in the
+     sample data — the same drift that left the fill generator with a cast of
+     its own. It is cycled, so growing it only spreads the logs wider. */
   const FILL_LOGGERS = SALES_TEAM;
   /* Weighted the way a book actually sits: mostly working deals, a few
      qualified, a handful gone quiet and the occasional loss. */

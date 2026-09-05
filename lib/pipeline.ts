@@ -7,6 +7,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
+import { SALES_TEAM } from "./salesTeam";
 
 export const STAGES = [
   "Prospect",
@@ -169,7 +170,6 @@ export const REPS = ["Walter Hensley", "Mark Miller", "Margaret Whitfield", "Gor
    without dragging this module's icon imports along — which is how three
    copies of it drifted apart. Re-exported here because plenty already read it
    from this module. */
-import { SALES_TEAM } from "./salesTeam";
 export { SALES_TEAM };
 
 /** Include the verified current user in mock analytics without relabelling any
