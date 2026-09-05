@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
+import { DocsApiError, docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
 import { getFallbackMaterialDownloadUrl } from "@/lib/materialStorage";
@@ -154,6 +154,22 @@ export async function GET(
 
     return NextResponse.redirect(presignUrl, 302);
   } catch (e) {
+    /* A FILE THAT IS GONE IS NOT A GATEWAY FAULT, and it must not be described
+       to a person in the storage API's own words. Eight materials on of-004
+       and of-005 are indexed in the catalogue with no bytes behind them in
+       either bucket (found in the loop, Sep 5), and clicking one answered 502
+       with "Docs API 404001: Storage object not found:
+       of-005/1788437509930-Syngene_International.zip" — which the viewer then
+       printed at the reader verbatim. Missing is a 404, and it is said in
+       words, with the file's own name rather than its storage path. */
+    if (e instanceof DocsApiError && e.code === 404001) {
+      return NextResponse.json(
+        {
+          error: `"${material.label || "That file"}" is listed here but its file is missing from storage. It needs uploading again.`,
+        },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not fetch that file" },
       { status: 502 }
