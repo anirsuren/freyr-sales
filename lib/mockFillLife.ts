@@ -1,4 +1,5 @@
 import { getDataMode } from "./dataMode";
+import { SALES_TEAM } from "./salesTeam";
 import {
   FILL_ACCOUNTS,
   FILL_NAMES,
@@ -73,13 +74,11 @@ import type { RecordTeam } from "./recordTeams";
  */
 
 /** The mock sales floor. Every one of these resolves to a generated headshot. */
-const SALES = [
-  "Elena Rossi", "Omar Haddad", "Nina Kowalski", "Daniel Foster",
-  "Grace Liu", "Marcus Chen", "Sofia Almeida", "Aisha Khan",
-  "Viktor Petrov", "Yuki Tanaka", "Rajesh Patel", "Clara Mendez",
-  "Hannah Schmidt", "Leo Santos", "Tomas Becker", "James O'Brien",
-];
-
+/* THE SAME FLOOR THE TEAM PAGE SHOWS. This used to be its own cast of
+   sixteen invented names, so every record generated here was owned by
+   somebody who was not on the roster and the join by name found nothing —
+   see lib/salesTeam for what that cost. */
+const SALES = SALES_TEAM;
 /**
  * What a regulatory-affairs account actually buys. Drawn from the real
  * catalogue order so a contract and the deal it closed name the same kind of
@@ -169,7 +168,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 2;
+export const FILL_GENERATION = 3;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */

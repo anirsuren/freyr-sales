@@ -343,7 +343,7 @@ export default async function TeamPage() {
     requireServerMemberScope(),
   ]);
   const db = getDb();
-  const [sessions, customers, contacts, interactions, agentPrefs] =
+  const [sessions, customers, contacts, interactions, agentPrefs, mockMeetings] =
     await Promise.all([
       db.pitchSessions.list(),
       db.customers.list(),
@@ -352,6 +352,16 @@ export default async function TeamPage() {
       // The signed-in member's own profile prefs — the LinkedIn URL they
       // pasted in Settings › Profile is the ONLY LinkedIn we may show for them.
       db.agentPrefs.get(scope),
+      /* THE MEETINGS COLUMN COUNTS MEETINGS HERE TOO.
+         Live reads the meetings module (see the note in that branch about the
+         literal zero that outlived its reason); mock was still reading the
+         count of a rep's deals sitting at the "Meeting Booked" STAGE, which is
+         a different fact wearing the same label. With the sample floor now
+         staffed from one roster, Mark Miller is in the room for 76 meetings
+         and his row read 0 — the same bug the live branch was fixed for. */
+      readMeetings()
+        .then((st) => st.meetings)
+        .catch(() => []),
     ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const stats = buildRepStats(deals, {
@@ -466,7 +476,7 @@ export default async function TeamPage() {
       ),
       openValue: r.openValue,
       openCount: r.openCount,
-      meetings: r.meetings,
+      meetings: meetingsForPerson(mockMeetings, r.name).attended.length,
       quota: repQuota(r.name),
       wonFY: repWonFY(r.name),
       trend: repTrend(r.name),

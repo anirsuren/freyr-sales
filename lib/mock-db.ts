@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { SALES_TEAM } from "./salesTeam";
 import { OFFERING_CATALOGUE_ORDER } from "./offeringCatalogue";
 import {
   FILL_ACCOUNTS,
@@ -927,15 +928,7 @@ function seed(): MockStore {
    * so the stage mix, the outcome mix and the rotting-deal count all come out
    * of real records rather than a hardcoded curve.
    */
-  /* Deliberately a local copy of the mock sales roster rather than an import
-     from lib/pipeline: that module pulls in lucide-react for its stage icons,
-     and the store has no business dragging an icon library into the server. */
-  const FILL_LOGGERS = [
-    "Walter Hensley", "Gordon Ashby", "Margaret Whitfield", "Mark Miller",
-    "Eleanor Rutherford", "Marcus Bramwell", "Sylvia Ashcroft",
-    "James O'Brien", "Audrey Kingsley", "Thomas Beckett", "Nancy Caldwell",
-    "Russell Pemberton", "Grace Lockwood", "Daniel Foster",
-  ];
+  const FILL_LOGGERS = SALES_TEAM;
   /* Weighted the way a book actually sits: mostly working deals, a few
      qualified, a handful gone quiet and the occasional loss. */
   const FILL_OUTCOMES: Outcome[] = [
@@ -1090,7 +1083,7 @@ function seed(): MockStore {
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

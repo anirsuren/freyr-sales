@@ -165,28 +165,12 @@ export const REPS = ["Walter Hensley", "Mark Miller", "Margaret Whitfield", "Gor
 // The full sales floor (Suren: "put like 20 reps, it has to look full"). The
 // first four are the real, deal-owning reps; the rest fill out the org so the
 // team charts read like a real enterprise sales team rather than a demo of four.
-export const SALES_TEAM = [
-  "Walter Hensley",
-  "Gordon Ashby",
-  "Margaret Whitfield",
-  "Mark Miller",
-  "Eleanor Rutherford",
-  "Marcus Bramwell",
-  "Sylvia Ashcroft",
-  "James O'Brien",
-  "Audrey Kingsley",
-  "Thomas Beckett",
-  "Nancy Caldwell",
-  "Russell Pemberton",
-  "Grace Lockwood",
-  "Daniel Foster",
-  "Yvonne Thatcher",
-  "Oliver Hastings",
-  "Clara Middleton",
-  "Victor Prescott",
-  "Hannah Schmidt",
-  "Leonard Stanton",
-];
+/* The roster moved to lib/salesTeam so the server-side stores can import it
+   without dragging this module's icon imports along — which is how three
+   copies of it drifted apart. Re-exported here because plenty already read it
+   from this module. */
+import { SALES_TEAM } from "./salesTeam";
+export { SALES_TEAM };
 
 /** Include the verified current user in mock analytics without relabelling any
  * existing teammate or seeded record as that user. */
