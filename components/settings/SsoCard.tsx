@@ -19,15 +19,21 @@ import type { SsoStatus } from "@/lib/ssoStatus";
 export function SsoCard({
   status,
   email,
+  supabaseUrl,
+  supabaseAnonKey,
 }: {
   status: SsoStatus | null;
   email: string | null;
+  /** Server-fed at request time — a baked NEXT_PUBLIC value follows the BUILD,
+   *  and prod runs dev's build. See SupabaseLoginForm's same prop. */
+  supabaseUrl?: string | null;
+  supabaseAnonKey?: string | null;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     return url && key
       ? createClient(url, key, {
           auth: {
@@ -37,7 +43,7 @@ export function SsoCard({
           },
         })
       : null;
-  }, []);
+  }, [supabaseUrl, supabaseAnonKey]);
 
   async function connectWithMicrosoft() {
     if (!supabase) {

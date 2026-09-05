@@ -272,6 +272,8 @@ export function SettingsTabs({
   ssoStatus = null,
   meEmail = null,
   offeringsOnly = false,
+  supabaseUrl,
+  supabaseAnonKey,
 }: {
   services: Record<string, boolean>;
   crmCounts: { companies: number; contacts: number; deals: number };
@@ -282,6 +284,9 @@ export function SettingsTabs({
   meEmail?: string | null;
   /** True while only the Offerings module is released — see lib/release.ts. */
   offeringsOnly?: boolean;
+  /** Passed through to SsoCard — request-time values, not build-time. */
+  supabaseUrl?: string | null;
+  supabaseAnonKey?: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1234,7 +1239,12 @@ export function SettingsTabs({
                 passkey is an extra key to your own account — never a way to
                 claim one (Anir, Aug 7: "I hate logging in, I want Touch ID"). */}
             <PasskeySetup />
-            <SsoCard status={ssoStatus} email={meEmail} />
+            <SsoCard
+              status={ssoStatus}
+              email={meEmail}
+              supabaseUrl={supabaseUrl ?? null}
+              supabaseAnonKey={supabaseAnonKey ?? null}
+            />
 
             {profileDirty && (
               <div className="page-in">

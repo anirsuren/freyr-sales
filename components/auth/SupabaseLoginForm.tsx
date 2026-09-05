@@ -68,9 +68,21 @@ function MicrosoftMark() {
 
 export function SupabaseLoginForm({
   joinDomainLabel = null,
+  supabaseUrl,
+  supabaseAnonKey,
 }: {
   /** e.g. "@freyrsolutions.com" — company domains that join without an invite. */
   joinDomainLabel?: string | null;
+  /**
+   * SERVER-FED, NOT BAKED. NEXT_PUBLIC_* values are inlined into the browser
+   * bundle at BUILD time, and prod runs the image built for dev — so once the
+   * two environments point at different Supabase projects, a baked value would
+   * quietly sign prod users into the dev database. The server parent reads the
+   * live env at request time and passes it down; the env fallback keeps every
+   * older caller and the dev build working unchanged.
+   */
+  supabaseUrl?: string | null;
+  supabaseAnonKey?: string | null;
 } = {}) {
   const [step, setStep] = useState<Step>("email");
   // Optional at activation — the agent writes in the rep's voice from day one
@@ -120,8 +132,8 @@ export function SupabaseLoginForm({
   }, []);
 
   const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     return url && key
       ? createClient(url, key, {
           auth: {
@@ -131,7 +143,7 @@ export function SupabaseLoginForm({
           },
         })
       : null;
-  }, []);
+  }, [supabaseUrl, supabaseAnonKey]);
 
   function resetTo(next: Step) {
     setStep(next);

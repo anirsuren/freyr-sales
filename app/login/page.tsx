@@ -89,7 +89,15 @@ export default async function LoginPage() {
             </div>
           ) : supabase ? (
             <>
-              <SupabaseLoginForm joinDomainLabel={joinDomainLabel || null} />
+              <SupabaseLoginForm
+                joinDomainLabel={joinDomainLabel || null}
+                /* Read at REQUEST time on the server, so this page signs
+                   people into whichever database THIS environment points at —
+                   a baked NEXT_PUBLIC value would follow the build, and prod
+                   runs dev's build (see the prop's own comment). */
+                supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? null}
+                supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? null}
+              />
               <PasskeySignIn />
             </>
           ) : entra ? (

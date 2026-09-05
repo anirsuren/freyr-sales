@@ -53,6 +53,8 @@ export default async function SettingsPage() {
         subtitle="Workspace behavior, identity, access, notifications, and connected systems."
       />
       <SettingsTabs
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? null}
+        supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? null}
         services={services}
         crmCounts={crmCounts}
         offeringsOnly={offeringsOnly}
