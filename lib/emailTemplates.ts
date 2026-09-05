@@ -109,8 +109,8 @@ opportunities say what is actually true:</p>
 <p>Thank you for your time today. As promised, here is the material we talked
 through:</p>
 <ul>
-  <li>[document name] — [one line on what it covers]</li>
-  <li>[document name] — [one line on what it covers]</li>
+  <li>[document name]: [one line on what it covers]</li>
+  <li>[document name]: [one line on what it covers]</li>
 </ul>
 <p>[One line on the next step you agreed, and when.]</p>
 <p>Any questions in the meantime, reply here and I will pick it up.</p>
@@ -126,10 +126,10 @@ through:</p>
       body: `<p>Hi [name],</p>
 <p>Your access is set up. A few places worth opening first:</p>
 <ul>
-  <li><b>Offerings</b> — everything we sell, what each one is, and who it suits.</li>
-  <li><b>Sales Materials</b> — decks, one-pagers and product sheets, by offering.</li>
-  <li><b>Opportunities</b> — your deals, their value and where each one stands.</li>
-  <li><b>Performance</b> — your goals and what has been logged against them.</li>
+  <li><b>Offerings</b>: everything we sell, what each one is, and who it suits.</li>
+  <li><b>Sales Materials</b>: decks, one-pagers and product sheets, by offering.</li>
+  <li><b>Opportunities</b>: your deals, their value and where each one stands.</li>
+  <li><b>Performance</b>: your goals and what has been logged against them.</li>
 </ul>
 <p>${link("[app link]", "Open the platform")}</p>
 <p>If anything looks wrong or missing, tell me and I will sort it.</p>`,
