@@ -4049,32 +4049,6 @@ function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
   ];
 }
 
-// A catalog persisted BEFORE this fix had the samples deleted out of it, so put
-// them back on load rather than leaving prod permanently empty.
-function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
-  for (const off of s.offerings) {
-    const demo = DEMO_MATERIALS_BY_OFFERING[off.id];
-    if (!demo) continue;
-    off.materials = off.materials || [];
-    for (const m of demo) {
-      const index = off.materials.findIndex((x) => x.id === m.id);
-      if (index === -1) {
-        off.materials.push({ ...m });
-        continue;
-      }
-      // Dev HMR and persisted mock catalogues can hold the older version of a
-      // sample row. Merge seed metadata forward so the newly recorded import
-      // date appears immediately without replacing any user-edited fields.
-      const existing = off.materials[index];
-      off.materials[index] = {
-        ...m,
-        ...existing,
-        addedAt: existing.addedAt || m.addedAt,
-      };
-    }
-  }
-  return s;
-}
 
 /** What a READER may see. Real mode gets only genuinely uploaded assets. */
 function withVisibleMaterials(off: Offering): Offering {
@@ -4525,35 +4499,14 @@ export async function initializeLiveOfferings(): Promise<void> {
         // The persisted catalog can predate newer offering fields: heal it
         // BEFORE anything renders from it.
         const migratedCategories = healOfferings(liveStore);
-        // Heal a catalog persisted while the samples were being deleted: put
-        // them back and write the repaired catalog once.
-        const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
-        const datedDemoBefore = liveStore.offerings.reduce(
-          (count, offering) =>
-            count +
-            offering.materials.filter(
-              (material) =>
-                DEMO_MATERIAL_IDS.has(material.id) && !!material.addedAt
-            ).length,
-          0
-        );
-        restoreDemoMaterials(liveStore);
-        const after = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
-        const datedDemoAfter = liveStore.offerings.reduce(
-          (count, offering) =>
-            count +
-            offering.materials.filter(
-              (material) =>
-                DEMO_MATERIAL_IDS.has(material.id) && !!material.addedAt
-            ).length,
-          0
-        );
-        if (
-          after !== before ||
-          datedDemoAfter !== datedDemoBefore ||
-          migratedCategories
-        )
-          await persistLiveOfferings();
+        /* The demo-sample re-seeding that used to run here is GONE
+           (Anir, Sep 5: "just remove those"). It existed to heal a catalog
+           persisted while the samples were being deleted outright, but it
+           also meant m-00x could never be truly removed from the live row —
+           every boot put them back. Real mode strips them at read and mock
+           mode reads its own row, so nothing renders from the live row's
+           copies; removing the heal lets the live row finally drop them. */
+        if (migratedCategories) await persistLiveOfferings();
         return;
       }
       await persistLiveOfferings();
