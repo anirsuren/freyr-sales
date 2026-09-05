@@ -114,18 +114,48 @@ export function CustomerActivityTab({
   }
 
   /** Start a history for an offering that has none, so its card appears. */
+  /** The offering whose editor should open itself on next render — set by the
+   *  picker, consumed by that offering's OfferingActivities. */
+  const [addingFor, setAddingFor] = useState<string | null>(null);
+  const [pickQuery, setPickQuery] = useState("");
+  const pickNeedle = pickQuery.trim().toLowerCase();
+  const shownOfferings = pickNeedle
+    ? offerings.filter((o) =>
+        `${o.name} ${o.category ?? ""}`.toLowerCase().includes(pickNeedle)
+      )
+    : offerings;
+
   function begin(offeringId: string) {
     setPicking(false);
-    if (state.some((u) => u.offering_id === offeringId)) return;
-    setState([
-      ...state,
-      {
-        offering_id: offeringId,
-        revenue_lines: [],
-        engagement_versions: [],
-        engagement_draft: null,
-      },
-    ]);
+    /* PICKING AN OFFERING OPENS ITS EDITOR (Anir, Sep 4: "if I click on one,
+       it doesn't do anything, bro"). This used to close the dialog and, when
+       the offering was already on the account — which it is for every row
+       wearing an "N logged" badge — return without doing anything at all: no
+       scroll, no editor, no visible consequence of the click. Now the group
+       unfolds, the page walks to it, and the activity form is already open
+       when you arrive, whether the offering was on the account or not. */
+    if (!state.some((u) => u.offering_id === offeringId)) {
+      setState((prev) => [
+        ...prev,
+        {
+          offering_id: offeringId,
+          revenue_lines: [],
+          engagement_versions: [],
+          engagement_draft: null,
+        },
+      ]);
+    }
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.delete(offeringId);
+      return next;
+    });
+    setAddingFor(offeringId);
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-offering-group="${offeringId}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   async function removeOffering(offeringId: string) {
@@ -208,7 +238,11 @@ export function CustomerActivityTab({
                 const logged = (u.engagement_versions || []).length;
                 const open = !collapsed.has(u.offering_id);
                 return (
-                  <div key={u.offering_id} className="entry-card p-4">
+                  <div
+                    key={u.offering_id}
+                    data-offering-group={u.offering_id}
+                    className="entry-card p-4 scroll-mt-4"
+                  >
                     {/* EACH OFFERING FOLDS (Anir, Aug 9: "since they're grouped
                         by offering, let's have drop-downs for each of them").
                         An account on eight offerings was eight stacked tables
@@ -295,8 +329,11 @@ export function CustomerActivityTab({
                     {open && (
                       <div className="tab-panel">
                         <OfferingActivities
+                          customerId={customerId}
                           versions={u.engagement_versions || []}
                           onSave={(versions) => void save(u.offering_id, versions)}
+                          startAdding={addingFor === u.offering_id}
+                          onStartedAdding={() => setAddingFor(null)}
                         />
                       </div>
                     )}
@@ -337,18 +374,46 @@ export function CustomerActivityTab({
         confirmLabel="Remove it"
       />
 
+      {/* WIDE, TALL, PINNED, SEARCHABLE (Anir, Sep 4: "I don't even know why
+          the screen is so small. There should be a search part here" — and the
+          standing rule: a list in a dialog gets a wide, fixed-height frame the
+          list FILLS). The catalogue is 29 offerings and growing; a palm-sized
+          scroll box with no search was a list you had to spelunk. */}
       <Modal
         open={picking}
-        onClose={() => setPicking(false)}
+        onClose={() => {
+          setPicking(false);
+          setPickQuery("");
+        }}
+        size="workflow"
         title="Which offering is this activity for?"
       >
         <p className="mb-3 text-[12.5px] text-text-secondary">
           Every activity belongs to one offering. Pick the offering and the
           editor opens below it.
         </p>
-        <ScrollHint className="max-h-80">
+        <input
+          value={pickQuery}
+          onChange={(e) => setPickQuery(e.target.value)}
+          placeholder="Search the catalogue…"
+          aria-label="Search offerings"
+          autoFocus
+          className="mb-3 h-10 w-full shrink-0 rounded-md border border-border bg-surface px-3.5 text-[14px] outline-none transition focus:border-blue-primary focus:shadow-focus"
+        />
+        {/* FIXED HEIGHT ON THE LIST ITSELF (the popup-size rule: the frame
+            never moves). h-[560px] on the modal body lost to its own flex
+            sizing, so the dialog grew with the catalogue and shrank the
+            moment the search cut it to one row. The list area is pinned
+            instead: 29 offerings scroll inside it, one result leaves the
+            frame exactly where it was. */}
+        <ScrollHint className="h-[420px]">
           <ul className="space-y-1.5">
-            {offerings.map((offering) => {
+            {shownOfferings.length === 0 && (
+              <li className="py-8 text-center text-[13px] text-text-tertiary">
+                Nothing in the catalogue matches “{pickQuery.trim()}”.
+              </li>
+            )}
+            {shownOfferings.map((offering) => {
               const logged =
                 state.find((u) => u.offering_id === offering.id)
                   ?.engagement_versions?.length || 0;
@@ -380,8 +445,6 @@ export function CustomerActivityTab({
             })}
           </ul>
         </ScrollHint>
-        <div className="mt-4 flex justify-end">
-        </div>
       </Modal>
     </div>
   );

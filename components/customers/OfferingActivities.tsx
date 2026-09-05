@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DocumentDrop, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import {
+  FileText,
   Activity as ActivityIcon,
   CalendarClock,
   Check,
@@ -167,6 +169,9 @@ export function StatusChip({ status }: { status: CustomerOfferingStatus }) {
 export function OfferingActivities({
   versions,
   onSave,
+  customerId,
+  startAdding = false,
+  onStartedAdding,
 }: {
   versions: CustomerOfferingEngagementVersion[];
   onSave: (
@@ -178,7 +183,14 @@ export function OfferingActivities({
      *  whether the master's counting threshold was newly reached. */
     prevStatus?: string | null
   ) => void;
-}) {
+
+  /** The account these activities belong to — the document upload and the
+   *  download links are namespaced by it. */
+  customerId: string;
+  /** The customer tab's picker chose THIS offering: open the add-activity
+   *  editor as soon as the group renders, once. */
+  startAdding?: boolean;
+  onStartedAdding?: () => void;}) {
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
   /** Which deals this activity belongs to (Suren, Aug 16: "offering,
@@ -198,9 +210,23 @@ export function OfferingActivities({
   const [endDate, setEndDate] = useState("");
   const [currency, setCurrency] = useState<CustomerOfferingCurrency>("USD");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /* Files on the activity being edited (Anir, Sep 4: "there should be a
+     column for documents"). Existing ones arrive as already-landed rows so
+     the editor lists them; newly staged ones join on save. */
+  const [docs, setDocs] = useState<StagedDoc[]>([]);
 
   const ordered = [...versions].sort((a, b) => b.version - a.version);
   const current = versions.find((v) => v.linked) || null;
+
+  /* The customer tab's offering picker chose this group: open the add form
+     the moment it mounts, once, and hand the flag back so a re-render does
+     not reopen it after the person cancels. */
+  useEffect(() => {
+    if (!startAdding) return;
+    openEditor();
+    onStartedAdding?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startAdding]);
 
   function openEditor(version?: CustomerOfferingEngagementVersion) {
     setEditing(version ? version.id : "");
@@ -217,6 +243,16 @@ export function OfferingActivities({
     setEndDate(version?.end_date ?? "");
     setCurrency(version?.currency ?? "USD");
     setOpportunityIds([...(version?.opportunity_ids ?? [])]);
+    setDocs(
+      (version?.documents ?? []).map((d) => ({
+        key: d.id,
+        name: d.name,
+        size: 0,
+        status: "done" as const,
+        docsPath: d.docsPath ?? undefined,
+        fileName: d.fileName ?? d.name,
+      }))
+    );
   }
 
   function save() {
@@ -253,6 +289,14 @@ export function OfferingActivities({
       end_date: endDate || null,
       potential_close_date: existing?.potential_close_date ?? null,
       opportunity_ids: opportunityIds,
+      documents: docs
+        .filter((d) => d.status === "done" && d.docsPath)
+        .map((d) => ({
+          id: d.key,
+          name: d.name,
+          docsPath: d.docsPath ?? null,
+          fileName: d.fileName ?? d.name,
+        })),
       proposal_ids: existing?.proposal_ids ?? [],
       contract_ids: existing?.contract_ids ?? [],
       created_at: existing?.created_at ?? now,
@@ -352,6 +396,8 @@ export function OfferingActivities({
                 <th className="w-[136px] py-2 pr-3 font-bold">Status</th>
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
                 <th className="w-[104px] py-2 pr-3 font-bold">Value</th>
+                {/* Anir, Sep 4: "There should be a column for documents." */}
+                <th className="w-[150px] py-2 pr-3 font-bold">Documents</th>
                 <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
                 {/* A NAMED COLUMN, NOT A FLOATING BUTTON (Anir, Aug 13: "this
                     seems like a weird place to have the plus sign… and then
@@ -436,6 +482,27 @@ export function OfferingActivities({
                         <span className="font-normal text-text-tertiary">
                           No value
                         </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {(version.documents?.length ?? 0) > 0 ? (
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          {(version.documents ?? []).map((d) => (
+                            <a
+                              key={d.id}
+                              href={`/api/customers/download?customerId=${encodeURIComponent(customerId)}&docId=${encodeURIComponent(d.id)}&view=1`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex min-w-0 items-center gap-1 text-[12px] font-medium text-blue-primary hover:underline"
+                              title={d.name}
+                            >
+                              <FileText size={12} strokeWidth={2} className="shrink-0" />
+                              <span className="truncate">{d.name}</span>
+                            </a>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-text-tertiary">—</span>
                       )}
                     </td>
                     {/* A BARE RADIO SAID NOTHING. It is the control that
@@ -692,10 +759,19 @@ export function OfferingActivities({
               />
             </div>
           </div>
+          {/* FILES ON THE ACTIVITY (Anir, Sep 4: "there should be documents").
+              Same drop the contract and meeting dialogs use; the bytes go up
+              namespaced to this account and ride the activity on save. */}
+          <DocumentDrop
+            docs={docs}
+            setDocs={setDocs}
+            uploadUrl={`/api/customers/upload?customerId=${encodeURIComponent(customerId)}`}
+            hint="The deck you presented, their RFP, anything that belongs with this step."
+          />
           {/* NO CANCEL BUTTON (Anir, Aug 9: "don't need a Cancel button, it's
               already in the top right"). The X closes it, Escape closes it,
               and one save button leaves no doubt which one commits. */}
-          <div className="flex justify-end">
+          <div className="mt-4 flex justify-end">
             <Button type="submit">
               {editing === "" ? (
                 <>

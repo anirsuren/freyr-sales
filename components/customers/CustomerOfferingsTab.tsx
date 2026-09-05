@@ -873,6 +873,7 @@ export function CustomerOfferingsTab({
           (Anir, Aug 8: "I still cannot see a button to add an activity"). */}
       {using && (
         <OfferingActivities
+          customerId={customerId}
           versions={activitiesForOffering(o.id)}
           onSave={(versions, touched, prevStatus) =>
             void saveActivities(o.id, versions, touched, prevStatus)

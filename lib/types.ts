@@ -194,6 +194,15 @@ export interface CustomerOfferingEngagementVersion {
   opportunity_ids: string[];
   proposal_ids: string[];
   contract_ids: string[];
+  /** Files attached to THIS activity (Anir, Sep 4: "there should be a column
+   *  for documents"). docsPath points into Freya.Docs; the download route
+   *  resolves it through the record, never from the query. */
+  documents?: {
+    id: string;
+    name: string;
+    docsPath?: string | null;
+    fileName?: string | null;
+  }[];
   created_at: string;
   updated_at: string;
 }

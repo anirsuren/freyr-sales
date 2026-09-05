@@ -517,7 +517,13 @@ export function AppShell({
                   key={
                     pathname.startsWith("/performance") ? "/performance" : pathname
                   }
-                  className="p-8 pb-28 page-in"
+                  /* px-4, was p-8 (Anir, Sep 4: "I want that text to go all
+                     the way to the left, till that vertical line to the right
+                     of the agent thing. On the right side, same thing — the
+                     account snapshot should go till there"). A 32px gutter on
+                     both flanks read as the page being cut off; 16px keeps a
+                     breath without the dead margins. */
+                  className="px-4 pt-6 pb-28 page-in"
                 >
                   {children}
                 </div>

@@ -106,6 +106,21 @@ function sanitizeEngagementVersion(version: any, linked = false) {
     potential_close_date: version?.potential_close_date
       ? String(version.potential_close_date).slice(0, 40)
       : null,
+    /* Documents ride the version (Anir, Sep 4). Name and paths trimmed, the
+       list capped, and an entry with neither a path nor a name dropped — the
+       download route resolves docsPath through this record, so nothing
+       unsanitised can be pointed into the bucket. */
+    documents: Array.isArray(version?.documents)
+      ? version.documents
+          .map((d: any) => ({
+            id: String(d?.id || uid("adoc")).slice(0, 120),
+            name: String(d?.name || "").trim().slice(0, 200),
+            docsPath: d?.docsPath ? String(d.docsPath).slice(0, 500) : null,
+            fileName: d?.fileName ? String(d.fileName).slice(0, 200) : null,
+          }))
+          .filter((d: any) => d.name && d.docsPath)
+          .slice(0, 20)
+      : [],
     opportunity_ids: list(version?.opportunity_ids),
     proposal_ids: list(version?.proposal_ids),
     contract_ids: list(version?.contract_ids),
