@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { useStoredSet } from "@/lib/useStoredView";
 import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
@@ -82,10 +83,11 @@ export const TIMELINES = [
 ] as const;
 export type Timeline = (typeof TIMELINES)[number]["key"];
 
+/* The shared shorthand — see lib/currency. Kept as a local name so the call
+   sites read the same, but the rounding and the carry are no longer this
+   file's own opinion. */
 function money(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtMoney(n);
 }
 
 /**

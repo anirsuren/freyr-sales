@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtMoney } from "@/lib/currency";
 import Link from "next/link";
 import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
@@ -61,10 +62,11 @@ import { tint } from "@/lib/tint";
  * the first within a week.
  */
 
+/* The shared shorthand — see lib/currency. Kept as a local name so the call
+   sites read the same, but the rounding and the carry are no longer this
+   file's own opinion. */
 function money(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtMoney(n);
 }
 
 const LEVEL_TONE: Record<string, string> = {

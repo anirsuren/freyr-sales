@@ -23,6 +23,7 @@
  */
 
 import { useState } from "react";
+import { fmtMoney } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
@@ -125,10 +126,11 @@ function rowTotal(l: Line): string {
     : l.amount;
 }
 
+/* The shared shorthand — see lib/currency. Kept as a local name so the call
+   sites read the same, but the rounding and the carry are no longer this
+   file's own opinion. */
 function money(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtMoney(n);
 }
 
 export function AccrualPlanPage({
