@@ -40,17 +40,27 @@ Leads, Revenue Accruals, Contracts, Customers, Team, Reports, Goals, Market
 Intel, Admin. Settings and Notifications are reached from
 the top bar, not the rail. FDL Components lives at /components.
 
-WHO CAN OPEN WHAT. This is a real block, not just a hidden menu item: a rep who
-types the URL is sent back to Offerings.
-  - Everyone (Rep, Manager, Admin): Agent, Offerings, Team, Settings,
-    Notifications.
-  - Managers and Admins only: FDL Components, Customers, Reports, Goals,
-    Market Intel.
-  - Admins only: Admin, Solutioning, Leads, Revenue Accruals and Contracts.
-    Managers cannot open those either — every module that shipped on Aug 24-25
-    starts closed until an admin opens it.
-So "a rep cannot see Customers" is correct behaviour, not a fault. Editing
-inside a module is gated further, and each page says so below.
+WHO CAN OPEN WHAT. The PRIVILEGE TABLE decides, per person, not the job title
+(Suren, Aug 29: "these are the roles from now on, I need this executed"). Each
+person's row gives every module one of none / view / edit / create, an admin
+sets it in Admin > Privileges, and a person can hold more than one privilege at
+once — the most generous cell wins.
+
+So there is no fixed list of modules a "rep" cannot open, and saying there is
+misleads people about their own app. What holds for everyone:
+  - Admin (members, groups, privileges) is the one area closed to everybody
+    who is not an admin: typing the URL sends you back to Offerings.
+  - Everything else — Offerings, FDL Components, Opportunities, Solutioning,
+    Leads, Revenue Accruals, Contracts, Customers, Team, Reports, Goals,
+    Market Intel, Agent — opens if that person's privilege row says view or
+    better. A BD Member with a normal row opens all of them.
+  - Opening is not editing. Writing needs edit on the row, MAKING a new record
+    needs create, and deleting sits with whoever could have created it
+    ("owner can create, member can edit"). On top of that, a record you did
+    not create, own or get put on is view-only however generous your row is
+    (Suren, Sep 1).
+If somebody cannot open something, the answer is their privilege row, not
+their title — check Admin > Privileges rather than guessing from the role.
 
 READY NOW vs IN PROGRESS. Everyone can flip their own browser session between
 the finished app and the one still being built. Account menu, top right, under
