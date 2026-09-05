@@ -3003,11 +3003,15 @@ export function CustomerTabs({
         onClose={() => setNoteModalOpen(false)}
         title="Log an interaction"
       >
+        {/* THE APP'S OWN FORM, NOT A PRIVATE DIALECT (Anir, Sep 4, showing
+            this dialog a second time: "did you just completely ignore me?").
+            Fair. Every other dialog on this page builds from Field and Input —
+            sentence-case labels, the standard boxes — and this one kept its
+            own uppercase micro-labels and hand-rolled inputs from a year ago.
+            The footer got fixed and the rest stayed foreign. Same components
+            as New contract now, top to bottom. */}
         <div className="space-y-3.5">
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-              Type
-            </label>
+          <Field label="Type">
             <div className="inline-flex rounded-lg bg-surface p-1 flex-wrap gap-1">
               {NOTE_KINDS.map((k) => {
                 const KIcon = k.icon;
@@ -3029,11 +3033,8 @@ export function CustomerTabs({
                 );
               })}
             </div>
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-              {noteKind === "note" ? "Note" : "What happened"}
-            </label>
+          </Field>
+          <Field label={noteKind === "note" ? "Note" : "What happened"}>
             <textarea
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
@@ -3048,33 +3049,26 @@ export function CustomerTabs({
               }
               rows={4}
               autoFocus
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
+              /* The Input component's own look, at textarea height. */
+              className="w-full min-w-0 rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus resize-y"
             />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                Next step
-              </label>
-              <input
+          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Next step">
+              <Input
                 value={noteNext}
                 onChange={(e) => setNoteNext(e.target.value)}
                 placeholder="e.g. Send the proposal"
-                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
               />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
-                Follow-up date
-              </label>
-              <input
+            </Field>
+            <Field label="Follow-up date">
+              <Input
                 type="date"
                 value={noteFollow}
                 onChange={(e) => setNoteFollow(e.target.value)}
-                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
               />
               <DateEcho value={noteFollow} />
-            </div>
+            </Field>
           </div>
         </div>
         {/* THE OTHER HALF OF THE RULE (Anir, Sep 4: "u didnt fix this?").
