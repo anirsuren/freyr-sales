@@ -136,3 +136,25 @@ current deployment silently depends on.
 The same pattern applies to the other single-row stores that share this table
 (leads, contracts, customerGroups, activityMaster, material-text,
 market-intel-feed) — all are whole-row upserts safe only under one task.
+
+## Cost finding (Sep 5): prod now spends on market-intel independently
+
+The market-intel refresh reads its Perplexity/Apify keys from the DB config
+row (`market-intel:config`) first, env second (lib/marketIntelRefresh.ts:1101).
+That row was cloned from dev, so PROD's config now holds the same live
+`perplexityKey` (pplx-J...) and `apifyToken`. Each database also has its own
+`market-intel:refresh-lock` row (currently free, `until:0`), so the two
+environments no longer coordinate — each runs its own paid refresh.
+
+Effect: after the split, prod independently runs the two-pass paid pipeline
+(Perplexity day-pass ~$27/mo + capped Apify rotation) on top of dev's. Nobody
+turned this on for prod deliberately; it rode in on the clone. The refresh
+no-ops safely without a key (`return nothing("no PERPLEXITY key...")`), so
+BLANKING prod's `market-intel:config` keys is a clean way to stop prod from
+spending if that is the intent — the timer keeps ticking and just no-ops.
+
+As of the flip, neither environment had refreshed since 12:24 (the feed's
+updated_at is the clone-copy time, not a real run), so prod has not spent yet.
+Decision for Anir: should prod spend on live market intel independently, or
+should only one environment run the paid refresh? Not changed here — blanking
+a live prod config row is a cost/product decision, not a test cleanup.
