@@ -1,6 +1,7 @@
 // The agent's brain (V7, mock-first). Turns real pipeline/health/review state
 // into a ranked list of next-best-actions. With ANTHROPIC_API_KEY this is where
 // an LLM planner would refine/expand the list; for now it's deterministic.
+import { calendarDate, isDateOnly } from "./dateOnly";
 import {
   buildDeals,
   dealsFromOpportunities,
@@ -1212,7 +1213,14 @@ export function nextBestActions(input: {
   for (const i of interactions) {
     if (i.follow_up_date) {
       const co = custById[i.customer_id]?.company_name || "this account";
-      const due = new Date(i.follow_up_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      /* A follow-up is a calendar day, so it is read as one — `new Date()`
+         on a bare yyyy-mm-dd means UTC midnight, which the agent would then
+         announce as the day before for anybody west of UTC (see lib/dateOnly).
+         The en-GB shape is left exactly as it was; only the parsing changed. */
+      const dueRaw = String(i.follow_up_date);
+      const due = new Date(
+        isDateOnly(dueRaw) ? `${calendarDate(dueRaw)}T12:00:00` : dueRaw
+      ).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       out.push({
         id: `followup-${i.id}`,
         kind: "followup",
