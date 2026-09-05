@@ -138,14 +138,44 @@ const DOC_FILES = [
  * pair index 70. That is cust-fill-140, the account he was looking at when he
  * reported this, and it has to read full on every tab.
  */
-const DEALS = [5, 3, 6, 4, 7, 3, 5, 0, 6, 4, 7];
-const CONTRACTS = [3, 0, 2, 0, 3, 1, 2, 2, 0];
-const LEADS = [3, 0, 1, 2, 0, 3, 2];
-const MEETINGS = [4, 1, 4, 2, 0, 3, 3, 5];
-const SOLUTIONING = [5, 0, 3, 1, 5, 2, 0, 4, 0, 4];
+/* NO ZEROS ANY MORE (Anir, Sep 4, on Belmara Sciences reading 0 across six
+   tabs: "make sure on every page u have enough data on all of these. it cant
+   say 0. then whats the point of mock mode"). The zeros were his OWN earlier
+   ask — "a few genuinely empty, because an empty state is a real state" — and
+   the newer instruction wins. Variety survives as busy-versus-quiet (7 deals
+   against 2), never as empty.
+
+   SOLUTIONING is 4 or more everywhere, deliberately: the generator deals its
+   rows across four shelves in rotation (request, submission, presentation,
+   meeting ask) and the customer page gives each shelf its OWN tab, so any
+   count under four leaves some tab reading 0 on that account. */
+const DEALS = [5, 3, 6, 4, 7, 3, 5, 2, 6, 4, 7];
+const CONTRACTS = [3, 1, 2, 1, 3, 1, 2, 2, 1];
+const LEADS = [3, 1, 1, 2, 1, 3, 2];
+const MEETINGS = [4, 1, 4, 2, 2, 3, 3, 5];
+const SOLUTIONING = [5, 4, 6, 4, 5, 4, 7, 4, 6, 4];
 
 const at = <T,>(list: T[], n: number): T => list[((n % list.length) + list.length) % list.length]!;
 const pad = (n: number) => String(n).padStart(3, "0");
+
+/**
+ * THE FLOOR'S GENERATION, STAMPED INTO EVERY GENERATED ID.
+ *
+ * The four row-backed stores lay this floor once and then leave the row alone
+ * so mock edits stick — the marker being the rows themselves. Which means a
+ * change to the tables above would otherwise never reach a workspace that
+ * already holds the old floor: the old rows ARE the marker. So the ids carry
+ * their generation ("fill2-mtg-…"), the marker only recognises the current
+ * one, and each store sweeps rows of older generations out before laying the
+ * new floor. Rows a person added by hand carry no fill prefix and survive.
+ */
+export const FILL_GENERATION = 2;
+const FP = `fill${FILL_GENERATION}-`;
+
+/** A generated row from an OLDER floor: swept on the next top-up. */
+export function isStaleFillRow(id: string): boolean {
+  return /^fill\d*-/.test(id) && !id.startsWith(FP);
+}
 
 /** Mock and only mock. The single gate every generator passes through. */
 function isMock(): boolean {
@@ -217,7 +247,7 @@ export function mockFillOpportunities(): Opportunity[] {
       const signs = day(30 + ((a.i * 11 + k * 23) % 400));
       const owner = k % 3 === 0 ? a.owner : k % 3 === 1 ? a.second : a.third;
       out.push({
-        id: `fill-opp-${pad(p)}-${k + 1}`,
+        id: `${FP}opp-${pad(p)}-${k + 1}`,
         externalId: `OPP-F${pad(p)}${k + 1}`,
         name: `${offering}. ${a.company}`,
         customer: a.company,
@@ -226,7 +256,7 @@ export function mockFillOpportunities(): Opportunity[] {
         offeringLabels: [offering],
         lines: [
           {
-            id: `fill-line-${pad(p)}-${k + 1}`,
+            id: `${FP}line-${pad(p)}-${k + 1}`,
             offeringLabel: offering,
             revenueType: normalizeRevenueType(k % 2 === 0 ? "OTS" : "ARR"),
             value,
@@ -258,7 +288,7 @@ export function mockFillOpportunities(): Opportunity[] {
         /* A deal with no history reads as a deal nobody has worked. */
         activities: [
           {
-            id: `fill-act-${pad(p)}-${k + 1}-1`,
+            id: `${FP}act-${pad(p)}-${k + 1}-1`,
             activity: at(["lead", "opportunity", "pilot", "contract", "delivery"], a.i + k),
             status: at(["initiated", "under_progress", "completed"], a.i + k) as
               | "initiated"
@@ -270,7 +300,7 @@ export function mockFillOpportunities(): Opportunity[] {
           ...(k % 2 === 0
             ? [
                 {
-                  id: `fill-act-${pad(p)}-${k + 1}-2`,
+                  id: `${FP}act-${pad(p)}-${k + 1}-2`,
                   activity: "opportunity",
                   status: "under_progress" as const,
                   person: a.second,
@@ -299,7 +329,7 @@ export function mockFillOpportunities(): Opportunity[] {
 function dealRefs(p: number) {
   const a = profile(p);
   return Array.from({ length: at(DEALS, a.i) }, (_, k) => ({
-    id: `fill-opp-${pad(p)}-${k + 1}`,
+    id: `${FP}opp-${pad(p)}-${k + 1}`,
     label: `${a.offering(k)}. ${a.company}`,
     offering: a.offering(k),
     value: a.money(k),
@@ -330,7 +360,7 @@ export function mockFillContracts(): Contract[] {
       const signer = a.contact(k);
       const reference = `FR-CF-${pad(p)}${k + 1}`;
       out.push({
-        id: `fill-ct-${pad(p)}-${k + 1}`,
+        id: `${FP}ct-${pad(p)}-${k + 1}`,
         reference,
         name: `${offering} ${at(["managed service", "renewal", "programme", "rollout"], a.i + k)}`,
         customer: a.company,
@@ -352,7 +382,7 @@ export function mockFillContracts(): Contract[] {
             : undefined,
         docs: [
           {
-            id: `fill-cd-${pad(p)}-${k + 1}`,
+            id: `${FP}cd-${pad(p)}-${k + 1}`,
             name: `${offering} statement of work`,
             docsPath: sampleDocPath(at([...DOC_FILES], a.i + k)),
             fileName: at([...DOC_FILES], a.i + k),
@@ -385,7 +415,7 @@ export function mockFillLeads(): Lead[] {
       const person = a.contact(k + 1);
       const status = at(LEAD_STATUS, a.i * 2 + k) as Lead["status"];
       out.push({
-        id: `fill-ld-${pad(p)}-${k + 1}`,
+        id: `${FP}ld-${pad(p)}-${k + 1}`,
         ref: `LEAD-F${pad(p)}${k + 1}`,
         name: person.name,
         company: a.company,
@@ -450,7 +480,7 @@ export function mockFillMeetings(): Meeting[] {
       const owner = k % 2 === 0 ? a.owner : a.second;
       const presenter = k % 2 === 0 ? a.second : a.third;
       out.push({
-        id: `fill-mtg-${pad(p)}-${k + 1}`,
+        id: `${FP}mtg-${pad(p)}-${k + 1}`,
         ref: `MTG-F${pad(p)}${k + 1}`,
         title: `${a.company} ${at(
           [
@@ -483,7 +513,7 @@ export function mockFillMeetings(): Meeting[] {
         notes: held
           ? [
               {
-                id: `fill-mn-${pad(p)}-${k + 1}-1`,
+                id: `${FP}mn-${pad(p)}-${k + 1}-1`,
                 kind: "brief",
                 by: owner,
                 at: iso(when - 2),
@@ -492,7 +522,7 @@ export function mockFillMeetings(): Meeting[] {
                 } for them, and agree who owns what on their side.`,
               },
               {
-                id: `fill-mn-${pad(p)}-${k + 1}-2`,
+                id: `${FP}mn-${pad(p)}-${k + 1}-2`,
                 kind: "outcome",
                 by: presenter,
                 at: iso(when),
@@ -508,7 +538,7 @@ export function mockFillMeetings(): Meeting[] {
             ]
           : [
               {
-                id: `fill-mn-${pad(p)}-${k + 1}-1`,
+                id: `${FP}mn-${pad(p)}-${k + 1}-1`,
                 kind: "brief",
                 by: owner,
                 at: iso(-2),
@@ -520,7 +550,7 @@ export function mockFillMeetings(): Meeting[] {
         docs: held
           ? [
               {
-                id: `fill-md-${pad(p)}-${k + 1}`,
+                id: `${FP}md-${pad(p)}-${k + 1}`,
                 label: at(
                   [
                     "Capability deck.pdf",
@@ -580,7 +610,7 @@ export function mockFillSolutioning(): SolutionRequest[] {
       const owner = k % 2 === 0 ? a.second : a.third;
       const requestedAt = iso(-(6 + ((a.i * 4 + k) % 80)));
       out.push({
-        id: `fill-sr-${pad(p)}-${k + 1}`,
+        id: `${FP}sr-${pad(p)}-${k + 1}`,
         type,
         ref: `${prefix}-F${pad(p)}${k + 1}`,
         kind,
@@ -629,7 +659,7 @@ export function mockFillSolutioning(): SolutionRequest[] {
            them rather than four empty shelves. */
         docs: [
           {
-            id: `fill-sd-${pad(p)}-${k + 1}-1`,
+            id: `${FP}sd-${pad(p)}-${k + 1}-1`,
             category: "customer",
             name: `${a.company} requirements`,
             version: 1,
@@ -641,7 +671,7 @@ export function mockFillSolutioning(): SolutionRequest[] {
           ...(k % 2 === 0
             ? [
                 {
-                  id: `fill-sd-${pad(p)}-${k + 1}-2`,
+                  id: `${FP}sd-${pad(p)}-${k + 1}-2`,
                   category: "working" as const,
                   name: `${offering} response draft`,
                   version: 1,
@@ -737,6 +767,6 @@ export function mockFillRecordTeams(): Record<string, RecordTeam> {
  * is topped up on its next read without being replaced.
  */
 export function hasMockFillRows(ids: Iterable<string>): boolean {
-  for (const id of ids) if (id.startsWith("fill-")) return true;
+  for (const id of ids) if (id.startsWith(FP)) return true;
   return false;
 }

@@ -56,6 +56,7 @@ type ScopedAgentChatMessage = AgentChatMessage & ScopeColumns;
 declare global {
   // eslint-disable-next-line no-var
   var __FREYR_MOCK_STORE__: MockStore | undefined;
+  var __FREYR_MOCK_STORE_V__: number | undefined;
 }
 
 /**
@@ -808,6 +809,24 @@ function seed(): MockStore {
             ? `$${300 + ((i * 37) % 700)}M`
             : `$${40 + ((i * 13) % 160)}M`,
       analyzed_at: created,
+      /* AN ACTIVITY LADDER ON EVERY FILL ACCOUNT (Anir, Sep 4: "it cant say
+         0. then whats the point of mock mode"). The long tail carried no
+         offering_usage at all, so the Activity tab on all 140 of the accounts
+         he actually clicks through read "Activity 0" while the hand-written
+         demo cast read full. Same generator the demo cast uses, two or three
+         catalogue offerings per account, cycled so neighbours differ. */
+      offering_usage: Array.from({ length: 2 + (i % 2) }, (_, k) => {
+        const oid = DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!;
+        return {
+          offering_id: oid,
+          revenue_lines: [],
+          engagement_versions: demoActivities(cid, oid),
+        };
+      }),
+      offerings_in_use: Array.from(
+        { length: 2 + (i % 2) },
+        (_, k) => DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!
+      ),
     } as (typeof customers)[number]);
 
     /* FIVE PEOPLE PER ACCOUNT. A contact list with one name on it cannot show
@@ -1066,7 +1085,11 @@ function seed(): MockStore {
 /* 7: the generated accounts now log activity, carry a review state on their
    drafts and have a run history behind them. Without a bump the cached store
    keeps its silent 140 accounts and none of that reaches a page either. */
-const SCHEMA_VERSION = 8;
+/* 9: every fill account carries an activity ladder on two or three catalogue
+   offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
+   Same rule as 6 and 7: the store is a cached file, so a seed change that is
+   not accompanied by a bump reaches nobody. */
+const SCHEMA_VERSION = 9;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 
@@ -1101,9 +1124,21 @@ function persist() {
   }, 120);
 }
 
-const store: MockStore = globalThis.__FREYR_MOCK_STORE__ ?? loadOrSeed();
-if (!globalThis.__FREYR_MOCK_STORE__) {
+/* THE MEMO CARRIES THE SCHEMA VERSION TOO (Sep 4). The global survives dev
+   hot reloads by design — that is its whole point — which meant a SCHEMA
+   bump only ever invalidated the FILE: the stale store lived on in process
+   and the new seed reached nobody until the server was restarted. Bumps 6
+   and 7 shipped with restarts and nobody noticed; bump 9 was verified
+   in-place and did nothing. The version rides beside the memo now, so a
+   bump takes effect on the next reload like it always claimed to. */
+const store: MockStore =
+  globalThis.__FREYR_MOCK_STORE__ &&
+  globalThis.__FREYR_MOCK_STORE_V__ === SCHEMA_VERSION
+    ? globalThis.__FREYR_MOCK_STORE__
+    : loadOrSeed();
+if (globalThis.__FREYR_MOCK_STORE__ !== store) {
   globalThis.__FREYR_MOCK_STORE__ = store;
+  globalThis.__FREYR_MOCK_STORE_V__ = SCHEMA_VERSION;
 }
 
 function inScope(

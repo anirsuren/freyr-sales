@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDataMode } from "./dataMode";
-import { mockFillLeads, hasMockFillRows } from "./mockFillLife";
+import { mockFillLeads, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import {
   EMPTY_LEADS,
   LEAD_SOURCES,
@@ -240,6 +240,11 @@ async function topUpMockFill(): Promise<LeadsState> {
   return withWrite(async () => {
     const raw = await readRowRaw().catch(() => null);
     const base = raw ? normalize(raw) : sampleLeads();
+    /* Sweep rows from an OLDER generated floor first (see FILL_GENERATION):
+       they were the marker that kept this top-up from ever running again, so
+       a change to the fill tables could never reach a workspace that already
+       held the old rows. Hand-added rows carry no fill prefix and survive. */
+    base.leads = base.leads.filter((r) => !isStaleFillRow(r.id));
     if (hasMockFillRows(base.leads.map((r) => r.id))) return base;
     const rows = mockFillLeads();
     if (rows.length === 0) return base;

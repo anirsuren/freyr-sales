@@ -87,24 +87,34 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/solutioning", label: "Solutioning", icon: ClipboardList, section: "Sales"  },
   { href: "/contracts", label: "Contracts", icon: FileSignature, section: "Sales"  },
   { href: "/customers", label: "Customers", icon: Building2, section: "Sales"  },
+  { href: "/pipeline", label: "Pipeline", icon: Columns3, section: "Sales" },
+  { href: "/forecast", label: "Forecast", icon: Target, section: "Sales" },
+  { href: "/contacts", label: "Contacts", icon: Contact, section: "Sales" },
+  { href: "/sessions", label: "Sessions", icon: CalendarClock, section: "Sales" },
+  { href: "/sequences", label: "Sequences", icon: Zap, section: "Sales" },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone, section: "Sales" },
+  { href: "/voice", label: "Voice agents", icon: PhoneCall, section: "Sales" },
+  { href: "/tasks", label: "Tasks", icon: ListChecks, section: "Sales" },
   { href: "/performance", label: "Goals", icon: Gauge, section: "Performance"  },
   { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange, section: "Performance"  },
   { href: "/reports", label: "Reports", icon: FileBarChart, section: "Performance"  },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "Performance" },
+  { href: "/analytics", label: "Analytics", icon: ChartColumnBig, section: "Performance" },
+  { href: "/activity", label: "Activity", icon: Rss, section: "Performance" },
+  /* THE MOCK-ONLY MODULES SIT IN THEIR CATEGORIES, NOT IN A HEAP (Anir,
+     Sep 4, on the mock rail: "it's a little glitchy. Everything should be
+     tucked into a category, obviously. apart from agent").
+
+     These are filtered off the real rail by the release gate, so their
+     placement only ever shows in mock — where they rendered AFTER the last
+     heading with no section of their own, reading as eleven strays under
+     Administration. Each now carries the section it belongs to, and sits
+     WITH that section's items, because the rail draws a heading wherever the
+     section changes: a Sales item listed after Administration would drag a
+     second "Sales" heading down there. Order inside each group: the released
+     modules first, the mock-only ones behind them. */
   { href: "/team", label: "Team", icon: UsersRound, section: "Administration"  },
   { href: "/admin", label: "Admin", icon: ShieldCheck, section: "Administration"  },
-  /* Not on the rail today: unreleased modules the gate filters out, kept
-     so search can still jump to them where they are released. */
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/pipeline", label: "Pipeline", icon: Columns3 },
-  { href: "/forecast", label: "Forecast", icon: Target },
-  { href: "/contacts", label: "Contacts", icon: Contact },
-  { href: "/sessions", label: "Sessions", icon: CalendarClock },
-  { href: "/sequences", label: "Sequences", icon: Zap },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/voice", label: "Voice agents", icon: PhoneCall },
-  { href: "/tasks", label: "Tasks", icon: ListChecks },
-  { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
-  { href: "/activity", label: "Activity", icon: Rss },
 ];
 
 /**

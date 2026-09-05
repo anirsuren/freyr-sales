@@ -8,7 +8,6 @@ import {
   Rows3,
   Settings2,
   Table2,
-  UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -346,27 +345,14 @@ export function GroupPerformanceTab({
         );
       })}
       </div>
-      {/* WHO IS ACTUALLY IN IT (Anir, Aug 30: "if I click on a group, I would
-          probably want to see exactly who's in this group... there's literally
-          nowhere I can see everybody if there are like a hundred people in a
-          group").
+      {/* NO "SEE ALL N PEOPLE" PILL ANY MORE (Anir, Sep 4: "you don't have
+          to say that — when I click on the people, I can anyway see that. You
+          can just have that entire thing be a scrollbar for the groups").
 
-          The chip fans a handful of faces, which is a preview, not a roster —
-          at a hundred people it says nothing at all. This opens the list, with
-          a search box because a hundred names need one, and each person's own
-          numbers beside them so it answers "who is in here" and "how are they
-          doing" in one place. */}
-      {group && members.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setRosterOpen(true)}
-          className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-        >
-          <UsersRound size={13} strokeWidth={2.2} />
-          See all {members.length} {members.length === 1 ? "person" : "people"} in{" "}
-          {group.name}
-        </button>
-      )}
+          He is right on both counts: the faces on every card already open the
+          same roster, so the pill was a second door to a door, and the width
+          it occupied was width the scrolling group strip wanted. The strip
+          now runs the full row. */}
     </div>
   );
 

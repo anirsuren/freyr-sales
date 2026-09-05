@@ -221,6 +221,36 @@ export async function middleware(request: NextRequest) {
       bare.pathname = pathname;
       return leaveMockMode(NextResponse.redirect(bare));
     }
+    /**
+     * THE PREFIX FLIPS THE COOKIE HERE, NOT IN THE BROWSER (Sep 4).
+     *
+     * The switch INTO mock used to be ModeUrlSync's client effect: land on a
+     * prefixed URL with a live cookie, POST the mode, reload. That leaves a
+     * whole server render running in the WRONG mode first — and the moment a
+     * record page grew "missing record redirects to the list", that render
+     * won the race: /mock-mode/customers/cust-fill-107 with a live cookie
+     * looked up a mock id in the real store, missed, and redirected away
+     * before the client half could flip and reload. The pasted-mock-link flow
+     * died, and the redirect it collided with dropped the label as well.
+     *
+     * Middleware sees the request before any of that. Same rule as the client
+     * half — the address is the person's stated intent — enforced where it
+     * cannot race. Locked deployments are exempt exactly as the data-mode
+     * endpoint is: a lock means the viewer does not choose.
+     */
+    if (
+      process.env.DATA_MODE_LOCKED !== "1" &&
+      request.cookies.get(DATA_MODE_COOKIE)?.value !== "mock"
+    ) {
+      const again = NextResponse.redirect(new URL(request.url));
+      again.cookies.set(DATA_MODE_COOKIE, "mock", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+      });
+      return again;
+    }
   }
 
   /**

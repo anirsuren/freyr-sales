@@ -3,7 +3,7 @@ import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { hasSupabase } from "./env";
 import { sampleDocPath } from "./sampleDocuments";
-import { mockFillMeetings, hasMockFillRows } from "./mockFillLife";
+import { mockFillMeetings, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 
 /**
  * MEETINGS — customer meetings, as their own object.
@@ -338,6 +338,11 @@ async function topUpMockFill(): Promise<MeetingsState> {
   return withWrite(async () => {
     const raw = await readRowRaw().catch(() => null);
     const base = raw && !isStaleSeed(raw) ? normalize(raw) : sampleMeetings();
+    /* Sweep rows from an OLDER generated floor first (see FILL_GENERATION):
+       they were the marker that kept this top-up from ever running again, so
+       a change to the fill tables could never reach a workspace that already
+       held the old rows. Hand-added rows carry no fill prefix and survive. */
+    base.meetings = base.meetings.filter((r) => !isStaleFillRow(r.id));
     if (hasMockFillRows(base.meetings.map((m) => m.id))) return base;
     const rows = mockFillMeetings();
     if (rows.length === 0) return base;

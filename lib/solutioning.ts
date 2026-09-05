@@ -1,5 +1,5 @@
 import { getDataMode } from "./dataMode";
-import { mockFillSolutioning, hasMockFillRows } from "./mockFillLife";
+import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 
 /**
  * SOLUTIONING — presentations, submissions and meetings, requested by sales
@@ -919,6 +919,11 @@ async function topUpMockFill(): Promise<SolutioningState> {
     const raw = await readRowRaw().catch(() => null);
     const base =
       raw && !isPreSplitSeed(raw) ? normalize(raw) : sampleSolutioning();
+    /* Sweep rows from an OLDER generated floor first (see FILL_GENERATION):
+       they were the marker that kept this top-up from ever running again, so
+       a change to the fill tables could never reach a workspace that already
+       held the old rows. Hand-added rows carry no fill prefix and survive. */
+    base.requests = base.requests.filter((r) => !isStaleFillRow(r.id));
     if (hasMockFillRows(base.requests.map((r) => r.id))) return base;
     const rows = mockFillSolutioning();
     if (rows.length === 0) return base;

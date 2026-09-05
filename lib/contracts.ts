@@ -2,7 +2,7 @@ import "server-only";
 
 import { getDataMode } from "./dataMode";
 import { spreadEvenly } from "./revenueAccrualsShared";
-import { mockFillContracts, hasMockFillRows } from "./mockFillLife";
+import { mockFillContracts, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import {
   CONTRACT_STATUSES,
   type ContractDoc,
@@ -291,6 +291,11 @@ async function topUpMockFill(): Promise<ContractsState> {
   return withWrite(async () => {
     const raw = await readRowRaw().catch(() => null);
     const base = raw ? normalize(raw) : sampleContracts();
+    /* Sweep rows from an OLDER generated floor first (see FILL_GENERATION):
+       they were the marker that kept this top-up from ever running again, so
+       a change to the fill tables could never reach a workspace that already
+       held the old rows. Hand-added rows carry no fill prefix and survive. */
+    base.contracts = base.contracts.filter((r) => !isStaleFillRow(r.id));
     if (hasMockFillRows(base.contracts.map((r) => r.id))) return base;
     const rows = mockFillContracts();
     if (rows.length === 0) return base;
