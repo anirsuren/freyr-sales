@@ -106,3 +106,33 @@ invites, no signup confirmations. Everything else is ready.
   `SALESFORCE_CLIENT_ID` and `NEXT_PUBLIC_RELEASE_MODE`. Most degrade quietly
   rather than failing. `AUTH_SESSION_SECRET` is absent but falls back to
   `AUTH_COOKIE_SECRET`, which prod has, so sessions are correctly signed.
+
+## Correctness note found while testing prod (Sep 5) — a scaling landmine
+
+The offering catalogue is ONE JSON row (`offering_catalog_state` id `default`),
+and every save is a whole-row read-modify-write: the process mutates its
+in-memory `liveStore`, then `persistLiveOfferings()` upserts the entire
+`catalog` blob (lib/offerings.ts:4455).
+
+Concurrent saves are serialized by an IN-PROCESS async queue
+(`__FREYR_OFFERINGS_WRITE_QUEUE__`, commitOfferingsChange, lib/offerings.ts:4648)
+— a promise chain living in one Node process's globals.
+
+This is correct TODAY because prod runs exactly one ECS task
+(`freyr-sales-svc` desiredCount=1, no application-autoscaling target — verified
+Sep 5). Every write funnels through the one process's queue, so no update is
+lost.
+
+It stops being correct the moment prod runs more than one task. Two processes
+would each read the row, each apply their own edit to their own in-memory copy,
+and each upsert the whole blob — last writer wins, the other edit silently
+gone. There is no version column or optimistic-lock check to catch it (the
+upsert has only id/catalog/updated_at). So: do NOT raise desiredCount above 1,
+and do NOT attach autoscaling, without first moving catalogue writes to either
+row-level optimistic locking (compare-and-set on updated_at) or field-level
+updates. This is not a bug in the current deployment; it is a constraint the
+current deployment silently depends on.
+
+The same pattern applies to the other single-row stores that share this table
+(leads, contracts, customerGroups, activityMaster, material-text,
+market-intel-feed) — all are whole-row upserts safe only under one task.
