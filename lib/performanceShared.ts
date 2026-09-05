@@ -22,6 +22,7 @@
  * screens can use it. Nothing here touches the database or the data mode.
  */
 
+import { calendarDate, isDateOnly } from "./dateOnly";
 import {
   BASE_CURRENCY,
   convert,
@@ -1033,14 +1034,18 @@ export function stampedAt(iso?: string | null): string | null {
   if (!raw) return null;
   const t = new Date(raw);
   if (Number.isNaN(t.getTime())) return null;
-  const day = t.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  /* Only a date came in — a bare yyyy-mm-dd carries no clock, so saying one
-     would be inventing it. */
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return day;
+  /* NO CLOCK MEANS NO TIMEZONE EITHER (see lib/dateOnly). A bare yyyy-mm-dd
+     and an imported date wearing a synthetic 00:00:00.000Z are the same kind
+     of value: a calendar day. Formatting either as an instant slides it into
+     the reader's timezone and shows the day before across the Atlantic. */
+  const dateOnly = isDateOnly(raw);
+  const day = (dateOnly ? new Date(`${calendarDate(raw)}T12:00:00`) : t)
+    .toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  if (dateOnly) return day;
   const time = t.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",

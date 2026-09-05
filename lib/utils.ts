@@ -1,4 +1,5 @@
 import { format, parseISO, isValid } from "date-fns";
+import { calendarDate, isDateOnly } from "./dateOnly";
 import type { LucideIcon } from "lucide-react";
 import {
   ThumbsUp,
@@ -21,7 +22,13 @@ export function cn(
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
   try {
-    const d = typeof value === "string" ? parseISO(value) : value;
+    /* An imported date wearing a synthetic midnight must not be shifted into
+       the reader's timezone — see lib/dateOnly. Parsing the calendar part on
+       its own gives local midnight, which formats as the day it was stored. */
+    const raw = typeof value === "string" ? value : "";
+    const d = raw
+      ? parseISO(isDateOnly(raw) ? calendarDate(raw) : raw)
+      : parseISO(value as string);
     if (!isValid(d)) return "-";
     return format(d, "MMM d, yyyy");
   } catch {
