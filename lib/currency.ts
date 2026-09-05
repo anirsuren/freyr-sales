@@ -152,6 +152,14 @@ export function withCommas(value: string | number | null | undefined): string {
 
 export function fmtMoney(value: number, code: CurrencyCode = BASE_CURRENCY): string {
   const { symbol } = currencyMeta(code);
+  /* NEVER "$NaN" ON A SCREEN. This formatter is on 274 of them, and an
+     arithmetic slip anywhere upstream — a division by zero, a field that was
+     not there — used to arrive here and be printed verbatim: fmtMoney(NaN)
+     read "$NaN" and fmtMoney(Infinity) read "$InfinityT". A null already
+     rendered as the symbol and a nought, because Math.abs(null) is 0, so
+     anything else that is not a real number is treated the same way rather
+     than inventing a third behaviour. */
+  if (!Number.isFinite(value)) return `${symbol}0`;
   const v = Math.abs(value);
   const sign = value < 0 ? "-" : "";
   /**
