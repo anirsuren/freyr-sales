@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, type CurrencyCode } from "@/lib/currency";
 import Link from "next/link";
 import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
@@ -65,8 +65,8 @@ import { tint } from "@/lib/tint";
 /* The shared shorthand — see lib/currency. Kept as a local name so the call
    sites read the same, but the rounding and the carry are no longer this
    file's own opinion. */
-function money(n: number): string {
-  return fmtMoney(n);
+function money(n: number, code?: CurrencyCode): string {
+  return fmtMoney(n, code);
 }
 
 const LEVEL_TONE: Record<string, string> = {
@@ -532,7 +532,12 @@ export function OpportunityDetail({
         <StatTile
           icon={Target}
           label="Estimated TCV"
-          value={tcv === undefined ? "·" : money(tcv)}
+          /* IN THE DEAL'S OWN CURRENCY. These two tiles showed "$200" for a
+             deal stored in euros — the edit form right below them showed
+             "€200" for the same figure, so the page disagreed with itself and
+             the read-only half was the wrong one (200 EUR is about $232). The
+             currency is on the record; it just was not being passed. */
+          value={tcv === undefined ? "·" : money(tcv, deal.currency)}
           sub={
             deal.estimatedTcv === undefined
               ? "the deal's own value"
@@ -542,7 +547,7 @@ export function OpportunityDetail({
         <StatTile
           icon={CalendarClock}
           label="Estimated ACV"
-          value={acv === undefined ? "·" : money(acv)}
+          value={acv === undefined ? "·" : money(acv, deal.currency)}
           sub={acv === undefined ? "not entered yet" : "one year of it"}
         />
         {/* THE THIRD TILE IS TIME, NOT MORE MONEY.
