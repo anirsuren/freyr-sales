@@ -156,7 +156,7 @@ export async function buildOpportunity360(
         key,
         columns: [
           { key: "status", label: "Status" },
-          { key: "owner", label: "Owner" },
+          { key: "owner", label: "Owner", kind: "person" },
           { key: "docs", label: "Documents" },
           { key: "needed", label: "Needed by" },
         ],
@@ -201,7 +201,7 @@ export async function buildOpportunity360(
       key: "meetings",
       columns: [
         { key: "type", label: "Type" },
-        { key: "owner", label: "Who ran it" },
+        { key: "owner", label: "Who ran it", kind: "person" },
         { key: "status", label: "Status" },
       ],
       label: "Meetings",

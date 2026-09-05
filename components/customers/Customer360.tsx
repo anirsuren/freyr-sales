@@ -705,13 +705,21 @@ export function Customer360({
                               Detail
                             </th>
                           )}
+                      {/* LEFT, LIKE EVERY OTHER COLUMN (Anir, Sep 4: "the
+                          last column doesn't look aligned properly... for all
+                          of the tabs"). Value and When were the only two
+                          right-aligned columns in a left-aligned table, so
+                          the last column hugged the card's far edge with a
+                          gulf between it and its neighbours — the very rule
+                          this table's own column type spells out was being
+                          broken by its two shared columns. */}
                       {anyAmount && (
-                        <th className="pb-2 pr-4 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        <th className="pb-2 pr-4 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           Value
                         </th>
                       )}
                       {anyWhen && (
-                        <th className="pb-2 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        <th className="pb-2 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                           When
                         </th>
                       )}
@@ -769,21 +777,48 @@ export function Customer360({
                           </span>
                         </td>
                         {cols.length > 0
-                          ? cols.map((c) => (
-                              <td
-                                key={c.key}
-                                className="py-3 pr-4 text-left text-[12.5px] text-text-secondary"
-                              >
-                                {item.cells?.[c.key] || "—"}
-                              </td>
-                            ))
+                          ? cols.map((c) => {
+                              const v = item.cells?.[c.key] || "—";
+                              /* A NAME WEARS ITS FACE, A COMPANY ITS MARK
+                                 (Anir, Sep 4). Only when the cell actually
+                                 names one: an em-dash or "Unassigned" gets no
+                                 portrait of nobody. */
+                              const named =
+                                v !== "—" && v !== "·" && v.toLowerCase() !== "unassigned";
+                              return (
+                                <td
+                                  key={c.key}
+                                  className="py-3 pr-4 text-left text-[12.5px] text-text-secondary"
+                                >
+                                  {c.kind === "person" && named ? (
+                                    <span className="flex min-w-0 items-center gap-1.5">
+                                      <Avatar
+                                        name={v}
+                                        className="h-5 w-5 shrink-0 text-[7px]"
+                                      />
+                                      <span className="truncate">{v}</span>
+                                    </span>
+                                  ) : c.kind === "company" && named ? (
+                                    <span className="flex min-w-0 items-center gap-1.5">
+                                      <CompanyLogo
+                                        name={v}
+                                        className="h-5 w-5 shrink-0 text-[7px]"
+                                      />
+                                      <span className="truncate">{v}</span>
+                                    </span>
+                                  ) : (
+                                    v
+                                  )}
+                                </td>
+                              );
+                            })
                           : anySub && (
                               <td className="py-3 pr-4 text-[12.5px] text-text-secondary">
                                 {item.sub || "—"}
                               </td>
                             )}
                         {anyAmount && (
-                          <td className="py-3 pr-4 text-right">
+                          <td className="py-3 pr-4 text-left">
                             {item.amount !== undefined && item.amount > 0 ? (
                               <b
                                 className="text-[13px] font-semibold tnum"
@@ -797,7 +832,7 @@ export function Customer360({
                           </td>
                         )}
                         {anyWhen && (
-                          <td className="py-3 text-right text-[12.5px] tnum text-text-secondary">
+                          <td className="py-3 text-left text-[12.5px] tnum text-text-secondary">
                             {item.when ? formatDate(item.when) : "—"}
                           </td>
                         )}

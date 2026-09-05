@@ -113,7 +113,7 @@ export async function buildCustomer360(
         { key: "level", label: "Stage" },
         { key: "status", label: "Status" },
         { key: "confidence", label: "Confidence" },
-        { key: "owner", label: "Owner" },
+        { key: "owner", label: "Owner", kind: "person" },
         { key: "signs", label: "Expected to sign" },
       ],
       items: [...myDeals]
@@ -173,7 +173,7 @@ export async function buildCustomer360(
         columns: [
           { key: "type", label: "Type" },
           { key: "status", label: "Status" },
-          { key: "owner", label: "Owner" },
+          { key: "owner", label: "Owner", kind: "person" },
           { key: "asked", label: "Requested" },
         ],
         items: [...rows]
@@ -212,7 +212,7 @@ export async function buildCustomer360(
       columns: [
         { key: "type", label: "Type" },
         { key: "status", label: "Status" },
-        { key: "owner", label: "Who ran it" },
+        { key: "owner", label: "Who ran it", kind: "person" },
       ],
       items: [...myMeetings]
         .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
@@ -480,7 +480,7 @@ export async function buildCustomer360(
       empty: "Nothing signed with this account yet.",
       columns: [
         { key: "status", label: "Status" },
-        { key: "owner", label: "Owner" },
+        { key: "owner", label: "Owner", kind: "person" },
         { key: "starts", label: "Starts" },
       ],
       items: [...myContracts]

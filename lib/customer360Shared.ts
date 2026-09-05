@@ -99,6 +99,15 @@ export type Customer360Column = {
   key: string;
   label: string;
   /**
+   * WHAT KIND OF THING THE CELL NAMES (Anir, Sep 4: "whenever you have
+   * names, you have the profile picture, and when you have companies, you
+   * have the company profile picture"). A person column draws the avatar
+   * beside the name, a company column the logo; a plain column stays text.
+   * The renderer skips the face for non-names ("—", "Unassigned", "·"), so
+   * an empty cell never wears a portrait of nobody.
+   */
+  kind?: "person" | "company";
+  /**
    * LEFT, ALWAYS (Anir, Sep 4: "make sure your columns, by the way, in every
    * single table that you just made are left-aligned").
    *

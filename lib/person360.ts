@@ -98,7 +98,7 @@ export async function buildPerson360(
     bands.push({
       key: "meetings",
       columns: [
-        { key: "customer", label: "Customer" },
+        { key: "customer", label: "Customer", kind: "company" },
         { key: "type", label: "Type" },
         { key: "role", label: "Their part" },
         { key: "status", label: "Status" },
@@ -155,7 +155,7 @@ export async function buildPerson360(
     bands.push({
       key: "opportunities",
       columns: [
-        { key: "customer", label: "Customer" },
+        { key: "customer", label: "Customer", kind: "company" },
         { key: "level", label: "Stage" },
         { key: "status", label: "Status" },
         { key: "confidence", label: "Confidence" },
@@ -283,7 +283,7 @@ export async function buildPerson360(
     bands.push({
       key: "leads",
       columns: [
-        { key: "company", label: "Company" },
+        { key: "company", label: "Company", kind: "company" },
         { key: "source", label: "Source" },
         { key: "status", label: "Status" },
       ],
@@ -316,7 +316,7 @@ export async function buildPerson360(
     bands.push({
       key: "contracts",
       columns: [
-        { key: "customer", label: "Customer" },
+        { key: "customer", label: "Customer", kind: "company" },
         { key: "status", label: "Status" },
       ],
       label: "Contracts",
