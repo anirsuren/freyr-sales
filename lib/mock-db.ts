@@ -56,6 +56,7 @@ type ScopedAgentChatMessage = AgentChatMessage & ScopeColumns;
 declare global {
   // eslint-disable-next-line no-var
   var __FREYR_MOCK_STORE__: MockStore | undefined;
+  // eslint-disable-next-line no-var
   var __FREYR_MOCK_STORE_V__: number | undefined;
 }
 
