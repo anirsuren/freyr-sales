@@ -305,14 +305,47 @@ async function topUpMockFill(): Promise<ContractsState> {
   });
 }
 
+/**
+ * A SAMPLE CONTRACT WITH NO SCHEDULE TEACHES NOBODY ANYTHING.
+ *
+ * 176 of the 305 mock contracts are legacy `mockgen-con-*` rows that were
+ * seeded with a value, a start and an end but an empty schedule, so the
+ * Contracts list said "0 months scheduled" against $1.0M — on a page whose own
+ * subtitle promises "the months its money is earned in" (Anir, Sep 4: "it cant
+ * say 0 then whats the point of mock mode").
+ *
+ * Everything the schedule needs is already on the row, so this derives it
+ * rather than inventing anything: the value spread evenly from its start month
+ * across its own term. MOCK ONLY, and only where the schedule is empty — a
+ * real contract's schedule is a fact somebody entered and is never touched.
+ */
+function withDerivedSchedules(state: ContractsState): ContractsState {
+  return {
+    ...state,
+    contracts: state.contracts.map((c) => {
+      if (c.schedule?.length || !c.value || !c.startDate) return c;
+      const start = c.startDate.slice(0, 7);
+      const months = c.endDate
+        ? Math.max(
+            1,
+            (Number(c.endDate.slice(0, 4)) - Number(c.startDate.slice(0, 4))) * 12 +
+              (Number(c.endDate.slice(5, 7)) - Number(c.startDate.slice(5, 7)))
+          )
+        : 12;
+      return { ...c, schedule: spreadEvenly(c.value, start, Math.min(months, 60)) };
+    }),
+  };
+}
+
 export async function readContracts(): Promise<ContractsState> {
   if (getDataMode() !== "mock") return readRow();
   const existing = await readRowRaw();
   if (existing) {
     const state = normalize(existing);
-    if (hasMockFillRows(state.contracts.map((c) => c.id))) return state;
+    if (hasMockFillRows(state.contracts.map((c) => c.id)))
+      return withDerivedSchedules(state);
   }
-  return topUpMockFill();
+  return withDerivedSchedules(await topUpMockFill());
 }
 
 export type ContractInput = {
