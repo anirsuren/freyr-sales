@@ -342,10 +342,17 @@ export async function POST(req: NextRequest) {
       /* NO GATE BEYOND SEEING IT (Suren: "anyone can comment, whoever has
          access to this"). Reaching this handler already means the reader
          passed the module's own access check. */
+      const rawAtts = (body as { attachments?: unknown }).attachments;
       await commentOnRequest({
         requestId,
         by: me.name,
         text: String((body as { text?: unknown }).text ?? ""),
+        /* Files ride along when the dialog uploaded some; the lib caps and
+           sanitizes them (Anir, Sep 6: "when I'm adding a comment, I should
+           be able to add attachments, just something optional"). */
+        ...(Array.isArray(rawAtts)
+          ? { attachments: rawAtts as { name?: unknown; docsPath?: unknown; fileName?: unknown }[] }
+          : {}),
       });
     } else if (op === "release") {
       /* The way back out of a pick-up. The owner may always put it down; a

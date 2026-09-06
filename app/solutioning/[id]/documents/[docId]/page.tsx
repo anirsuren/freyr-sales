@@ -55,7 +55,11 @@ export default async function SolutioningDocumentPage({
       embed={embed === "1"}
       initialMember={typeof member === "string" && member ? member : null}
       contextName={request?.customer || request?.title || "This request"}
-      kicker={DOC_CATEGORY_NOUN[access.doc.category]}
+      kicker={
+        access.doc.category
+          ? DOC_CATEGORY_NOUN[access.doc.category]
+          : "Comment attachment"
+      }
       material={{
         id: access.doc.id,
         kind: formatFromFilename(access.doc.fileName || access.doc.name),

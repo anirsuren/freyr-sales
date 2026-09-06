@@ -219,6 +219,17 @@ export type RequestActivity = {
    * something the record did, a comment is something a person said.
    */
   comment?: boolean;
+  /** Files somebody attached to their comment (Anir, Sep 6: "when I'm adding
+   *  a comment, I think I should be able to add attachments, just something
+   *  optional... it'll show up in the timeline"). Same Freya.Docs paths the
+   *  request's own documents use; the download route resolves these through
+   *  the request, never from the query. */
+  attachments?: {
+    id: string;
+    name: string;
+    docsPath: string;
+    fileName?: string;
+  }[];
 };
 
 export type SolutionRequest = {
@@ -466,6 +477,28 @@ function normalizeActivity(v: unknown): RequestActivity | null {
     by: str(r.by, 80) || "Unknown",
     what,
     ...(r.comment ? { comment: true as const } : {}),
+    ...(Array.isArray(r.attachments)
+      ? (() => {
+          const atts = r.attachments
+            .map((v) => {
+              const a = (v ?? {}) as {
+                id?: unknown;
+                name?: unknown;
+                docsPath?: unknown;
+                fileName?: unknown;
+              };
+              const id = str(a.id, 60);
+              const name = str(a.name, 200);
+              const docsPath = str(a.docsPath, 400);
+              if (!id || !name || !docsPath) return null;
+              const fileName = str(a.fileName, 200);
+              return { id, name, docsPath, ...(fileName ? { fileName } : {}) };
+            })
+            .filter((a): a is NonNullable<typeof a> => a !== null)
+            .slice(0, 5);
+          return atts.length ? { attachments: atts } : {};
+        })()
+      : {}),
   };
 }
 
@@ -1149,10 +1182,28 @@ export async function commentOnRequest(input: {
   requestId: string;
   by: string;
   text: string;
+  /** Optional files, already uploaded; capped and sanitized here so a raw
+   *  request body cannot grow the record without limit. */
+  attachments?: { name?: unknown; docsPath?: unknown; fileName?: unknown }[];
 }): Promise<void> {
   return withWrite(async () => {
     const text = str(input.text, 2000);
     if (!text) throw new Error("Write something first.");
+    const attachments = (Array.isArray(input.attachments) ? input.attachments : [])
+      .map((a) => {
+        const name = str(a?.name, 200);
+        const docsPath = str(a?.docsPath, 400);
+        if (!name || !docsPath) return null;
+        const fileName = str(a?.fileName, 200);
+        return {
+          id: uid("catt"),
+          name,
+          docsPath,
+          ...(fileName ? { fileName } : {}),
+        };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null)
+      .slice(0, 5);
     const state = await readRow();
     const r = mustFind(state, input.requestId);
     r.activity.push({
@@ -1160,6 +1211,7 @@ export async function commentOnRequest(input: {
       by: input.by,
       what: text,
       comment: true,
+      ...(attachments.length ? { attachments } : {}),
     });
     await writeRow(state);
   });

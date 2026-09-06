@@ -29,6 +29,7 @@ import {
   MessageSquare,
   ArrowUpRight,
   UploadCloud,
+  Paperclip,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
@@ -38,8 +39,10 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { ActionBar, type BarAction } from "@/components/ui/ActionBar";
 import { UploadProgress } from "@/components/ui/UploadProgress";
+import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   OverflowMenu,
@@ -241,6 +244,58 @@ export function RequestDetail({
   const [adding, setAdding] = useState(false);
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
+  /* FILES ON A COMMENT (Anir, Sep 6: "when I'm adding a comment, I think I
+     should be able to add attachments, just something optional. Obviously
+     it'll show up in the timeline"). Staged here while the dialog is open;
+     the ids are per-pick so two files with one name stay two rows. */
+  const [commentFiles, setCommentFiles] = useState<
+    {
+      key: string;
+      name: string;
+      status: "uploading" | "done" | "error";
+      percent: number;
+      docsPath?: string;
+      fileName?: string;
+    }[]
+  >([]);
+  const stageCommentFiles = (list: FileList | null) => {
+    for (const file of Array.from(list ?? [])) {
+      const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
+      setCommentFiles((cur) => [
+        ...cur,
+        { key, name: file.name, status: "uploading", percent: 0 },
+      ]);
+      void uploadWithProgress<{ docsPath?: string; fileName?: string }>(
+        `/api/solutioning/upload?requestId=${encodeURIComponent(r.id)}`,
+        file,
+        (percent) =>
+          setCommentFiles((cur) =>
+            cur.map((d) => (d.key === key ? { ...d, percent } : d))
+          )
+      )
+        .then((data) => {
+          if (!data?.docsPath) throw new Error("no path");
+          setCommentFiles((cur) =>
+            cur.map((d) =>
+              d.key === key
+                ? { ...d, status: "done", percent: 100, docsPath: data.docsPath, fileName: data.fileName }
+                : d
+            )
+          );
+        })
+        .catch(() =>
+          setCommentFiles((cur) =>
+            cur.map((d) => (d.key === key ? { ...d, status: "error" } : d))
+          )
+        );
+    }
+  };
+  /* An attachment viewed from the timeline. */
+  const [viewingAttachment, setViewingAttachment] = useState<{
+    id: string;
+    name: string;
+    fileName?: string;
+  } | null>(null);
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1194,6 +1249,26 @@ export function RequestDetail({
                         >
                           {a.what}
                         </span>
+                        {/* WHAT RODE ALONG WITH THE COMMENT (Anir, Sep 6:
+                            "obviously, it'll show up in the timeline if there
+                            are attachments"). Each chip opens in the app's
+                            own viewer, like everything else. */}
+                        {a.comment && (a.attachments?.length ?? 0) > 0 && (
+                          <span className="mt-1.5 flex flex-wrap gap-1.5">
+                            {(a.attachments ?? []).map((att) => (
+                              <button
+                                key={att.id}
+                                type="button"
+                                onClick={() => setViewingAttachment(att)}
+                                title={`Open ${att.name}`}
+                                className="inline-flex max-w-[200px] cursor-pointer items-center gap-1 rounded-md border border-border-light bg-white px-2 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                              >
+                                <Paperclip size={11} strokeWidth={2.2} className="shrink-0" />
+                                <span className="truncate">{att.name}</span>
+                              </button>
+                            ))}
+                          </span>
+                        )}
                         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
                           <Avatar name={a.by} className="h-[15px] w-[15px] text-[6px]" />
                           <span className="font-medium text-text-secondary">{a.by}</span>
@@ -1259,10 +1334,19 @@ export function RequestDetail({
               onClose={() => setAdding(false)}
               size="wide"
               title={`Add to ${(DOC_TABS.find((t) => t.key === tab)?.label ?? "documents").toLowerCase()}`}
+              /* The category sentence rides an info icon beside the title
+                 (Anir, Sep 6: "I don't even think you need the text at the
+                 top... you can probably tuck that into an information icon to
+                 the right of the header"). The header actions slot is exactly
+                 that spot. */
+              actions={
+                <InfoHint
+                  text={DOC_TABS.find((t) => t.key === tab)?.hint ?? ""}
+                />
+              }
             >
               <AddDocForm
                 tabLabel={DOC_TABS.find((t) => t.key === tab)?.label ?? ""}
-                tabHint={DOC_TABS.find((t) => t.key === tab)?.hint ?? ""}
                 tabExample={
                   DOC_TABS.find((t) => t.key === tab)?.example ?? "Document name"
                 }
@@ -1334,6 +1418,22 @@ export function RequestDetail({
         />
       )}
 
+      {/* A comment attachment, in the same viewer everything else uses. */}
+      {viewingAttachment && (
+        <DocumentPeek
+          name={viewingAttachment.name}
+          fileName={viewingAttachment.fileName ?? null}
+          contextName={r.customer || "This request"}
+          previewUrl={`/api/solutioning/download?requestId=${encodeURIComponent(
+            r.id
+          )}&docId=${encodeURIComponent(viewingAttachment.id)}&view=1`}
+          downloadUrl={`/api/solutioning/download?requestId=${encodeURIComponent(
+            r.id
+          )}&docId=${encodeURIComponent(viewingAttachment.id)}`}
+          onClose={() => setViewingAttachment(null)}
+        />
+      )}
+
       {/* THE COMMENT POPUP. Deliberately available on a completed record too:
           the moment work is handed back is exactly when the person who asked
           for it has something to say. */}
@@ -1352,6 +1452,55 @@ export function RequestDetail({
           placeholder="What the person picking this up next needs to know…"
           aria-label="Comment"
         />
+
+        {/* OPTIONAL FILES. A plain label-for-input, like every other picker
+            here; each row wears the same progress bar the uploads all use. */}
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary">
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              stageCommentFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <Paperclip size={13} strokeWidth={2.2} />
+          Attach files
+        </label>
+        {commentFiles.length > 0 && (
+          <ul className="mt-2 space-y-2">
+            {commentFiles.map((f) => (
+              <li key={f.key} className="flex items-center gap-2.5 rounded-lg border border-border-light bg-surface/50 px-3 py-2">
+                <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                    {f.name}
+                  </span>
+                  {f.status === "uploading" && (
+                    <UploadProgress percent={f.percent} className="mt-1" />
+                  )}
+                  {f.status === "error" && (
+                    <span className="block text-[11px] font-medium text-[color:var(--status-red)]">
+                      That file did not upload.
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${f.name}`}
+                  onClick={() =>
+                    setCommentFiles((cur) => cur.filter((x) => x.key !== f.key))
+                  }
+                  className="shrink-0 cursor-pointer rounded p-1 text-[color:var(--status-red)] transition-colors hover:bg-red-50"
+                >
+                  <Trash2 size={13} strokeWidth={2} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="mt-4 flex items-center justify-end gap-2">
           <button
             type="button"
@@ -1362,12 +1511,30 @@ export function RequestDetail({
           </button>
           <button
             type="button"
-            disabled={busy || !comment.trim()}
+            disabled={
+              busy ||
+              !comment.trim() ||
+              commentFiles.some((f) => f.status === "uploading")
+            }
             onClick={async () => {
               const text = comment.trim();
               if (!text) return;
-              if (await post({ op: "comment", text })) {
+              const attachments = commentFiles
+                .filter((f) => f.status === "done" && f.docsPath)
+                .map((f) => ({
+                  name: f.name,
+                  docsPath: f.docsPath!,
+                  ...(f.fileName ? { fileName: f.fileName } : {}),
+                }));
+              if (
+                await post({
+                  op: "comment",
+                  text,
+                  ...(attachments.length ? { attachments } : {}),
+                })
+              ) {
                 setComment("");
+                setCommentFiles([]);
                 setCommenting(false);
               }
             }}
@@ -1750,7 +1917,6 @@ function DocRow({
 
 function AddDocForm({
   tabLabel,
-  tabHint,
   tabExample,
   members,
   linkables,
@@ -1760,7 +1926,6 @@ function AddDocForm({
   onAdd,
 }: {
   tabLabel: string;
-  tabHint: string;
   tabExample: string;
   members: string[];
   linkables: Linkable[];
@@ -1855,9 +2020,6 @@ function AddDocForm({
           sentence was the useful half; the name was the dialog title again,
           boxed. So it is one quiet line now, and the document-name placeholder
           carries the rest of the distinction. */}
-      <p className="text-[12.5px] leading-relaxed text-text-secondary">
-        {tabHint}
-      </p>
       <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
         {([
           { key: "upload" as const, label: "Upload a file", icon: UploadCloud },

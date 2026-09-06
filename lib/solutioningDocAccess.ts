@@ -16,7 +16,24 @@ import { readSolutioning, type SolutionDoc } from "@/lib/solutioning";
  * in the query string.
  */
 export type DocAccess =
-  | { ok: true; doc: SolutionDoc; docsPath: string; label: string }
+  /* The doc is the minimal identity the file routes actually read — name and
+     stored filename — so a comment attachment, which is not a full
+     SolutionDoc, can answer through the same door. */
+  | {
+      ok: true;
+      doc: {
+        id: string;
+        name: string;
+        fileName?: string;
+        /* Present when the answer is a real request document; absent on a
+           comment attachment, which has no category, link or author line. */
+        category?: SolutionDoc["category"];
+        url?: string;
+        addedBy?: string;
+      };
+      docsPath: string;
+      label: string;
+    }
   | { ok: false; error: string; status: number };
 
 export async function reachableSolutioningDoc(
@@ -36,7 +53,23 @@ export async function reachableSolutioningDoc(
   if (!request) return { ok: false, error: "That request is gone.", status: 404 };
 
   const doc = request.docs.find((d) => d.id === docId);
-  if (!doc) return { ok: false, error: "That document is gone.", status: 404 };
+  if (!doc) {
+    /* COMMENT ATTACHMENTS LIVE ON THE TIMELINE, NOT IN docs (Anir, Sep 6).
+       They resolve through the same route so nothing reads a docsPath out of
+       a query string: same request, same access check, just a different
+       shelf. */
+    for (const entry of request.activity) {
+      const att = entry.attachments?.find((a) => a.id === docId);
+      if (att)
+        return {
+          ok: true,
+          doc: { id: att.id, name: att.name, fileName: att.fileName },
+          docsPath: att.docsPath,
+          label: att.name,
+        };
+    }
+    return { ok: false, error: "That document is gone.", status: 404 };
+  }
 
   /* A reference points at a document whose file has one home. Follow it, so a
      referenced file opens without being copied into this request. */
