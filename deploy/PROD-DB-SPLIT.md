@@ -160,6 +160,13 @@ should only one environment run the paid refresh? Not changed here — blanking
 a live prod config row is a cost/product decision, not a test cleanup.
 
 ### Update (Sep 5, later): the double-spend can't happen — the key is dead
+### CORRECTION (Sep 5, evening): the key was NEVER dead — the Perplexity
+### account was out of credits, which their API reports as HTTP 401. Anir
+### diagnosed this himself and topped the account up; the same key now
+### returns 200 on the exact endpoint+model the app uses (verified). The
+### "dead key" framing below was my wrong conclusion from that 401; the
+### rotate-the-key advice is withdrawn. Cost note stands in spirit: prod
+### and dev now BOTH refresh independently on the same funded account.
 
 Prod's market-intel timer has now fired (feed moved to 18:00) and it FAILS:
 `[market-intel] site updates failed: perplexity HTTP 401`, scan reports
