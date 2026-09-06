@@ -1,4 +1,5 @@
 import "server-only";
+import { isDevEnvironment } from "./devGate";
 
 import { SES_FROM, sendViaSes } from "./ses";
 
@@ -83,6 +84,14 @@ export async function sendMail(message: {
   important?: boolean;
 }): Promise<MailResult> {
   if (message.to.length === 0) return { ok: false, error: "No recipients." };
+
+  /* DEV NEVER MAILS ANYONE — same rule as lib/email.ts, enforced here too
+     because the cron routes (announce, monthly, roadmap digest) come through
+     THIS function and would otherwise bypass that gate entirely. Anir, Sep 5:
+     "make sure there are no emails coming from Dev." Prod is unaffected. */
+  if (isDevEnvironment()) {
+    return { ok: false, error: "Dev does not send email; prod is the live instance." };
+  }
 
   /* SES first, on the identity Freyr IT verified. Resend has no verified
      domain left and refuses everything with a 403; it stays only for a host

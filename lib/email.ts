@@ -1,4 +1,5 @@
 import { hasEmail } from "./env";
+import { isDevEnvironment } from "./devGate";
 import { getDataMode } from "./dataMode";
 import { SES_FROM, sendViaSes } from "./ses";
 
@@ -51,6 +52,31 @@ async function sendWithConfiguredProvider(input: {
   /** Mark it important, the way Outlook's own flag does. */
   important?: boolean;
 }): Promise<EmailResult> {
+  /**
+   * DEV NEVER MAILS ANYONE (Anir, Sep 5: "make sure there are no emails coming
+   * from Dev").
+   *
+   * Dev is the retired instance now: its database is a clone, so it still holds
+   * all 41 colleagues' real addresses, and any timer, admin action or agent
+   * flow that sends would put a duplicate — or a contradictory — message in a
+   * real inbox from an app people were just told to stop using. This is the one
+   * chokepoint every send passes through (adminNotify, the monthly run, the
+   * announcement and roadmap crons, agent outreach), so refusing here covers
+   * all of them, including anything added later.
+   *
+   * Deliberately BEFORE the SES/Resend fallback chain: gating only SES would
+   * have fallen through to Resend and mailed anyway. Prod is unaffected —
+   * isDevEnvironment() keys off the server's own configured origin.
+   */
+  if (isDevEnvironment()) {
+    return {
+      ok: true,
+      channel: "mock",
+      skipped: true,
+      error: "Dev does not send email; prod is the live instance.",
+    };
+  }
+
   /**
    * SES FIRST, ON FREYR'S OWN VERIFIED DOMAIN (Anir, Aug 25: "get rid of this
    * anirsuren.com email... this is not the email you ever use").
