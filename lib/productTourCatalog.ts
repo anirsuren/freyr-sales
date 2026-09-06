@@ -502,3 +502,33 @@ export function getProductTourSteps({
     return { ...step, nextLabel: `Open ${next.pageName}` };
   });
 }
+
+/**
+ * WHICH LEFT-NAV ITEM A ROUTE LIVES UNDER, as spotlight selectors.
+ *
+ * Anir, Sep 6, testing as a new rep: "whenever you're switching tabs, clearly
+ * show that we're about to go to this tab... show that we're clicking on this
+ * on the left side." The route transition now spotlights the sidebar entry it
+ * is opening, so every page change is anchored to the thing a person would
+ * actually click.
+ *
+ * The prefix selector covers nested nav ids (`/performance` lights
+ * `nav-performance-org`, the first Performance entry in document order).
+ * Settings has no sidebar entry at all — it opens from the account menu, which
+ * the tour teaches up front — so its transitions point there instead. The
+ * sidebar itself is the last resort so the pointer never lands on nothing.
+ */
+export function navIntroSelectorsFor(route: string): readonly string[] {
+  const path = route.split("?")[0];
+  if (path.startsWith("/settings")) {
+    return ['[data-tour="account-menu"]', '[data-tour="topbar"]'];
+  }
+  const slug = path.slice(1).replaceAll("/", "-");
+  if (!slug || slug === "dashboard") return ['[data-tour="sidebar"]'];
+  return [
+    `[data-tour="nav-${slug}"]`,
+    `[data-tour^="nav-${slug}"]`,
+    '[data-tour="sidebar"]',
+  ];
+}
+

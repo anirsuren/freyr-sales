@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import type { ProductTourStep } from "@/lib/productTourCatalog";
+import { navIntroSelectorsFor } from "@/lib/productTourCatalog";
 import { cn } from "@/lib/utils";
 
 type Viewport = { width: number; height: number };
@@ -107,6 +108,53 @@ function useViewport(): Viewport {
     return () => window.removeEventListener("resize", update);
   }, []);
   return viewport;
+}
+
+/**
+ * THE SIDEBAR POINTER FOR ROUTE TRANSITIONS (Anir, Sep 6: "show that we're
+ * clicking on this on the left side"). While the tour moves between pages,
+ * this finds the nav entry being opened and measures it so the transition
+ * card can spotlight it. Null on phones (the sidebar hides behind the
+ * hamburger) — the card then simply says where it is going.
+ */
+function useNavIntroRect(
+  route: string,
+  active: boolean,
+  viewport: Viewport
+): TourRect | null {
+  const [rect, setRect] = useState<TourRect | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setRect(null);
+      return;
+    }
+    let cancelled = false;
+    let raf = 0;
+    const measure = () => {
+      if (cancelled) return;
+      let element: HTMLElement | null = null;
+      for (const selector of navIntroSelectorsFor(route)) {
+        const match = document.querySelector<HTMLElement>(selector);
+        if (match && elementIsVisible(match)) {
+          element = match;
+          break;
+        }
+      }
+      if (!element) {
+        setRect(null);
+        return;
+      }
+      setRect(paddedRect(element.getBoundingClientRect(), viewport));
+      // Keep tracking: the sidebar can settle/scroll during the page load.
+      raf = window.requestAnimationFrame(measure);
+    };
+    raf = window.requestAnimationFrame(measure);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+    };
+  }, [route, active, viewport]);
+  return rect;
 }
 
 function useTourTarget(
@@ -393,7 +441,34 @@ export function ProductTourOverlay({
   const viewport = useViewport();
   const reducedMotion = useReducedMotion();
   const compact = viewport.width < 720 || viewport.height < 560;
-  const { rect, isFallback } = useTourTarget(step, viewport, routeReady);
+  /**
+   * A GUARANTEED TRANSITION BEAT ON EVERY PAGE CHANGE (Anir, Sep 6: "when I
+   * went to Team, it didn't show up"). On a fast navigation routeReady is true
+   * almost instantly, so the "Opening…" card used to flash past — or never
+   * appear — and the person was teleported with no cue. Now every route
+   * change holds the transition for a moment, long enough to see WHICH
+   * sidebar entry is being opened (spotlit below), then continues by itself.
+   */
+  const [navBeat, setNavBeat] = useState(false);
+  const prevRouteRef = useRef<string | null>(null);
+  useEffect(() => {
+    const base = step.route.split("?")[0];
+    const prev = prevRouteRef.current;
+    prevRouteRef.current = base;
+    if (prev !== null && prev !== base) {
+      setNavBeat(true);
+      const timer = window.setTimeout(() => setNavBeat(false), 1500);
+      return () => window.clearTimeout(timer);
+    }
+    return;
+  }, [step.route]);
+  const transitioning = !routeReady || navBeat;
+  const { rect, isFallback } = useTourTarget(
+    step,
+    viewport,
+    routeReady && !navBeat
+  );
+  const navRect = useNavIntroRect(step.route, transitioning, viewport);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [stepMotion, setStepMotion] = useState<{
@@ -465,6 +540,14 @@ export function ProductTourOverlay({
         onSkip();
         return;
       }
+      if (routeReady && navBeat) {
+        // Impatient is fine: the same keys that advance simply end the beat.
+        if (event.key === "Enter" || event.key === "ArrowRight") {
+          event.preventDefault();
+          setNavBeat(false);
+        }
+        return;
+      }
       if (!routeReady) {
         if (event.key === "Tab") {
           const focusable = Array.from(
@@ -527,7 +610,7 @@ export function ProductTourOverlay({
         first.focus();
       }
     },
-    [currentStep, onBack, onNext, onSkip, routeReady, saving]
+    [currentStep, navBeat, onBack, onNext, onSkip, routeReady, saving]
   );
 
   useEffect(() => {
@@ -565,7 +648,7 @@ export function ProductTourOverlay({
 
   if (!mounted) return null;
 
-  if (!routeReady) {
+  if (transitioning) {
     return createPortal(
       <>
         <div
@@ -573,6 +656,38 @@ export function ProductTourOverlay({
           className="product-tour-backdrop fixed inset-0 z-[105] cursor-default bg-[rgba(8,15,28,0.66)]"
           onMouseDown={(event) => event.preventDefault()}
         />
+        {/* THE POINTER AT THE SIDEBAR (Anir: "show that we're clicking on
+            this on the left side"): ring the nav entry being opened, with a
+            label, while the transition card explains. Absent on phones,
+            where the sidebar is behind the hamburger. */}
+        {navRect && (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none fixed z-[106] rounded-xl border-2 border-blue-primary bg-blue-primary/10 shadow-[0_0_0_4px_rgba(0,113,227,0.25),0_10px_36px_rgba(0,71,171,0.45)]"
+              style={{
+                top: navRect.top,
+                left: navRect.left,
+                width: navRect.width,
+                height: navRect.height,
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none fixed z-[108] inline-flex h-7 items-center gap-1.5 rounded-full border border-white/60 bg-blue-primary px-2.5 text-[10.5px] font-semibold text-white shadow-[0_7px_22px_rgba(0,71,171,0.42)]"
+              style={{
+                top: Math.max(8, navRect.top - 34),
+                left: Math.min(
+                  Math.max(10, navRect.left + 8),
+                  viewport.width - 130
+                ),
+              }}
+            >
+              <Eye size={12} strokeWidth={2.4} />
+              Opening this
+            </div>
+          </>
+        )}
         <div className="pointer-events-none fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div
             ref={dialogRef}
@@ -631,7 +746,9 @@ export function ProductTourOverlay({
                 id="product-tour-transition-description"
                 className="mt-1.5 text-[13px] leading-relaxed text-text-secondary"
               >
-                Taking you to the next part of the walkthrough.
+                {navRect
+                  ? "From the highlighted spot in the menu on the left."
+                  : "Taking you to the next part of the walkthrough."}
               </p>
               <div
                 aria-hidden="true"
