@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Flag, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +99,56 @@ export function NeededByTimeline({
    */
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => setNow(midnight(new Date())), []);
+
+  /**
+   * WHERE "NEEDED BY" ACTUALLY FITS (Anir, Sep 6, after three wrong answers:
+   * "they have to be actually where it is... you're not stopping until you
+   * figure out how to do this").
+   *
+   * The caption belongs centred under its flag, on the same line as
+   * Requested. The only real constraint is that it must not run into the
+   * Requested caption or off the card — and every attempt to express that
+   * constraint as a guessed number (a percentage threshold, a 190px clamp)
+   * has been wrong on some card width, because the words' width in pixels is
+   * a fact of the rendered page, not something to estimate.
+   *
+   * So it is measured. After paint, read the container's width, the
+   * Requested caption's real right edge and this caption's real width, and
+   * centre it on the flag pushed right ONLY as far as those measurements
+   * demand. Re-measured on resize. The first server paint centres it on the
+   * flag directly, which is correct everywhere except the few pixels the
+   * effect then fixes.
+   */
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const reqRef = useRef<HTMLSpanElement | null>(null);
+  const needRef = useRef<HTMLSpanElement | null>(null);
+  const [needLeftPx, setNeedLeftPx] = useState<number | null>(null);
+  useEffect(() => {
+    const measure = () => {
+      const box = boxRef.current;
+      const req = reqRef.current;
+      const need = needRef.current;
+      if (!box || !req || !need) return;
+      const W = box.clientWidth;
+      if (!W || !Number.isFinite(asked) || !Number.isFinite(due)) return;
+      /* Same window arithmetic as the render, self-contained so the effect
+         can live up here with the other hooks. */
+      const today = now ?? due;
+      const lo = Math.min(asked, due, today);
+      const hi = Math.max(asked, due, today);
+      const flagX = ((due - lo) / Math.max(hi - lo, DAY)) * W;
+      const halfNeed = need.offsetWidth / 2;
+      /* Requested starts at -11px in this box's coordinates (the rail's own
+         overhang), so its right edge is its width minus that. 16px of air
+         between the two captions. */
+      const minCentre = -11 + req.offsetWidth + 16 + halfNeed;
+      const maxCentre = W + 11 - halfNeed;
+      setNeedLeftPx(Math.min(Math.max(flagX, minCentre), maxCentre));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [asked, due, now]);
   const today = now ?? due;
   if (!Number.isFinite(asked) || !Number.isFinite(due)) return null;
 
@@ -173,8 +223,8 @@ export function NeededByTimeline({
           runs the full width and the two circles are laid over it rather than
           bookending it. They carry a white ring, which is what makes them read
           as on top rather than as a break in the line. */}
-      <div className="relative mt-3 h-[116px]">
-        <div className="absolute inset-x-[11px] top-0 h-full">
+      <div className="relative mt-3 h-[86px]">
+        <div ref={boxRef} className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
           style={{ top: RAIL_TOP }}
@@ -232,6 +282,7 @@ export function NeededByTimeline({
             inset with -left-[11px]; the caption does the same now, so it
             starts where the rail starts. */}
         <span
+          ref={reqRef}
           className="absolute -left-[11px] whitespace-nowrap"
           style={{ top: RAIL_TOP + 18 }}
         >
@@ -243,14 +294,24 @@ export function NeededByTimeline({
           </span>
         </span>
 
+        {/* SAME LINE (Anir, Sep 6: "they have to be in the same fucking
+            line"). Needed by stays centred under its flag, one row with
+            Requested. The clamp is CSS, not a guessed threshold: never left of
+            190px — which clears the widest Requested date plus half this
+            caption — and never past the right edge. A flag near the left
+            pushes its words right just enough to clear; everywhere else they
+            sit dead under it. */}
         <span
+          ref={needRef}
           className="absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap"
           style={{
-            /* Never past either end: 14% of the rail is about half a caption,
-               which is what keeps a flag at 0% or 100% from taking its words
-               off the card. */
-            left: `${Math.min(86, Math.max(14, ((due - from) / span) * 100))}%`,
-            top: RAIL_TOP + 18 + 34,
+            /* Server paint: dead under the flag. After mount the measured
+               value replaces it, moving only when the real text demands. */
+            left:
+              needLeftPx !== null
+                ? `${needLeftPx}px`
+                : `${((due - from) / span) * 100}%`,
+            top: RAIL_TOP + 18,
           }}
         >
           <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
