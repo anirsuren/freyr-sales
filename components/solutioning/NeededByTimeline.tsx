@@ -132,23 +132,23 @@ export function NeededByTimeline({
         : { hue: "#16A34A", text: "text-[color:#16A34A]" };
 
   /**
-   * TWO CAPTIONS, ONE PLACE ON THE RAIL (Anir, Sep 6, with a screenshot of the
-   * words printed on top of each other: "fix this shit. It's on solution
-   * request, but I'm sure it's somewhere else too").
+   * THE TWO CAPTIONS NEVER SHARE A LINE (Anir, Sep 6, twice, the second time
+   * with "this should never happen").
    *
-   * Each caption hangs INWARD from its own marker, which keeps both inside the
-   * card. That is right while the markers are far apart — and unreadable when
-   * they are not. A request raised on Aug 28 and needed by Sep 3 is six days
-   * wide; once it goes a week overdue, today stretches the rail and squeezes
-   * those two dots into the first third of it, so "REQUESTED" was drawn over
-   * "NEEDED BY" and its date over the other date.
+   * Each caption hangs inward from its own marker, which keeps both inside the
+   * card and is fine while the markers are far apart. My first fix stacked
+   * them only when the dots were closer than a third of the rail — a guessed
+   * threshold, and this request cleared it and overlapped anyway: asked Aug 28,
+   * needed Sep 1, today Sep 6 puts the two dots 44% apart, which is wide
+   * enough by that rule and nowhere near wide enough for the words "REQUESTED"
+   * and "NEEDED BY" plus two dates.
    *
-   * When they are closer than a caption is wide, the second one drops to its
-   * own line instead. Nothing moves on the rail; the words just stop sharing a
-   * row. Measured as a share of the span, so it holds at any card width.
+   * The threshold was the bug. Guessing how many pixels a word takes cannot be
+   * made right without measuring the text, so the layout stops depending on
+   * it: Requested owns the first line, Needed by owns the second, always. It
+   * costs one row of height on every request and it cannot collide at any card
+   * width, any font, or any spacing of dates.
    */
-  const gap = Math.abs((due - asked) / span);
-  const stacked = gap < 0.34;
 
   /* Today sitting on a marker at either end of the rail: the flag hugs that
      edge rather than centring past it. */
@@ -192,7 +192,7 @@ export function NeededByTimeline({
           runs the full width and the two circles are laid over it rather than
           bookending it. They carry a white ring, which is what makes them read
           as on top rather than as a break in the line. */}
-      <div className="relative mt-3 h-[64px]">
+      <div className="relative mt-3 h-[118px]">
         <div className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
@@ -234,7 +234,7 @@ export function NeededByTimeline({
           title="Needed by"
           date={label(due)}
           side={due >= asked ? "right" : "left"}
-          row={stacked ? 1 : 0}
+          row={1}
         />
 
         {/* TODAY. The one mark here that is not a plan, so it is always drawn.
@@ -317,7 +317,10 @@ function Marker({
           at any card width. */}
       <span
         className={cn("absolute whitespace-nowrap", side === "left" ? "left-0" : "right-0")}
-        style={{ top: RAIL_TOP + 18 + row * 26 }}
+        /* 36, not 26: a caption is a 10px label over a 13px date and
+           measures 32px tall, so a 26px step still overlapped by six pixels —
+           measured in the browser rather than eyeballed this time. */
+        style={{ top: RAIL_TOP + 18 + row * 36 }}
       >
         <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
           {title}
