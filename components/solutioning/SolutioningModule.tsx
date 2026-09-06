@@ -2141,6 +2141,11 @@ export function NewRequestDialog({
               <input
                 type="date"
                 value={neededBy}
+                /* The past is not offered (Anir, Sep 6: "when I request it,
+                   the needed date should always be in the future"). The
+                   server refuses it too, for anything that bypasses the
+                   picker. */
+                min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setNeededBy(e.target.value)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />

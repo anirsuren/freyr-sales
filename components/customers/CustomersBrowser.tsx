@@ -710,7 +710,21 @@ export function CustomersBrowser({
   const renderCustomerRow = (c: EnrichedCustomer) => {
       const isSel = selected.has(c.id);
       return (
-      <tr key={c.id} className={cn("transition-colors group", isSel ? "bg-blue-light" : "hover:bg-surface")}>
+      <tr
+        key={c.id}
+        /* THE ROW IS THE DOOR (Anir, Sep 6: "why do I gotta hit the arrow in
+           order to do it"). Clicking anywhere opens the account; the name
+           link and the arrow keep working as links, and in select mode a
+           click ticks the box instead, because that is what the mode is
+           for. */
+        onClick={() =>
+          selectMode ? toggleSel(c.id) : router.push(`/customers/${c.id}`)
+        }
+        className={cn(
+          "cursor-pointer transition-colors group",
+          isSel ? "bg-blue-light" : "hover:bg-surface"
+        )}
+      >
         {selectMode && (
           <td className="pl-5 py-4">
             <button
@@ -1328,6 +1342,84 @@ filtered.length === 0 ? (
             />
           ))}
         </div>
+      ) : grouping ? (
+        /* GROUPS AS CARDS, THE GOALS SHAPE (Anir, Sep 6: "the grouping should
+           look exactly like this — the goals page"). One rounded card per
+           group: a header band with the face, the name and the count, folded
+           by a click anywhere on it, and the group's own table inside. The
+           in-table header rows this replaces read as one long table
+           interrupted, which is exactly what he pointed at. */
+        <div className="space-y-3">
+          {groupedRows.map((g) => {
+            const shut = folded.has(g.key);
+            return (
+              <section
+                key={g.key}
+                className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFold(g.key)}
+                  aria-expanded={!shut}
+                  className="flex w-full cursor-pointer select-none items-center gap-2.5 px-5 py-3.5 text-left transition-colors hover:bg-surface/70"
+                >
+                  <ChevronRight
+                    size={15}
+                    strokeWidth={2.2}
+                    className={cn(
+                      "shrink-0 text-text-tertiary transition-transform",
+                      !shut && "rotate-90"
+                    )}
+                  />
+                  {groupBy === "owner" ? (
+                    g.name === UNASSIGNED_OWNER ? (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary">
+                        <Users size={14} strokeWidth={1.8} />
+                      </span>
+                    ) : (
+                      <Avatar name={g.name} className="h-7 w-7 text-[10px]" />
+                    )
+                  ) : (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                      <Building2 size={14} strokeWidth={1.8} />
+                    </span>
+                  )}
+                  <b className="text-[13.5px] text-text-primary">{g.name}</b>
+                  <span className="text-[12px] font-medium text-text-secondary tnum">
+                    {g.rows.length} {g.rows.length === 1 ? "account" : "accounts"}
+                  </span>
+                </button>
+                {!shut && (
+                  <table className="w-full border-t border-border-light text-left">
+                    <thead>
+                      <tr className="bg-surface border-b border-border-light">
+                        {selectMode && <th className="pl-5 py-3 w-8" />}
+                        {["Customer group", "Customer", "Owner"]
+                          .filter(
+                            (h) =>
+                              !(groupBy === "owner" && h === "Owner") &&
+                              !(groupBy === "group" && h === "Customer group")
+                          )
+                          .map((h) => (
+                            <th
+                              key={h}
+                              className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        <th className="px-5 py-3 text-right" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-light">
+                      {g.rows.map(renderCustomerRow)}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            );
+          })}
+        </div>
       ) : (
         <div className="bg-white border border-border-light rounded-lg shadow-card overflow-hidden">
           <PinnableTable id="customers-table" showCornerPin={false}>
@@ -1346,13 +1438,7 @@ filtered.length === 0 ? (
                       owner header repeats that owner; the column was the same
                       word fourteen times under a heading that already said
                       it. */}
-                  {["Customer group", "Customer", "Owner"]
-                    .filter(
-                      (h) =>
-                        !(grouping && groupBy === "owner" && h === "Owner") &&
-                        !(grouping && groupBy === "group" && h === "Customer group")
-                    )
-                    .map((h) => (
+                  {["Customer group", "Customer", "Owner"].map((h) => (
                     <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         {h}
@@ -1365,62 +1451,7 @@ filtered.length === 0 ? (
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light stagger">
-                {grouping
-                  ? groupedRows.map((g) => (
-                      <Fragment key={g.key}>
-                        {/* THE GROUP HEADER (Anir, Sep 6: "in this list view,
-                            could you do the thing where we're grouping these
-                            things... I should be able to group by owner, and
-                            it'll show the profile picture"). Same shape as the
-                            Sales Materials headers: who or what the group is,
-                            how many accounts are in it, and a click to fold it
-                            away. Open by default here — an owner has a handful
-                            of accounts, not twenty-five materials, so arriving
-                            at a page of shut drawers would hide the whole
-                            list. */}
-                        <tr className="bg-surface/70">
-                          <td
-                            colSpan={(selectMode ? 5 : 4) - 1}
-                            className="px-5 py-2.5"
-                          >
-                            <button
-                              onClick={() => toggleFold(g.key)}
-                              aria-expanded={!folded.has(g.key)}
-                              className="flex w-full items-center gap-2 text-left"
-                            >
-                              <ChevronRight
-                                size={14}
-                                strokeWidth={2}
-                                className={cn(
-                                  "shrink-0 text-text-tertiary transition-transform",
-                                  !folded.has(g.key) && "rotate-90"
-                                )}
-                              />
-                              {groupBy === "owner" ? (
-                                g.name === UNASSIGNED_OWNER ? (
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary">
-                                    <Users size={13} strokeWidth={1.8} />
-                                  </span>
-                                ) : (
-                                  <Avatar name={g.name} className="h-6 w-6 text-[10px]" />
-                                )
-                              ) : (
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
-                                  <Building2 size={13} strokeWidth={1.8} />
-                                </span>
-                              )}
-                              <b className="text-[13px] text-text-primary">{g.name}</b>
-                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                                ({g.rows.length}{" "}
-                                {g.rows.length === 1 ? "account" : "accounts"})
-                              </span>
-                            </button>
-                          </td>
-                        </tr>
-                        {!folded.has(g.key) && g.rows.map(renderCustomerRow)}
-                      </Fragment>
-                    ))
-                  : paged.map(renderCustomerRow)}
+                {paged.map(renderCustomerRow)}
               </tbody>
             </table>
           </PinnableTable>
