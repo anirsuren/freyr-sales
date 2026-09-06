@@ -22,6 +22,7 @@ import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/Offering
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -768,17 +769,14 @@ export function FdlComponentsBrowser({
                                 <Download size={14} strokeWidth={2} />
                               </button>
                             </Tooltip>
-                            {canEdit &&
-                              (confirmDelete === component.id ? (
-                                <button
-                                  type="button"
-                                  onClick={() => void removeComponent(component)}
-                                  disabled={busy}
-                                  className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                                >
-                                  Delete?
-                                </button>
-                              ) : (
+                            {canEdit && (
+                              /* THE APP'S OWN CONFIRMATION, not a button that
+                                 turns into the word "Delete?" (Anir, Sep 6:
+                                 "make sure the delete flows for everything are
+                                 good, literally every single type of item").
+                                 The two-step button was easy to press twice by
+                                 accident and said nothing about what goes with
+                                 the component. */
                                 <Tooltip label="Delete this component">
                                   <button
                                     type="button"
@@ -794,7 +792,7 @@ export function FdlComponentsBrowser({
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>
                                 </Tooltip>
-                              ))}
+                            )}
                             <Tooltip label={`Open ${component.name}`}>
                               <Link
                                 href={`/components/${component.id}`}
@@ -876,6 +874,30 @@ export function FdlComponentsBrowser({
           </div>
         </form>
       </Modal>
+
+      {/* One confirmation for the whole list, named after whichever component
+          the red button belongs to. */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          const target = components.find((c) => c.id === confirmDelete);
+          if (target) void removeComponent(target);
+        }}
+        busy={busy}
+        title="Delete this component?"
+        body={
+          <>
+            <b>
+              {components.find((c) => c.id === confirmDelete)?.name ??
+                "This component"}
+            </b>{" "}
+            goes for good, with its versions and its feature list.
+          </>
+        }
+        detail="Offerings that include it keep their own records; they simply stop listing this component."
+        confirmLabel="Delete component"
+      />
     </section>
   );
 }

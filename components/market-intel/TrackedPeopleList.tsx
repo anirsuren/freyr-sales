@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { useRouter } from "next/navigation";
@@ -67,32 +68,8 @@ export function TrackedPeopleList({
       <ul className="mt-2.5 space-y-1">
         {people.map((person) => {
           const posts = personPosts[person.id];
-          const confirming = confirmingId === person.id;
           return (
             <li key={person.id} className="group/person">
-              {confirming ? (
-                <span className="flex items-center gap-2 rounded-lg bg-surface px-2 py-2 text-[12px] font-medium">
-                  <span className="min-w-0 flex-1 truncate text-text-secondary">
-                    Stop following {person.name}?
-                  </span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => stopFollowing(person)}
-                    className="cursor-pointer rounded-full bg-[rgba(220,38,38,0.10)] px-2.5 py-1 font-semibold text-[#DC2626] transition-colors hover:bg-[#DC2626] hover:text-white disabled:opacity-50"
-                  >
-                    {busy ? "Stopping…" : "Stop"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setConfirmingId(null)}
-                    className="cursor-pointer rounded-full border border-border-light bg-white px-2.5 py-1 font-semibold text-text-secondary transition-colors hover:border-blue-subtle"
-                  >
-                    Keep
-                  </button>
-                </span>
-              ) : (
                 <span className="flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-surface">
                   <button
                     type="button"
@@ -140,11 +117,35 @@ export function TrackedPeopleList({
                     <X size={13} strokeWidth={2.4} />
                   </button>
                 </span>
-              )}
             </li>
           );
         })}
       </ul>
+
+      {/* The app's own confirmation, like every other delete (Anir, Sep 6:
+          "make sure the delete flows for everything are good, literally every
+          single type of item"). The row used to turn into a question with two
+          little buttons, which moved the list under the cursor. */}
+      <ConfirmDialog
+        open={!!confirmingId}
+        onClose={() => setConfirmingId(null)}
+        onConfirm={() => {
+          const target = people.find((p) => p.id === confirmingId);
+          if (target) void stopFollowing(target);
+        }}
+        busy={busy}
+        title="Stop following this person?"
+        body={
+          <>
+            <b>
+              {people.find((p) => p.id === confirmingId)?.name ?? "This person"}
+            </b>{" "}
+            stops being watched for new posts.
+          </>
+        }
+        detail="Posts already collected stay. You can start following them again at any time."
+        confirmLabel="Stop following"
+      />
 
       <Modal
         open={!!open}

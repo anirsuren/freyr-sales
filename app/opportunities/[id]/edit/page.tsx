@@ -9,6 +9,7 @@ import {
   canOpenModule,
   moduleWriteRefusal,
   recordWriteRefusal,
+  recordDeleteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 import { readRevenueAccruals } from "@/lib/revenueAccruals";
@@ -134,6 +135,17 @@ export default async function EditDealPage({
     verdict.mayEdit &&
     !(await recordWriteRefusal("/opportunities", { id: deal.id }));
 
+  /* MAY THIS PERSON DELETE THE DEAL (Anir, Sep 6: "on this edit new
+     opportunity screen, we probably need a delete button at the very end.
+     Same for like everything. And make sure to have popup confirmation").
+     Asked exactly the way /api/opportunities asks before it removes one:
+     deleting is its own privilege, not a corner of editing — "the person who
+     can create only can delete; the edit person can only edit, cannot
+     delete." So an editor sees no button rather than a button that 403s. */
+  const mayDelete =
+    verdict.mayEdit &&
+    !(await recordDeleteRefusal("/opportunities", { id: deal.id }));
+
   /**
    * THE ACCRUAL, FOR THE SCHEDULER ON THIS PAGE. Asked the same way the deal
    * page asks it and the same way /api/revenue-accruals asks before it saves,
@@ -177,6 +189,7 @@ export default async function EditDealPage({
         <DealEditScreen
           deal={deal}
           mayEdit={verdict.mayEdit}
+          mayDelete={mayDelete}
           accrual={{
             mayPlan: mayPlanAccrual,
             plan: accrualPlan,

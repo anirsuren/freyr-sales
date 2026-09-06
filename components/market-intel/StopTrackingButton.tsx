@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EyeOff } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 
 /** Two-step untrack on a company the team added — same confirm idiom as
@@ -41,37 +42,34 @@ export function StopTrackingButton({
     }
   }
 
-  if (confirming) {
-    return (
-      <span className="flex items-center gap-2 text-[12.5px] font-medium">
-        <span className="text-text-secondary">Stop tracking {companyName}?</span>
-        <button
-          type="button"
-          onClick={remove}
-          disabled={busy}
-          className="cursor-pointer rounded-full bg-[rgba(220,38,38,0.10)] px-3 py-1 font-semibold text-[#DC2626] transition-colors hover:bg-[#DC2626] hover:text-white disabled:opacity-50"
-        >
-          {busy ? "Stopping…" : "Yes, stop"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setConfirming(false)}
-          disabled={busy}
-          className="cursor-pointer rounded-full border border-border-light bg-white px-3 py-1 font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
-        >
-          Keep it
-        </button>
-      </span>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      onClick={() => setConfirming(true)}
-      className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-[#DC2626] hover:text-[#DC2626]"
-    >
-      <EyeOff size={13} strokeWidth={2} /> Stop tracking
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-[#DC2626] hover:text-[#DC2626]"
+      >
+        <EyeOff size={13} strokeWidth={2} /> Stop tracking
+      </button>
+
+      {/* The app's own confirmation, like every other stop-doing-this control
+          (Anir, Sep 6: "make sure the delete flows for everything are good").
+          It used to swap itself for a row of small words inside the header,
+          which moved the layout under the cursor. */}
+      <ConfirmDialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() => void remove()}
+        busy={busy}
+        title={`Stop tracking ${companyName}?`}
+        body={
+          <>
+            No new signals about <b>{companyName}</b> will come in.
+          </>
+        }
+        detail="Briefings already collected stay where they are. You can start tracking again at any time."
+        confirmLabel="Stop tracking"
+      />
+    </>
   );
 }

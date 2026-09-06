@@ -1,6 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { EditDealDialog } from "./EditDealDialog";
 import { AccrualPlanDialog } from "@/components/accruals/AccrualPlanDialog";
 import type { DealTeam } from "./DealPeople";
@@ -28,6 +32,7 @@ export function DealEditScreen({
   team = null,
   mayChangeTeam = false,
   mayEdit,
+  mayDelete = false,
   why,
   accrual = null,
 }: {
@@ -41,6 +46,8 @@ export function DealEditScreen({
   team?: DealTeam;
   mayChangeTeam?: boolean;
   mayEdit: boolean;
+  /** Deleting is its own privilege, asked the way the route asks it. */
+  mayDelete?: boolean;
   why: string;
   /**
    * THE ACCRUAL SCHEDULE LIVES ON THIS SCREEN NOW.
@@ -59,8 +66,47 @@ export function DealEditScreen({
   } | null;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  /**
+   * DELETING THE DEAL, FROM THE SCREEN YOU OPEN TO CHANGE IT.
+   *
+   * Anir, Sep 6: "on this edit new opportunity screen, we probably need a
+   * delete button at the very end. Same for like everything. And make sure to
+   * have popup confirmation." The list had a remove; the edit screen did not,
+   * so the one place you go to fix a deal was the one place you could not
+   * scrap it.
+   *
+   * Same op the list uses — one route, one set of rules — and the route takes
+   * the deal's accrual plan and its unverified met entries with it.
+   */
+  async function remove() {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "remove", id: deal.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "That didn't delete.");
+      toast(`${deal.name || "The deal"} deleted.`);
+      setConfirming(false);
+      router.push("/opportunities");
+      router.refresh();
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : "That didn't delete.",
+        "error"
+      );
+      setDeleting(false);
+    }
+  }
 
   return (
+    <>
     <EditDealDialog
       asPage
       deal={deal}
@@ -136,6 +182,48 @@ export function DealEditScreen({
         if (!res.ok || data?.error) return data?.error || "That did not save.";
         return null;
       }}
+    >
+      {/* AT THE VERY END, AND RED. Nothing else on this screen is
+          destructive, so it gets its own band rather than sitting in the run
+          of fields — and it asks first. */}
+      {mayDelete && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.04)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-text-primary">
+              Delete this deal
+            </p>
+            <p className="text-[12px] text-text-secondary">
+              It comes off the pipeline and off any goal that counted it.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+          >
+            <Trash2 size={14} strokeWidth={2} />
+            Delete deal
+          </button>
+        </div>
+      )}
+    </EditDealDialog>
+
+    <ConfirmDialog
+      open={confirming}
+      onClose={() => setConfirming(false)}
+      onConfirm={() => void remove()}
+      busy={deleting}
+      tone="destructive"
+      title="Delete this deal?"
+      body={
+        <>
+          <b>{deal.name || "This deal"}</b> comes off the pipeline, and off any
+          goal that counted it as a line item. Its accrual plan goes with it.
+        </>
+      }
+      detail="Results already verified against it stay; they simply stop naming a deal."
+      confirmLabel="Delete deal"
     />
+    </>
   );
 }

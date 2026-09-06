@@ -46,6 +46,7 @@ export function EditDealDialog({
   onClose,
   onSave,
   onSaved,
+  children,
 }: {
   /**
    * RENDER AS A PAGE, NOT A DIALOG.
@@ -109,6 +110,8 @@ export function EditDealDialog({
   onSave?: (patch: Record<string, unknown>) => Promise<string | null>;
   /** Called after a field lands, so the page behind can refresh. */
   onSaved?: () => void;
+  /** Anything that belongs under the form — the delete block, above all. */
+  children?: React.ReactNode;
 }) {
   const editor = (
     <DealOverviewEditor
@@ -125,7 +128,9 @@ export function EditDealDialog({
       mayChangeTeam={mayChangeTeam}
       {...(onSave ? { onSave } : {})}
       {...(onSaved ? { onSaved } : {})}
-    />
+    >
+      {children}
+    </DealOverviewEditor>
   );
 
   if (asPage) return <div className="pb-6">{editor}</div>;
