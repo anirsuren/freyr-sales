@@ -109,7 +109,7 @@ export function OverflowMenu({
                  action or opens a dialog, and either way the menu is done. */
               onClick={() => setOpen(false)}
               style={menuStyle}
-              className="z-[1000] flex flex-col gap-0.5 overflow-y-auto rounded-xl border border-border-light bg-white p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
+              className="overflow-menu-in z-[1000] flex flex-col gap-0.5 overflow-y-auto rounded-xl border border-border-light bg-white p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
             >
               {children}
             </div>

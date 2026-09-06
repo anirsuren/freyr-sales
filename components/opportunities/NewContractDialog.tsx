@@ -1,5 +1,8 @@
 "use client";
 
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { UploadProgress } from "@/components/ui/UploadProgress";
+
 import { useState } from "react";
 import { ArrowLeft, Check, File, FileSpreadsheet, FileText, Loader2, Plus, Presentation, Trash2, UploadCloud, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -48,6 +51,7 @@ type Staged = {
   name: string;
   size: number;
   status: "uploading" | "done" | "error";
+  percent?: number;
   docsPath?: string;
   fileName?: string;
   error?: string;
@@ -122,15 +126,18 @@ export function NewContractDialog({
       const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       setDocs((cur) => [
         ...cur,
-        { key, name: file.name, size: file.size, status: "uploading" },
+        { key, name: file.name, size: file.size, status: "uploading", percent: 0 },
       ]);
       try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch("/api/contracts/upload", { method: "POST", body: fd });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.docsPath)
-          throw new Error(data?.error || "That file did not upload.");
+        const data = await uploadWithProgress<{
+          docsPath?: string;
+          fileName?: string;
+        }>("/api/contracts/upload", file, (percent) =>
+          setDocs((cur) =>
+            cur.map((d) => (d.key === key ? { ...d, percent } : d))
+          )
+        );
+        if (!data?.docsPath) throw new Error("That file did not upload.");
         setDocs((cur) =>
           cur.map((d) =>
             d.key === key
@@ -382,10 +389,12 @@ export function NewContractDialog({
                         >
                           {d.status === "error"
                             ? d.error
-                            : d.status === "uploading"
-                              ? "Uploading…"
-                              : fileSize(d.size)}
+                            : fileSize(d.size)}
                         </span>
+                        {/* The bar, not the word (Anir, Sep 6). */}
+                        {d.status === "uploading" && (
+                          <UploadProgress percent={d.percent ?? 0} className="mt-1.5" />
+                        )}
                       </span>
                       {d.status === "uploading" && (
                         <Loader2 size={14} className="shrink-0 animate-spin text-blue-primary" />

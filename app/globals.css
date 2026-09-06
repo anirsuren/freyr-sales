@@ -697,6 +697,33 @@ select:focus-visible {
 }
 
 /* Modal entrance — backdrop fades in, dialog scales up subtly (premium feel). */
+/* THE OVERFLOW MENU OPENS, it does not just appear (Anir, Sep 6: "make sure
+   when I click this, it's like a proper animation"). It grows from the corner
+   nearest its trigger — the button is top-right of the panel — so the menu
+   reads as coming OUT of the button rather than being dropped on the page.
+   Short and slightly overshooting, the way the app's other openings are. */
+@keyframes overflowMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.overflow-menu-in {
+  animation: overflowMenuIn 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overflow-menu-in {
+    animation: none;
+  }
+}
+
 @keyframes modalIn {
   from {
     opacity: 0;

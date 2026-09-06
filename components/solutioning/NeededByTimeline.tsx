@@ -131,6 +131,25 @@ export function NeededByTimeline({
         ? { hue: "#D97706", text: "text-[color:#D97706]" }
         : { hue: "#16A34A", text: "text-[color:#16A34A]" };
 
+  /**
+   * TWO CAPTIONS, ONE PLACE ON THE RAIL (Anir, Sep 6, with a screenshot of the
+   * words printed on top of each other: "fix this shit. It's on solution
+   * request, but I'm sure it's somewhere else too").
+   *
+   * Each caption hangs INWARD from its own marker, which keeps both inside the
+   * card. That is right while the markers are far apart — and unreadable when
+   * they are not. A request raised on Aug 28 and needed by Sep 3 is six days
+   * wide; once it goes a week overdue, today stretches the rail and squeezes
+   * those two dots into the first third of it, so "REQUESTED" was drawn over
+   * "NEEDED BY" and its date over the other date.
+   *
+   * When they are closer than a caption is wide, the second one drops to its
+   * own line instead. Nothing moves on the rail; the words just stop sharing a
+   * row. Measured as a share of the span, so it holds at any card width.
+   */
+  const gap = Math.abs((due - asked) / span);
+  const stacked = gap < 0.34;
+
   /* Today sitting on a marker at either end of the rail: the flag hugs that
      edge rather than centring past it. */
   const atStart = Math.abs(today - Math.min(asked, due)) < DAY / 2;
@@ -204,6 +223,7 @@ export function NeededByTimeline({
           title="Requested"
           date={label(asked)}
           side={asked <= due ? "left" : "right"}
+          row={0}
         />
 
         {/* DUE — the other real date. */}
@@ -214,6 +234,7 @@ export function NeededByTimeline({
           title="Needed by"
           date={label(due)}
           side={due >= asked ? "right" : "left"}
+          row={stacked ? 1 : 0}
         />
 
         {/* TODAY. The one mark here that is not a plan, so it is always drawn.
@@ -254,6 +275,7 @@ function Marker({
   title,
   date,
   side,
+  row = 0,
 }: {
   left: string;
   hue: string;
@@ -262,6 +284,8 @@ function Marker({
   date: string;
   /** Which way the caption hangs, so the two never overlap in the middle. */
   side: "left" | "right";
+  /** Which line the caption sits on, for markers too close to share one. */
+  row?: 0 | 1;
 }) {
   return (
     <div className="absolute z-10" style={{ left, top: 0 }}>
@@ -293,7 +317,7 @@ function Marker({
           at any card width. */}
       <span
         className={cn("absolute whitespace-nowrap", side === "left" ? "left-0" : "right-0")}
-        style={{ top: RAIL_TOP + 18 }}
+        style={{ top: RAIL_TOP + 18 + row * 26 }}
       >
         <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
           {title}

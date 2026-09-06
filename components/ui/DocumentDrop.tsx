@@ -1,5 +1,8 @@
 "use client";
 
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { UploadProgress } from "./UploadProgress";
+
 import { useState } from "react";
 import {
   Check,
@@ -58,6 +61,8 @@ export type StagedDoc = {
   name: string;
   size: number;
   status: "uploading" | "done" | "error";
+  /** 0-100 while it is going up, so the row can draw a bar. */
+  percent?: number;
   docsPath?: string;
   fileName?: string;
   error?: string;
@@ -112,19 +117,26 @@ export function DocumentDrop({
       const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       setDocs((cur) => [
         ...cur,
-        { key, name: file.name, size: file.size, status: "uploading" },
+        { key, name: file.name, size: file.size, status: "uploading", percent: 0 },
       ]);
       try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch(uploadUrl, { method: "POST", body: fd });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.docsPath)
-          throw new Error(data?.error || "That file did not upload.");
+        /* A BAR, EVERYWHERE (Anir, Sep 6: "whenever I'm uploading something,
+           do that"). This drop zone is the one the contract, meeting and
+           account dialogs all mount, so the percentage arrives in three places
+           at once. */
+        const data = await uploadWithProgress<{
+          docsPath?: string;
+          fileName?: string;
+        }>(uploadUrl, file, (percent) =>
+          setDocs((cur) =>
+            cur.map((d) => (d.key === key ? { ...d, percent } : d))
+          )
+        );
+        if (!data?.docsPath) throw new Error("That file did not upload.");
         setDocs((cur) =>
           cur.map((d) =>
             d.key === key
-              ? { ...d, status: "done", docsPath: data.docsPath, fileName: data.fileName }
+              ? { ...d, status: "done", percent: 100, docsPath: data.docsPath, fileName: data.fileName }
               : d
           )
         );
@@ -216,12 +228,14 @@ export function DocumentDrop({
                         d.status === "error" ? "text-error" : "text-text-tertiary"
                       }`}
                     >
-                      {d.status === "error"
-                        ? d.error
-                        : d.status === "uploading"
-                          ? "Uploading…"
-                          : fileSize(d.size)}
+                      {d.status === "error" ? d.error : fileSize(d.size)}
                     </span>
+                    {/* The bar replaces the word (Anir, Sep 6). It sits under
+                        the filename so a row that is going up says which file
+                        and how far, in one place. */}
+                    {d.status === "uploading" && (
+                      <UploadProgress percent={d.percent ?? 0} className="mt-1.5" />
+                    )}
                   </span>
                   {d.status === "uploading" && (
                     <Loader2 size={14} className="shrink-0 animate-spin text-blue-primary" />

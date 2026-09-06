@@ -95,6 +95,24 @@ export function Sidebar({
       isReleased(item.href, dataMode) &&
       canAccessModuleWith(item.href, currentUser.role, moduleAccess)
   );
+  /**
+   * IS THIS THE DEV SITE? Read from the browser's own address after mount,
+   * not from an env var: the same image serves dev and prod, so anything
+   * baked at build time would be wrong on one of them. Set in an effect so
+   * the server's HTML and the client's first paint match, then the tag
+   * appears in the same frame the browser was going to paint anyway.
+   */
+  const [isDev, setIsDev] = useState(false);
+  useEffect(() => {
+    const host = window.location.hostname.toLowerCase();
+    setIsDev(
+      host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".localhost") ||
+        host.includes(".dev.")
+    );
+  }, []);
+
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);
@@ -325,12 +343,31 @@ export function Sidebar({
           />
           {!collapsed && (
             <span className="leading-none">
-              <span className="block text-[18px] font-bold text-text-primary leading-none">
-                Freyr
+              <span className="flex items-center gap-1.5 leading-none">
+                <span className="block text-[18px] font-bold text-text-primary leading-none">
+                  Freyr
+                </span>
+                {/* WHICH SITE AM I ON (Anir, Sep 6: "when I'm on dev, whether
+                    it's local or actual dev, I need to see a dev tag where it
+                    says 'Freyr Sales Intelligence'. It has to be clear that
+                    I'm on dev"). Since the split the two instances look
+                    identical, and dev is a retired clone holding the same 41
+                    people — typing into the wrong one is a real mistake to
+                    make. Amber, not red: this is a place, not a problem. */}
+                {isDev && (
+                  <span className="rounded-md bg-[rgba(217,119,6,0.12)] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em] text-[color:#B45309]">
+                    Dev
+                  </span>
+                )}
               </span>
               <span className="block text-[10px] font-semibold tracking-[0.12em] text-text-tertiary mt-1">
                 SALES INTELLIGENCE
               </span>
+            </span>
+          )}
+          {collapsed && isDev && (
+            <span className="rounded bg-[rgba(217,119,6,0.12)] px-1 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:#B45309]">
+              Dev
             </span>
           )}
         </Link>

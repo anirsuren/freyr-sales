@@ -38,6 +38,9 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { ActionBar, type BarAction } from "@/components/ui/ActionBar";
+import { UploadProgress } from "@/components/ui/UploadProgress";
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   OverflowMenu,
   OVERFLOW_ITEM,
@@ -497,91 +500,96 @@ export function RequestDetail({
                 ? { label: "Reopen", icon: RotateCcw, run: () => post({ op: "reopen" }) }
                 : null;
 
-          /* Anything the primary did not take. */
-          const menu: React.ReactNode[] = [];
+          /**
+           * TWO BUTTONS, THEN THE THREE DOTS (Anir, Sep 6: "I don't like how
+           * all the buttons are in these three dots. I think you should have
+           * two buttons and then the three dots").
+           *
+           * Everything except the primary used to go straight into the menu,
+           * and on an in-progress request somebody else owns there IS no
+           * primary — so all five actions hid behind one glyph and the ordinary
+           * ones cost two clicks. The list stays in priority order; ActionBar
+           * draws the first couple and pockets the rest. Delete is never
+           * promoted, wherever it sits in the list.
+           */
+          const actions: BarAction[] = [];
+          if (primary)
+            actions.push({
+              key: "primary",
+              label: primary.label,
+              icon: primary.icon,
+              onClick: () => void primary.run(),
+              primary: true,
+              disabled: busy,
+            });
           if (mayEdit)
-            menu.push(
-              <button key="edit" type="button" disabled={busy} onClick={openEdit} className={OVERFLOW_ITEM}>
-                <Pencil size={14} strokeWidth={2.2} /> Edit
-              </button>
-            );
-          if (mayCreateWork && primary?.label !== `Create ${r.kind === "submission" ? "submission" : "presentation"}`)
-            menu.push(
-              <button key="create" type="button" disabled={busy} onClick={() => void createWork()} className={OVERFLOW_ITEM}>
-                <Plus size={14} strokeWidth={2.2} />
-                Create {r.kind === "submission" ? "submission" : "presentation"}
-              </button>
-            );
-          if (mayHandBack)
-            menu.push(
-              <button key="release" type="button" disabled={busy} onClick={() => void post({ op: "release" })} className={OVERFLOW_ITEM}>
-                <Undo2 size={14} strokeWidth={2.2} /> Hand it back
-              </button>
-            );
+            actions.push({
+              key: "edit",
+              label: "Edit",
+              icon: Pencil,
+              onClick: openEdit,
+              disabled: busy,
+            });
           if (mayComplete)
-            menu.push(
-              <button
-                key="complete"
-                type="button"
-                disabled={busy}
-                title={iRequested ? "You asked for this, so you close it" : `Closing on ${r.requestedBy}'s behalf`}
-                onClick={() => setConfirmComplete(true)}
-                className={OVERFLOW_ITEM}
-              >
-                <Check size={14} strokeWidth={2.4} /> Mark it completed
-              </button>
-            );
+            actions.push({
+              key: "complete",
+              label: "Mark it completed",
+              icon: Check,
+              onClick: () => setConfirmComplete(true),
+              disabled: busy,
+              title: iRequested
+                ? "You asked for this, so you close it"
+                : `Closing on ${r.requestedBy}'s behalf`,
+            });
+          if (
+            mayCreateWork &&
+            primary?.label !==
+              `Create ${r.kind === "submission" ? "submission" : "presentation"}`
+          )
+            actions.push({
+              key: "create",
+              label: `Create ${r.kind === "submission" ? "submission" : "presentation"}`,
+              icon: Plus,
+              onClick: () => void createWork(),
+              disabled: busy,
+            });
+          if (mayHandBack)
+            actions.push({
+              key: "release",
+              label: "Hand it back",
+              icon: Undo2,
+              onClick: () => void post({ op: "release" }),
+              disabled: busy,
+            });
           if (mayCancel)
-            menu.push(
-              <button
-                key="cancel"
-                type="button"
-                disabled={busy}
-                title="Stop this work and keep it in history"
-                onClick={() => setConfirmCancel(true)}
-                className={OVERFLOW_ITEM}
-              >
-                <Undo2 size={14} strokeWidth={2.2} /> Cancel it
-              </button>
-            );
+            actions.push({
+              key: "cancel",
+              label: "Cancel it",
+              icon: Undo2,
+              onClick: () => setConfirmCancel(true),
+              disabled: busy,
+              title: "Stop this work and keep it in history",
+            });
           if (mayReopen && primary?.label !== "Reopen")
-            menu.push(
-              <button key="reopen" type="button" disabled={busy} onClick={() => void post({ op: "reopen" })} className={OVERFLOW_ITEM}>
-                <RotateCcw size={14} strokeWidth={2.2} /> Reopen
-              </button>
-            );
+            actions.push({
+              key: "reopen",
+              label: "Reopen",
+              icon: RotateCcw,
+              onClick: () => void post({ op: "reopen" }),
+              disabled: busy,
+            });
           if (mayDelete)
-            menu.push(
-              <button
-                key="delete"
-                type="button"
-                disabled={busy}
-                onClick={() => setConfirmDelete(true)}
-                className={OVERFLOW_ITEM_DANGER}
-              >
-                <Trash2 size={14} strokeWidth={2.2} /> Delete this request
-              </button>
-            );
+            actions.push({
+              key: "delete",
+              label: "Delete this request",
+              icon: Trash2,
+              onClick: () => setConfirmDelete(true),
+              danger: true,
+              disabled: busy,
+            });
 
-          if (!primary && menu.length === 0) return null;
-          const PrimaryIcon = primary?.icon;
           return (
-            <div className="flex shrink-0 items-center gap-2">
-              {primary && PrimaryIcon && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void primary.run()}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  <PrimaryIcon size={14} strokeWidth={2.4} />
-                  {primary.label}
-                </button>
-              )}
-              {menu.length > 0 && (
-                <OverflowMenu label={`More actions for ${r.ref}`}>{menu}</OverflowMenu>
-              )}
-            </div>
+            <ActionBar actions={actions} menuLabel={`More actions for ${r.ref}`} />
           );
         })()}
       </div>
@@ -1733,7 +1741,21 @@ function AddDocForm({
   onCancel: () => void;
   onAdd: (input: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const [mode, setMode] = useState<"new" | "link">("new");
+  /**
+   * TWO WAYS IN, NOT FOUR (Anir, Sep 6: "this is the ugliest thing ever and
+   * the most confusing thing ever. There should be two options: either upload
+   * a file or link. I understand your confusion because there are technically
+   * four options, but you just have to make it better").
+   *
+   * He is right about the four: upload the bytes, paste a web link, or point
+   * at a document that already exists on another request — and I had drawn
+   * them as two separate tab strips stacked on each other, which is two
+   * questions to answer before the form even starts. But two of those three
+   * are the same answer to the same question: this document lives somewhere
+   * else and I am pointing at it. So there is one strip with two choices, and
+   * the link side offers both kinds of link in one panel.
+   */
+  const [mode, setMode] = useState<"upload" | "link">("upload");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -1745,31 +1767,40 @@ function AddDocForm({
   const [refDocId, setRefDocId] = useState("");
   /* THE FILE ITSELF, not a link to it somewhere else. */
   const [file, setFile] = useState<{ docsPath: string; fileName: string } | null>(null);
-  /** Upload the bytes, or point at a copy that lives somewhere else. */
-  const [source, setSource] = useState<"upload" | "url">("upload");
   const [uploading, setUploading] = useState(false);
+  const [percent, setPercent] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  /* WITH A BAR, NOT A WORD (Anir, Sep 6: "I need the same UI when I'm
+     uploading something, like the progress bar. You do it somewhere else.
+     Whenever I'm uploading something, do that"). Sales materials has shown one
+     since August; this said "Uploading…" and nothing else, which on a large
+     RFP pack is indistinguishable from a frozen dialog. Same transport, same
+     bar. */
   const pickFile = async (chosen: File) => {
     setUploading(true);
+    setPercent(0);
     setUploadError(null);
     try {
-      const form = new FormData();
-      form.append("file", chosen);
-      const res = await fetch(
+      const data = await uploadWithProgress<{
+        docsPath?: string;
+        fileName?: string;
+      }>(
         `/api/solutioning/upload?requestId=${encodeURIComponent(requestId)}`,
-        { method: "POST", body: form }
+        chosen,
+        setPercent
       );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.docsPath) {
-        setUploadError(data.error || "That file did not upload.");
+      if (!data?.docsPath || !data.fileName) {
+        setUploadError("That file did not upload.");
         return;
       }
       setFile({ docsPath: data.docsPath, fileName: data.fileName });
       /* Name the document after the file unless somebody already typed one. */
-      setName((current) => current || data.fileName.replace(/\.[^.]+$/, ""));
-    } catch {
-      setUploadError("That file did not upload.");
+      setName((current) => current || data.fileName!.replace(/\.[^.]+$/, ""));
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "That file did not upload."
+      );
     } finally {
       setUploading(false);
     }
@@ -1800,36 +1831,41 @@ function AddDocForm({
         {tabHint}
       </p>
       <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
-        <button
-          type="button"
-          onClick={() => setMode("new")}
-          className={cn(
-            "rounded-md px-2.5 py-1 transition-colors",
-            mode === "new"
-              ? "bg-white text-blue-primary shadow-card"
-              : "text-text-secondary hover:text-text-primary"
-          )}
-        >
-          New document
-        </button>
-        {/* "As part of a meeting a person can refer to a document that was
-            created as part of a presentation request" — the link path. */}
-        <button
-          type="button"
-          onClick={() => setMode("link")}
-          className={cn(
-            "rounded-md px-2.5 py-1 transition-colors",
-            mode === "link"
-              ? "bg-white text-blue-primary shadow-card"
-              : "text-text-secondary hover:text-text-primary"
-          )}
-        >
-          Link from another request
-        </button>
+        {([
+          { key: "upload" as const, label: "Upload a file", icon: UploadCloud },
+          { key: "link" as const, label: "Link to a document", icon: Link2 },
+        ]).map((choice) => (
+          <button
+            key={choice.key}
+            type="button"
+            onClick={() => {
+              setMode(choice.key);
+              /* Switching sides clears the other side's answer, so a saved
+                 document can never carry a file AND a link. */
+              if (choice.key === "upload") {
+                setUrl("");
+                setRefRequestId("");
+                setRefDocId("");
+              } else {
+                setFile(null);
+                setUploadError(null);
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors",
+              mode === choice.key
+                ? "bg-white text-blue-primary shadow-card"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            <choice.icon size={13} strokeWidth={2} />
+            {choice.label}
+          </button>
+        ))}
       </div>
 
       <div className="min-h-[420px]">
-      {mode === "new" ? (
+      {mode === "upload" ? (
         /* THE SALES MATERIALS SHAPE (Anir, Aug 28: "this is the worst UI I've
            ever seen. Make it look more like the Offering Sales Materials
            UI").
@@ -1843,56 +1879,6 @@ function AddDocForm({
            because attaching one is the point, then what to call it, then the
            optional details. Real labels on everything. */
         <div className="space-y-3">
-          {/* WHERE THE DOCUMENT COMES FROM, DECIDED FIRST (Anir, Sep 6: "why
-              are you putting the link there at the end? Shouldn't that be up
-              top, where they either choose an upload file or a link?").
-
-              It was a URL box below the note, appearing only when no file was
-              attached — so the second of the two ways to add a document was
-              hidden underneath the first one and read as an afterthought.
-              They are two answers to the same question, so they are offered
-              together, before anything else is filled in. */}
-          <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
-            {([
-              { key: "upload" as const, label: "Upload a file", icon: UploadCloud },
-              { key: "url" as const, label: "Link to a file elsewhere", icon: Link2 },
-            ]).map((choice) => (
-              <button
-                key={choice.key}
-                type="button"
-                onClick={() => {
-                  setSource(choice.key);
-                  /* Switching sides clears the other side's answer, so the
-                     saved document can never carry both a file and a link. */
-                  if (choice.key === "upload") setUrl("");
-                  else {
-                    setFile(null);
-                    setUploadError(null);
-                  }
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors",
-                  source === choice.key
-                    ? "bg-white text-blue-primary shadow-card"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                <choice.icon size={13} strokeWidth={2} />
-                {choice.label}
-              </button>
-            ))}
-          </div>
-
-          {source === "url" ? (
-            <Field label="Link to the document">
-              <Input
-                autoFocus
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://… SharePoint, Drive, anywhere"
-              />
-            </Field>
-          ) : (
           <label
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors",
@@ -1945,6 +1931,9 @@ function AddDocForm({
               </>
             )}
           </label>
+
+          {uploading && (
+            <UploadProgress percent={percent} className="px-0.5" />
           )}
 
           {uploadError && (
@@ -2005,21 +1994,66 @@ function AddDocForm({
             />
           </Field>
         </div>
-      ) : linkables.length === 0 ? (
-        /* A DESIGNED EMPTY STATE, NOT A VOID (Anir, Aug 28: "now this just
-           looks weird"). Pinning the height stopped the dialog resizing, but
-           wrapping one grey sentence in a dashed box the size of the whole
-           form just made the emptiness the loudest thing on screen. Same
-           EmptyState the rest of the app uses: a mark, a heading, a line, and
-           nothing drawn around the space it does not need. */
-        <div className="flex h-full items-center justify-center">
-          <EmptyState
-            icon={Link2}
-            title="Nothing to link yet"
-            description="Documents built on another request show up here. There are none on any other request so far."
-          />
-        </div>
       ) : (
+        /* ONE PANEL FOR BOTH KINDS OF LINK. A web address and a document that
+           already lives on another request are the same answer — this document
+           is somewhere else — so they are offered together rather than as two
+           more tabs. Whichever one is filled in is the one that saves. */
+        <div className="space-y-4">
+          <Field label="Paste a web link">
+            <Input
+              autoFocus
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                /* The two link kinds are exclusive: typing an address drops
+                   whatever document was picked below. */
+                if (e.target.value.trim()) {
+                  setRefRequestId("");
+                  setRefDocId("");
+                }
+              }}
+              placeholder="https://… SharePoint, Drive, anywhere"
+            />
+          </Field>
+
+          {url.trim() ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_96px]">
+              <Field label="Document name">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={tabExample}
+                />
+              </Field>
+              <Field label="Version">
+                <Input
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value.replace(/[^0-9]/g, ""))}
+                  inputMode="numeric"
+                  aria-label="Version number"
+                />
+              </Field>
+            </div>
+          ) : null}
+
+          {/* The other kind of link, under a rule so it reads as the second
+              option rather than more fields for the first. */}
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border-light" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+              or point at one we already have
+            </span>
+            <span className="h-px flex-1 bg-border-light" />
+          </div>
+
+          {linkables.length === 0 ? (
+            <EmptyState
+              icon={Link2}
+              title="Nothing to point at yet"
+              description="Documents built on another request show up here. There are none on any other request so far."
+            />
+          ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ColorSelect
             value={refRequestId}
@@ -2112,12 +2146,18 @@ function AddDocForm({
               </span>
             </span>
           ) : null}
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Why it's here (optional)"
-            className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus sm:col-span-2"
-          />
+        </div>
+          )}
+
+          <Field label="Note">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              placeholder="Why it's here (optional)"
+              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white focus:outline-none"
+            />
+          </Field>
         </div>
       )}
 
@@ -2139,11 +2179,13 @@ function AddDocForm({
           disabled={
             busy ||
             uploading ||
-            (mode === "new" ? !name.trim() : !refRequestId || !refDocId)
+            (mode === "link" && refDocId
+              ? !refRequestId
+              : !name.trim())
           }
           onClick={() =>
             onAdd(
-              mode === "new"
+              !(mode === "link" && refDocId)
                 ? {
                     name: name.trim(),
                     version: Number(version) || 1,
