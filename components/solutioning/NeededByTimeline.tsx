@@ -220,8 +220,19 @@ export function NeededByTimeline({
             The deadline caption is centred on its marker and CLAMPED to the
             rail, so a request due today — flag hard right — keeps its date on
             the card instead of hanging off the edge. */}
+        {/* OUT TO THE CARD'S EDGE, not the rail's plotting inset (Anir,
+            Sep 6, drawing an R on the screenshot: "this is where REQUESTED
+            should start... that's going to free up so much more space").
+
+            Everything on this rail is plotted inside an 11px inset — one
+            marker radius — so a dot at 0% keeps its whole circle on the card.
+            The caption inherited that inset AND `left-0`, which is the dot's
+            CENTRE, so the words started half a marker in from where the line
+            visibly begins. The track itself already reaches back out over the
+            inset with -left-[11px]; the caption does the same now, so it
+            starts where the rail starts. */}
         <span
-          className="absolute left-0 whitespace-nowrap"
+          className="absolute -left-[11px] whitespace-nowrap"
           style={{ top: RAIL_TOP + 18 }}
         >
           <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
