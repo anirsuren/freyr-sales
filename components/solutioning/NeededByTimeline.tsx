@@ -131,25 +131,6 @@ export function NeededByTimeline({
         ? { hue: "#D97706", text: "text-[color:#D97706]" }
         : { hue: "#16A34A", text: "text-[color:#16A34A]" };
 
-  /**
-   * THE TWO CAPTIONS NEVER SHARE A LINE (Anir, Sep 6, twice, the second time
-   * with "this should never happen").
-   *
-   * Each caption hangs inward from its own marker, which keeps both inside the
-   * card and is fine while the markers are far apart. My first fix stacked
-   * them only when the dots were closer than a third of the rail — a guessed
-   * threshold, and this request cleared it and overlapped anyway: asked Aug 28,
-   * needed Sep 1, today Sep 6 puts the two dots 44% apart, which is wide
-   * enough by that rule and nowhere near wide enough for the words "REQUESTED"
-   * and "NEEDED BY" plus two dates.
-   *
-   * The threshold was the bug. Guessing how many pixels a word takes cannot be
-   * made right without measuring the text, so the layout stops depending on
-   * it: Requested owns the first line, Needed by owns the second, always. It
-   * costs one row of height on every request and it cannot collide at any card
-   * width, any font, or any spacing of dates.
-   */
-
   /* Today sitting on a marker at either end of the rail: the flag hugs that
      edge rather than centring past it. */
   const atStart = Math.abs(today - Math.min(asked, due)) < DAY / 2;
@@ -192,7 +173,7 @@ export function NeededByTimeline({
           runs the full width and the two circles are laid over it rather than
           bookending it. They carry a white ring, which is what makes them read
           as on top rather than as a break in the line. */}
-      <div className="relative mt-3 h-[118px]">
+      <div className="relative mt-3 h-[86px]">
         <div className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
@@ -216,26 +197,59 @@ export function NeededByTimeline({
         />
 
         {/* ASKED — a real date, so it gets a dot. */}
-        <Marker
-          left={at(asked)}
-          hue="var(--ink-bright-blue)"
-          icon={Inbox}
-          title="Requested"
-          date={label(asked)}
-          side={asked <= due ? "left" : "right"}
-          row={0}
-        />
+        <Marker left={at(asked)} hue="var(--ink-bright-blue)" icon={Inbox} />
 
         {/* DUE — the other real date. */}
-        <Marker
-          left={at(due)}
-          hue={tone.hue}
-          icon={Flag}
-          title="Needed by"
-          date={label(due)}
-          side={due >= asked ? "right" : "left"}
-          row={1}
-        />
+        <Marker left={at(due)} hue={tone.hue} icon={Flag} />
+
+        {/* THE TWO CAPTIONS SIT AT THE TWO ENDS, ON ONE LINE.
+            (Anir, Sep 6: "that's not good... you can definitely fit 'needed
+            by' there.")
+
+            They used to hang inward from their own dots, which collides the
+            moment the dots are close — and stacking them onto two lines, my
+            last answer, looked exactly as bad as he says. The width was never
+            the problem: the card is hundreds of pixels wide and the two
+            captions are under 90px each. It was the anchoring. Pinned to the
+            ends of the rail instead, they cannot collide at any date spacing,
+            they read the way a timeline reads — start on the left, deadline on
+            the right — and the dots still carry which is which, in their own
+            colours, with the elapsed bar running between them.
+
+            The pair swaps sides if a request is somehow needed before it was
+            asked for, so the labels always follow the rail's direction. */}
+        {(
+          [
+            {
+              key: "asked",
+              title: "Requested",
+              date: label(asked),
+              edge: asked <= due ? "left" : "right",
+            },
+            {
+              key: "due",
+              title: "Needed by",
+              date: label(due),
+              edge: due >= asked ? "right" : "left",
+            },
+          ] as const
+        ).map((c) => (
+          <span
+            key={c.key}
+            className={cn(
+              "absolute whitespace-nowrap",
+              c.edge === "left" ? "left-0 text-left" : "right-0 text-right"
+            )}
+            style={{ top: RAIL_TOP + 18 }}
+          >
+            <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+              {c.title}
+            </span>
+            <span className="block text-[11.5px] font-semibold tnum text-text-primary">
+              {c.date}
+            </span>
+          </span>
+        ))}
 
         {/* TODAY. The one mark here that is not a plan, so it is always drawn.
             It hugs whichever end it sits at, for the same reason the captions
@@ -272,20 +286,10 @@ function Marker({
   left,
   hue,
   icon: Icon,
-  title,
-  date,
-  side,
-  row = 0,
 }: {
   left: string;
   hue: string;
   icon: typeof Inbox;
-  title: string;
-  date: string;
-  /** Which way the caption hangs, so the two never overlap in the middle. */
-  side: "left" | "right";
-  /** Which line the caption sits on, for markers too close to share one. */
-  row?: 0 | 1;
 }) {
   return (
     <div className="absolute z-10" style={{ left, top: 0 }}>
@@ -304,30 +308,6 @@ function Marker({
         style={{ top: RAIL_TOP - 8, background: hue, color: "#FFFFFF" }}
       >
         <Icon size={12} strokeWidth={2.4} />
-      </span>
-      {/* THE CAPTION HANGS INWARD FROM ITS MARKER (found in the browser,
-          Aug 28: the rail's two markers sit at the very ends of a 340px card,
-          and centring each caption on its marker pushed half of both outside
-          the card — the left one read "QUESTED / 1 28, 2026" and the right one
-          lost its year).
-
-          So neither caption is centred: the first one's LEFT edge starts at
-          its marker and reads rightward, the last one's RIGHT edge ends at its
-          marker and reads leftward. Both stay inside the rail they describe,
-          at any card width. */}
-      <span
-        className={cn("absolute whitespace-nowrap", side === "left" ? "left-0" : "right-0")}
-        /* 36, not 26: a caption is a 10px label over a 13px date and
-           measures 32px tall, so a 26px step still overlapped by six pixels —
-           measured in the browser rather than eyeballed this time. */
-        style={{ top: RAIL_TOP + 18 + row * 36 }}
-      >
-        <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-          {title}
-        </span>
-        <span className="block text-[11.5px] font-semibold tnum text-text-primary">
-          {date}
-        </span>
       </span>
     </div>
   );
