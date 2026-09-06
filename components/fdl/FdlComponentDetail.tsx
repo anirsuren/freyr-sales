@@ -1755,7 +1755,13 @@ export function FdlComponentDetail({
           ) : (
             <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
           )}
-          <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>
+          {/* leading-none so the name's box hugs its glyphs: with the default
+              1.5 line-height the h1 carried empty descender space below the
+              letters, which pushed the type chip beside it visibly high
+              (Anir, Sep 6: "look at where it says 'Module.' It's not really in
+              line with Data Hub"). Centring was already correct — it was
+              centring on a box taller than the word. */}
+          <h1 className="text-[22px] font-bold leading-none text-text-primary">{component.name}</h1>
           <FdlTypeChip type={component.type} />
           {current && (
             <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[color:var(--ink-blue)]">
@@ -1802,11 +1808,21 @@ export function FdlComponentDetail({
             created these FDL components, including the time"). Silent on the
             components that predate the field — every one of them is older than
             the record of who made it. */}
-        <CreatedStamp
-          by={component.created_by}
-          at={component.created_at}
-          className="mt-1.5 pl-[52px] text-[11.5px] text-text-tertiary"
-        />
+        {/* ONE META LINE, NOT TWO (Anir, Sep 6: "you say 'Added by this
+            person,' and then under that, you say 'Not connected to an
+            offering.' That's taking up too much space"). He still wants the
+            attribution — "I do kind of need it" — so it moves in beside the
+            offering line rather than being cut. Both are the same kind of
+            fact: small print about the record, under its name. */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[52px]">
+          <CreatedStamp
+            by={component.created_by}
+            at={component.created_at}
+            className="text-[11.5px] text-text-tertiary"
+          />
+          <span className="text-border-light" aria-hidden>
+            |
+          </span>
         {/* THE OFFERING WEARS ITS OWN MARK, AND THE ACTION LOOKS LIKE ONE
             (Anir, Aug 9: "that part that says Freya.Register should be in a
             pill with the icon... the Add to an Offering button, I don't even
@@ -1814,8 +1830,7 @@ export function FdlComponentDetail({
             That doesn't look good right now"). A blue word in a grey sentence
             beside another blue word gave a link and a button the same
             appearance, so neither read as what it was. */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <span className="text-[12.5px] text-text-secondary">
+          <span className="text-[11.5px] text-text-secondary">
             {homes.length > 0 ? "Part of" : "Not connected to an offering yet."}
           </span>
           {homes.map((h) => (
@@ -1836,9 +1851,9 @@ export function FdlComponentDetail({
                 setAddingOffering(true);
               }}
               title="Put this component inside an offering, so it sells as part of that package"
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-light bg-white px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
             >
-              <Plus size={12} strokeWidth={2.4} />
+              <Plus size={11} strokeWidth={2.4} />
               Add to an offering
             </button>
           )}
@@ -3206,7 +3221,17 @@ export function FdlComponentDetail({
               event.stopPropagation();
               toggleCompare();
             }}
-            className="flex min-h-[38px] cursor-pointer select-none items-start justify-between gap-4"
+            /* CENTRED, LIKE EVERY OTHER FOLD CARD (Anir, Sep 6: "the Compare
+               Versions looks a little odd. Why is it so tall?... look at the
+               Customers Running This dropdown, which looks good... maybe the
+               issue is just that it's not centered"). It was items-start, so
+               the heading pinned itself to the top of the 38px band and left
+               the rest of the band empty underneath — the card was the same
+               height as its neighbour but read as taller because the words
+               sat high in it. The sentence below the heading only exists
+               while the card is open, so centring is correct in both
+               states. */
+            className="flex min-h-[38px] cursor-pointer select-none items-center justify-between gap-4"
           >
             <div>
               <div className="flex min-w-0 items-center gap-2">

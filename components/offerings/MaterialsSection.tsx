@@ -1535,7 +1535,16 @@ export function MaterialsSection({
                       </div>
                     </td>
                     <td className="px-4 py-4 align-middle">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
+                        {/* CLOSER TOGETHER (Anir, Sep 6: "just move those
+                            closer to each other, because the X is literally
+                            almost off the screen... it gets almost off the
+                            table"). Five 32px targets on a 4px pitch filled
+                            the column edge to edge, so the last one — the
+                            destructive one — sat against the table's own
+                            border. Smaller targets on a tighter pitch leave
+                            the run clear of the edge without moving the
+                            column, which stays left-aligned. */}
                         <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
                           <button
                             type="button"
@@ -1543,7 +1552,7 @@ export function MaterialsSection({
                             onClick={() => uploaded
                               ? window.open(materialPreviewUrl(material), "_blank", "noopener,noreferrer")
                               : window.open(material.url, "_blank", "noopener,noreferrer")}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                           ><ExternalLink size={14} strokeWidth={1.9} /></button>
                         </Tooltip>
                         <Tooltip
@@ -1554,7 +1563,7 @@ export function MaterialsSection({
                               type="button"
                               aria-label={`Download ${material.label}`}
                               onClick={() => downloadMaterialCopy(material)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                             ><Download size={14} strokeWidth={1.9} /></button>
                         </Tooltip>
                         {offeringId && (
@@ -1570,7 +1579,7 @@ export function MaterialsSection({
                               type="button"
                               aria-label={`Remove ${material.label}`}
                               onClick={() => setPendingRemoval(material)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
                             ><X size={14} strokeWidth={2.2} /></button>
                           </Tooltip>
                         )}

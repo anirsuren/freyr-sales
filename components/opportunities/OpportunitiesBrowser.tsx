@@ -3589,7 +3589,7 @@ export function OpportunitiesBrowser({
             that counted it as a line item.
           </>
         }
-        detail="Results already logged against it stay; they simply stop naming a deal."
+        detail="Results already logged on it stay; they simply stop naming a deal."
         confirmLabel="Remove opportunity"
       />
 

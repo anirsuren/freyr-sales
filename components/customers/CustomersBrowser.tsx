@@ -16,14 +16,14 @@ import {
   type Timeline,
 } from "@/components/opportunities/OpportunitySummary";
 import { TabActions } from "./TabActions";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2 } from "lucide-react";
+import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2, Layers, UserRound, CircleSlash, History } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -172,6 +172,10 @@ function moneyShort(n: number): string {
   return fmtMoney(n);
 }
 
+/** Group labels for the rows that have nobody and nothing on them. */
+const UNASSIGNED_OWNER = "Unassigned";
+const NO_CUSTOMER_GROUP = "No customer group";
+
 export function CustomersBrowser({
   customers,
   includeDemoTeam,
@@ -198,6 +202,20 @@ export function CustomersBrowser({
   const [query, setQuery] = useState("");
 
   const [sort, setSort] = useState("recent");
+  /* GROUPING (Anir, Sep 6: "I should be able to group by owner, and it'll show
+     the profile picture"). Deliberately NOT persisted the way `view` is: it
+     changes the shape of the list so much that inheriting yesterday's choice
+     on arrival would look like the page had broken. It rides in the URL, so a
+     grouped list is still a link you can send someone. */
+  const [groupBy, setGroupBy] = useState<"none" | "owner" | "group">("none");
+  const [folded, setFolded] = useState<Set<string>>(new Set());
+  const toggleFold = (key: string) =>
+    setFolded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   /**
    * THE LIST IS THE PAGE (Manoj, Sep 3: "In Customers, we will only need
    * 'Customer Group', 'Customer' and 'Owner'. Remove opportunities, tiles, and
@@ -376,9 +394,13 @@ export function CustomersBrowser({
     const nextView = params.get("view");
     setQuery(params.get("q") || "");
     setSort(
-      ["recent", "company", "size", "health"].includes(nextSort)
+      ["recent", "updated", "company", "size", "health"].includes(nextSort)
         ? nextSort
         : "recent"
+    );
+    const nextGroup = params.get("group");
+    setGroupBy(
+      nextGroup === "owner" || nextGroup === "group" ? nextGroup : "none"
     );
     if (nextView === "table" || nextView === "grid") setView(nextView);
     setPage(1);
@@ -400,6 +422,7 @@ export function CustomersBrowser({
     setOrDelete("q", query, "");
     setOrDelete("sort", sort, "recent");
     setOrDelete("view", view, "grid");
+    setOrDelete("group", groupBy, "none");
     url.searchParams.delete("page");
     setOrDelete("per_page", Number.isFinite(perPage) ? String(perPage) : "all", "all");
     window.history.replaceState(null, "", url.toString());
@@ -436,6 +459,17 @@ export function CustomersBrowser({
     });
     v = [...v];
     if (sort === "company") v.sort((a, b) => a.company_name.localeCompare(b.company_name));
+    /* RECENTLY CHANGED (Anir, Sep 6: "maybe have a screen where it's recently
+       changed"). last_enriched_at is the account row's real touch stamp —
+       every save through the API bumps it — so this is what changed, not what
+       was created. Accounts nobody has edited since import simply sort by the
+       date they arrived, which is the honest answer for them. */
+    else if (sort === "updated")
+      v.sort(
+        (a, b) =>
+          new Date(b.last_enriched_at || b.created_at).getTime() -
+          new Date(a.last_enriched_at || a.created_at).getTime()
+      );
     else if (sort === "size")
       v.sort((a, b) => (sizeRank[b.size_tier || ""] || 0) - (sizeRank[a.size_tier || ""] || 0));
     else if (sort === "health")
@@ -447,6 +481,37 @@ export function CustomersBrowser({
       );
     return v;
   }, [customers, query, sort, sizeRank]);
+
+  /**
+   * THE GROUPS THEMSELVES. Grouping reads the WHOLE filtered list, not the
+   * current page: a group split across a page boundary would be a lie about
+   * how many accounts an owner has. Unassigned and ungrouped accounts sort
+   * last but are never hidden — they are usually the ones that need doing
+   * something about.
+   */
+  const grouping = groupBy !== "none" && view === "table";
+  const groupedRows = useMemo(() => {
+    if (!grouping) return [];
+    const buckets = new Map<string, { key: string; name: string; rows: EnrichedCustomer[] }>();
+    for (const c of filtered) {
+      const name =
+        groupBy === "owner"
+          ? c.owner?.trim() || UNASSIGNED_OWNER
+          : customerGroups.find((g) => g.customerIds.includes(c.id))?.name ??
+            NO_CUSTOMER_GROUP;
+      const key = name.toLowerCase();
+      const bucket = buckets.get(key) ?? { key, name, rows: [] };
+      bucket.rows.push(c);
+      buckets.set(key, bucket);
+    }
+    const trailing = new Set([UNASSIGNED_OWNER.toLowerCase(), NO_CUSTOMER_GROUP.toLowerCase()]);
+    return [...buckets.values()].sort((a, b) => {
+      const aLast = trailing.has(a.key);
+      const bLast = trailing.has(b.key);
+      if (aLast !== bLast) return aLast ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [grouping, groupBy, filtered, customerGroups]);
 
   /**
    * WHAT THE SUMMARY IS LOOKING AT, hoisted out of the render branch so the
@@ -637,6 +702,117 @@ export function CustomersBrowser({
     }
   }
 
+  /**
+   * ONE ROW, USED BY BOTH LISTS. Grouping renders the same rows under
+   * headers, so lifting the row out here is what keeps the grouped view
+   * from drifting away from the plain one the next time a column changes.
+   */
+  const renderCustomerRow = (c: EnrichedCustomer) => {
+      const isSel = selected.has(c.id);
+      return (
+      <tr key={c.id} className={cn("transition-colors group", isSel ? "bg-blue-light" : "hover:bg-surface")}>
+        {selectMode && (
+          <td className="pl-5 py-4">
+            <button
+              onClick={() => toggleSel(c.id)}
+              aria-label={`Select ${c.company_name}`}
+              aria-pressed={isSel}
+              className="text-blue-primary align-middle"
+            >
+              {isSel ? (
+                <CheckSquare size={17} strokeWidth={1.8} />
+              ) : (
+                <Square size={17} strokeWidth={1.8} className="text-text-tertiary" />
+              )}
+            </button>
+          </td>
+        )}
+        {/* CUSTOMER GROUP, FIRST (Manoj, Sep 3). The name of the
+            group this account belongs to, or the honest absence of
+            one — the same wording the pipeline uses so the two
+            screens agree. */}
+        <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
+          {customerGroups.find((g) => g.customerIds.includes(c.id))?.name ?? (
+            <span className="text-text-tertiary">No customer group</span>
+          )}
+        </td>
+        <td className="px-5 py-4">
+          <HoverCard
+            side="bottom"
+            width={280}
+            content={
+              <div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <CompanyLogo name={c.company_name} className="w-9 h-9 text-[11px]" />
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-semibold text-text-primary truncate">
+                      {c.company_name}
+                    </p>
+                    <p className="text-[11.5px] text-text-tertiary truncate">
+                      {[c.industry, geographyWithFlag(c.geography, "")].filter(Boolean).join(" · ") || "-"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mb-2.5">
+                  <HealthBar health={c.health} />
+                </div>
+                <div className="space-y-1 text-[12.5px]">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-text-tertiary">Opportunity</span>
+                    <span className="font-medium text-text-primary">
+                      {c.size_tier ? SIGNAL[c.size_tier]?.label ?? "-" : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-text-tertiary">Contacts</span>
+                    <span className="font-medium text-text-primary tnum">{c.contact_count}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-text-tertiary">Last touch</span>
+                    <span className="font-medium text-text-primary">
+                      {c.last_outcome ? c.last_outcome.replace(/_/g, " ") : "none"}
+                    </span>
+                  </div>
+                  {c.owner && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-text-tertiary">Owner</span>
+                      <span className="font-medium text-text-primary truncate">{c.owner}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
+                  Open account →
+                </p>
+              </div>
+            }
+          >
+            <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
+              <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
+              <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
+            </Link>
+          </HoverCard>
+        </td>
+        {/* OWNER (Manoj, Sep 3). It was buried in the hover card;
+            it is one of the three things this list is for. */}
+        <td className="px-5 py-4 text-[13px] whitespace-nowrap">
+          {c.owner ? (
+            <span className="inline-flex items-center gap-2">
+              <Avatar name={c.owner} className="h-6 w-6 text-[10px]" />
+              <span className="text-text-primary">{c.owner}</span>
+            </span>
+          ) : (
+            <span className="text-text-tertiary">Unassigned</span>
+          )}
+        </td>
+        <td className="px-5 py-4 text-right">
+          <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
+            <ArrowRight size={16} strokeWidth={1.5} />
+          </Link>
+        </td>
+      </tr>
+      );
+  };
+
   return (
     <div>
       {/* NO TITLE, NO SUBTITLE (Anir, Aug 30: "I don't think you need to say
@@ -759,6 +935,8 @@ export function CustomersBrowser({
               // Dark teal, not amber: this label is drawn in its own colour, and
               // it must not echo the caution orange in the health filter beside it.
               { value: "recent", label: "Newest", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+              // What moved lately, not what arrived lately (Anir, Sep 6).
+              { value: "updated", label: "Recently changed", icon: History, color: "var(--ink-amber)" },
               { value: "company", label: "Company A, Z", icon: ArrowDownAZ, color: "var(--ink-bright-blue)" },
               { value: "size", label: "Opportunity", icon: Target, color: "var(--ink-violet-soft)" },
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
@@ -767,6 +945,45 @@ export function CustomersBrowser({
         }
         display={
           <>
+            {/* GROUPING, TABLE VIEW ONLY (Anir, Sep 6: "in this list view,
+                could you do the thing where we're grouping these things...
+                I should be able to group by owner"). It has no meaning on the
+                cards, which are already a wall of tiles, so the control is not
+                offered there rather than being offered and doing nothing. */}
+            {view === "table" && (
+              <ColorSelect
+                value={groupBy}
+                onChange={(v) => setGroupBy(v as "none" | "owner" | "group")}
+                ariaLabel="Group customers"
+                minWidth={150}
+                dense
+                collapsible={false}
+                className="shrink-0"
+                options={[
+                  {
+                    value: "none",
+                    label: "No grouping",
+                    short: "Flat list",
+                    icon: CircleSlash,
+                    color: "var(--ink-blue-soft)",
+                  },
+                  {
+                    value: "owner",
+                    label: "Group by owner",
+                    short: "By owner",
+                    icon: UserRound,
+                    color: "var(--ink-bright-blue)",
+                  },
+                  {
+                    value: "group",
+                    label: "Group by customer group",
+                    short: "By group",
+                    icon: Layers,
+                    color: "var(--ink-violet-soft)",
+                  },
+                ] satisfies ColorOption[]}
+              />
+            )}
             {/* PAGE SIZE IS A DISPLAY CONTROL, so it belongs in the display
                 cluster rather than in the filter run, where it had grown a
                 line of its own (Anir, Aug 21: "your customers page is weird,
@@ -1114,111 +1331,62 @@ filtered.length === 0 ? (
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light stagger">
-                {paged.map((c) => {
-                  const isSel = selected.has(c.id);
-                  return (
-                  <tr key={c.id} className={cn("transition-colors group", isSel ? "bg-blue-light" : "hover:bg-surface")}>
-                    {selectMode && (
-                      <td className="pl-5 py-4">
-                        <button
-                          onClick={() => toggleSel(c.id)}
-                          aria-label={`Select ${c.company_name}`}
-                          aria-pressed={isSel}
-                          className="text-blue-primary align-middle"
-                        >
-                          {isSel ? (
-                            <CheckSquare size={17} strokeWidth={1.8} />
-                          ) : (
-                            <Square size={17} strokeWidth={1.8} className="text-text-tertiary" />
-                          )}
-                        </button>
-                      </td>
-                    )}
-                    {/* CUSTOMER GROUP, FIRST (Manoj, Sep 3). The name of the
-                        group this account belongs to, or the honest absence of
-                        one — the same wording the pipeline uses so the two
-                        screens agree. */}
-                    <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
-                      {customerGroups.find((g) => g.customerIds.includes(c.id))?.name ?? (
-                        <span className="text-text-tertiary">No customer group</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <HoverCard
-                        side="bottom"
-                        width={280}
-                        content={
-                          <div>
-                            <div className="flex items-center gap-2.5 mb-2.5">
-                              <CompanyLogo name={c.company_name} className="w-9 h-9 text-[11px]" />
-                              <div className="min-w-0">
-                                <p className="text-[13.5px] font-semibold text-text-primary truncate">
-                                  {c.company_name}
-                                </p>
-                                <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {[c.industry, geographyWithFlag(c.geography, "")].filter(Boolean).join(" · ") || "-"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="mb-2.5">
-                              <HealthBar health={c.health} />
-                            </div>
-                            <div className="space-y-1 text-[12.5px]">
-                              <div className="flex justify-between gap-3">
-                                <span className="text-text-tertiary">Opportunity</span>
-                                <span className="font-medium text-text-primary">
-                                  {c.size_tier ? SIGNAL[c.size_tier]?.label ?? "-" : "-"}
+                {grouping
+                  ? groupedRows.map((g) => (
+                      <Fragment key={g.key}>
+                        {/* THE GROUP HEADER (Anir, Sep 6: "in this list view,
+                            could you do the thing where we're grouping these
+                            things... I should be able to group by owner, and
+                            it'll show the profile picture"). Same shape as the
+                            Sales Materials headers: who or what the group is,
+                            how many accounts are in it, and a click to fold it
+                            away. Open by default here — an owner has a handful
+                            of accounts, not twenty-five materials, so arriving
+                            at a page of shut drawers would hide the whole
+                            list. */}
+                        <tr className="bg-surface/70">
+                          <td
+                            colSpan={selectMode ? 5 : 4}
+                            className="px-5 py-2.5"
+                          >
+                            <button
+                              onClick={() => toggleFold(g.key)}
+                              aria-expanded={!folded.has(g.key)}
+                              className="flex w-full items-center gap-2 text-left"
+                            >
+                              <ChevronRight
+                                size={14}
+                                strokeWidth={2}
+                                className={cn(
+                                  "shrink-0 text-text-tertiary transition-transform",
+                                  !folded.has(g.key) && "rotate-90"
+                                )}
+                              />
+                              {groupBy === "owner" ? (
+                                g.name === UNASSIGNED_OWNER ? (
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary">
+                                    <Users size={13} strokeWidth={1.8} />
+                                  </span>
+                                ) : (
+                                  <Avatar name={g.name} className="h-6 w-6 text-[10px]" />
+                                )
+                              ) : (
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                                  <Building2 size={13} strokeWidth={1.8} />
                                 </span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span className="text-text-tertiary">Contacts</span>
-                                <span className="font-medium text-text-primary tnum">{c.contact_count}</span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span className="text-text-tertiary">Last touch</span>
-                                <span className="font-medium text-text-primary">
-                                  {c.last_outcome ? c.last_outcome.replace(/_/g, " ") : "none"}
-                                </span>
-                              </div>
-                              {c.owner && (
-                                <div className="flex justify-between gap-3">
-                                  <span className="text-text-tertiary">Owner</span>
-                                  <span className="font-medium text-text-primary truncate">{c.owner}</span>
-                                </div>
                               )}
-                            </div>
-                            <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
-                              Open account →
-                            </p>
-                          </div>
-                        }
-                      >
-                        <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
-                          <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
-                          <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
-                        </Link>
-                      </HoverCard>
-                    </td>
-                    {/* OWNER (Manoj, Sep 3). It was buried in the hover card;
-                        it is one of the three things this list is for. */}
-                    <td className="px-5 py-4 text-[13px] whitespace-nowrap">
-                      {c.owner ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Avatar name={c.owner} className="h-6 w-6 text-[10px]" />
-                          <span className="text-text-primary">{c.owner}</span>
-                        </span>
-                      ) : (
-                        <span className="text-text-tertiary">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
-                        <ArrowRight size={16} strokeWidth={1.5} />
-                      </Link>
-                    </td>
-                  </tr>
-                  );
-                })}
+                              <b className="text-[13px] text-text-primary">{g.name}</b>
+                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                                ({g.rows.length}{" "}
+                                {g.rows.length === 1 ? "account" : "accounts"})
+                              </span>
+                            </button>
+                          </td>
+                        </tr>
+                        {!folded.has(g.key) && g.rows.map(renderCustomerRow)}
+                      </Fragment>
+                    ))
+                  : paged.map(renderCustomerRow)}
               </tbody>
             </table>
           </PinnableTable>
@@ -1226,7 +1394,8 @@ filtered.length === 0 ? (
       )
       )}
 
-      {filtered.length > PER_PAGE && (
+      {/* No pager while grouped: the groups ARE the whole list. */}
+      {!grouping && filtered.length > PER_PAGE && (
         <div className="flex items-center justify-between mt-6">
           <span className="text-[13px] text-text-secondary tnum">
             Page {current} of {pageCount}

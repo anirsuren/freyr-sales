@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { DocumentDrop, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import {
@@ -193,6 +194,12 @@ export function OfferingActivities({
   onStartedAdding?: () => void;}) {
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
+  /** The activity document currently open in the in-app viewer. */
+  const [viewingDoc, setViewingDoc] = useState<{
+    id: string;
+    name: string;
+    fileName: string | null;
+  } | null>(null);
   /** Which deals this activity belongs to (Suren, Aug 16: "offering,
    *  opportunity and then activity — you need to connect all three"). The
    *  record already carried these ids; nothing here could pick them. */
@@ -487,18 +494,23 @@ export function OfferingActivities({
                     <td className="py-2.5 pr-3">
                       {(version.documents?.length ?? 0) > 0 ? (
                         <span className="flex min-w-0 flex-col gap-0.5">
+                          {/* OPENS IN THE APP, like a sales material (Anir,
+                              Sep 6: "the exact same thing that you have on
+                              meetings... has to be on pretty much anywhere
+                              else there is a document"). It was a target=
+                              _blank link, so the file left the app and landed
+                              in whatever the browser does with a download. */}
                           {(version.documents ?? []).map((d) => (
-                            <a
+                            <button
                               key={d.id}
-                              href={`/api/customers/download?customerId=${encodeURIComponent(customerId)}&docId=${encodeURIComponent(d.id)}&view=1`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex min-w-0 items-center gap-1 text-[12px] font-medium text-blue-primary hover:underline"
-                              title={d.name}
+                              type="button"
+                              onClick={() => setViewingDoc({ id: d.id, name: d.name, fileName: d.fileName ?? null })}
+                              className="inline-flex min-w-0 items-center gap-1 text-left text-[12px] font-medium text-blue-primary hover:underline"
+                              title={`Open ${d.name}`}
                             >
                               <FileText size={12} strokeWidth={2} className="shrink-0" />
                               <span className="truncate">{d.name}</span>
-                            </a>
+                            </button>
                           ))}
                         </span>
                       ) : (
@@ -788,6 +800,24 @@ export function OfferingActivities({
           </div>
         </form>
       </Modal>
+
+      {/* The sales-material viewer, over the activity list it was opened
+          from. Both endpoints resolve the file through the ACCOUNT record and
+          the document id, never from a path in the query. */}
+      {viewingDoc && (
+        <DocumentPeek
+          name={viewingDoc.name}
+          fileName={viewingDoc.fileName}
+          contextName="This account"
+          previewUrl={`/api/customers/download?customerId=${encodeURIComponent(
+            customerId
+          )}&docId=${encodeURIComponent(viewingDoc.id)}&view=1`}
+          downloadUrl={`/api/customers/download?customerId=${encodeURIComponent(
+            customerId
+          )}&docId=${encodeURIComponent(viewingDoc.id)}`}
+          onClose={() => setViewingDoc(null)}
+        />
+      )}
     </div>
   );
 }

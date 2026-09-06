@@ -471,13 +471,29 @@ export const config = {
   // Protect dynamic routes even when an attacker gives a route parameter a
   // file-looking suffix such as ".png". Only framework assets and the favicon
   // bypass authentication.
-  // The two big-body upload endpoints are EXCLUDED: any route the middleware
+  // EVERY ROUTE THAT TAKES A FILE IS EXCLUDED. Any route the middleware
   // matches gets its body re-streamed by Next with a hard cap, which is what
   // ate Antara's 32MB proposal (Aug 20) — the cap-raise alone did not save it.
-  // Both routes carry their own sign-in checks (canEditOffering /
-  // verifiedWorkflowActor return 403 without a session), and the session
-  // cookie is SameSite=Lax, so a cross-site POST arrives without it.
+  //
+  // Only two of them were listed here, and that is exactly what Anir hit on
+  // Sep 6: "I can't even upload a file, brother... it's not working on
+  // development either. Okay, let me test sales materials... seems like that
+  // worked." Sales materials is the offerings route, the one route that WAS
+  // excluded. Measured on deployed dev, same 3MB PDF, same session:
+  // /api/offerings/{id}/materials/upload → 200, /api/meetings/upload-draft →
+  // 400 "No file came through" (formData() throwing on a truncated body).
+  // Above ~10MB the same request died as a naked 500. So every solutioning
+  // document, meeting document, contract, FDL attachment, evidence file and
+  // CRM/offerings import has been failing on anything bigger than a rounding
+  // error, on both environments, while the one route people happened to test
+  // worked fine.
+  //
+  // Each of these authenticates itself BEFORE it reads the body — canEdit
+  // Offering, canWriteSolutioning, moduleWriteRefusal, isAdmin — so leaving
+  // the middleware out of the path removes a layer of body handling, not a
+  // layer of access control. The session cookie is SameSite=Lax, so a
+  // cross-site POST arrives without it either way.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/offerings/.*/materials/upload|api/performance/evidence).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/[^/]+/upload|api/[^/]+/[^/]+/upload|api/offerings/[^/]+/materials/upload|api/meetings/upload-draft|api/meetings/transcribe|api/performance/evidence|api/import/crm|api/offerings/import).*)",
   ],
 };

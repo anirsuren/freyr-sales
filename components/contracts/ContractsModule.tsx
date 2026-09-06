@@ -36,6 +36,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DocumentDrop, landedDocs, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { useToast } from "@/components/ui/Toast";
@@ -155,6 +156,14 @@ export function ContractsModule({
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
   const [editing, setEditing] = useState<Draft | null>(null);
+  /** The contract file currently open in the in-app viewer. */
+  const [viewingDoc, setViewingDoc] = useState<{
+    contractId: string;
+    docId: string;
+    name: string;
+    fileName: string | null;
+    customer: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   /**
    * ALL OF THEM NEED ATTACHMENTS (Anir, Aug 31), AND THIS ONE DID NOT HAVE IT.
@@ -1167,7 +1176,38 @@ export function ContractsModule({
                           >
                             <FileText size={12} strokeWidth={2.2} /> Open the contract
                           </a>
-                        ) : (
+                        ) : null}
+                        {/* THE FILES ACTUALLY ATTACHED TO THIS CONTRACT (Anir,
+                            Sep 6: the meetings behaviour "has to be on...
+                            pretty much anywhere else there is a document").
+                            The dialog has taken uploads since August and they
+                            saved onto the record, but nothing here ever showed
+                            them and there was no route to read them back —
+                            "Open the contract" points at documentUrl, the link
+                            somebody pastes to legal's copy, which is a
+                            different thing. These open in the app's own
+                            viewer, like a sales material. */}
+                        {(c.docs ?? []).map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() =>
+                              setViewingDoc({
+                                contractId: c.id,
+                                docId: d.id,
+                                name: d.name,
+                                fileName: d.fileName ?? null,
+                                customer: c.customer,
+                              })
+                            }
+                            title={`Open ${d.name}`}
+                            className="inline-flex max-w-[220px] items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                          >
+                            <FileText size={12} strokeWidth={2.2} />
+                            <span className="truncate">{d.name}</span>
+                          </button>
+                        ))}
+                        {!c.documentUrl && (c.docs ?? []).length === 0 && (
                           <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 text-[11.5px] font-medium text-text-tertiary">
                             <FileText size={12} strokeWidth={2.2} /> No document yet
                           </span>
@@ -1676,6 +1716,24 @@ export function ContractsModule({
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* The sales-material viewer, over the contracts list. Both endpoints
+          resolve the file through the CONTRACT and the document id, never
+          from a path in the query. */}
+      {viewingDoc && (
+        <DocumentPeek
+          name={viewingDoc.name}
+          fileName={viewingDoc.fileName}
+          contextName={viewingDoc.customer}
+          previewUrl={`/api/contracts/download?contractId=${encodeURIComponent(
+            viewingDoc.contractId
+          )}&docId=${encodeURIComponent(viewingDoc.docId)}&view=1`}
+          downloadUrl={`/api/contracts/download?contractId=${encodeURIComponent(
+            viewingDoc.contractId
+          )}&docId=${encodeURIComponent(viewingDoc.docId)}`}
+          onClose={() => setViewingDoc(null)}
+        />
       )}
 
       <ConfirmDialog

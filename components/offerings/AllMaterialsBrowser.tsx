@@ -499,7 +499,9 @@ const TABLE_CLASS =
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 align-middle">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
+                      {/* Same tightening as the offering's own table (Anir,
+                          Sep 6: the X "gets almost off the table"). */}
                       <Tooltip
                         label={
                           isUploadedMaterial(row.material) ? "Open preview" : "Open link"
@@ -510,7 +512,7 @@ const TABLE_CLASS =
                           type="button"
                           aria-label={`Open ${row.material.label}`}
                           onClick={() => openRow(row)}
-                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                         >
                           <ExternalLink size={14} strokeWidth={1.9} />
                         </button>
@@ -527,7 +529,7 @@ const TABLE_CLASS =
                           type="button"
                           aria-label={`Download ${row.material.label}`}
                           onClick={() => downloadMaterialCopy(row.material)}
-                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                         >
                           <Download size={14} strokeWidth={1.9} />
                         </button>

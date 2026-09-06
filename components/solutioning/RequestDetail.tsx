@@ -28,6 +28,7 @@ import {
   type LucideIcon,
   MessageSquare,
   ArrowUpRight,
+  UploadCloud,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
@@ -1744,6 +1745,8 @@ function AddDocForm({
   const [refDocId, setRefDocId] = useState("");
   /* THE FILE ITSELF, not a link to it somewhere else. */
   const [file, setFile] = useState<{ docsPath: string; fileName: string } | null>(null);
+  /** Upload the bytes, or point at a copy that lives somewhere else. */
+  const [source, setSource] = useState<"upload" | "url">("upload");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -1840,6 +1843,56 @@ function AddDocForm({
            because attaching one is the point, then what to call it, then the
            optional details. Real labels on everything. */
         <div className="space-y-3">
+          {/* WHERE THE DOCUMENT COMES FROM, DECIDED FIRST (Anir, Sep 6: "why
+              are you putting the link there at the end? Shouldn't that be up
+              top, where they either choose an upload file or a link?").
+
+              It was a URL box below the note, appearing only when no file was
+              attached — so the second of the two ways to add a document was
+              hidden underneath the first one and read as an afterthought.
+              They are two answers to the same question, so they are offered
+              together, before anything else is filled in. */}
+          <div className="flex w-fit items-center gap-1 rounded-lg bg-surface p-1 text-[12px] font-semibold">
+            {([
+              { key: "upload" as const, label: "Upload a file", icon: UploadCloud },
+              { key: "url" as const, label: "Link to a file elsewhere", icon: Link2 },
+            ]).map((choice) => (
+              <button
+                key={choice.key}
+                type="button"
+                onClick={() => {
+                  setSource(choice.key);
+                  /* Switching sides clears the other side's answer, so the
+                     saved document can never carry both a file and a link. */
+                  if (choice.key === "upload") setUrl("");
+                  else {
+                    setFile(null);
+                    setUploadError(null);
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors",
+                  source === choice.key
+                    ? "bg-white text-blue-primary shadow-card"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <choice.icon size={13} strokeWidth={2} />
+                {choice.label}
+              </button>
+            ))}
+          </div>
+
+          {source === "url" ? (
+            <Field label="Link to the document">
+              <Input
+                autoFocus
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://… SharePoint, Drive, anywhere"
+              />
+            </Field>
+          ) : (
           <label
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors",
@@ -1892,6 +1945,7 @@ function AddDocForm({
               </>
             )}
           </label>
+          )}
 
           {uploadError && (
             <p className="text-[11.5px] font-medium text-[color:var(--status-red)]">
@@ -1921,38 +1975,35 @@ function AddDocForm({
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Who is working on it">
-              <ColorSelect
-                value={assignedTo}
-                onChange={setAssignedTo}
-                ariaLabel="Who is working on it"
-                className="w-full"
-                dense
-                options={[
-                  { value: "", label: "Nobody on it yet", color: "#64748B", icon: CircleDashed },
-                  ...members.map((m) => ({ value: m, label: m, avatarName: m })),
-                ]}
-              />
-            </Field>
-            <Field label="Note">
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Optional"
-              />
-            </Field>
-          </div>
-
-          {!file && (
-            <Field label="Or link to one that lives elsewhere">
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://… SharePoint, Drive, anywhere"
-              />
-            </Field>
-          )}
+          {/* ONE PER ROW (Anir, Sep 6: "the note should not be like that
+              because that doesn't make any sense. It has to take up the full
+              thing. Just have 'Who is working on it' in one row, and then
+              under that, you have a note that's kind of like a description
+              box"). A half-width single-line box for free text next to a
+              picker made the note look like a second dropdown; it is the one
+              field here somebody actually writes in. */}
+          <Field label="Who is working on it">
+            <ColorSelect
+              value={assignedTo}
+              onChange={setAssignedTo}
+              ariaLabel="Who is working on it"
+              className="w-full"
+              dense
+              options={[
+                { value: "", label: "Nobody on it yet", color: "#64748B", icon: CircleDashed },
+                ...members.map((m) => ({ value: m, label: m, avatarName: m })),
+              ]}
+            />
+          </Field>
+          <Field label="Note">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="What this document is, what changed in this version, anything the next person should know."
+              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white focus:outline-none"
+            />
+          </Field>
         </div>
       ) : linkables.length === 0 ? (
         /* A DESIGNED EMPTY STATE, NOT A VOID (Anir, Aug 28: "now this just
