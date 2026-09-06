@@ -731,11 +731,13 @@ export function CustomersBrowser({
             group this account belongs to, or the honest absence of
             one — the same wording the pipeline uses so the two
             screens agree. */}
+        {!(grouping && groupBy === "group") && (
         <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
           {customerGroups.find((g) => g.customerIds.includes(c.id))?.name ?? (
             <span className="text-text-tertiary">No customer group</span>
           )}
         </td>
+        )}
         <td className="px-5 py-4">
           <HoverCard
             side="bottom"
@@ -794,6 +796,7 @@ export function CustomersBrowser({
         </td>
         {/* OWNER (Manoj, Sep 3). It was buried in the hover card;
             it is one of the three things this list is for. */}
+        {!(grouping && groupBy === "owner") && (
         <td className="px-5 py-4 text-[13px] whitespace-nowrap">
           {c.owner ? (
             <span className="inline-flex items-center gap-2">
@@ -804,6 +807,7 @@ export function CustomersBrowser({
             <span className="text-text-tertiary">Unassigned</span>
           )}
         </td>
+        )}
         <td className="px-5 py-4 text-right">
           <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
             <ArrowRight size={16} strokeWidth={1.5} />
@@ -863,11 +867,17 @@ export function CustomersBrowser({
           search bar has to be above the view... below the three tiles" — the
           three glance numbers sit right under the tabs, and the search/sort
           bar drops beneath them, swapping places with where it used to be). */}
-      {shape === "summary" && (
-        <div
-          key={`tiles-${shape}`}
-          className="tab-panel mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3"
-        >
+      {/* THE TILES STAY (Anir, Sep 6: "when I switch from summary to list
+          view, you have to keep the three tiles"). They answered the page's
+          question, not the summary's — how many accounts, how much money, how
+          many are live — and all three read from the same filtered scope
+          whichever way the rows below are drawn. Losing them on the switch was
+          half of why switching "changes the entire thing". No `key` on the
+          shape any more either: remounting them replayed the entrance
+          animation on every toggle, which made the whole page look like it had
+          reloaded. */}
+      {(
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatTile
             icon={Building2}
             label="Customers"
@@ -920,7 +930,14 @@ export function CustomersBrowser({
            on screen to say why. Search and sort stay: they are how you find a
            row, not extra data about it. */
         groups={[]}
+        /* CONTROLS ONLY WHERE THEY DO SOMETHING (Anir, Sep 6: "I don't want
+           to see it if it doesn't do anything on the screen I'm on"). The
+           summary is a pivot: it groups and totals by its own chips, so a sort
+           order and a page size have nothing to act on there. They were drawn
+           anyway, did nothing when touched, and made the two shapes look like
+           different pages. */
         sort={
+          shape !== "list" ? null : (
           <ColorSelect
             value={sort}
             onChange={setSort}
@@ -942,6 +959,7 @@ export function CustomersBrowser({
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
           />
+          )
         }
         display={
           <>
@@ -950,7 +968,7 @@ export function CustomersBrowser({
                 I should be able to group by owner"). It has no meaning on the
                 cards, which are already a wall of tiles, so the control is not
                 offered there rather than being offered and doing nothing. */}
-            {view === "table" && (
+            {shape === "list" && view === "table" && (
               <ColorSelect
                 value={groupBy}
                 onChange={(v) => setGroupBy(v as "none" | "owner" | "group")}
@@ -984,6 +1002,8 @@ export function CustomersBrowser({
                 ] satisfies ColorOption[]}
               />
             )}
+            {shape === "list" && (
+            <>
             {/* PAGE SIZE IS A DISPLAY CONTROL, so it belongs in the display
                 cluster rather than in the filter run, where it had grown a
                 line of its own (Anir, Aug 21: "your customers page is weird,
@@ -1022,6 +1042,8 @@ export function CustomersBrowser({
                 })),
               ]}
             />
+            </>
+            )}
             {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
                 thing should be last. The download button and the select
                 button: you don't have to see what they are. Just have the
@@ -1318,7 +1340,19 @@ filtered.length === 0 ? (
                       and all other data and filters."). Everything the deal
                       pipeline knows about an account lives on the account page
                       now, one click away, rather than crowding the list. */}
-                  {["Customer group", "Customer", "Owner"].map((h) => (
+                  {/* THE GROUPED COLUMN GOES (Anir, Sep 6: "when I group by
+                      that thing, I don't want to see that column. I already
+                      know it's all a customer group"). Every row under an
+                      owner header repeats that owner; the column was the same
+                      word fourteen times under a heading that already said
+                      it. */}
+                  {["Customer group", "Customer", "Owner"]
+                    .filter(
+                      (h) =>
+                        !(grouping && groupBy === "owner" && h === "Owner") &&
+                        !(grouping && groupBy === "group" && h === "Customer group")
+                    )
+                    .map((h) => (
                     <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         {h}
@@ -1346,7 +1380,7 @@ filtered.length === 0 ? (
                             list. */}
                         <tr className="bg-surface/70">
                           <td
-                            colSpan={selectMode ? 5 : 4}
+                            colSpan={(selectMode ? 5 : 4) - 1}
                             className="px-5 py-2.5"
                           >
                             <button

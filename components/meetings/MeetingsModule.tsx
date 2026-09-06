@@ -69,10 +69,27 @@ export type OpportunityOption = {
  * than two drawings of it (Anir, Aug 30: "you probably want to have the table
  * and the split view too on all the solutioning ones").
  */
-function MeetingPanel({ m }: { m: Meeting }) {
+function MeetingPanel({
+  m,
+  /**
+   * ONE ARROW PER MEETING (Anir, Sep 6: "why do you have two arrows here? Fix
+   * it. Look at the right side.").
+   *
+   * This panel is the row's fold AND the split view's right pane. Folded out
+   * of a row there is nothing else offering the way in, so it carries its own
+   * arrow. In the split view the pane already has a header with the meeting's
+   * name and an arrow beside it, so a second one appeared a few lines below
+   * the first, pointing at the same place. The caller that already draws one
+   * says so.
+   */
+  ownArrow = true,
+}: {
+  m: Meeting;
+  ownArrow?: boolean;
+}) {
   return (
     <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
-      {/* The arrow, at the top — same rule as everywhere else. */}
+      {ownArrow && (
       <Link
         href={`/meetings/${m.id}`}
         title="Open the meeting"
@@ -81,6 +98,7 @@ function MeetingPanel({ m }: { m: Meeting }) {
       >
         <ArrowUpRight size={15} strokeWidth={2.2} />
       </Link>
+      )}
                               <div className="min-w-0">
                                 <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                   What came out of it
@@ -530,7 +548,7 @@ export function MeetingsModule({
                   </Link>
                 </div>
                 <div className="px-4 py-4">
-                  <MeetingPanel m={picked} />
+                  <MeetingPanel m={picked} ownArrow={false} />
                 </div>
               </>
             ) : (
