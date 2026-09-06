@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 import { useRouter } from "next/navigation";
-import { Check, PenLine, X } from "lucide-react";
+import { Check, PenLine } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -87,52 +88,26 @@ export function RelatedOfferingNote({
     }
   }
 
-  if (editing) {
-    return (
-      <span
-        // The card around this is a Link; typing must not navigate.
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        className="mt-1.5 block"
-      >
-        <textarea
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={2}
-          placeholder={`How does ${relatedName} relate to this offering?`}
-          aria-label={`How ${relatedName} relates`}
-          className="w-full resize-y rounded-lg border border-blue-subtle bg-white px-2.5 py-1.5 text-[12px] leading-snug text-text-primary outline-none focus:border-blue-primary"
-        />
-        <span className="mt-1.5 flex items-center gap-1.5">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={save}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-primary px-2.5 py-1 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <Check size={12} strokeWidth={2.6} /> Save
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(note);
-              setEditing(false);
-            }}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-          >
-            <X size={12} strokeWidth={2.4} /> Cancel
-          </button>
-        </span>
-      </span>
-    );
-  }
+  /* A POP-UP, NOT A BOX INSIDE THE ROW (Anir, Sep 6: "in the related
+     offering section, when I press that thing, it should be a pop-up instead
+     of just there"). Editing in place grew a textarea and two buttons inside
+     a card that is itself a link, so the row jumped taller the moment you
+     pressed the pencil and every neighbouring row moved. In the table view it
+     was worse: the row was clamped to two lines, so the editor opened inside
+     a clamp. The dialog holds still and gives the note room to be written. */
 
   return (
+    <>
     <span className="mt-1 flex items-start gap-1.5">
-      <span className="min-w-0 flex-1 text-[12px] leading-snug text-text-secondary">
+      {/* data-note-text so the table can clamp THIS and nothing else: it used
+          to clamp every descendant span, and line-clamp sets display
+          -webkit-box, which overrode the flex on this very row and dropped the
+          pencil onto a line of its own (Anir, Sep 6: "in the table view... the
+          pencil icon is on another line. Looks weird"). */}
+      <span
+        data-note-text
+        className="min-w-0 flex-1 text-[12px] leading-snug text-text-secondary"
+      >
         {note.trim() || (
           <span className="italic text-text-tertiary">
             No note on how these two work together yet.
@@ -164,5 +139,58 @@ export function RelatedOfferingNote({
         </button>
       )}
     </span>
+
+    <Modal
+      open={editing}
+      onClose={() => {
+        setDraft(note);
+        setEditing(false);
+      }}
+      title={`How ${relatedName} relates`}
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(note);
+              setEditing(false);
+            }}
+            className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={save}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Check size={14} strokeWidth={2.6} /> Save the note
+          </button>
+        </>
+      }
+    >
+      <p className="text-[12.5px] leading-relaxed text-text-secondary">
+        One or two sentences a rep can use on a call: when these two are sold
+        together, and what the other one adds.
+      </p>
+      <textarea
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={5}
+        placeholder={`How does ${relatedName} relate to this offering?`}
+        aria-label={`How ${relatedName} relates`}
+        className="mt-3 w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+      />
+      {/* Clearing the box removes the note — say so, rather than letting an
+          empty save look like a failed one. */}
+      {note.trim() && !draft.trim() && (
+        <p className="mt-2 text-[11.5px] font-medium text-[color:var(--ink-orange)]">
+          Saving with the box empty removes this note.
+        </p>
+      )}
+    </Modal>
+    </>
   );
 }

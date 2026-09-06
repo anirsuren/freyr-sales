@@ -229,7 +229,12 @@ export function RelatedOfferingsSection({
                         was meant to replace. Clamped to two lines; the pencil
                         still opens the whole thing. */}
                     <td className="px-4 py-3">
-                      <span className="block [&_p]:line-clamp-2 [&_span]:line-clamp-2">
+                      {/* Clamp the NOTE, not every span inside it: the old
+                          rule also hit the row that holds the text and the
+                          pencil, and line-clamp's display:-webkit-box killed
+                          that flex row (Anir, Sep 6: "the pencil icon is on
+                          another line"). */}
+                      <span className="block [&_p]:line-clamp-2 [&_[data-note-text]]:line-clamp-2">
                         <RelatedOfferingNote
                           offeringId={offeringId}
                           relatedId={relatedOffering.id}
