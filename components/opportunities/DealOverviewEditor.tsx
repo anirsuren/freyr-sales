@@ -255,7 +255,13 @@ function Card({
           borderBottom: open ? "1px solid var(--border-light)" : "none",
         }}
       >
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+        {/* items-CENTER, not baseline: the title is a flex row whose first
+            item is an SVG icon, and a flex container's baseline is taken from
+            that first item — so "baseline" aligned the hint to the icon's box
+            bottom and the hint sat visibly lower than the title it follows
+            (Anir, Sep 6: "the text is not aligned"). Centering both spans
+            against each other is what the accruals fold this copies does. */}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-0.5">
           <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-text-primary">
             <Icon
               size={15}

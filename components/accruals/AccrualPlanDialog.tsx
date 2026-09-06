@@ -13,6 +13,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Field, Input } from "@/components/ui/Input";
 import {
   BASE_CURRENCY,
+  convertToUsd,
   currencyMeta,
   rateFor,
   withCommas,
@@ -588,7 +589,10 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
   const [fxReady, setFxReady] = useState<"off" | "loading" | "ready" | "failed">("off");
 
   useEffect(() => {
-    if (!hasLocal || !showLocal) {
+    /* Fetch for ANY non-USD deal, not only when the toggle shows local: the
+       USD conversion of the deal's own TCV (dealValue below) needs the rate
+       even while the table is being read in dollars. */
+    if (!hasLocal) {
       setFxReady("off");
       return;
     }
@@ -607,6 +611,18 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
     };
   }, [hasLocal, showLocal, localSignDate]);
 
+  /** True while the table is being READ in the deal's own money and the rate
+   *  is actually on hand — the state in which editable cells become converted
+   *  read-only displays (the toggle converts for reading, writes nothing). */
+  const readingLocal = showLocal && hasLocal && fxReady === "ready";
+  /** The DIGITS of a stored USD amount in the toggle's money, for cells whose
+   *  symbol is drawn separately. Falls back to the USD digits with no rate. */
+  function localDigits(usdText: string): string {
+    const n = Number(usdText || 0);
+    const rate = rateFor(dealCurrency, localSignDate || undefined);
+    if (!rate || !Number.isFinite(n)) return withCommas(usdText);
+    return withCommas(String(Math.round(n * rate)));
+  }
   /** A stored USD figure, read in whichever money the toggle is showing. */
   function readMoney(usd: number): string {
     if (!showLocal || !hasLocal || fxReady !== "ready") return exactUsd(usd);
@@ -1350,8 +1366,29 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
      lands in editing.opportunityId, so this read returned undefined, the value
      fell back to 0, and the whole follow-the-TCV rule below quietly switched
      itself off on the one path that plans the other 98 deals. */
-  const dealValue =
+  /**
+   * THE DEAL'S MONEY, IN THE PLAN'S MONEY. `value` arrives in the currency
+   * the deal was agreed in — a EUR deal hands over 250000 meaning euros —
+   * and this schedule stores US dollars. Passing the digits straight through
+   * called them dollars (Anir, Sep 6, flipping the toggle: "the value is
+   * staying the same... that doesn't make any sense"), so the contract value,
+   * the spread, and the over-value cap were all standing on a number in the
+   * wrong money. Converted here, at the sign-date rate, everything downstream
+   * (the follows-the-deal rule, Spread evenly, the cap, the total row)
+   * inherits the correction. While the rate is still loading — or if there is
+   * none — this reads 0, which flips followsDeal off and leaves the box
+   * enterable rather than wrong (never block on a derived value).
+   */
+  const dealNative =
     deals.find((d) => d.id === (editing.opportunityId || dealId))?.value ?? 0;
+  const dealValue = !hasLocal
+    ? dealNative
+    : fxReady === "ready"
+      ? Math.round(
+          convertToUsd(dealNative, dealCurrency, localSignDate || undefined) ??
+            0
+        )
+      : 0;
   /**
    * ...AND OUTSIDE A DRAFT TOO (found in the loop, Sep 4).
    *
@@ -1615,8 +1652,14 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                  very thing the schedule is supposed to reconcile against. */
               hint={
                 followsDeal
-                  ? "Follows the estimated TCV on this deal. The schedule has to add up to exactly that."
-                  : "This deal carries no estimated TCV, so say what the contract is worth."
+                  ? hasLocal
+                    ? `Follows the estimated TCV on this deal — ${currencyMeta(dealCurrency).symbol.trim()}${withCommas(String(Math.round(dealNative)))} ${dealCurrency} converted to US dollars at the sign-date rate. The schedule has to add up to exactly that.`
+                    : "Follows the estimated TCV on this deal. The schedule has to add up to exactly that."
+                  : hasLocal && dealNative > 0 && fxReady === "loading"
+                    ? "Converting the deal's money to US dollars…"
+                    : hasLocal && dealNative > 0 && fxReady === "failed"
+                      ? "No USD rate could be fetched, so say what the contract is worth in dollars."
+                      : "This deal carries no estimated TCV, so say what the contract is worth."
               }
             >
               <Input
@@ -1944,8 +1987,27 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                                    commas"). Safe in a live input because
                                    expandMoneyShorthand strips separators on
                                    the way back in, so the stored value is
-                                   always bare digits. */
-                                value={withCommas(line[field] ?? "")}
+                                   always bare digits.
+
+                                   READ IN EUROS, WRITTEN IN DOLLARS: while
+                                   the toggle shows the deal's own money the
+                                   digits convert too (Anir, Sep 6: the
+                                   symbol used to flip while the number
+                                   stayed put, "that doesn't make any
+                                   sense"), and the cell goes read-only —
+                                   the store is USD, so edits happen in USD
+                                   view. */
+                                value={
+                                  readingLocal
+                                    ? localDigits(line[field] ?? "")
+                                    : withCommas(line[field] ?? "")
+                                }
+                                readOnly={readingLocal}
+                                title={
+                                  readingLocal
+                                    ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
+                                    : undefined
+                                }
                                 placeholder="0"
                                 inputMode="numeric"
                                 aria-label={`${field === "ots" ? "OTS" : field === "arr" ? "ARR" : "Monthly"} for ${monthLabel(line.month)}`}
@@ -2003,13 +2065,30 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                                 the normaliser only sums the parts when the
                                 plan is split. */}
                             <input
-                              value={withCommas(
-                                splitFields.length ? rowTotal(line) : (line.amount ?? "")
-                              )}
+                              value={
+                                readingLocal
+                                  ? localDigits(
+                                      splitFields.length
+                                        ? rowTotal(line)
+                                        : (line.amount ?? "")
+                                    )
+                                  : withCommas(
+                                      splitFields.length
+                                        ? rowTotal(line)
+                                        : (line.amount ?? "")
+                                    )
+                              }
+                              title={
+                                readingLocal
+                                  ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
+                                  : undefined
+                              }
                               placeholder="0"
                               inputMode="numeric"
-                              readOnly={splitFields.length > 0}
-                              tabIndex={splitFields.length ? -1 : undefined}
+                              readOnly={splitFields.length > 0 || readingLocal}
+                              tabIndex={
+                                splitFields.length || readingLocal ? -1 : undefined
+                              }
                               aria-label={`Total for ${monthLabel(line.month)}`}
                               onChange={
                                 splitFields.length

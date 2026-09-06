@@ -2993,6 +2993,7 @@ export function OpportunitiesBrowser({
               >
                 <MoneyInput
                   value={editing.estimatedAcv}
+                  symbol={currencyMeta(editing.rows[0]?.localCurrency || "USD").symbol.trim()}
                   ariaLabel="Estimated annual contract value"
                   onChange={(v) => setEditing({ ...editing, estimatedAcv: v })}
                 />
@@ -3000,10 +3001,11 @@ export function OpportunitiesBrowser({
               <Field
                 label="Estimated TCV"
                 required
-                hint="What the whole contract is worth, adding up every year. Leave it blank and it uses the deal value above. Only fill it in if the contract total is actually different."
+                hint="What the whole contract is worth, adding up every year. Mandatory. It starts as the deal value above — change it only if the contract total is actually different."
               >
                 <MoneyInput
                   value={editing.estimatedTcv}
+                  symbol={currencyMeta(editing.rows[0]?.localCurrency || "USD").symbol.trim()}
                   ariaLabel="Estimated total contract value"
                   onChange={(v) => setEditing({ ...editing, estimatedTcv: v })}
                   /* SHOWS WHAT IT WILL USE (Anir, Aug 30: "this value is TCV,
@@ -3705,11 +3707,16 @@ function MoneyInput({
   onChange,
   ariaLabel,
   placeholder = "Not set",
+  /** The money this box is denominated in. A EUR deal's TCV wearing a "$"
+   *  told two lies at once (Anir, Sep 6: euros above, dollars here) — the
+   *  mark follows the deal's own currency, dollar only as the default. */
+  symbol = "$",
 }: {
   value: string;
   onChange: (v: string) => void;
   ariaLabel: string;
   placeholder?: string;
+  symbol?: string;
 }) {
   return (
     <span className="relative flex items-center">
@@ -3717,7 +3724,7 @@ function MoneyInput({
         aria-hidden="true"
         className="pointer-events-none absolute left-3 text-[13px] font-semibold text-text-tertiary"
       >
-        $
+        {symbol}
       </span>
       <input
         value={value ? withCommas(value.replace(/[^0-9]/g, "")) : ""}
