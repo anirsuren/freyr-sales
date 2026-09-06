@@ -1234,6 +1234,21 @@ export const mockDb = {
       persist();
       return store.customers[idx];
     },
+    /* Mock deletes for real, in the mock store only (Anir, Sep 6: "it should
+       work in Mock-mode too... just like it doesn't affect the database of
+       the real mode"). The showroom is where somebody tries a control before
+       trusting it, so a delete that silently did nothing here would teach the
+       wrong thing about the button. */
+    remove: async (id: string) => {
+      const idx = store.customers.findIndex((c) => c.id === id);
+      if (idx === -1) return false;
+      store.customers.splice(idx, 1);
+      /* An account's contacts go with it: a contact whose customer no longer
+         exists is an orphan the UI cannot render or reach. */
+      store.contacts = store.contacts.filter((c) => c.customer_id !== id);
+      persist();
+      return true;
+    },
   },
   contacts: {
     list: async (customerId?: string) =>

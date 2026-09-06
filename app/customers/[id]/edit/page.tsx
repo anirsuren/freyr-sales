@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomerEditForm } from "@/components/customers/CustomerEditForm";
 import { getDb } from "@/lib/db";
 import { resolveScope, canEditRecord } from "@/lib/recordScope";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal, moduleDeleteRefusal, recordDeleteRefusal } from "@/lib/moduleAccessServer";
 import { listCustomerTypes } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +51,18 @@ export default async function EditCustomerPage({
       scope
     );
   if (!mayEdit) redirect(`/customers/${customer.id}`);
+  /* Deleting is a step past editing (Suren, Aug 29: "owner can create, member
+     can edit"), so it is asked separately — a member who may correct this
+     account still does not get the Delete control. The API enforces the same
+     pair; this only decides whether the button is drawn. */
+  const mayDelete =
+    !(await moduleDeleteRefusal("/customers")) &&
+    !(await recordDeleteRefusal("/customers", {
+      id: customer.id,
+      owner: customer.owner,
+      owner_user_id: customer.owner_user_id,
+      created_by: customer.created_by,
+    }));
   return (
     <div>
       <SmartBack
@@ -66,6 +78,7 @@ export default async function EditCustomerPage({
       <CustomerEditForm
         customer={customer}
         customerTypes={listCustomerTypes().map((t) => t.name)}
+        mayDelete={mayDelete}
       />
     </div>
   );

@@ -309,6 +309,28 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
           .maybeSingle();
         return maybe<Customer>(result);
       },
+      /**
+       * REMOVE AN ACCOUNT.
+       *
+       * Anir, Sep 6: "I can't even delete a customer. It's impossible."
+       * Customers were the one record type with no delete anywhere — not in
+       * the UI, not on the API, not here — so an account added by mistake was
+       * permanent. Scoped by workspace the same way update is, so a stray id
+       * cannot reach across workspaces, and returns false rather than throwing
+       * when the row is already gone (deleting twice is not an error).
+       */
+      remove: async (id: string) => {
+        const workspace = await workspaceId();
+        const result = await supabase
+          .from("customers")
+          .delete()
+          .eq("id", id)
+          .eq("workspace_id", workspace)
+          .select("id")
+          .maybeSingle();
+        if (result.error) throw new Error(result.error.message);
+        return !!result.data;
+      },
     },
     contacts: {
       list: async (customerId?: string) => {

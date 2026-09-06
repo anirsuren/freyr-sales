@@ -218,6 +218,17 @@ export const liveDb = {
             last_enriched_at: now(),
           })
         : null,
+    /* Same contract as the Supabase and mock adapters (Anir, Sep 6: customers
+       had no delete anywhere). Workspace-scoped, and its contacts go with it
+       so nothing is left pointing at an account that is gone. */
+    remove: async (id: string) => {
+      if (!workspaceCustomer(id)) return false;
+      const idx = store.customers.findIndex((c) => c.id === id);
+      if (idx === -1) return false;
+      store.customers.splice(idx, 1);
+      store.contacts = store.contacts.filter((c) => c.customer_id !== id);
+      return true;
+    },
   },
   contacts: {
     list: async (customerId?: string) => {

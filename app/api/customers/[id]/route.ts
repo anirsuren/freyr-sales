@@ -26,7 +26,10 @@ import {
 import {
   moduleWriteRefusal,
   recordWriteRefusal,
+  moduleDeleteRefusal,
+  recordDeleteRefusal,
   canOpenModule,} from "@/lib/moduleAccessServer";
+import { readOpportunities } from "@/lib/opportunities";
 
 /** The only three the column accepts. */
 const SIZE_TIERS: SizeTier[] = ["small", "mid", "large"];
@@ -628,3 +631,78 @@ export async function GET(
 
   return NextResponse.json({ customer, contacts, sessions, interactions });
 }
+
+/**
+ * REMOVE AN ACCOUNT.
+ *
+ * Anir, Sep 6: "I can't even delete a customer. It's impossible... Make sure
+ * the delete flows for everything are good, literally every single type of
+ * item." Customers were the only record type in the app with no delete at
+ * all — no button, no endpoint, no adapter method — so an account added by
+ * mistake stayed forever.
+ *
+ * Guarded exactly like PATCH above, one step stricter: deleting is the
+ * owner's right (moduleDeleteRefusal), and it must be THIS record they are
+ * allowed to touch (recordDeleteRefusal), so a member who may edit an account
+ * still cannot remove it. Works in mock mode too, against the mock store only.
+ */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  {
+    const refusal = await moduleDeleteRefusal("/customers");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
+  const db = getDb();
+  const { id } = await params;
+  const customer = await db.customers.get(id);
+  if (!customer) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  {
+    const refusal = await recordDeleteRefusal("/customers", {
+      id: customer.id,
+      owner: customer.owner,
+      owner_user_id: customer.owner_user_id,
+      created_by: customer.created_by,
+    });
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+
+  /* SAY WHAT WILL BE LOST BEFORE IT IS (the dialog asks first, but the API is
+     the control). An account carrying live deals is refused outright rather
+     than silently orphaning them — the deals would keep naming a customer
+     that no longer exists, which is how a pipeline total starts disagreeing
+     with the accounts behind it. */
+  const deals = await readOpportunities()
+    .then((state) => state.opportunities)
+    .catch(() => []);
+  const attached = deals.filter(
+    (d) =>
+      (d.customerId && d.customerId === customer.id) ||
+      (d.customer || "").trim().toLowerCase() ===
+        (customer.company_name || "").trim().toLowerCase()
+  );
+  if (attached.length) {
+    return NextResponse.json(
+      {
+        error: `This account still has ${attached.length} ${
+          attached.length === 1 ? "opportunity" : "opportunities"
+        } against it. Delete or reassign ${
+          attached.length === 1 ? "it" : "them"
+        } first.`,
+      },
+      { status: 409 }
+    );
+  }
+
+  const removed = await db.customers.remove(id);
+  if (!removed) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
+}
+

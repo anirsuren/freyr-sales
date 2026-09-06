@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, ChevronDown, Tags } from "lucide-react";
+import { Building2, ChevronDown, Tags, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { industryMeta } from "@/components/ui/IndustryTag";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
@@ -122,14 +123,21 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 export function CustomerEditForm({
   customer,
   customerTypes,
+  mayDelete = false,
 }: {
   customer: Customer;
   /** The admin-managed list (Offerings → Customer types). */
   customerTypes: string[];
+  /** Deleting is the owner's right, decided on the server and passed in
+   *  (Suren, Aug 29: "owner can create, member can edit"). Absent, the
+   *  control simply is not drawn — the API refuses either way. */
+  mayDelete?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState({
     company_name: customer.company_name ?? "",
     industry: customer.industry ?? "",
@@ -148,6 +156,40 @@ export function CustomerEditForm({
   );
   const problem = !draft.company_name.trim() ? "The account needs a name." : null;
   const flag = flagForGeography(countryOnlyGeography(draft.geography));
+
+  /**
+   * DELETE THE ACCOUNT (Anir, Sep 6: "if I click into a customer and then I
+   * press Edit Account, I should be able to delete it at the bottom, and
+   * that's not a thing").
+   *
+   * Red, confirmed, and destructive-last: it sits at the far left of the save
+   * bar so it can never be the button somebody reaches for on the way to
+   * Save. The API refuses a delete the person may not do, and refuses one
+   * that would orphan live deals — that message is shown as-is rather than
+   * being reworded here, because it names what is in the way.
+   */
+  async function remove() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data?.error || "That did not delete.", "error");
+        setDeleting(false);
+        setConfirmDelete(false);
+        return;
+      }
+      toast(`${customer.company_name} deleted.`, "success");
+      router.push("/customers");
+      router.refresh();
+    } catch {
+      toast("That did not delete.", "error");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -368,6 +410,17 @@ export function CustomerEditForm({
         >
           {problem ?? (dirty ? "Changes not saved yet." : "Everything on this page is saved.")}
         </span>
+        {mayDelete && (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            disabled={busy || deleting}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-error/30 px-3.5 py-2 text-[13px] font-semibold text-error transition-colors hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Trash2 size={14} strokeWidth={2.2} />
+            Delete account
+          </button>
+        )}
         <span className="ml-auto flex items-center gap-2">
           <button
             type="button"
@@ -386,6 +439,16 @@ export function CustomerEditForm({
           </button>
         </span>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={remove}
+        title={`Delete ${customer.company_name}?`}
+        body="The account and its contacts are removed. This cannot be undone."
+        confirmLabel={deleting ? "Deleting…" : "Delete account"}
+        tone="destructive"
+      />
     </div>
   );
 }

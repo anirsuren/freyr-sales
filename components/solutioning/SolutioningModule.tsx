@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { withCommas } from "@/lib/currency";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1492,6 +1493,15 @@ export function NewRequestDialog({
   const [newOpps, setNewOpps] = useState<OpportunityOption[]>([]);
   const [subName, setSubName] = useState("");
   const [subExtra, setSubExtra] = useState("");
+  /* WHAT A NEW DEAL MUST CARRY (Suren, Sep 1, enforced in the opportunities
+     route): estimated TCV, a confidence level and an expected signing date.
+     This mini-form asked for a name and a free-text "Value" and sent neither
+     of the other two, so "Create the opportunity" could only ever come back
+     refused (Anir, Sep 6: "this didn't work... all the data is not there, so
+     this can't be a real opportunity"). */
+  const [subTcv, setSubTcv] = useState("");
+  const [subConfidence, setSubConfidence] = useState("50");
+  const [subSignDate, setSubSignDate] = useState("");
   const [subBusy, setSubBusy] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
 
@@ -1596,9 +1606,16 @@ export function NewRequestDialog({
             name: subName.trim(),
             customer: customer.name,
             ...(customerId ? { customerId } : {}),
-            ...(subExtra.trim()
-              ? { value: Number(subExtra.replace(/[^0-9.]/g, "")) || 0 }
-              : {}),
+            /* `estimatedTcv` is the mandatory money field, not the legacy
+               `value` column this used to send — the route validates the
+               former and never saw the latter. */
+            estimatedTcv: Number(subTcv.replace(/[^0-9.]/g, "")) || 0,
+            lines: [
+              {
+                confidence: Number(subConfidence) || 0,
+                estSignDate: subSignDate,
+              },
+            ],
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -1711,14 +1728,25 @@ export function NewRequestDialog({
             <ArrowLeft size={15} strokeWidth={2.2} />
             Back to the request
           </button>
-          <p className="mb-1 text-[14px] font-semibold text-text-primary">
-            {sub === "opportunity"
-              ? "New opportunity"
-              : "New contact"}
-          </p>
+          {/* THE ACCOUNT'S OWN MARK, AND ITS NAME IN THE TITLE (Anir, Sep 6:
+              "just say 'New Opportunity for Takeda' and put the profile
+              picture of Takeda"). The old subtitle explained the mechanics of
+              the form back to the reader, which he called AI slop — one plain
+              line about what this IS replaces it. */}
+          <div className="mb-1 flex items-center gap-2">
+            <CompanyLogo
+              name={customer?.name ?? ""}
+              className="h-6 w-6 shrink-0 text-[8px]"
+            />
+            <p className="text-[14px] font-semibold text-text-primary">
+              {sub === "opportunity" ? "New opportunity" : "New contact"} for{" "}
+              {customer?.name}
+            </p>
+          </div>
           <p className="mb-4 text-[12.5px] text-text-secondary">
-            For <b>{customer?.name}</b>. It is picked for you the moment it
-            exists, and nothing you have typed is lost.
+            {sub === "opportunity"
+              ? "It joins this request as soon as you create it."
+              : "They join this request as soon as you create them."}
           </p>
           <label className="block">
             <span className="text-[12px] font-semibold text-text-primary">
@@ -1736,27 +1764,99 @@ export function NewRequestDialog({
               className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
             />
           </label>
-          <label className="mt-3 block">
-            <span className="text-[12px] font-semibold text-text-primary">
-              {sub === "opportunity" ? "Value" : "Job title"}
-              <span className="ml-1.5 font-normal text-text-secondary">
-                optional
+          {sub === "opportunity" ? (
+            /* THE THREE FIELDS A DEAL CANNOT BE SAVED WITHOUT. The old form
+               asked for a free-text "Value" — which is why a person could type
+               "Test" into a money box (Anir: "why is the value a letter?") —
+               and omitted confidence and the signing date entirely, so every
+               submit was refused by the route. */
+            <>
+              <label className="mt-3 block">
+                <span className="text-[12px] font-semibold text-text-primary">
+                  Estimated TCV <span className="text-error">*</span>
+                </span>
+                <span className="relative mt-1.5 flex items-center">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 text-[13px] font-semibold text-text-tertiary"
+                  >
+                    $
+                  </span>
+                  <input
+                    value={withCommas(subTcv)}
+                    inputMode="numeric"
+                    onChange={(e) =>
+                      setSubTcv(e.target.value.replace(/[^0-9]/g, ""))
+                    }
+                    placeholder="0"
+                    className="h-10 w-full rounded-lg border border-border-light bg-white pl-7 pr-3 text-[13px] tnum outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                  />
+                </span>
+              </label>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    Confidence <span className="text-error">*</span>
+                  </span>
+                  <span className="relative mt-1.5 flex items-center">
+                    <input
+                      value={subConfidence}
+                      inputMode="numeric"
+                      onChange={(e) =>
+                        setSubConfidence(
+                          e.target.value.replace(/[^0-9]/g, "").slice(0, 3)
+                        )
+                      }
+                      placeholder="50"
+                      className="h-10 w-full rounded-lg border border-border-light bg-white px-3 pr-7 text-[13px] tnum outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 text-[13px] font-semibold text-text-tertiary"
+                    >
+                      %
+                    </span>
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    Expected to sign <span className="text-error">*</span>
+                  </span>
+                  <input
+                    type="date"
+                    value={subSignDate}
+                    onChange={(e) => setSubSignDate(e.target.value)}
+                    className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                  />
+                </label>
+              </div>
+            </>
+          ) : (
+            <label className="mt-3 block">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Job title
+                <span className="ml-1.5 font-normal text-text-secondary">
+                  optional
+                </span>
               </span>
-            </span>
-            <input
-              value={subExtra}
-              onChange={(e) => setSubExtra(e.target.value)}
-              placeholder={
-                sub === "opportunity" ? "What it is worth" : "What they do there"
-              }
-              className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-            />
-          </label>
+              <input
+                value={subExtra}
+                onChange={(e) => setSubExtra(e.target.value)}
+                placeholder="What they do there"
+                className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </label>
+          )}
           <div className="mt-auto flex items-center justify-between gap-3 pt-5">
             <span className="min-w-0 text-[12.5px] text-error">{subError}</span>
             <button
               type="button"
-              disabled={!subName.trim() || subBusy}
+              disabled={
+                !subName.trim() ||
+                subBusy ||
+                (sub === "opportunity" &&
+                  (!subTcv.trim() || !subConfidence.trim() || !subSignDate))
+              }
               onClick={createSub}
               className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -2347,9 +2447,15 @@ function FrameOrNot({
   onBack?: () => void;
   children: React.ReactNode;
 }) {
+  /* ONE SIZE THROUGHOUT (Anir, Sep 6: "make sure the pop-up is the same size
+     as this pop-up when I click Create New Opportunity... it kind of just
+     takes away the consistency"). The sub-form is a panel INSIDE this dialog,
+     so without a floor the frame shrank to it and the whole thing jumped.
+     `tall` pins the height and the panels scroll within — the same rule the
+     app's other fixed-height dialogs follow. */
   if (!chromeless)
     return (
-      <Modal open onClose={onClose} title={title} size="workflow">
+      <Modal open onClose={onClose} title={title} size="workflow" tall>
         {children}
       </Modal>
     );
